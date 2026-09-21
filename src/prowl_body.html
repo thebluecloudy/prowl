@@ -1,0 +1,1871 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+/* legacy Scout V4 section still sitting in the theme — keep it hidden */
+[id$="custom_liquid_4XkmDr"]{display:none!important}
+/* the app owns its own box; nothing here may reach the theme */
+.scout-app-wrapper{position:relative;width:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;font-size:15px;line-height:1.55}
+
+.scout-app-wrapper *,.scout-app-wrapper{box-sizing:border-box}
+/* ---- inbound bleed guard ----------------------------------------------
+   When this app is pasted into a Shopify page body, the surrounding theme
+   already styles h1/h2/p/a/button/input. Those rules are LOWER specificity
+   than the app's own scoped rules but still win for any property the app
+   never declares — which is how "Find the prey" inherits a theme's green
+   h1 colour. These resets claim those properties first; every app rule
+   below is same-specificity-but-later, so the app still wins.
+   Harmless in the standalone file; load-bearing on Shopify. */
+.scout-app-wrapper h1,.scout-app-wrapper h2,.scout-app-wrapper h3,.scout-app-wrapper h4,.scout-app-wrapper p,.scout-app-wrapper a,.scout-app-wrapper button,.scout-app-wrapper input,.scout-app-wrapper textarea,.scout-app-wrapper select,.scout-app-wrapper label,.scout-app-wrapper em,.scout-app-wrapper i,.scout-app-wrapper b,.scout-app-wrapper u,.scout-app-wrapper s,.scout-app-wrapper strong,.scout-app-wrapper small,.scout-app-wrapper span,.scout-app-wrapper div,.scout-app-wrapper ul,.scout-app-wrapper ol,.scout-app-wrapper li,.scout-app-wrapper form,.scout-app-wrapper section,.scout-app-wrapper aside,.scout-app-wrapper nav,.scout-app-wrapper header,.scout-app-wrapper figure{color:inherit;font:inherit;letter-spacing:normal;text-transform:none;
+  text-decoration:none;text-shadow:none;margin:0;padding:0;border:0;
+  background:transparent;box-shadow:none;border-radius:0;min-width:0}
+.scout-app-wrapper ul,.scout-app-wrapper ol{list-style:none}
+/* Headings declare their own colour so a theme's own h1/h2/h3 rule cannot win
+   by default. The !important is deliberate and narrow: Shopify themes commonly
+   mark their heading colours important, and nothing weaker beats that. */
+.scout-app-wrapper h1,.scout-app-wrapper h2,.scout-app-wrapper h3,.scout-app-wrapper h4{color:var(--ink)!important;font-family:var(--display)}
+.scout-app-wrapper p,.scout-app-wrapper li,.scout-app-wrapper label,.scout-app-wrapper span{color:inherit}
+.scout-app-wrapper button,.scout-app-wrapper input,.scout-app-wrapper textarea,.scout-app-wrapper select{-webkit-appearance:none;appearance:none;outline:none;
+  font-family:inherit;font-size:inherit;line-height:inherit}
+.scout-app-wrapper button{cursor:pointer}
+.scout-app-wrapper img,.scout-app-wrapper svg{border:0;max-width:none}
+.scout-app-wrapper table{border-collapse:collapse}
+/* ---------------------------------------------------------------------- */
+:root{color-scheme:light;
+  --bg:#FAF6EE;--cd:#FFFFFF;--cd2:#FCFAF6;--cd3:#F6F0E6;
+  --ink:#1C1815;--i2:#4A423B;--i3:#7C7269;--mu:#7C7269;--mu2:#9A9388;
+  --onink:#FDFBF7;--ink-h:#000;
+  --ln:#E7DED1;--l2:#D6C9B6;
+  --ac:#B0522B;--ac-soft:#FFF9F4;--ac-tint:#FFEEDF;--ac-ring:rgba(176,82,43,.14);
+  --go:#C08A2E;--go-soft:#FFFBF0;
+  --suc:#0F7A4F;--suc-soft:#E8F5EE;--suc-bg:#0F5D45;--suc-ink:#0A5738;
+  --warn:#B03030;--warn-soft:#FBEAEA;
+  --chip:#1C1815;--chip-glow:0 0 0 rgba(0,0,0,0);
+  --hover:#F3ECE1;
+  --tag-bg:#F3E9DA;--tag-fg:#8A5A2B;
+  --tagb-bg:#E1EFEB;--tagb-fg:#2E6B62;
+  --shadow:rgba(28,24,21,.06);--shadow-lg:rgba(28,24,21,.45);
+  --toast-bg:#1C1815;--toast-fg:#FBF7F0;--toast-b:#F0C97A;
+  --bar-bg:rgba(250,246,238,.86);--dock-bg:rgba(250,246,238,.94);
+  --scrim:rgba(28,24,21,.42);--modal-bg:#FAF6EE;
+  --body-glow:radial-gradient(1100px 560px at 50% -12%,#FFFDF8,rgba(255,253,248,0) 62%);
+  --sans:'Space Grotesk',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --display:'Bricolage Grotesque',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+[data-theme=dark]{color-scheme:dark;
+  --bg:#070706;--cd:#0d0d0c;--cd2:#191917;--cd3:#23231f;
+  --ink:#f5f3ee;--i2:#dcd9d1;--i3:#a8a59d;--mu:#8a8780;--mu2:#6a6862;
+  --onink:#0d0d0c;--ink-h:#ffffff;
+  --ln:#2a2a26;--l2:#3a3a34;
+  --ac:#ffb200;--ac-soft:rgba(255,178,0,.07);--ac-tint:rgba(255,178,0,.15);--ac-ring:rgba(255,178,0,.24);
+  --go:#ffb200;--go-soft:rgba(255,178,0,.14);
+  --suc:#12b886;--suc-soft:rgba(18,184,134,.14);--suc-bg:#0f5d45;--suc-ink:#8fe3c4;
+  --warn:#e0654f;--warn-soft:rgba(224,101,79,.14);
+  --chip:#191917;--chip-glow:0 0 0 rgba(0,0,0,0);
+  --hover:#23231f;
+  --tag-bg:rgba(255,178,0,.14);--tag-fg:#ffc94d;
+  --tagb-bg:rgba(18,184,134,.14);--tagb-fg:#8fe3c4;
+  --shadow:rgba(0,0,0,.5);--shadow-lg:rgba(0,0,0,.85);
+  --toast-bg:#f5f3ee;--toast-fg:#0d0d0c;--toast-b:#7a2b00;
+  --bar-bg:rgba(7,7,6,.88);--dock-bg:rgba(7,7,6,.94);
+  --scrim:rgba(7,7,6,.78);--modal-bg:#0d0d0c;
+  --body-glow:
+    radial-gradient(900px 500px at 50% -10%,rgba(255,178,0,.05),transparent 60%),
+    radial-gradient(700px 400px at 100% 100%,rgba(18,184,134,.04),transparent 60%);}
+[data-theme=uranium]{color-scheme:dark;
+  --bg:#040414;--cd:#0a0a1e;--cd2:#0c0c22;--cd3:#101030;
+  --ink:#8affb8;--i2:#6ee89b;--i3:#4fb377;--mu:#3d8a5e;--mu2:#2a6046;
+  --onink:#040414;--ink-h:#c8ffdd;
+  --ln:rgba(57,255,20,.20);--l2:rgba(57,255,20,.38);
+  --ac:#39ff14;--ac-soft:rgba(57,255,20,.08);--ac-tint:rgba(57,255,20,.18);--ac-ring:rgba(57,255,20,.35);
+  --go:#7dffc0;--go-soft:rgba(125,255,192,.15);
+  --suc:#39ff14;--suc-soft:rgba(57,255,20,.12);--suc-bg:rgba(57,255,20,.22);--suc-ink:#c8ffdd;
+  --warn:#ff5c8a;--warn-soft:rgba(255,92,138,.12);
+  --chip:transparent;--chip-glow:0 0 26px rgba(57,255,20,.55),0 0 60px rgba(57,255,20,.25);
+  --hover:rgba(57,255,20,.08);
+  --tag-bg:rgba(57,255,20,.15);--tag-fg:#7dffc0;
+  --tagb-bg:rgba(125,255,192,.12);--tagb-fg:#8affb8;
+  --shadow:rgba(57,255,20,.15);--shadow-lg:rgba(57,255,20,.40);
+  --toast-bg:#39ff14;--toast-fg:#040414;--toast-b:#0a3a00;
+  --bar-bg:rgba(4,4,20,.85);--dock-bg:rgba(4,4,20,.92);
+  --scrim:rgba(0,0,0,.85);--modal-bg:#0a0a1e;
+  --body-glow:none;}
+.scout-app-wrapper{margin:0;font:15px/1.5 var(--sans);color:var(--ink);background:var(--bg);background-image:var(--body-glow);padding-bottom:94px;-webkit-font-smoothing:antialiased;transition:background-color .3s,color .3s}
+[data-theme=uranium] .scout-app-wrapper{background:linear-gradient(180deg,#0a0e2e 0%,#050518 40%,#000000 100%) fixed;background-color:#000}
+.scout-app-wrapper button{font:inherit;cursor:pointer;color:inherit}
+.scout-app-wrapper a{color:inherit}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes glowPulse{
+  0%,100%{filter:drop-shadow(0 0 14px rgba(57,255,20,.65)) drop-shadow(0 0 32px rgba(57,255,20,.35))}
+  50%{filter:drop-shadow(0 0 24px rgba(57,255,20,1)) drop-shadow(0 0 56px rgba(57,255,20,.55))}
+}
+.scout-app-wrapper .pulse{animation:pulse 2.4s ease-in-out infinite}
+.scout-app-wrapper .bar{position:relative;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 18px;background:var(--bar-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--ln)}
+.scout-app-wrapper .brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.02em}
+.scout-app-wrapper .brand i{color:var(--ac);font-style:normal}
+.scout-app-wrapper .markwrap{display:none;align-items:center;justify-content:center;background:var(--chip);border-radius:9px;padding:5px 10px;box-shadow:var(--chip-glow);transition:box-shadow .3s,background .3s}
+[data-theme=uranium] .scout-app-wrapper .markwrap{display:flex}
+.scout-app-wrapper .mark{height:22px;width:auto;display:block}
+.scout-app-wrapper .bar-actions{display:flex;gap:8px;align-items:center}
+.scout-app-wrapper .gh{background:none;border:1px solid var(--l2);border-radius:9px;padding:7px 12px;font-size:12.5px;font-weight:600;color:var(--i2);transition:background .15s,color .15s,border-color .15s,box-shadow .15s}
+.scout-app-wrapper .gh:hover{background:var(--hover);color:var(--ink)}
+[data-theme=uranium] .scout-app-wrapper .gh:hover{box-shadow:0 0 14px rgba(57,255,20,.35)}
+.scout-app-wrapper main{max-width:760px;margin:0 auto;padding:0 18px}
+.scout-app-wrapper .eb{font-family:var(--sans);font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mu);margin:34px 0 10px}
+.scout-app-wrapper .heromark{display:none;align-items:center;justify-content:center;background:var(--chip);border-radius:14px;padding:16px 26px;margin:0 0 18px;transition:background .3s,box-shadow .3s}
+[data-theme=uranium] .scout-app-wrapper .heromark{display:inline-flex;
+  background:radial-gradient(circle at 50% 62%,rgba(57,255,20,.22) 0%,rgba(57,255,20,.06) 40%,transparent 72%);
+  animation:glowPulse 3s ease-in-out infinite;}
+.scout-app-wrapper .heromark img{height:60px;width:auto;max-width:220px;display:block}
+.scout-app-wrapper h1{font-family:var(--display);font-weight:700;font-size:clamp(30px,6vw,44px);line-height:1.05;letter-spacing:-.028em;margin:0 0 12px}
+.scout-app-wrapper h1 em{color:var(--ac);font-style:italic;font-weight:600}
+[data-theme=uranium] .scout-app-wrapper h1{text-shadow:0 0 22px rgba(57,255,20,.4)}
+[data-theme=uranium] .scout-app-wrapper h1 em{text-shadow:0 0 14px rgba(57,255,20,.9)}
+.scout-app-wrapper .lede{margin:0;color:var(--i3);max-width:54ch;font-size:15px}
+.scout-app-wrapper form{display:flex;gap:8px;margin:22px 0 10px;flex-wrap:wrap}
+.scout-app-wrapper input[type=search],.scout-app-wrapper input[type=text]{flex:1 1 220px;min-width:0;height:50px;padding:0 16px;border:1px solid var(--l2);border-radius:12px;background:var(--cd2);font:inherit;font-size:15px;font-weight:500;color:var(--ink);transition:border-color .15s,box-shadow .15s,background .15s}
+.scout-app-wrapper input::placeholder{color:var(--mu2)}
+.scout-app-wrapper input.wantterm{border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-ring)}
+@media(prefers-reduced-motion:no-preference){.scout-app-wrapper input.wantterm{animation:otpWant .5s ease-in-out 2} }
+@keyframes otpWant{0%,100%{box-shadow:0 0 0 3px var(--ac-ring)}50%{box-shadow:0 0 0 7px var(--ac-ring)} }
+.scout-app-wrapper input:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-ring);background:var(--cd)}
+[data-theme=uranium] .scout-app-wrapper input:focus{box-shadow:0 0 0 3px var(--ac-ring),0 0 22px rgba(57,255,20,.35)}
+.scout-app-wrapper .b{height:50px;padding:0 20px;border:1px solid var(--l2);border-radius:12px;background:var(--cd2);font-size:14px;font-weight:700;white-space:nowrap;color:var(--ink);transition:background .15s,border-color .15s,box-shadow .2s}
+.scout-app-wrapper .b:hover{background:var(--hover)}
+.scout-app-wrapper .b.p{background:var(--ac);color:var(--onink);border-color:var(--ac)}
+.scout-app-wrapper .b.fb{border-color:#3b6ea5;color:#8fb6e2}
+.scout-app-wrapper .b.fb:hover{background:rgba(59,110,165,.16);border-color:#5b8ec5;color:#b9d4f0}
+.scout-app-wrapper .b.p:hover{filter:brightness(.94)}
+[data-theme=uranium] .scout-app-wrapper .b.p{box-shadow:0 0 20px rgba(57,255,20,.55),0 0 45px rgba(57,255,20,.28),inset 0 0 10px rgba(255,255,255,.15)}
+[data-theme=uranium] .scout-app-wrapper .b.p:hover{box-shadow:0 0 28px rgba(57,255,20,.75),0 0 60px rgba(57,255,20,.4),inset 0 0 10px rgba(255,255,255,.2)}
+.scout-app-wrapper .hint{font-size:12.5px;color:var(--mu);margin:0 0 24px;line-height:1.55}
+.scout-app-wrapper .hint b{color:var(--i2);font-weight:700}
+.scout-app-wrapper .sh{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;flex-wrap:wrap}
+.scout-app-wrapper h2{font-family:var(--display);font-weight:700;font-size:19px;margin:0;letter-spacing:-.02em}
+[data-theme=uranium] .scout-app-wrapper h2{text-shadow:0 0 12px rgba(57,255,20,.3)}
+.scout-app-wrapper h3{font-family:var(--display);font-weight:700;font-size:16px;margin:0;letter-spacing:-.015em}
+.scout-app-wrapper .quick{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 30px;min-height:40px}
+.scout-app-wrapper .qc{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border:1px solid var(--l2);border-radius:999px;background:var(--cd2);font-size:13px;font-weight:700;color:var(--ink);transition:background .15s,border-color .15s,color .15s,box-shadow .2s}
+.scout-app-wrapper .qc:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-soft)}
+[data-theme=uranium] .scout-app-wrapper .qc:hover{box-shadow:0 0 16px rgba(57,255,20,.45)}
+.scout-app-wrapper .qc s{text-decoration:none;color:var(--go);font-size:12px;line-height:1}
+[data-theme=uranium] .scout-app-wrapper .qc s{text-shadow:0 0 8px currentColor}
+.scout-app-wrapper .empty{font-size:12.5px;color:var(--mu);padding:14px 16px;border:1px dashed var(--l2);border-radius:12px;width:100%;line-height:1.55}
+.scout-app-wrapper .empty b{color:var(--ac)}
+.scout-app-wrapper #otp-res{margin:0 0 30px;animation:rise .26s ease-out}
+.scout-app-wrapper .rc{background:var(--cd2);border:1px solid var(--ln);border-radius:18px;overflow:hidden;box-shadow:0 18px 40px -22px var(--shadow-lg)}
+[data-theme=uranium] .scout-app-wrapper .rc{box-shadow:0 0 40px rgba(57,255,20,.15),0 18px 40px -22px rgba(0,0,0,.7)}
+.scout-app-wrapper .rh{display:flex;justify-content:space-between;gap:14px;padding:18px 18px 14px;border-bottom:1px solid var(--ln);align-items:flex-start}
+.scout-app-wrapper .rh h2{font-size:22px;margin:0 0 5px;letter-spacing:-.025em}
+.scout-app-wrapper .rh .eb{margin:0 0 6px}
+.scout-app-wrapper .rs{font-size:12.5px;color:var(--mu);margin:0}
+.scout-app-wrapper .rs strong{color:var(--i2);font-weight:700}
+.scout-app-wrapper .running{padding:26px 18px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center}
+.scout-app-wrapper .spinner{width:46px;height:46px;border:3px solid var(--ln);border-top-color:var(--ac);border-radius:50%;animation:spin 1s linear infinite}
+[data-theme=uranium] .scout-app-wrapper .spinner{box-shadow:0 0 22px rgba(57,255,20,.55),inset 0 0 12px rgba(57,255,20,.25)}
+.scout-app-wrapper .running-count{font-family:var(--display);font-size:34px;font-weight:800;color:var(--ac);letter-spacing:-.03em;line-height:1}
+[data-theme=uranium] .scout-app-wrapper .running-count{text-shadow:0 0 22px rgba(57,255,20,.85),0 0 45px rgba(57,255,20,.5)}
+.scout-app-wrapper .running-lbl{font-size:12.5px;color:var(--mu);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.scout-app-wrapper .progress{width:100%;max-width:280px;height:6px;border-radius:3px;background:var(--ln);overflow:hidden;margin-top:4px}
+.scout-app-wrapper .progress i{display:block;height:100%;background:var(--ac);border-radius:3px;transition:width .3s ease-out}
+[data-theme=uranium] .scout-app-wrapper .progress i{box-shadow:0 0 14px rgba(57,255,20,.9)}
+.scout-app-wrapper .sourcestrip{display:flex;flex-wrap:wrap;gap:6px;padding:12px 18px;border-bottom:1px solid var(--ln);background:var(--cd3)}
+.scout-app-wrapper .srcchip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:5px 10px;border-radius:99px;background:var(--cd2);color:var(--mu);border:1px solid var(--ln)}
+.scout-app-wrapper .srcchip.hit{background:var(--suc-soft);color:var(--suc-ink);border-color:transparent}
+.scout-app-wrapper .srcchip.hit::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--suc)}
+[data-theme=uranium] .scout-app-wrapper .srcchip.hit::before{box-shadow:0 0 8px var(--suc)}
+.scout-app-wrapper .srcchip.checking{background:var(--ac-tint);color:var(--ac);border-color:transparent}
+.scout-app-wrapper .srcchip.checking::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--ac);animation:pulse 1.2s ease-in-out infinite}
+[data-theme=uranium] .scout-app-wrapper .srcchip.checking::before{box-shadow:0 0 10px var(--ac)}
+.scout-app-wrapper .hits{list-style:none;margin:0;padding:0}
+.scout-app-wrapper .hit{display:flex;gap:11px;padding:9px 18px;border-bottom:1px solid var(--ln);align-items:center;text-decoration:none;transition:background .15s,box-shadow .2s}
+.scout-app-wrapper .hit:last-child{border-bottom:0}
+.scout-app-wrapper .hit:hover{background:var(--ac-soft)}
+[data-theme=uranium] .scout-app-wrapper .hit:hover{box-shadow:inset 0 0 22px rgba(57,255,20,.12)}
+.scout-app-wrapper .hit-icon{width:30px;height:30px;flex:0 0 30px;border-radius:9px;background:var(--cd3);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--i3);overflow:hidden;position:relative}
+.scout-app-wrapper .hit-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.scout-app-wrapper .hit-title{font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.3;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scout-app-wrapper .hit-meta{font-size:10.5px;font-weight:700;color:var(--mu);letter-spacing:.03em;text-transform:uppercase;display:flex;gap:7px;align-items:center;min-width:0}
+.scout-app-wrapper .hit-meta>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scout-app-wrapper .hit-meta>span+span{flex-shrink:0;position:relative;padding-left:8px;color:var(--mu2)}
+.scout-app-wrapper .hit-meta>span+span:before{content:'';position:absolute;left:0;top:50%;width:3px;height:3px;margin-top:-1.5px;border-radius:50%;background:var(--l2)}
+.scout-app-wrapper .hit-src{color:var(--mu);font-weight:800}
+.scout-app-wrapper .hit-arrow{font-size:12px;color:var(--ac);font-weight:800;flex-shrink:0;opacity:.55;transition:opacity .15s}
+.scout-app-wrapper .hit:hover .hit-arrow{opacity:1}
+[data-theme=uranium] .scout-app-wrapper .hit-arrow{text-shadow:0 0 10px rgba(57,255,20,.7)}
+.scout-app-wrapper .rf{padding:14px 18px;border-top:1px solid var(--ln);background:var(--cd3)}
+.scout-app-wrapper .rf .b{width:100%;height:48px;margin-bottom:10px}
+.scout-app-wrapper .rf p{margin:0;font-size:11.5px;color:var(--mu);line-height:1.55}
+.scout-app-wrapper .rf p b{color:var(--i2);font-weight:700}
+.scout-app-wrapper .nomatch{padding:26px 20px;display:flex;flex-direction:column;gap:10px;text-align:center;align-items:center}
+.scout-app-wrapper .nomatch-icon{font-size:32px;opacity:.5}
+.scout-app-wrapper .nomatch-title{font-family:var(--display);font-size:17px;font-weight:800;color:var(--ink)}
+.scout-app-wrapper .nomatch-sub{font-size:12.5px;color:var(--mu);line-height:1.55;max-width:340px}
+.scout-app-wrapper ul.tl{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.scout-app-wrapper .term{display:flex;align-items:stretch;background:var(--cd2);border:1px solid var(--ln);border-radius:14px;overflow:hidden;transition:border-color .15s,background .15s}
+.scout-app-wrapper .term.on{border-color:var(--ac);background:var(--ac-soft)}
+.scout-app-wrapper .ck{width:48px;flex:0 0 48px;border:0;border-right:1px solid var(--ln);background:transparent;color:var(--mu);font-size:17px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.scout-app-wrapper .ck:hover{background:var(--hover)}
+.scout-app-wrapper .term.on .ck{background:var(--ac-tint);color:var(--ac)}
+.scout-app-wrapper .tb{flex:1;min-width:0;text-align:left;background:none;border:0;padding:11px 14px;display:flex;flex-direction:column;gap:3px;-webkit-tap-highlight-color:transparent}
+.scout-app-wrapper .tb:hover{background:var(--ac-soft)}
+.scout-app-wrapper .tb:focus-visible{outline:2px solid var(--ac);outline-offset:-2px}
+.scout-app-wrapper .tt{font-size:15px;font-weight:600;color:var(--ink)}
+.scout-app-wrapper .tm{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);font-weight:800}
+.scout-app-wrapper .term.on .tm{color:var(--ac)}
+.scout-app-wrapper .sb{width:68px;flex:0 0 68px;border:0;border-left:1px solid var(--ln);background:transparent;color:var(--mu);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 4px;transition:box-shadow .2s,background .15s,color .15s}
+.scout-app-wrapper .sb:hover{background:var(--hover)}
+.scout-app-wrapper .sb i{font-size:15px;line-height:1;font-style:normal;color:var(--l2)}
+.scout-app-wrapper .sb b{font-size:9px;letter-spacing:.09em;text-transform:uppercase;font-weight:800}
+.scout-app-wrapper .sb.on{background:var(--go-soft);color:var(--go)}
+.scout-app-wrapper .sb.on i{color:var(--go)}
+[data-theme=uranium] .scout-app-wrapper .sb.on{box-shadow:inset 0 0 14px rgba(57,255,20,.3)}
+[data-theme=uranium] .scout-app-wrapper .sb.on i{text-shadow:0 0 10px currentColor}
+.scout-app-wrapper .rm{width:38px;flex:0 0 38px;border:0;border-left:1px solid var(--ln);background:transparent;color:var(--mu);font-size:15px;padding:0}
+.scout-app-wrapper .rm:hover{background:var(--hover);color:var(--warn)}
+.scout-app-wrapper #otp-dock{position:fixed;left:0;right:0;bottom:0;z-index:40;width:100%;max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);background:var(--dock-bg);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--ln);border-bottom:0;border-radius:14px 14px 0 0;box-shadow:0 -6px 24px -10px var(--shadow);padding-bottom:env(safe-area-inset-bottom);overflow:hidden}
+.scout-app-wrapper .db{position:relative;height:70px;border:0;background:none;color:var(--mu);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 3px}
+.scout-app-wrapper .db:hover{background:var(--ac-soft)}
+.scout-app-wrapper .db span:first-child{font-size:12px;font-weight:800;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100% }
+.scout-app-wrapper .db span:last-child{font-size:10.5px;font-weight:600;color:var(--mu2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100% }
+.scout-app-wrapper .db.on{color:var(--ink)}
+.scout-app-wrapper .db.on span:last-child{color:var(--ac)}
+.scout-app-wrapper .db.on::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:26px;height:2px;border-radius:0 0 3px 3px;background:var(--ac)}
+[data-theme=uranium] .scout-app-wrapper .db.on::before{box-shadow:0 0 14px rgba(57,255,20,.9),0 0 30px rgba(57,255,20,.5)}
+.scout-app-wrapper .db.dim{color:var(--mu);opacity:.5}
+.scout-app-wrapper #otp-toast{position:fixed;left:50%;bottom:104px;z-index:60;transform:translate(-50%,14px);background:var(--toast-bg);color:var(--toast-fg);padding:13px 20px;border-radius:99px;font-size:13.5px;max-width:min(92vw,470px);text-align:center;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 14px 38px -12px var(--shadow-lg);font-weight:600;line-height:1.4}
+.scout-app-wrapper #otp-toast.on{opacity:1;transform:translate(-50%,0)}
+.scout-app-wrapper #otp-toast b{color:var(--toast-b);font-weight:800}
+.scout-app-wrapper .sc{position:fixed;inset:0;z-index:70;background:var(--scrim);opacity:0;pointer-events:none;transition:.22s}
+.scout-app-wrapper .sc.on{opacity:1;pointer-events:auto}
+.scout-app-wrapper .drawer{position:fixed;top:0;right:0;bottom:0;z-index:75;width:min(432px,100%);background:var(--bg);border-left:1px solid var(--ln);display:flex;flex-direction:column;transform:translateX(101%);transition:transform .3s cubic-bezier(.3,.85,.4,1),background-color .3s}
+[data-theme=uranium] .scout-app-wrapper .drawer{background:#0a0a1e}
+.scout-app-wrapper .drawer.on{transform:none}
+.scout-app-wrapper .dh{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--ln)}
+.scout-app-wrapper .dh h2{font-size:19px}
+.scout-app-wrapper .ic{width:36px;height:36px;border:1px solid var(--l2);border-radius:10px;background:var(--cd2);color:var(--i2);font-size:14px;transition:box-shadow .2s}
+.scout-app-wrapper .ic:hover{background:var(--hover);color:var(--ink)}
+[data-theme=uranium] .scout-app-wrapper .ic:hover{box-shadow:0 0 14px rgba(57,255,20,.4)}
+.scout-app-wrapper .tabs{display:flex;padding:0 18px;border-bottom:1px solid var(--ln)}
+.scout-app-wrapper .tab{flex:1;background:none;border:0;border-bottom:2px solid transparent;padding:14px 6px 12px;color:var(--mu);font-size:10.5px;font-weight:800;letter-spacing:.14em;display:flex;align-items:center;justify-content:center;gap:7px}
+.scout-app-wrapper .tab u{font-size:10px;padding:2px 7px;border-radius:99px;background:var(--cd3);color:var(--i3);font-weight:800;text-decoration:none}
+.scout-app-wrapper .tab.on{color:var(--ink);border-bottom-color:var(--ac)}
+.scout-app-wrapper .tab.on u{background:var(--ac);color:var(--onink)}
+[data-theme=uranium] .scout-app-wrapper .tab.on{text-shadow:0 0 10px rgba(57,255,20,.6)}
+[data-theme=uranium] .scout-app-wrapper .tab.on u{box-shadow:0 0 12px rgba(57,255,20,.6)}
+.scout-app-wrapper .acts{display:flex;gap:8px;padding:12px 18px 6px}
+.scout-app-wrapper .mn{border:1px solid var(--l2);background:var(--cd2);border-radius:9px;padding:7px 12px;font-size:11.5px;font-weight:800;color:var(--i2)}
+.scout-app-wrapper .mn:hover{background:var(--hover);color:var(--ink)}
+.scout-app-wrapper ul.mk{list-style:none;margin:0;padding:6px 18px 12px;overflow:auto;flex:1}
+.scout-app-wrapper .mk li{border-bottom:1px solid var(--ln)}
+.scout-app-wrapper .mk li:last-child{border-bottom:0}
+.scout-app-wrapper .mk label{position:relative;display:flex;align-items:center;gap:12px;padding:12px 8px;margin:0 -6px;border-radius:10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.scout-app-wrapper .mk label:hover{background:var(--hover)}
+.scout-app-wrapper .mk label:active{background:var(--ac-soft)}
+/* The theme strips native checkbox rendering (appearance:none), so Prowl draws
+   its own box. The real input stays in the DOM for a11y and keyboard use. */
+.scout-app-wrapper .mk input{position:absolute;left:8px;top:50%;width:20px;height:20px;margin:0;opacity:0;pointer-events:none}
+.scout-app-wrapper .mk .cbx{position:relative;flex:0 0 20px;width:20px;height:20px;border:2px solid var(--l2);border-radius:6px;background:var(--cd);box-sizing:border-box;transition:background-color .15s,border-color .15s}
+.scout-app-wrapper .mk .cbx:after{content:'';position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid var(--bg);border-width:0 2.5px 2.5px 0;transform:rotate(45deg);opacity:0;transition:opacity .12s}
+.scout-app-wrapper .mk input:checked+.cbx{background:var(--ac);border-color:var(--ac)}
+.scout-app-wrapper .mk input:checked+.cbx:after{opacity:1}
+.scout-app-wrapper .mk input:focus-visible+.cbx{outline:2px solid var(--ac);outline-offset:2px}
+.scout-app-wrapper .mk .tag{font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--mu);border:1px solid var(--ln);border-radius:999px;padding:3px 8px;text-transform:uppercase}
+.scout-app-wrapper .mk .tag.bolo{color:var(--ac);border-color:var(--ac-ring);background:var(--ac-soft)}
+.scout-app-wrapper .mk em{flex:1;font-size:14px;font-weight:600;font-style:normal}
+.scout-app-wrapper .df{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--ln);background:var(--cd2);font-size:12.5px;font-weight:700;color:var(--i2)}
+.scout-app-wrapper #otp-denBody{flex:1;overflow:auto;display:flex;flex-direction:column}
+.scout-app-wrapper .denPane{padding:16px 18px 20px;display:flex;flex-direction:column;gap:14px}
+.scout-app-wrapper .addrow{display:flex;gap:8px}
+.scout-app-wrapper .addrow input{flex:1;height:46px}
+.scout-app-wrapper .addrow button{height:46px;padding:0 18px;border-radius:11px;border:1px solid var(--ac);background:var(--ac);color:var(--onink);font-weight:800;font-size:13.5px}
+.scout-app-wrapper .addrow button:hover{filter:brightness(.94)}
+[data-theme=uranium] .scout-app-wrapper .addrow button{box-shadow:0 0 18px rgba(57,255,20,.5)}
+.scout-app-wrapper .setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 0;border-bottom:1px solid var(--ln)}
+.scout-app-wrapper .setrow:last-child{border-bottom:0}
+.scout-app-wrapper .setrow h3{margin:0 0 3px;font-size:14px;font-weight:700}
+.scout-app-wrapper .setrow p{margin:0;font-size:12px;color:var(--mu);line-height:1.5}
+.scout-app-wrapper .den-foot{display:flex;gap:8px;padding:14px 18px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--ln);background:var(--cd2)}
+.scout-app-wrapper .den-foot .b{flex:1;height:48px}
+.scout-app-wrapper .mo{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--scrim);opacity:0;pointer-events:none;transition:.22s}
+.scout-app-wrapper .mo.on{opacity:1;pointer-events:auto}
+.scout-app-wrapper .md{background:var(--modal-bg);border-radius:20px;width:100%;max-width:540px;max-height:88vh;overflow:auto;padding:28px;box-shadow:0 30px 70px -28px var(--shadow-lg);transform:translateY(14px);transition:.28s;border:1px solid var(--ln)}
+[data-theme=uranium] .scout-app-wrapper .md{box-shadow:0 0 60px rgba(57,255,20,.2),0 30px 70px -28px rgba(0,0,0,.9)}
+.scout-app-wrapper .mo.on .md{transform:none}
+.scout-app-wrapper .md h2{font-family:var(--display);font-size:26px;font-weight:800;margin:0 0 8px;letter-spacing:-.025em}
+.scout-app-wrapper .md>p{margin:0 0 22px;font-size:14px;color:var(--i3);line-height:1.55}
+.scout-app-wrapper .md>p b{color:var(--ink)}
+.scout-app-wrapper .mi{display:flex;gap:14px;padding:13px 0;border-top:1px solid var(--ln)}
+.scout-app-wrapper .mi>u{flex:0 0 26px;height:26px;border-radius:50%;background:var(--ac);color:var(--onink);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:12px;font-weight:800;text-decoration:none}
+.scout-app-wrapper .mi h3{margin:3px 0 4px;font-size:14px}
+.scout-app-wrapper .mi p{margin:0;font-size:13px;color:var(--i3);line-height:1.55}
+.scout-app-wrapper .k{font-weight:800;color:var(--ink);background:var(--cd3);padding:2px 7px;border-radius:5px;font-size:12.5px}
+.scout-app-wrapper .ma{margin-top:24px;display:flex;justify-content:flex-end}
+.scout-app-wrapper [hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){.scout-app-wrapper *{transition-duration:.001ms!important;animation-duration:.001ms!important}}
+/* ---- panther mark (top middle, tucks under the bar on scroll) ---- */
+:root{--bar-bg:rgba(250,246,238,.97)}
+[data-theme=dark]{--bar-bg:rgba(7,7,6,.97)}
+[data-theme=uranium]{--bar-bg:rgba(4,4,20,.96)}
+.scout-app-wrapper .pmark{display:flex;align-items:center;justify-content:center;margin:24px 0 0;will-change:transform,opacity}
+.scout-app-wrapper .pmark img{max-height:78px;max-width:min(240px,62vw);height:auto;width:auto;display:block;object-fit:contain}
+[data-theme=uranium] .scout-app-wrapper .pmark img{filter:drop-shadow(0 0 18px rgba(57,255,20,.45))}
+.scout-app-wrapper .pmark+.eb{margin-top:10px}
+@media(max-width:480px){.scout-app-wrapper .pmark img{max-height:58px;max-width:70vw}}
+/* ---- stores near you (Den > Local) ---- */
+.scout-app-wrapper .cityhelp{margin:10px 0 0;font-size:12px;color:var(--mu);line-height:1.55}
+.scout-app-wrapper .cityhelp b{color:var(--ink)}
+.scout-app-wrapper .nearblk{margin:18px 0 4px;padding-top:16px;border-top:1px solid var(--ln)}
+.scout-app-wrapper .nearh{margin:0 0 4px;font-size:14px;font-weight:700;display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.scout-app-wrapper .nearh span{font-family:var(--sans);font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ac);white-space:nowrap}
+.scout-app-wrapper .nearp{margin:0 0 12px;font-size:12px;color:var(--mu);line-height:1.5}
+.scout-app-wrapper .nearg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.scout-app-wrapper .nearc{display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;min-height:46px;padding:9px 11px;border:1px solid var(--l2);border-radius:11px;background:var(--cd2);font-size:12.5px;font-weight:700;color:var(--ink);line-height:1.25;transition:background .15s,border-color .15s,color .15s,box-shadow .2s}
+.scout-app-wrapper .nearc:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-soft)}
+[data-theme=uranium] .scout-app-wrapper .nearc:hover{box-shadow:0 0 16px rgba(57,255,20,.45)}
+@media(min-width:380px){.scout-app-wrapper .nearg{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* ---- Facebook region hubs (Den > Local) ---- */
+.scout-app-wrapper .hubbar{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0}
+.scout-app-wrapper .hubc{border:1px solid var(--l2);background:var(--cd2);color:var(--ink);border-radius:999px;padding:9px 13px;font-size:12px;font-weight:700;line-height:1;min-height:36px;font-family:inherit;cursor:pointer}
+.scout-app-wrapper .hubc:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-soft)}
+.scout-app-wrapper .hubc.on{background:var(--ac);border-color:var(--ac);color:var(--onink)}
+[data-theme=uranium] .scout-app-wrapper .hubc.on{box-shadow:0 0 16px rgba(57,255,20,.45)}
+/* ---- backup / restore (Den > Settings) ---- */
+.scout-app-wrapper .setcol{display:flex;flex-direction:column;gap:8px;padding:15px 0;border-bottom:1px solid var(--ln)}
+.scout-app-wrapper .setlab{font-size:12px;font-weight:700;color:var(--i2)}
+.scout-app-wrapper .setcol select{width:100%;height:46px;padding:0 38px 0 13px;border:1px solid var(--l2);border-radius:11px;background:var(--cd);color:var(--ink);font-family:var(--sans);font-size:14px;font-weight:600;background-image:linear-gradient(45deg,transparent 50%,var(--mu) 50%),linear-gradient(135deg,var(--mu) 50%,transparent 50%);background-position:calc(100% - 19px) 21px,calc(100% - 14px) 21px;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.scout-app-wrapper .setcol select:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-ring)}
+.scout-app-wrapper .setnote{margin:0;font-size:12px;color:var(--mu);line-height:1.5}
+.scout-app-wrapper .setcol textarea{width:100%;resize:vertical;min-height:70px;padding:11px 13px;border:1px solid var(--l2);border-radius:11px;background:var(--cd);color:var(--ink);font-family:var(--sans);font-size:12.5px;line-height:1.5}
+.scout-app-wrapper .setcol textarea:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-ring)}
+.scout-app-wrapper .setcol .gh{align-self:flex-start}
+/* ================= ported business layer (from live v3.0) =================
+   Same markup and copy as the live page; colours re-pointed from the old
+   hardcoded emerald/gold hexes to this build's tokens so the section works
+   in light, dark and uranium. The Vault CTA keeps the Owl & Twig emerald/gold
+   on purpose — it is a brand block, not chrome. */
+.scout-app-wrapper .byline{font-size:12px;color:var(--mu);margin:22px 0 8px;position:relative;z-index:1}
+.scout-app-wrapper .byline a{color:var(--ac);font-weight:700;text-decoration:none}
+.scout-app-wrapper .byline a:hover{text-decoration:underline}
+.scout-app-wrapper .prowl-version{font-size:11px;color:var(--go);font-weight:800}
+.scout-app-wrapper .found-strip{background:var(--cd2);border-top:1px solid var(--ln);border-bottom:1px solid var(--ln);border-radius:14px;padding:14px 0 16px;margin:26px 0 0;display:none;position:relative;z-index:1;overflow:hidden}
+.scout-app-wrapper .found-strip.show{display:block}
+.scout-app-wrapper .found-title{font-size:13px;font-weight:800;color:var(--ink);margin:0 15px 10px;text-align:left}
+.scout-app-wrapper .found-title a{color:var(--ac);text-decoration:none}
+.scout-app-wrapper .found-title a:hover{text-decoration:underline}
+.scout-app-wrapper .found-viewport{overflow:hidden;width:100% }
+.scout-app-wrapper .found-track{display:flex;gap:10px;width:max-content;animation:foundScroll 45s linear infinite;padding:0 15px}
+.scout-app-wrapper .found-viewport:hover .found-track{animation-play-state:paused}
+@keyframes foundScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.scout-app-wrapper .found-card{width:140px;flex-shrink:0;background:var(--cd);border:1px solid var(--ln);border-radius:10px;overflow:hidden;text-decoration:none;color:inherit;text-align:left;transition:border-color .15s,box-shadow .2s}
+.scout-app-wrapper .found-card:hover{border-color:var(--ac)}
+[data-theme=uranium] .scout-app-wrapper .found-card:hover{box-shadow:0 0 16px rgba(57,255,20,.4)}
+.scout-app-wrapper .found-card img{width:140px;height:140px;object-fit:cover;display:block;background:var(--cd3);max-width:140px}
+.scout-app-wrapper .found-card .fc-title{font-size:11px;font-weight:600;line-height:1.25;padding:6px 8px 2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:32px;color:var(--ink)}
+.scout-app-wrapper .found-card .fc-price{font-size:12px;font-weight:800;color:var(--ac);padding:0 8px 8px}
+@media(prefers-reduced-motion:reduce){.scout-app-wrapper .found-track{animation:none!important}}
+.scout-app-wrapper .share-strip{margin:22px 0 0;padding:16px;background:var(--cd2);border:1px solid var(--ln);border-radius:14px}
+.scout-app-wrapper .share-strip .ss-title{font-weight:800;font-size:14px;margin-bottom:10px;color:var(--ink)}
+.scout-app-wrapper .share-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.scout-app-wrapper .share-btns a{border:0;border-radius:10px;padding:11px 16px;font-weight:800;font-size:13px;cursor:pointer;text-decoration:none;display:inline-block}
+.scout-app-wrapper .btn-share{background:var(--ink);color:var(--onink)}
+.scout-app-wrapper .btn-fb{background:#1565c0;color:#fff}
+.scout-app-wrapper .btn-kofi{background:#ff5e5b;color:#fff}
+.scout-app-wrapper .share-btns a:hover{filter:brightness(1.08)}
+.scout-app-wrapper .scout-seo{max-width:800px;margin:0 auto;padding:30px 18px 40px;text-align:left;color:var(--i2);font-family:var(--sans);font-size:15px;line-height:1.55}
+.scout-app-wrapper .scout-seo h2{font-family:var(--display);font-size:20px;margin:28px 0 10px;color:var(--ink)!important}
+.scout-app-wrapper .scout-seo h3{font-family:var(--display);font-size:16px;margin:18px 0 6px;color:var(--ink)!important}
+.scout-app-wrapper .scout-seo p{font-size:15px;line-height:1.65;margin:0 0 12px;color:var(--i2)}
+.scout-app-wrapper .scout-seo a{color:var(--ac);font-weight:700;text-decoration:none}
+.scout-app-wrapper .scout-seo a:hover{text-decoration:underline}
+.scout-app-wrapper .scout-seo ul.seo-list{list-style:disc!important;padding-left:22px;margin:0 0 14px}
+.scout-app-wrapper .scout-seo ul.seo-list li{list-style:disc!important;font-size:15px;line-height:1.6;margin-bottom:6px;color:var(--i2)}
+.scout-app-wrapper .scout-seo .trust-bar{font-size:20px;line-height:1.7;letter-spacing:2px;margin:0 0 16px}
+.scout-app-wrapper .scout-seo .trust-bar .tb-note{display:block;font-size:12px;color:var(--mu);letter-spacing:normal;font-weight:700;margin-top:4px}
+.scout-app-wrapper .scout-seo .not-affiliated{font-size:12px;color:var(--mu2);line-height:1.6}
+.scout-app-wrapper .cta-vault{background:linear-gradient(135deg,#0b3d2e 0%,#062018 100%);border-radius:14px;padding:22px;color:#fff;margin:26px 0}
+.scout-app-wrapper .cta-vault h3{color:#fff!important}
+.scout-app-wrapper .cta-vault p{color:#dfe9e4;margin-bottom:14px}
+.scout-app-wrapper .cta-vault a.cta-btn{display:inline-block;background:#f9a825;color:#1a1a1a;font-weight:800;padding:12px 20px;border-radius:10px;text-decoration:none}
+.scout-app-wrapper .cta-vault a.cta-btn:hover{filter:brightness(1.06)}
+.scout-app-wrapper .site-link{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin:26px 0 0;padding:16px 18px;background:var(--cd2);border:1px solid var(--ln);border-radius:14px}
+.scout-app-wrapper .site-link .sl-copy strong{display:block;font-size:14.5px;font-weight:800;color:var(--ink)}
+.scout-app-wrapper .site-link .sl-copy p{margin:4px 0 0;font-size:13px;line-height:1.5;color:var(--mu);max-width:44ch}
+.scout-app-wrapper .site-link .sl-btn{flex:0 0 auto;display:inline-block;background:var(--ac);color:var(--bg);font-weight:800;font-size:13.5px;padding:11px 18px;border-radius:10px;text-decoration:none;white-space:nowrap}
+.scout-app-wrapper .site-link .sl-btn:hover{filter:brightness(1.06);text-decoration:none}
+/* ========================================================================= */
+.scout-app-wrapper .comps{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+.scout-app-wrapper .comps .gh{flex:1;min-width:150px;height:42px}
+.scout-app-wrapper .comps-note{flex-basis:100%;font-size:11.5px;color:var(--mu);line-height:1.45;font-weight:600}
+/* ---- Den: four tabs now, and the ABOUT pane holds what used to sit under
+        Locked hunts. The SEO copy was written for an 800px column, so it gets
+        drawer-sized padding and tighter heading rhythm in here. ---- */
+.scout-app-wrapper .tab{letter-spacing:.08em;padding-left:2px;padding-right:2px}
+.scout-app-wrapper .tabs{gap:2px}
+.scout-app-wrapper #otp-denAbout{padding:4px 14px 24px;gap:0}
+.scout-app-wrapper #otp-denAbout .found-strip{margin:12px 0 0;border-radius:12px}
+.scout-app-wrapper #otp-denAbout .found-title{font-size:12.5px;margin:0 12px 9px}
+.scout-app-wrapper #otp-denAbout .found-track{padding:0 12px}
+.scout-app-wrapper #otp-denAbout .scout-seo{max-width:none;margin:0;padding:18px 0 0;font-size:14px}
+.scout-app-wrapper #otp-denAbout .scout-seo h2{font-size:17px;margin:20px 0 8px}
+.scout-app-wrapper #otp-denAbout .scout-seo h3{font-size:14.5px;margin:15px 0 5px}
+.scout-app-wrapper #otp-denAbout .scout-seo p{font-size:14px;margin:0 0 10px}
+.scout-app-wrapper #otp-denAbout .scout-seo ul.seo-list li{font-size:14px}
+.scout-app-wrapper #otp-denAbout .scout-seo .trust-bar{font-size:17px;letter-spacing:1px}
+.scout-app-wrapper #otp-denAbout .cta-vault{padding:18px;margin:20px 0}
+.scout-app-wrapper #otp-denAbout .share-strip{margin:20px 0 0}
+.scout-app-wrapper #otp-denAbout .byline{margin:18px 0 0}
+/* ---- accessibility pass, measured on the live page 2026-09-19 ----
+   Five controls were under the 44x44 tap-target guideline:
+   theme toggle 33x34, How it works 102x34, Den close 36x36,
+   Den tab 97x43, hunt remove X 38x63. */
+.scout-app-wrapper .gh{min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center}
+.scout-app-wrapper .ic{min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center}
+.scout-app-wrapper .tab{min-height:46px}
+.scout-app-wrapper .tl .rm{min-width:44px}
+/* base copy up to the 16px readability standard */
+.scout-app-wrapper{font-size:16px}
+.scout-app-wrapper .lede{font-size:16px}
+.scout-app-wrapper .hint{font-size:13px}
+/* the pop-up warning was only inside the welcome modal; Open all is where it matters */
+/* ---- readability pass, measured at 390px 2026-09-19 ----
+   Base copy was already 16px, but the launch list and the explainer
+   lines under it sat at 10.5-13.5px, which is a pinch-zoom on a phone. */
+.scout-app-wrapper .hit-title{font-size:16px;line-height:1.25}
+.scout-app-wrapper .hit-meta{font-size:12.5px;letter-spacing:.02em}
+.scout-app-wrapper .hint{font-size:15px}
+.scout-app-wrapper .rs{font-size:15px}
+.scout-app-wrapper .empty{font-size:15px}
+.scout-app-wrapper .mi h3{font-size:15.5px}
+.scout-app-wrapper .mi p{font-size:15px}
+.scout-app-wrapper .setrow p{font-size:14.5px}
+.scout-app-wrapper .comps-note{font-size:14px}
+.scout-app-wrapper .setlab{font-size:14px}
+.scout-app-wrapper .gh{font-size:14px}
+.scout-app-wrapper .tab{font-size:12.5px;letter-spacing:.06em}
+.scout-app-wrapper .addrow button{font-size:15px}
+.scout-app-wrapper #otp-toast{font-size:15px}
+.scout-app-wrapper .rf p{font-size:14.5px}
+/* at 14px the comps labels wrapped inside their buttons; give each a full row on a phone */
+@media(max-width:420px){.scout-app-wrapper .comps .gh{flex:1 1 100% }}
+/* ---- app shell (v4.7) ----
+   /pages/prowl-app renders this same body through a bare theme layout with no
+   header, footer or store nav, so the app fills the screen. The landing page
+   offers the way in; the app page offers the way back to the shop and the
+   home-screen install. Only one of the two buttons is ever shown. */
+.scout-app-wrapper .applaunch{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 26px}
+.scout-app-wrapper .appbtn{display:inline-flex;align-items:center;gap:9px;min-height:46px;padding:0 18px;border:1px solid var(--l2);border-radius:99px;background:var(--cd3);color:var(--i2);font-family:var(--sans);font-size:14.5px;font-weight:700;letter-spacing:.01em;transition:background .15s,border-color .15s,color .15s}
+.scout-app-wrapper .appbtn:hover{background:var(--ac-soft);border-color:var(--ac);color:var(--ink)}
+[data-theme=uranium] .scout-app-wrapper .appbtn:hover{box-shadow:0 0 16px rgba(57,255,20,.3)}
+.scout-app-wrapper .appbtn .appico{font-size:16px;line-height:1;color:var(--ac)}
+.scout-app-wrapper .appshop{display:inline-flex;align-items:center;min-height:46px;padding:0 4px;color:var(--mu);font-size:14.5px;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.scout-app-wrapper .appshop:hover{color:var(--ink)}
+.scout-app-wrapper .appnote{flex-basis:100%;margin:2px 0 0;font-size:14.5px;font-weight:600;color:var(--ink);line-height:1.5;padding:12px 14px;border:1px solid var(--ac);border-left-width:4px;border-radius:11px;background:var(--ac-soft)}
+.scout-app-wrapper .appnote b{font-weight:800}
+/* the dock's GOODWILL label overflowed its 72px button at 360px (iPhone SE);
+   tighten the label rather than shrink the whole dock */
+@media(max-width:380px){.scout-app-wrapper .db{padding:0 2px}
+.scout-app-wrapper .db span:first-child{font-size:11px;letter-spacing:0}
+.scout-app-wrapper .db span:last-child{font-size:10px}}
+/* ---- pop-up warning, raised from grey small print to a real callout ----
+   It is the one thing that stops Open all from working, so it sits directly
+   above the button, at reading size, and looks like a warning. */
+.scout-app-wrapper .rf .oa-warn{display:flex;gap:10px;align-items:flex-start;text-align:left;margin:0 0 12px;padding:12px 14px;border:1px solid var(--ac);border-left-width:4px;border-radius:11px;background:var(--ac-soft);font-size:15px;font-weight:600;color:var(--ink);line-height:1.45}
+.scout-app-wrapper .rf .oa-warn b{color:var(--ink);font-weight:800}
+.scout-app-wrapper .rf .oa-warn i{flex:0 0 22px;height:22px;margin-top:1px;border-radius:50%;background:var(--ac);color:var(--onink);font-style:normal;font-weight:800;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center}
+[data-theme=uranium] .scout-app-wrapper .rf .oa-warn{box-shadow:0 0 18px rgba(57,255,20,.25)}
+</style>
+
+<div class="scout-app-wrapper ot-r">
+<header class="bar">
+  <span class="brand">
+    <span class="markwrap">
+      <img class="mark" src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ccircle%20cx='50'%20cy='52'%20r='46'%20fill='%2339ff14'%20fill-opacity='0.12'/%3E%3Ccircle%20cx='50'%20cy='52'%20r='34'%20fill='%2339ff14'%20fill-opacity='0.15'/%3E%3Cpath%20d='M8%2042%20Q8%2012%2050%2012%20Q92%2012%2092%2042%20Q92%2048%2086%2048%20L14%2048%20Q8%2048%208%2042%20Z'%20fill='%2339ff14'/%3E%3Cpath%20d='M38%2048%20L62%2048%20L60%2088%20Q58%2092%2050%2092%20Q42%2092%2040%2088%20Z'%20fill='%237dffc0'/%3E%3Ccircle%20cx='36'%20cy='28'%20r='5'%20fill='%230a0e2e'%20opacity='.85'/%3E%3Ccircle%20cx='62'%20cy='26'%20r='6'%20fill='%230a0e2e'%20opacity='.85'/%3E%3Ccircle%20cx='52'%20cy='40'%20r='4'%20fill='%230a0e2e'%20opacity='.85'/%3E%3C/svg%3E" alt="">
+    </span>
+    Prowl<i> . . .</i>
+  </span>
+  <div class="bar-actions">
+    <button class="gh" id="otp-themeBtn" type="button" aria-label="Cycle theme" title="Dark mode">☾</button>
+    <button class="gh" id="otp-how" type="button">How it works</button>
+  </div>
+</header>
+
+<main>
+  <div class="pmark" id="otp-pan"><img id="otp-panImg" src="https://cdn.shopify.com/s/files/1/0807/8537/5486/files/panther_white_eyes_new_tail_clear.png?v=1785688388" alt="" decoding="async"></div>
+  <p class="eb" id="otp-verEb"></p>
+
+  <div class="heromark">
+    <img src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ccircle%20cx='50'%20cy='52'%20r='46'%20fill='%2339ff14'%20fill-opacity='0.12'/%3E%3Ccircle%20cx='50'%20cy='52'%20r='34'%20fill='%2339ff14'%20fill-opacity='0.15'/%3E%3Cpath%20d='M8%2042%20Q8%2012%2050%2012%20Q92%2012%2092%2042%20Q92%2048%2086%2048%20L14%2048%20Q8%2048%208%2042%20Z'%20fill='%2339ff14'/%3E%3Cpath%20d='M38%2048%20L62%2048%20L60%2088%20Q58%2092%2050%2092%20Q42%2092%2040%2088%20Z'%20fill='%237dffc0'/%3E%3Ccircle%20cx='36'%20cy='28'%20r='5'%20fill='%230a0e2e'%20opacity='.85'/%3E%3Ccircle%20cx='62'%20cy='26'%20r='6'%20fill='%230a0e2e'%20opacity='.85'/%3E%3Ccircle%20cx='52'%20cy='40'%20r='4'%20fill='%230a0e2e'%20opacity='.85'/%3E%3C/svg%3E" alt="">
+  </div>
+
+  <h1>Find the prey</h1>
+  <p class="lede">Type a hunt, or tap any locked hunt below. Prowl builds the same search for all <span data-t>24</span> vintage marketplaces and lays them out on one screen — open them one at a time, or all at once.</p>
+
+  <form id="otp-sf" autocomplete="off">
+    <input id="otp-q" type="search" placeholder="ceramic panther, rookwood vase…" aria-label="Search term">
+    <button class="b p" type="submit">Hunt</button>
+    <button class="b" id="otp-sa" type="button">Search All</button>
+    <button class="b fb" id="otp-fb" type="button">Facebook USA</button>
+  </form>
+  <p class="hint"><b>Hunt</b> uses the marketplaces you've ticked in the drawer. <b>Search All</b> ignores your ticks and builds all <span data-t>24</span>. <b>Facebook USA</b> builds that one term in every major metro, because Facebook only ever searches one city at a time. Nothing opens until you say so.</p>
+
+  <div class="applaunch" id="otp-appbar" hidden>
+    <button class="appbtn" id="otp-openApp" type="button" hidden><span class="appico" aria-hidden="true">⤢</span> Open the full-screen app</button>
+    <button class="appbtn" id="otp-installApp" type="button" hidden><span class="appico" aria-hidden="true">↯</span> Add Prowl to your home screen</button>
+    <a class="appshop" id="otp-appShop" href="/collections/all" hidden>Shop Owl &amp; Twig</a>
+    <p class="appnote" id="otp-appnote" hidden></p>
+  </div>
+
+  <section id="otp-res" hidden aria-live="polite"></section>
+
+  <div class="sh">
+<h2>Locked hunts</h2>
+<span style="font-size:11px;color:var(--mu);font-weight:700;letter-spacing:.06em">TAP TO RUN</span>
+</div>
+  <div class="quick" id="otp-quick"></div>
+</main>
+
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Prowl by Owl & Twig","url":"https://owlandtwigvintage.com/pages/prowl","applicationCategory":"ShoppingApplication","operatingSystem":"Any","description":"Free tool for vintage collectors - search 24 marketplaces at once, including sites Google does not index.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"Matt"},"publisher":{"@type":"Organization","name":"Owl & Twig Vintage","url":"https://owlandtwigvintage.com"}}</script>
+
+
+<nav id="otp-dock" aria-label="Prowl modes">
+  <button class="db on" data-m="prowl"><span>PROWL</span><span>browse</span></button>
+  <button class="db" data-m="one" id="otp-oneBtn"><span id="otp-oneLab">GOODWILL</span><span>one site</span></button>
+  <button class="db" data-m="all"><span>ALL</span><span><span data-t>24</span> sites</span></button>
+  <button class="db" data-m="daily"><span>DAILY</span><span id="otp-ds">nothing locked</span></button>
+  <button class="db" data-m="den" id="otp-denBtn"><span>DEN</span><span>settings</span></button>
+</nav>
+
+<div id="otp-toast" role="status" aria-live="polite"></div>
+<div class="sc" id="otp-sc"></div>
+
+<aside class="drawer" id="otp-dw" role="dialog" aria-modal="true" aria-labelledby="otp-dt" hidden>
+  <div class="dh">
+<h2 id="otp-dt">Marketplaces</h2>
+<button class="ic" id="otp-cd" aria-label="Close">✕</button>
+</div>
+  <div class="tabs" role="tablist">
+    <button class="tab on" id="otp-ts" role="tab">SHOP <u>18</u></button>
+    <button class="tab" id="otp-tb" role="tab">BOLO <u>6</u></button>
+  </div>
+  <div class="acts">
+<button class="mn" id="otp-selAll">Select all</button><button class="mn" id="otp-clr">Clear</button>
+</div>
+  <ul class="mk" id="otp-mk"></ul>
+  <div class="df">
+<span id="otp-dc"><span data-t>24</span> of <span data-t>24</span> selected</span><button class="mn" id="otp-shw">Show all <span data-t>24</span></button>
+</div>
+</aside>
+
+<aside class="drawer" id="otp-den" role="dialog" aria-modal="true" aria-labelledby="otp-dent" hidden>
+  <div class="dh">
+<h2 id="otp-dent">Den</h2>
+<button class="ic" id="otp-denClose" aria-label="Close Den">✕</button>
+</div>
+  <div class="tabs" role="tablist">
+    <button class="tab on" id="otp-denT1" role="tab">HUNTS</button>
+    <button class="tab" id="otp-denT2" role="tab">LOCAL</button>
+    <button class="tab" id="otp-denT4" role="tab">ABOUT</button>
+    <button class="tab" id="otp-denT3" role="tab">SETTINGS</button>
+  </div>
+  <div id="otp-denBody">
+    <div class="denPane" id="otp-denTerms">
+      <div class="addrow">
+        <input id="otp-newTerm" type="text" placeholder="Add a hunt…" aria-label="New hunt">
+        <button id="otp-addTerm">Add</button>
+      </div>
+      <ul class="tl" id="otp-denList"></ul>
+    </div>
+    <div class="denPane" id="otp-denLocal" hidden>
+      <div class="addrow">
+        <input id="otp-cityIn" type="text" placeholder="Your city or Craigslist code" aria-label="City">
+        <button id="otp-citySet">Save</button>
+      </div>
+      <p class="cityhelp">Enter a city name or Craigslist region code (like <b>sfbay</b>, <b>newyork</b>, <b>detroit</b>). Feeds Craigslist, Facebook, and the store finder below. Saved on this device only.</p>
+      <div class="nearblk">
+        <h3 class="nearh">Stores near you <span id="otp-nearScope">near me</span>
+</h3>
+        <p class="nearp">One tap opens Google Maps on your phone. Works standing in a parking lot.</p>
+        <div class="nearg" id="otp-nearGrid"></div>
+      </div>
+      <div class="nearblk">
+        <h3 class="nearh">Facebook Marketplace <span id="otp-fbScope">my city</span>
+</h3>
+        <p class="nearp">Facebook has no nationwide search — every search is one city's marketplace. This sets the city Facebook uses everywhere else in Prowl. To sweep the whole country in one go, type a hunt up top and tap <b>Facebook USA</b> next to Search All.</p>
+        <div class="hubbar" id="otp-fbHubBar"></div>
+        <p class="nearp" id="otp-fbHubNote" style="margin:11px 0 0"></p>
+      </div>
+      <ul class="tl" id="otp-denLocalList"></ul>
+    </div>
+    <div class="denPane" id="otp-denAbout" hidden>
+<div id="otp-foundStrip" class="found-strip">
+<div class="found-title">🐾 Found on the Prowl — now in <a href="/pages/vintage-vault">The Vintage Vault</a>
+</div>
+<div class="found-viewport">
+<div id="otp-foundTrack" class="found-track"></div>
+</div>
+</div>
+<section class="scout-seo">
+<h2>Why can't I find vintage on Google?</h2>
+<p>Because most of it isn't there. Goodwill's auction site and Facebook Marketplace sit behind logins and scripts that Google doesn't index. Search "Roseville jardiniere" and you'll get eBay, Etsy, and a wall of Pinterest — you won't get the one sitting at $18 on shopgoodwill right now.</p>
+<p><strong>Prowl runs your search across 24 vintage marketplaces at once — including the ones Google skips.</strong> Free, no account, built by a collector who got tired of typing the same search into eight sites every morning.</p>
+<p class="trust-bar">🐾<span class="tb-note">24 marketplaces searched from one screen — no accounts, no fees.</span></p>
+<h2>How collectors use it</h2>
+<ul class="seo-list">
+<li>
+<strong>Your grail list</strong> — save the pieces you've hunted for years. Prowl remembers them and keeps them one tap away.</li>
+<li>
+<strong>Search All</strong> — one term, every marketplace, including the ones Google can't reach.</li>
+<li>
+<strong>Price Check</strong> — one tap, one tab: what pieces actually sold for on eBay in the last 90 days. Real prices, not asking prices. For rare pieces that trade twice a year, one more tap opens three years of deep comps.</li>
+<li>
+<strong>Near Me</strong> — antique shops, estate sales, garage sales and auction maps around you. One tap, no typing.</li>
+<li>
+<strong>Books &amp; paper</strong> — AbeBooks, ThriftBooks and Biblio for first editions, signed copies and ephemera. Use the Books Quick Pick in Search All.</li>
+<li>
+<strong>No account, no email, no fee</strong> — your list stays on your device.</li>
+</ul>
+<div class="cta-vault">
+<h3 style="color: #fff; margin-top: 0;">Hunting something specific?</h3>
+<p>We might already have it. Everything Prowl catches for us ends up here — pottery, art glass, mid-century decor.</p>
+<a href="/pages/vintage-vault" class="cta-btn">Browse The Vintage Vault →</a>
+</div>
+<div class="cta-vault" style="background: #f6f8f7; border: 1px solid #e6ece9; color: #1a1a1a;">
+<h3 style="margin-top: 0;">Free: The Vintage Collector’s Field Guide</h3>
+<p style="color: #333;">25 pages of maker’s marks, five-second tests and the stories behind the pieces — distilled from fifty of our collector guides. Built to pair with Prowl.</p>
+<a href="/pages/field-guide" class="cta-btn">Get the Field Guide →</a>
+</div>
+<h3>Is Prowl free?</h3>
+<p>Yes. No account. Your search list stays on your device.</p>
+<h3>Does it work on my phone?</h3>
+<p>Yes. Built mobile-first. Add to home screen. Allow pop-ups.</p>
+<h3>How does Price Check work?</h3>
+<p>One tap opens eBay's sold listings for your term — actual sale prices from the last 90 days, the most accurate read on what a piece is worth right now. Asking prices lie; sold prices don't.</p>
+<h3>What if nothing sold in 90 days?</h3>
+<p>That happens with genuinely rare pieces. Price Check has a second button for three years of deep comps via eBay's Terapeak research — free with any eBay account. Open it in your browser rather than the eBay app, or the date range gets dropped.</p>
+<p class="not-affiliated">Prowl is an independent tool built by Owl &amp; Twig Vintage and is not affiliated with, endorsed by, or sponsored by Goodwill, Facebook, Craigslist, eBay, Etsy, Mercari, Whatnot, Ruby Lane, EstateSales.net, HiBid, Chairish, 1stDibs, Poshmark, Depop, Vinted, AbeBooks, ThriftBooks, Biblio, Google, OfferUp, or Shop App. All trademarks belong to their respective owners.</p>
+<div class="site-link">
+<div class="sl-copy">
+<strong>Owl &amp; Twig Vintage</strong>
+<p>Prowl is free because the shop pays for it. Vintage originals, studio pieces and collector guides, shipped from Michigan.</p>
+</div>
+<a class="sl-btn" href="https://www.owlandtwigvintage.com/">Visit the shop →</a>
+</div>
+</section>
+<div class="share-strip">
+<div class="ss-title">Know another collector? Send them Prowl 🐾</div>
+<div class="share-btns">
+<a class="btn-share" id="otp-shareBtn" href="https://owlandtwigvintage.com/pages/prowl">📤 Share Prowl</a> <a class="btn-fb" id="otp-fbShareBtn" href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fowlandtwigvintage.com%2Fpages%2Fprowl" rel="noopener" target="_blank">f Facebook</a> <a class="btn-kofi" id="otp-kofiBtn" href="https://ko-fi.com/owlandtwigvintage" rel="noopener" target="_blank">☕ Buy Matt a coffee</a>
+</div>
+</div>
+<p class="byline">Made by Matt at <a href="https://www.owlandtwigvintage.com/">owlandtwigvintage.com</a> <span class="prowl-version"></span></p>
+    </div>
+    <div class="denPane" id="otp-denSettings" hidden>
+      <div class="setrow">
+        <div>
+<h3>Appearance</h3>
+<p>Light, dark, or uranium — a retro blacklight mode. Cycles through all three.</p>
+</div>
+        <button class="gh" id="otp-themeBtn2" type="button">Light</button>
+      </div>
+      <div class="setrow">
+        <div>
+<h3>Marketplaces</h3>
+<p>Choose which sites search and search-all use.</p>
+</div>
+        <button class="gh" id="otp-mktBtn" type="button">Open</button>
+      </div>
+      <div class="setcol">
+        <label class="setlab" for="otp-oneSel">One-site button</label>
+        <select id="otp-oneSel"></select>
+        <p class="setnote">The second button in the bar at the bottom searches this one marketplace. Goodwill to start with — change it to whichever single site you check most.</p>
+      </div>
+      <div class="setrow">
+        <div>
+<h3>Export a backup</h3>
+<p>Downloads your hunts, locks, marketplace picks, and city as a file.</p>
+</div>
+        <button class="gh" id="otp-expBtn" type="button">Export</button>
+      </div>
+      <div class="setrow">
+        <div>
+<h3>Import a backup</h3>
+<p>Reads a Prowl backup file. Older Prowl exports work too.</p>
+</div>
+        <button class="gh" id="otp-impBtn" type="button">Choose file</button>
+      </div>
+      <input type="file" id="otp-impFile" accept=".json,.txt,application/json,text/plain" hidden>
+      <div class="setcol">
+        <label class="setlab" for="otp-impText">…or paste a backup / restore code</label>
+        <textarea id="otp-impText" rows="3" placeholder='{"hunts":["ceramic panther"]} — or a base64 code'></textarea>
+        <button class="gh" id="otp-impTextBtn" type="button">Restore from text</button>
+      </div>
+      <div class="setrow">
+        <div>
+<h3>Clear saved data</h3>
+<p>Removes hunts, locks, marketplace picks, and city. Export first.</p>
+</div>
+        <button class="gh" id="otp-clearBtn" type="button">Clear</button>
+      </div>
+      <div class="setrow">
+        <div>
+<h3>About</h3>
+<p>Prowl <span class="prowl-version"></span> — find the prey across <span data-t>24</span> vintage marketplaces.</p>
+</div>
+      </div>
+    </div>
+  </div>
+  <div class="den-foot" id="otp-denFoot" hidden>
+    <button class="b p" id="otp-denSearch" type="button">Run selected hunts</button>
+  </div>
+</aside>
+
+<div class="mo" id="otp-ms">
+  <div class="md" role="dialog" aria-modal="true" aria-labelledby="otp-mt">
+    <h2 id="otp-mt">Welcome to Prowl</h2>
+    <p>Prowl builds one search for <b><span data-t>24</span> vintage marketplaces</b> and puts them all on one screen. Four things to know:</p>
+    <div class="mi">
+<u>1</u><div>
+<h3>One hunt, every marketplace</h3>
+<p>Type a hunt and hit <b style="color:var(--ink)">Hunt</b>. Every marketplace lands as a row on one screen. Tap a row to open that one, or <b style="color:var(--ink)">Open all</b> to launch the lot.</p>
+</div>
+</div>
+    <div class="mi">
+<u>2</u><div>
+<h3>Open all needs pop-ups allowed</h3>
+<p>24 tabs at once looks like a pop-up storm to a browser. Allow pop-ups for this site if you use <b style="color:var(--ink)">Open all</b> — tapping rows one at a time always works.</p>
+</div>
+</div>
+    <div class="mi">
+<u>3</u><div>
+<h3>Lock for DAILY</h3>
+<p>Lock a hunt in <b style="color:var(--ink)">Den</b> and it joins your daily prowl. <b style="color:var(--ink)">DAILY</b> in the footer runs everything you've locked.</p>
+</div>
+</div>
+    <div class="mi">
+<u>4</u><div>
+<h3>Three themes</h3>
+<p>Tap the icon top-right to cycle light, dark, and <b style="color:var(--ink)">uranium</b> — a retro blacklight mode, where the mushroom finally glows.</p>
+</div>
+</div>
+    <div class="ma"><button class="b p" id="otp-mok">Got it</button></div>
+  </div>
+</div>
+</div>
+
+<script>
+/* If the section gets duplicated (Shopify sometimes renders a cached copy),
+   keep only the last wrapper so handlers bind once and IDs stay unique. */
+(function(){try{
+  var w=document.querySelectorAll('.scout-app-wrapper');
+  for(var i=0;i<w.length-1;i++){if(w[i].parentNode)w[i].parentNode.removeChild(w[i]);}
+}catch(e){}})();
+
+(function(){'use strict';
+var PROWL_VERSION='v5.2';
+var E=encodeURIComponent;
+var $=function(s){return document.querySelector(s)};
+var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function mk(id,n,t,b,s){return{id:id,n:n,t:t,u:function(q){return b+E(q)+(s||'')}}}
+
+/* ---------- THEME (3-way cycle) ---------- */
+var TK='prowl.theme';
+var THEMES=['light','dark','uranium'];
+var THEME_META_COLOR={light:'#FAF6EE',dark:'#070706',uranium:'#0a0e2e'};
+var THEME_ICON={light:'☾',dark:'☀',uranium:'🍄'};
+var THEME_NEXT={light:'Dark mode',dark:'Uranium mode',uranium:'Light mode'};
+var THEME_LABEL={light:'Light',dark:'Dark',uranium:'Uranium'};
+
+function applyTheme(t){
+  if(THEMES.indexOf(t)===-1)t='light';
+  document.documentElement.setAttribute('data-theme',t);
+  try{localStorage.setItem(TK,t)}catch(e){}
+  var m=document.querySelector('meta[name=theme-color]');
+  if(m)m.setAttribute('content',THEME_META_COLOR[t]);
+  var b1=$('#otp-themeBtn'),b2=$('#otp-themeBtn2');
+  if(b1){b1.textContent=THEME_ICON[t];b1.title=THEME_NEXT[t];b1.setAttribute('aria-label',THEME_NEXT[t]);}
+  if(b2){b2.textContent=THEME_LABEL[t];}
+}
+function cycleTheme(){
+  var cur=document.documentElement.getAttribute('data-theme')||'light';
+  var i=THEMES.indexOf(cur);
+  applyTheme(THEMES[(i+1)%3]);
+}
+var sv;try{sv=localStorage.getItem(TK)}catch(e){}
+if(!sv||THEMES.indexOf(sv)===-1){
+  var pd=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+  sv=pd?'dark':'light';
+}
+applyTheme(sv);
+
+/* ---------- MARKETPLACES ---------- */
+var M=[
+mk('ebay','eBay','shop','https://www.ebay.com/sch/i.html?_nkw='),
+mk('etsy','Etsy','shop','https://www.etsy.com/search?q='),
+mk('mercari','Mercari','shop','https://www.mercari.com/search/?keyword='),
+mk('poshmark','Poshmark','shop','https://poshmark.com/search?query='),
+mk('depop','Depop','shop','https://www.depop.com/search/?q='),
+mk('grailed','Grailed','shop','https://www.grailed.com/shop?query='),
+mk('rubylane','Ruby Lane','shop','https://www.rubylane.com/search?q='),
+mk('chairish','Chairish','shop','https://www.chairish.com/search?q='),
+mk('1stdibs','1stDibs','shop','https://www.1stdibs.com/search/?q='),
+mk('reverb','Reverb','shop','https://reverb.com/marketplace?query='),
+mk('whatnot','Whatnot','shop','https://www.whatnot.com/search?query=','&referringSource=typed'),
+mk('vinted','Vinted','shop','https://www.vinted.com/catalog?search_text='),
+{id:'bonanza',n:'Bonanza',t:'shop',u:function(q){return 'https://www.bonanza.com/items/search?'+
+  'q%5Bcountry_to_filter%5D=&q%5Bship_country%5D=1&q%5Bshipping_in_price%5D=0&'+
+  'q%5Bsort_by%5D=relevancy&q%5Btranslate_term%5D=true&q%5Bsearch_term%5D='+E(q)}},
+mk('ecrater','eCrater','shop','https://www.ecrater.com/search.php?keywords='),
+mk('abebooks','AbeBooks','shop','https://www.abebooks.com/servlet/SearchResults?kn='),
+mk('aptdeco','AptDeco','shop','https://www.aptdeco.com/catalog?q='),
+mk('offerup','OfferUp','shop','https://offerup.com/search?q='),
+{id:'facebook',n:'Facebook Marketplace',t:'shop',u:function(q){return fbUrl(q)},multi:function(q){return fbMulti(q)} },
+mk('ebaysold','eBay Sold','bolo','https://www.ebay.com/sch/i.html?_nkw=','&LH_Sold=1&LH_Complete=1'),
+{id:'shopgoodwill',n:'ShopGoodwill',t:'bolo',u:function(q){return 'https://shopgoodwill.com/categories/listing?st='+E(q)+
+  '&sg=&c=&s=&lp=0&hp=999999&sbn=&spo=false&snpo=false&socs=false&sd=false&sca=false'+
+  '&cadb=7&scs=false&sis=false&col=1&p=1&ps=40&desc=false&ss=0&UseBuyerPrefs=true'+
+  '&sus=false&cln=1&catIds=&pn=&wc=false&mci=false&hmt=false&layout=grid&ihp=true'}},
+mk('estatesales','EstateSales.net','bolo','https://www.estatesales.net/search/'),
+mk('hibid','HiBid','bolo','https://hibid.com/lots?search='),
+mk('liveauction','LiveAuctioneers','bolo','https://www.liveauctioneers.com/search/?keyword='),
+{id:'craigslist',n:'Craigslist',t:'bolo',u:function(q){return clUrl(q)}}
+];
+
+/* Craigslist has no working global keyword search: craigslist.org/search/sss
+   and www.craigslist.org/search/sss both 404. Keyword search only resolves
+   under a region. With a city we use the region form; without one we send the
+   hunter to the region chooser rather than a dead 404. */
+function clSlug(){return String(st&&st.city?st.city:'').toLowerCase().replace(/[^a-z0-9]/g,'')}
+/* No city used to fall through to the region chooser, which reads as
+   "nationwide". Craigslist has no global keyword search, so fall back to a
+   region instead — Ann Arbor, nearest to the Novi studio. Change it in
+   Den > Local and that wins. Gallery view via the hash. */
+var CL_DEFAULT='annarbor';
+function clUrl(q){
+  var c=clSlug()||CL_DEFAULT;
+  return 'https://www.craigslist.org/search/area/'+E(c)+'?cat=sss&query='+E(q)+'#search=1~gallery~0~0';
+}
+
+/* Facebook Marketplace has no nationwide keyword search either — every search
+   is scoped to one city's marketplace. Prowl used to handle that with a hub
+   bar: pick a metro, or pick All and open every metro staggered. The v4.x
+   rebuild dropped it and left Facebook stuck on whatever city Facebook felt
+   like; this brings it back. Only the ten slugs that were live and working in
+   the old build are listed — an invented city slug 404s. */
+var FBHUBS=[
+  {key:'local',label:'\uD83D\uDCCD My city',slug:''},
+  {key:'all',label:'\uD83C\uDDFA\uD83C\uDDF8 All USA',slug:null},
+  {key:'nyc',label:'New York',slug:'nyc'},
+  {key:'la',label:'Los Angeles',slug:'la'},
+  {key:'chicago',label:'Chicago',slug:'chicago'},
+  {key:'detroit',label:'Detroit',slug:'detroit'},
+  {key:'dallas',label:'Dallas',slug:'dallas'},
+  {key:'houston',label:'Houston',slug:'houston'},
+  {key:'phoenix',label:'Phoenix',slug:'phoenix'},
+  {key:'miami',label:'Miami',slug:'miami'},
+  {key:'atlanta',label:'Atlanta',slug:'atlanta'},
+  {key:'seattle',label:'Seattle',slug:'seattle'}
+];
+function fbCity(){return String(st&&st.city?st.city:'').toLowerCase().replace(/[^a-z0-9]/g,'')}
+function fbHubObj(){var k=(st&&st.fbHub)||'local';for(var i=0;i<FBHUBS.length;i++)if(FBHUBS[i].key===k)return FBHUBS[i];return FBHUBS[0]}
+function fbRegions(){var o=[],i;for(i=0;i<FBHUBS.length;i++)if(FBHUBS[i].slug)o.push(FBHUBS[i]);return o}
+function fbCityUrl(slug,q){return 'https://www.facebook.com/marketplace/'+(slug?E(slug)+'/':'')+'search/?query='+E(q)}
+/* One tab: the chosen metro, or the hunter's own city. In All mode the single
+   URL is still the local one — the other ten arrive through fbMulti. */
+function fbUrl(q){
+  var h=fbHubObj();
+  if(h.slug)return fbCityUrl(h.slug,q);
+  return fbCityUrl(fbCity(),q);
+}
+/* fbSpread always returns every region; fbMulti is the same thing behind the
+   hub gate. The Facebook USA button wants the spread whatever the hub says,
+   which is the whole point of a button with USA in its name. */
+function fbMulti(q){
+  if(!st||st.fbHub!=='all')return null;
+  return fbSpread(q);
+}
+/* A marketplace object that always spreads. Handed straight to runProwl as a
+   one-marketplace scope, so the metros arrive as their own rows in the normal
+   results panel and ride the normal 180ms stagger. */
+function fbAllUsa(){
+  return {id:'facebook',n:'Facebook Marketplace',t:'shop',u:function(q){return fbUrl(q)},multi:function(q){return fbSpread(q)} };
+}
+function fbSpread(q){
+  var out=[],seen={},c=fbCity();
+  /* A hunter in Detroit has Detroit both as their city and as a listed metro.
+     Without this the All run opens that one twice. */
+  if(c){out.push({n:'Facebook \u00B7 '+st.city,u:fbCityUrl(c,q)});seen[c]=1}
+  fbRegions().forEach(function(h){
+    if(seen[h.slug])return;
+    seen[h.slug]=1;
+    out.push({n:'Facebook \u00B7 '+h.label,u:fbCityUrl(h.slug,q)});
+  });
+  return out;
+}
+function fbHubLabel(){
+  var h=fbHubObj();
+  if(h.key==='local')return st.city||'my city';
+  if(h.key==='all')return 'all USA';
+  return h.label;
+}
+
+
+var platformIcons={
+ebay:'\u25C6',etsy:'\u2740',mercari:'\u25B2',poshmark:'\u25C7',depop:'\u25CF',grailed:'\u25B0',
+rubylane:'\u2756',chairish:'\u25A0','1stdibs':'\u25C8',reverb:'\u266A',whatnot:'\u25B6',vinted:'\u25CB',
+bonanza:'\u25AA',ecrater:'\u25AB',abebooks:'\u25AC',aptdeco:'\u25AD',offerup:'\u25B4',facebook:'\u25BC',
+ebaysold:'\u2713',shopgoodwill:'\u2691',estatesales:'\u2302',hibid:'\u2692',liveauction:'\u2696',craigslist:'\u2318'
+};
+
+var DEF=['Roseville jardiniere','Pyrex Butterprint','Fire-King jadeite','McCoy pottery','Hull pottery','Stangl birds','Bauer ringware','Blenko glass','Fenton hobnail','Mid-century lamp','Weller pottery','Vintage Fiestaware'];
+var ALL=M.map(function(m){return m.id}),SHOP=0,BOLO=0,i;
+for(i=0;i<M.length;i++){M[i].t==='shop'?SHOP++:BOLO++}
+var TOTAL=M.length,GW=['shopgoodwill'],PEEK=6,LS='prowl.v36';
+var ML={prowl:'your hunts',all:'Search All',goodwill:'Goodwill only',daily:'Daily prowl',single:'single hunt',facebook:'Facebook \u00b7 every metro'};
+
+/* The dock's second button was hard-wired to Goodwill. It is now whichever
+   single marketplace the hunter picks in the Den, with Goodwill as the default
+   so nobody's muscle memory breaks. Dock columns are about 72px on a phone, so
+   the label needs a short form rather than the full marketplace name. */
+var ONE_DEFAULT='shopgoodwill';
+var SHORT={
+ebay:'EBAY',etsy:'ETSY',mercari:'MERCARI',poshmark:'POSHMARK',depop:'DEPOP',grailed:'GRAILED',
+rubylane:'RUBY LANE',chairish:'CHAIRISH','1stdibs':'1STDIBS',reverb:'REVERB',whatnot:'WHATNOT',
+vinted:'VINTED',bonanza:'BONANZA',ecrater:'ECRATER',abebooks:'ABEBOOKS',aptdeco:'APTDECO',
+offerup:'OFFERUP',facebook:'FACEBOOK',ebaysold:'EBAY SOLD',shopgoodwill:'GOODWILL',
+estatesales:'ESTATES',hibid:'HIBID',liveauction:'LIVEAUCT',craigslist:'CRAIGSLIST'
+};
+function oneId(){return (st&&st.one&&mb(st.one))?st.one:ONE_DEFAULT}
+function oneName(){var m=mb(oneId());return m?m.n:'Goodwill'}
+function oneShort(){return SHORT[oneId()]||oneName().toUpperCase()}
+function modeLabel(r){return r.mode==='one'?oneName():(ML[r.mode]||r.mode)}
+
+/* ---------- STATE ---------- */
+var st={mode:'prowl',sel:new Set(),lock:new Set(),mkt:new Set(ALL),tab:'shop',exp:false,run:null,seen:false,hunts:DEF.slice(),city:'',fbHub:'local',one:ONE_DEFAULT};
+var denTab='hunts';
+var quick=$('#otp-quick'),res=$('#otp-res'),dw=$('#otp-dw'),den=$('#otp-den'),sc=$('#otp-sc'),q=$('#otp-q'),dock=$('#otp-dock'),ms=$('#otp-ms');
+var runTimers=[];
+
+function remap(set,removed){
+  var out=new Set();
+  set.forEach(function(i){ if(i===removed)return; out.add(i>removed?i-1:i); });
+  return out;
+}
+function mb(id){for(var i=0;i<M.length;i++)if(M[i].id===id)return M[i];return null}
+
+/* The live v3.x Prowl keeps its list in owlTwigSearches. This build uses its own
+   key, so without this an existing hunter would open a redesign with an empty
+   list. Read-only: we never write back to the owlTwig* keys, so the old page
+   keeps working untouched if they go back to it. */
+function legacySeed(){
+  var terms=[],city='';
+  try{
+    var raw=localStorage.getItem('owlTwigSearches');
+    if(raw){
+      var p=JSON.parse(raw);
+      if(Object.prototype.toString.call(p)==='[object Array]')terms=termsFrom(p);
+      else if(p&&typeof p==='object')terms=termsFrom(p.list||p.searches||p.terms||null);
+    }
+  }catch(e){}
+  var mkt=null;
+  try{
+    /* v3.0 stored which marketplaces to EXCLUDE from omni; this build stores
+       which to INCLUDE, so invert it. */
+    var ex=localStorage.getItem('owlTwigOmniExcluded');
+    if(ex){
+      var xs=JSON.parse(ex);
+      if(Object.prototype.toString.call(xs)==='[object Array]'){
+        var keep=[];
+        for(var i=0;i<ALL.length;i++)if(xs.indexOf(ALL[i])<0)keep.push(ALL[i]);
+        if(keep.length&&keep.length<ALL.length)mkt=keep;
+      }
+    }
+  }catch(e0){}
+  try{
+    /* owlTwigClHub was a Craigslist region slug, which doubles as a city.
+       owlTwigFbHub was a HUB KEY ('all', 'seattle') — only usable as a city
+       when it is not one of ours, otherwise 'all' would become the city. */
+    var h=localStorage.getItem('owlTwigClHub')||'';
+    if(!h){var f=localStorage.getItem('owlTwigFbHub')||'';try{f=JSON.parse(f)}catch(e4){}if(typeof f==='string'&&!fbHubKnown(f))h=f;}
+    if(h){try{h=JSON.parse(h)}catch(e2){}}
+    if(typeof h==='string')city=h;
+  }catch(e3){}
+  return {terms:uniq(terms),city:city,mkt:mkt};
+}
+
+function load(){
+  var raw=null;try{raw=localStorage.getItem(LS)}catch(e){}
+  if(!raw){
+    var lg=legacySeed();
+    if(lg.terms.length){
+      st.hunts=lg.terms;
+      if(lg.city)st.city=lg.city;
+      if(lg.mkt&&lg.mkt.length)st.mkt=new Set(lg.mkt);
+      st.fbHub=legacyFbHub()||st.fbHub;
+      st.migrated=lg.terms.length;
+      save();
+      return;
+    }
+  }
+  var r;try{r=JSON.parse(raw||'{}')}catch(e){return}
+  if(Array.isArray(r.hunts)&&r.hunts.length)st.hunts=r.hunts;
+  if(Array.isArray(r.sel))st.sel=new Set(r.sel.filter(function(i){return i>=0&&i<st.hunts.length}));
+  if(Array.isArray(r.lock))st.lock=new Set(r.lock.filter(function(i){return i>=0&&i<st.hunts.length}));
+  if(Array.isArray(r.star))st.lock=new Set(r.star.filter(function(i){return i>=0&&i<st.hunts.length})); // migration from old key
+  if(Array.isArray(r.mkt)){var k=r.mkt.filter(function(i){return ALL.indexOf(i)>-1});if(k.length)st.mkt=new Set(k)}
+  if(r.city)st.city=r.city;
+  if(r.seen)st.seen=true;
+  /* Additive field. A save written before v4.8 has no fbHub, so fall back to
+     the hub the v3.x page stored — a returning hunter keeps their region. */
+  if(r.fbHub&&fbHubKnown(r.fbHub))st.fbHub=r.fbHub;
+  else st.fbHub=legacyFbHub()||st.fbHub;
+  /* Additive. An unknown id (a marketplace we dropped) falls back to Goodwill
+     rather than leaving the button pointing at nothing. */
+  if(r.one&&mb(r.one))st.one=r.one;
+}
+function fbHubKnown(k){for(var i=0;i<FBHUBS.length;i++)if(FBHUBS[i].key===k)return true;return false}
+function legacyFbHub(){
+  var lh='';try{lh=localStorage.getItem('owlTwigFbHub')||''}catch(e){}
+  try{lh=JSON.parse(lh)}catch(e2){}
+  return (typeof lh==='string'&&fbHubKnown(lh))?lh:'';
+}
+function save(){try{localStorage.setItem(LS,JSON.stringify({hunts:st.hunts,sel:Array.from(st.sel),lock:Array.from(st.lock),mkt:Array.from(st.mkt),city:st.city,seen:st.seen,fbHub:st.fbHub,one:st.one}))}catch(e){}}
+
+var tT=null;
+function toast(h,ms){var e=$('#otp-toast');e.innerHTML=h;e.classList.add('on');clearTimeout(tT);tT=setTimeout(function(){e.classList.remove('on')},ms||3600)}
+
+function counts(){
+  $$('[data-t]').forEach(function(e){e.textContent=TOTAL});
+  $('#otp-ts').innerHTML='SHOP <u>'+SHOP+'</u>';
+  $('#otp-tb').innerHTML='BOLO <u>'+BOLO+'</u>';
+}
+
+/* ---------- LOCKED HUNTS ---------- */
+function rQuick(){
+  var arr=[];
+  st.hunts.forEach(function(t,i){if(st.lock.has(i))arr.push({t:t,i:i})});
+  if(!arr.length){
+    quick.innerHTML='<div class=empty>No locked hunts yet. Open <b>DEN</b> below to add hunts and lock the ones worth running again.</div>';
+    return;
+  }
+  quick.innerHTML=arr.map(function(x){
+    return '<button class=qc type=button data-qi='+x.i+'><s>◉</s>'+esc(x.t)+'</button>';
+  }).join('');
+}
+quick.addEventListener('click',function(e){
+  var b=e.target.closest('.qc');if(!b)return;
+  runHunt(+b.dataset.qi);
+});
+
+/* ---------- DEN: HUNTS ---------- */
+function rDenHunts(){
+  $('#otp-denList').innerHTML=st.hunts.map(function(x,i){
+    var s=st.sel.has(i),f=st.lock.has(i);
+    return '<li class="term'+(s?' on':'')+'">'+
+      '<button class=ck type=button data-c='+i+' aria-pressed='+s+'>'+(s?'✓':'')+'</button>'+
+      '<button class=tb type=button data-i='+i+'><span class=tt>'+esc(x)+'</span><span class=tm>Tap to run</span></button>'+
+      '<button class="sb'+(f?' on':'')+'" type=button data-l='+i+' title="'+(f?'Unlock':'Lock on')+'"><i>'+(f?'◉':'◎')+'</i><b>'+(f?'Locked':'Lock')+'</b></button>'+
+      '<button class=rm type=button data-r='+i+' aria-label="Remove">✕</button></li>';
+  }).join('');
+  var n=st.sel.size;
+  $('#otp-denFoot').hidden=n<2;
+  $('#otp-denSearch').textContent='Run '+n+' selected hunts';
+}
+$('#otp-denList').addEventListener('click',function(e){
+  var ck=e.target.closest('.ck');
+  if(ck){var i=+ck.dataset.c;if(st.sel.has(i))st.sel.delete(i);else st.sel.add(i);save();rDenHunts();rQuick();return;}
+  var rm=e.target.closest('.rm');
+  if(rm){
+    var ri=+rm.dataset.r;
+    st.hunts.splice(ri,1);
+    st.sel=remap(st.sel,ri);st.lock=remap(st.lock,ri);
+    save();rDenHunts();rQuick();rDock();toast('Hunt removed.',2000);return;
+  }
+  var sb=e.target.closest('.sb');
+  if(sb){var j=+sb.dataset.l;
+    if(st.lock.has(j)){st.lock.delete(j);toast('◎ '+esc(st.hunts[j])+' unlocked.',2000);}
+    else{st.lock.add(j);toast('◉ '+esc(st.hunts[j])+' locked on.',2400);}
+    save();rDenHunts();rQuick();rDock();return;
+  }
+  var b=e.target.closest('.tb');
+  if(b){var ti=+b.dataset.i;closeDen();runHunt(ti);}
+});
+$('#otp-addTerm').addEventListener('click',function(){
+  var v=$('#otp-newTerm').value.trim();if(!v)return;
+  if(st.hunts.indexOf(v)>-1){toast('That hunt is already in your list.',2400);return;}
+  st.hunts.push(v);save();rDenHunts();$('#otp-newTerm').value='';$('#otp-newTerm').focus();
+  toast('Added <b>'+esc(v)+'</b>.',2200);
+});
+$('#otp-newTerm').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();$('#otp-addTerm').click();}});
+
+/* ---------- DEN: LOCAL ---------- */
+/* Bricks-and-mortar hunting. Google Maps' documented URL API opens the Maps app
+   on iOS/Android and maps on desktop, so one tap works from a parking lot. */
+var NEARBY=[
+  {q:'antique stores',l:'Antique stores'},
+  {q:'thrift stores',l:'Thrift stores'},
+  {q:'vintage shops',l:'Vintage shops'},
+  {q:'estate sales',l:'Estate sales'},
+  {q:'flea markets',l:'Flea markets'},
+  {q:'consignment shops',l:'Consignment'},
+  {q:'architectural salvage',l:'Salvage yards'},
+  {q:'auction houses',l:'Auction houses'},
+  {q:'antique malls',l:'Antique malls'},
+  {q:'used book stores',l:'Used books'},
+  {q:'record stores',l:'Record stores'},
+  {q:'pawn shops',l:'Pawn shops'}
+];
+function nearUrl(qy){
+  var where=st.city?(' near '+st.city):' near me';
+  return 'https://www.google.com/maps/search/?api=1&query='+E(qy+where);
+}
+function rNear(){
+  var g=$('#otp-nearGrid');if(!g)return;
+  $('#otp-nearScope').textContent=st.city?('near '+st.city):'near me';
+  g.innerHTML=NEARBY.map(function(n,i){
+    return '<a class=nearc href="'+esc(nearUrl(n.q))+'" target=_blank rel="noopener noreferrer" data-ni='+i+'>'+esc(n.l)+'</a>';
+  }).join('');
+}
+
+function rDenOne(){
+  var sel=$('#otp-oneSel');if(!sel)return;
+  var cur=oneId();
+  sel.innerHTML=M.map(function(m){
+    return '<option value="'+esc(m.id)+'"'+(m.id===cur?' selected':'')+'>'+esc(m.n)+'</option>';
+  }).join('');
+}
+$('#otp-oneSel').addEventListener('change',function(){
+  var v=this.value;
+  if(!mb(v)){rDenOne();return;}
+  st.one=v;save();rDock();
+  toast('The one-site button now searches <b>'+esc(oneName())+'</b>.',3000);
+});
+
+function rDenLocal(){
+  var c=st.city||'';
+  /* OfferUp / EstateSales / HiBid ignore the city entirely and are already in the
+     main 24 — listing them here again was pure duplication. Only the genuinely
+     city-aware ones stay. */
+  /* These ids have to match real marketplace ids — the results panel looks up
+     its row icon by x.mkt. 'cl' and 'fb' drew the fallback glyph. */
+  var L=[
+    {id:'craigslist',n:'Craigslist'+(c?' · '+c:''),t:'bolo',u:function(q){return clUrl(q)}},
+    {id:'facebook',n:'Facebook Marketplace · '+fbHubLabel(),t:'shop',u:function(q){return fbUrl(q)},multi:function(q){return fbMulti(q)} }
+  ];
+  st._local=L;
+  rNear();rFbHub();
+  $('#otp-denLocalList').innerHTML=L.map(function(m,i){
+    return '<li class=term><button class=tb type=button data-li='+i+'><span class=tt>'+esc(m.n)+'</span><span class=tm>Tap to run this one</span></button></li>';
+  }).join('');
+  $('#otp-cityIn').value=c;
+  $('#otp-citySet').textContent=c?'Update':'Save';
+}
+function rFbHub(){
+  var bar=$('#otp-fbHubBar');if(!bar)return;
+  var sc=$('#otp-fbScope');if(sc)sc.textContent=fbHubLabel();
+  bar.innerHTML=FBHUBS.map(function(x,i){
+    return '<button type=button class="hubc'+(x.key===st.fbHub?' on':'')+'" data-hb='+i+'>'+esc(x.label)+'</button>';
+  }).join('');
+  var note=$('#otp-fbHubNote');if(!note)return;
+  /* Count through fbMulti so the number matches what actually opens, including
+     the de-dupe when the saved city is also one of the listed metros. */
+  var h=fbHubObj(),n=fbRegions().length+(fbCity()?1:0),mm;
+  if(h.key==='all'){mm=fbMulti('x');if(mm)n=mm.length}
+  if(h.key==='all')note.textContent='Opens '+n+' Facebook tabs \u2014 one per metro, staggered so the pop-up blocker stays quiet. They show up as their own rows below the search.';
+  else if(h.key==='local')note.textContent=st.city?('Searching Facebook in '+st.city+'.'):'No city saved yet \u2014 Facebook will use whatever area it picks for you. Add your city above.';
+  else note.textContent='Searching the '+h.label+' marketplace.';
+}
+$('#otp-fbHubBar').addEventListener('click',function(e){
+  var b=e.target.closest('.hubc');if(!b)return;
+  var h=FBHUBS[+b.dataset.hb];if(!h)return;
+  st.fbHub=h.key;save();rDenLocal();
+  toast('Facebook set to <b>'+esc(h.key==='local'?(st.city||'my city'):(h.key==='all'?'all USA':h.label))+'</b>.',2600);
+});
+$('#otp-denLocalList').addEventListener('click',function(e){
+  var b=e.target.closest('.tb');if(!b)return;
+  var i=+b.dataset.li,m=st._local[i];if(!m)return;
+  var term=q.value.trim()||(st.sel.size?st.hunts[Array.from(st.sel)[0]]:'');
+  if(!term){needTerm(m.n);return;}
+  closeDen();
+  runProwl('single',[term],[m]);
+});
+$('#otp-citySet').addEventListener('click',function(){
+  st.city=$('#otp-cityIn').value.trim();save();rDenLocal();
+  toast(st.city?'City set to <b>'+esc(st.city)+'</b>.':'City cleared.',2400);
+});
+$('#otp-cityIn').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();$('#otp-citySet').click();}});
+
+/* ---------- DEN TABS ---------- */
+function setDenTab(t){
+  denTab=t;
+  $('#otp-denT1').classList.toggle('on',t==='hunts');
+  $('#otp-denT2').classList.toggle('on',t==='local');
+  $('#otp-denT4').classList.toggle('on',t==='about');
+  $('#otp-denT3').classList.toggle('on',t==='settings');
+  $('#otp-denTerms').hidden=t!=='hunts';
+  $('#otp-denLocal').hidden=t!=='local';
+  $('#otp-denAbout').hidden=t!=='about';
+  $('#otp-denSettings').hidden=t!=='settings';
+  $('#otp-denFoot').hidden=t!=='hunts'||st.sel.size<2;
+  /* the marquee only animates once it has been laid out, so kick it here */
+  if(t==='about')loadFoundStrip();
+}
+$('#otp-denT1').addEventListener('click',function(){setDenTab('hunts')});
+$('#otp-denT2').addEventListener('click',function(){setDenTab('local')});
+$('#otp-denT4').addEventListener('click',function(){setDenTab('about')});
+$('#otp-denT3').addEventListener('click',function(){setDenTab('settings')});
+
+var lf=null;
+function openDen(){lf=document.activeElement;den.hidden=false;rDenHunts();rDenLocal();setDenTab(denTab);requestAnimationFrame(function(){sc.classList.add('on');den.classList.add('on')});$('#otp-denClose').focus();}
+function closeDen(){sc.classList.remove('on');den.classList.remove('on');setTimeout(function(){den.hidden=true},300);if(lf&&lf.focus)lf.focus();}
+$('#otp-denBtn').addEventListener('click',openDen);
+$('#otp-denClose').addEventListener('click',closeDen);
+$('#otp-denSearch').addEventListener('click',function(){
+  var arr=[];st.hunts.forEach(function(t,i){if(st.sel.has(i))arr.push(t)});
+  closeDen();
+  runProwl('prowl',arr,st.mkt.size?Array.from(st.mkt):ALL);
+});
+
+/* ---------- MARKETPLACE DRAWER ---------- */
+function rDrawer(){
+  var list=st.exp?M:M.filter(function(m){return m.t===st.tab}).slice(0,PEEK);
+  $('#otp-mk').innerHTML=list.map(function(m){
+    return '<li><label><input type=checkbox data-m="'+m.id+'"'+(st.mkt.has(m.id)?' checked':'')+'><span class="cbx" aria-hidden="true"></span><em>'+esc(m.n)+'</em><span class="tag'+(m.t==='bolo'?' bolo':'')+'">'+m.t.toUpperCase()+'</span></label></li>';
+  }).join('');
+  $('#otp-ts').classList.toggle('on',st.tab==='shop'&&!st.exp);
+  $('#otp-tb').classList.toggle('on',st.tab==='bolo'&&!st.exp);
+  $('#otp-dc').textContent=st.mkt.size+' of '+TOTAL+' selected';
+  $('#otp-shw').textContent=st.exp?'Collapse':'Show all '+TOTAL;
+}
+$('#otp-mk').addEventListener('change',function(e){
+  var c=e.target.closest('input[data-m]');if(!c)return;
+  if(c.checked)st.mkt.add(c.dataset.m);else st.mkt.delete(c.dataset.m);
+  save();rDrawer();
+});
+$('#otp-ts').addEventListener('click',function(){st.tab='shop';st.exp=false;rDrawer();});
+$('#otp-tb').addEventListener('click',function(){st.tab='bolo';st.exp=false;rDrawer();});
+$('#otp-selAll').addEventListener('click',function(){st.mkt=new Set(ALL);save();rDrawer();});
+$('#otp-clr').addEventListener('click',function(){st.mkt=new Set();save();rDrawer();});
+$('#otp-shw').addEventListener('click',function(){st.exp=!st.exp;rDrawer();});
+var dwLf=null;
+function closeDw(){sc.classList.remove('on');dw.classList.remove('on');setTimeout(function(){dw.hidden=true},300);if(dwLf&&dwLf.focus)dwLf.focus();}
+$('#otp-cd').addEventListener('click',closeDw);
+$('#otp-mktBtn').addEventListener('click',function(){
+  closeDen();
+  setTimeout(function(){dwLf=document.activeElement;dw.hidden=false;rDrawer();requestAnimationFrame(function(){sc.classList.add('on');dw.classList.add('on')});$('#otp-cd').focus();},260);
+});
+sc.addEventListener('click',function(){if(dw.classList.contains('on'))closeDw();if(den.classList.contains('on'))closeDen();});
+
+/* ---------- SEARCH / LAUNCH ---------- */
+/* Every row below is a live marketplace search URL. Nothing is simulated:
+   a browser cannot read these sites cross-origin, so Prowl launches the real
+   searches in real tabs and shows you exactly which URLs it opened. */
+var STAGGER=180;
+
+function selTexts(){var a=[];st.hunts.forEach(function(t,i){if(st.sel.has(i))a.push(t)});return a;}
+function lockTexts(){var a=[];st.hunts.forEach(function(t,i){if(st.lock.has(i))a.push(t)});return a;}
+function chips(){var v=q.value.trim();return v?[v]:selTexts();}
+function clearTimers(){runTimers.forEach(function(t){clearTimeout(t)});runTimers=[];}
+function uniq(a){var o=[],seen={};for(var i=0;i<a.length;i++){var v=String(a[i]||'').trim();if(v&&!seen[v.toLowerCase()]){seen[v.toLowerCase()]=1;o.push(v)}}return o}
+function hostOf(u){return String(u).replace(/^https?:\/\//,'').split('/')[0].replace(/^www\./,'')}
+function isMobile(){return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'')}
+
+function copyTerm(t){
+  try{ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t);return true} }catch(e){}
+  try{
+    var ta=document.createElement('textarea');ta.value=t;ta.setAttribute('readonly','');
+    ta.style.position='fixed';ta.style.left='-9999px';document.body.appendChild(ta);
+    ta.select();document.execCommand('copy');document.body.removeChild(ta);return true;
+  }catch(e2){}
+  return false;
+}
+
+function buildLaunches(terms,scope){
+  var out=[];
+  for(var ti=0;ti<terms.length;ti++){
+    for(var si=0;si<scope.length;si++){
+      /* Scope entries are normally marketplace ids, but the Den's Local list
+         hands over whole marketplace objects. mb() returned null for those, so
+         the launch list came back empty and tapping Facebook or Craigslist in
+         the Den did nothing at all. That was the v4.7 bug. */
+      var sc=scope[si],m=(sc&&typeof sc==='object')?sc:mb(sc);
+      if(!m)continue;
+      /* A marketplace with no single nationwide search (Facebook) can return
+         several regional launches for one term. */
+      var many=m.multi?m.multi(terms[ti]):null;
+      if(many&&many.length){
+        for(var k=0;k<many.length;k++){
+          if(!many[k]||!many[k].u)continue;
+          out.push({mkt:m.id,name:many[k].n||m.n,tier:m.t,term:terms[ti],url:many[k].u});
+        }
+        continue;
+      }
+      var u=m.u(terms[ti]);if(!u)continue;
+      out.push({mkt:m.id,name:m.n,tier:m.t,term:terms[ti],url:u});
+    }
+  }
+  return out;
+}
+
+/* The old no-term path just fired a toast. From the Den that toast sits behind
+   the overlay, so tapping a Local row read as the button doing nothing at all.
+   Now it closes the Den, puts the cursor in the search box and flashes it. */
+function needTerm(what){
+  if(den&&!den.hidden)closeDen();
+  toast('Type what you\u2019re hunting first, then tap <b>'+esc(what||'that')+'</b>.',4200);
+  setTimeout(function(){
+    if(!q)return;
+    try{q.scrollIntoView({behavior:'smooth',block:'center'})}catch(e){}
+    q.focus();
+    q.classList.add('wantterm');
+    setTimeout(function(){q.classList.remove('wantterm')},1500);
+  },den&&!den.hidden?320:0);
+}
+
+function runProwl(mode,c,scope,label){
+  var terms=uniq(c||[]);
+  if(!terms.length){needTerm(label||ML[mode]||'a search');return;}
+  if(!scope||!scope.length){toast('Pick at least one marketplace in the drawer.',3200);return;}
+  clearTimers();
+  var L=buildLaunches(terms,scope);
+  if(!L.length){toast('Nothing to open for that selection.',3000);return;}
+  st.run={mode:mode,terms:terms,scope:scope,launches:L,opened:0,blocked:0,phase:'ready'};
+  st.mode=mode;
+  rRes();rDock();
+  res.hidden=false;
+  requestAnimationFrame(function(){res.scrollIntoView({behavior:'smooth',block:'start'})});
+  /* Nothing opens on its own. Matt wants the choices on screen first: one
+     screen, one row per marketplace, open them one at a time or all at once. */
+  toast(L.length+' search'+(L.length===1?'':'es')+' ready — tap any row to open it, or <b>Open all</b> at the bottom.',5200);
+}
+
+function launchAll(){
+  var r=st.run;if(!r)return;
+  clearTimers();
+  r.phase='launching';r.opened=0;r.blocked=0;
+  var mob=isMobile(),fbCopied=false,i=0;
+
+  function fire(x){
+    if(mob&&x.mkt==='facebook'&&!fbCopied){fbCopied=copyTerm(x.term)}
+    var wn=null;
+    try{wn=window.open(x.url,'_blank','noopener')}catch(e){}
+    if(!wn)r.blocked++;
+    r.opened++;
+  }
+
+  /* Update the counter, bar and source chip in place. The old code called
+     rRes() after every single open, rebuilding all 24 rows 24 times; that
+     blocked the main thread long enough for the queued timers to come due
+     together and flush in bursts, so the 180ms stagger collapsed to ~1ms and
+     the pop-up blocker had every reason to trip. Measured on the live page:
+     18 of 23 gaps were under 150ms before this change. */
+  function tick(){
+    var box=$('#otp-res');if(!box)return;
+    var n=r.launches.length;
+    var c=box.querySelector('.running-count');if(c)c.textContent=r.opened;
+    var l=box.querySelector('.running-lbl');if(l)l.textContent='of '+n+' tabs open';
+    var bar=box.querySelector('.progress i');
+    if(bar)bar.style.width=Math.round(r.opened/Math.max(1,n)*100)+'%';
+    var strip=box.querySelector('.sourcestrip'),x=r.launches[r.opened-1];
+    if(strip&&x)strip.insertAdjacentHTML('beforeend','<span class="srcchip hit">'+esc(x.name)+'</span>');
+  }
+
+  function finish(){
+    if(!st.run)return;
+    st.run.phase='done';rRes();
+    var b=st.run.blocked;
+    if(b){toast('Your browser blocked '+b+' tab'+(b===1?'':'s')+'. Allow pop-ups for this site, or tap the rows below one at a time.',7000)}
+    else if(mob&&fbCopied){toast('Facebook drops search terms on mobile — your term is copied, just paste it in.',6000)}
+  }
+
+  /* Each open is chained off the PREVIOUS actual open rather than scheduled at
+     a fixed offset from t0, so a stalled main thread delays the queue instead
+     of collapsing it. */
+  function step(){
+    if(!st.run||st.run.phase!=='launching')return;
+    fire(r.launches[i]);i++;tick();
+    if(i<r.launches.length)runTimers.push(setTimeout(step,STAGGER));
+    else runTimers.push(setTimeout(finish,320));
+  }
+
+  fire(r.launches[0]);i=1;      /* first tab rides the user's click */
+  rRes();tick();                /* draw the launching panel exactly once */
+  if(r.launches.length>1)runTimers.push(setTimeout(step,STAGGER));
+  else runTimers.push(setTimeout(finish,320));
+}
+
+function runHunt(i){
+  var t=st.hunts[i];if(!t)return;
+  runProwl('single',[t],st.mkt.size?Array.from(st.mkt):ALL);
+}
+
+function launchRow(idx){
+  var r=st.run;if(!r||!r.launches[idx])return;
+  var x=r.launches[idx];
+  if(isMobile()&&x.mkt==='facebook'){if(copyTerm(x.term))toast('Term copied — Facebook drops it on mobile, paste it into their search.',5200)}
+}
+
+function rRes(){
+  var r=st.run;
+  if(!r){res.hidden=true;res.innerHTML='';return;}
+  var L=r.launches,total=L.length;
+
+  var head='<div class=rh><div>'+
+    '<p class=eb>Prowling · '+esc(modeLabel(r))+'</p>'+
+    '<h2>'+esc(r.terms.join(' · '))+'</h2>';
+
+  if(r.phase==='launching'){
+    var pct=Math.round((r.opened/Math.max(1,total))*100);
+    head+='<p class=rs>Opening <strong>'+total+'</strong> live search'+(total===1?'':'es')+
+      ' · <strong>'+r.opened+'</strong> launched</p></div>'+
+      '<button class=gh id=otp-cr type=button>Close</button></div>';
+    /* chips are appended by tick() as each tab actually opens */
+    var strip='<div class=sourcestrip></div>';
+    res.innerHTML='<div class=rc>'+head+strip+
+      '<div class=running><div class=spinner></div>'+
+      '<div class=running-count>'+r.opened+'</div>'+
+      '<div class=running-lbl>of '+total+' tabs open</div>'+
+      '<div class=progress><i style="width:'+pct+'%"></i></div></div></div>';
+    var crx=$('#otp-cr');if(crx)crx.addEventListener('click',clearRun);
+    return;
+  }
+
+  var ready=r.phase==='ready';
+  /* A Facebook run is one marketplace but many cities — saying "across 1
+     marketplace" over a list of ten metros reads like a bug. */
+  var spread=(r.mode==='facebook')
+    ?('ready across <strong>'+total+'</strong> metro area'+(total===1?'':'s'))
+    :('ready across <strong>'+r.scope.length+'</strong> marketplace'+(r.scope.length===1?'':'s'));
+  head+='<p class=rs>'+
+    (ready?'<strong>'+total+'</strong> live search'+(total===1?'':'es')+' '+spread
+          :'<strong>'+total+'</strong> live search'+(total===1?'':'es')+' opened'+(r.blocked?' · <strong>'+r.blocked+'</strong> blocked by your browser':''))+
+    '</p></div><button class=gh id=otp-cr type=button>Close</button></div>';
+
+  var rows='<ul class=hits>';
+  for(var j=0;j<total;j++){
+    var x=L[j];
+    rows+='<li><a class=hit data-li='+j+' href="'+esc(x.url)+'" target=_blank rel="noopener noreferrer">'+
+      '<div class=hit-icon>'+esc((platformIcons&&platformIcons[x.mkt])||'◎')+'</div>'+
+      '<div class=hit-body><p class=hit-title>'+esc(x.name)+'</p>'+
+      '<div class=hit-meta><span class=hit-src>'+esc(x.term)+'</span><span>'+esc(hostOf(x.url))+'</span></div></div>'+
+      '<div class=hit-arrow>↗</div></a></li>';
+  }
+  rows+='</ul>';
+
+  res.innerHTML='<div class=rc>'+head+rows+
+    '<div class=rf>'+
+      '<span class=oa-warn><i aria-hidden=true>!</i><span><b>Allow pop-ups for this site</b> before Open all. '+total+' tabs at once looks like a pop-up storm, so browsers block it. Tapping rows one at a time always works.</span></span>'+
+      '<button class="b p" id=otp-oa type=button>'+(ready?'Open all '+total+' search'+(total===1?'':'es'):'Open all '+total+' again')+'</button>'+
+      (r.terms.length===1?
+        '<div class=comps>'+
+          '<button class=gh id=otp-comps90 type=button>eBay Sold · 90 days</button>'+
+          '<button class=gh id=otp-comps3y type=button>Terapeak · 3 years</button>'+
+          '<span class=comps-note>Both need you signed in to eBay — Terapeak also needs Seller Hub (free).</span>'+
+        '</div>':'')+
+      (r.mode==='facebook'
+        ?'<p>Facebook searches one city at a time, so each row is that same hunt in a different metro. Tap the cities you want, or <b>Open all</b> to sweep the country.</p>'
+        :'<p>Each row is the real search URL on that marketplace. Tap one to open just that one, or <b>Open all</b> to launch every tab at once.</p>')+
+    '</div></div>';
+
+  var cr=$('#otp-cr');if(cr)cr.addEventListener('click',clearRun);
+  var oa=$('#otp-oa');if(oa)oa.addEventListener('click',launchAll);
+  /* Terapeak is free for any eBay Seller Hub account and dayRange=1095 returns
+     3-year sold data — better comps than the restricted eBay APIs. */
+  var c90=$('#otp-comps90');
+  if(c90)c90.addEventListener('click',function(){
+    window.open('https://www.ebay.com/sch/i.html?_nkw='+E(r.terms[0])+'&LH_Sold=1&LH_Complete=1','_blank','noopener');
+  });
+  var c3y=$('#otp-comps3y');
+  if(c3y)c3y.addEventListener('click',function(){
+    window.open('https://www.ebay.com/sh/research?marketplace=EBAY-US&tabName=SOLD&dayRange=1095&keywords='+E(r.terms[0]),'_blank','noopener');
+  });
+  var ul=res.querySelector('.hits');
+  if(ul)ul.addEventListener('click',function(e){
+    var a=e.target.closest('a[data-li]');if(!a)return;
+    launchRow(+a.dataset.li);
+  });
+}
+
+function clearRun(){clearTimers();st.run=null;st.mode='prowl';rRes();rDock();}
+
+/* ---------- DOCK ---------- */
+function rDock(){
+  var n=st.lock.size;
+  $('#otp-ds').textContent=n===0?'none yet':n+' locked';
+  var ol=$('#otp-oneLab'),ob=$('#otp-oneBtn');
+  if(ol)ol.textContent=oneShort();
+  if(ob)ob.title='Search '+oneName()+' on its own';
+  $$('#otp-dock .db').forEach(function(b){
+    var m=b.dataset.m;
+    if(m==='den')return;
+    b.classList.toggle('on',m===st.mode);
+    if(m==='daily')b.classList.toggle('dim',n===0);
+  });
+}
+
+dock.addEventListener('click',function(e){
+  var b=e.target.closest('.db');if(!b)return;
+  var m=b.dataset.m;
+  if(m==='den')return;
+  if(m==='prowl'){clearRun();window.scrollTo({top:0,behavior:'smooth'});return;}
+  if(m==='one'){runProwl('one',chips(),[oneId()],oneName());return;}
+  if(m==='all'){runProwl('all',chips(),ALL);return;}
+  if(m==='daily'){
+    if(st.lock.size===0){
+      toast('Lock a hunt in <b>DEN</b> to add it to your daily prowl.',4600);
+      return;
+    }
+    runProwl('daily',lockTexts(),ALL);
+  }
+});
+
+$('#otp-fb').addEventListener('click',function(){
+  runProwl('facebook',chips(),[fbAllUsa()],'Facebook USA');
+});
+$('#otp-sf').addEventListener('submit',function(e){
+  e.preventDefault();
+  runProwl('prowl',chips(),st.mkt.size?Array.from(st.mkt):ALL);
+});
+$('#otp-sa').addEventListener('click',function(){
+  runProwl('all',chips(),ALL);
+});
+
+/* ---------- BACKUP / RESTORE ---------- */
+/* Export stays portable: locks and selections are written as the hunt TEXT, not
+   array indices, so a backup survives reordering and moves between devices.
+   Import accepts every shape Prowl has ever written:
+     v1  bare array of terms
+     v2  {v, list, searchLog, omniExcluded, fbHub, clHub, dimWindow}
+     v3  {hunts, locked, selected, mkt, city, theme}
+   plus any of the above base64-encoded. */
+var BACKUP_V=3;
+
+function exportData(){
+  var payload={
+    app:'prowl', v:BACKUP_V, exported:new Date().toISOString(),
+    hunts:st.hunts.slice(),
+    locked:lockTexts(),
+    selected:selTexts(),
+    mkt:Array.from(st.mkt),
+    city:st.city||'',
+    theme:document.documentElement.getAttribute('data-theme')||'light',
+    list:st.hunts.slice()
+  };
+  var name='prowl-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  var txt=JSON.stringify(payload,null,2);
+  try{
+    var blob=new Blob([txt],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;a.download=name;a.style.display='none';
+    document.body.appendChild(a);a.click();
+    setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url)},4000);
+    toast('Backup downloaded — <b>'+esc(name)+'</b>',3200);
+  }catch(e){
+    if(copyTerm(txt))toast('Download blocked, so the backup is on your clipboard instead.',5200);
+    else toast('Could not export on this browser.',4000);
+  }
+}
+
+function parseBackup(text){
+  var t=String(text||'').trim();
+  if(!t)return null;
+  var o=null;
+  try{o=JSON.parse(t)}catch(e){}
+  if(o===null){
+    try{o=JSON.parse(atob(t.replace(/[\s"']/g,'')))}catch(e2){return null}
+  }
+  return o;
+}
+function termsFrom(src){
+  if(!src||!src.length)return [];
+  var out=[];
+  for(var i=0;i<src.length;i++){
+    var x=src[i];
+    if(typeof x==='string')out.push(x);
+    else if(x&&typeof x==='object'){var v=x.t||x.term||x.text||x.q||x.name;if(v)out.push(String(v))}
+  }
+  return out;
+}
+function idxSet(src,hunts){
+  var out=new Set();
+  if(!src||!src.length)return out;
+  for(var i=0;i<src.length;i++){
+    var x=src[i];
+    if(typeof x==='number'){ if(x>=0&&x<hunts.length)out.add(x) }
+    else{
+      var v=(typeof x==='string')?x:(x&&(x.t||x.term||x.text));
+      if(!v)continue;
+      var j=hunts.indexOf(String(v));
+      if(j>-1)out.add(j);
+    }
+  }
+  return out;
+}
+function applyBackup(o){
+  if(!o)return false;
+  var terms=[];
+  if(Object.prototype.toString.call(o)==='[object Array]')terms=termsFrom(o);
+  else if(typeof o==='object')terms=termsFrom(o.hunts||o.list||o.searches||o.terms||null);
+  terms=uniq(terms);
+  if(!terms.length)return false;
+
+  st.hunts=terms;
+  var isArr=Object.prototype.toString.call(o)==='[object Array]';
+  st.lock=idxSet(isArr?null:(o.locked||o.lock||o.stars||o.star),terms);
+  st.sel =idxSet(isArr?null:(o.selected||o.sel),terms);
+
+  if(!isArr){
+    if(o.mkt&&o.mkt.length){
+      var k=[];for(var i=0;i<o.mkt.length;i++)if(ALL.indexOf(o.mkt[i])>-1)k.push(o.mkt[i]);
+      if(k.length)st.mkt=new Set(k);
+    } else if(o.omniExcluded&&o.omniExcluded.length){
+      /* v2 stored exclusions; invert them into a selection */
+      var keep=[];for(var j=0;j<ALL.length;j++)if(o.omniExcluded.indexOf(ALL[j])<0)keep.push(ALL[j]);
+      if(keep.length)st.mkt=new Set(keep);
+    }
+    var city=o.city||o.clHub||o.fbHub||'';
+    if(typeof city==='string'&&city)st.city=city;
+    if(o.theme&&THEMES.indexOf(o.theme)>-1)applyTheme(o.theme);
+  }
+  st.seen=true;
+  save();
+  rDenHunts();rDenLocal();rQuick();rDrawer();rDock();
+  return true;
+}
+function restoreFrom(text,label){
+  var o=parseBackup(text);
+  if(!o){toast('That does not look like a Prowl backup.',4200);return}
+  if(!applyBackup(o)){toast('No hunts found in that backup.',4200);return}
+  toast('Restored <b>'+st.hunts.length+'</b> hunt'+(st.hunts.length===1?'':'s')+(label?' from '+esc(label):'')+'.',4200);
+}
+
+$('#otp-expBtn').addEventListener('click',exportData);
+$('#otp-impBtn').addEventListener('click',function(){$('#otp-impFile').click()});
+$('#otp-impFile').addEventListener('change',function(e){
+  var f=e.target.files&&e.target.files[0];if(!f)return;
+  var fr=new FileReader();
+  fr.onload=function(){restoreFrom(fr.result,f.name)};
+  fr.onerror=function(){toast('Could not read that file.',3600)};
+  fr.readAsText(f);
+  e.target.value='';
+});
+$('#otp-impTextBtn').addEventListener('click',function(){
+  var v=$('#otp-impText').value;
+  if(!v.trim()){toast('Paste a backup into the box first.',3000);return}
+  restoreFrom(v,'');
+  $('#otp-impText').value='';
+});
+
+/* ---------- SETTINGS ---------- */
+$('#otp-themeBtn').addEventListener('click',cycleTheme);
+$('#otp-themeBtn2').addEventListener('click',cycleTheme);
+$('#otp-clearBtn').addEventListener('click',function(){
+  if(!confirm('Clear all saved data? This removes your hunts, locks, marketplace picks, and city.'))return;
+  try{localStorage.removeItem(LS)}catch(e){}
+  st.hunts=DEF.slice();st.sel=new Set();st.lock=new Set();st.mkt=new Set(ALL);st.city='';
+  rDenHunts();rDenLocal();rQuick();rDrawer();rDock();
+  toast('Saved data cleared.',2400);
+});
+
+/* ---------- WELCOME ---------- */
+function openM(){ms.classList.add('on');$('#otp-mok').focus();}
+function closeM(){ms.classList.remove('on');if(!st.seen){st.seen=true;save();}}
+$('#otp-mok').addEventListener('click',closeM);
+$('#otp-how').addEventListener('click',openM);
+ms.addEventListener('click',function(e){if(e.target===ms)closeM();});
+
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Escape')return;
+  if(ms.classList.contains('on')){closeM();return;}
+  if(dw.classList.contains('on')){closeDw();return;}
+  if(den.classList.contains('on')){closeDen();return;}
+});
+
+/* ---------- FOUND STRIP (ported from live v3.0) ----------
+   Pulls the shop's own newest in-stock vintage from /products.json and marquees
+   it under the hunt. studioTags gates out the studio-made items so only genuine
+   vintage shows. Same filter list as live — do not widen without being asked. */
+var studioTags=['3d printed','ap design','tee','apparel','shirt','keychain','digital download','instant download','printable','bundle','pre-order','free gift','bogos-gift','not-vintage'];
+
+/* The old rule was "any product_type at all means it is a studio item", which
+   was true when vintage pieces carried no type. The catalog now types them —
+   Kitchen & Dining, Home Decor, Vases, Figurines, Drinkware, Wall Art, Barware
+   & Decanters, Lighting, Books, Storage — so 248 of 250 products were being
+   rejected, only 2 passed, and the strip never cleared its 4-item floor.
+   Measured on the live catalog 2026-09-19.
+   Now the studio TYPES are named and everything else is treated as vintage, so
+   new vintage categories show up on their own. The studioTags tag check below
+   stays as a second gate. */
+var studioTypes=['t-shirt','long-sleeve','hoodie','keychains','digital download','paper products'];
+function isVintageProduct(pr){
+  var ty=(pr.product_type||'').toLowerCase().trim();
+  if(ty&&studioTypes.indexOf(ty)!==-1)return false;
+  var tags=(pr.tags||[]).map(function(t){return String(t).toLowerCase().trim()});
+  for(var i=0;i<studioTags.length;i++){if(tags.indexOf(studioTags[i])!==-1)return false}
+  return true;
+}
+var foundLoaded=false;
+function loadFoundStrip(){
+  var strip=$('#otp-foundStrip'),track=$('#otp-foundTrack');
+  if(!strip||!track)return;
+  if(foundLoaded)return;
+  /* no fetch on older mobile browsers: skip the strip rather than throw and
+     take the rest of boot down with it */
+  if(typeof fetch!=='function')return;
+  fetch('/products.json?limit=250').then(function(r){return r.json()}).then(function(data){
+    var items=(data.products||[]).filter(function(pr){
+      return isVintageProduct(pr)&&pr.images&&pr.images.length&&
+             (pr.variants||[]).some(function(v){return v.available});
+    });
+    items.sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at)});
+    items=items.slice(0,14);
+    if(items.length<4)return;
+    function cards(){
+      return items.map(function(pr){
+        var src=pr.images[0].src+(pr.images[0].src.indexOf('?')!==-1?'&':'?')+'width=280';
+        var nums=pr.variants.map(function(v){return parseFloat(v.price)}).filter(function(n){return!isNaN(n)});
+        var price=nums.length?Math.min.apply(null,nums):0;
+        return '<a class=found-card href="/products/'+esc(pr.handle)+'">'+
+               '<img loading=lazy src="'+esc(src)+'" alt="">'+
+               '<div class=fc-title>'+esc(pr.title)+'</div>'+
+               '<div class=fc-price>$'+price.toFixed(2)+'</div></a>';
+      }).join('');
+    }
+    track.innerHTML=cards()+cards();   /* doubled so the marquee loops seamlessly */
+    strip.classList.add('show');
+    foundLoaded=true;
+  }).catch(function(){});
+}
+
+/* ---------- SHARE ---------- */
+var shb=$('#otp-shareBtn');
+if(shb)shb.addEventListener('click',function(e){
+  var url=shb.getAttribute('href');
+  if(navigator.share){e.preventDefault();navigator.share({title:'Prowl',url:url}).catch(function(){})}
+  else if(copyTerm(url)){e.preventDefault();toast('Link copied.',2600)}
+});
+
+/* ---------- PANTHER SCROLL TUCK ---------- */
+var pan=$('#otp-pan');
+if(pan){
+  var PAN_RANGE=130,panRaf=0;
+  function panTuck(){
+    if(panRaf)return;
+    panRaf=requestAnimationFrame(function(){
+      panRaf=0;
+      var y=window.pageYOffset||document.documentElement.scrollTop||0;
+      var k=y/PAN_RANGE;if(k<0)k=0;if(k>1)k=1;
+      pan.style.opacity=1-k;
+      pan.style.transform='translateY('+(-26*k).toFixed(2)+'px) scale('+(1-0.14*k).toFixed(3)+')';
+    });
+  }
+  var panImg=$('#otp-panImg');
+  if(panImg)panImg.addEventListener('error',function(){pan.style.display='none'});
+  window.addEventListener('scroll',panTuck,{passive:true});
+  window.addEventListener('resize',panTuck,{passive:true});
+  panTuck();
+}
+
+/* ---------- APP SHELL ----------
+   /pages/prowl-app renders this same page body through a bare theme layout:
+   no store header, no footer, no nav. Three states, one bar:
+     landing page  -> offer the way in (phone-shaped window on desktop)
+     app page      -> offer the home-screen install and a link back to the shop
+     home screen   -> already an app; only the shop link
+   The install prompt is deliberately offered ONLY on the app page, because
+   that is the only page whose head links the Prowl manifest -- on the landing
+   page the browser would install the whole storefront instead. */
+var APP_PATH='/pages/prowl-app';
+
+function inStandalone(){
+  try{
+    if(window.matchMedia){
+      if(window.matchMedia('(display-mode: standalone)').matches)return true;
+      if(window.matchMedia('(display-mode: minimal-ui)').matches)return true;
+      if(window.matchMedia('(display-mode: fullscreen)').matches)return true;
+    }
+  }catch(e){}
+  return navigator.standalone===true;   /* iOS home-screen launch */
+}
+function onAppPage(){
+  return String(location.pathname).indexOf('prowl-app')!==-1;
+}
+function isApple(){
+  var ua=navigator.userAgent||'';
+  if(/iPad|iPhone|iPod/.test(ua))return true;
+  return navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1;
+}
+function appNote(h){
+  var n=$('#otp-appnote');if(!n)return;
+  n.innerHTML=h;n.hidden=false;
+}
+function openApp(){
+  var u=location.protocol+'//'+location.host+APP_PATH;
+  /* on a phone a sized popup means nothing and usually gets blocked, so just go */
+  if(window.innerWidth<760){location.href=u;return}
+  var w=Math.min(430,(screen.availWidth||1200)-40);
+  var h=Math.min(920,(screen.availHeight||900)-60);
+  var l=Math.round(((screen.availWidth||1200)-w)/2);
+  var t=Math.round(((screen.availHeight||900)-h)/2);
+  var win=null;
+  try{
+    win=window.open(u,'prowlapp','width='+w+',height='+h+',left='+l+',top='+t+',menubar=no,toolbar=no,location=no,status=no');
+  }catch(e){}
+  if(!win){appNote('Your browser blocked the window. <b>Allow pop-ups for this site</b>, or <a href="'+APP_PATH+'">open the app in this tab</a>.');return}
+  try{win.focus()}catch(e){}
+}
+
+var installEvt=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  /* hold onto it so the install happens from a real tap, not on page load */
+  if(e&&e.preventDefault)e.preventDefault();
+  installEvt=e;
+});
+function doInstall(){
+  if(installEvt&&typeof installEvt.prompt==='function'){
+    try{
+      installEvt.prompt();
+      if(installEvt.userChoice&&installEvt.userChoice.then){
+        installEvt.userChoice.then(function(r){
+          if(r&&r.outcome==='accepted'){toast('Prowl added. Look for the panther on your home screen.',5000);installEvt=null}
+        });
+      }
+      return;
+    }catch(e){}
+  }
+  if(isApple()){
+    appNote('On iPhone and iPad: tap the <b>Share</b> button in Safari, scroll down, then tap <b>Add to Home Screen</b>. Prowl opens without the browser bar after that.');
+  }else{
+    appNote('In your browser menu, choose <b>Install app</b> or <b>Add to Home screen</b>. Prowl then opens in its own window with no browser bar.');
+  }
+}
+
+function rAppBar(){
+  var bar=$('#otp-appbar'),launch=$('#otp-openApp'),inst=$('#otp-installApp'),shop=$('#otp-appShop');
+  if(!bar)return;
+  var standalone=inStandalone(),appPage=onAppPage(),shown=0;
+  if(launch){launch.hidden=standalone||appPage;if(!launch.hidden)shown++}
+  if(inst){inst.hidden=standalone||!appPage;if(!inst.hidden)shown++}
+  if(shop){shop.hidden=!(standalone||appPage);if(!shop.hidden)shown++}
+  bar.hidden=shown===0;
+}
+var oab=$('#otp-openApp');if(oab)oab.addEventListener('click',openApp);
+var iab=$('#otp-installApp');if(iab)iab.addEventListener('click',doInstall);
+rAppBar();
+
+/* ---------- BOOT ---------- */
+load();counts();rQuick();rDenHunts();rDenLocal();rDenOne();rDrawer();rDock();rRes();
+Array.prototype.forEach.call(document.querySelectorAll('.prowl-version'),function(el){el.textContent=PROWL_VERSION});
+var veb=$('#otp-verEb');if(veb)veb.textContent=PROWL_VERSION+' · live';
+if(st.migrated){
+  setTimeout(function(){
+    toast('Brought over <b>'+st.migrated+'</b> hunt'+(st.migrated===1?'':'s')+' from your old Prowl list.',6000);
+  },900);
+}
+if(!st.seen)setTimeout(openM,420);
+/* last, and isolated: the showcase is a nice-to-have and must never be able to
+   break the app if products.json is slow, blocked or missing */
+try{loadFoundStrip()}catch(e){}
+})();
+</script>
