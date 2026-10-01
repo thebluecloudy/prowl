@@ -19,3 +19,5 @@ crons = ["*/15 * * * *"]
 
 [vars]
 EPN_CAMPAIGN_ID = "5339216838"
+# Prowl Alerts signups open to everyone (was "beta": only ALERT_ALLOW emails)
+ALERTS = "public"
