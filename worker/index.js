@@ -15,6 +15,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v37: membership by email, no passwords. POST /alerts/signin emails a sign-in link
+ *        (GET /alerts/in) that signs a new phone or computer in without touching the hunt
+ *        list. Confirming again merges hunts instead of replacing them. The links in every
+ *        alert email sign you in too.
  *   v36: /alerts/status also returns the visitor's plan: how Pro was granted (order or
  *        list), last payment (order number, date, amount), a receipt link (Shopify
  *        order status page), the next renewal date, and the account page to cancel.
@@ -1693,6 +1697,9 @@ async function kvGet(env, k, dflt) {
 }
 async function kvPut(env, k, v) { await env.PROWL_ALERTS.put(k, JSON.stringify(v)); }
 function alReady(env) { return !!(env && env.PROWL_ALERTS && alMode(env) !== "off"); }
+/* v37: the member's own link back into Prowl. Same token as the unsubscribe link,
+   so it signs that browser in. Kept in the hash, so it never reaches a server log. */
+function alHomeUrl(sub) { return PROWL_PAGE + "?alerts=in#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok; }
 function alUnsubUrl(sub, hunt) {
   return WORKER_BASE + "/alerts/unsub?e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok + (hunt ? "&h=" + encodeURIComponent(hunt) : "");
 }
@@ -1807,7 +1814,7 @@ function alShell(env, inner, why, links) {
     '</td></tr></table></td></tr></table></body></html>';
 }
 function alWhy() { return 'You are getting this because you turned on Prowl Alerts at owlandtwigvintage.com/pages/prowl. One email a day for every hunt, from ShopGoodwill, eBay, Etsy and Chairish.'; }
-function alFootText(env, sub) { return ["", "--", "Prowl Alerts by Owl & Twig Vintage. You turned on Prowl Alerts at owlandtwigvintage.com/pages/prowl.", sub ? "Unsubscribe: " + alUnsubUrl(sub) : "", alAddr(env) + " · owlandtwigvintage.com"].filter(Boolean).join("\n"); }
+function alFootText(env, sub) { return ["", "--", "Prowl Alerts by Owl & Twig Vintage. You turned on Prowl Alerts at owlandtwigvintage.com/pages/prowl.", sub ? "Open Prowl signed in: " + alHomeUrl(sub) : "", sub ? "Unsubscribe: " + alUnsubUrl(sub) : "", alAddr(env) + " · owlandtwigvintage.com"].filter(Boolean).join("\n"); }
 
 /* The email. Tables and inline styles only: that is what Gmail and Outlook render. */
 function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
@@ -1849,7 +1856,7 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
     '<tr><td style="padding:12px 12px 6px;font:bold 24px Georgia,serif;color:#2b2118">' + (test ? 'Your hunts right now · ' + total + ' listing' + (total === 1 ? "" : "s") : total + ' new find' + (total === 1 ? "" : "s")) + '</td></tr>' +
     '<tr><td style="padding:0 12px;font:14px/1.5 Arial,sans-serif;color:#6b5b4a">' + sumLine + '</td></tr>' +
     body + shop;
-  const links = '<a href="' + PROWL_PAGE + '" style="color:#8a4b1f">Change your hunts in Prowl</a> · <a href="' + alEsc(alUnsubUrl(sub)) + '" style="color:#9a8b7a">Unsubscribe</a>';
+  const links = '<a href="' + alEsc(alHomeUrl(sub)) + '" style="color:#8a4b1f">Open Prowl signed in · change your hunts</a> · <a href="' + alEsc(alUnsubUrl(sub)) + '" style="color:#9a8b7a">Unsubscribe</a>';
   const all = sub.allCount || sub.hunts.length, free = alFree(env);
   const up = (!sub.pro && all > free) ? '<tr><td style="padding:22px 12px 0"><div style="border:2px solid #8a4b1f;border-radius:10px;padding:14px;font:14px/1.5 Arial,sans-serif;color:#2b2118">' +
     '<b>You are on the free plan:</b> alerts for your first ' + free + ' hunts. You have ' + all + '. ' +
@@ -1959,11 +1966,51 @@ async function alConfirm(env, url) {
   const c = await kvGet(env, "conf:" + email, null);
   if (!email || !c || !alSame(url.searchParams.get("c"), c.code)) return alPage("Link expired", "Open Prowl and tap Email me daily again for a fresh link.");
   const old = await kvGet(env, "sub:" + email, null);
-  const sub = { email: email, tok: old ? old.tok : alToken(), hunts: c.hunts, day: "", done: [], sent: "", created: old ? old.created : new Date().toISOString() };
+  /* v37: a second phone or computer confirming the same email adds its hunts to
+     the member's list; it never wipes the hunts they already have. */
+  const hunts = old ? alHunts((old.hunts || []).concat(c.hunts)) : c.hunts;
+  const sub = { email: email, tok: old ? old.tok : alToken(), hunts: hunts, day: old ? old.day || "" : "", done: old ? old.done || [] : [], sent: old ? old.sent || "" : "", created: old ? old.created : new Date().toISOString() };
   await alProSet(env, sub, true);
   await kvPut(env, "sub:" + email, sub);
   await env.PROWL_ALERTS.delete("conf:" + email);
   return Response.redirect(PROWL_PAGE + "?alerts=on#e=" + encodeURIComponent(email) + "&t=" + sub.tok, 302);
+}
+
+/* v37 membership. A member is an email with Prowl Alerts on. No passwords: to use
+   Prowl on another phone or computer they ask for a sign-in link, tap it, and that
+   browser is signed in. The hunt list is left exactly as it is. */
+const AL_SIGNIN_PER_EMAIL = 4;
+async function alSignin(request, env, origin) {
+  if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
+  let b = {}; try { b = await request.json(); } catch (e) {}
+  const email = alEmail(b.email);
+  if (!email) return json({ error: "That email does not look right." }, 400, origin);
+  const ip = request.headers.get("CF-Connecting-IP") || "anon";
+  if (!(await vCount("alsub:" + ip, AL_SUB_PER_IP))) return json({ error: "Too many tries today." }, 429, origin);
+  const sub = await kvGet(env, "sub:" + email, null);
+  if (!sub) return json({ ok: true, none: true }, 200, origin);
+  if (!(await vCount("alin:" + email, AL_SIGNIN_PER_EMAIL))) return json({ error: "We already sent sign-in links today. Use the newest one in your inbox, or check spam." }, 429, origin);
+  const code = alToken();
+  await env.PROWL_ALERTS.put("in:" + email, JSON.stringify({ code: code }), { expirationTtl: 86400 });
+  const link = WORKER_BASE + "/alerts/in?e=" + encodeURIComponent(email) + "&c=" + code;
+  const html = alShell(env, '<tr><td style="padding:12px 12px 4px;font:16px/1.5 Georgia,serif;color:#2b2118">' +
+    '<h2 style="font-size:22px;margin:0 0 8px">Sign in to Prowl</h2><p style="margin:0 0 12px">Tap the button on the phone or computer you want to use. Your ' + sub.hunts.length + ' hunt' + (sub.hunts.length === 1 ? "" : "s") + ' and your plan come with you.</p>' +
+    '<p style="margin:0 0 12px"><a href="' + alEsc(link) + '" style="display:inline-block;background:#8a4b1f;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font:bold 15px Arial,sans-serif">Sign me in</a></p>' +
+    '<p style="margin:0 0 4px;font:13px/1.5 Arial,sans-serif;color:#6b5b4a">The link works once, for 24 hours. No password needed, ever.</p></td></tr>',
+    'Someone asked to sign in to Prowl with this address at owlandtwigvintage.com/pages/prowl. If that was not you, ignore this email. Nothing changes until the link is tapped.', '');
+  const r = await alSend(env, email, "Your Prowl sign-in link", html,
+    "Sign in to Prowl: " + link + "\n\nThe link works once, for 24 hours. Did not ask for this? Ignore this email." + alFootText(env, null), "");
+  if (!r.ok) return json({ error: "Could not send the sign-in email.", detail: r.error }, 502, origin);
+  return json({ ok: true, sent: true }, 200, origin);
+}
+async function alIn(env, url) {
+  if (!alReady(env)) return alPage("Not on yet", "Prowl Alerts is switched off right now.");
+  const email = alEmail(url.searchParams.get("e"));
+  const c = email ? await kvGet(env, "in:" + email, null) : null;
+  const sub = email ? await kvGet(env, "sub:" + email, null) : null;
+  if (!c || !sub || !alSame(url.searchParams.get("c"), c.code)) return alPage("Link expired", "Open Prowl, tap Prowl Alerts, then Sign in for a fresh link.");
+  await env.PROWL_ALERTS.delete("in:" + email);
+  return Response.redirect(alHomeUrl(sub), 302);
 }
 
 async function alUnsub(env, url, origin) {
@@ -2059,6 +2106,7 @@ export default {
     /* v28: unsubscribe links work from any mail app, including one-click POSTs */
     if (url.pathname === "/alerts/unsub") return alUnsub(env, url, origin);
     if (url.pathname === "/alerts/confirm") return alConfirm(env, url);
+    if (url.pathname === "/alerts/in") return alIn(env, url);
     if (url.pathname === "/__alerts-preview" || url.pathname === "/__alerts-run") return alDebug(env, url);
     if (request.method === "POST" && ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);
 
@@ -2067,6 +2115,9 @@ export default {
     }
     if (url.pathname === "/alerts/subscribe" && request.method === "POST") {
       return alSubscribe(request, env, origin);
+    }
+    if (url.pathname === "/alerts/signin" && request.method === "POST") {
+      return alSignin(request, env, origin);
     }
     if (url.pathname === "/alerts/test") {
       return alTest(env, url, origin);
