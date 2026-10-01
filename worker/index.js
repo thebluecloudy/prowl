@@ -15,6 +15,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v38: Pro matched by the Prowl email saved on the order line ("Prowl Alerts email"),
+ *        not only the checkout email. Shop Pay often checks out under another address.
  *   v37: membership by email, no passwords. POST /alerts/signin emails a sign-in link
  *        (GET /alerts/in) that signs a new phone or computer in without touching the hunt
  *        list. Confirming again merges hunts instead of replacing them. The links in every
@@ -1620,14 +1622,27 @@ async function alPro(env, email, force) {
   const since = new Date(Date.now() - PRO_DAYS * 86400000).toISOString().slice(0, 10);
   const q = 'email:"' + email.replace(/"/g, "") + '" AND sku:' + PRO_SKU + " AND created_at:>=" + since;
   try {
-    const r = await fetch("https://" + (env.SHOPIFY_SHOP || "tz7xkc-du.myshopify.com") + "/admin/api/2025-10/graphql.json", { method: "POST",
-      headers: { "X-Shopify-Access-Token": env.SHOPIFY_ORDERS_TOKEN, "Content-Type": "application/json" },
-      body: JSON.stringify({ query: "query pro($q: String!) { orders(first: 5, query: $q, sortKey: CREATED_AT, reverse: true) { nodes { name createdAt cancelledAt displayFinancialStatus email statusPageUrl totalPriceSet { shopMoney { amount currencyCode } } } } }", variables: { q: q } }) });
-    if (r.status !== 200) return { pro: null, via: "shopify " + r.status };
-    const j = await r.json();
-    const nodes = (j && j.data && j.data.orders && j.data.orders.nodes) || null;
-    if (!nodes) return { pro: null, via: "shopify error" };
-    const good = nodes.filter(o => !o.cancelledAt && String(o.email || "").toLowerCase() === email && ["PAID", "PARTIALLY_REFUNDED", "AUTHORIZED"].indexOf(o.displayFinancialStatus) !== -1);
+    const ask = async (qq, n) => {
+      const r = await fetch("https://" + (env.SHOPIFY_SHOP || "tz7xkc-du.myshopify.com") + "/admin/api/2025-10/graphql.json", { method: "POST",
+        headers: { "X-Shopify-Access-Token": env.SHOPIFY_ORDERS_TOKEN, "Content-Type": "application/json" },
+        body: JSON.stringify({ query: "query pro($q: String!, $n: Int!) { orders(first: $n, query: $q, sortKey: CREATED_AT, reverse: true) { nodes { name createdAt cancelledAt displayFinancialStatus email statusPageUrl totalPriceSet { shopMoney { amount currencyCode } } lineItems(first: 5) { nodes { sku customAttributes { key value } } } } } }", variables: { q: qq, n: n } }) });
+      if (r.status !== 200) return { err: "shopify " + r.status };
+      const j = await r.json();
+      const nodes = (j && j.data && j.data.orders && j.data.orders.nodes) || null;
+      return nodes ? { nodes: nodes } : { err: "shopify error" };
+    };
+    /* v38: Prowl puts the Prowl Alerts email on the order line, because Shop Pay
+       often checks out under a different address than the one in Prowl. */
+    const tagged = o => ((o.lineItems && o.lineItems.nodes) || []).some(li => (li.customAttributes || []).some(a => /prowl alerts email/i.test(a.key || "") && String(a.value || "").trim().toLowerCase() === email));
+    const okPay = o => !o.cancelledAt && ["PAID", "PARTIALLY_REFUNDED", "AUTHORIZED"].indexOf(o.displayFinancialStatus) !== -1;
+    let res = await ask(q, 5);
+    if (res.err) return { pro: null, via: res.err };
+    let good = res.nodes.filter(o => okPay(o) && (String(o.email || "").toLowerCase() === email || tagged(o)));
+    if (!good.length) {
+      res = await ask("sku:" + PRO_SKU + " AND created_at:>=" + since, 100);
+      if (res.err) return { pro: null, via: res.err };
+      good = res.nodes.filter(o => okPay(o) && tagged(o));
+    }
     const ok = good.length > 0;
     /* v36: the visitor's own latest Prowl Pro payment, so Prowl can show price,
        date and a receipt link (Shopify's order status page). Only ever returned
@@ -1700,6 +1715,9 @@ function alReady(env) { return !!(env && env.PROWL_ALERTS && alMode(env) !== "of
 /* v37: the member's own link back into Prowl. Same token as the unsubscribe link,
    so it signs that browser in. Kept in the hash, so it never reaches a server log. */
 function alHomeUrl(sub) { return PROWL_PAGE + "?alerts=in#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok; }
+/* v38: the upgrade link in emails signs in and goes straight to the Pro checkout
+   (the product page alone cannot add a subscription-only item to the cart). */
+function alUpgradeUrl(sub) { return PROWL_PAGE + "?alerts=in&upgrade=1#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok; }
 function alUnsubUrl(sub, hunt) {
   return WORKER_BASE + "/alerts/unsub?e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok + (hunt ? "&h=" + encodeURIComponent(hunt) : "");
 }
@@ -1860,7 +1878,7 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
   const all = sub.allCount || sub.hunts.length, free = alFree(env);
   const up = (!sub.pro && all > free) ? '<tr><td style="padding:22px 12px 0"><div style="border:2px solid #8a4b1f;border-radius:10px;padding:14px;font:14px/1.5 Arial,sans-serif;color:#2b2118">' +
     '<b>You are on the free plan:</b> alerts for your first ' + free + ' hunts. You have ' + all + '. ' +
-    '<a href="' + PRO_URL + '" style="color:#8a4b1f;font-weight:bold">Get all ' + Math.min(all, AL_MAX_HUNTS) + ' with Prowl Pro · $7/month</a></div></td></tr>' : '';
+    '<a href="' + alEsc(alUpgradeUrl(sub)) + '" style="color:#8a4b1f;font-weight:bold">Get all ' + Math.min(all, AL_MAX_HUNTS) + ' with Prowl Pro · $7/month</a></div></td></tr>' : '';
   return alShell(env, inner + up, alWhy(), links);
 }
 function alEmailText(sub, pend, env) {
