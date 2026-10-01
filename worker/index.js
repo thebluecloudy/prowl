@@ -15,6 +15,12 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v39: Sign in with the store's own customer account. The Shopify app "Prowl Alerts"
+ *        proxies /apps/prowl/* on owlandtwigvintage.com to /proxy/* here, signed with
+ *        SHOPIFY_PROXY_SECRET. /proxy/me answers with Liquid that Shopify renders for the
+ *        logged-in customer (email + a signature only this worker can make);
+ *        /proxy/login trades that for the member's Prowl token. No passwords, no
+ *        confirm email: Shopify already checked the email with its sign-in code.
  *   v38: Pro matched by the Prowl email saved on the order line ("Prowl Alerts email"),
  *        not only the checkout email. Shop Pay often checks out under another address.
  *   v37: membership by email, no passwords. POST /alerts/signin emails a sign-in link
@@ -1994,6 +2000,75 @@ async function alConfirm(env, url) {
   return Response.redirect(PROWL_PAGE + "?alerts=on#e=" + encodeURIComponent(email) + "&t=" + sub.tok, 302);
 }
 
+/* ---------- v39: store login through the Shopify app proxy ----------
+   Shopify forwards /apps/prowl/<path> to /proxy/<path> with shop, timestamp,
+   logged_in_customer_id and a signature (HMAC-SHA256 of the sorted params, keyed
+   with the app's client secret). Nothing here trusts the browser:
+   - /proxy/me: if a customer is signed in, the reply is Liquid. Shopify renders it
+     server-side for that customer, so the email in it is Shopify's, and the sig is
+     an HMAC the browser cannot make (the key is derived from the secret and never
+     leaves Shopify's renderer or this worker).
+   - /proxy/login (POST {id,e,ts,sig,hunts,join}): checks the proxy signature, that
+     the signed-in customer is the same id, the sig, and its age (15 minutes). Then
+     an existing member gets their token; join:true creates the membership. */
+const PX_MAX_AGE = 15 * 60;
+async function pxHmac(key, msg) {
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(sig), x => ("0" + x.toString(16)).slice(-2)).join("");
+}
+async function pxVerify(env, url) {
+  const sp = url.searchParams, got = sp.get("signature") || "";
+  const keys = Array.from(new Set(Array.from(sp.keys()))).filter(k => k !== "signature").sort();
+  const msg = keys.map(k => k + "=" + sp.getAll(k).join(",")).join("");
+  const want = await pxHmac(env.SHOPIFY_PROXY_SECRET, msg);
+  if (!alSame(got, want)) return null;
+  const ts = Number(sp.get("timestamp") || 0);
+  if (!ts || Math.abs(Date.now() / 1000 - ts) > 3600) return null;
+  return { cid: String(sp.get("logged_in_customer_id") || ""), shop: sp.get("shop") || "" };
+}
+async function pxKey(env) { return pxHmac(env.SHOPIFY_PROXY_SECRET, "prowl-liquid-v1"); }
+function pxJson(obj, status) {
+  return new Response(JSON.stringify(obj), { status: status || 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+}
+async function proxyHandle(request, env, url) {
+  if (!env.SHOPIFY_PROXY_SECRET) return pxJson({ error: "login not set up" }, 503);
+  const v = await pxVerify(env, url);
+  if (!v) return pxJson({ error: "bad signature" }, 401);
+  const path = url.pathname.replace(/^\/proxy/, "") || "/";
+  if (path === "/me") {
+    if (!v.cid) return pxJson({ in: false });
+    const ts = Math.floor(Date.now() / 1000), key = await pxKey(env);
+    /* Liquid, rendered by Shopify for the signed-in customer. */
+    const L = "{% layout none %}" +
+      '{"in":true,"id":{{ customer.id | json }},"e":{{ customer.email | downcase | json }},"first":{{ customer.first_name | json }},"ts":' + ts +
+      ',"sig":{{ customer.id | append: "|" | append: customer.email | append: "|' + ts + '" | downcase | hmac_sha256: "' + key + '" | json }}}';
+    return new Response(L, { status: 200, headers: { "Content-Type": "application/liquid", "Cache-Control": "no-store" } });
+  }
+  if (path === "/login" && request.method === "POST") {
+    if (!alReady(env)) return pxJson({ error: "Prowl Alerts is not on yet." }, 503);
+    let b = {}; try { b = await request.json(); } catch (e) {}
+    const id = String(b.id == null ? "" : b.id), email = alEmail(b.e), ts = Number(b.ts || 0);
+    if (!v.cid || !id || v.cid !== id) return pxJson({ error: "Sign in to your Owl & Twig account first." }, 401);
+    if (!email || !ts || Math.abs(Date.now() / 1000 - ts) > PX_MAX_AGE) return pxJson({ error: "Sign-in expired. Reload Prowl." }, 401);
+    const want = await pxHmac(await pxKey(env), (id + "|" + email + "|" + ts).toLowerCase());
+    if (!alSame(String(b.sig || ""), want)) return pxJson({ error: "Sign-in could not be checked. Reload Prowl." }, 401);
+    let sub = await kvGet(env, "sub:" + email, null);
+    if (!sub && !b.join) return pxJson({ ok: true, member: false, email: email });
+    if (!sub) {
+      if (!alAllowed(env, email)) return pxJson({ error: "Prowl Alerts is in a small test right now." }, 403);
+      const ip = request.headers.get("X-Forwarded-For") || request.headers.get("CF-Connecting-IP") || "anon";
+      if (!(await vCount("alsub:" + String(ip).split(",")[0].trim(), AL_SUB_PER_IP))) return pxJson({ error: "Too many tries today." }, 429);
+      sub = { email: email, tok: alToken(), hunts: alHunts(b.hunts), day: "", done: [], sent: "", created: new Date().toISOString(), via: "shopify" };
+      await alProSet(env, sub, true);
+    }
+    if (sub.cid !== id) sub.cid = id;
+    await kvPut(env, "sub:" + email, sub);
+    return pxJson({ ok: true, member: true, email: email, tok: sub.tok, pro: !!sub.pro, free: alFree(env), hunts: sub.hunts, active: alActive(env, sub).length });
+  }
+  return pxJson({ ok: true, prowl: true });
+}
+
 /* v37 membership. A member is an email with Prowl Alerts on. No passwords: to use
    Prowl on another phone or computer they ask for a sign-in link, tap it, and that
    browser is signed in. The hunt list is left exactly as it is. */
@@ -2121,6 +2196,8 @@ export default {
     if (url.pathname.startsWith("/__")) {
       if (!env.DEBUG_KEY || request.headers.get("X-Prowl-Debug") !== env.DEBUG_KEY) return new Response("not found", { status: 404 });
     }
+    /* v39: Shopify app proxy (store login). Its own signature check; same-origin, no CORS. */
+    if (url.pathname === "/proxy" || url.pathname.startsWith("/proxy/")) return proxyHandle(request, env, url);
     /* v28: unsubscribe links work from any mail app, including one-click POSTs */
     if (url.pathname === "/alerts/unsub") return alUnsub(env, url, origin);
     if (url.pathname === "/alerts/confirm") return alConfirm(env, url);
