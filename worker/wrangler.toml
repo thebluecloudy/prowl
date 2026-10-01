@@ -1,0 +1,21 @@
+# Prowl worker: deployed by Cloudflare Workers Builds on every push to main.
+# Secrets (API keys, tokens, PRO_EMAILS, etc.) live only in the Cloudflare
+# dashboard and are never stored here. keep_vars stops a deploy from wiping
+# the plain-text variables that are set in the dashboard.
+
+name = "prowl"
+main = "index.js"
+compatibility_date = "2026-09-21"
+workers_dev = true
+preview_urls = false
+keep_vars = true
+
+[[kv_namespaces]]
+binding = "PROWL_ALERTS"
+id = "102ebd733ced41f3806399872dd19027"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[vars]
+EPN_CAMPAIGN_ID = "5339216838"
