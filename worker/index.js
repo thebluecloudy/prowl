@@ -737,6 +737,17 @@ const VERDICT_PRO_PER_DAY = 100; // v43: Prowl Pro, "unlimited" with a safety ce
 const VERDICT_PER_DAY = 400;     // whole site per day
 const VERDICT_CACHE_SECONDS = 86400;
 
+/* v44: read a JSON body with a size ceiling. Returns { big: true } when the
+   body is over max bytes (checked from Content-Length first, then the text),
+   {} for bad JSON, else the parsed object. */
+async function readJson(request, max) {
+  const cl = Number(request.headers.get("Content-Length") || 0);
+  if (cl > max) return { big: true };
+  let raw = "";
+  try { raw = await request.text(); } catch (e) { return {}; }
+  if (raw.length > max) return { big: true };
+  try { const o = JSON.parse(raw); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; }
+}
 function vClean(s, n) { return String(s == null ? "" : s).replace(/\s+/g, " ").trim().slice(0, n); }
 
 /* v43: like vCount, but says how many are left after this one (-1 = none left). */
@@ -834,8 +845,10 @@ function scrubListingText(s, n) {
 
 async function verdict(request, env, origin) {
   if (!origin || ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);
-  let b = null;
-  try { b = await request.json(); } catch (e) {}
+  const b = await readJson(request, 16384);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  for (const k of ["title", "price", "url", "details", "e", "t"]) if (typeof b[k] === "string" && b[k].length > 2000) b[k] = b[k].slice(0, 2000);
+  if (Array.isArray(b.comps)) b.comps = b.comps.slice(0, 12);
   const title = scrubListingText(vClean(b && b.title, 160), 160), price = vClean(b && b.price, 24), iurl = vClean(b && b.url, 300), details = scrubListingText(vClean(b && b.details, 600), 600);
   const comps = (b && Array.isArray(b.comps) ? b.comps : []).slice(0, 12)
     .map(c => ({ t: scrubListingText(vClean(c && c.title, 120), 120), p: vClean(c && c.price, 24), s: vClean(c && c.src, 20) }))
@@ -930,6 +943,8 @@ async function museTest(env, url) {
    lean on real sold prices), then plain Chat Completions if that fails. */
 const APPRAISE_PER_IP = 25;
 const APPRAISE_PER_DAY = 250;
+const PHOTO_FREE_PER_DAY = 2;  // v45: free photo checks per visitor per day
+const PHOTO_PRO_PER_DAY = 15;  // v45: Prowl Pro photo checks per day
 
 function apPrompt(price, searched, hint, looks) {
   const lk = (looks || []).slice(0, EBAY_IMAGE_LIMIT).map(x => "- " + scrubListingText(x.title, 120)).filter(x => x.length > 3);
@@ -1095,8 +1110,8 @@ const RESEARCH_PER_IP = 5;
 const RESEARCH_PER_DAY = 100;
 async function research(request, env, origin) {
   if (!env || !env.MUSE_API_KEY) return json({ error: "not configured" }, 500, origin);
-  let b = null;
-  try { b = await request.json(); } catch (e) {}
+  const b = await readJson(request, 4096);
+  if (b.big) return json({ error: "too large" }, 413, origin);
   const name = vClean(b && b.item, 100), maker = vClean(b && b.maker, 60);
   if (!name) return json({ error: "missing item" }, 400, origin);
   const key = (name + " " + maker).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 160);
@@ -1549,8 +1564,8 @@ async function fbTest(env, url) {
 async function appraise(request, env, origin) {
   if (!origin || ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);
   if (!env || !env.MUSE_API_KEY) return json({ error: "not configured" }, 500, origin);
-  let b = null;
-  try { b = await request.json(); } catch (e) {}
+  const b = await readJson(request, 3000000);
+  if (b.big) return json({ error: "photo too large" }, 413, origin);
   const image = b && typeof b.image === "string" ? b.image : "";
   const price = vClean(b && b.price, 24);
   const hint = vClean(b && b.hint, 80);
@@ -1560,7 +1575,17 @@ async function appraise(request, env, origin) {
   if (image.length > 2800000) return json({ error: "photo too large" }, 413, origin);
 
   const ip = request.headers.get("CF-Connecting-IP") || "anon";
-  if (!(await capOk(request, env, "ap:" + ip, APPRAISE_PER_IP))) return json({ error: "daily limit", limit: APPRAISE_PER_IP }, 429, origin);
+  /* v45: free = PHOTO_FREE_PER_DAY photo checks a day per visitor; Prowl Pro = PHOTO_PRO_PER_DAY. */
+  let left = null, pro = null;
+  if (!isOwner(request, env)) {
+    pro = await proMember(env, b);
+    if (pro) {
+      if (!(await vCount("appro:" + pro, PHOTO_PRO_PER_DAY))) return json({ error: "daily limit", limit: PHOTO_PRO_PER_DAY, pro: true }, 429, origin);
+    } else {
+      left = await vTake("apf:" + ip, PHOTO_FREE_PER_DAY);
+      if (left < 0) return json({ error: "free limit", limit: PHOTO_FREE_PER_DAY, pro: false }, 429, origin);
+    }
+  }
   if (!(await capOk(request, env, "ap:all", APPRAISE_PER_DAY))) return json({ error: "busy today" }, 429, origin);
 
   let looks = [];
@@ -1598,6 +1623,8 @@ async function appraise(request, env, origin) {
     if (jevMode === "on") looks = allLooks.filter((x, i) => jev[i] && jev[i].match === "same" && jev[i].p >= JEV_MIN_P);
   }
   out.looks = looks.slice(0, 3).map(x => ({ title: x.title, price: x.price, url: x.url, image: x.image }));
+  if (left !== null) { out.left = left; out.free = PHOTO_FREE_PER_DAY; }
+  if (pro) out.pro = true;
   return json(out, 200, origin);
 }
 
@@ -2005,7 +2032,8 @@ function alPage(title, msg) {
 
 async function alSubscribe(request, env, origin) {
   if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
-  let b = {}; try { b = await request.json(); } catch (e) {}
+  const b = await readJson(request, 16384);
+  if (b.big) return json({ error: "too large" }, 413, origin);
   const email = alEmail(b.email), hunts = alHunts(b.hunts);
   if (!email) return json({ error: "That email does not look right." }, 400, origin);
   if (!hunts.length) return json({ error: "Add a hunt first." }, 400, origin);
@@ -2099,7 +2127,8 @@ async function proxyHandle(request, env, url) {
   }
   if (path === "/login" && request.method === "POST") {
     if (!alReady(env)) return pxJson({ error: "Prowl Alerts is not on yet." }, 503);
-    let b = {}; try { b = await request.json(); } catch (e) {}
+    const b = await readJson(request, 16384);
+    if (b.big) return pxJson({ error: "too large" }, 413);
     const id = String(b.id == null ? "" : b.id), email = alEmail(b.e), ts = Number(b.ts || 0);
     if (!v.cid || !id || v.cid !== id) return pxJson({ error: "Sign in to your Owl & Twig account first." }, 401);
     if (!email || !ts || Math.abs(Date.now() / 1000 - ts) > PX_MAX_AGE) return pxJson({ error: "Sign-in expired. Reload Prowl." }, 401);
@@ -2127,7 +2156,8 @@ async function proxyHandle(request, env, url) {
 const AL_SIGNIN_PER_EMAIL = 4;
 async function alSignin(request, env, origin) {
   if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
-  let b = {}; try { b = await request.json(); } catch (e) {}
+  const b = await readJson(request, 4096);
+  if (b.big) return json({ error: "too large" }, 413, origin);
   const email = alEmail(b.email);
   if (!email) return json({ error: "That email does not look right." }, 400, origin);
   const ip = request.headers.get("CF-Connecting-IP") || "anon";
