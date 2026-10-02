@@ -2110,7 +2110,10 @@ async function alUnsub(env, url, origin) {
   const email = alEmail(url.searchParams.get("e"));
   const sub = env && env.PROWL_ALERTS && email ? await kvGet(env, "sub:" + email, null) : null;
   const wantJson = url.searchParams.get("fmt") === "json";
-  if (!sub || !alSame(url.searchParams.get("t"), sub.tok)) return wantJson ? json({ error: "not found" }, 404, origin) : alPage("Already off", "There are no Prowl Alerts on for this link.");
+  /* v40: a link from an older sign-up (the member signed up again, so the token
+     changed) used to say "Already off" while their alerts were still on. */
+  if (sub && !alSame(url.searchParams.get("t"), sub.tok)) return wantJson ? json({ error: "old link" }, 404, origin) : alPage("This link is out of date", "It is from an older Prowl Alerts email, so it cannot change anything. Prowl Alerts is still on for this address. To stop it, tap Unsubscribe in your newest Prowl email, or open Prowl and go to Den, then Settings.");
+  if (!sub) return wantJson ? json({ error: "not found" }, 404, origin) : alPage("Already off", "There are no Prowl Alerts on for this link.");
   const h = vClean(url.searchParams.get("h"), 60).toLowerCase();
   if (h) {
     sub.hunts = sub.hunts.filter(x => x.toLowerCase() !== h);
