@@ -1847,13 +1847,19 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
   const hunts = sub.hunts.filter(h => pend[h] && pend[h].length);
   const total = hunts.reduce((n, h) => n + pend[h].length, 0);
   const card = (x) => {
-    const meta = [x.price, AL_SRC_NAME[x.src] || x.src, x.time_left ? x.time_left + " left" : ""].filter(Boolean).join(" · ");
+    /* v42: Poof-style card -- a bordered square, bold capital title, the price
+       on its own line, details underneath. Tables for Outlook. */
+    const meta = [AL_SRC_NAME[x.src] || x.src, x.time_left ? x.time_left + " left" : ""].filter(Boolean).join(" · ");
+    const title = String(x.title || "").length > 90 ? String(x.title).slice(0, 87).replace(/\s+\S*$/, "") + "…" : String(x.title || "");
     return '<td width="50%" valign="top" style="padding:6px">' +
+      '<table width="100%" cellpadding="0" cellspacing="0" style="border:1.5px solid #d6c9b6;border-radius:4px;background:#ffffff;border-collapse:separate"><tr><td style="padding:0">' +
       '<a href="' + alEsc(epnUrl(env, x.url, "prowl-alerts")) + '" style="text-decoration:none;color:#2b2118;display:block">' +
-      (x.image ? '<img src="' + alEsc(x.image) + '" alt="" width="260" style="width:100%;max-width:260px;height:200px;object-fit:cover;border-radius:8px;display:block;background:#efe8dc">' : '<div style="height:200px;border-radius:8px;background:#efe8dc"></div>') +
-      '<div style="font:600 14px/1.35 Georgia,serif;margin:8px 0 2px">' + alEsc(x.title) + '</div>' +
-      '<div style="font:13px/1.4 Arial,sans-serif;color:#6b5b4a">' + alEsc(meta) + '</div>' +
-      '<div style="font:bold 13px Arial,sans-serif;color:#8a4b1f;margin-top:4px">View item →</div></a></td>';
+      (x.image ? '<img src="' + alEsc(x.image) + '" alt="" width="260" style="width:100%;max-width:260px;height:200px;object-fit:cover;display:block;background:#efe8dc;border-bottom:1.5px solid #d6c9b6">' : '<div style="height:200px;background:#efe8dc;border-bottom:1.5px solid #d6c9b6"></div>') +
+      '<div style="padding:10px 11px 12px">' +
+      '<div style="font:800 14px/1.3 Arial,sans-serif;letter-spacing:.02em;text-transform:uppercase;color:#2b2118">' + alEsc(title) + '</div>' +
+      (x.price ? '<div style="font:800 17px/1.3 Arial,sans-serif;color:#8a4b1f;margin-top:6px">' + alEsc(x.price) + '</div>' : '') +
+      (meta ? '<div style="font:13px/1.45 Arial,sans-serif;color:#6b5b4a;margin-top:3px">' + alEsc(meta) + '</div>' : '') +
+      '<div style="font:bold 13px Arial,sans-serif;color:#8a4b1f;margin-top:8px">View item →</div></div></a></td></tr></table></td>';
   };
   let body = "";
   hunts.forEach(h => {
