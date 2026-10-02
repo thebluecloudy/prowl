@@ -21,6 +21,6 @@ crons = ["*/15 * * * *"]
 EPN_CAMPAIGN_ID = "5339216838"
 # Prowl Alerts sign-ups: "beta" = only ALERT_ALLOW emails (while Alerts/Pro are
 # being finished; page v5.85 shows "Coming soon"). Set "public" to launch.
-ALERTS = "beta"
+ALERTS = "public"
 # Mailing address in every Prowl Alerts email footer (required by CAN-SPAM).
 ALERT_ADDRESS = "Owl & Twig Vintage · 6311 Haggerty Rd, Unit #699 · West Bloomfield, MI 48322"
