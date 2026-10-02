@@ -1834,11 +1834,13 @@ function alShell(env, inner, why, links) {
     '<a href="' + PROWL_PAGE + '" style="color:#8a4b1f;text-decoration:none">Prowl Alerts</a> <span style="color:#9a8b7a;font-weight:normal;letter-spacing:0;text-transform:none">by <a href="https://www.owlandtwigvintage.com" style="color:#9a8b7a">Owl &amp; Twig Vintage</a></span></td></tr>' +
     inner +
     '<tr><td style="padding:26px 12px 22px;font:12px/1.6 Arial,sans-serif;color:#9a8b7a;border-top:1px solid #efe8dc">' +
-    why + '<br>' + (links ? links + '<br>' : '') + alEsc(alAddr(env)) + ' · <a href="https://www.owlandtwigvintage.com" style="color:#9a8b7a">owlandtwigvintage.com</a>' +
+    why + '<br>' + (links ? links + '<br>' : '') + alCopy() + '<br>' + alEsc(alAddr(env)) + ' · <a href="https://www.owlandtwigvintage.com" style="color:#9a8b7a">owlandtwigvintage.com</a>' +
     '</td></tr></table></td></tr></table></body></html>';
 }
-function alWhy() { return 'You are getting this because you turned on Prowl Alerts at owlandtwigvintage.com/pages/prowl. One email a day for every hunt, from ShopGoodwill, eBay, Etsy and Chairish.'; }
-function alFootText(env, sub) { return ["", "--", "Prowl Alerts by Owl & Twig Vintage. You turned on Prowl Alerts at owlandtwigvintage.com/pages/prowl.", sub ? "Open Prowl signed in: " + alHomeUrl(sub) : "", sub ? "Unsubscribe: " + alUnsubUrl(sub) : "", alAddr(env) + " · owlandtwigvintage.com"].filter(Boolean).join("\n"); }
+function alWhy() { return 'You are getting this because you turned on Prowl Alerts at owlandtwigvintage.com/prowl. One email a day for every hunt, from ShopGoodwill, eBay, Etsy and Chairish.'; }
+/* v41: copyright line in every footer, above the mailing address. */
+function alCopy() { return 'Copyright \u00a9 ' + new Date().getUTCFullYear() + ' Owl &amp; Twig Vintage. All rights reserved.'; }
+function alFootText(env, sub) { return ["", "--", "Prowl Alerts by Owl & Twig Vintage. You turned on Prowl Alerts at owlandtwigvintage.com/prowl.", sub ? "Open Prowl signed in: " + alHomeUrl(sub) : "", sub ? "Unsubscribe: " + alUnsubUrl(sub) : "", "Copyright \u00a9 " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(Boolean).join("\n"); }
 
 /* The email. Tables and inline styles only: that is what Gmail and Outlook render. */
 function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
