@@ -14,6 +14,16 @@ keep_vars = true
 binding = "PROWL_ALERTS"
 id = "102ebd733ced41f3806399872dd19027"
 
+# v48: counters and the response cache live in a Durable Object. The Cache API
+# does nothing on workers.dev, so the daily caps were never enforced before this.
+[[durable_objects.bindings]]
+name = "CAPS"
+class_name = "Caps"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Caps"]
+
 [triggers]
 crons = ["*/15 * * * *"]
 
