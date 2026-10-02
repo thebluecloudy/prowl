@@ -748,6 +748,13 @@ async function readJson(request, max) {
   if (raw.length > max) return { big: true };
   try { const o = JSON.parse(raw); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; }
 }
+/* v46: "$143.96" reads like a lookup the model may not have made. Whole dollars only. */
+function noCents(s) {
+  const r = (d, c) => Math.round(Number(d.replace(/,/g, "")) + Number("0." + c)).toLocaleString("en-US");
+  return String(s || "")
+    .replace(/\$\s?(\d{1,3}(?:,\d{3})+|\d+)\.(\d{1,2})\b/g, (m, d, c) => "$" + r(d, c))
+    .replace(/(\$[\d,]+\s?[-\u2013]\s?)(\d{1,3}(?:,\d{3})+|\d+)\.(\d{1,2})\b/g, (m, a, d, c) => a + r(d, c));
+}
 function vClean(s, n) { return String(s == null ? "" : s).replace(/\s+/g, " ").trim().slice(0, n); }
 
 /* v43: like vCount, but says how many are left after this one (-1 = none left). */
@@ -872,7 +879,9 @@ async function verdict(request, env, origin) {
       if (left < 0) return json({ error: "free limit", limit: VERDICT_FREE_PER_DAY, pro: false }, 429, origin);
     }
   }
-  if (!(await capOk(request, env, "all", VERDICT_PER_DAY))) return json({ error: "busy today" }, 429, origin);
+  /* v46 red-team: the site-wide cap guards the bill against many free visitors;
+     paying members have their own ceiling, so a burned free pool never locks them out. */
+  if (left !== null && !(await capOk(request, env, "all", VERDICT_PER_DAY))) return json({ error: "busy today" }, 429, origin);
 
   const lines = comps.length ? comps.map(c => "- " + c.t + " | " + c.p + (c.s ? " (" + c.s + ")" : "")).join("\n") : "- none found";
   const head =
@@ -908,7 +917,9 @@ async function verdict(request, env, origin) {
   const it = /ITEM:\s*([^\n]+)/i.exec(a.content);
   const fixEbay = (x) => String(x || "").replace(/\bebay\b/gi, "eBay");
   if (!v) return json({ error: "ai answer unreadable" }, 502, origin);
-  const out = { basis: basis, verdict: v[1].toUpperCase(), item: it ? fixEbay(vClean(it[1], 140)) : "", fair: f ? vClean(f[1], 40) : "", why: w ? fixEbay(vClean(w[1], 200)) : "" };
+  const out = { basis: basis, verdict: v[1].toUpperCase(), item: it ? fixEbay(vClean(it[1], 140)) : "", fair: f ? noCents(vClean(f[1], 40)) : "", why: w ? noCents(fixEbay(vClean(w[1], 200))) : "" };
+  /* v46 red-team: only call it "sold" when the answer actually cites sold prices. */
+  if (out.basis === "sold" && !/\bsold\b/i.test(out.why)) out.basis = "listed";
   try {
     await cache.put(ckey, new Response(JSON.stringify(out), { headers: { "Cache-Control": "max-age=" + VERDICT_CACHE_SECONDS } }));
   } catch (e) {}
@@ -1074,7 +1085,7 @@ async function apPrice(b, request, origin, env) {
     const bm = /SOLD\s*(\d+)\D+ASKING\s*(\d+)/i.exec(pick("BASIS"));
     let nm = scrubListingText(pick("NAME"), 100).replace(/[<>]/g, "");
     if (/^same\b|unknown|not sure|cannot/i.test(nm) || nm.length < 6) nm = "";
-    o = { name: nm, fair: pick("FAIR PRICE"), why: pick("WHY"), basis: "sold", nSold: bm ? Number(bm[1]) : -1, nAsk: bm ? Number(bm[2]) : -1 };
+    o = { name: nm, fair: noCents(pick("FAIR PRICE")), why: noCents(pick("WHY")), basis: "sold", nSold: bm ? Number(bm[1]) : -1, nAsk: bm ? Number(bm[2]) : -1 };
     if (!o.fair) return json({ error: "price unavailable" }, 502, origin);
     try { await caches.default.put(ck, new Response(JSON.stringify(o), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=604800" } })); } catch (e) {}
   }
@@ -1586,7 +1597,7 @@ async function appraise(request, env, origin) {
       if (left < 0) return json({ error: "free limit", limit: PHOTO_FREE_PER_DAY, pro: false }, 429, origin);
     }
   }
-  if (!(await capOk(request, env, "ap:all", APPRAISE_PER_DAY))) return json({ error: "busy today" }, 429, origin);
+  if (left !== null && !(await capOk(request, env, "ap:all", APPRAISE_PER_DAY))) return json({ error: "busy today" }, 429, origin);
 
   let looks = [];
   if (mode === "fast") { try { looks = await ebayImageSearch(image, env); } catch (e) { looks = []; } }
@@ -1599,7 +1610,7 @@ async function appraise(request, env, origin) {
   }
   if (a.status !== 200 || !a.content) return json({ error: "ai " + a.status, detail: a.raw.slice(0, 200) }, 502, origin);
   const pick = (k) => { const m = new RegExp(k + ":\\s*([^\\n]+)", "i").exec(a.content); return m ? String(m[1]).replace(/\bebay\b/gi, "eBay").trim().slice(0, 220) : ""; };
-  const out = { basis: basis, item: pick("ITEM"), condition: pick("CONDITION"), flaws: pick("FLAWS"), fair: pick("FAIR PRICE"), verdict: pick("VERDICT"), why: pick("WHY"), sure: pick("SURE").toUpperCase().slice(0, 10), search: pick("SEARCH").replace(/["']/g, "").slice(0, 60) };
+  const out = { basis: basis, item: pick("ITEM"), condition: pick("CONDITION"), flaws: pick("FLAWS"), fair: noCents(pick("FAIR PRICE")), verdict: pick("VERDICT"), why: noCents(pick("WHY")), sure: pick("SURE").toUpperCase().slice(0, 10), search: pick("SEARCH").replace(/["']/g, "").slice(0, 60) };
   if (!out.item && !out.fair) return json({ error: "ai answer unreadable" }, 502, origin);
   /* v17: eBay's photo search always returns its nearest items, even weak ones.
      Show a lookalike only when its title shares a real word with the ID. */
@@ -1696,11 +1707,15 @@ async function alPro(env, email, force) {
     };
     /* v38: Prowl puts the Prowl Alerts email on the order line, because Shop Pay
        often checks out under a different address than the one in Prowl. */
-    const tagged = o => ((o.lineItems && o.lineItems.nodes) || []).some(li => (li.customAttributes || []).some(a => /prowl alerts email/i.test(a.key || "") && String(a.value || "").trim().toLowerCase() === email));
+    const tagOf = o => { let t = ""; ((o.lineItems && o.lineItems.nodes) || []).forEach(li => (li.customAttributes || []).forEach(a => { if (!t && /prowl alerts email/i.test(a.key || "")) t = String(a.value || "").trim().toLowerCase(); })); return t; };
+    const tagged = o => tagOf(o) === email;
+    /* v46 red-team: one paid order = one Pro member. An order tagged with a Prowl
+       Alerts email belongs to that email only, not also to the checkout email. */
+    const mine = o => tagged(o) || (String(o.email || "").toLowerCase() === email && !tagOf(o));
     const okPay = o => !o.cancelledAt && ["PAID", "PARTIALLY_REFUNDED", "AUTHORIZED"].indexOf(o.displayFinancialStatus) !== -1;
     let res = await ask(q, 5);
     if (res.err) return { pro: null, via: res.err };
-    let good = res.nodes.filter(o => okPay(o) && (String(o.email || "").toLowerCase() === email || tagged(o)));
+    let good = res.nodes.filter(o => okPay(o) && mine(o));
     if (!good.length) {
       res = await ask("sku:" + PRO_SKU + " AND created_at:>=" + since, 100);
       if (res.err) return { pro: null, via: res.err };
