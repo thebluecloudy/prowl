@@ -781,9 +781,13 @@ function noCents(s) {
 }
 /* v48: "sold" only when the answer cites a sold price, and is not saying it found none. */
 function soldCited(t) {
+  /* v48: a sold price must sit next to the word "sold" in the same clause
+     ("sold at $85", "$85 sold"), and the answer must not say sold data was
+     missing, scarce or not found. "Sold comps scarce; listings $68" is listed. */
   t = String(t || "");
-  if (!/\bsold\b/i.test(t) || !/\$\s?\d/.test(t)) return false;
-  return !/\b(no|not|none|zero|without|couldn'?t|could not|cannot|can'?t|unable)\b[^.]{0,40}\bsold\b|\bsold\b[^.]{0,25}\b(not found|none found|unavailable)\b/i.test(t);
+  if (/\b(no|not|none|zero|without|couldn'?t|could not|cannot|can'?t|unable|scarce|few|limited|lacking|missing|sparse|thin|rare)\b[^.;]{0,40}\bsold\b/i.test(t)) return false;
+  if (/\bsold\b[^.;]{0,25}\b(scarce|unavailable|not found|none found|lacking|missing|sparse|thin|limited|rare|few)\b/i.test(t)) return false;
+  return /\bsold\b[^.;$]{0,45}\$\s?\d/i.test(t) || /\$\s?\d[\d,]*(\s?[-\u2013]\s?\$?\s?\d[\d,]*)?\s+(sold|in sold)\b/i.test(t);
 }
 function vClean(s, n) { return String(s == null ? "" : s).replace(/\s+/g, " ").trim().slice(0, n); }
 
