@@ -731,12 +731,32 @@ function buildCandidates(Q) {
 const MUSE_URL = "https://api.meta.ai/v1/chat/completions";
 const MUSE_RESPONSES_URL = "https://api.meta.ai/v1/responses";
 const MUSE_MODEL = "muse-spark-1.1";
-const VERDICT_PER_IP = 20;       // per visitor per day
+const VERDICT_PER_IP = 20;       // per visitor per day (before v43)
+const VERDICT_FREE_PER_DAY = 3;  // v43: free Fair price checks per visitor per day
+const VERDICT_PRO_PER_DAY = 100; // v43: Prowl Pro, "unlimited" with a safety ceiling
 const VERDICT_PER_DAY = 400;     // whole site per day
 const VERDICT_CACHE_SECONDS = 86400;
 
 function vClean(s, n) { return String(s == null ? "" : s).replace(/\s+/g, " ").trim().slice(0, n); }
 
+/* v43: like vCount, but says how many are left after this one (-1 = none left). */
+async function vTake(name, limit) {
+  const cache = caches.default;
+  const day = new Date().toISOString().slice(0, 10);
+  const key = new Request("https://prowl-counters.invalid/" + encodeURIComponent(name) + "/" + day);
+  const hit = await cache.match(key);
+  const n = hit ? (Number(await hit.text()) || 0) : 0;
+  if (n >= limit) return -1;
+  await cache.put(key, new Response(String(n + 1), { headers: { "Cache-Control": "max-age=90000" } }));
+  return limit - n - 1;
+}
+/* v43: a signed-in Prowl Pro member (email + token from Prowl Alerts). */
+async function proMember(env, b) {
+  const email = alEmail(b && b.e), t = String((b && b.t) || "");
+  if (!email || !t || !env || !env.PROWL_ALERTS) return null;
+  const sub = await kvGet(env, "sub:" + email, null);
+  return sub && sub.pro && alSame(t, sub.tok) ? email : null;
+}
 async function vCount(name, limit) {
   const cache = caches.default;
   const day = new Date().toISOString().slice(0, 10);
@@ -828,7 +848,17 @@ async function verdict(request, env, origin) {
   if (hit) return json(JSON.parse(await hit.text()), 200, origin, { "X-Prowl-Cache": "hit" });
 
   const ip = request.headers.get("CF-Connecting-IP") || "anon";
-  if (!(await capOk(request, env, "ip:" + ip, VERDICT_PER_IP))) return json({ error: "daily limit", limit: VERDICT_PER_IP }, 429, origin);
+  /* v43: free = 3 checks a day per visitor; Prowl Pro = unlimited (100/day ceiling). */
+  let left = null;
+  if (!isOwner(request, env)) {
+    const pro = await proMember(env, b);
+    if (pro) {
+      if (!(await vCount("pro:" + pro, VERDICT_PRO_PER_DAY))) return json({ error: "daily limit", limit: VERDICT_PRO_PER_DAY, pro: true }, 429, origin);
+    } else {
+      left = await vTake("fp:" + ip, VERDICT_FREE_PER_DAY);
+      if (left < 0) return json({ error: "free limit", limit: VERDICT_FREE_PER_DAY, pro: false }, 429, origin);
+    }
+  }
   if (!(await capOk(request, env, "all", VERDICT_PER_DAY))) return json({ error: "busy today" }, 429, origin);
 
   const lines = comps.length ? comps.map(c => "- " + c.t + " | " + c.p + (c.s ? " (" + c.s + ")" : "")).join("\n") : "- none found";
@@ -869,7 +899,7 @@ async function verdict(request, env, origin) {
   try {
     await cache.put(ckey, new Response(JSON.stringify(out), { headers: { "Cache-Control": "max-age=" + VERDICT_CACHE_SECONDS } }));
   } catch (e) {}
-  return json(out, 200, origin, { "X-Prowl-Cache": "miss" });
+  return json(left === null ? out : Object.assign({}, out, { left: left, free: VERDICT_FREE_PER_DAY }), 200, origin, { "X-Prowl-Cache": "miss" });
 }
 
 /* Open in a tab after deploying: is the key set, does Muse answer? Never
@@ -1673,6 +1703,15 @@ async function alProSet(env, sub, force) {
   return sub.pro;
 }
 const PROWL_PAGE = "https://www.owlandtwigvintage.com/pages/prowl";
+/* v43: sites Prowl cannot show live, linked from every hunt in the email. */
+const AL_ALSO = [
+  ["Facebook", q => "https://www.facebook.com/marketplace/search/?query=" + encodeURIComponent(q)],
+  ["Mercari", q => "https://www.mercari.com/search/?keyword=" + encodeURIComponent(q)],
+  ["Ruby Lane", q => "https://www.rubylane.com/search?q=" + encodeURIComponent(q)],
+  ["LiveAuctioneers", q => "https://www.liveauctioneers.com/search/?keyword=" + encodeURIComponent(q)],
+  ["Invaluable", q => "https://www.invaluable.com/search?keyword=" + encodeURIComponent(q).replace(/%20/g, "+")],
+  ["HiBid", q => "https://hibid.com/lots?search=" + encodeURIComponent(q)]
+];
 const WORKER_BASE = "https://prowl.thebluecloud.workers.dev";
 
 function alMode(env) { return String((env && env.ALERTS) || "beta").toLowerCase(); }
@@ -1721,6 +1760,8 @@ function alReady(env) { return !!(env && env.PROWL_ALERTS && alMode(env) !== "of
 /* v37: the member's own link back into Prowl. Same token as the unsubscribe link,
    so it signs that browser in. Kept in the hash, so it never reaches a server log. */
 function alHomeUrl(sub) { return PROWL_PAGE + "?alerts=in#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok; }
+/* v43: same sign-in link, but Prowl opens straight on the Daily screen. */
+function alDailyUrl(sub) { return PROWL_PAGE + "?alerts=in&daily=1#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok; }
 /* v38: the upgrade link in emails signs in and goes straight to the Pro checkout
    (the product page alone cannot add a subscription-only item to the cart). */
 function alUpgradeUrl(sub) { return PROWL_PAGE + "?alerts=in&upgrade=1#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok; }
@@ -1868,7 +1909,8 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
       '<td style="font:bold 19px Georgia,serif;color:#2b2118">' + alEsc(h) + ' <span style="font:normal 14px Arial,sans-serif;color:#6b5b4a">· ' + list.length + ' new</span></td>' +
       '<td align="right"><a href="' + alEsc(PROWL_PAGE + "?q=" + encodeURIComponent(h)) + '" style="font:bold 13px Arial,sans-serif;color:#8a4b1f">See all on Prowl</a></td></tr></table></td></tr><tr><td><table width="100%" cellpadding="0" cellspacing="0">';
     for (let i = 0; i < shown.length; i += 2) body += "<tr>" + card(shown[i]) + (shown[i + 1] ? card(shown[i + 1]) : '<td width="50%"></td>') + "</tr>";
-    body += "</table>" + (more > 0 ? '<p style="font:13px Arial,sans-serif;margin:4px 12px"><a href="' + alEsc(PROWL_PAGE + "?q=" + encodeURIComponent(h)) + '" style="color:#8a4b1f">+' + more + ' more for ' + alEsc(h) + '</a></p>' : "") +
+    const also = AL_ALSO.map(a => '<a href="' + alEsc(a[1](h)) + '" style="color:#8a4b1f">' + a[0] + '</a>').join(' · ');
+    body += "</table>" + '<p style="font:13px/1.6 Arial,sans-serif;color:#6b5b4a;margin:8px 12px 0"><b>Also search:</b> ' + also + '</p>' + (more > 0 ? '<p style="font:13px Arial,sans-serif;margin:4px 12px"><a href="' + alEsc(PROWL_PAGE + "?q=" + encodeURIComponent(h)) + '" style="color:#8a4b1f">+' + more + ' more for ' + alEsc(h) + '</a></p>' : "") +
       '<p style="font:12px Arial,sans-serif;color:#9a8b7a;margin:4px 12px 0"><a href="' + alEsc(alUnsubUrl(sub, h)) + '" style="color:#9a8b7a">Stop emails for ' + alEsc(h) + '</a></p></td></tr>';
   });
   let shop = "";
@@ -1887,6 +1929,7 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
   const inner = banner +
     '<tr><td style="padding:12px 12px 6px;font:bold 24px Georgia,serif;color:#2b2118">' + (test ? 'Your hunts right now · ' + total + ' listing' + (total === 1 ? "" : "s") : total + ' new find' + (total === 1 ? "" : "s")) + '</td></tr>' +
     '<tr><td style="padding:0 12px;font:14px/1.5 Arial,sans-serif;color:#6b5b4a">' + sumLine + '</td></tr>' +
+    (test ? '' : '<tr><td style="padding:14px 12px 2px"><a href="' + alEsc(alDailyUrl(sub)) + '" style="display:inline-block;background:#8a4b1f;color:#ffffff;padding:11px 18px;border-radius:6px;text-decoration:none;font:bold 14px Arial,sans-serif">See every hunt live on Prowl Daily</a></td></tr>') +
     body + shop;
   const links = '<a href="' + alEsc(alHomeUrl(sub)) + '" style="color:#8a4b1f">Open Prowl signed in · change your hunts</a> · <a href="' + alEsc(alUnsubUrl(sub)) + '" style="color:#9a8b7a">Unsubscribe</a>';
   const all = sub.allCount || sub.hunts.length, free = alFree(env);
@@ -1900,7 +1943,8 @@ function alEmailText(sub, pend, env) {
   sub.hunts.filter(h => pend[h] && pend[h].length).forEach(h => {
     lines.push(h.toUpperCase() + " (" + pend[h].length + " new)");
     pend[h].slice(0, AL_PER_HUNT_EMAIL).forEach(x => lines.push("- " + x.title + (x.price ? " " + x.price : "") + " [" + (AL_SRC_NAME[x.src] || x.src) + "] " + epnUrl(env, x.url, "prowl-alerts")));
-    lines.push("All: " + PROWL_PAGE + "?q=" + encodeURIComponent(h), "");
+    lines.push("All: " + PROWL_PAGE + "?q=" + encodeURIComponent(h));
+    lines.push("Also search: " + AL_ALSO.map(a => a[0] + " " + a[1](h)).join(" | "), "");
   });
   return lines.join("\n") + alFootText(env, sub);
 }
