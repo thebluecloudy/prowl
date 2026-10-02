@@ -1752,7 +1752,7 @@ const AL_ALSO = [
   ["Ruby Lane", q => "https://www.rubylane.com/search?q=" + encodeURIComponent(q)],
   ["LiveAuctioneers", q => "https://www.liveauctioneers.com/search/?keyword=" + encodeURIComponent(q)],
   ["Invaluable", q => "https://www.invaluable.com/search?keyword=" + encodeURIComponent(q).replace(/%20/g, "+")],
-  ["HiBid", q => "https://hibid.com/lots?search=" + encodeURIComponent(q)]
+  ["HiBid", q => "https://hibid.com/lots?q=" + encodeURIComponent(q)]   // v47: HiBid ignores ?search=
 ];
 const WORKER_BASE = "https://prowl.thebluecloud.workers.dev";
 
