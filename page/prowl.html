@@ -977,6 +977,18 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper .dx-clear{margin:6px 16px 12px }
 .scout-app-wrapper .dx-acts .dx-clear{margin:0 }
 .scout-app-wrapper .dx-empty{margin:0;font-size:13px;color:var(--mu);line-height:1.5 }
+.scout-app-wrapper .dx .dx-res summary{min-height:0;padding:8px 6px }
+.scout-app-wrapper .dx .dx-res summary small{background:none;padding:0;font-weight:600;color:var(--mu) }
+.scout-app-wrapper .dx .dx-res summary::after{content:'\25BE' }
+.scout-app-wrapper .dx .dx-res details[open]>summary::after{content:'\25B4' }
+.scout-app-wrapper .dx-res{border-top:1px solid var(--ln) }
+.scout-app-wrapper .dx-res .dx-row{border-top:0 }
+.scout-app-wrapper .dx-dl{margin:0;padding:2px 12px 0;font-size:13px;line-height:1.45 }
+.scout-app-wrapper .dx-dl dt{font-weight:800;margin:8px 0 0 }
+.scout-app-wrapper .dx-dl dd{margin:2px 0 0;overflow-wrap:anywhere }
+.scout-app-wrapper ol.dx-src{margin:10px 0 0;padding:0 12px 0 32px;font-size:13px;line-height:1.45 }
+.scout-app-wrapper ol.dx-src a{color:var(--ac);overflow-wrap:anywhere }
+.scout-app-wrapper .dx-res .dx-acts{border-top:0;padding:10px 12px 12px }
 .scout-app-wrapper .dx-stats{padding:15px 0;border-bottom:1px solid var(--ln) }
 .scout-app-wrapper .dx-stats h3{margin:0 0 3px;font-size:14px;font-weight:700 }
 .scout-app-wrapper .dx-stats p{margin:0 0 10px;font-size:12px;color:var(--mu);line-height:1.5 }
@@ -1291,6 +1303,8 @@ window.prowlEpn=function(u,cid){
   }
   /* v5.53 Research this piece: the Worker runs a web-search model (Meta Muse) and returns plain fields plus sources. */
   var RESEARCH_ON=true,RAPI='https://prowl.thebluecloud.workers.dev/research';
+  /* v6.08: a small JPEG of the photo for saved research (longest side 480px) */
+  function resThumb(s,cb){var im=new Image();im.onerror=function(){cb('')};im.onload=function(){try{var k=Math.min(1,480/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*k));c.height=Math.max(1,Math.round(im.height*k));c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',0.7))}catch(e){cb('')} };im.src=s;}
   function researchIt(name,btn,r,src){
     if(btn.disabled)return;btn.disabled=true;btn.textContent='Researching\u2026 up to a minute';
     var old=document.getElementById('otp-aprRes');if(old&&old.parentNode)old.parentNode.removeChild(old);
@@ -1338,6 +1352,13 @@ window.prowlEpn=function(u,cid){
       });
       d.appendChild(shr);
       O.appendChild(d);try{d.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}
+      /* v6.08: keep this research on the device, so it can be read again without researching twice */
+      if(typeof window.prowlSaveResearch==='function'){
+        var keepRows=[];for(var kr=0;kr<rows.length;kr++){if(rows[kr][1])keepRows.push([rows[kr][0],String(rows[kr][1])]);}
+        var keep=function(th){var okS=false;try{okS=window.prowlSaveResearch({item:j.item||name,rows:keepRows,src:src.slice(0,6),fair:(r&&r.fair)||'',thumb:th||'',at:Date.now()});}catch(e){}
+          if(okS){var sv=document.createElement('p');sv.className='apr-note';sv.textContent='Saved on this device. Find it any time in Den \u203a All hunts \u203a Saved research.';d.appendChild(sv);} };
+        if(pic)resThumb(pic,keep);else keep('');
+      }
     }).catch(function(){done();});
   }
   var APR_AI=true; /* v5.51: AI photo check is back on; lensStep kept for a no-AI fallback */
@@ -1504,6 +1525,7 @@ window.prowlEpn=function(u,cid){
       <div class="dx-wrap" id="otp-denAcct"></div>
       <ul class="tl" id="otp-denList"></ul>
       <div class="dx-wrap" id="otp-denFinds"></div>
+      <div class="dx-wrap" id="otp-denRes"></div>
       <div class="dx-wrap" id="otp-denRuns"></div>
     </div>
     <div class="denPane" id="otp-denLocal" hidden>
@@ -1800,7 +1822,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.07';
+var PROWL_VERSION='v6.08';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -2897,8 +2919,9 @@ $('#otp-sa').addEventListener('click',function(){
      v2  {v, list, searchLog, omniExcluded, fbHub, clHub, dimWindow}
      v3  {hunts, locked, selected, mkt, city, theme}
      v4  v3 + runs, finds, mktStats (v6.02, each optional on import)
+     v5  v4 + research (v6.08, optional on import)
    plus any of the above base64-encoded. */
-var BACKUP_V=4,IMPORT_MAX=200;
+var BACKUP_V=5,IMPORT_MAX=200;
 
 function exportData(){
   var payload={
@@ -2912,6 +2935,7 @@ function exportData(){
     fbHub:st.fbHub||'local',   /* v6.00: restore already reads these two */
     one:oneId(),
     runs:runsGet(),finds:findsGet(),mktStats:statsGet(),   /* v6.02 */
+    research:resGet(),   /* v6.08 */
     list:st.hunts.slice()
   };
   var name='prowl-backup-'+new Date().toISOString().slice(0,10)+'.json';
@@ -3034,12 +3058,12 @@ $('#otp-impTextBtn').addEventListener('click',function(){
 $('#otp-themeBtn').addEventListener('click',cycleTheme);
 $('#otp-themeBtn2').addEventListener('click',cycleTheme);
 $('#otp-clearBtn').addEventListener('click',function(){
-  if(!confirm('Clear all saved data? This removes your hunts, locks, marketplace picks, city, Goodwill chips, new-listing counts, saved finds, recent runs and marketplace stats. Prowl Alerts emails are not affected.'))return;
+  if(!confirm('Clear all saved data? This removes your hunts, locks, marketplace picks, city, Goodwill chips, new-listing counts, saved finds, saved research, recent runs and marketplace stats. Prowl Alerts emails are not affected.'))return;
   /* v5.97: a signed-in member's email hunts must survive. Hold the sync, forget
      the last-synced list, and pull the list back from the Worker afterwards. */
   var member=!!(mGet('alertTok')&&mGet('alertEmail'));
   if(member){clearTimeout(MAIL.timer);MAIL.ready=false;mSet('alertSig','')}
-  try{localStorage.removeItem(LS);localStorage.removeItem(SGW_KEY);localStorage.removeItem('prowl.lastHunt');localStorage.removeItem(SEEN_KEY);localStorage.removeItem(RUNS_KEY);localStorage.removeItem(FINDS_KEY);localStorage.removeItem(STATS_KEY)}catch(e){}FC=null;rDenX();
+  try{localStorage.removeItem(LS);localStorage.removeItem(SGW_KEY);localStorage.removeItem('prowl.lastHunt');localStorage.removeItem(SEEN_KEY);localStorage.removeItem(RUNS_KEY);localStorage.removeItem(FINDS_KEY);localStorage.removeItem(STATS_KEY);localStorage.removeItem(RES_KEY)}catch(e){}FC=null;RC=null;rDenX();
   st.hunts=DEF.slice();st.sel=new Set();st.lock=new Set();st.mkt=new Set(ALL);st.city='';st.fbHub='local';st.one=ONE_DEFAULT;
   /* v5.87 (B1): save the cleared state, or the next load re-imports the old
      owlTwigSearches list through legacySeed(). */
@@ -4633,7 +4657,7 @@ function applyDeepLink(){
    prowl.finds: up to 200 live listings starred with the card's star.
    prowl.mktStats: per marketplace, tabs opened (o) and finds saved (f). */
 var RUNS_KEY='prowl.runs',FINDS_KEY='prowl.finds',STATS_KEY='prowl.mktStats',RUNS_MAX=25,FINDS_MAX=200;
-var FC=null,SVI={},SVN=0,xOpen={runs:false,finds:true};
+var FC=null,SVI={},SVN=0,xOpen={runs:false,finds:true,res:true};
 function xGet(k,d){try{var v=JSON.parse(localStorage.getItem(k)||'null');return v==null?d:v}catch(e){return d} }
 function xSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){} }
 function mktName(id){var m=mb(id);return m?m.n:(LIVE_NAME[id]||String(id||''))}
@@ -4752,6 +4776,75 @@ function rDenFinds(){
   h+='</ul><div class="dx-acts"><button type="button" class="b p dx-csv" data-csv="1">Export CSV</button><button type="button" class="sgw-ml" data-fxc="1">Clear all</button></div></details>';
   box.innerHTML=h;
 }
+/* v6.08 saved research (prowl.research): newest first, RES_MAX kept, a small photo each */
+var RES_KEY='prowl.research',RES_MAX=20,RC=null;
+function resStr(v,n){return String(v==null?'':v).replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'').slice(0,n)}
+function resClean(r){
+  if(!r||typeof r!=='object')return null;
+  var item=resStr(r.item,120),rows=[],sr=[],i,x,th;
+  if(!item)return null;
+  if(Array.isArray(r.rows))for(i=0;i<r.rows.length&&rows.length<8;i++){x=r.rows[i];if(Array.isArray(x)&&x.length>1&&resStr(x[1],1))rows.push([resStr(x[0],30),resStr(x[1],700)])}
+  if(Array.isArray(r.src))for(i=0;i<r.src.length&&sr.length<6;i++){x=r.src[i];if(x&&typeof x.url==='string'&&/^https:\/\//i.test(x.url)&&x.url.length<600)sr.push({title:resStr(x.title,90),url:x.url})}
+  th=(typeof r.thumb==='string'&&r.thumb.length<160000&&/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(r.thumb))?r.thumb:'';
+  return {item:item,rows:rows,src:sr,fair:resStr(r.fair,30),thumb:th,at:Number(r.at)||0};
+}
+function resGet(){
+  if(RC)return RC.slice();
+  var a=xGet(RES_KEY,[]),out=[],i,c;
+  if(Array.isArray(a))for(i=0;i<a.length&&out.length<RES_MAX;i++){c=resClean(a[i]);if(c)out.push(c)}
+  RC=out;return out.slice();
+}
+function resPut(a){
+  a=a.slice(0,RES_MAX);
+  for(;;){
+    try{localStorage.setItem(RES_KEY,JSON.stringify(a));RC=a;return true}catch(e){}
+    if(a.length>1){a.pop();continue}          /* device storage full: drop the oldest */
+    if(a.length===1&&a[0].thumb){a[0].thumb='';continue}
+    RC=null;return false;
+  }
+}
+window.prowlSaveResearch=function(r){
+  var c=resClean(r);if(!c)return false;
+  if(!c.at)c.at=Date.now();
+  var low=c.item.toLowerCase(),a=resGet().filter(function(x){return x.item.toLowerCase()!==low});
+  a.unshift(c);var ok=resPut(a);rDenResearch();return ok;
+};
+function resText(c){
+  var L=['Field notes: '+c.item,''],i,k=0;
+  for(i=0;i<c.rows.length;i++)L.push(c.rows[i][0]+': '+c.rows[i][1]);
+  for(i=0;i<c.src.length;i++){if(!k){L.push('');L.push('Sources:')}k++;L.push(k+'. '+c.src[i].title+' '+c.src[i].url)}
+  L.push('');L.push('Researched with Prowl: https://www.owlandtwigvintage.com/pages/prowl?utm_source=share&utm_medium=research');
+  return L.join('\n');
+}
+function resFile(c){
+  try{if(!c.thumb)return null;var bs=atob(c.thumb.split(',')[1]),ar=new Uint8Array(bs.length);for(var k=0;k<bs.length;k++)ar[k]=bs.charCodeAt(k);return new File([ar],'prowl-research.jpg',{type:'image/jpeg'})}catch(e){return null}
+}
+function resShare(i){
+  var c=resGet()[i];if(!c)return;
+  var txt=resText(c),ttl='Field notes: '+c.item,f=resFile(c),ok=false;
+  function copyIt(){if(copyTerm(txt))toast('Copied. Paste it anywhere.',2200)}
+  function textOnly(){if(navigator.share)navigator.share({title:ttl,text:txt}).catch(function(e){if(!e||e.name!=='AbortError')copyIt()});else copyIt()}
+  try{ok=!!(f&&navigator.share&&navigator.canShare&&navigator.canShare({files:[f]}))}catch(e){}
+  if(!ok){textOnly();return}
+  navigator.share({files:[f],title:ttl,text:txt}).catch(function(e){if(!e||e.name!=='AbortError')textOnly()});
+}
+function rDenResearch(){
+  var box=$('#otp-denRes');if(!box)return;
+  var a=resGet(),h;
+  if(!a.length){box.innerHTML='';return}
+  h='<details class="dx" data-dx="res"'+(xOpen.res?' open':'')+'><summary><b>Saved research</b><small>'+a.length+'</small></summary><ul class="dx-list">';
+  a.forEach(function(c,i){
+    var meta=[c.fair?'Fair price '+c.fair:'',c.at?ago(c.at):''].filter(Boolean).join(' · ');
+    h+='<li class="dx-res"><details><summary class="dx-row dx-find">'+(c.thumb?'<img src="'+esc(c.thumb)+'" alt="">':'<span class="dx-noimg"></span>')+
+      '<span class="dx-txt"><b>'+esc(c.item)+'</b><small>'+esc(meta)+'</small></span></summary><dl class="dx-dl">';
+    c.rows.forEach(function(r){h+='<dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd>'});
+    h+='</dl>';
+    if(c.src.length){h+='<ol class="dx-src">';c.src.forEach(function(s){h+='<li><a href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer">'+esc(s.title||s.url)+'</a></li>'});h+='</ol>'}
+    h+='<div class="dx-acts"><button type="button" class="b p" data-rsh="'+i+'">Share</button><button type="button" class="sgw-ml" data-rsx="'+i+'">Remove</button></div></details></li>';
+  });
+  h+='</ul><div class="dx-acts"><button type="button" class="sgw-ml" data-rsc="1">Clear all</button></div></details>';
+  box.innerHTML=h;
+}
 function csvCell(v){v=String(v==null?'':v);if(/^[=+\-@\t\r]/.test(v))v="'"+v;return '"'+v.replace(/"/g,'""')+'"'}
 function findsCsv(a){
   var rows=[['Title','Price','Marketplace','Link','Hunt','Saved']];
@@ -4808,7 +4901,7 @@ function rDenStats(){
   h+='</ul><button type="button" class="sgw-ml dx-clear" data-stc="1">Reset these numbers</button></div>';
   box.innerHTML=h;
 }
-function rDenX(){rDenFinds();rDenRuns();rDenStats()}
+function rDenX(){rDenFinds();rDenResearch();rDenRuns();rDenStats()}
 
 /* backup v4: replace a list only when the backup carries it */
 function xImport(o){
@@ -4816,6 +4909,7 @@ function xImport(o){
   if(Array.isArray(o.runs)){out=[];for(i=0;i<o.runs.length&&out.length<RUNS_MAX;i++){c=runClean(o.runs[i]);if(c)out.push(c)}xSet(RUNS_KEY,out)}
   if(Array.isArray(o.finds)){out=[];seen=Object.create(null);for(i=0;i<o.finds.length&&out.length<FINDS_MAX;i++){c=findClean(o.finds[i]);if(c&&!seen[c.url]){seen[c.url]=1;out.push(c)} }findsPut(out)}
   if(o.mktStats&&typeof o.mktStats==='object'&&!Array.isArray(o.mktStats)){xSet(STATS_KEY,o.mktStats);xSet(STATS_KEY,statsGet())}
+  if(Array.isArray(o.research)){out=[];for(i=0;i<o.research.length&&out.length<RES_MAX;i++){c=resClean(o.research[i]);if(c)out.push(c)}resPut(out)}   /* v6.08 */
   FC=null;rDenX();
 }
 
@@ -4827,6 +4921,9 @@ document.addEventListener('click',function(e){
   if((x=t.closest('[data-rp]'))){runReplay(+x.getAttribute('data-rp'));return}
   if(t.closest('[data-rpc]')){xSet(RUNS_KEY,[]);rDenRuns();toast('Recent runs cleared.',1800);return}
   if((x=t.closest('[data-fx]'))){var a=findsGet(),k=+x.getAttribute('data-fx'),gone=a[k];if(!gone)return;a.splice(k,1);findsPut(a);rDenFinds();svPaint(gone.url);return}
+  if((x=t.closest('[data-rsh]'))){resShare(+x.getAttribute('data-rsh'));return}   /* v6.08 */
+  if((x=t.closest('[data-rsx]'))){var ra=resGet();ra.splice(+x.getAttribute('data-rsx'),1);resPut(ra);rDenResearch();return}
+  if(t.closest('[data-rsc]')){if(!confirm('Remove all '+resGet().length+' saved research notes?'))return;resPut([]);rDenResearch();return}
   if(t.closest('[data-fxc]')){if(!confirm('Remove all '+findsGet().length+' saved finds? Export the CSV first if you want a copy.'))return;var old=findsGet();findsPut([]);rDenFinds();old.forEach(function(f){svPaint(f.url)});return}
   if(t.closest('[data-csv]')){exportFinds();return}
   if(t.closest('[data-stc]')){xSet(STATS_KEY,{});rDenStats();toast('Marketplace numbers reset.',1800);return}
