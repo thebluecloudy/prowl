@@ -15,6 +15,16 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v55: free month + billing emails (2026-10-03). PROWLMONTH / $0 order = trial; welcome and
+ *        3-day reminder emails; unsubscribe turns emails off, Pro and hunts stay; /alerts/mail,
+ *        /alerts/delete; new free members get 1 hunt weekly; free photo/Fair checks 1 a day.
+ *   v54: change email (2026-10-03). POST /alerts/move + /alerts/move-confirm move a membership
+ *        to a new address after the new address confirms; status answers moved:<to> for the
+ *        old address so other devices follow; store sign-in also matches by customer id.
+ *   v53: local time (2026-10-03). prefs.tz (IANA zone from the member's browser) makes the
+ *        slot hour, weekday, pause and once-a-day marker follow the member's own clock.
+ *   v52: send time (2026-10-03). prefs.slot = 6, 7, 12 or 18 picks the Detroit hour the
+ *        member's email goes out (0 or missing = ALERT_HOUR). The cron is unchanged.
  *   v51: review fixes (2026-10-02). Cron writes merge onto a fresh sub: record (never undo an
  *        unsubscribe or a settings save); counters fail closed when the Durable Object errors;
  *        a separate unsubscribe token (utok) in email links; unsubscribe/confirm/sign-in act on
@@ -767,7 +777,7 @@ const MUSE_URL = "https://api.meta.ai/v1/chat/completions";
 const MUSE_RESPONSES_URL = "https://api.meta.ai/v1/responses";
 const MUSE_MODEL = "muse-spark-1.1";
 const VERDICT_PER_IP = 20;       // per visitor per day (before v43)
-const VERDICT_FREE_PER_DAY = 3;  // v43: free Fair price checks per visitor per day
+const VERDICT_FREE_PER_DAY = 1;  // v43: free Fair price checks per visitor per day (v55: was 3)
 const VERDICT_PRO_PER_DAY = 100; // v43: Prowl Pro, "unlimited" with a safety ceiling
 const VERDICT_PER_DAY = 400;     // whole site per day
 const VERDICT_FREE_PER_NET = 20; // v48: free checks per neighbourhood (IPv4 /24, IPv6 /48) per day
@@ -1119,7 +1129,7 @@ async function museTest(env, url) {
    lean on real sold prices), then plain Chat Completions if that fails. */
 const APPRAISE_PER_IP = 25;
 const APPRAISE_PER_DAY = 250;
-const PHOTO_FREE_PER_DAY = 2;  // v45: free photo checks per visitor per day
+const PHOTO_FREE_PER_DAY = 1;  // v45: free photo checks per visitor per day (v55: was 2)
 const PHOTO_PRO_PER_DAY = 25;  // v49: Prowl Pro photo checks per day (was 15)
 const PHOTO_FREE_PER_NET = 12; // v48: free photo checks per neighbourhood per day
 
@@ -1861,6 +1871,33 @@ const AL_SRC_NAME = { shopgoodwill: "ShopGoodwill", ebay: "eBay", etsy: "Etsy", 
    (site + words), so an auction that ends and is relisted is not "new" again. */
 const AL_FREQ_DAYS = { daily: [0, 1, 2, 3, 4, 5, 6], mwf: [1, 3, 5], weekly: [1] };
 const AL_FREQ_NAME = { daily: "every morning", mwf: "Monday, Wednesday and Friday mornings", weekly: "Monday mornings" };
+/* v52: the hours a member may pick. 0 means the default ALERT_HOUR. */
+const AL_SLOTS = [6, 7, 12, 18];
+/* v53: a zone is kept only if Intl knows it. Results are cached per isolate. */
+const AL_TZ_OK = new Map();
+function alTzClean(z) {
+  z = String(z || "");
+  if (!z || z.length > 64 || !/^[A-Za-z][A-Za-z0-9_+\-]*(\/[A-Za-z0-9_+\-]+){0,2}$/.test(z)) return "";
+  if (AL_TZ_OK.has(z)) return AL_TZ_OK.get(z);
+  let ok = "";
+  try { new Intl.DateTimeFormat("en-US", { timeZone: z }).format(0); ok = z; } catch (e) { ok = ""; }
+  if (AL_TZ_OK.size < 500) AL_TZ_OK.set(z, ok);
+  return ok;
+}
+/* v53: the member's own day, hour and weekday (Detroit when no zone is saved). */
+function alNowIn(tz) {
+  const p = new Intl.DateTimeFormat("en-CA", { timeZone: tz || AL_TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23", weekday: "short" }).formatToParts(new Date());
+  const g = t => (p.find(x => x.type === t) || {}).value || "";
+  const wd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(g("weekday").slice(0, 3));
+  return { day: g("year") + "-" + g("month") + "-" + g("day"), hour: Number(g("hour")) || 0, wday: wd < 0 ? new Date().getUTCDay() : wd };
+}
+function alLocal(sub, now) { const z = alPrefs(sub).tz; return z && z !== AL_TZ ? alNowIn(z) : now; }
+function alSlotHour(env, sub) { const s = alPrefs(sub).slot; return s ? s : alHour(env); }
+function alPartOfDay(h) { return h >= 17 ? "evening" : (h >= 12 ? "afternoon" : "morning"); }
+function alFreqName(env, sub) {
+  const p = alPrefs(sub), part = alPartOfDay(alSlotHour(env, sub));
+  return AL_FREQ_NAME[p.freq].replace(/morning/g, part);
+}
 const AL_SKIP_MAX = 12, AL_SKIP_LEN = 24, AL_MAX_PRICE = 100000;
 function alWords(s) { return " " + String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() + " "; }
 function alPrefs(sub) {
@@ -1873,11 +1910,13 @@ function alPrefs(sub) {
     mute: Array.isArray(p.mute) ? p.mute.map(h => vClean(h, 60).toLowerCase()).filter(Boolean).slice(0, AL_MAX_HUNTS) : [],
     max: max > 0 ? Math.min(max, AL_MAX_PRICE) : 0,
     skip: Array.isArray(p.skip) ? p.skip.map(w => alWords(vClean(w, AL_SKIP_LEN)).trim()).filter(Boolean).slice(0, AL_SKIP_MAX) : [],
-    pause: /^\d{4}-\d{2}-\d{2}$/.test(String(p.pause || "")) ? String(p.pause) : ""
+    pause: /^\d{4}-\d{2}-\d{2}$/.test(String(p.pause || "")) ? String(p.pause) : "",
+    slot: AL_SLOTS.indexOf(Number(p.slot)) !== -1 ? Number(p.slot) : 0,   /* v52 */
+    tz: alTzClean(p.tz)   /* v53 */
   };
 }
 function alPaused(sub, now) { const p = alPrefs(sub).pause; return !!p && now.day < p; }
-function alSendDay(sub, now) { return AL_FREQ_DAYS[alPrefs(sub).freq].indexOf(now.wday) !== -1; }
+function alSendDay(sub, now) { return AL_FREQ_DAYS[alFreeWeekly(sub) ? "weekly" : alPrefs(sub).freq].indexOf(now.wday) !== -1; }   /* v55: new free = Mondays */
 function alPrice(s) { const m = /(\d[\d,]*)(\.\d+)?/.exec(String(s || "")); return m ? Number(m[1].replace(/,/g, "")) : NaN; }
 function alTitleKey(x) { return "t:" + String(x.src || "") + "|" + alWords(x.title).trim().slice(0, 100); }
 function alFilter(sub, items) {
@@ -1898,10 +1937,19 @@ function alFilter(sub, items) {
 const PRO_SKU = "PROWL-PRO-MONTHLY";
 const PRO_URL = "https://www.owlandtwigvintage.com/products/prowl-pro";
 const PRO_DAYS = 35;
-function alFree(env) { const n = parseInt((env && env.ALERT_FREE_HUNTS) || "3", 10); return n > 0 ? n : 3; }
+const PRO_TRIAL_CODE = "PROWLMONTH";   /* v55 */
+const PRO_MANAGE_URL = "https://www.owlandtwigvintage.com/account";
+/* v55: members created before AL_FREE_CUTOFF keep the old free plan (3 hunts, any day). */
+const AL_FREE_CUTOFF = "2026-10-04";
+function alLegacyFree(sub) { return !!sub && (!sub.created || String(sub.created) < AL_FREE_CUTOFF); }
+function alFree(env, sub) {
+  if (sub === undefined || alLegacyFree(sub)) { const n = parseInt((env && env.ALERT_FREE_HUNTS) || "3", 10); return n > 0 ? n : 3; }
+  const m = parseInt((env && env.ALERT_FREE_HUNTS_NEW) || "1", 10); return m > 0 ? m : 1;
+}
+function alFreeWeekly(sub) { return !!sub && !sub.pro && !alLegacyFree(sub); }
 function alActive(env, sub) {
   const mute = alPrefs(sub).mute, hs = sub.hunts.filter(h => mute.indexOf(h.toLowerCase()) === -1);   /* v50 */
-  return sub.pro ? hs.slice(0, AL_MAX_HUNTS) : hs.slice(0, alFree(env));
+  return sub.pro ? hs.slice(0, AL_MAX_HUNTS) : hs.slice(0, alFree(env, sub));
 }
 async function alPro(env, email, force) {
   const list = String((env && env.PRO_EMAILS) || "").toLowerCase().split(/[\s,]+/).filter(Boolean);
@@ -1918,7 +1966,7 @@ async function alPro(env, email, force) {
       try {
         r = await fetch("https://" + (env.SHOPIFY_SHOP || "tz7xkc-du.myshopify.com") + "/admin/api/2025-10/graphql.json", { method: "POST", signal: ctl.signal,
           headers: { "X-Shopify-Access-Token": env.SHOPIFY_ORDERS_TOKEN, "Content-Type": "application/json" },
-          body: JSON.stringify({ query: "query pro($q: String!, $n: Int!) { orders(first: $n, query: $q, sortKey: CREATED_AT, reverse: true) { nodes { name createdAt cancelledAt displayFinancialStatus email statusPageUrl totalPriceSet { shopMoney { amount currencyCode } } lineItems(first: 5) { nodes { sku customAttributes { key value } } } } } }", variables: { q: qq, n: n } }) });
+          body: JSON.stringify({ query: "query pro($q: String!, $n: Int!) { orders(first: $n, query: $q, sortKey: CREATED_AT, reverse: true) { nodes { name createdAt cancelledAt displayFinancialStatus email statusPageUrl discountCodes totalPriceSet { shopMoney { amount currencyCode } } lineItems(first: 5) { nodes { sku customAttributes { key value } } } } } }", variables: { q: qq, n: n } }) });
         if (r.status !== 200) return { err: "shopify " + r.status };
         j = await r.json();
       } finally { clearTimeout(timer); }
@@ -1952,15 +2000,21 @@ async function alPro(env, email, force) {
       plan = { via: "order", order: String(o.name || ""), paid: o.createdAt, renews: renew.toISOString(),
         amount: m.amount ? Number(m.amount).toFixed(2) : "7.00", currency: m.currencyCode || "USD",
         receipt: /^https:\/\//.test(o.statusPageUrl || "") ? o.statusPageUrl : "" };
+      /* v55: the free month is a $0 first order (code PROWLMONTH, 100% off the first cycle) */
+      const codes = Array.isArray(o.discountCodes) ? o.discountCodes.map(c => String(c).toUpperCase()) : [];
+      if (Number(m.amount || 0) === 0 || codes.indexOf(PRO_TRIAL_CODE) !== -1) { plan.trial = true; plan.amount = "0.00"; plan.next = "7.00"; }
     }
     await kvPut(env, ck, { pro: ok, at: Date.now(), plan: plan });
     return { pro: ok, via: "orders", plan: plan };
   } catch (e) { return { pro: null, via: "shopify unreachable" }; }
 }
 async function alProSet(env, sub, force) {
-  const p = await alPro(env, sub.email, force);
+  let p = await alPro(env, sub.email, force);
+  /* v54: a moved member's Pro order can still be under an earlier address */
+  if (p.pro === false && Array.isArray(sub.prev)) for (const old of sub.prev.slice(0, 2)) { const q = await alPro(env, old, force); if (q.pro) { p = q; break; } }
   if (p.pro !== null) sub.pro = p.pro;
   if (p.pro !== null) sub.plan = p.plan || null;
+  if (sub.pro) sub.hadPro = true;   /* v55: the free month is once per member */
   sub.proDay = alNow(env).day;
   return sub.pro;
 }
@@ -2165,7 +2219,7 @@ function alShell(env, inner, why, links) {
     why + '<br>' + (links ? links + '<br>' : '') + alCopy() + '<br>' + alEsc(alAddr(env)) + ' · <a href="https://www.owlandtwigvintage.com" style="color:#9a8b7a">owlandtwigvintage.com</a>' +
     '</td></tr></table></td></tr></table></body></html>';
 }
-function alWhy(sub) { return 'You are getting this because you turned on Prowl Alerts at owlandtwigvintage.com/prowl. One email ' + (sub ? AL_FREQ_NAME[alPrefs(sub).freq] : 'a day') + ' for every hunt, from ShopGoodwill, eBay, Etsy and Chairish. Change how often, or which hunts, in Prowl under Den, then Settings.'; }
+function alWhy(sub) { return 'You are getting this because you turned on Prowl Alerts at owlandtwigvintage.com/prowl. One email ' + (sub ? alFreqName(G_ENV, sub) : 'a day') + ' for every hunt, from ShopGoodwill, eBay, Etsy and Chairish. Change how often, what time, or which hunts, or turn emails off, in Prowl under Den, then Settings.'; }
 /* v41: copyright line in every footer, above the mailing address. */
 function alCopy() { return 'Copyright \u00a9 ' + new Date().getUTCFullYear() + ' Owl &amp; Twig Vintage. All rights reserved.'; }
 function alFootText(env, sub) { return ["", "--", "Prowl Alerts by Owl & Twig Vintage. You turned on Prowl Alerts at owlandtwigvintage.com/prowl.", sub ? "Open Prowl signed in: " + alHomeUrl(sub) : "", sub ? "Unsubscribe: " + alUnsubUrl(sub) : "", "Copyright \u00a9 " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(Boolean).join("\n"); }
@@ -2219,10 +2273,10 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
     (test ? '' : '<tr><td style="padding:14px 12px 2px"><a href="' + alEsc(alDailyUrl(sub)) + '" style="display:inline-block;background:#8a4b1f;color:#ffffff;padding:11px 18px;border-radius:6px;text-decoration:none;font:bold 14px Arial,sans-serif">See every hunt live on Prowl Daily</a></td></tr>') +
     body + shop;
   const links = '<a href="' + alEsc(alHomeUrl(sub)) + '" style="color:#8a4b1f">Open Prowl signed in · change your hunts</a> · <a href="' + alEsc(alUnsubUrl(sub)) + '" style="color:#9a8b7a">Unsubscribe</a>';
-  const all = sub.allCount || sub.hunts.length, free = alFree(env);
+  const all = sub.allCount || sub.hunts.length, free = alFree(env, sub);
   const up = (!sub.pro && all > free) ? '<tr><td style="padding:22px 12px 0"><div style="border:2px solid #8a4b1f;border-radius:10px;padding:14px;font:14px/1.5 Arial,sans-serif;color:#2b2118">' +
     '<b>You are on the free plan:</b> alerts for your first ' + free + ' hunts. You have ' + all + '. ' +
-    '<a href="' + alEsc(alUpgradeUrl(sub)) + '" style="color:#8a4b1f;font-weight:bold">Get all ' + Math.min(all, AL_MAX_HUNTS) + ' with Prowl Pro · $7/month</a></div></td></tr>' : '';
+    '<a href="' + alEsc(alUpgradeUrl(sub)) + '" style="color:#8a4b1f;font-weight:bold">Get all ' + Math.min(all, AL_MAX_HUNTS) + ' every day with Prowl Pro' + (sub.hadPro ? ' · $7/month' : ' · first month free') + '</a></div></td></tr>' : '';
   return alShell(env, inner + up, alWhy(sub), links);
 }
 function alEmailText(sub, pend, env) {
@@ -2256,11 +2310,58 @@ async function alDigest(env, sub, send) {
   return { sent: r.ok, error: r.error, hunts: hunts.length };
 }
 
-/* Every 15 minutes: check a few hunts; after ALERT_HOUR, once all of a
-   subscriber's hunts are checked for the day, send the one email. */
+/* ---------- v55: free month emails ----------
+   Welcome once when a free month starts, and a reminder 3 days before the first
+   $7 charge. Both are about billing, so they go even when the digest is off or
+   paused. Marked on the member (trialHi / trialRemind = order name). */
+function alPerks() {
+  return ["Prowl Alerts for up to 25 hunts, or your whole Den, every day at the time you pick",
+    "A price ceiling and skip-words, so the email only carries what you would buy",
+    "25 photo checks a day: the piece named, flaws noted, a fair range from sold prices",
+    "Unlimited Fair price checks on live listings"];
+}
+function alTrialMail(env, sub, kind) {
+  const p = sub.plan || {}, when = p.renews ? new Date(p.renews).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: alPrefs(sub).tz || AL_TZ }) : "about a month from now";
+  const li = alPerks().map(x => '<li style="margin:0 0 6px">' + alEsc(x) + '</li>').join("");
+  const head = kind === "hi" ? "Your free month of Prowl Pro has started" : "Your free month ends on " + when;
+  const lead = kind === "hi"
+    ? "Thanks for trying Prowl Pro. Everything below is on now, free until " + when + "."
+    : "On " + when + " your card is charged $7.00 and Prowl Pro carries on monthly. Want to keep it? Do nothing.";
+  const btn = '<a href="' + PRO_MANAGE_URL + '" style="display:inline-block;background:#8a4b1f;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font:bold 15px Arial,sans-serif">' + (kind === "hi" ? "See or cancel your plan" : "Cancel before " + alEsc(when)) + '</a>';
+  const html = alShell(env, '<tr><td style="padding:12px 12px 4px;font:16px/1.5 Georgia,serif;color:#2b2118">' +
+    '<h2 style="font-size:22px;margin:0 0 8px">' + alEsc(head) + '</h2><p style="margin:0 0 12px">' + alEsc(lead) + '</p>' +
+    '<ul style="margin:0 0 14px;padding-left:20px;font:15px/1.5 Arial,sans-serif">' + li + '</ul>' +
+    '<p style="margin:0 0 12px;font:14px/1.5 Arial,sans-serif">First charge: <b>$7.00 on ' + alEsc(when) + '</b>, then $7.00 a month. Cancel any time in your Owl &amp; Twig account under Subscriptions, and you are not charged again. Turning off Prowl emails does not cancel Pro.</p>' +
+    '<p style="margin:0 0 12px">' + btn + '</p></td></tr>',
+    'You are getting this because you started a Prowl Pro free month at owlandtwigvintage.com. It is about your plan, so it is sent even if Prowl emails are off.', '');
+  const text = head + "\n\n" + lead + "\n\n" + alPerks().map(x => "- " + x).join("\n") +
+    "\n\nFirst charge: $7.00 on " + when + ", then $7.00 a month. Cancel any time in your Owl & Twig account under Subscriptions: " + PRO_MANAGE_URL +
+    "\nTurning off Prowl emails does not cancel Pro." + alFootText(env, null);
+  return { subject: kind === "hi" ? "Your Prowl Pro free month has started" : "Reminder: your Prowl Pro free month ends " + when, html: html, text: text };
+}
+async function alTrialNotes(env, sub) {
+  const p = sub.plan;
+  if (!sub.pro || !p || !p.trial || !p.order) return "";
+  const renews = Date.parse(p.renews || "");
+  let kind = "";
+  if (sub.trialHi !== p.order) kind = "hi";
+  else if (sub.trialRemind !== p.order && renews && renews - Date.now() <= 3 * 86400000 && renews > Date.now()) kind = "remind";
+  if (!kind) return "";
+  /* the welcome is skipped when the reminder is already due */
+  if (kind === "hi" && renews && renews - Date.now() <= 3 * 86400000) { sub.trialHi = p.order; kind = "remind"; }
+  const m = alTrialMail(env, sub, kind);
+  const r = await alSend(env, sub.email, m.subject, m.html, m.text, "");
+  if (!r.ok) return "trial " + kind + " failed";
+  if (kind === "hi") sub.trialHi = p.order; else { sub.trialHi = p.order; sub.trialRemind = p.order; }
+  await alMerge(env, sub, ["trialHi", "trialRemind"]);
+  return "trial " + kind + " sent";
+}
+
+/* Every 15 minutes: check a few hunts; after the member's hour (v52: prefs.slot,
+   else ALERT_HOUR), once all of their hunts are checked for the day, send the one email. */
 async function alTick(env) {
   if (!alReady(env)) return { skipped: "off or no KV" };
-  const now = alNow(env), sendHour = alHour(env);
+  const now = alNow(env);
   let budget = alBatch(env), proLeft = AL_PRO_REFRESH_PER_RUN;
   /* v51: every member key (KV lists 1000 at a time), and each run starts at a
      different member, so the top of the alphabet never starves the bottom. */
@@ -2276,8 +2377,12 @@ async function alTick(env) {
   const log = [];
   for (const name of order) {
     const sub = await kvGet(env, name, null);
-    if (!sub || !sub.hunts || !sub.hunts.length) continue;
-    if (alPaused(sub, now)) continue;   /* v50: paused members cost nothing */
+    if (!sub) continue;
+    if (sub.pro && sub.plan && sub.plan.trial) { try { const tn = await alTrialNotes(env, sub); if (tn) log.push(sub.email + " " + tn); } catch (e) { log.push(sub.email + " trial mail error"); } }   /* v55 */
+    if (!sub.hunts || !sub.hunts.length) continue;
+    if (sub.mail === "off") continue;   /* v55: emails off, membership and Pro stay */
+    const loc = alLocal(sub, now);   /* v53: the member's own clock */
+    if (alPaused(sub, loc)) continue;   /* v50: paused members cost nothing */
     if ((sub.proDay !== now.day && proLeft > 0) || !sub.utok) {
       if (sub.proDay !== now.day) { proLeft--; await alProSet(env, sub, false); }
       if (!sub.utok) sub.utok = alToken();   /* v51: members from before v51 get an unsubscribe token */
@@ -2287,11 +2392,11 @@ async function alTick(env) {
     if (budget > 0) { try { n = await alCheck(env, sub, budget, now); } catch (e) { log.push(sub.email + " check failed: " + String(e && e.message || e)); budget = 0; } budget -= n; if (n) log.push(sub.email + " checked " + n); }
     if (n) continue;
     const allDone = sub.day === now.day && alActive(env, sub).every(h => sub.done.indexOf(h.toLowerCase()) !== -1);
-    if (allDone && now.hour >= sendHour && sub.sent !== now.day && alSendDay(sub, now)) {   /* v50: only on the member's days */
+    if (allDone && loc.hour >= alSlotHour(env, sub) && sub.sent !== loc.day && alSendDay(sub, loc)) {   /* v50: only on the member's days; v52: at their hour; v53: their local time */
       let r;
       try { r = await alDigest(env, sub, true); } catch (e) { r = { sent: false, error: String(e && e.message || e) }; }
       budget = 0;
-      if (r.sent || r.reason === "nothing new") { sub.sent = now.day; await alMerge(env, sub, ["sent"]); }
+      if (r.sent || r.reason === "nothing new") { sub.sent = loc.day; await alMerge(env, sub, ["sent"]); }
       log.push(sub.email + " email: " + (r.sent ? "sent" : (r.reason || r.error)));
     }
   }
@@ -2346,7 +2451,7 @@ async function alSubscribe(request, env, origin) {
     await alProSet(env, sub, false);
     if (added.length) sub.done = (sub.done || []).filter(d => added.map(x => x.toLowerCase()).indexOf(d) === -1);
     await kvPut(env, "sub:" + email, sub);
-    return json({ ok: true, on: true, hunts: hunts.length, tok: sub.tok, pro: !!sub.pro, free: alFree(env), active: alActive(env, sub).length }, 200, origin);
+    return json({ ok: true, on: true, hunts: hunts.length, tok: sub.tok, pro: !!sub.pro, free: alFree(env, sub), active: alActive(env, sub).length }, 200, origin);
   }
   if (!(await vCount("alconf:" + email, AL_CONFIRM_PER_EMAIL))) return json({ error: "We already sent a confirm link today. Check your inbox and spam." }, 429, origin);
   const code = alToken();
@@ -2438,6 +2543,11 @@ async function proxyHandle(request, env, url) {
     const want = await pxHmac(await pxKey(env, ts), (id + "|" + email + "|" + ts).toLowerCase());
     if (!alSame(String(b.sig || ""), want)) return pxJson({ error: "Sign-in could not be checked. Reload Prowl." }, 401);
     let sub = await kvGet(env, "sub:" + email, null);
+    if (!sub) {   /* v54: the store email may differ from the alerts email */
+      const linked = await kvGet(env, "cid:" + id, null);
+      const ls = linked && linked.email ? await kvGet(env, "sub:" + linked.email, null) : null;
+      if (ls && ls.cid === id) sub = ls;
+    }
     if (!sub && !b.join) return pxJson({ ok: true, member: false, email: email });
     if (!sub) {
       if (!alAllowed(env, email)) return pxJson({ error: "Prowl Alerts is in a small test right now." }, 403);
@@ -2446,8 +2556,9 @@ async function proxyHandle(request, env, url) {
       await alProSet(env, sub, true);
     }
     if (sub.cid !== id) sub.cid = id;
-    await kvPut(env, "sub:" + email, sub);
-    return pxJson({ ok: true, member: true, email: email, tok: sub.tok, pro: !!sub.pro, free: alFree(env), hunts: sub.hunts, active: alActive(env, sub).length });
+    await kvPut(env, "sub:" + sub.email, sub);
+    await kvPut(env, "cid:" + id, { email: sub.email });   /* v54 */
+    return pxJson({ ok: true, member: true, email: sub.email, store: email, tok: sub.tok, pro: !!sub.pro, free: alFree(env, sub), hunts: sub.hunts, active: alActive(env, sub).length });
   }
   return pxJson({ ok: true, prowl: true });
 }
@@ -2491,6 +2602,94 @@ async function alIn(request, env, url) {
   return Response.redirect(alHomeUrl(sub), 302);
 }
 
+/* ---------- v54: change the email address ----------
+   Asked for by a signed-in member (token). Nothing moves until the new
+   address taps its confirm link, so a typo just expires. The token stays the
+   same, so every device signed in as the old address follows through
+   /alerts/status (moved:<to>). The old address gets one notice afterwards. */
+const AL_MOVE_PER_EMAIL = 3;
+function alMask(e) { const i = e.indexOf("@"); return i > 1 ? e.slice(0, 1) + "•••" + e.slice(i - 1) : e; }
+async function alMove(request, env, origin) {
+  if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
+  if (ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);
+  const b = await readJson(request, 4096);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  const email = alEmail(b.email), to = alEmail(b.to);
+  const sub = email ? await kvGet(env, "sub:" + email, null) : null;
+  if (!sub || !alSame(String(b.tok || ""), sub.tok)) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
+  if (!to) return json({ error: "That new email does not look right." }, 400, origin);
+  if (to === email) return json({ error: "That is the address your alerts already go to." }, 400, origin);
+  if (!alAllowed(env, to)) return json({ error: "Prowl Alerts is in a small test right now, so that address cannot be used yet." }, 403, origin);
+  if (await kvGet(env, "sub:" + to, null)) return json({ error: "That address already has its own Prowl Alerts. Unsubscribe it first, or sign in with it on this device." }, 409, origin);
+  if (!(await vCount("almove:" + email, AL_MOVE_PER_EMAIL))) return json({ error: "That is 3 change requests today. Use the newest link in your inbox, or try tomorrow." }, 429, origin);
+  const code = alToken();
+  await env.PROWL_ALERTS.put("mv:" + to, JSON.stringify({ code: code, from: email }), { expirationTtl: 86400 });
+  await env.PROWL_ALERTS.put("mvf:" + email, JSON.stringify({ to: to }), { expirationTtl: 86400 });
+  const link = WORKER_BASE + "/alerts/move-confirm?e=" + encodeURIComponent(to) + "&c=" + code;
+  const html = alShell(env, '<tr><td style="padding:12px 12px 4px;font:16px/1.5 Georgia,serif;color:#2b2118">' +
+    '<h2 style="font-size:22px;margin:0 0 8px">Send Prowl Alerts here?</h2><p style="margin:0 0 12px">Tap the button and your Prowl Alerts move to this address: ' + sub.hunts.length + ' hunt' + (sub.hunts.length === 1 ? "" : "s") + ', your email settings' + (sub.pro ? ' and Prowl Pro' : '') + '. Until then they keep going to ' + alEsc(alMask(email)) + '.</p>' +
+    '<p style="margin:0 0 12px"><a href="' + alEsc(link) + '" style="display:inline-block;background:#8a4b1f;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font:bold 15px Arial,sans-serif">Use this address</a></p>' +
+    '<p style="margin:0 0 4px;font:13px/1.5 Arial,sans-serif;color:#6b5b4a">The link works once, for 24 hours.</p></td></tr>',
+    'Someone signed in to Prowl asked to send their Prowl Alerts to this address. If that was not you, ignore this email and nothing changes.', '');
+  const r = await alSend(env, to, "Confirm your new Prowl Alerts address", html,
+    "Send Prowl Alerts to this address: " + link + "\n\nThe link works once, for 24 hours. Did not ask for this? Ignore this email and nothing changes." + alFootText(env, null), "");
+  if (!r.ok) { console.error("move mail", r.error); return json({ error: "Could not send the confirm email." }, 502, origin); }
+  return json({ ok: true, sent: true, to: to }, 200, origin);
+}
+async function alMoveConfirm(request, env, url) {
+  if (!alReady(env)) return alPage("Not on yet", "Prowl Alerts is switched off right now.");
+  const to = alEmail(url.searchParams.get("e"));
+  const c = to ? await kvGet(env, "mv:" + to, null) : null;
+  if (!c || !alSame(url.searchParams.get("c"), c.code)) return alPage("Link expired", "Open Prowl, go to Den, then Settings, and tap Change email for a fresh link.");
+  const from = alEmail(c.from);
+  const sub = from ? await kvGet(env, "sub:" + from, null) : null;
+  if (!sub) return alPage("Nothing to move", "Prowl Alerts are no longer on for the old address, so there is nothing to move. Sign up again in Prowl with this address.");
+  if (await kvGet(env, "sub:" + to, null)) return alPage("Already in use", "This address already has its own Prowl Alerts. Unsubscribe it first, then ask for a new link in Prowl.");
+  if (request.method !== "POST") return alGate("Use " + to + " for Prowl Alerts?", "Your hunts, settings" + (sub.pro ? ", Prowl Pro" : "") + " and new listings move from " + alMask(from) + " to this address.", "Use this address", url);
+  const moved = Object.assign({}, sub, { email: to, prev: [from].concat(Array.isArray(sub.prev) ? sub.prev : []).filter((x, i, a) => x && x !== to && a.indexOf(x) === i).slice(0, 3), movedAt: new Date().toISOString() });
+  await alProSet(env, moved, true);
+  await kvPut(env, "sub:" + to, moved);
+  for (const k of ["pend:", "seen:"]) { const v = await kvGet(env, k + from, null); if (v != null) await kvPut(env, k + to, v); }
+  if (moved.cid) await kvPut(env, "cid:" + moved.cid, { email: to });
+  await env.PROWL_ALERTS.put("moved:" + from, JSON.stringify({ to: to, tok: sub.tok, at: Date.now() }), { expirationTtl: 90 * 86400 });
+  for (const k of ["sub:", "pend:", "seen:", "mvf:"]) await env.PROWL_ALERTS.delete(k + from);
+  await env.PROWL_ALERTS.delete("mv:" + to);
+  /* one notice to the old address, so a change is never silent */
+  const note = alShell(env, '<tr><td style="padding:12px 12px 4px;font:16px/1.5 Georgia,serif;color:#2b2118">' +
+    '<h2 style="font-size:22px;margin:0 0 8px">Your Prowl Alerts moved</h2><p style="margin:0 0 12px">From now on your Prowl Alerts go to ' + alEsc(alMask(to)) + '. This address will not get them any more.</p>' +
+    '<p style="margin:0 0 4px;font:13px/1.5 Arial,sans-serif;color:#6b5b4a">Did not do this? Reply to this email and we will put it back.</p></td></tr>', 'You are getting this one email because the Prowl Alerts address for this account was changed.', '');
+  try { await alSend(env, from, "Your Prowl Alerts now go to a new address", note, "From now on your Prowl Alerts go to " + alMask(to) + ". This address will not get them any more.\n\nDid not do this? Reply to this email and we will put it back." + alFootText(env, null), ""); } catch (e) { console.error("move notice", String(e && e.message || e)); }
+  return Response.redirect(PROWL_PAGE + "?alerts=moved#e=" + encodeURIComponent(to) + "&t=" + sub.tok, 302);
+}
+
+/* v55: emails on or off for a signed-in member. Off keeps everything else. */
+async function alMailSet(request, env, origin) {
+  if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
+  const b = await readJson(request, 4096);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  const email = alEmail(b.email);
+  const sub = email ? await kvGet(env, "sub:" + email, null) : null;
+  if (!sub || !alSame(String(b.tok || ""), sub.tok)) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
+  const on = b.on === true || b.on === "1" || b.on === 1;
+  sub.mail = on ? "on" : "off";
+  if (on) { sub.mailOffAt = ""; sub.sent = alLocal(sub, alNow(env)).day; } else sub.mailOffAt = new Date().toISOString();   /* back on: the next email is the next send day */
+  await alMerge(env, sub, ["mail", "mailOffAt", "sent"]);
+  if (!on) await env.PROWL_ALERTS.delete("pend:" + email);
+  return json({ ok: true, on: true, mail: sub.mail, pro: !!sub.pro }, 200, origin);
+}
+/* v55: remove everything (what unsubscribe used to do). Pro billing is Shopify's. */
+async function alDelete(request, env, origin) {
+  if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
+  const b = await readJson(request, 4096);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  const email = alEmail(b.email);
+  const sub = email ? await kvGet(env, "sub:" + email, null) : null;
+  if (!sub || !alSame(String(b.tok || ""), sub.tok)) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
+  for (const k of ["sub:", "pend:", "seen:", "mvf:"]) await env.PROWL_ALERTS.delete(k + email);
+  if (sub.cid) { const c = await kvGet(env, "cid:" + sub.cid, null); if (c && c.email === email) await env.PROWL_ALERTS.delete("cid:" + sub.cid); }
+  return json({ ok: true, on: false, wasPro: !!sub.pro }, 200, origin);
+}
+
 async function alUnsub(request, env, url, origin) {
   const p = await alParams(request, url);
   if (p.json && ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);
@@ -2501,19 +2700,24 @@ async function alUnsub(request, env, url, origin) {
      changed) used to say "Already off" while their alerts were still on.
      v51: the email link carries utok; the page (signed in) sends tok. */
   if (sub && !alSame(p.t, sub.tok) && !(sub.utok && alSame(p.t, sub.utok))) return wantJson ? json({ error: "old link" }, 404, origin) : alPage("This link is out of date", "It is from an older Prowl Alerts email, so it cannot change anything. Prowl Alerts is still on for this address. To stop it, tap Unsubscribe in your newest Prowl email, or open Prowl and go to Den, then Settings.");
-  if (!sub) return wantJson ? json({ error: "not found" }, 404, origin) : alPage("Already off", "There are no Prowl Alerts on for this link.");
+  if (!sub) {
+    const mv = email ? await kvGet(env, "moved:" + email, null) : null;   /* v54 */
+    if (mv && mv.to && !wantJson) return alPage("This address changed", "Prowl Alerts for this account now go to " + mv.to + ". To stop them, use Unsubscribe in your newest Prowl email, or open Prowl and go to Den, then Settings.");
+    return wantJson ? json({ error: "not found" }, 404, origin) : alPage("Already off", "There are no Prowl Alerts on for this link.");
+  }
   const h = vClean(p.h, 60).toLowerCase();
-  if (!p.post) return alGate(h ? "Stop emails for " + h + "?" : "Unsubscribe from Prowl Alerts?", h ? "Your other hunts keep coming." : "No more Prowl emails for " + email + ". You can sign up again any time in Prowl.", h ? "Stop this hunt" : "Unsubscribe", url);   /* v51: GET changes nothing */
+  if (!p.post) return alGate(h ? "Stop emails for " + h + "?" : "Turn off Prowl emails?", h ? "Your other hunts keep coming." : "No more Prowl Alerts emails to " + email + ". Your hunts and settings stay in Prowl" + (sub.pro ? ", and Prowl Pro stays on. To stop paying for Pro, cancel it in your Owl & Twig account under Subscriptions" : "") + ".", h ? "Stop this hunt" : "Turn off emails", url);   /* v51: GET changes nothing */
   if (h) {
     /* v51: one hunt off keeps the membership (and Pro) even when it was the last hunt */
     sub.hunts = sub.hunts.filter(x => x.toLowerCase() !== h);
     await kvPut(env, "sub:" + email, sub);
     return wantJson ? json({ ok: true, hunts: sub.hunts.length }, 200, origin) : alPage("Done", "No more emails for " + h + "." + (sub.hunts.length ? " Your other hunts keep coming." : " Add a hunt in Prowl any time to start again."));
   }
-  await env.PROWL_ALERTS.delete("sub:" + email);
+  /* v55: emails off, not gone. Hunts, settings, sign-in and Pro stay. */
+  sub.mail = "off"; sub.mailOffAt = new Date().toISOString();
+  await alMerge(env, sub, ["mail", "mailOffAt"]);
   await env.PROWL_ALERTS.delete("pend:" + email);
-  await env.PROWL_ALERTS.delete("seen:" + email);
-  return wantJson ? json({ ok: true, on: false }, 200, origin) : alPage("You are unsubscribed", "You will not get any more Prowl emails. Sign up again any time in Prowl.");
+  return wantJson ? json({ ok: true, on: true, mail: "off", pro: !!sub.pro }, 200, origin) : alPage("Prowl emails are off", "You will not get any more Prowl Alerts emails." + (sub.pro ? " Prowl Pro is still on: 25 photo checks a day and unlimited Fair price checks in Prowl. To stop paying, cancel it in your Owl & Twig account under Subscriptions." : "") + " Turn emails back on any time in Prowl under Den, then Settings.");
 }
 
 /* v29: "Send me a test email" in Prowl. Token required, 3 a day. Checks up to
@@ -2548,6 +2752,10 @@ async function alStatus(request, env, url, origin) {
   const p = await alParams(request, url);
   const email = alEmail(p.e);
   const sub = env && env.PROWL_ALERTS && email ? await kvGet(env, "sub:" + email, null) : null;
+  if (!sub && email) {   /* v54: moved to a new address with the same token */
+    const mv = await kvGet(env, "moved:" + email, null);
+    if (mv && mv.to && alSame(p.t, mv.tok)) return json({ on: false, moved: mv.to }, 200, origin);
+  }
   if (!sub || !alSame(p.t, sub.tok)) return json({ on: false }, 200, origin);
   const was = !!sub.pro;
   /* v51: a forced Shopify look-up is capped per member, so the Admin API is never hammered */
@@ -2555,8 +2763,9 @@ async function alStatus(request, env, url, origin) {
   await alProSet(env, sub, fresh);
   if (was !== !!sub.pro) { sub.done = []; await alMerge(env, sub, ["pro", "plan", "proDay", "done"]); }
   const pl = sub.pro ? (sub.plan || { via: "unknown" }) : null;
-  return json({ on: true, hunts: sub.hunts, hour: alHour(env), last: sub.sent || "", pro: !!sub.pro, free: alFree(env), active: alActive(env, sub).length, proUrl: PRO_URL,
-    price: "7.00", plan: pl, manageUrl: "https://www.owlandtwigvintage.com/account", prefs: alPrefs(sub) }, 200, origin);
+  return json({ on: true, hunts: sub.hunts, hour: alSlotHour(env, sub), defHour: alHour(env), tz: alPrefs(sub).tz || AL_TZ, last: sub.sent || "", pro: !!sub.pro, free: alFree(env, sub), freeWeekly: alFreeWeekly(sub), mail: sub.mail === "off" ? "off" : "on", hadPro: !!sub.hadPro, active: alActive(env, sub).length, proUrl: PRO_URL,
+    price: "7.00", plan: pl, manageUrl: "https://www.owlandtwigvintage.com/account", prefs: alPrefs(sub), email: sub.email,
+    moving: (await kvGet(env, "mvf:" + email, null) || {}).to || "" }, 200, origin);   /* v54 */
 }
 
 /* v50: save the member's email settings. Token required; the shape is checked by
@@ -2575,11 +2784,11 @@ async function alPrefsSave(request, env, origin) {
   if (p.pause) {
     const far = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
     if (p.pause > far) p.pause = far;
-    if (p.pause <= alNow(env).day) p.pause = "";
+    if (p.pause <= (p.tz ? alNowIn(p.tz) : alNow(env)).day) p.pause = "";
   }
   sub.prefs = p;
   await kvPut(env, "sub:" + email, sub);
-  return json({ ok: true, on: true, prefs: p, pro: !!sub.pro, free: alFree(env), active: alActive(env, sub).length, hunts: sub.hunts }, 200, origin);
+  return json({ ok: true, on: true, prefs: p, hour: alSlotHour(env, sub), defHour: alHour(env), tz: p.tz || AL_TZ, pro: !!sub.pro, free: alFree(env, sub), freeWeekly: alFreeWeekly(sub), active: alActive(env, sub).length, hunts: sub.hunts }, 200, origin);
 }
 
 async function alDebug(env, url) {
@@ -2619,6 +2828,8 @@ export default {
     if (url.pathname === "/alerts/unsub") return alUnsub(request, env, url, origin);
     if (url.pathname === "/alerts/confirm") return alConfirm(request, env, url);
     if (url.pathname === "/alerts/in") return alIn(request, env, url);
+    if (url.pathname === "/alerts/move-confirm") return alMoveConfirm(request, env, url);   /* v54 */
+    if (url.pathname === "/alerts/move" && request.method === "POST") return alMove(request, env, origin);   /* v54 */
     if (url.pathname === "/__alerts-preview" || url.pathname === "/__alerts-run") return alDebug(env, url);
     if (request.method === "POST" && ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);
 
@@ -2631,6 +2842,8 @@ export default {
     if (url.pathname === "/alerts/signin" && request.method === "POST") {
       return alSignin(request, env, origin);
     }
+    if (url.pathname === "/alerts/mail" && request.method === "POST") return alMailSet(request, env, origin);   /* v55 */
+    if (url.pathname === "/alerts/delete" && request.method === "POST") return alDelete(request, env, origin);   /* v55 */
     if (url.pathname === "/alerts/prefs" && request.method === "POST") {   /* v50 */
       return alPrefsSave(request, env, origin);
     }
