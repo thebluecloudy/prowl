@@ -776,6 +776,9 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper .sgw-mail .mail-row .tg{appearance:none;-webkit-appearance:none;text-transform:none;font:inherit;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;border:1px solid var(--l2);background:var(--cd);color:var(--ink);cursor:pointer;flex:none}
 .scout-app-wrapper .sgw-mail .mail-row.on .tg{background:var(--ac);border-color:var(--ac);color:var(--onink)}
 .scout-app-wrapper .sgw-mail .mail-row .tg:disabled{opacity:.5;cursor:default}
+.scout-app-wrapper .sgw-mail .mail-row .tg.lc{background:var(--cd);border-color:var(--l2);color:var(--i3)}
+.scout-app-wrapper .sgw-mail .mail-row .tg.lc[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--cd)}
+.scout-app-wrapper .sgw-mail .mail-in input[data-k=zip]{flex:0 1 120px}
 .scout-app-wrapper .sgw-mail .mail-in{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 8px}
 .scout-app-wrapper .sgw-mail .mail-in input{appearance:none;-webkit-appearance:none;font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--l2);border-radius:8px;background:var(--cd);color:var(--ink);flex:1 1 140px;min-width:0}
 .scout-app-wrapper .sgw-mail .mail-in input:disabled{opacity:.5}
@@ -1088,7 +1091,7 @@ window.prowlEpn=function(u,cid){
 
   <section class="alrt" id="otp-alerts" aria-labelledby="otp-alertsT">
     <h2 id="otp-alertsT">Prowl Alerts</h2>
-    <p>One email with new finds for your hunts on ShopGoodwill, eBay, Etsy and Chairish, only listings you have not seen. Every morning, three mornings a week, or just Mondays: you pick, and you pick which hunts go in. <b>Free: 1 hunt, every Monday.</b> <b>Prowl Pro: your first month is free</b>, then $7 a month for up to 25 hunts every day, your whole Den, a price ceiling and skip-words, 25 photo checks a day and unlimited Fair price checks. We email you before the first charge. Cancel any time.</p>
+    <p>One email with new finds for your hunts on ShopGoodwill, eBay, Etsy and Chairish, only listings you have not seen. Every morning, three mornings a week, or just Mondays: you pick, and you pick which hunts go in. <b>Free: 1 hunt, every Monday.</b> <b>Prowl Pro: your first month is free</b>, then $7 a month for up to 25 hunts every day, your whole Den, a price ceiling, skip-words, local-pickup hunts near your ZIP, 25 photo checks a day and unlimited Fair price checks. We email you before the first charge. Cancel any time.</p>
     <p><button class="b p" id="otp-alertsGo" type="button">Set up Prowl Alerts</button> <a class="b" href="/products/prowl-pro">Try Prowl Pro free for a month</a></p>
     <p class="fine">Or join the Owl &amp; Twig list for news and new finds:</p>
     <form id="otp-alertsF" method="post" action="/contact#otp-alerts" accept-charset="UTF-8">
@@ -1798,7 +1801,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.05';
+var PROWL_VERSION='v6.06';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3503,6 +3506,9 @@ function mailInit(mount){
       if(a==='pause'){var pd=new Date();pd.setDate(pd.getDate()+14);prefsSet({pause:pd.getFullYear()+'-'+('0'+(pd.getMonth()+1)).slice(-2)+'-'+('0'+pd.getDate()).slice(-2)});return}
       if(a==='resume'){prefsSet({pause:''});return}
       if(a==='max'){var mx=box.querySelector('input[data-k=max]');prefsSet({max:mx&&parseInt(mx.value,10)>0?parseInt(mx.value,10):0});return}
+      if(a==='zip'){var zi=box.querySelector('input[data-k=zip]'),zv=String(zi?zi.value:'').replace(/\D/g,'').slice(0,5);if(zv&&zv.length!==5){MAIL.saving='Enter a 5-digit US ZIP code.';rMail();return}prefsSet({zip:zv});return}   /* v6.06 */
+      if(a==='radius'){prefsSet({radius:parseInt(b.getAttribute('data-v'),10)});return}
+      if(a==='local'){var lh=String(b.getAttribute('data-h')||'').toLowerCase(),ll=prefs().local.slice(),li=ll.indexOf(lh);if(li===-1)ll.push(lh);else ll.splice(li,1);prefsSet({local:ll});return}
       if(a==='skip'){var sk=box.querySelector('input[data-k=skip]');prefsSet({skip:String(sk?sk.value:'').toLowerCase().split(/[,;\n]+/).map(function(w){return w.replace(/\s+/g,' ').trim().slice(0,24)}).filter(Boolean).slice(0,12)});return}
       if(a==='recheck'){MAIL.msg='Checking your order\u2026';rMail();mailStatus(true,function(j){MAIL.msg=j&&j.pro?'Prowl Pro is on. All your hunts are in tomorrow\u2019s email.':'No Prowl Pro order found for '+mGet('alertEmail')+' yet. It can take a minute after checkout. Still stuck? Email hello@owlandtwigvintage.com.';rMail();mailSync(true)});return}
     });
@@ -3548,7 +3554,7 @@ function mailInit(mount){
 var PRO_POLL_MS=6000,PRO_POLL_MAX=15;
 function proBan(h){var b=$('#otp-proBan');if(!b)return;if(!h){b.hidden=true;b.innerHTML='';return}b.innerHTML=h;b.hidden=false;}
 function proWelcomeHtml(){
-  return '<h3>You are on Prowl Pro \uD83C\uDF89</h3><p>Alerts now cover up to 25 hunts (your whole Den if you like), with a price ceiling and skip-words, plus 25 photo checks a day and unlimited Fair price checks. Pick how often the email comes and which hunts go in it.</p>'+
+  return '<h3>You are on Prowl Pro \uD83C\uDF89</h3><p>Alerts now cover up to 25 hunts (your whole Den if you like), with a price ceiling, skip-words and local-pickup hunts, plus 25 photo checks a day and unlimited Fair price checks. Pick how often the email comes and which hunts go in it.</p>'+
     '<span class="sgw-mf"><button type="button" class="b p" data-pro="settings">Email settings</button><button type="button" class="b" data-pro="close">Got it</button></span>';
 }
 function proActivate(){
@@ -3604,8 +3610,13 @@ function prefs(){
   o.pause=/^\d{4}-\d{2}-\d{2}$/.test(String(p.pause||''))?String(p.pause):'';
   o.slot=slotOk(p.slot);   /* v6.02: 0 = the worker's default hour */
   o.tz=browserTz()||tzOk(p.tz);   /* v6.03: this device's zone, so the hour is local */
+  o.zip=/^\d{5}$/.test(String(p.zip||''))?String(p.zip):'';   /* v6.06: local pickup */
+  o.radius=PREF_RADII.indexOf(parseInt(p.radius,10))!==-1?parseInt(p.radius,10):50;
+  o.local=(p.local||[]).map(function(h){return String(h).toLowerCase()});
   return o;
 }
+var PREF_RADII=[25,50,100];
+function prefsLocal(h){return prefs().local.indexOf(String(h||'').toLowerCase())!==-1}
 function prefsLocalDay(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
 function prefsPaused(){var p=prefs().pause;return !!p&&p>prefsLocalDay()}
 function prefsActive(){
@@ -3648,8 +3659,11 @@ function prefsHtml(on,em,n){
   for(i=0;i<hs.length;i++){
     k=hs[i].toLowerCase();muted=p.mute.indexOf(k)!==-1;locked=!muted&&!act[k];
     h+='<div class="mail-row'+(muted?' off':locked?' lock':' on')+'"><span class="nm">'+(locked?'\uD83D\uDD12 ':'')+esc(hs[i])+'</span>'+
-      (locked?'<a class="tg" href="'+PRO_URL+'" title="Prowl Pro covers up to 25 hunts">Pro</a>':'<button type="button" class="tg" data-mail="mute" data-h="'+esc(hs[i])+'" aria-pressed="'+(!muted)+'">'+(muted?'Muted':'Emailing')+'</button>')+'</div>';
+      (locked?'<a class="tg" href="'+PRO_URL+'" title="Prowl Pro covers up to 25 hunts">Pro</a>':
+        (pro&&!muted?'<button type="button" class="tg lc" data-mail="local" data-h="'+esc(hs[i])+'" aria-pressed="'+prefsLocal(hs[i])+'" title="Local pickup only: eBay listings within '+p.radius+' miles of your ZIP">'+(prefsLocal(hs[i])?'\uD83D\uDCCD Local':'Local')+'</button>':'')+
+        '<button type="button" class="tg" data-mail="mute" data-h="'+esc(hs[i])+'" aria-pressed="'+(!muted)+'">'+(muted?'Muted':'Emailing')+'</button>')+'</div>';
   }
+  if(pro&&p.local.length&&!p.zip)h+='<p class="mail-fine">\uD83D\uDCCD Local hunts need a ZIP code. Add yours under Only what fits.</p>';
   h+='<p class="mail-fine">Muted hunts stay in your list, they just skip the email.'+(!pro&&hs.length>MAIL.free?' Free covers '+MAIL.free+' hunts: mute one and the next takes its place.':'')+'</p></div>';
   /* which sites */
   h+='<div class="mail-sec"><h4>Which sites</h4><div class="mail-seg">';
@@ -3659,7 +3673,9 @@ function prefsHtml(on,em,n){
   h+='<div class="mail-sec"><h4>Only what fits<small>'+(pro?'Prowl Pro':'\uD83D\uDD12 Prowl Pro')+'</small></h4>'+
     '<div class="mail-in"><label class="mail-fine" style="margin:0" for="otp-prefMax">Only listings under $</label><input id="otp-prefMax" type="number" inputmode="numeric" min="0" step="1" data-k="max" placeholder="no limit" value="'+(p.max||'')+'"'+(pro?'':' disabled')+'><button type="button" class="b" data-mail="max"'+(pro?'':' disabled')+'>Set</button></div>'+
     '<div class="mail-in"><label class="mail-fine" style="margin:0;flex-basis:100%" for="otp-prefSkip">Skip listings whose title has any of these words</label><input id="otp-prefSkip" type="text" data-k="skip" placeholder="reproduction, lot, replica" value="'+esc(p.skip.join(', '))+'"'+(pro?'':' disabled')+'><button type="button" class="b" data-mail="skip"'+(pro?'':' disabled')+'>Set</button></div>'+
-    (pro?'':'<p class="mail-fine"><a class="sgw-ml" href="'+PRO_URL+'">Prowl Pro</a> adds a price ceiling and skip-words, so the email only carries what you would actually buy.</p>')+
+    '<div class="mail-in"><label class="mail-fine" style="margin:0;flex-basis:100%" for="otp-prefZip">Local pickup near ZIP code</label><input id="otp-prefZip" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" pattern="[0-9]*" data-k="zip" placeholder="48375" value="'+esc(p.zip)+'"'+(pro?'':' disabled')+'><button type="button" class="b" data-mail="zip"'+(pro?'':' disabled')+'>Set</button></div>'+
+    '<div class="mail-seg">'+PREF_RADII.map(function(rd){return '<button type="button" data-mail="radius" data-v="'+rd+'"'+(p.radius===rd?' class="on" aria-pressed="true"':' aria-pressed="false"')+(pro?'':' disabled')+'>'+rd+' mi</button>'}).join('')+'</div>'+
+    '<p class="mail-fine">'+(pro?'Tap <b>Local</b> on a hunt above and its email only carries eBay listings you can pick up within '+p.radius+' miles'+(p.zip?' of '+esc(p.zip):'')+'. Made for wheels, furniture, anything too big to ship. Other sites are skipped for that hunt.':'<a class="sgw-ml" href="'+PRO_URL+'">Prowl Pro</a> adds a price ceiling, skip-words and local pickup (eBay listings near your ZIP, for the big stuff), so the email only carries what you would actually buy.')+'</p>'+
     '</div>';
   if(MAIL.saving)h+='<p class="mail-save" role="status">'+esc(MAIL.saving)+'</p>';
   return h;
@@ -4954,6 +4970,7 @@ function planTableHtml(isPro){
     ['Hunts in the alerts email',fh+' hunt'+(fh===1?'':'s'),'25, or your whole Den'],
     ['How often',fw?'Mondays':'You pick','Every day, at your time'],
     ['Price ceiling and skip-words','<span class="no">—</span>','✓'],
+    ['Local pickup hunts (eBay near your ZIP)','<span class="no">—</span>','✓'],
     ['Photo checks','1 a day','25 a day'],
     ['Fair price checks','1 a day','Unlimited'],
     ['Price','$0',(MAIL.hadPro&&!isPro)?'$7 a month':'First month free, then $7 a month']
