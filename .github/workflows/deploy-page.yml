@@ -1,0 +1,44 @@
+name: Deploy Prowl page to Shopify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "page/prowl.html"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Allow a file much smaller than the live page"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prowl-page-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Send page/prowl.html to Shopify and verify
+        env:
+          SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
+          SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
+          FORCE: ${{ inputs.force || 'false' }}
+        run: node scripts/deploy-page.mjs page/prowl.html
+      - name: Keep the previous live page
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-page-before-${{ github.run_number }}
+          path: backup/
+          if-no-files-found: ignore
+          retention-days: 90
