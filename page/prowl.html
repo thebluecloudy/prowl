@@ -189,6 +189,9 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper .rc{background:var(--cd2);border:1px solid var(--ln);border-radius:18px;overflow:hidden;box-shadow:0 18px 40px -22px var(--shadow-lg)}
 [data-theme=uranium] .scout-app-wrapper .rc{box-shadow:0 0 40px rgba(57,255,20,.15),0 18px 40px -22px rgba(0,0,0,.7)}
 .scout-app-wrapper .rh{display:flex;justify-content:space-between;gap:14px;padding:18px 18px 14px;border-bottom:1px solid var(--ln);align-items:flex-start}
+.scout-app-wrapper .rh-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;flex:0 0 auto}
+.scout-app-wrapper .rh-acts .gh.kept{opacity:.75}
+@media (max-width:560px){.scout-app-wrapper .rh{flex-wrap:wrap}.scout-app-wrapper .rh>div:first-child{flex:1 1 100%;min-width:0}.scout-app-wrapper .rh-acts{flex:1 1 100%;justify-content:flex-start} }
 .scout-app-wrapper .rh h2{font-size:22px;margin:0 0 5px;letter-spacing:-.025em}
 .scout-app-wrapper .rh .eb{margin:0 0 6px}
 .scout-app-wrapper .rs{font-size:12.5px;color:var(--mu);margin:0}
@@ -909,6 +912,10 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper .apr-lk img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:7px;background:var(--cd3);display:block}
 .scout-app-wrapper .apr-lkt{font-size:12px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .scout-app-wrapper .apr-lkp{font-size:12px;font-weight:800;color:var(--ac)}
+.scout-app-wrapper .apr-sold a.apr-lk{justify-content:space-between;min-height:96px}
+.scout-app-wrapper .apr-lkd{font-size:11.5px;color:var(--mu);line-height:1.3;overflow-wrap:anywhere}
+.scout-app-wrapper a.apr-solda{display:inline-block;margin:8px 0 0;color:var(--ac);font-weight:700;font-size:14px;text-decoration:underline;text-underline-offset:3px}
+.scout-app-wrapper .apr-res .apr-sold{margin:4px 0 12px}
 .scout-app-wrapper .apr-note{margin:10px 0 0;font-size:13px;color:var(--mu)}
 /* v5.91 listing cards, Poof-style: a clear bordered square around each find,
    bigger bold titles, price on its own line, easy-to-read details. */
@@ -989,6 +996,10 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper ol.dx-src{margin:10px 0 0;padding:0 12px 0 32px;font-size:13px;line-height:1.45 }
 .scout-app-wrapper ol.dx-src a{color:var(--ac);overflow-wrap:anywhere }
 .scout-app-wrapper .dx-res .dx-acts{border-top:0;padding:10px 12px 12px }
+.scout-app-wrapper .dx-solh{margin:12px 12px 0;font-size:13px;font-weight:800 }
+.scout-app-wrapper ul.dx-sold{list-style:none;margin:4px 0 0;padding:0 12px;font-size:13px;line-height:1.45 }
+.scout-app-wrapper ul.dx-sold li{padding:4px 0 }
+.scout-app-wrapper ul.dx-sold a{color:var(--ac);overflow-wrap:anywhere }
 .scout-app-wrapper .dx-stats{padding:15px 0;border-bottom:1px solid var(--ln) }
 .scout-app-wrapper .dx-stats h3{margin:0 0 3px;font-size:14px;font-weight:700 }
 .scout-app-wrapper .dx-stats p{margin:0 0 10px;font-size:12px;color:var(--mu);line-height:1.5 }
@@ -1308,6 +1319,7 @@ window.prowlEpn=function(u,cid){
   function researchIt(name,btn,r,src){
     if(btn.disabled)return;btn.disabled=true;btn.textContent='Researching\u2026 up to a minute';
     var old=document.getElementById('otp-aprRes');if(old&&old.parentNode)old.parentNode.removeChild(old);
+    var oldS=document.getElementById('otp-aprSold');if(oldS&&oldS.parentNode)oldS.parentNode.removeChild(oldS);   /* v6.09 */
     function done(){btn.disabled=false;btn.textContent='Research this piece';}
     var pic=src;   /* v6.07: the photo. The result code below reuses the name src for its source list */
     fetch(RAPI,{method:'POST',headers:OH(),body:JSON.stringify({item:name,maker:(H&&H.value)||''})}).then(function(res){
@@ -1331,6 +1343,21 @@ window.prowlEpn=function(u,cid){
         a.textContent=String(s.title||s.url).slice(0,90);li.appendChild(a);ul.appendChild(li);}
       var nt=document.createElement('p');nt.className='apr-note';nt.textContent='AI research from the web. Check the sources before you buy.';d.appendChild(nt);
       if(ul.firstChild){var sh=document.createElement('p');sh.className='apr-fnh';sh.textContent='Sources';d.appendChild(sh);d.appendChild(ul);}
+      /* v6.09: past sales from the research, shown right under the live lookalikes */
+      var SD=[];if(Array.isArray(j.solds))for(var si=0;si<j.solds.length&&SD.length<3;si++){var sx=j.solds[si];if(sx&&typeof sx.url==='string'&&/^https:\/\//i.test(sx.url)&&sx.title&&sx.price)SD.push(sx);}
+      var sw=document.createElement('div');sw.id='otp-aprSold';sw.className='apr-looks apr-sold';
+      var shh=document.createElement('p');shh.className='apr-lkh';shh.textContent=SD.length?'Sold before':'Sold before: the research found no past sales to link';sw.appendChild(shh);
+      if(SD.length){var sg=document.createElement('div');sg.className='apr-lkg';
+        for(var sj=0;sj<SD.length;sj++){var a2=document.createElement('a');a2.className='apr-lk';
+          a2.href=/^https:\/\/(www\.)?ebay\.com\//i.test(SD[sj].url)?window.prowlEpn(SD[sj].url,'prowl-sold'):SD[sj].url;a2.target='_blank';a2.rel='noopener noreferrer';
+          var t2=document.createElement('span');t2.className='apr-lkt';t2.textContent=String(SD[sj].title).slice(0,80);a2.appendChild(t2);
+          var p2=document.createElement('span');p2.className='apr-lkp';p2.textContent=String(SD[sj].price).slice(0,20)+' sold';a2.appendChild(p2);
+          var dw=[SD[sj].date,SD[sj].where].filter(function(v){return !!v}).join(' \u00b7 ');
+          if(dw){var d2=document.createElement('span');d2.className='apr-lkd';d2.textContent=String(dw).slice(0,60);a2.appendChild(d2);}
+          sg.appendChild(a2);}
+        sw.appendChild(sg);
+        var sn=document.createElement('p');sn.className='apr-note';sn.textContent='Past sales the research found on the web. Open each one to check it.';sw.appendChild(sn);}
+      var sl=document.createElement('a');sl.className='apr-solda';sl.href=window.prowlEpn('https://www.ebay.com/sch/i.html?_nkw='+encodeURIComponent(String(name).slice(0,80))+'&LH_Sold=1&LH_Complete=1','prowl-sold');sl.target='_blank';sl.rel='noopener noreferrer';sl.textContent='See all sold on eBay';sw.appendChild(sl);
       var shr=document.createElement('button');shr.type='button';shr.className='b p apr-shr';shr.textContent='Share this research';
       /* v6.07: draw the photo card now, so the tap can share it at once */
       var cardF=null;
@@ -1338,6 +1365,7 @@ window.prowlEpn=function(u,cid){
       shr.addEventListener('click',function(){
         var LL=['Field notes: '+(j.item||name),''];
         for(var q=0;q<rows.length;q++){if(rows[q][1])LL.push(rows[q][0]+': '+rows[q][1]);}
+        if(SD.length){LL.push('');LL.push('Sold before:');for(var sq=0;sq<SD.length;sq++){var sdw=[SD[sq].date,SD[sq].where].filter(function(v){return !!v}).join(', ');LL.push('- '+String(SD[sq].title).slice(0,80)+' '+SD[sq].price+(sdw?' ('+sdw+')':'')+' '+SD[sq].url);} }   /* v6.09 */
         var nsrc=0;for(var z=0;z<src.length&&z<6;z++){if(src[z]&&typeof src[z].url==='string'&&/^https:\/\//i.test(src[z].url)){if(!nsrc){LL.push('');LL.push('Sources:');}nsrc++;LL.push(nsrc+'. '+String(src[z].title||'').slice(0,90)+' '+src[z].url);}}
         LL.push('');LL.push('Researched with Prowl: https://www.owlandtwigvintage.com/pages/prowl?utm_source=share&utm_medium=research');
         var txt=LL.join('\n'),ttl='Field notes: '+(j.item||name);
@@ -1352,10 +1380,12 @@ window.prowlEpn=function(u,cid){
       });
       d.appendChild(shr);
       O.appendChild(d);try{d.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}
+      var lwX=O.querySelector('.apr-looks:not(.apr-sold)');
+      if(lwX&&lwX.parentNode)lwX.parentNode.insertBefore(sw,lwX.nextSibling);else d.insertBefore(sw,dl);   /* v6.09 */
       /* v6.08: keep this research on the device, so it can be read again without researching twice */
       if(typeof window.prowlSaveResearch==='function'){
         var keepRows=[];for(var kr=0;kr<rows.length;kr++){if(rows[kr][1])keepRows.push([rows[kr][0],String(rows[kr][1])]);}
-        var keep=function(th){var okS=false;try{okS=window.prowlSaveResearch({item:j.item||name,rows:keepRows,src:src.slice(0,6),fair:(r&&r.fair)||'',thumb:th||'',at:Date.now()});}catch(e){}
+        var keep=function(th){var okS=false;try{okS=window.prowlSaveResearch({item:j.item||name,rows:keepRows,src:src.slice(0,6),solds:SD,fair:(r&&r.fair)||'',thumb:th||'',at:Date.now()});}catch(e){}
           if(okS){var sv=document.createElement('p');sv.className='apr-note';sv.textContent='Saved on this device. Find it any time in Den \u203a All hunts \u203a Saved research.';d.appendChild(sv);} };
         if(pic)resThumb(pic,keep);else keep('');
       }
@@ -1822,7 +1852,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.08';
+var PROWL_VERSION='v6.10';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -2761,6 +2791,9 @@ function rRes(){
   }
 
   var ready=r.phase==='ready',paused=r.phase==='paused';
+  /* v6.10: keep a typed search as a hunt, right from the results */
+  var kt=r.terms.length===1?String(r.terms[0]):'',ki=kt?huntIndex(kt):-1,kept=ki>-1&&st.lock.has(ki);
+  var keepBtn=kt?(kept?'<button class="gh kept" id=otp-keep type=button disabled>\u2605 Kept</button>':'<button class=gh id=otp-keep type=button aria-label="Keep this search as a hunt">\u2606 Keep this hunt</button>'):'';
   var left=paused?total-(r.next||0):0,nextN=Math.min(BATCH,left);
   /* A Facebook run is one marketplace but many cities — saying "across 1
      marketplace" over a list of ten metros reads like a bug. */
@@ -2771,7 +2804,7 @@ function rRes(){
     (ready?(r.mode==='facebook'?'<strong>'+total+'</strong> metros ready':spread)
           :paused?'<strong>'+r.opened+'</strong> of <strong>'+total+'</strong> opened \u00b7 <strong>'+left+'</strong> still to go'+(r.blocked?' \u00b7 <strong>'+r.blocked+'</strong> blocked':'')
           :'<strong>'+total+'</strong> live search'+(total===1?'':'es')+' opened'+(r.blocked?' · <strong>'+r.blocked+'</strong> blocked by your browser':''))+
-    '</p></div><button class=gh id=otp-cr type=button>Close</button></div>';
+    '</p></div><div class=rh-acts>'+keepBtn+'<button class=gh id=otp-cr type=button>Close</button></div></div>';
 
   var LOCALS={shopgoodwill:1,facebook:1,craigslist:1,offerup:1,estatesales:1,estatesalesnet:1,hibid:1,liveauction:1,invaluable:1};
   var BADGE={ebay:'EB',etsy:'ET',mercari:'ME',poshmark:'PM',depop:'DP',grailed:'GR',rubylane:'RL',chairish:'CH','1stdibs':'1D',reverb:'RV',whatnot:'WN',vinted:'VI',bonanza:'BZ',ecrater:'EC',abebooks:'AB',aptdeco:'AD',offerup:'OU',facebook:'FB',ebaysold:'$',shopgoodwill:'GW',estatesales:'ES',estatesalesnet:'ES',hibid:'HB',liveauction:'LA',invaluable:'IV',craigslist:'CL'};
@@ -2822,6 +2855,7 @@ function rRes(){
     '</div></div>';
 
   var cr=$('#otp-cr');if(cr)cr.addEventListener('click',clearRun);
+  var kb=$('#otp-keep');if(kb&&!kept)kb.addEventListener('click',function(){if(sgwAdd(kt))rRes()});   /* v6.10 */
   var fbx=$('#otp-fbAll');
   if(fbx)fbx.addEventListener('click',function(){runProwl('facebook',[r.terms[0]],[fbAllUsa()],'Facebook USA')});
   var oa=$('#otp-oa');if(oa)oa.addEventListener('click',launchAll);
@@ -4786,7 +4820,9 @@ function resClean(r){
   if(Array.isArray(r.rows))for(i=0;i<r.rows.length&&rows.length<8;i++){x=r.rows[i];if(Array.isArray(x)&&x.length>1&&resStr(x[1],1))rows.push([resStr(x[0],30),resStr(x[1],700)])}
   if(Array.isArray(r.src))for(i=0;i<r.src.length&&sr.length<6;i++){x=r.src[i];if(x&&typeof x.url==='string'&&/^https:\/\//i.test(x.url)&&x.url.length<600)sr.push({title:resStr(x.title,90),url:x.url})}
   th=(typeof r.thumb==='string'&&r.thumb.length<160000&&/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(r.thumb))?r.thumb:'';
-  return {item:item,rows:rows,src:sr,fair:resStr(r.fair,30),thumb:th,at:Number(r.at)||0};
+  var sd=[];   /* v6.09: past sales, optional (older saved research has none) */
+  if(Array.isArray(r.solds))for(i=0;i<r.solds.length&&sd.length<3;i++){x=r.solds[i];if(x&&typeof x.url==='string'&&/^https:\/\//i.test(x.url)&&x.url.length<600&&resStr(x.title,1)&&resStr(x.price,1))sd.push({title:resStr(x.title,120),price:resStr(x.price,30),date:resStr(x.date,30),where:resStr(x.where,40),url:x.url})}
+  return {item:item,rows:rows,src:sr,solds:sd,fair:resStr(r.fair,30),thumb:th,at:Number(r.at)||0};
 }
 function resGet(){
   if(RC)return RC.slice();
@@ -4812,6 +4848,7 @@ window.prowlSaveResearch=function(r){
 function resText(c){
   var L=['Field notes: '+c.item,''],i,k=0;
   for(i=0;i<c.rows.length;i++)L.push(c.rows[i][0]+': '+c.rows[i][1]);
+  if(c.solds.length){L.push('');L.push('Sold before:');c.solds.forEach(function(s){var w=[s.date,s.where].filter(Boolean).join(', ');L.push('- '+s.title+' '+s.price+(w?' ('+w+')':'')+' '+s.url)})}   /* v6.09 */
   for(i=0;i<c.src.length;i++){if(!k){L.push('');L.push('Sources:')}k++;L.push(k+'. '+c.src[i].title+' '+c.src[i].url)}
   L.push('');L.push('Researched with Prowl: https://www.owlandtwigvintage.com/pages/prowl?utm_source=share&utm_medium=research');
   return L.join('\n');
@@ -4839,6 +4876,7 @@ function rDenResearch(){
       '<span class="dx-txt"><b>'+esc(c.item)+'</b><small>'+esc(meta)+'</small></span></summary><dl class="dx-dl">';
     c.rows.forEach(function(r){h+='<dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd>'});
     h+='</dl>';
+    if(c.solds.length){h+='<p class="dx-solh">Sold before</p><ul class="dx-sold">';c.solds.forEach(function(s){var w=[s.date,s.where].filter(Boolean).join(' · ');h+='<li><a href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer">'+esc(s.title)+'</a> <b>'+esc(s.price)+'</b>'+(w?' <small>'+esc(w)+'</small>':'')+'</li>'});h+='</ul>'}   /* v6.09 */
     if(c.src.length){h+='<ol class="dx-src">';c.src.forEach(function(s){h+='<li><a href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer">'+esc(s.title||s.url)+'</a></li>'});h+='</ol>'}
     h+='<div class="dx-acts"><button type="button" class="b p" data-rsh="'+i+'">Share</button><button type="button" class="sgw-ml" data-rsx="'+i+'">Remove</button></div></details></li>';
   });
