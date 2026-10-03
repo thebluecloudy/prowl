@@ -10,11 +10,16 @@
  *   GET /ebay?q=ceramic+panther -> same shape, from eBay's Browse API (v5.12); 2+ words search as an exact phrase first (v5.15)
  *   GET /etsy?q=ceramic+panther     -> same shape, Etsy Open API v3 (worker v5); titles must hold every word (v6)
  *   GET /chairish?q=ceramic+panther -> same shape, from the JSON-LD on chairish.com/search (v5.13)
+ *   GET /poshmark?q=ceramic+panther -> same shape, from Poshmark's search page state (v58)
+ *   GET /poshsold?q=ceramic+panther -> Poshmark sold listings, each with sold:"YYYY-MM-DD" (v58)
  *   GET /hibid?q=ceramic+panther -> same shape, parsed from hibid.com/lots. Built and
  *       tested offline, but hibid.com's WAF answers Workers with a 403 (2026-09-25),
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v58: Poshmark (2026-10-03). /poshmark (live) and /poshsold (sold, with sold date) read the
+ *        JSON Poshmark puts in its own search page. No paid API. Poshmark joins the Prowl
+ *        Alerts sites; saved prefs without the src2 flag get it added. /__poshtest diagnoses.
  *   v57: research sold examples (2026-10-03). /research also returns solds[] (up to 3 past
  *        sales: title, price, date, where, url). A sale is kept only if its url is a page the
  *        web search returned, its price has a dollar amount and its title is real. Cache rs4.
@@ -165,6 +170,8 @@ const EBAY_ITEM_URL = "https://www.ebay.com/itm/";
 const CHAIRISH_URL = "https://www.chairish.com/search?q=";
 const CHAIRISH_LIMIT = 12;
 const CHAIRISH_CACHE_SECONDS = 600;
+const POSH_URL = "https://poshmark.com/search?type=listings&query=";   /* v58 */
+const POSH_LIMIT = 12, POSH_SOLD_LIMIT = 6, POSH_CACHE_SECONDS = 1800;
 
 const HIBID_URL = "https://hibid.com/lots?q=";
 const HIBID_LIMIT = 12;
@@ -721,6 +728,115 @@ async function chairishCall(term) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+/* v58: Poshmark search page. sold=true asks for sold-out listings only. */
+async function poshmarkCall(term, sold) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), UPSTREAM_TIMEOUT_MS);
+  try {
+    const r = await fetch(POSH_URL + encodeURIComponent(term) + "&availability=" + (sold ? "sold_out" : "available"), {
+      signal: ctl.signal,
+      headers: { "User-Agent": PROBE_UA, "Accept": "text/html,application/xhtml+xml,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.9" }
+    });
+    const text = await r.text();
+    return { status: r.status, text: text };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+/* End of the JSON object that opens at s[i] ("{"), skipping braces inside strings. -1 if it never closes.
+   Jumps from token to token (native regex / indexOf) instead of walking every character:
+   the search page state is about 2MB and Workers bill CPU time. */
+function poshObjEnd(s, i) {
+  const re = /["{}]/g;
+  let d = 0, m;
+  re.lastIndex = i;
+  while ((m = re.exec(s))) {
+    const c = m[0];
+    if (c === '"') {
+      let k = re.lastIndex;
+      for (;;) {
+        const q = s.indexOf('"', k);
+        if (q < 0) return -1;
+        let bs = 0, j = q - 1;
+        while (s.charCodeAt(j) === 92) { bs++; j--; }
+        if (bs % 2 === 0) { re.lastIndex = q + 1; break; }
+        k = q + 1;
+      }
+    } else if (c === "{") d++;
+    else { d--; if (d === 0) return re.lastIndex; }
+  }
+  return -1;
+}
+/* The first max search results, or null when the page holds no state we can read. */
+function poshGrid(html, max) {
+  const s = String(html || "");
+  const a = s.indexOf("__INITIAL_STATE__");
+  if (a < 0) return null;
+  /* fast path: read $_search.gridData.data one listing at a time and stop at max */
+  const m = s.indexOf('"$_search":', a);
+  const g = m < 0 ? -1 : s.indexOf('"gridData":', m);
+  const b = g < 0 ? -1 : s.indexOf("{", g + 11);
+  if (b > 0 && b - g < 24 && s.slice(b, b + 9).replace(/\s+/g, "") === '{"data":[') {
+    const out = [];
+    let k = s.indexOf("[", b) + 1;
+    while (out.length < max) {
+      while (k < s.length && /[\s,]/.test(s.charAt(k))) k++;
+      if (s.charAt(k) !== "{") break;
+      const e = poshObjEnd(s, k);
+      if (e < 0) break;
+      try { out.push(JSON.parse(s.slice(k, e))); } catch (x) { break; }
+      k = e;
+    }
+    if (out.length || s.charAt(k) === "]") return out;
+  }
+  /* slow path: the whole state */
+  const b2 = s.indexOf("{", a);
+  if (b2 < 0) return null;
+  const e2 = poshObjEnd(s, b2);
+  if (e2 < 0) return null;
+  try {
+    const st = JSON.parse(s.slice(b2, e2));
+    const d = st && st.$_search && st.$_search.gridData && st.$_search.gridData.data;
+    return Array.isArray(d) ? d.slice(0, max) : null;
+  } catch (x) { return null; }
+}
+/* Poshmark's own listing link: title letters and digits, spaces to dashes, then the id */
+function poshSlug(t) { return String(t || "").replace(/[^A-Za-z0-9 ]+/g, "").trim().replace(/\s+/g, "-").slice(0, 120); }
+function poshmarkNormalize(html, sold, term) {
+  const d = poshGrid(html, sold ? 36 : 24);   /* enough to fill 6 sold / 12 live */
+  if (d === null) return null;
+  const out = [], seen = {};
+  /* sold search: Poshmark loosens a no-match search, so a sale must share a real word with the hunt */
+  const words = sold ? alWords(term).trim().split(" ").filter(w => w.length >= 4) : [];
+  for (const x of d) {
+    if (!x || typeof x !== "object") continue;
+    const id = String(x.id || "");
+    if (!/^[a-f0-9]{24}$/.test(id) || seen[id]) continue;
+    const inv = (x.inventory && typeof x.inventory === "object") ? x.inventory : {};
+    const isSold = String(inv.status || "") === "sold_out";
+    if (sold ? !isSold : isSold) continue;
+    const raw = String(x.title || "");
+    const title = hibidText(raw).replace(/\s+/g, " ").trim().slice(0, 160);
+    if (title.length < 3) continue;
+    if (words.length) { const tw = alWords(title); if (!words.some(w => tw.indexOf(" " + w + " ") !== -1)) continue; }
+    const pv = x.price_amount && x.price_amount.val != null ? x.price_amount.val : x.price;
+    const num = Number(pv);
+    const img = String(x.picture_url || (x.cover_shot && x.cover_shot.url) || "");
+    const slug = poshSlug(raw);
+    const item = {
+      title: title,
+      price: isFinite(num) && num > 0 ? money(num) : "",
+      url: "https://poshmark.com/listing/" + (slug ? slug + "-" : "") + id,
+      image: /^https:\/\//.test(img) ? img : "",
+      src: "poshmark",
+    };
+    if (sold) { const sd = String(inv.status_changed_at || ""); item.sold = /^\d{4}-\d{2}-\d{2}/.test(sd) ? sd.slice(0, 10) : ""; }
+    seen[id] = 1;
+    out.push(item);
+  }
+  return out;
 }
 
 async function hibidCall(term) {
@@ -1896,8 +2012,8 @@ const AL_SEEN_CAP = 6000;   // v50: URLs and title keys
 const AL_SUB_PER_IP = 12;
 const AL_CONFIRM_PER_EMAIL = 3;
 const AL_TZ = "America/Detroit";
-const AL_SOURCES = ["shopgoodwill", "ebay", "etsy", "chairish"];
-const AL_SRC_NAME = { shopgoodwill: "ShopGoodwill", ebay: "eBay", etsy: "Etsy", chairish: "Chairish" };
+const AL_SOURCES = ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark"];   /* v58: poshmark */
+const AL_SRC_NAME = { shopgoodwill: "ShopGoodwill", ebay: "eBay", etsy: "Etsy", chairish: "Chairish", poshmark: "Poshmark" };
 /* v50: the member's email settings, sub.prefs = { freq, sources, mute, max, skip, pause }.
    freq: "daily" (default), "mwf" (Mon/Wed/Fri) or "weekly" (Monday), Detroit days.
    sources: which of AL_SOURCES to search. mute: hunts kept in the list but left out
@@ -1940,11 +2056,14 @@ const AL_SKIP_MAX = 12, AL_SKIP_LEN = 24, AL_MAX_PRICE = 100000;
 function alWords(s) { return " " + String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() + " "; }
 function alPrefs(sub) {
   const p = (sub && sub.prefs) || {};
-  const sources = Array.isArray(p.sources) ? p.sources.filter(s => AL_SOURCES.indexOf(s) !== -1) : [];
+  const sources = Array.isArray(p.sources) ? p.sources.filter((s, i, a) => AL_SOURCES.indexOf(s) !== -1 && a.indexOf(s) === i) : [];
+  /* v58: prefs saved before the Poshmark chip existed (no src2) get Poshmark too */
+  if (!p.src2 && sources.length && sources.indexOf("poshmark") === -1) sources.push("poshmark");
   const max = Math.floor(Number(p.max));
   return {
     freq: AL_FREQ_DAYS[p.freq] ? p.freq : "daily",
     sources: sources.length ? sources : AL_SOURCES.slice(),
+    src2: p.src2 ? 1 : 0,   /* v58: the page knows about Poshmark */
     mute: Array.isArray(p.mute) ? p.mute.map(h => vClean(h, 60).toLowerCase()).filter(Boolean).slice(0, AL_MAX_HUNTS) : [],
     max: max > 0 ? Math.min(max, AL_MAX_PRICE) : 0,
     skip: Array.isArray(p.skip) ? p.skip.map(w => alWords(vClean(w, AL_SKIP_LEN)).trim()).filter(Boolean).slice(0, AL_SKIP_MAX) : [],
@@ -2188,10 +2307,12 @@ async function alSearch(env, source, term, filter) {
   if (source === "etsy" && !(env && env.ETSY_API_KEY)) return [];
   if (source === "ebay" && !(env && env.EBAY_CLIENT_ID)) return [];
   up = source === "ebay" ? await ebayLean(term, env, filter) : source === "etsy" ? await etsyCall(term, env)
-     : source === "chairish" ? await chairishCall(term) : await callUpstream(term);
+     : source === "chairish" ? await chairishCall(term) : source === "poshmark" ? await poshmarkCall(term, false)
+     : await callUpstream(term);
   if (!up || up.status !== 200) return [];
   let items = source === "ebay" ? ebayNormalize(up.text) : source === "etsy" ? etsyNormalize(up.text)
-            : source === "chairish" ? chairishNormalize(up.text) : normalize(up.text);
+            : source === "chairish" ? chairishNormalize(up.text) : source === "poshmark" ? poshmarkNormalize(up.text, false, term)
+            : normalize(up.text);   /* v58: poshmark */
   if (!items || !items.length) return [];
   items = items.slice(0, AL_PER_SITE);
   return items.filter(x => x && /^https:\/\//.test(x.url || "")).map(x => ({
@@ -3119,6 +3240,30 @@ export default {
       }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
+    if (url.pathname === "/__poshtest") {   /* v58 */
+      const term = url.searchParams.get("q") || "jadeite fire king";
+      const sold = url.searchParams.get("sold") === "1";
+      const started = Date.now();
+      let up, err = null;
+      try { up = await poshmarkCall(term, sold); }
+      catch (e) { err = String(e && e.message || e); }
+      const items = up ? poshmarkNormalize(up.text, sold, term) : null;
+      return new Response(JSON.stringify({
+        ok: !!(items && items.length),
+        term: term,
+        sold: sold,
+        ms: Date.now() - started,
+        upstreamStatus: up ? up.status : null,
+        upstreamBytes: up ? up.text.length : 0,
+        hasState: up ? up.text.indexOf("__INITIAL_STATE__") !== -1 : null,
+        parsedItems: items ? items.length : null,
+        parseFailed: up ? items === null : null,
+        error: err,
+        firstItem: items && items[0] ? items[0] : null,
+        rawHead: up && !(items && items.length) ? up.text.slice(0, 300) : null,
+      }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
     if (url.pathname === "/__hibidtest") {
       const term = url.searchParams.get("q") || "roseville pottery";
       const started = Date.now();
@@ -3170,10 +3315,11 @@ export default {
     if (!term) return json({ error: "missing q" }, 400, origin);
     if (term.length > MAX_TERM) term = term.slice(0, MAX_TERM);
 
-    const SOURCES = { "/": "shopgoodwill", "/ebay": "ebay", "/hibid": "hibid", "/chairish": "chairish", "/etsy": "etsy" };
+    const SOURCES = { "/": "shopgoodwill", "/ebay": "ebay", "/hibid": "hibid", "/chairish": "chairish", "/etsy": "etsy", "/poshmark": "poshmark", "/poshsold": "poshsold" };   /* v58: poshmark */
     const source = SOURCES[url.pathname];
     if (!source) return json({ error: "not found" }, 404, origin);
     const isEbay = source === "ebay", isHibid = source === "hibid", isChairish = source === "chairish", isEtsy = source === "etsy";
+    const isPosh = source === "poshmark" || source === "poshsold", poshSold = source === "poshsold";
 
     const cache = PCACHE;
     const key = new Request(
@@ -3198,6 +3344,7 @@ export default {
          : isHibid ? await hibidCall(term)
          : isChairish ? await chairishCall(term)
          : isEtsy ? await etsyCall(term, env)
+         : isPosh ? await poshmarkCall(term, poshSold)
          : await callUpstream(term);
     }
     catch (e) {
@@ -3211,15 +3358,18 @@ export default {
               : isHibid ? hibidNormalize(up.text)
               : isChairish ? chairishNormalize(up.text)
               : isEtsy ? etsyNormalize(up.text)
+              : isPosh ? poshmarkNormalize(up.text, poshSold, term)
               : normalize(up.text);
     if (isHibid && items && items.length > HIBID_LIMIT) items = items.slice(0, HIBID_LIMIT);
+    if (isPosh && items) { const lim = poshSold ? POSH_SOLD_LIMIT : POSH_LIMIT; if (items.length > lim) items = items.slice(0, lim); }
     if (isChairish && items && items.length > CHAIRISH_LIMIT) items = items.slice(0, CHAIRISH_LIMIT);
     if (items === null) {
       return json({ error: "could not parse upstream", bytes: up.text.length }, 502, origin);
     }
 
-    let jevInfo = { mode: jevResultsMode(env), status: source === "hibid" ? "skipped" : "error" };
-    if (source !== "hibid") { try { const jr = await jevClean(env, term, items); items = jr.items; jevInfo = jr.info; } catch (e) {} }
+    const noJev = source === "hibid" || poshSold;   /* v58: sold comps are not cleaned */
+    let jevInfo = { mode: jevResultsMode(env), status: noJev ? "skipped" : "error" };
+    if (!noJev) { try { const jr = await jevClean(env, term, items); items = jr.items; jevInfo = jr.info; } catch (e) {} }
     const payload = {
       jev: jevInfo,
       term: term,
@@ -3228,7 +3378,7 @@ export default {
       items: items,
     };
     const res = json(payload, 200, origin, {
-      "Cache-Control": "public, max-age=" + (isEbay ? EBAY_CACHE_SECONDS : isHibid ? HIBID_CACHE_SECONDS : isChairish ? CHAIRISH_CACHE_SECONDS : isEtsy ? ETSY_CACHE_SECONDS : CACHE_SECONDS),
+      "Cache-Control": "public, max-age=" + (isEbay ? EBAY_CACHE_SECONDS : isHibid ? HIBID_CACHE_SECONDS : isChairish ? CHAIRISH_CACHE_SECONDS : isEtsy ? ETSY_CACHE_SECONDS : isPosh ? POSH_CACHE_SECONDS : CACHE_SECONDS),
       "X-Prowl-Cache": "miss",
     });
     try { await cache.put(key, res.clone()); } catch (e) { /* cache is best effort */ }
