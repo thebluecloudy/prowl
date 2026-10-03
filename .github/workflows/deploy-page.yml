@@ -1,10 +1,12 @@
 name: Deploy Prowl page to Shopify
 
+# Upload any .html file into page/ (any name, e.g. "prowl (2).html") and it deploys.
+# The file from the most recent commit that touched page/*.html is the one sent.
 on:
   push:
     branches: [main]
     paths:
-      - "page/prowl.html"
+      - "page/*.html"
   workflow_dispatch:
     inputs:
       force:
@@ -25,15 +27,25 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Send page/prowl.html to Shopify and verify
+      - name: Pick the page file
+        id: pick
+        run: |
+          f="$(git log -1 --format= --name-only --diff-filter=AM -- 'page/*.html' | head -n 1)"
+          if [ -z "$f" ]; then f="page/prowl.html"; fi
+          echo "Deploying: $f"
+          echo "file=$f" >> "$GITHUB_OUTPUT"
+      - name: Send the page to Shopify and verify
         env:
           SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
           SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
           FORCE: ${{ inputs.force || 'false' }}
-        run: node scripts/deploy-page.mjs page/prowl.html
+          PAGE_FILE: ${{ steps.pick.outputs.file }}
+        run: node scripts/deploy-page.mjs "$PAGE_FILE"
       - name: Keep the previous live page
         if: always()
         uses: actions/upload-artifact@v4
