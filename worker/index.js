@@ -15,6 +15,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v57: research sold examples (2026-10-03). /research also returns solds[] (up to 3 past
+ *        sales: title, price, date, where, url). A sale is kept only if its url is a page the
+ *        web search returned, its price has a dollar amount and its title is real. Cache rs4.
  *   v56: local pickup (2026-10-03). prefs.zip (5-digit US ZIP), prefs.radius (25/50/100 mi) and
  *        prefs.local (hunt names). A Pro member's local hunt is checked on eBay only, with the
  *        Browse API pickup filters, so the email carries listings they can drive to; cards show
@@ -1302,7 +1305,7 @@ async function apPrice(b, request, origin, env) {
 }
 
 /* ---------- Research this piece (worker v13) ----------
-   POST /research { item, maker } -> { item, maker, era, marks, repros, sold, notes, sources[] }
+   POST /research { item, maker } -> { item, maker, era, marks, repros, sold, notes, sources[], solds[] }
    Meta Muse Responses API with web search. Cached 30 days per item name.
    Caps: RESEARCH_PER_IP per visitor per day, RESEARCH_PER_DAY site-wide (cache misses only). */
 const RESEARCH_PER_IP = 5;
@@ -1314,7 +1317,7 @@ async function research(request, env, origin) {
   const name = vClean(b && b.item, 100), maker = vClean(b && b.maker, 60);
   if (!name) return json({ error: "missing item" }, 400, origin);
   const key = (name + " " + maker).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 160);
-  const ck = new Request("https://prowl-verdicts.invalid/rs3/" + encodeURIComponent(key));
+  const ck = new Request("https://prowl-verdicts.invalid/rs4/" + encodeURIComponent(key));   /* v57: solds[] */
   try { const hit = await PCACHE.match(ck); if (hit) return json(await hit.json(), 200, origin, { "X-Prowl-Cache": "hit" }); } catch (e) {}
   const ip = ipKey(request.headers.get("CF-Connecting-IP"));
   if (!(await capOk(request, env, "rs:" + ip, RESEARCH_PER_IP))) return json({ error: "daily limit" }, 429, origin);
@@ -1330,8 +1333,9 @@ async function research(request, env, origin) {
     "repros = known reproductions, fakes or lookalikes and how to tell them apart, or none known;",
     "sold = the dollar range it has actually sold for in good condition, with where that came from;",
     "notes = one or two sentences a collector would want to know; sources = the pages you used.",
+    "solds = up to 3 real past sales of this same piece that you found on pages you opened (eBay sold listings, WorthPoint, auction results), newest first. For each: title as listed, price it sold for in US dollars, date (month and year if shown), where it sold, and url = the page that shows that sale. Leave solds empty if you found none. Never make one up.",
     "Reply with ONLY this JSON object filled in, nothing else:",
-    '{"item":"","maker":"","era":"","marks":"","repros":"","sold":"","notes":"","sources":[{"title":"","url":""}]}',
+    '{"item":"","maker":"","era":"","marks":"","repros":"","sold":"","notes":"","sources":[{"title":"","url":""}],"solds":[{"title":"","price":"","date":"","where":"","url":""}]}',
     "ITEM: " + JSON.stringify(name) + (maker ? "\nMAKER HINT: " + JSON.stringify(maker) : "")
   ].join("\n");
   const ctl = new AbortController();
@@ -1364,11 +1368,33 @@ async function research(request, env, origin) {
   if (!out) return json({ error: "unreadable" }, 502, origin);
   const clean = {};
   ["item", "maker", "era", "marks", "repros", "sold", "notes"].forEach(k => { clean[k] = String(out[k] || "").replace(/\bebay\b/gi, "eBay").slice(0, 400); });
+  /* v57: past sales. Only pages the search itself returned count, checked before the
+     model's own sources list is merged in. */
+  const searched = Object.assign({}, seen);
+  clean.solds = rsSolds(out.solds, searched);
   if (Array.isArray(out.sources)) out.sources.forEach(x => { if (x) add(x.url, x.title); });
   ["marks", "repros", "sold", "notes"].forEach(k => { if (/^(how to confirm|known reproductions or lookalikes|typical sold range|one or two sentences)/i.test(clean[k])) clean[k] = ""; });
   clean.sources = sources.slice(0, 6);
   if (clean.sources.length && clean.sold) { try { await PCACHE.put(ck, new Response(JSON.stringify(clean), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=2592000" } })); } catch (e) {} }
   return json(clean, 200, origin);
+}
+
+/* v57: clean the model's solds[] down to sales we can link to */
+function rsSolds(list, searched) {
+  const out = [], used = {};
+  if (!Array.isArray(list)) return out;
+  const tidy = (v, n) => String(v == null ? "" : v).replace(/\s+/g, " ").trim().slice(0, n);
+  for (const x of list) {
+    if (out.length >= 3) break;
+    if (!x || typeof x !== "object") continue;
+    const url = String(x.url || "").slice(0, 400);
+    if (!/^https:\/\//i.test(url) || !searched[url] || used[url]) continue;
+    const title = tidy(x.title, 120).replace(/\bebay\b/gi, "eBay"), price = tidy(x.price, 30);
+    if (title.length < 4 || !/\$\s?\d/.test(price)) continue;
+    used[url] = 1;
+    out.push({ title: title, price: price, date: tidy(x.date, 30), where: tidy(x.where, 40).replace(/\bebay\b/gi, "eBay"), url: url });
+  }
+  return out;
 }
 
 /* ---------- v19: TypeSafe Jev lookalike check ----------
