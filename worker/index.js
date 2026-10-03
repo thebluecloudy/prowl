@@ -15,6 +15,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v56: local pickup (2026-10-03). prefs.zip (5-digit US ZIP), prefs.radius (25/50/100 mi) and
+ *        prefs.local (hunt names). A Pro member's local hunt is checked on eBay only, with the
+ *        Browse API pickup filters, so the email carries listings they can drive to; cards show
+ *        the distance. Free members can save the settings but they only take effect on Pro.
  *   v55: free month + billing emails (2026-10-03). PROWLMONTH / $0 order = trial; welcome and
  *        3-day reminder emails; unsubscribe turns emails off, Pro and hunts stay; /alerts/mail,
  *        /alerts/delete; new free members get 1 hunt weekly; free photo/Fair checks 1 a day.
@@ -376,6 +380,13 @@ function ebayItem(it) {
     const tl = timeLeft(it.itemEndDate);
     if (tl) out.time_left = tl;
   }
+  /* v56: with the pickup filters eBay says how far the item is from the ZIP */
+  const d = it.distanceFromPickupLocation;
+  if (d && isFinite(Number(d.value))) {
+    const km = /km/i.test(String(d.unitOfMeasure || ""));
+    const mi = km ? Number(d.value) * 0.621371 : Number(d.value);
+    out.dist = (mi < 1 ? "under 1" : String(Math.round(mi))) + " mi";
+  }
   return out;
 }
 
@@ -421,10 +432,11 @@ async function ebayCall(term, env) {
   return loose;
 }
 
-async function ebaySearchRaw(term, env, autocorrect) {
+async function ebaySearchRaw(term, env, autocorrect, filter) {
   let token = await ebayToken(env);
   const u = EBAY_SEARCH_URL + "?q=" + encodeURIComponent(term) +
-            "&limit=" + EBAY_LIMIT + "&sort=newlyListed" + (autocorrect ? "&auto_correct=KEYWORD" : "");
+            "&limit=" + EBAY_LIMIT + "&sort=newlyListed" + (autocorrect ? "&auto_correct=KEYWORD" : "") +
+            (filter ? "&filter=" + encodeURIComponent(filter) : "");   /* v56: pickup filters */
   const hdr = (t) => ({
     "Authorization": "Bearer " + t,
     "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
@@ -1912,17 +1924,20 @@ function alPrefs(sub) {
     skip: Array.isArray(p.skip) ? p.skip.map(w => alWords(vClean(w, AL_SKIP_LEN)).trim()).filter(Boolean).slice(0, AL_SKIP_MAX) : [],
     pause: /^\d{4}-\d{2}-\d{2}$/.test(String(p.pause || "")) ? String(p.pause) : "",
     slot: AL_SLOTS.indexOf(Number(p.slot)) !== -1 ? Number(p.slot) : 0,   /* v52 */
-    tz: alTzClean(p.tz)   /* v53 */
+    tz: alTzClean(p.tz),   /* v53 */
+    zip: /^\d{5}$/.test(String(p.zip || "")) ? String(p.zip) : "",   /* v56 */
+    radius: AL_RADII.indexOf(Number(p.radius)) !== -1 ? Number(p.radius) : 50,
+    local: Array.isArray(p.local) ? p.local.map(h => vClean(h, 60).toLowerCase()).filter(Boolean).slice(0, AL_MAX_HUNTS) : []
   };
 }
 function alPaused(sub, now) { const p = alPrefs(sub).pause; return !!p && now.day < p; }
 function alSendDay(sub, now) { return AL_FREQ_DAYS[alFreeWeekly(sub) ? "weekly" : alPrefs(sub).freq].indexOf(now.wday) !== -1; }   /* v55: new free = Mondays */
 function alPrice(s) { const m = /(\d[\d,]*)(\.\d+)?/.exec(String(s || "")); return m ? Number(m[1].replace(/,/g, "")) : NaN; }
 function alTitleKey(x) { return "t:" + String(x.src || "") + "|" + alWords(x.title).trim().slice(0, 100); }
-function alFilter(sub, items) {
+function alFilter(sub, items, local) {
   const p = alPrefs(sub), pro = !!sub.pro;
   return items.filter(x => {
-    if (p.sources.indexOf(x.src) === -1) return false;
+    if (!local && p.sources.indexOf(x.src) === -1) return false;   /* v56: local hunts are eBay by design */
     if (pro && p.max) { const n = alPrice(x.price); if (isFinite(n) && n > p.max) return false; }
     if (pro && p.skip.length) { const t = alWords(x.title); for (const w of p.skip) if (t.indexOf(" " + w + " ") !== -1) return false; }
     return true;
@@ -2111,14 +2126,27 @@ async function alSend(env, to, subject, html, text, unsub) {
    2 calls at most), keep 10 listings per site and ask Jev once per hunt, so a
    hunt costs about 9 calls. Runs check ALERT_BATCH hunts (default 2). */
 const AL_PER_SITE = 10;
-async function ebayLean(term, env) {
+async function ebayLean(term, env, filter) {
   const phrase = ebayPhrase(term);
   if (phrase) {
-    const first = await ebaySearchRaw(phrase, env);
+    const first = await ebaySearchRaw(phrase, env, false, filter);
     const got = first.status === 200 ? ebayNormalize(first.text) : null;
     if (got === null || got.length) return first;
   }
-  return ebaySearchRaw(term, env);
+  return ebaySearchRaw(term, env, false, filter);
+}
+/* v56: eBay's local-pickup filter set. All five must travel together (Browse API rule). */
+const AL_RADII = [25, 50, 100];
+function ebayLocalFilter(zip, radius) {
+  if (!/^\d{5}$/.test(String(zip || ""))) return "";
+  const r = AL_RADII.indexOf(Number(radius)) !== -1 ? Number(radius) : 50;
+  return "pickupCountry:US,pickupPostalCode:" + zip + ",pickupRadius:" + r + ",pickupRadiusUnit:mi,deliveryOptions:{SELLER_ARRANGED_LOCAL_PICKUP}";
+}
+/* A hunt is local when the member is Pro, has a ZIP, and marked that hunt. */
+function alNear(sub, term) {
+  if (!sub || !sub.pro) return false;
+  const p = alPrefs(sub);
+  return !!p.zip && p.local.indexOf(String(term || "").toLowerCase()) !== -1;
 }
 /* v34: eBay Partner Network. EPN_CAMPAIGN_ID (text var, 10 digits) is added to
    eBay item links in Prowl Alerts emails. The page tags its own links. */
@@ -2129,11 +2157,11 @@ function epnUrl(env, u, cid) {
 }
 const AL_PRO_REFRESH_PER_RUN = 8;   /* v51: Shopify order checks per 15-minute run (subrequest budget) */
 function alBatch(env) { const n = parseInt((env && env.ALERT_BATCH) || "2", 10); return n > 0 && n <= 5 ? n : 2; }
-async function alSearch(env, source, term) {
+async function alSearch(env, source, term, filter) {
   let up;
   if (source === "etsy" && !(env && env.ETSY_API_KEY)) return [];
   if (source === "ebay" && !(env && env.EBAY_CLIENT_ID)) return [];
-  up = source === "ebay" ? await ebayLean(term, env) : source === "etsy" ? await etsyCall(term, env)
+  up = source === "ebay" ? await ebayLean(term, env, filter) : source === "etsy" ? await etsyCall(term, env)
      : source === "chairish" ? await chairishCall(term) : await callUpstream(term);
   if (!up || up.status !== 200) return [];
   let items = source === "ebay" ? ebayNormalize(up.text) : source === "etsy" ? etsyNormalize(up.text)
@@ -2143,11 +2171,14 @@ async function alSearch(env, source, term) {
   return items.filter(x => x && /^https:\/\//.test(x.url || "")).map(x => ({
     title: String(x.title || "").slice(0, 140), price: String(x.price || ""), url: x.url,
     image: /^https:\/\//.test(x.image || "") ? x.image : "", src: source,
-    time_left: x.time_left || "", bids: x.bids || 0 }));
+    time_left: x.time_left || "", bids: x.bids || 0, dist: x.dist || "" }));   /* v56: dist */
 }
 async function alHunt(env, term, sub) {
-  const srcs = sub ? alPrefs(sub).sources : AL_SOURCES;   /* v50: only the sites this member wants */
-  const got = await Promise.all(srcs.map(s => alSearch(env, s, term).catch(() => [])));
+  const local = alNear(sub, term);   /* v56: Pro + ZIP + marked local */
+  const p = sub ? alPrefs(sub) : null;
+  const srcs = local ? ["ebay"] : (sub ? p.sources : AL_SOURCES);   /* v50: only the sites this member wants */
+  const filter = local ? ebayLocalFilter(p.zip, p.radius) : "";
+  const got = await Promise.all(srcs.map(s => alSearch(env, s, term, filter).catch(() => [])));
   let out = [];
   got.forEach(list => list.forEach(x => out.push(x)));
   /* one Jev call for the whole hunt; skips the page's daily-cap counter */
@@ -2155,7 +2186,7 @@ async function alHunt(env, term, sub) {
   if (out.length && mode !== "off" && String(env.ALERT_JEV || "on").toLowerCase() !== "off") {
     try { const jr = await jevClean(env, term, out, mode); out = jr.items; } catch (e) {}
   }
-  if (sub) out = alFilter(sub, out);   /* v50: price ceiling, skip-words */
+  if (sub) out = alFilter(sub, out, local);   /* v50: price ceiling, skip-words */
   return out;
 }
 
@@ -2231,7 +2262,7 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
   const card = (x) => {
     /* v42: Poof-style card -- a bordered square, bold capital title, the price
        on its own line, details underneath. Tables for Outlook. */
-    const meta = [AL_SRC_NAME[x.src] || x.src, x.time_left ? x.time_left + " left" : ""].filter(Boolean).join(" · ");
+    const meta = [AL_SRC_NAME[x.src] || x.src, x.dist ? x.dist + " away" : "", x.time_left ? x.time_left + " left" : ""].filter(Boolean).join(" · ");   /* v56: dist */
     const title = String(x.title || "").length > 90 ? String(x.title).slice(0, 87).replace(/\s+\S*$/, "") + "…" : String(x.title || "");
     return '<td width="50%" valign="top" style="padding:6px">' +
       '<table width="100%" cellpadding="0" cellspacing="0" style="border:1.5px solid #d6c9b6;border-radius:4px;background:#ffffff;border-collapse:separate"><tr><td style="padding:0">' +
@@ -2247,7 +2278,7 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
   hunts.forEach(h => {
     const list = pend[h], shown = list.slice(0, AL_PER_HUNT_EMAIL), more = list.length - shown.length;
     body += '<tr><td style="padding:22px 12px 4px"><table width="100%" cellpadding="0" cellspacing="0"><tr>' +
-      '<td style="font:bold 19px Georgia,serif;color:#2b2118">' + alEsc(h) + ' <span style="font:normal 14px Arial,sans-serif;color:#6b5b4a">· ' + list.length + ' new</span></td>' +
+      '<td style="font:bold 19px Georgia,serif;color:#2b2118">' + alEsc(h) + ' <span style="font:normal 14px Arial,sans-serif;color:#6b5b4a">· ' + list.length + ' new' + alLocalNote(sub, h) + '</span></td>' +
       '<td align="right"><a href="' + alEsc(PROWL_APP + "?q=" + encodeURIComponent(h)) + '" style="font:bold 13px Arial,sans-serif;color:#8a4b1f">See all on Prowl</a></td></tr></table></td></tr><tr><td><table width="100%" cellpadding="0" cellspacing="0">';
     for (let i = 0; i < shown.length; i += 2) body += "<tr>" + card(shown[i]) + (shown[i + 1] ? card(shown[i + 1]) : '<td width="50%"></td>') + "</tr>";
     const also = AL_ALSO.map(a => '<a href="' + alEsc(a[1](h)) + '" style="color:#8a4b1f">' + a[0] + '</a>').join(' · ');
@@ -2279,11 +2310,17 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
     '<a href="' + alEsc(alUpgradeUrl(sub)) + '" style="color:#8a4b1f;font-weight:bold">Get all ' + Math.min(all, AL_MAX_HUNTS) + ' every day with Prowl Pro' + (sub.hadPro ? ' · $7/month' : ' · first month free') + '</a></div></td></tr>' : '';
   return alShell(env, inner + up, alWhy(sub), links);
 }
+/* v56: " · local pickup within 50 mi of 48375" after a local hunt's heading */
+function alLocalNote(sub, h) {
+  if (!alNear(sub, h)) return "";
+  const p = alPrefs(sub);
+  return " · local pickup within " + p.radius + " mi of " + alEsc(p.zip);
+}
 function alEmailText(sub, pend, env) {
   const lines = ["Prowl Alerts", ""];
   sub.hunts.filter(h => pend[h] && pend[h].length).forEach(h => {
-    lines.push(h.toUpperCase() + " (" + pend[h].length + " new)");
-    pend[h].slice(0, AL_PER_HUNT_EMAIL).forEach(x => lines.push("- " + x.title + (x.price ? " " + x.price : "") + " [" + (AL_SRC_NAME[x.src] || x.src) + "] " + epnUrl(env, x.url, "prowl-alerts")));
+    lines.push(h.toUpperCase() + " (" + pend[h].length + " new" + alLocalNote(sub, h) + ")");
+    pend[h].slice(0, AL_PER_HUNT_EMAIL).forEach(x => lines.push("- " + x.title + (x.price ? " " + x.price : "") + (x.dist ? " · " + x.dist + " away" : "") + " [" + (AL_SRC_NAME[x.src] || x.src) + "] " + epnUrl(env, x.url, "prowl-alerts")));
     lines.push("All: " + PROWL_APP + "?q=" + encodeURIComponent(h));
     lines.push("Also search: " + AL_ALSO.map(a => a[0] + " " + a[1](h)).join(" | "), "");
   });
@@ -2781,6 +2818,7 @@ async function alPrefsSave(request, env, origin) {
   const p = alPrefs({ prefs: (b.prefs && typeof b.prefs === "object") ? b.prefs : {} });
   const have = sub.hunts.map(h => h.toLowerCase());
   p.mute = p.mute.filter(h => have.indexOf(h) !== -1);
+  p.local = p.local.filter(h => have.indexOf(h) !== -1);   /* v56 */
   if (p.pause) {
     const far = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
     if (p.pause > far) p.pause = far;
