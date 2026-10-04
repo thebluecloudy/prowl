@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v70: /__ebaysoldtest (2026-10-04). Asks eBay's Marketplace Insights (sold items) API for a token and a search
+ *        with our existing keys, to show whether the sold-prices application was approved. Diagnostic only.
  *   v69: AI off (2026-10-04). Live lookups with ai=0 skip the AI (Jev) sorting and have their own cache key;
  *        a member's noai alert preference skips the AI sorting of their emails. Set from the page's
  *        "AI helpers" switch, which is a Prowl Pro setting.
@@ -3815,6 +3817,35 @@ export default {
         firstItem: items && items[0] ? items[0] : null,
         rawHead: up && !(items && items.length) ? up.text.slice(0, 300) : null,
       }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/__ebaysoldtest") {   /* v70: is eBay's Marketplace Insights (sold items) API open to our keys? */
+      const term = url.searchParams.get("q") || "roseville pottery vase";
+      const out = { term: term, tokenStatus: null, tokenBody: null, searchStatus: null, searchBody: null, count: null, first: null };
+      try {
+        if (!env.EBAY_CLIENT_ID || !env.EBAY_CLIENT_SECRET) throw new Error("EBAY_CLIENT_ID / EBAY_CLIENT_SECRET not set");
+        const tr = await fetch(EBAY_TOKEN_URL, {
+          method: "POST",
+          headers: { "Authorization": "Basic " + btoa(env.EBAY_CLIENT_ID + ":" + env.EBAY_CLIENT_SECRET), "Content-Type": "application/x-www-form-urlencoded" },
+          body: "grant_type=client_credentials&scope=" + encodeURIComponent("https://api.ebay.com/oauth/api_scope/buy.marketplace.insights"),
+        });
+        const tt = await tr.text();
+        out.tokenStatus = tr.status;
+        let tj = null; try { tj = JSON.parse(tt); } catch (e) {}
+        if (!tj || !tj.access_token) { out.tokenBody = tt.slice(0, 300); }
+        else {
+          const sr = await fetch("https://api.ebay.com/buy/marketplace_insights/v1_beta/item_sales/search?q=" + encodeURIComponent(term) + "&limit=5",
+            { headers: { "Authorization": "Bearer " + tj.access_token, "X-EBAY-C-MARKETPLACE-ID": "EBAY_US" } });
+          const st = await sr.text();
+          out.searchStatus = sr.status;
+          let sj = null; try { sj = JSON.parse(st); } catch (e) {}
+          if (sj && Array.isArray(sj.itemSales)) {
+            out.count = sj.itemSales.length;
+            out.first = sj.itemSales[0] ? { title: sj.itemSales[0].title, price: sj.itemSales[0].lastSoldPrice, date: sj.itemSales[0].lastSoldDate } : null;
+          } else out.searchBody = st.slice(0, 300);
+        }
+      } catch (e) { out.error = String(e && e.message || e); }
+      return new Response(JSON.stringify(out, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/__grailedtest") {   /* v64: Grailed searches through Algolia; is the search key in the page, and does the index answer? */
