@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v69: AI off (2026-10-04). Live lookups with ai=0 skip the AI (Jev) sorting and have their own cache key;
+ *        a member's noai alert preference skips the AI sorting of their emails. Set from the page's
+ *        "AI helpers" switch, which is a Prowl Pro setting.
  *   v68: Field Guide on any subject (2026-10-04). POST /guide { subject } has Muse (web search) write a
  *        collector's field guide with sources; cached 30 days per subject, every request counted as kind
  *        "g" (see /__topterms?kind=g). Free 3 a day per visitor, Pro 15.
@@ -2610,6 +2613,7 @@ function alPrefs(sub) {
     src3: p.src3 ? 1 : 0,   /* v59: the page knows about Depop */
     src4: p.src4 ? 1 : 0,   /* v61: the page knows about Vinted */
     src5: p.src5 ? 1 : 0,   /* v66: the page knows about Grailed */
+    noai: p.noai ? 1 : 0,   /* v69: the member turned AI off: no AI sorting of their emails */
     mute: Array.isArray(p.mute) ? p.mute.map(h => vClean(h, 60).toLowerCase()).filter(Boolean).slice(0, AL_MAX_HUNTS) : [],
     max: max > 0 ? Math.min(max, AL_MAX_PRICE) : 0,
     skip: Array.isArray(p.skip) ? p.skip.map(w => alWords(vClean(w, AL_SKIP_LEN)).trim()).filter(Boolean).slice(0, AL_SKIP_MAX) : [],
@@ -2876,7 +2880,7 @@ async function alHunt(env, term, sub) {
   got.forEach(list => list.forEach(x => out.push(x)));
   /* one Jev call for the whole hunt; skips the page's daily-cap counter */
   const mode = jevResultsMode(env);
-  if (out.length && mode !== "off" && String(env.ALERT_JEV || "on").toLowerCase() !== "off") {
+  if (out.length && mode !== "off" && String(env.ALERT_JEV || "on").toLowerCase() !== "off" && !(p && p.noai)) {
     try { const jr = await jevClean(env, term, out, mode); out = jr.items; } catch (e) {}
   }
   if (sub) out = alFilter(sub, out, local);   /* v50: price ceiling, skip-words */
@@ -4094,7 +4098,7 @@ export default {
 
     const cache = PCACHE;
     const key = new Request(
-      url.origin + url.pathname + "?q=" + encodeURIComponent(term.toLowerCase()) + "&jev3=" + jevResultsMode(env),
+      url.origin + url.pathname + "?q=" + encodeURIComponent(term.toLowerCase()) + "&jev3=" + jevResultsMode(env) + (url.searchParams.get("ai") === "0" ? "&ai=0" : ""),
       { method: "GET" }
     );
     const hit = await cache.match(key);
@@ -4147,7 +4151,7 @@ export default {
       return json({ error: "could not parse upstream", bytes: up.text.length }, 502, origin);
     }
 
-    const noJev = source === "hibid" || poshSold;   /* v58: sold comps are not cleaned */
+    const noJev = source === "hibid" || poshSold || url.searchParams.get("ai") === "0";   /* v58: sold comps are not cleaned; v69: ai=0 means the visitor turned AI off */
     let jevInfo = { mode: jevResultsMode(env), status: noJev ? "skipped" : "error" };
     if (!noJev) { try { const jr = await jevClean(env, term, items); items = jr.items; jevInfo = jr.info; } catch (e) {} }
     const payload = {
