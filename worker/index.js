@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v65: Grailed live search (2026-10-04). /grailed asks Grailed's own Algolia search index with the
+ *        public, search-only key its site sends every browser. The key is NOT in this repo: set
+ *        GRAILED_ALGOLIA_APP and GRAILED_ALGOLIA_KEY as Worker variables (GRAILED_ALGOLIA_INDEX is
+ *        optional). Sold and deleted listings are dropped. Not yet in the page or the alerts sites.
  *   v64: /__grailedtest (2026-10-04). Grailed searches through Algolia: reports whether the shop
  *        page answers a Worker, any app id / search key in it, and what the index returns.
  *   v63: /__whatnottest (2026-10-04). Tries whatnot.com's search page a few ways and reports what
@@ -194,6 +198,11 @@ const DEPOP_LIMIT = 12, DEPOP_CACHE_SECONDS = 1800;
 const VINTED_HOME = "https://www.vinted.com/";   /* v60 */
 const VINTED_PAGE = "/catalog?search_text=";   /* v60d: the search page itself; its API answers a Worker with a 404 */
 const VINTED_LIMIT = 12, VINTED_CACHE_SECONDS = 1800;
+/* v65: Grailed searches through Algolia. GRAILED_ALGOLIA_APP and GRAILED_ALGOLIA_KEY are Worker
+   variables (the public search-only pair Grailed's own site sends every browser); neither is stored
+   here, and /grailed answers "not configured" until both are set. GRAILED_ALGOLIA_INDEX is optional. */
+const GRAILED_INDEX = "Listing_production";
+const GRAILED_LIMIT = 12, GRAILED_CACHE_SECONDS = 1800;
 const OFFERUP_URL = "https://offerup.com/search?q=";   /* v62: /__offeruptest only, for now */
 
 const HIBID_URL = "https://hibid.com/lots?q=";
@@ -974,6 +983,55 @@ async function vintedCall(term) {
   } finally {
     clearTimeout(timer);
   }
+}
+async function grailedCall(term, env) {
+  const app = String((env && env.GRAILED_ALGOLIA_APP) || "").trim();
+  const key = String((env && env.GRAILED_ALGOLIA_KEY) || "").trim();
+  const index = String((env && env.GRAILED_ALGOLIA_INDEX) || GRAILED_INDEX);
+  if (!/^[A-Z0-9]{10}$/.test(app) || !key) return { status: 503, text: '{"error":"grailed not configured"}' };
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), UPSTREAM_TIMEOUT_MS);
+  try {
+    const r = await fetch("https://" + app + "-dsn.algolia.net/1/indexes/" + encodeURIComponent(index) + "/query", {
+      method: "POST",
+      signal: ctl.signal,
+      headers: { "X-Algolia-Application-Id": app, "X-Algolia-API-Key": key, "Content-Type": "application/json" },
+      body: JSON.stringify({ query: term, hitsPerPage: 40, attributesToRetrieve: ["id", "title", "price", "cover_photo", "size", "sold", "deleted", "designer_names", "condition"], attributesToHighlight: [] })
+    });
+    const text = await r.text();
+    return { status: r.status, text: text };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+/* Grailed's live listings from an Algolia answer; null when the answer is not a hit list. */
+function grailedNormalize(text) {
+  let j = null;
+  try { j = JSON.parse(String(text || "")); } catch (e) { return null; }
+  const d = j && Array.isArray(j.hits) ? j.hits : null;
+  if (!d) return null;
+  const out = [], seen = {};
+  for (const x of d) {
+    if (!x || typeof x !== "object" || x.sold || x.deleted) continue;
+    const id = String(x.id || "");
+    if (!/^\d+$/.test(id) || seen[id]) continue;
+    let title = hibidText(String(x.title || "")).replace(/\s+/g, " ").trim();
+    if (title.length < 3) continue;
+    const sz = String(x.size || "").trim();
+    if (sz && sz.length <= 8) title += " \u00b7 size " + sz.toUpperCase();
+    const num = Number(x.price);
+    const cp = x.cover_photo && typeof x.cover_photo === "object" ? x.cover_photo : {};
+    const img = String(cp.image_url || cp.url || "");
+    seen[id] = 1;
+    out.push({
+      title: title.slice(0, 160),
+      price: isFinite(num) && num > 0 ? money(num) : "",
+      url: "https://www.grailed.com/listings/" + id,
+      image: /^https:\/\//.test(img) ? img : "",
+      src: "grailed",
+    });
+  }
+  return out;
 }
 /* v62: OfferUp search page. Its listings sit in the page's __NEXT_DATA__ JSON. */
 async function offerupCall(term, extra) {
@@ -3629,6 +3687,12 @@ export default {
           res.algolia = { appId: appId, keyUsed: key.slice(0, 6) + "…", status: r.status, nbHits: j && j.nbHits, hitKeys: j && j.hits && j.hits[0] ? Object.keys(j.hits[0]) : null, firstHit: j && j.hits && j.hits[0] ? JSON.stringify(j.hits[0]).slice(0, 1200) : null, error: j && j.message, head: j ? undefined : t.slice(0, 200) };
         } catch (e) { res.algoliaError = String(e && e.message || e); }
       }
+      /* v65: the same call /grailed makes, parsed (needs the Worker variables) */
+      try {
+        const up = await grailedCall(term, env);
+        const items = up.status === 200 ? grailedNormalize(up.text) : null;
+        res.live = { status: up.status, parsedItems: items ? items.length : null, sample: items && items.length ? items.slice(0, 3) : null, head: items ? undefined : up.text.slice(0, 200) };
+      } catch (e) { res.liveError = String(e && e.message || e); }
       return new Response(JSON.stringify(res, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
@@ -3824,11 +3888,11 @@ export default {
     if (!term) return json({ error: "missing q" }, 400, origin);
     if (term.length > MAX_TERM) term = term.slice(0, MAX_TERM);
 
-    const SOURCES = { "/": "shopgoodwill", "/ebay": "ebay", "/hibid": "hibid", "/chairish": "chairish", "/etsy": "etsy", "/poshmark": "poshmark", "/poshsold": "poshsold", "/depop": "depop", "/vinted": "vinted" };   /* v58: poshmark, v59: depop, v60: vinted */
+    const SOURCES = { "/": "shopgoodwill", "/ebay": "ebay", "/hibid": "hibid", "/chairish": "chairish", "/etsy": "etsy", "/poshmark": "poshmark", "/poshsold": "poshsold", "/depop": "depop", "/vinted": "vinted", "/grailed": "grailed" };   /* v58: poshmark, v59: depop, v60: vinted, v65: grailed */
     const source = SOURCES[url.pathname];
     if (!source) return json({ error: "not found" }, 404, origin);
     const isEbay = source === "ebay", isHibid = source === "hibid", isChairish = source === "chairish", isEtsy = source === "etsy";
-    const isPosh = source === "poshmark" || source === "poshsold", poshSold = source === "poshsold", isDepop = source === "depop", isVinted = source === "vinted";
+    const isPosh = source === "poshmark" || source === "poshsold", poshSold = source === "poshsold", isDepop = source === "depop", isVinted = source === "vinted", isGrailed = source === "grailed";
 
     const cache = PCACHE;
     const key = new Request(
@@ -3856,6 +3920,7 @@ export default {
          : isPosh ? await poshmarkCall(term, poshSold)
          : isDepop ? await depopCall(term)
          : isVinted ? await vintedCall(term)
+         : isGrailed ? await grailedCall(term, env)
          : await callUpstream(term);
     }
     catch (e) {
@@ -3872,10 +3937,12 @@ export default {
               : isPosh ? poshmarkNormalize(up.text, poshSold, term)
               : isDepop ? depopNormalize(up.text)
               : isVinted ? vintedNormalize(up.text)
+              : isGrailed ? grailedNormalize(up.text)
               : normalize(up.text);
     if (isHibid && items && items.length > HIBID_LIMIT) items = items.slice(0, HIBID_LIMIT);
     if (isDepop && items && items.length > DEPOP_LIMIT) items = items.slice(0, DEPOP_LIMIT);
     if (isVinted && items && items.length > VINTED_LIMIT) items = items.slice(0, VINTED_LIMIT);
+    if (isGrailed && items && items.length > GRAILED_LIMIT) items = items.slice(0, GRAILED_LIMIT);
     if (isPosh && items) { const lim = poshSold ? POSH_SOLD_LIMIT : POSH_LIMIT; if (items.length > lim) items = items.slice(0, lim); }
     if (isChairish && items && items.length > CHAIRISH_LIMIT) items = items.slice(0, CHAIRISH_LIMIT);
     if (items === null) {
@@ -3893,7 +3960,7 @@ export default {
       items: items,
     };
     const res = json(payload, 200, origin, {
-      "Cache-Control": "public, max-age=" + (isEbay ? EBAY_CACHE_SECONDS : isHibid ? HIBID_CACHE_SECONDS : isChairish ? CHAIRISH_CACHE_SECONDS : isEtsy ? ETSY_CACHE_SECONDS : isPosh ? POSH_CACHE_SECONDS : isDepop ? DEPOP_CACHE_SECONDS : isVinted ? VINTED_CACHE_SECONDS : CACHE_SECONDS),
+      "Cache-Control": "public, max-age=" + (isEbay ? EBAY_CACHE_SECONDS : isHibid ? HIBID_CACHE_SECONDS : isChairish ? CHAIRISH_CACHE_SECONDS : isEtsy ? ETSY_CACHE_SECONDS : isPosh ? POSH_CACHE_SECONDS : isDepop ? DEPOP_CACHE_SECONDS : isVinted ? VINTED_CACHE_SECONDS : isGrailed ? GRAILED_CACHE_SECONDS : CACHE_SECONDS),
       "X-Prowl-Cache": "miss",
     });
     try { await cache.put(key, res.clone()); } catch (e) { /* cache is best effort */ }
