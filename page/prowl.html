@@ -1053,6 +1053,34 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper .flock-sub{margin:0 15px 10px;font-size:12px;color:var(--mu)}
 .scout-app-wrapper .flock .fl-for{font-size:10px;color:var(--mu);padding:0 8px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scout-app-wrapper .flock .sgw-note{margin:0 15px}
+/* ---- v6.19: Field Guide on anything ---- */
+.scout-app-wrapper .gd{margin:26px 0 0;padding:18px;border:1px solid var(--ln);border-radius:16px;background:var(--cd2)}
+.scout-app-wrapper .gd h2{font-family:var(--display);font-size:18px;margin:0 0 6px;color:var(--ink)!important}
+.scout-app-wrapper .gd-sub{margin:0 0 12px;font-size:14px;line-height:1.5;color:var(--i2)}
+.scout-app-wrapper .gd form{display:flex;flex-wrap:wrap;gap:8px;margin:0}
+.scout-app-wrapper .gd input[type=text]{-webkit-appearance:none;appearance:none;flex:1 1 220px;min-width:0;padding:11px 12px;border:1px solid var(--ln);border-radius:10px;background:var(--bg,#fff);color:var(--ink);font-size:16px;text-transform:none}
+.scout-app-wrapper .gd-note{margin:10px 0 0;font-size:13px;color:var(--mu);min-height:1px}
+.scout-app-wrapper .gd-note a{color:var(--ac);font-weight:700}
+.scout-app-wrapper .gd-card{margin-top:16px;padding:16px;border:1px solid var(--ln);border-radius:14px;background:var(--cd)}
+.scout-app-wrapper .gd-card h3{font-family:var(--display);font-size:20px;line-height:1.25;margin:0 0 8px;color:var(--ink)}
+.scout-app-wrapper .gd-sum{margin:0;font-size:15px;line-height:1.55;color:var(--i2)}
+.scout-app-wrapper .gd-glance{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:14px 0 4px}
+.scout-app-wrapper .gd-g{border:1px solid var(--ln);border-radius:10px;padding:8px 10px;background:var(--cd2)}
+.scout-app-wrapper .gd-g small{display:block;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mu)}
+.scout-app-wrapper .gd-g b{display:block;margin-top:2px;font-size:13.5px;line-height:1.35;color:var(--ink)}
+.scout-app-wrapper .gd-sec h4{margin:16px 0 4px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ac)}
+.scout-app-wrapper .gd-sec p{margin:0;font-size:14.5px;line-height:1.6;color:var(--i2)}
+.scout-app-wrapper .gd-rl{margin:16px 0 6px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mu)}
+.scout-app-wrapper .gd-rel{display:flex;flex-wrap:wrap;gap:8px}
+.scout-app-wrapper .gd-src{margin:14px 0 0;font-size:12.5px;line-height:1.6;color:var(--mu);overflow-wrap:anywhere}
+.scout-app-wrapper .gd-src a{color:var(--ac)}
+.scout-app-wrapper .gd-fine{margin:8px 0 0;font-size:12px;color:var(--mu)}
+.scout-app-wrapper .gd-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.scout-app-wrapper .gd-mine{margin-top:18px}
+.scout-app-wrapper .gd-mine h3{margin:0 0 8px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mu)}
+.scout-app-wrapper .gd-li{display:flex;align-items:center;gap:8px;margin:0 0 6px}
+.scout-app-wrapper .gd-li .gh{flex:1 1 auto;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scout-app-wrapper .gd-li .gd-x{flex:0 0 auto;padding:7px 11px}
 /* ---- v6.13: the installed app on a desktop runs edge to edge, 4 or 5 cards across. v6.14: no 100vw
    break-out; the theme section is already full width and the negative margin pushed the page off the left edge. ---- */
 @media (min-width:1000px){
@@ -1147,6 +1175,18 @@ window.prowlEpn=function(u,cid){
     </div>
     <p class="flock-sub">A look across your hunts: a find or two from each.</p>
     <div id="otp-flockRow"></div>
+  </section>
+
+  <section id="otp-guide" class="gd" aria-labelledby="otp-guideT">
+    <h2 id="otp-guideT">Field Guide on anything</h2>
+    <p class="gd-sub">Type any subject and Prowl researches a collector's field guide for it: how to recognize it, marks, eras, what it sells for, fakes and where to find it, with sources.</p>
+    <form id="otp-guideF" autocomplete="off">
+      <input id="otp-guideQ" type="text" maxlength="60" placeholder="Fire-King jadeite, Pendleton blankets, bakelite jewelry" aria-label="Field guide subject">
+      <button class="b p" type="submit" id="otp-guideGo">Make my guide</button>
+    </form>
+    <p class="gd-note" id="otp-guideN" role="status"></p>
+    <div id="otp-guideOut" aria-live="polite"></div>
+    <div id="otp-guideMine"></div>
   </section>
 
   <div class="whyp">
@@ -1936,7 +1976,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.18';
+var PROWL_VERSION='v6.19';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4415,6 +4455,140 @@ function flockSync(){
   }else flockStart();
 }
 
+/* ---------- FIELD GUIDE ON ANYTHING (v6.19) ----------
+   POST /guide on the Worker (Muse with web search) writes a collector's field guide for any subject.
+   The answer is plain text fields, drawn here with textContent only. Saved guides live in this
+   browser (prowl.guides, newest first, 20 at most); nothing about them goes to a server. */
+var GD={busy:false,cur:null,KEY:'prowl.guides',MAX:20};
+function gdOk(g){return !!(g&&typeof g==='object'&&typeof g.subject==='string'&&typeof g.title==='string'&&typeof g.summary==='string'&&Array.isArray(g.sections)&&Array.isArray(g.sources))}
+function gdMine(){var a=[];try{a=JSON.parse(localStorage.getItem(GD.KEY)||'[]')}catch(e){}if(!Array.isArray(a))return [];return a.filter(gdOk)}
+function gdPut(a){try{localStorage.setItem(GD.KEY,JSON.stringify(a.slice(0,GD.MAX)))}catch(e){}}
+function gdIdx(subject){var a=gdMine(),i,k=String(subject||'').toLowerCase();for(i=0;i<a.length;i++)if(a[i].subject.toLowerCase()===k)return i;return -1}
+function gdEl(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+function gdHttps(u){return typeof u==='string'&&/^https:\/\//i.test(u)}
+function gdNote(msg,href,label){
+  var n=$('#otp-guideN');if(!n)return;
+  n.textContent=msg||'';
+  if(href){n.appendChild(document.createTextNode(' '));var a=gdEl('a','',label);a.href=href;n.appendChild(a)}
+}
+function gdPlain(g){
+  var L=[g.title,'',g.summary],i,x;
+  if(g.glance&&g.glance.length){L.push('');for(i=0;i<g.glance.length;i++)L.push(g.glance[i].label+': '+g.glance[i].value)}
+  for(i=0;i<g.sections.length;i++){x=g.sections[i];L.push('',x.h,x.body)}
+  if(g.sources.length){L.push('','Sources:');for(i=0;i<g.sources.length;i++)if(gdHttps(g.sources[i].url))L.push(g.sources[i].url)}
+  L.push('','AI research from the web. Check the sources before you buy. Made with Prowl by Owl & Twig Vintage: https://owlandtwigvintage.com/pages/prowl');
+  return L.join('\n');
+}
+function gdRender(g){
+  var out=$('#otp-guideOut');if(!out||!gdOk(g))return;
+  GD.cur=g;
+  var card=gdEl('div','gd-card'),row,i,x,b,sec,saved=gdIdx(g.subject)>-1;
+  card.appendChild(gdEl('h3','',g.title));
+  card.appendChild(gdEl('p','gd-sum',g.summary));
+  if(g.glance&&g.glance.length){
+    row=gdEl('div','gd-glance');
+    for(i=0;i<g.glance.length;i++){x=g.glance[i];b=gdEl('div','gd-g');b.appendChild(gdEl('small','',x.label));b.appendChild(gdEl('b','',x.value));row.appendChild(b)}
+    card.appendChild(row);
+  }
+  for(i=0;i<g.sections.length;i++){x=g.sections[i];sec=gdEl('div','gd-sec');sec.appendChild(gdEl('h4','',x.h));sec.appendChild(gdEl('p','',x.body));card.appendChild(sec)}
+  if(g.related&&g.related.length){
+    card.appendChild(gdEl('p','gd-rl','Hunt it'));
+    row=gdEl('div','gd-rel');
+    for(i=0;i<g.related.length;i++){b=gdEl('button','gh',g.related[i]);b.type='button';b.setAttribute('data-gdh',g.related[i]);row.appendChild(b)}
+    card.appendChild(row);
+  }
+  if(g.sources.length){
+    var sp=gdEl('p','gd-src','Sources: '),n=0;
+    for(i=0;i<g.sources.length;i++){x=g.sources[i];if(!gdHttps(x.url))continue;if(n)sp.appendChild(document.createTextNode(' \u00b7 '));var a=gdEl('a','',String(x.title||x.url).slice(0,60));a.href=x.url;a.target='_blank';a.rel='noopener noreferrer';sp.appendChild(a);n++}
+    if(n)card.appendChild(sp);
+  }
+  card.appendChild(gdEl('p','gd-fine','AI research from the web'+(g.made?', made '+g.made:'')+'. Check the sources before you buy.'));
+  row=gdEl('div','gd-acts');
+  b=gdEl('button','b p',saved?'Saved to your guides':'Save to my guides');b.type='button';b.setAttribute('data-gd','save');b.setAttribute('aria-pressed',saved?'true':'false');row.appendChild(b);
+  b=gdEl('button','b','Keep \u201c'+g.subject+'\u201d as a hunt');b.type='button';b.setAttribute('data-gd','keep');row.appendChild(b);
+  b=gdEl('button','gh','Copy guide');b.type='button';b.setAttribute('data-gd','copy');row.appendChild(b);
+  card.appendChild(row);
+  out.innerHTML='';out.appendChild(card);
+  try{card.scrollIntoView({behavior:'smooth',block:'start'})}catch(e){}
+}
+function gdMineRender(){
+  var box=$('#otp-guideMine');if(!box)return;
+  var a=gdMine(),i,row,b;
+  box.innerHTML='';
+  if(!a.length)return;
+  var wrap=gdEl('div','gd-mine');wrap.appendChild(gdEl('h3','','Your guides'));
+  for(i=0;i<a.length;i++){
+    row=gdEl('div','gd-li');
+    b=gdEl('button','gh',a[i].title);b.type='button';b.setAttribute('data-gdopen',String(i));row.appendChild(b);
+    b=gdEl('button','gh gd-x','\u00d7');b.type='button';b.setAttribute('data-gddel',String(i));b.setAttribute('aria-label','Remove this guide');row.appendChild(b);
+    wrap.appendChild(row);
+  }
+  box.appendChild(wrap);
+}
+function gdBusy(on){
+  GD.busy=on;var go=$('#otp-guideGo');
+  if(go){go.disabled=on;go.textContent=on?'Researching\u2026':'Make my guide'}
+}
+function gdMake(subject){
+  subject=String(subject||'').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'');
+  if(GD.busy)return;
+  if(subject.length<2){gdNote('Type a subject first, like \u201cFire-King jadeite\u201d.');return}
+  var at=gdIdx(subject);
+  if(at>-1){gdRender(gdMine()[at]);gdNote('Opened from your saved guides.');return}
+  if(typeof fetch!=='function'){gdNote('This browser cannot make guides.');return}
+  gdBusy(true);
+  gdNote('Researching the web for your guide. This can take up to a minute.');
+  var body={subject:subject};
+  if(mGet('alertTok')&&mGet('alertEmail')){body.e=mGet('alertEmail');body.t=mGet('alertTok')}
+  var ctl=typeof AbortController==='function'?new AbortController():null,tm=setTimeout(function(){if(ctl)ctl.abort()},80000);
+  var opt={method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)};
+  if(ctl)opt.signal=ctl.signal;
+  fetch(SGW_API+'guide',opt).then(function(r){
+    return r.json().then(function(j){return {s:r.status,j:j}},function(){return {s:r.status,j:null}});
+  }).then(function(x){
+    var j=x.j||{};
+    if(x.s===200&&j.guide&&gdOk(j.guide)){
+      gdRender(j.guide);
+      gdNote(typeof j.left==='number'?(j.left+(j.pro?' ':' free ')+'guide'+(j.left===1?'':'s')+' left today.'+(j.pro?'':' Prowl Pro makes 15 a day.')):'');
+    }
+    else if(x.s===429&&j.error==='free limit')gdNote('You have used today\u2019s '+(j.limit||3)+' free guides. They reset tomorrow, and Prowl Pro makes 15 a day.','/products/prowl-pro','Try Prowl Pro free for a month');
+    else if(x.s===429&&j.error==='daily limit')gdNote('You have made today\u2019s '+(j.limit||15)+' guides. They reset tomorrow.');
+    else if(x.s===429)gdNote('Guides are busy today. Try again tomorrow.');
+    else if(x.s===422)gdNote('That does not look like something collectors hunt. Try a maker, a line or a kind of object.');
+    else if(x.s===400)gdNote('Try a plain subject, like \u201cFire-King jadeite\u201d.');
+    else gdNote('Could not make that guide just now. Try again in a minute.');
+  })['catch'](function(){gdNote('Could not make that guide just now. Try again in a minute.')}).then(function(){clearTimeout(tm);gdBusy(false)});
+}
+function gdCopy(){
+  var g=GD.cur;if(!g)return;
+  var t=gdPlain(g);
+  function done(){toast('Guide copied.',1800)}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,function(){gdCopyOld(t,done)});return}
+  gdCopyOld(t,done);
+}
+function gdCopyOld(t,done){
+  var ta=document.createElement('textarea');ta.value=t;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');done()}catch(e){}
+  document.body.removeChild(ta);
+}
+function gdClick(e){
+  var t=e.target&&e.target.closest?e.target.closest('[data-gd],[data-gdh],[data-gdopen],[data-gddel]'):null;
+  if(!t)return;
+  var a,i;
+  if(t.hasAttribute('data-gdh')){runProwl('single',[t.getAttribute('data-gdh')],st.mkt.size?Array.from(st.mkt):ALL);return}
+  if(t.hasAttribute('data-gdopen')){a=gdMine();i=parseInt(t.getAttribute('data-gdopen'),10);if(a[i]){gdRender(a[i]);gdNote('')}return}
+  if(t.hasAttribute('data-gddel')){a=gdMine();i=parseInt(t.getAttribute('data-gddel'),10);if(a[i]){a.splice(i,1);gdPut(a);gdMineRender();if(GD.cur)gdRender(GD.cur)}return}
+  var w=t.getAttribute('data-gd');
+  if(w==='copy')gdCopy();
+  else if(w==='keep'&&GD.cur)sgwAdd(GD.cur.subject);
+  else if(w==='save'&&GD.cur){
+    a=gdMine();i=gdIdx(GD.cur.subject);
+    if(i>-1)a.splice(i,1);else a.unshift(GD.cur);
+    gdPut(a);gdMineRender();gdRender(GD.cur);
+  }
+}
+
 function sgwPick(i){
   var x=sgw.terms[i];if(!x)return;
   sgw.cur=x.t.toLowerCase();
@@ -4829,6 +5003,8 @@ try{if(/[?&]photo=1(&|$)/.test(location.search)){
 } }catch(e){}
 /* v5.80: the old waitlist section now opens the live Prowl Alerts settings */
 var aGo=$('#otp-alertsGo');if(aGo)aGo.addEventListener('click',function(){openMailSettings()});
+var gF=$('#otp-guideF');if(gF)gF.addEventListener('submit',function(e){e.preventDefault();gdMake(($('#otp-guideQ')||{}).value)});   /* v6.19 */
+var gS=$('#otp-guide');if(gS){gS.addEventListener('click',gdClick);gdMineRender()}
 var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function(){   /* v6.18 */
   if(sgw.terms.length<2)return;
   FLOCK.started=true;
