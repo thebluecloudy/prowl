@@ -3608,9 +3608,32 @@ export default {
           catch (e) { places.push({ param: ex, error: String(e && e.message || e) }); }
         }
       }
+      /* v62d: is there a way to a Michigan search? the flags on each tile, the home page's cookies,
+         and what is inside the feed's compressed next-page cursor */
+      let deep;
+      if (url.searchParams.get("deep") && pp && pp.searchFeedResponse) {
+        deep = {};
+        const flags = {};
+        for (const t of tiles) if (t && t.listing && Array.isArray(t.listing.flags)) for (const f of t.listing.flags) flags[f] = (flags[f] || 0) + 1;
+        deep.flags = flags;
+        try {
+          const cur = String(pp.searchFeedResponse.nextPageCursor || "");
+          const bin = Uint8Array.from(atob(cur.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+          const txt = await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+          deep.cursor = txt.slice(0, 1500);
+        } catch (e) { deep.cursorError = String(e && e.message || e); }
+        try {
+          const h = await fetch("https://offerup.com/", { headers: { "User-Agent": PROBE_UA, "Accept": "text/html", "Accept-Language": "en-US,en;q=0.9" } });
+          const sc = typeof h.headers.getSetCookie === "function" ? h.headers.getSetCookie() : [String(h.headers.get("set-cookie") || "")];
+          deep.homeStatus = h.status;
+          deep.homeCookies = sc.map(c => String(c).split("=")[0].trim()).filter(Boolean);
+          await h.text();
+        } catch (e) { deep.homeError = String(e && e.message || e); }
+      }
       return new Response(JSON.stringify({
         ok: !!(items && items.length),
         city: up ? offerupCity(up.text) : null,
+        deep: deep,
         parsedItems: items ? items.length : null,
         sample: items && items.length ? items.slice(0, 3) : null,
         firstListingTile: firstListing ? jsonShape(firstListing, 0) : null,
