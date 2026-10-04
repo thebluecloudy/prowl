@@ -1012,6 +1012,14 @@ function jsonListings(root, max) {
   walk(root, "", 0);
   return found;
 }
+/* v62b: a JSON tree with every array cut to its first element and strings shortened, for a look at its shape */
+function jsonShape(v, depth) {
+  if (depth > 7) return "…";
+  if (Array.isArray(v)) return v.length ? ["[" + v.length + "]", jsonShape(v[0], depth + 1)] : [];
+  if (v && typeof v === "object") { const o = {}; let n = 0; for (const k in v) { if (n++ > 40) { o["…"] = "more"; break; } o[k] = jsonShape(v[k], depth + 1); } return o; }
+  if (typeof v === "string") return v.length > 80 ? v.slice(0, 80) + "…" : v;
+  return v;
+}
 /* v60d: what the decoded flight text looks like, for /__vintedtest */
 function vintedPeek(html) {
   const buf = flightText(html);
@@ -3562,6 +3570,10 @@ export default {
         topKeys: nd ? Object.keys(nd) : null,
         pagePropsKeys: pp ? Object.keys(pp) : null,
         listings: nd ? jsonListings(nd, 4) : null,
+        feedShape: pp && pp.searchFeedResponse ? jsonShape(pp.searchFeedResponse, 0) : null,   /* v62b */
+        apolloKeys: pp && pp.initialApolloState ? Object.keys(pp.initialApolloState).slice(0, 12) : null,
+        apolloListing: (() => { const a = pp && pp.initialApolloState; if (!a) return null; for (const k in a) if (/^(Listing|Item|FeedItem|Tile)/i.test(k)) return { key: k, value: jsonShape(a[k], 0) }; return null; })(),
+        paginatedOptions: pp ? jsonShape(pp.paginatedOptions, 0) : null,
         rawHead: up && !nd ? up.text.slice(0, 300) : null,
       }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
     }
