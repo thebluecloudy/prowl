@@ -1034,6 +1034,25 @@ window.prowlEpn=function(u,cid){
 @media (prefers-reduced-motion:reduce){
   .scout-app-wrapper .drawer{transition:none }
 }
+/* ---- v6.18: Flock, a mixed look across the Den's hunts ---- */
+.scout-app-wrapper .flock{padding:14px 0 14px}
+.scout-app-wrapper .flock-head{display:flex;align-items:center;gap:10px;margin:0 15px 2px}
+.scout-app-wrapper .flock-head b{font-size:16px;font-weight:800;color:var(--ink);letter-spacing:.01em}
+.scout-app-wrapper .flock-head .gh{margin-left:auto;padding:5px 12px}
+.scout-app-wrapper .fl-birds{position:relative;display:inline-block;width:46px;height:30px;color:var(--ac)}
+.scout-app-wrapper .fl-ico{position:absolute;display:block}
+.scout-app-wrapper .fl-b1{width:27px;height:27px;left:0;top:3px;transform:rotate(-6deg)}
+.scout-app-wrapper .fl-b2{width:17px;height:17px;left:25px;top:0;opacity:.7;transform:rotate(4deg)}
+.scout-app-wrapper .fl-b3{width:12px;height:12px;left:31px;top:17px;opacity:.5;transform:rotate(-2deg)}
+@media(prefers-reduced-motion:no-preference){
+  .scout-app-wrapper .fl-b1{animation:otpFly 4.2s ease-in-out infinite}
+  .scout-app-wrapper .fl-b2{animation:otpFly 3.4s ease-in-out -1.2s infinite}
+  .scout-app-wrapper .fl-b3{animation:otpFly 3.8s ease-in-out -2.4s infinite}
+}
+@keyframes otpFly{0%,100%{translate:0 0}50%{translate:3px -3px}}
+.scout-app-wrapper .flock-sub{margin:0 15px 10px;font-size:12px;color:var(--mu)}
+.scout-app-wrapper .flock .fl-for{font-size:10px;color:var(--mu);padding:0 8px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scout-app-wrapper .flock .sgw-note{margin:0 15px}
 /* ---- v6.13: the installed app on a desktop runs edge to edge, 4 or 5 cards across. v6.14: no 100vw
    break-out; the theme section is already full width and the negative margin pushed the page off the left edge. ---- */
 @media (min-width:1000px){
@@ -1118,6 +1137,17 @@ window.prowlEpn=function(u,cid){
   <div class="hunts" id="otp-quick" hidden></div>
 
   <section id="otp-res" hidden aria-live="polite"></section>
+
+  <section id="otp-flock" class="found-strip flock show" hidden aria-label="Flock: a look across your hunts">
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="otp-swallow" viewBox="0 0 24 24"><path fill="currentColor" d="M22.2 8.8 20.4 7.6 18.3 8C17.7 8.1 17.1 8.1 16.5 8.2 14 4.4 9.8 2.8 5.6 1.4 9.2 4.4 11.2 7.6 11.8 10.4 10.2 11.4 6.8 13.2 2.2 16.2L5.6 17.2 3.2 20.4 9.3 15.8C12 15.2 15.8 14.4 18.2 12.4 19.6 11.3 20.4 10.4 20.8 9.9Z"/></symbol></svg>
+    <div class="flock-head">
+      <span class="fl-birds" aria-hidden="true"><svg class="fl-ico fl-b1" viewBox="0 0 24 24"><use href="#otp-swallow" xlink:href="#otp-swallow"/></svg><svg class="fl-ico fl-b2" viewBox="0 0 24 24"><use href="#otp-swallow" xlink:href="#otp-swallow"/></svg><svg class="fl-ico fl-b3" viewBox="0 0 24 24"><use href="#otp-swallow" xlink:href="#otp-swallow"/></svg></span>
+      <b>Flock</b>
+      <button type="button" class="gh" id="otp-flockShuf">Shuffle</button>
+    </div>
+    <p class="flock-sub">A look across your hunts: a find or two from each.</p>
+    <div id="otp-flockRow"></div>
+  </section>
 
   <div class="whyp">
     <p><b>Why not just Google it?</b> Goodwill auctions and Facebook Marketplace aren't indexed. Prowl searches them directly.</p>
@@ -1906,7 +1936,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.17';
+var PROWL_VERSION='v6.18';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4221,6 +4251,7 @@ function rSGW(){
   mount.querySelector('.sgw-acts').innerHTML=sgwActs();
   sgwWhere(mount);
   mount.hidden=!!st.run;
+  try{flockSync()}catch(e){}   /* v6.18 */
   rMail();
   mailSync(false);
 }
@@ -4292,6 +4323,97 @@ function lvFetch(id,term,cb){
 }
 /* every source for one term; each fails on its own */
 function liveFetch(t){if(!t)return;sgwFetch(t);for(var i=0;i<LIVE_SRC.length;i++)lvFetch(LIVE_SRC[i].id,t)}
+
+/* ---------- FLOCK (v6.18) ----------
+   A mixed look across the Den: one or two finds from each hunt, from whatever source has something,
+   shuffled. It reads the same per-term caches the hunts panel and Daily fill (sgw.cache, lv[id].cache),
+   and tops them up only when the section scrolls into view: a few random hunts, a few random sources
+   each, 250ms apart. Shuffle picks again from what is in hand and fetches more only if the pool is thin. */
+var FLOCK={order:[],started:false,pend:0,tm:null,obs:null,asked:Object.create(null),n:0};
+var FLOCK_HUNTS=5,FLOCK_SRCS=3,FLOCK_CARDS=10;
+function flockMix(a){var b=a.slice(),i,j,x;for(i=b.length-1;i>0;i--){j=Math.floor(Math.random()*(i+1));x=b[i];b[i]=b[j];b[j]=x}return b}
+function flockSrcs(){var a=['shopgoodwill'],i;for(i=0;i<LIVE_SRC.length;i++)a.push(LIVE_SRC[i].id);return a}
+function flockCache(src,k){return src==='shopgoodwill'?sgw.cache[k]:(lv[src]&&lv[src].cache[k])}
+function flockPool(t){
+  var k=t.toLowerCase(),out=[],S=flockSrcs(),i,j,c,it;
+  for(i=0;i<S.length;i++){
+    c=flockCache(S[i],k);if(!c||c.err||!c.items)continue;
+    for(j=0;j<c.items.length;j++){it=c.items[j];if(it&&it.url&&it.title)out.push({it:it,src:S[i]})}
+  }
+  return out;
+}
+/* up to n finds for one hunt, photos first, from different sources where it can */
+function flockPick(t,n){
+  var pool=flockMix(flockPool(t)),out=[],used={},i,p;
+  pool.sort(function(a,b){return (b.it.image?1:0)-(a.it.image?1:0)});
+  for(i=0;i<pool.length&&out.length<n;i++){p=pool[i];if(!used[p.src]){used[p.src]=1;out.push(p.it)}}
+  for(i=0;i<pool.length&&out.length<n;i++){if(out.indexOf(pool[i].it)===-1)out.push(pool[i].it)}
+  return out;
+}
+function flockCards(){
+  var rounds=[[],[]],i,h,got,cards=[];
+  for(i=0;i<FLOCK.order.length;i++){h=FLOCK.order[i];got=flockPick(h,2);if(got[0])rounds[0].push({t:h,it:got[0]});if(got[1])rounds[1].push({t:h,it:got[1]})}
+  /* one from every hunt first, then second finds, so the strip covers the Den before it repeats a hunt */
+  var all=rounds[0].concat(rounds[1]);
+  for(i=0;i<all.length&&cards.length<FLOCK_CARDS;i++)cards.push(all[i]);
+  return cards;
+}
+function flockCardHtml(c){
+  var h=sgwCard(c.it,c.t);
+  h=h.replace('<button type="button" class="sgw-fp">Fair price?</button>','');   /* comps would come from other hunts */
+  return h.replace('</a>','<div class="fl-for">for '+esc(c.t)+'</div></a>');
+}
+function flockRender(){
+  var sec=$('#otp-flock'),row=$('#otp-flockRow');if(!sec||!row)return;
+  var cards=flockCards(),i,h='';
+  if(!cards.length){
+    row.innerHTML=FLOCK.pend>0?'<p class="sgw-note">Looking across your hunts\u2026</p>':'<p class="sgw-note">Nothing in the flock right now. Shuffle to look again.</p>';
+    return;
+  }
+  for(i=0;i<cards.length;i++)h+=flockCardHtml(cards[i]);
+  row.innerHTML='<div class="sgw-grid">'+h+'</div>';
+}
+function flockRenderSoon(){clearTimeout(FLOCK.tm);FLOCK.tm=setTimeout(flockRender,180)}
+/* fetch a few random hunt+source pairs we have nothing for yet, 250ms apart */
+function flockWarm(){
+  var hunts=FLOCK.order.slice(0,FLOCK_HUNTS),S=flockSrcs(),i,j,t,k,srcs,n,jobs=[];
+  for(i=0;i<hunts.length;i++){
+    t=hunts[i];k=t.toLowerCase();srcs=flockMix(S);n=0;
+    for(j=0;j<srcs.length&&n<FLOCK_SRCS;j++){
+      if(flockCache(srcs[j],k)||FLOCK.asked[srcs[j]+'|'+k])continue;
+      FLOCK.asked[srcs[j]+'|'+k]=1;jobs.push([srcs[j],t]);n++;
+    }
+  }
+  for(i=0;i<jobs.length;i++){
+    FLOCK.pend++;
+    (function(job,delay){
+      setTimeout(function(){
+        var done=function(){FLOCK.pend--;flockRenderSoon()};
+        try{if(job[0]==='shopgoodwill')sgwFetch(job[1],done);else lvFetch(job[0],job[1],done)}catch(e){done()}
+      },delay);
+    })(jobs[i],i*250);
+  }
+}
+function flockStart(){
+  var sec=$('#otp-flock');if(!sec||sgw.terms.length<2)return;
+  FLOCK.started=true;
+  FLOCK.order=flockMix(sgw.terms.map(function(x){return x.t}));
+  flockRender();
+  flockWarm();
+}
+/* keep the section's visibility in step with the Den, and start it when it scrolls into view */
+function flockSync(){
+  var sec=$('#otp-flock');if(!sec)return;
+  var show=sgw.terms.length>=2;
+  if(sec.hidden===show)sec.hidden=!show;
+  if(!show||FLOCK.started||FLOCK.obs)return;
+  if(typeof IntersectionObserver==='function'){
+    FLOCK.obs=new IntersectionObserver(function(es){
+      for(var i=0;i<es.length;i++)if(es[i].isIntersecting){try{FLOCK.obs.disconnect()}catch(e){}flockStart();return}
+    },{rootMargin:'200px'});
+    FLOCK.obs.observe(sec);
+  }else flockStart();
+}
 
 function sgwPick(i){
   var x=sgw.terms[i];if(!x)return;
@@ -4707,6 +4829,12 @@ try{if(/[?&]photo=1(&|$)/.test(location.search)){
 } }catch(e){}
 /* v5.80: the old waitlist section now opens the live Prowl Alerts settings */
 var aGo=$('#otp-alertsGo');if(aGo)aGo.addEventListener('click',function(){openMailSettings()});
+var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function(){   /* v6.18 */
+  if(sgw.terms.length<2)return;
+  FLOCK.started=true;
+  FLOCK.order=flockMix(sgw.terms.map(function(x){return x.t}));
+  flockRender();flockWarm();
+});
 
 /* ---------- DEEP LINK ---------- */
 /* Field Guide posts link in as /pages/prowl?q=<term>. Nothing on this page
