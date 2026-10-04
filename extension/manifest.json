@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Prowl by Owl & Twig: Vintage Search",
   "short_name": "Prowl",
-  "version": "1.3.0",
-  "description": "A Prowl Pro bonus: search 26 vintage marketplaces at once, with live ShopGoodwill, eBay, Etsy, Poshmark, Depop, Vinted and more in the toolbar.",
+  "version": "1.4.0",
+  "description": "A Prowl Pro bonus: search 26 vintage marketplaces at once, with live listings, Field Guides, your Daily Prowl and photo checks from the toolbar.",
   "homepage_url": "https://owlandtwigvintage.com/pages/prowl",
   "icons": {
     "16": "icons/icon-16.png",

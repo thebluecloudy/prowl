@@ -1,5 +1,5 @@
 // Prowl by Owl & Twig. (c) 2026 Owl & Twig Vintage. All rights reserved.
-import { SITES, cleanTerm, prowlUrl, soldUrl, imagesUrl, lensUrl } from './sites.js';
+import { SITES, cleanTerm, prowlUrl, soldUrl, imagesUrl, lensUrl, guideUrl } from './sites.js';
 import { isPro, saveMember, PRO_PAGE } from './member.js';
 const PRO_PAGE_URL = PRO_PAGE;
 
@@ -11,7 +11,8 @@ chrome.runtime.onInstalled.addListener(async () => {
   chrome.contextMenus.create({ id: 'prowl-live', parentId: 'prowl', title: 'Live listings for \u201c%s\u201d', contexts: sel });
   chrome.contextMenus.create({ id: 'prowl-open', parentId: 'prowl', title: 'Search \u201c%s\u201d in Prowl', contexts: sel });
   chrome.contextMenus.create({ id: 'prowl-all', parentId: 'prowl', title: 'Open \u201c%s\u201d on every marketplace', contexts: sel });
-  chrome.contextMenus.create({ id: 'prowl-sold', parentId: 'prowl', title: 'Check sold prices for \u201c%s\u201d', contexts: sel });
+  chrome.contextMenus.create({ id: 'prowl-sold', parentId: 'prowl', title: 'eBay sold prices for \u201c%s\u201d', contexts: sel });
+  chrome.contextMenus.create({ id: 'prowl-guide', parentId: 'prowl', title: 'Field Guide for \u201c%s\u201d', contexts: sel });
   chrome.contextMenus.create({ id: 'prowl-images', parentId: 'prowl', title: 'See \u201c%s\u201d on Google Images', contexts: sel });
   chrome.contextMenus.create({ id: 'prowl-lens', title: 'Prowl: identify this with Google Lens', contexts: ['image'] });
 });
@@ -31,6 +32,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     else if (info.menuItemId === 'prowl-open') await openTab(prowlUrl(term), tab);
     else if (info.menuItemId === 'prowl-all') await openAll(term, tab && tab.windowId);
     else if (info.menuItemId === 'prowl-sold') await openTab(soldUrl(term), tab);
+    else if (info.menuItemId === 'prowl-guide') await openTab(guideUrl(term), tab);
     else if (info.menuItemId === 'prowl-images') await openTab(imagesUrl(term), tab);
   } catch (err) {
     console.error('Prowl menu action failed:', err);
