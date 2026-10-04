@@ -839,6 +839,8 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper .alrt .ok{margin:0;font-weight:700;color:var(--ink)}
 .scout-app-wrapper .sgw-cell{display:flex;flex-direction:column;gap:6px;min-width:0}
 .scout-app-wrapper .sgw-cell>.sgw-card{flex:1 1 auto}
+.scout-app-wrapper .sgw-rp{display:block;margin:0;padding:2px 4px;font-size:11.5px;line-height:1.3;text-align:center;color:var(--mu);text-decoration:underline}
+.scout-app-wrapper .sgw-rp:hover{color:var(--ac)}
 .scout-app-wrapper .sgw-fp{-webkit-appearance:none;appearance:none;text-transform:none;width:100%;padding:7px 8px;border:1px solid var(--ln);border-radius:9px;background:var(--cd2);color:var(--ink);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
 .scout-app-wrapper .sgw-fp:hover{border-color:var(--ac)}
 .scout-app-wrapper .sgw-fp:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
@@ -1162,11 +1164,12 @@ window.prowlEpn=function(u,cid){
 
   <div class="gapp otp-getapp" data-mode="home" hidden></div>
 
-  <button type="button" class="apr-go" id="otp-aprGo" aria-haspopup="dialog"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5h3.2l1.8-2.5h7l1.8 2.5h3.2v10.5h-17z"></path><circle cx="12" cy="13.5" r="3.4"></circle></svg><span class="apr-gt"><b>At a sale? Check a photo.</b><span>Snap a piece: what it is, visible flaws and a fair price.</span></span><span class="apr-gx" aria-hidden="true">›</span></button>
   <section id="otp-sgw" class="sgw-panel" hidden aria-label="Your hunts, live on ShopGoodwill"></section>
   <section id="otp-picks" class="found-strip picks" hidden aria-label="From our shop, matching your hunts"><div class="found-title">From our shop · matches your hunts</div>
 <div class="picks-row" id="otp-picksRow"></div></section>
   <div class="hunts" id="otp-quick" hidden></div>
+  <!-- v6.26: hunts come first; the photo check sits under them -->
+  <button type="button" class="apr-go" id="otp-aprGo" aria-haspopup="dialog"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5h3.2l1.8-2.5h7l1.8 2.5h3.2v10.5h-17z"></path><circle cx="12" cy="13.5" r="3.4"></circle></svg><span class="apr-gt"><b>At a sale? Check a photo.</b><span>Snap a piece: what it is, visible flaws and a fair price.</span></span><span class="apr-gx" aria-hidden="true">›</span></button>
 
   <section id="otp-res" hidden aria-live="polite"></section>
 
@@ -3291,6 +3294,12 @@ var foundLoaded=false;
    daily-digest file address: nothing has read it since the panel moved to
    the Worker in v5.4. */
 
+/* v6.26: report a stale listing or a bad match. A plain mailto link (no backend, no handler to strip),
+   prefilled with what the member was looking at so the report is useful without any typing. */
+function rpLink(it,hunt){
+  var body='Hunt: '+(hunt||'')+'\nListing: '+(it.title||'')+'\nSite: '+(LIVE_NAME[it.src]||it.src||'')+'\nLink: '+(it.url||'')+'\nPrice: '+(it.price||'')+'\n\nWhat is wrong (gone, sold, wrong item, wrong price)?\n\n(Prowl '+PROWL_VERSION+')';
+  return '<a class="sgw-rp" href="mailto:hello@owlandtwigvintage.com?subject='+E('Prowl: report a listing')+'&body='+E(body)+'" rel="noopener">Report a problem</a>';
+}
 function sgwCard(it,hunt){
   /* no loading="lazy" here: on the live page it left some cards with an empty
      box even once scrolled into view. A handful of thumbnails is cheap. */
@@ -3309,7 +3318,7 @@ function sgwCard(it,hunt){
      a wrapper cell, because a button inside a link is invalid and would open
      the listing. Cells carry title/price/source so comps can be read back
      from whatever block the card is in. */
-  var sv=svBtn(it,hunt);   /* v6.02: save this find */
+  var sv=svBtn(it,hunt)+rpLink(it,hunt);   /* v6.02: save this find; v6.26: report a problem */
   if(!it.price)return '<div class="sgw-cell">'+a+sv+'</div>';
   var done=FP&&FP[it.url];
   return '<div class="sgw-cell" data-t="'+esc(it.title)+'" data-p="'+esc(it.price)+'" data-s="'+esc(it.src||'shopgoodwill')+'" data-u="'+esc(it.url)+'">'+a+sv+
