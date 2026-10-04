@@ -1,5 +1,5 @@
 // Prowl by Owl & Twig. (c) 2026 Owl & Twig Vintage. All rights reserved.
-import { SITES, LIVE, fetchLive, cleanTerm, prowlUrl, soldUrl, imagesUrl, PROWL } from './sites.js';
+import { SITES, LIVE, fetchLive, cleanTerm, prowlUrl, soldUrl, imagesUrl, guideUrl, photoUrl, dailyUrl, PROWL } from './sites.js';
 import { isPro, PRO_PAGE } from './member.js';
 
 const $ = (s) => document.querySelector(s);
@@ -120,6 +120,9 @@ function termOrAsk() {
 
 $('#prowl').addEventListener('click', async () => { const t = termOrAsk(); if (t) await openTab(prowlUrl(t)); });
 $('#sold').addEventListener('click', async () => { const t = termOrAsk(); if (t) await openTab(soldUrl(t)); });
+$('#guide').addEventListener('click', async () => { const t = termOrAsk(); if (t) await openTab(guideUrl(t)); });
+$('#photo').addEventListener('click', () => openTab(photoUrl()));
+$('#daily').addEventListener('click', () => openTab(dailyUrl()));
 $('#images').addEventListener('click', async () => { const t = termOrAsk(); if (t) await openTab(imagesUrl(t)); });
 $('#all').addEventListener('click', async () => {
   const t = termOrAsk();

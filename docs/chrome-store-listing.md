@@ -1,18 +1,20 @@
-# Prowl extension: Chrome Web Store listing (v1.3.0)
+# Prowl extension: Chrome Web Store listing (v1.4.0)
 
-Source is in `extension/`. Build the upload with: `cd extension && zip -r ../prowl-extension-1.3.0.zip . -x '.*'`
+Source is in `extension/`. Build the upload with: `cd extension && zip -r ../prowl-extension-X.Y.Z.zip . -x '.*'`
 
 ## Name
 Prowl by Owl & Twig: Vintage Search
 
 ## Summary (132 characters max)
-A Prowl Pro bonus: search 26 vintage marketplaces at once, with live listings in your toolbar and a right-click search.
+A Prowl Pro bonus: search 26 vintage marketplaces at once, with live listings, Field Guides and your Daily Prowl in one click.
 
 ## Description
 Prowl is the search tool for vintage collectors and resellers, built by Owl & Twig Vintage, a family vintage shop in Michigan. This extension brings it into your browser. It is a bonus for Prowl Pro members.
 
 - Toolbar: type a piece once and see live listings from ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Depop, Vinted and Grailed.
 - Right-click any text on any page to hunt it: live listings, the Prowl page, every marketplace opened in one tab group, or eBay sold prices.
+- Right-click text for a Field Guide: a researched collector's guide to a maker, line or kind of object.
+- Open your Daily Prowl and Prowl's photo check straight from the toolbar.
 - Right-click a photo to identify it with Google Lens.
 - Address bar: type "prowl", press space, then what you are hunting.
 - Opens searches on 26 marketplaces, including Facebook Marketplace, Whatnot, ShopGoodwill, Heritage Auctions, LiveAuctioneers and Invaluable.

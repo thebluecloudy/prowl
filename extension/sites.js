@@ -60,6 +60,11 @@ export const SITES = [
   { id: 'invaluable', name: 'Invaluable', url: (q) => 'https://www.invaluable.com/search?keyword=' + E(q).replace(/%20/g, '+') },
 ];
 
+// Prowl page features reached from the extension.
+export const dailyUrl = () => `${PROWL}?daily=1`;
+export const photoUrl = () => `${PROWL}?photo=1`;
+export const guideUrl = (q) => `${PROWL}?guide=${E(q)}`;
+
 export function soldUrl(q) {
   return SITES.find((s) => s.id === 'ebaysold').url(q);
 }
