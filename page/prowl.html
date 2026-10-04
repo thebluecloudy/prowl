@@ -1906,7 +1906,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.14';
+var PROWL_VERSION='v6.15';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3937,9 +3937,20 @@ function alertsSoonPage(){
     var hp=hs[i].nextElementSibling;if(hp)hp.textContent='One email each morning with new finds for your hunts. We are putting the finishing touches on it.';
   }
 }
+/* v6.15: the Prowl Alerts section at the foot of the home page knows who is reading it.
+   A Pro member is not asked to try Pro; a signed-in member is sent to their settings. */
+function rAlertsHome(){
+  var sec=$('#otp-alerts');if(!sec||sec.getAttribute('data-soon'))return;
+  var pro=mailPro(),member=!!mGet('alertTok'),ps=sec.querySelectorAll('p'),go=$('#otp-alertsGo'),tryA=sec.querySelector('a[href="/products/prowl-pro"]');
+  if(!sec.getAttribute('data-copy')&&ps[0])sec.setAttribute('data-copy',ps[0].innerHTML);
+  if(ps[0])ps[0].innerHTML=pro?'<b>You have Prowl Pro.</b> One email with new finds for your hunts on ShopGoodwill, eBay, Etsy, Chairish, Poshmark and Depop, only listings you have not seen, for up to 25 hunts every day. Pick the mornings, the hunts, a price ceiling and skip-words in your settings.':sec.getAttribute('data-copy');
+  if(tryA)tryA.hidden=pro;
+  if(go)go.textContent=pro||member?'Your Prowl Alerts settings':'Set up Prowl Alerts';
+}
 function rMail(){try{rDenAcct()}catch(e){}
   var boxes=document.querySelectorAll('.scout-app-wrapper .otp-mail'),i,box,h;
   var wrap=document.querySelector('.scout-app-wrapper');if(wrap)wrap.classList.toggle('is-pro',mailPro());
+  rAlertsHome();   /* v6.15 */
   var beta=true,live=alertsLive();
   for(i=0;i<boxes.length;i++){
     box=boxes[i];
