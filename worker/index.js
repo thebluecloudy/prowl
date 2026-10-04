@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v66: Grailed joins the Prowl Alerts sites (2026-10-04). Saved prefs without the src5 flag get
+ *        Grailed added. Needs the GRAILED_ALGOLIA_APP / _KEY Worker variables from v65.
  *   v65: Grailed live search (2026-10-04). /grailed asks Grailed's own Algolia search index with the
  *        public, search-only key its site sends every browser. The key is NOT in this repo: set
  *        GRAILED_ALGOLIA_APP and GRAILED_ALGOLIA_KEY as Worker variables (GRAILED_ALGOLIA_INDEX is
@@ -2394,8 +2396,8 @@ const AL_SEEN_CAP = 6000;   // v50: URLs and title keys
 const AL_SUB_PER_IP = 12;
 const AL_CONFIRM_PER_EMAIL = 3;
 const AL_TZ = "America/Detroit";
-const AL_SOURCES = ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark", "depop", "vinted"];   /* v58: poshmark, v59: depop, v61: vinted */
-const AL_SRC_NAME = { shopgoodwill: "ShopGoodwill", ebay: "eBay", etsy: "Etsy", chairish: "Chairish", poshmark: "Poshmark", depop: "Depop", vinted: "Vinted" };
+const AL_SOURCES = ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark", "depop", "vinted", "grailed"];   /* v58: poshmark, v59: depop, v61: vinted, v66: grailed */
+const AL_SRC_NAME = { shopgoodwill: "ShopGoodwill", ebay: "eBay", etsy: "Etsy", chairish: "Chairish", poshmark: "Poshmark", depop: "Depop", vinted: "Vinted", grailed: "Grailed" };
 /* v50: the member's email settings, sub.prefs = { freq, sources, mute, max, skip, pause }.
    freq: "daily" (default), "mwf" (Mon/Wed/Fri) or "weekly" (Monday), Detroit days.
    sources: which of AL_SOURCES to search. mute: hunts kept in the list but left out
@@ -2443,6 +2445,7 @@ function alPrefs(sub) {
   if (!p.src2 && sources.length && sources.indexOf("poshmark") === -1) sources.push("poshmark");
   if (!p.src3 && sources.length && sources.indexOf("depop") === -1) sources.push("depop");   /* v59 */
   if (!p.src4 && sources.length && sources.indexOf("vinted") === -1) sources.push("vinted");   /* v61 */
+  if (!p.src5 && sources.length && sources.indexOf("grailed") === -1) sources.push("grailed");   /* v66 */
   const max = Math.floor(Number(p.max));
   return {
     freq: AL_FREQ_DAYS[p.freq] ? p.freq : "daily",
@@ -2450,6 +2453,7 @@ function alPrefs(sub) {
     src2: p.src2 ? 1 : 0,   /* v58: the page knows about Poshmark */
     src3: p.src3 ? 1 : 0,   /* v59: the page knows about Depop */
     src4: p.src4 ? 1 : 0,   /* v61: the page knows about Vinted */
+    src5: p.src5 ? 1 : 0,   /* v66: the page knows about Grailed */
     mute: Array.isArray(p.mute) ? p.mute.map(h => vClean(h, 60).toLowerCase()).filter(Boolean).slice(0, AL_MAX_HUNTS) : [],
     max: max > 0 ? Math.min(max, AL_MAX_PRICE) : 0,
     skip: Array.isArray(p.skip) ? p.skip.map(w => alWords(vClean(w, AL_SKIP_LEN)).trim()).filter(Boolean).slice(0, AL_SKIP_MAX) : [],
@@ -2694,11 +2698,11 @@ async function alSearch(env, source, term, filter) {
   if (source === "ebay" && !(env && env.EBAY_CLIENT_ID)) return [];
   up = source === "ebay" ? await ebayLean(term, env, filter) : source === "etsy" ? await etsyCall(term, env)
      : source === "chairish" ? await chairishCall(term) : source === "poshmark" ? await poshmarkCall(term, false)
-     : source === "depop" ? await depopCall(term) : source === "vinted" ? await vintedCall(term) : await callUpstream(term);
+     : source === "depop" ? await depopCall(term) : source === "vinted" ? await vintedCall(term) : source === "grailed" ? await grailedCall(term, env) : await callUpstream(term);
   if (!up || up.status !== 200) return [];
   let items = source === "ebay" ? ebayNormalize(up.text) : source === "etsy" ? etsyNormalize(up.text)
             : source === "chairish" ? chairishNormalize(up.text) : source === "poshmark" ? poshmarkNormalize(up.text, false, term)
-            : source === "depop" ? depopNormalize(up.text) : source === "vinted" ? vintedNormalize(up.text) : normalize(up.text);   /* v58: poshmark, v59: depop, v61: vinted */
+            : source === "depop" ? depopNormalize(up.text) : source === "vinted" ? vintedNormalize(up.text) : source === "grailed" ? grailedNormalize(up.text) : normalize(up.text);   /* v58: poshmark, v59: depop, v61: vinted, v66: grailed */
   if (!items || !items.length) return [];
   items = items.slice(0, AL_PER_SITE);
   return items.filter(x => x && /^https:\/\//.test(x.url || "")).map(x => ({
