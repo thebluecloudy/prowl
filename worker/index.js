@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v62: /__offeruptest (2026-10-04). The probe showed offerup.com/search answers a Worker with
+ *        its listings in __NEXT_DATA__; this reports where they sit. Nothing wired to the page yet.
  *   v61: Vinted joins the Prowl Alerts sites (2026-10-04). /__vintedtest showed 30 US listings
  *        from the search page. Saved prefs without the src4 flag get Vinted added.
  *   v60: Vinted (2026-10-04). /vinted asks Vinted's own catalog API, which wants the session
@@ -188,6 +190,7 @@ const DEPOP_LIMIT = 12, DEPOP_CACHE_SECONDS = 1800;
 const VINTED_HOME = "https://www.vinted.com/";   /* v60 */
 const VINTED_PAGE = "/catalog?search_text=";   /* v60d: the search page itself; its API answers a Worker with a 404 */
 const VINTED_LIMIT = 12, VINTED_CACHE_SECONDS = 1800;
+const OFFERUP_URL = "https://offerup.com/search?q=";   /* v62: /__offeruptest only, for now */
 
 const HIBID_URL = "https://hibid.com/lots?q=";
 const HIBID_LIMIT = 12;
@@ -967,6 +970,47 @@ async function vintedCall(term) {
   } finally {
     clearTimeout(timer);
   }
+}
+/* v62: OfferUp search page. Its listings sit in the page's __NEXT_DATA__ JSON. */
+async function offerupCall(term, extra) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), UPSTREAM_TIMEOUT_MS);
+  try {
+    const r = await fetch(OFFERUP_URL + encodeURIComponent(term) + (extra || ""), {
+      signal: ctl.signal,
+      headers: { "User-Agent": PROBE_UA, "Accept": "text/html,application/xhtml+xml,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.9" }
+    });
+    const text = await r.text();
+    return { status: r.status, text: text };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+/* The parsed __NEXT_DATA__ of a Next.js page, or null */
+function nextData(html) {
+  const s = String(html || "");
+  const m = /<script id="__NEXT_DATA__" type="application\/json"[^>]*>([\s\S]*?)<\/script>/.exec(s);
+  if (!m) return null;
+  try { return JSON.parse(m[1]); } catch (e) { return null; }
+}
+/* Where the listings are in a JSON tree: arrays of objects that look like listings (a title and a price),
+   reported by path with the first element, so a parser can be written from one look. Diagnostics only. */
+function jsonListings(root, max) {
+  const found = [];
+  const walk = (v, path, depth) => {
+    if (found.length >= max || depth > 12 || !v || typeof v !== "object") return;
+    if (Array.isArray(v)) {
+      if (v.length >= 3 && v[0] && typeof v[0] === "object") {
+        const ks = Object.keys(v[0]).join(",").toLowerCase();
+        if (/title|name/.test(ks) && /price/.test(ks)) { found.push({ path: path, count: v.length, keys: Object.keys(v[0]), first: JSON.stringify(v[0]).slice(0, 900) }); return; }
+      }
+      for (let i = 0; i < Math.min(v.length, 50); i++) walk(v[i], path + "[" + i + "]", depth + 1);
+      return;
+    }
+    for (const k in v) walk(v[k], path ? path + "." + k : k, depth + 1);
+  };
+  walk(root, "", 0);
+  return found;
 }
 /* v60d: what the decoded flight text looks like, for /__vintedtest */
 function vintedPeek(html) {
@@ -3494,6 +3538,31 @@ export default {
         error: err,
         firstItem: items && items[0] ? items[0] : null,
         rawHead: up && !(items && items.length) ? up.text.slice(0, 300) : null,
+      }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/__offeruptest") {   /* v62 */
+      const term = url.searchParams.get("q") || "jadeite fire king";
+      const extra = url.searchParams.get("extra") || "";   /* e.g. &lat=42.53&lon=-83.38&radius=50 */
+      const started = Date.now();
+      let up, err = null;
+      try { up = await offerupCall(term, extra); }
+      catch (e) { err = String(e && e.message || e); }
+      const nd = up ? nextData(up.text) : null;
+      const pp = nd && nd.props && nd.props.pageProps;
+      return new Response(JSON.stringify({
+        ok: !!nd,
+        term: term,
+        extra: extra,
+        ms: Date.now() - started,
+        upstreamStatus: up ? up.status : null,
+        upstreamBytes: up ? up.text.length : 0,
+        hasNextData: up ? up.text.indexOf("__NEXT_DATA__") !== -1 : null,
+        error: err,
+        topKeys: nd ? Object.keys(nd) : null,
+        pagePropsKeys: pp ? Object.keys(pp) : null,
+        listings: nd ? jsonListings(nd, 4) : null,
+        rawHead: up && !nd ? up.text.slice(0, 300) : null,
       }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
