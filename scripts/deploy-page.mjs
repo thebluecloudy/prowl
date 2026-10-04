@@ -83,7 +83,15 @@ export async function deploy({ fetchFn, file, id, secret, force, backupDir, log 
 
   const after = (await gql(fetchFn, token, READ, { id: PAGE_ID })).page;
   const got = md5(trimEnd(after.body || ""));
-  if (got !== want) throw new Error("Live page does not match after the update (live md5 " + got + ", file md5 " + want + "). The previous body is in the backup artifact.");
+  if (got !== want) {
+    /* say where Shopify's copy first differs, so an edit it rewrote can be found without downloading the page */
+    const a = body, b = trimEnd(after.body || "");
+    let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++;
+    log("First difference at character " + i + " (file " + a.length + " chars, live " + b.length + " chars).");
+    log("FILE: " + JSON.stringify(a.slice(Math.max(0, i - 120), i + 200)));
+    log("LIVE: " + JSON.stringify(b.slice(Math.max(0, i - 120), i + 200)));
+    throw new Error("Live page does not match after the update (live md5 " + got + ", file md5 " + want + "). The previous body is in the backup artifact.");
+  }
   log("Verified: live page md5 " + got + " matches the file.");
   return { status: "updated", md5: want, updatedAt: after.updatedAt, previous: before.updatedAt };
 }
