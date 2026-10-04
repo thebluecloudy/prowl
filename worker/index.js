@@ -1012,6 +1012,45 @@ function jsonListings(root, max) {
   walk(root, "", 0);
   return found;
 }
+/* v62c: the listing tiles in OfferUp's feed. Ads and other tiles are skipped; null when the page
+   has no feed at all. */
+function offerupTiles(html) {
+  const nd = nextData(html);
+  const f = nd && nd.props && nd.props.pageProps && nd.props.pageProps.searchFeedResponse;
+  if (!f) return null;
+  const tiles = Array.isArray(f.looseTiles) ? f.looseTiles : [];
+  return tiles.filter(t => t && t.listing && typeof t.listing === "object" && typeof t.listing.title === "string").map(t => t.listing);
+}
+/* The city OfferUp searched around, from the feed's distance filter */
+function offerupCity(html) {
+  const nd = nextData(html);
+  const f = nd && nd.props && nd.props.pageProps && nd.props.pageProps.searchFeedResponse;
+  const fl = f && Array.isArray(f.filters) ? f.filters.find(x => x && x.targetName === "DISTANCE") : null;
+  return fl ? String(fl.subTitle || fl.shortcutLabel || "") : "";
+}
+function offerupNormalize(html) {
+  const d = offerupTiles(html);
+  if (d === null) return null;
+  const out = [], seen = {};
+  for (const x of d) {
+    const id = String(x.listingId || x.id || "");
+    if (!/^[A-Za-z0-9-]{4,}$/.test(id) || seen[id]) continue;
+    const title = hibidText(String(x.title || "")).replace(/\s+/g, " ").trim().slice(0, 160);
+    if (title.length < 3) continue;
+    const num = Number(String(x.price != null ? x.price : (x.priceAmount || "")).replace(/[^0-9.]/g, ""));
+    const img = x.image && typeof x.image === "object" ? String(x.image.url || "") : String(x.imageUrl || x.image || "");
+    seen[id] = 1;
+    out.push({
+      title: title,
+      price: isFinite(num) && num > 0 ? money(num) : "",
+      url: "https://offerup.com/item/detail/" + id,
+      image: /^https:\/\//.test(img) ? img : "",
+      src: "offerup",
+      dist: String(x.locationName || "").slice(0, 60),
+    });
+  }
+  return out;
+}
 /* v62b: a JSON tree with every array cut to its first element and strings shortened, for a look at its shape */
 function jsonShape(v, depth) {
   if (depth > 7) return "…";
@@ -3558,8 +3597,25 @@ export default {
       catch (e) { err = String(e && e.message || e); }
       const nd = up ? nextData(up.text) : null;
       const pp = nd && nd.props && nd.props.pageProps;
+      const items = up ? offerupNormalize(up.text) : null;   /* v62c */
+      const tiles = pp && pp.searchFeedResponse && Array.isArray(pp.searchFeedResponse.looseTiles) ? pp.searchFeedResponse.looseTiles : [];
+      const firstListing = tiles.find(t => t && t.listing) || tiles.find(t => t && t.tileType !== "AD_3P_GOOGLE_DISPLAY") || null;
+      /* v62c: which way of naming a place OfferUp honours; each reports the city it searched around */
+      const places = [];
+      if (url.searchParams.get("places")) {
+        for (const ex of ["&zipcode=48322", "&zip=48322", "&location=48322", "&lat=42.53&lon=-83.38", "&latitude=42.53&longitude=-83.38", "&location=West+Bloomfield%2C+MI"]) {
+          try { const r = await offerupCall(term, ex); places.push({ param: ex, status: r.status, city: offerupCity(r.text), items: (offerupNormalize(r.text) || []).length }); }
+          catch (e) { places.push({ param: ex, error: String(e && e.message || e) }); }
+        }
+      }
       return new Response(JSON.stringify({
-        ok: !!nd,
+        ok: !!(items && items.length),
+        city: up ? offerupCity(up.text) : null,
+        parsedItems: items ? items.length : null,
+        sample: items && items.length ? items.slice(0, 3) : null,
+        firstListingTile: firstListing ? jsonShape(firstListing, 0) : null,
+        tileTypes: tiles.reduce((m, t) => { const k = t && (t.tileType || t.__typename) || "?"; m[k] = (m[k] || 0) + 1; return m; }, {}),
+        places: places.length ? places : undefined,
         term: term,
         extra: extra,
         ms: Date.now() - started,
@@ -3567,13 +3623,7 @@ export default {
         upstreamBytes: up ? up.text.length : 0,
         hasNextData: up ? up.text.indexOf("__NEXT_DATA__") !== -1 : null,
         error: err,
-        topKeys: nd ? Object.keys(nd) : null,
         pagePropsKeys: pp ? Object.keys(pp) : null,
-        listings: nd ? jsonListings(nd, 4) : null,
-        feedShape: pp && pp.searchFeedResponse ? jsonShape(pp.searchFeedResponse, 0) : null,   /* v62b */
-        apolloKeys: pp && pp.initialApolloState ? Object.keys(pp.initialApolloState).slice(0, 12) : null,
-        apolloListing: (() => { const a = pp && pp.initialApolloState; if (!a) return null; for (const k in a) if (/^(Listing|Item|FeedItem|Tile)/i.test(k)) return { key: k, value: jsonShape(a[k], 0) }; return null; })(),
-        paginatedOptions: pp ? jsonShape(pp.paginatedOptions, 0) : null,
         rawHead: up && !nd ? up.text.slice(0, 300) : null,
       }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
     }
