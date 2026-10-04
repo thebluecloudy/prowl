@@ -52,3 +52,6 @@ to move the bytes without retyping them.
 Vanilla JS, conservative syntax (`var`, classic functions, string concatenation).
 Deliberately no TypeScript, React, modules, bundler, or npm dependencies — older
 mobile browsers matter for thrifters in the field.
+
+## Chrome extension
+`extension/` holds the Prowl Chrome extension (a Prowl Pro bonus). It has its own version in `extension/manifest.json`; merging a change to `main` publishes a GitHub release `ext-vX.Y.Z` with the store-ready zip. See `extension/README.md`.
