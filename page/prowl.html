@@ -1034,6 +1034,18 @@ window.prowlEpn=function(u,cid){
 @media (prefers-reduced-motion:reduce){
   .scout-app-wrapper .drawer{transition:none }
 }
+/* ---- v6.13: the installed app on a desktop runs edge to edge, 8 cards across ---- */
+@media (min-width:1000px){
+  .scout-app-wrapper.otp-wide{width:100vw;margin-left:calc(50% - 50vw);overflow-x:clip }
+  .scout-app-wrapper.otp-wide main{max-width:none;padding:0 28px }
+  .scout-app-wrapper.otp-wide #otp-dock{max-width:none }
+  .scout-app-wrapper.otp-wide .sgw-grid{grid-template-columns:repeat(6,minmax(0,1fr)) }
+  .scout-app-wrapper.otp-wide .sgw-cols{grid-template-columns:minmax(300px,24%) 1fr }
+  .scout-app-wrapper.otp-wide .scout-seo{max-width:900px }
+}
+@media (min-width:1200px){
+  .scout-app-wrapper.otp-wide .sgw-grid{grid-template-columns:repeat(8,minmax(0,1fr)) }
+}
 /* ---- v6.04: which email is which ---- */
 .scout-app-wrapper .mail-acct{display:grid;gap:10px;margin:0 0 12px;padding:12px 14px;border:1px solid var(--ln);border-radius:12px;background:var(--cd2) }
 .scout-app-wrapper .ma-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;min-width:0 }
@@ -1894,7 +1906,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.12';
+var PROWL_VERSION='v6.13';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4609,6 +4621,7 @@ function rAppBar(){
   var bar=$('#otp-appbar'),launch=$('#otp-openApp'),inst=$('#otp-installApp'),shop=$('#otp-appShop');
   if(!bar)return;
   var standalone=inStandalone(),appPage=onAppPage(),shown=0;
+  var wrap=document.querySelector('.scout-app-wrapper');if(wrap){if(standalone||appPage)wrap.classList.add('otp-wide');else wrap.classList.remove('otp-wide')}   /* v6.13: desktop app goes wide */
   if(launch){launch.hidden=standalone||appPage;if(!launch.hidden)shown++}
   if(inst){inst.hidden=standalone||!appPage;if(!inst.hidden)shown++}
   if(shop){shop.hidden=!(standalone||appPage);if(!shop.hidden)shown++}
