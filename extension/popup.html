@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Prowl</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="top">
+    <img src="icons/icon-128.png" width="32" height="32" alt="">
+    <div>
+      <h1>Prowl</h1>
+      <p class="sub">by Owl &amp; Twig Vintage</p>
+    </div>
+  </header>
+
+  <section id="locked" hidden>
+    <h2>A bonus for Prowl Pro members</h2>
+    <p>The Prowl toolbar search, live listings and right-click search are included with Prowl Pro ($7 a month, first month free).</p>
+    <button class="primary wide" id="getpro" type="button">Get Prowl Pro</button>
+    <button class="ghost" id="signin" type="button">Already Pro? Sign in on Prowl</button>
+    <button class="ghost" id="recheck" type="button">I signed in. Check again</button>
+    <p class="msg" id="lockmsg" hidden></p>
+    <p class="tip">On Prowl, open the Den, then Settings, and sign in to Prowl Alerts with your Pro email. This extension picks that up by itself the next time you visit Prowl in this browser.</p>
+    <button class="ghost" id="free" type="button">Use the free Prowl page</button>
+  </section>
+
+  <form id="f" autocomplete="off">
+    <input id="q" type="search" placeholder="ceramic panther, rookwood vase..." aria-label="What are you hunting?" autofocus>
+    <button class="primary" type="submit">Search</button>
+  </form>
+  <p class="msg" id="msg" hidden></p>
+
+  <div id="results" aria-live="polite"></div>
+
+  <div class="acts" id="acts" hidden>
+    <button class="ghost" id="prowl" type="button">Every marketplace in Prowl</button>
+    <button class="ghost" id="all" type="button">Open every marketplace in tabs</button>
+    <div class="pair">
+      <button class="ghost" id="sold" type="button">Sold prices</button>
+      <button class="ghost" id="images" type="button">Google Images</button>
+    </div>
+  </div>
+
+  <p class="tip" id="tip">Tip: highlight text on any page and right-click it, or type <b>prowl</b> and a space in the address bar. Right-click a photo to identify it with Google Lens.</p>
+  <p class="foot">Prowl &copy; 2026 Owl &amp; Twig Vintage</p>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
