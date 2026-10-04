@@ -1,18 +1,15 @@
 name: Worker probe
 
 # Calls one of the worker's __ diagnostic routes and prints the JSON, so a
-# diagnostic can be run from GitHub (or from a Claude session) without a
-# terminal. The key is masked in the log. Run it by hand from the Actions tab
-# or through the API with the two inputs.
+# diagnostic can be run from the Actions tab (or through the API) without a
+# terminal. The key comes from the PROWL_DEBUG_KEY repository secret, which
+# GitHub masks in the log. Set it under Settings > Secrets and variables >
+# Actions, the same value as the worker's DEBUG_KEY.
 on:
   workflow_dispatch:
     inputs:
       path:
         description: "Route and query, e.g. /__vintedtest?q=jadeite+fire+king"
-        required: true
-        type: string
-      key:
-        description: "DEBUG_KEY (masked in the log)"
         required: true
         type: string
 
@@ -27,9 +24,9 @@ jobs:
       - name: Call the worker
         env:
           P: ${{ inputs.path }}
-          K: ${{ inputs.key }}
+          K: ${{ secrets.PROWL_DEBUG_KEY }}
         run: |
-          echo "::add-mask::$K"
+          if [ -z "$K" ]; then echo "PROWL_DEBUG_KEY secret is not set"; exit 1; fi
           case "$P" in /__*) ;; *) echo "path must start with /__"; exit 1;; esac
           echo "GET https://prowl.thebluecloud.workers.dev$P"
           echo "=====BEGIN====="
