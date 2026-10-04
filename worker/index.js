@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v71: live lookup limit per visitor address raised from 400 to 2500 a day (cache hits never counted). Phones behind shared
+ *        carrier or Private Relay addresses were getting "slow down" and no live results.
  *   v70: /__ebaysoldtest (2026-10-04). Asks eBay's Marketplace Insights (sold items) API for a token and a search
  *        with our existing keys, to show whether the sold-prices application was approved. Diagnostic only.
  *   v69: AI off (2026-10-04). Live lookups with ai=0 skip the AI (Jev) sorting and have their own cache key;
@@ -191,7 +193,7 @@
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
 const CACHE_SECONDS = 600;      // 10 min: kind to ShopGoodwill, fresh enough
-const SEARCH_PER_IP = 400;
+const SEARCH_PER_IP = 2500;   /* v71: was 400; phones on shared carrier or iCloud Private Relay addresses hit it in minutes */
 const MAX_TERM = 80;
 const UPSTREAM_TIMEOUT_MS = 12000;
 

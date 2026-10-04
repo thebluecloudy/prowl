@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "Prowl by Owl & Twig: Vintage Search",
+  "short_name": "Prowl",
+  "version": "1.5.0",
+  "description": "Search vintage marketplaces from your toolbar, right-click menu or address bar. Prowl Pro adds live listings and Field Guides.",
+  "homepage_url": "https://owlandtwigvintage.com/pages/prowl",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Prowl",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
+  },
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "omnibox": {
+    "keyword": "prowl"
+  },
+  "permissions": [
+    "contextMenus",
+    "tabGroups",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://prowl.thebluecloud.workers.dev/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://owlandtwigvintage.com/pages/prowl*",
+        "https://www.owlandtwigvintage.com/pages/prowl*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

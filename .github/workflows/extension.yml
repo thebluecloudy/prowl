@@ -1,0 +1,54 @@
+name: Extension
+
+on:
+  pull_request:
+    paths: ['extension/**', '!extension/README.md', '!extension/CHANGELOG.md']
+  push:
+    branches: [main]
+    paths: ['extension/**', '!extension/README.md', '!extension/CHANGELOG.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check-version:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Version must be raised
+        run: |
+          new=$(jq -r .version extension/manifest.json)
+          old=$(git show origin/${{ github.base_ref }}:extension/manifest.json 2>/dev/null | jq -r .version || echo 0.0.0)
+          echo "main: $old  this PR: $new"
+          if [ "$new" = "$old" ]; then echo "::error::extension/ changed but manifest.json version is still $old. Bump it and add a CHANGELOG line."; exit 1; fi
+          if [ "$(printf '%s\n%s\n' "$old" "$new" | sort -V | tail -1)" != "$new" ]; then echo "::error::version $new is lower than $old"; exit 1; fi
+      - name: Manifest sanity
+        run: |
+          d=$(jq -r .description extension/manifest.json); n=${#d}
+          if [ "$n" -gt 132 ]; then echo "::error::manifest description is $n characters; the Chrome Web Store limit is 132."; exit 1; fi
+          jq -e '.manifest_version==3 and (.version|test("^[0-9]+(\\.[0-9]+){0,3}$"))' extension/manifest.json
+          grep -q "## $(jq -r .version extension/manifest.json)" extension/CHANGELOG.md || { echo "::error::CHANGELOG.md has no heading for this version"; exit 1; }
+          for f in extension/*.js; do node --check "$f"; done
+
+  release:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build zip and publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          v=$(jq -r .version extension/manifest.json)
+          tag="ext-v$v"
+          (cd extension && zip -qr "../prowl-extension-$v.zip" . -x '.*' -x 'README.md' -x 'CHANGELOG.md')
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag exists; replacing its zip."
+            gh release upload "$tag" "prowl-extension-$v.zip" --clobber
+          else
+            notes=$(awk -v h="## $v" '$0==h{f=1;next} /^## /{f=0} f' extension/CHANGELOG.md)
+            gh release create "$tag" "prowl-extension-$v.zip" --target "$GITHUB_SHA" --title "Prowl extension $v" --notes "${notes:-Prowl extension $v}"
+          fi
