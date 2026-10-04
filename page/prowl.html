@@ -1116,7 +1116,7 @@ window.prowlEpn=function(u,cid){
 
   <section class="alrt" id="otp-alerts" aria-labelledby="otp-alertsT">
     <h2 id="otp-alertsT">Prowl Alerts</h2>
-    <p>One email with new finds for your hunts on ShopGoodwill, eBay, Etsy, Chairish and Poshmark, only listings you have not seen. Every morning, three mornings a week, or just Mondays: you pick, and you pick which hunts go in. <b>Free: 1 hunt, every Monday.</b> <b>Prowl Pro: your first month is free</b>, then $7 a month for up to 25 hunts every day, your whole Den, a price ceiling, skip-words, local-pickup hunts near your ZIP, 25 photo checks a day and unlimited Fair price checks. We email you before the first charge. Cancel any time.</p>
+    <p>One email with new finds for your hunts on ShopGoodwill, eBay, Etsy, Chairish, Poshmark and Depop, only listings you have not seen. Every morning, three mornings a week, or just Mondays: you pick, and you pick which hunts go in. <b>Free: 1 hunt, every Monday.</b> <b>Prowl Pro: your first month is free</b>, then $7 a month for up to 25 hunts every day, your whole Den, a price ceiling, skip-words, local-pickup hunts near your ZIP, 25 photo checks a day and unlimited Fair price checks. We email you before the first charge. Cancel any time.</p>
     <p><button class="b p" id="otp-alertsGo" type="button">Set up Prowl Alerts</button> <a class="b" href="/products/prowl-pro">Try Prowl Pro free for a month</a></p>
     <p class="fine">Or join the Owl &amp; Twig list for news and new finds:</p>
     <form id="otp-alertsF" method="post" action="/contact#otp-alerts" accept-charset="UTF-8">
@@ -1894,7 +1894,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.11';
+var PROWL_VERSION='v6.12';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3698,13 +3698,14 @@ document.addEventListener('click',function(e){
    filters). Kept on the worker (sub.prefs) and mirrored here in MAIL.prefs. */
 var PREF_FREQ={daily:'every morning',mwf:'Monday, Wednesday and Friday mornings',weekly:'Monday mornings'};
 var PREF_FREQ_SHORT={daily:'daily',mwf:'Mon \u00b7 Wed \u00b7 Fri',weekly:'Mondays'};
-var PREF_SRC=[['shopgoodwill','ShopGoodwill'],['ebay','eBay'],['etsy','Etsy'],['chairish','Chairish'],['poshmark','Poshmark']];   /* v6.11: poshmark */
+var PREF_SRC=[['shopgoodwill','ShopGoodwill'],['ebay','eBay'],['etsy','Etsy'],['chairish','Chairish'],['poshmark','Poshmark'],['depop','Depop']];   /* v6.11: poshmark, v6.12: depop */
 function prefs(){
   var p=MAIL.prefs||{},o={};
   o.freq=PREF_FREQ[p.freq]?p.freq:'daily';
   o.sources=(p.sources&&p.sources.length)?p.sources.slice():PREF_SRC.map(function(s){return s[0]});
   if(!p.src2&&o.sources.indexOf('poshmark')===-1)o.sources.push('poshmark');   /* v6.11: saved before Poshmark was offered */
-  o.src2=1;
+  if(!p.src3&&o.sources.indexOf('depop')===-1)o.sources.push('depop');   /* v6.12: saved before Depop was offered */
+  o.src2=1;o.src3=1;
   o.mute=(p.mute||[]).map(function(h){return String(h).toLowerCase()});
   o.max=parseInt(p.max,10)>0?parseInt(p.max,10):0;
   o.skip=(p.skip||[]).slice();
@@ -3843,7 +3844,7 @@ function mailBody(on,wait,n,em){
       '<span class="sgw-mf"><input type="email" autocomplete="email" placeholder="you@email.com" aria-label="Email for Prowl Alerts" value="'+esc(em)+'"><button type="button" class="b p" data-mail="go"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Sending\u2026':'Email me daily')+'</button></span>'+
       '<p class="mail-fine">Set up on another device this way? <button type="button" class="sgw-ml" data-mail="signin">Email me a sign-in link</button> \u00b7 <button type="button" class="sgw-ml" data-mail="emailonly">Back</button></p>';
   }else{
-    h+='<p>One email each morning with new finds for your hunts, from ShopGoodwill, eBay, Etsy, Chairish and Poshmark. Only listings you have not been sent before. <b>Free for 1 hunt on Mondays</b>, or 25 hunts every day with Prowl Pro, first month free.</p>'+
+    h+='<p>One email each morning with new finds for your hunts, from ShopGoodwill, eBay, Etsy, Chairish, Poshmark and Depop. Only listings you have not been sent before. <b>Free for 1 hunt on Mondays</b>, or 25 hunts every day with Prowl Pro, first month free.</p>'+
       '<span class="sgw-mf"><a class="b p" href="'+esc(loginUrl())+'" data-mail="storein">Sign in or sign up</a></span>'+
       '<p class="mail-fine">Uses your Owl &amp; Twig account: we email you a 6-digit code, no password. Same sign-in on your phone and computer.</p>'+
       '<p class="mail-fine">Rather not have an account? <button type="button" class="sgw-ml" data-mail="emailonly">Use email only</button></p>';
@@ -3902,7 +3903,7 @@ var ALERTS_OPEN=true;   /* v5.88: launched 2026-10-02 */
 function alertsLive(){return ALERTS_OPEN||mGet('alertsBeta')==='1'}
 function mailSoonHtml(mode){
   if(mode==='card')return '<div class="mail-top"><h3>\u2709 Prowl Alerts</h3><span class="mail-pill">Coming soon</span></div>'+
-    '<p>One email each morning with new finds for your hunts, from ShopGoodwill, eBay, Etsy, Chairish and Poshmark. We are putting the finishing touches on it. <button type="button" class="sgw-ml" data-mail="soon">Get an email when it opens</button></p>';
+    '<p>One email each morning with new finds for your hunts, from ShopGoodwill, eBay, Etsy, Chairish, Poshmark and Depop. We are putting the finishing touches on it. <button type="button" class="sgw-ml" data-mail="soon">Get an email when it opens</button></p>';
   return '<button type="button" class="sgw-mh" data-mail="soon">\u2709 Prowl Alerts: <b>coming soon</b> \u203a</button>';
 }
 function alertsSoonPage(){
@@ -3912,7 +3913,7 @@ function alertsSoonPage(){
     sec.setAttribute('data-soon','1');
     var h=sec.querySelector('h2'),ps=sec.querySelectorAll('p'),go=$('#otp-alertsGo');
     if(h)h.textContent='Prowl Alerts \u00b7 coming soon';
-    if(ps[0])ps[0].textContent='One email each morning with new finds for your hunts on ShopGoodwill, eBay, Etsy, Chairish and Poshmark, only listings you have not seen. We are putting the finishing touches on it.';
+    if(ps[0])ps[0].textContent='One email each morning with new finds for your hunts on ShopGoodwill, eBay, Etsy, Chairish, Poshmark and Depop, only listings you have not seen. We are putting the finishing touches on it.';
     if(go&&go.parentNode){go.parentNode.hidden=true;go.parentNode.style.display='none'}
     var f=sec.querySelector('p.fine');if(f)f.textContent='Leave your email and we will tell you the day it opens:';
   }
