@@ -2,6 +2,9 @@
 
 Versions follow `extension/manifest.json`. Bump `version` there in the same change as any edit under `extension/`; the workflow builds the zip and publishes a GitHub release named `ext-vX.Y.Z` when it lands on main.
 
+## 1.4.1
+- Shortened the manifest description to fit the Chrome Web Store's 132-character limit (1.4.0 was rejected on upload).
+
 ## 1.4.0
 - Field Guide: right-click text, or the popup's Field Guide button, opens Prowl's Field Guide with the subject filled in (needs Prowl page v6.23).
 - Popup shortcuts to My Daily Prowl and Check a photo on the Prowl page.

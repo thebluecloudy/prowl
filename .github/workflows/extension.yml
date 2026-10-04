@@ -27,6 +27,8 @@ jobs:
           if [ "$(printf '%s\n%s\n' "$old" "$new" | sort -V | tail -1)" != "$new" ]; then echo "::error::version $new is lower than $old"; exit 1; fi
       - name: Manifest sanity
         run: |
+          d=$(jq -r .description extension/manifest.json); n=${#d}
+          if [ "$n" -gt 132 ]; then echo "::error::manifest description is $n characters; the Chrome Web Store limit is 132."; exit 1; fi
           jq -e '.manifest_version==3 and (.version|test("^[0-9]+(\\.[0-9]+){0,3}$"))' extension/manifest.json
           grep -q "## $(jq -r .version extension/manifest.json)" extension/CHANGELOG.md || { echo "::error::CHANGELOG.md has no heading for this version"; exit 1; }
           for f in extension/*.js; do node --check "$f"; done
