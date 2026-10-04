@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v67: what people search (2026-10-04). Anonymous per-day term counts (distinct visitors by a
+ *        daily-salted hash, plus requests) in the stats Durable Object; /__topterms?days=7 shows
+ *        them, /__memberhunts shows what Prowl Alerts members hunt (counted per member, no emails).
  *   v66: Grailed joins the Prowl Alerts sites (2026-10-04). Saved prefs without the src5 flag get
  *        Grailed added. Needs the GRAILED_ALGOLIA_APP / _KEY Worker variables from v65.
  *   v65: Grailed live search (2026-10-04). /grailed asks Grailed's own Algolia search index with the
@@ -1409,6 +1412,42 @@ export class Caps {
       await this.arm(6 * 3600000);
       return J({ ok: true });
     }
+    /* v67: anonymous term counts. n:<kind>:<day>:<term> = { v: distinct visitors, r: requests };
+       s:<kind>:<day>:<term>:<hash> marks a visitor already counted that day (daily-salted hash, kept 2 days);
+       m:<kind>:<day> counts the day's distinct terms so a flood cannot grow storage without bound. */
+    if (op === "tick") {
+      const kind = String(q.kind || "t"), day = String(q.day || ""), term = String(q.term || ""), h = String(q.h || "");
+      if (!/^[tg]$/.test(kind) || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !term || term.length > 60) return J({ error: "bad tick" }, 400);
+      const nk = "n:" + kind + ":" + day + ":" + term;
+      let cur = await this.s.get(nk);
+      if (!cur) {
+        const mk = "m:" + kind + ":" + day, m = (await this.s.get(mk)) || 0;
+        if (m >= 4000) return J({ full: true });
+        await this.s.put(mk, m + 1);
+        cur = { v: 0, r: 0 };
+      }
+      cur.r += 1;
+      if (h) { const sk = "s:" + kind + ":" + day + ":" + term + ":" + h; if (!(await this.s.get(sk))) { await this.s.put(sk, 1); cur.v += 1; } }
+      await this.s.put(nk, cur);
+      await this.arm(86400000);
+      return J({ ok: true });
+    }
+    if (op === "top") {
+      const kind = String(q.kind || "t"), from = String(q.from || ""), to = String(q.to || ""), lim = Math.min(Number(q.limit) || 40, 200);
+      const rows = await this.s.list({ prefix: "n:" + kind + ":", start: "n:" + kind + ":" + from, end: "n:" + kind + ":" + to + "~" });
+      const agg = {};
+      let totalV = 0, totalR = 0, terms = 0;
+      for (const [k, v] of rows) {
+        const rest = k.slice(("n:" + kind + ":").length), day = rest.slice(0, 10), term = rest.slice(11);
+        const a = agg[term] || (agg[term] = { term: term, visitorDays: 0, requests: 0, days: 0, last: "" });
+        a.visitorDays += v.v || 0; a.requests += v.r || 0; a.days += 1; if (day > a.last) a.last = day;
+        totalV += v.v || 0; totalR += v.r || 0;
+      }
+      const list = Object.keys(agg).map(t => agg[t]);
+      terms = list.length;
+      list.sort((x, y) => y.visitorDays - x.visitorDays || y.requests - x.requests);
+      return J({ terms: terms, visitorDays: totalV, requests: totalR, top: list.slice(0, lim) });
+    }
     return J({ error: "bad op" }, 400);
   }
   async arm(ms) {
@@ -1424,13 +1463,41 @@ export class Caps {
     let left = 0;
     const vals = await this.s.list({ prefix: "v:" });
     for (const [k, v] of vals) { if (!v || !(v.e > now)) del.push(k); else left++; }
+    /* v67: term-count housekeeping: visitor markers after 2 days, counts after 60 */
+    const dayMs = d => Date.parse(d + "T00:00:00Z") || 0;
+    let keep = 0;
+    for (const pre of ["s:", "n:", "m:"]) {
+      const cut = now - (pre === "s:" ? 2 : 60) * 86400000;
+      const rowsS = await this.s.list({ prefix: pre });
+      for (const [k] of rowsS) { const day = k.slice(4, 14); if (dayMs(day) && dayMs(day) < cut) del.push(k); else keep++; }
+    }
     for (let i = 0; i < del.length; i += 128) await this.s.delete(del.slice(i, i + 128));
     this.armed = false;
-    if (left) { await this.s.setAlarm(now + 6 * 3600000); this.armed = true; }
+    if (left || keep) { await this.s.setAlarm(now + (keep ? 86400000 : 6 * 3600000)); this.armed = true; }
   }
 }
 
 /* v43: like vCount, but says how many are left after this one (-1 = none left). */
+/* ---------- v67: what people search ----------
+   Anonymous term counts, kept in the stats Durable Object (a Caps object named "stats"): per day, per
+   term, how many distinct visitors and how many requests. A visitor is a daily-salted hash of their
+   address, kept two days and then dropped; no address, email or token is ever stored with a term, and
+   terms that look like an email, a link or a long number are skipped. */
+function statTerm(raw) {
+  let t = String(raw == null ? "" : raw).toLowerCase().replace(/[^a-z0-9'&\- ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+  if (t.length < 2 || /@|https?|www|\.com/.test(String(raw)) || /\d{6,}/.test(t)) return "";
+  return t;
+}
+async function statTick(request, env, kind, rawTerm) {
+  try {
+    const term = statTerm(rawTerm);
+    if (!term) return;
+    const day = new Date().toISOString().slice(0, 10);
+    const ip = ipKey(request.headers.get("CF-Connecting-IP"));
+    const h = ip ? await sha16(ip + "|" + day + "|" + String((env && env.DEBUG_KEY) || "")) : "";
+    await capsCall("stats", "tick", { kind: kind, day: day, term: term, h: h });
+  } catch (e) { console.error("stat", String(e && e.message || e)); }
+}
 async function vTake(name, limit) {
   /* v51: a counter that errors means "no", never "free". The Cache API path only
      runs when the CAPS binding is absent on purpose (a v47-style deploy). */
@@ -3700,6 +3767,35 @@ export default {
       return new Response(JSON.stringify(res, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
+    /* v67: what people search. /__topterms?days=7&n=40[&kind=t|g] : anonymous counts (t = searches, g = field guides) */
+    if (url.pathname === "/__topterms") {
+      const days = Math.min(Math.max(parseInt(url.searchParams.get("days") || "7", 10) || 7, 1), 60);
+      const kind = url.searchParams.get("kind") === "g" ? "g" : "t";
+      const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
+      let r = null; try { r = await capsCall("stats", "top", { kind: kind, from: from, to: to, limit: Math.min(parseInt(url.searchParams.get("n") || "40", 10) || 40, 200) }); } catch (e) { r = { error: String(e && e.message || e) }; }
+      return new Response(JSON.stringify(Object.assign({ kind: kind, from: from, to: to, note: "visitorDays = distinct visitors per day, summed over the days; requests = every call (one search is several, one per marketplace)" }, r), null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    /* v67: /__memberhunts[?cursor=] : what Prowl Alerts members hunt, counted by distinct member, no emails */
+    if (url.pathname === "/__memberhunts") {
+      const STOP = { vintage:1, antique:1, the:1, and:1, with:1, rare:1, old:1, lot:1, set:1, of:1, a:1, for:1, in:1, to:1 };
+      const lst = await env.PROWL_ALERTS.list({ prefix: "sub:", limit: 45, cursor: url.searchParams.get("cursor") || undefined });
+      const hunts = {}, words = {};
+      let members = 0, pro = 0, withHunts = 0, huntTotal = 0;
+      for (const k of lst.keys) {
+        const sub = await kvGet(env, k.name, null);
+        if (!sub || !Array.isArray(sub.hunts)) continue;
+        members++; if (sub.pro) pro++;
+        const mine = {}, myw = {};
+        for (const h of sub.hunts) { const t = statTerm(typeof h === "string" ? h : (h && h.t)); if (t) { mine[t] = 1; t.split(" ").forEach(w => { if (w.length >= 3 && !STOP[w]) myw[w] = 1; }); } }
+        const n = Object.keys(mine).length;
+        if (n) { withHunts++; huntTotal += n; }
+        Object.keys(mine).forEach(t => { hunts[t] = (hunts[t] || 0) + 1; });
+        Object.keys(myw).forEach(w => { words[w] = (words[w] || 0) + 1; });
+      }
+      const top = o => Object.keys(o).map(k => ({ term: k, members: o[k] })).sort((a, b) => b.members - a.members).slice(0, 40);
+      return new Response(JSON.stringify({ members: members, pro: pro, membersWithHunts: withHunts, huntsTotal: huntTotal, topHunts: top(hunts), topWords: top(words), next: lst.list_complete ? null : lst.cursor }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
     if (url.pathname === "/__whatnottest") {   /* v63: does whatnot.com talk to a Worker, and where are its listings? */
       const term = url.searchParams.get("q") || "vintage pyrex";
       const q = encodeURIComponent(term);
@@ -3896,6 +3992,7 @@ export default {
     const source = SOURCES[url.pathname];
     if (!source) return json({ error: "not found" }, 404, origin);
     const isEbay = source === "ebay", isHibid = source === "hibid", isChairish = source === "chairish", isEtsy = source === "etsy";
+    if (source !== "poshsold") ctx.waitUntil(statTick(request, env, "t", term));   /* v67 */
     const isPosh = source === "poshmark" || source === "poshsold", poshSold = source === "poshsold", isDepop = source === "depop", isVinted = source === "vinted", isGrailed = source === "grailed";
 
     const cache = PCACHE;
