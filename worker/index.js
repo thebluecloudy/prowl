@@ -184,7 +184,7 @@ const POSH_LIMIT = 12, POSH_SOLD_LIMIT = 6, POSH_CACHE_SECONDS = 1800;
 const DEPOP_URL = "https://www.depop.com/search/?q=";   /* v59 */
 const DEPOP_LIMIT = 12, DEPOP_CACHE_SECONDS = 1800;
 const VINTED_HOME = "https://www.vinted.com/";   /* v60 */
-const VINTED_API = "https://www.vinted.com/api/v2/catalog/items?search_text=";
+const VINTED_API = "/api/v2/catalog/items?search_text=";   /* on whichever Vinted host the home page lands on (v60b) */
 const VINTED_LIMIT = 12, VINTED_CACHE_SECONDS = 1800;
 
 const HIBID_URL = "https://hibid.com/lots?q=";
@@ -946,13 +946,17 @@ async function vintedCall(term) {
     const set = typeof h.headers.getSetCookie === "function" ? h.headers.getSetCookie() : String(h.headers.get("set-cookie") || "").split(/,(?=\s*[A-Za-z0-9_-]+=)/);
     const jar = [];
     for (const c of set) { const m = /^\s*([^=;\s]+)=([^;]*)/.exec(String(c)); if (m && VINTED_COOKIES.test(m[1])) jar.push(m[1] + "=" + m[2]); }
-    if (!jar.some(c => c.indexOf("access_token_web=") === 0)) return { status: h.status === 200 ? 401 : h.status, text: "", homeStatus: h.status, cookies: jar.length };
-    const r = await fetch(VINTED_API + encodeURIComponent(term) + "&per_page=24&order=newest_first", {
+    /* v60b: Vinted sends a visitor to the locale it picks for them (a Worker landed on vinted.fr),
+       and the cookies only work on that host, so the search goes to the same host. */
+    let origin = VINTED_HOME.replace(/\/$/, "");
+    try { const hu = new URL(h.url); if (/(^|\.)vinted\.[a-z.]+$/.test(hu.hostname)) origin = hu.origin; } catch (e) {}
+    if (!jar.some(c => c.indexOf("access_token_web=") === 0)) return { status: h.status === 200 ? 401 : h.status, text: "", homeStatus: h.status, homeHost: origin, cookies: jar.length };
+    const r = await fetch(origin + VINTED_API + encodeURIComponent(term) + "&per_page=24&order=newest_first", {
       signal: ctl.signal,
-      headers: Object.assign({ "Accept": "application/json, text/plain, */*", "Cookie": jar.join("; "), "Referer": VINTED_HOME + "catalog?search_text=" + encodeURIComponent(term) }, base)
+      headers: Object.assign({ "Accept": "application/json, text/plain, */*", "Cookie": jar.join("; "), "Referer": origin + "/catalog?search_text=" + encodeURIComponent(term) }, base)
     });
     const text = await r.text();
-    return { status: r.status, text: text, homeStatus: h.status, cookies: jar.length };
+    return { status: r.status, text: text, homeStatus: h.status, homeHost: origin, cookies: jar.length };
   } finally {
     clearTimeout(timer);
   }
@@ -973,7 +977,7 @@ function vintedNormalize(text) {
     const pr = (x.price && typeof x.price === "object") ? x.price : { amount: x.price, currency_code: x.currency };
     const amt = Number(pr.amount), cur = String(pr.currency_code || "USD");
     let u = String(x.url || "");
-    if (!/^https:\/\/(www\.)?vinted\.com\//.test(u)) u = "https://www.vinted.com/items/" + id;
+    if (!/^https:\/\/(www\.)?vinted\.[a-z.]+\//.test(u)) u = "https://www.vinted.com/items/" + id;
     const ph = (x.photo && typeof x.photo === "object") ? x.photo : {};
     let img = "";
     if (Array.isArray(ph.thumbnails) && ph.thumbnails.length) {
@@ -3432,6 +3436,7 @@ export default {
         term: term,
         ms: Date.now() - started,
         homeStatus: up ? up.homeStatus : null,
+        homeHost: up ? up.homeHost : null,
         cookiesSeen: up ? up.cookies : null,
         upstreamStatus: up ? up.status : null,
         upstreamBytes: up ? up.text.length : 0,
