@@ -2,6 +2,11 @@
 
 Versions follow `extension/manifest.json`. Bump `version` there in the same change as any edit under `extension/`; the workflow builds the zip and publishes a GitHub release named `ext-vX.Y.Z` when it lands on main.
 
+## 1.5.0
+- The basics are now free for everyone: toolbar search buttons, right-click and address-bar search, every marketplace in one tab group, eBay sold prices, Google Images and Google Lens.
+- Prowl Pro adds live listings in the toolbar, Field Guide, My Daily Prowl and Check a photo. Pro features are labelled and the toolbar explains how to unlock them.
+- Reworded for Chrome Web Store review: no list of marketplace names in the listing, and a working free tier.
+
 ## 1.4.1
 - Shortened the manifest description to fit the Chrome Web Store's 132-character limit (1.4.0 was rejected on upload).
 

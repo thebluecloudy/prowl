@@ -77,7 +77,6 @@ function render(term, states) {
   const root = $('#results');
   root.textContent = '';
   for (const src of LIVE) root.appendChild(renderSource(src, states[src.id], term));
-  $('#acts').hidden = false;
 }
 
 async function search(raw) {
@@ -86,6 +85,11 @@ async function search(raw) {
   $('#msg').hidden = true;
   $('#q').value = term;
   current = term;
+  if (!PRO) {   // live listings are the Pro bonus; the buttons below work for everyone
+    const r = $('#results'); r.textContent = '';
+    r.appendChild(el('p', 'note', `Choose where to look for \u201c${term}\u201d below. Live listings in this window come with Prowl Pro.`));
+    return;
+  }
   const states = {};
   for (const src of LIVE) states[src.id] = { loading: true };
   render(term, states);
@@ -136,18 +140,22 @@ $('#all').addEventListener('click', async () => {
   }
 });
 
-// ---------- Pro gate ----------
-function showLocked(on) {
-  for (const id of ['f', 'results', 'acts', 'tip']) { const n = $('#' + id); if (n) n.hidden = on; }
-  $('#locked').hidden = !on;
+// ---------- Pro ----------
+// The basics are free. Live listings, Field Guide, Daily and photo checks are
+// the Prowl Pro bonus. PRO is settled once when the popup opens.
+let PRO = false;
+function applyPro(on) {
+  PRO = on;
+  for (const n of document.querySelectorAll('[data-pro]')) n.hidden = !on;
+  $('#locked').hidden = on;
 }
 $('#getpro').addEventListener('click', () => openTab(PRO_PAGE));
 $('#signin').addEventListener('click', () => openTab(PROWL));
-$('#free').addEventListener('click', () => openTab(PROWL));
 $('#recheck').addEventListener('click', async () => {
-  const m = $('#lockmsg');
   const pro = await isPro({ force: true });
-  if (pro) { showLocked(false); $('#q').focus(); return; }
+  applyPro(pro);
+  if (pro) { if (current) search(current); return; }
+  const m = $('#lockmsg');
   m.textContent = 'No Prowl Pro sign-in found yet. Sign in on Prowl first, then try again.';
   m.hidden = false;
 });
@@ -155,7 +163,7 @@ $('#recheck').addEventListener('click', async () => {
 // On open: a term handed over from the right-click menu wins; otherwise show
 // the last search from this session, if there is one.
 (async () => {
-  if (!(await isPro())) { showLocked(true); return; }
+  applyPro(await isPro());
   try {
     const { pending, last } = await chrome.storage.session.get(['pending', 'last']);
     if (pending) {

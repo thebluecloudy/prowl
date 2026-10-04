@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Prowl by Owl & Twig: Vintage Search",
   "short_name": "Prowl",
-  "version": "1.4.1",
-  "description": "A Prowl Pro bonus: search 26 vintage marketplaces with live listings, Field Guides, your Daily Prowl and photo checks.",
+  "version": "1.5.0",
+  "description": "Search vintage marketplaces from your toolbar, right-click menu or address bar. Prowl Pro adds live listings and Field Guides.",
   "homepage_url": "https://owlandtwigvintage.com/pages/prowl",
   "icons": {
     "16": "icons/icon-16.png",
