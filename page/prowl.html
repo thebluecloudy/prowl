@@ -32,7 +32,7 @@ window.prowlEpn=function(u,cid){
 };
 </script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Space+Grotesk:wght@400;500;600;700&family=Alfa+Slab+One&display=swap');
 /* legacy Scout V4 section still sitting in the theme — keep it hidden */
 [id$="custom_liquid_4XkmDr"]{display:none!important}
 /* the app owns its own box; nothing here may reach the theme */
@@ -121,7 +121,7 @@ window.prowlEpn=function(u,cid){
   --scrim:rgba(0,0,0,.85);--modal-bg:#0a0a1e;
   --body-glow:none;}
 .scout-app-wrapper{margin:0;font:15px/1.5 var(--sans);color:var(--ink);background:var(--bg);background-image:var(--body-glow);padding-bottom:94px;-webkit-font-smoothing:antialiased;transition:background-color .3s,color .3s}
-[data-theme=uranium] .scout-app-wrapper{background:linear-gradient(180deg,#0a0e2e 0,#050518 700px,#000000 1500px) no-repeat;background-color:#000}   /* v6.28: no background-attachment:fixed; on iOS Safari it freezes a long page */
+[data-theme=uranium] .scout-app-wrapper{background:linear-gradient(180deg,#0a0e2e 0,#050518 700px,#000000 1500px) no-repeat;background-color:#000}   /* v6.29: no background-attachment:fixed; on iOS Safari it freezes a long page */
 .scout-app-wrapper button{font:inherit;cursor:pointer;color:inherit}
 .scout-app-wrapper a{color:inherit}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -149,7 +149,7 @@ window.prowlEpn=function(u,cid){
 [data-theme=uranium] .scout-app-wrapper .heromark{display:inline-flex;
   background:radial-gradient(circle at 50% 62%,rgba(57,255,20,.22) 0%,rgba(57,255,20,.06) 40%,transparent 72%);
   animation:glowPulse 3s ease-in-out infinite;}
-@media (hover:none),(prefers-reduced-motion:reduce){[data-theme=uranium] .scout-app-wrapper .heromark{animation:none}}   /* v6.28: an animated drop-shadow stalls phones */
+@media (hover:none),(prefers-reduced-motion:reduce){[data-theme=uranium] .scout-app-wrapper .heromark{animation:none}}   /* v6.29: an animated drop-shadow stalls phones */
 .scout-app-wrapper .heromark img{height:60px;width:auto;max-width:220px;display:block}
 .scout-app-wrapper h1{font-family:var(--display);font-weight:700;font-size:clamp(30px,6vw,44px);line-height:1.05;letter-spacing:-.028em;margin:0 0 12px}
 .scout-app-wrapper h1 em{color:var(--ac);font-style:italic;font-weight:600}
@@ -641,7 +641,7 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper .sgw-left{display:contents}
 .scout-app-wrapper .sgw-left>.sgw-acts{order:5}
 .scout-app-wrapper .sgw-cols>.sgw-body{order:4}
-/* v6.28: side by side only when Prowl's own box is wide enough, not the browser window. On the
+/* v6.29: side by side only when Prowl's own box is wide enough, not the browser window. On the
    website the theme column is narrow on a wide screen, and the live cards were squeezed. */
 .scout-app-wrapper #otp-sgw{container:prowlsgw/inline-size}
 @container prowlsgw (min-width:900px){
@@ -1067,7 +1067,7 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper .flock-sub{margin:0 15px 10px;font-size:12px;color:var(--mu)}
 .scout-app-wrapper .flock .fl-for{font-size:10px;color:var(--mu);padding:0 8px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scout-app-wrapper .flock .sgw-note{margin:0 15px}
-/* ---- v6.28: AI helpers switch: with AI off, every AI entry point is hidden ---- */
+/* ---- v6.29: AI helpers switch: with AI off, every AI entry point is hidden ---- */
 .scout-app-wrapper.ai-off .sgw-fp,.scout-app-wrapper.ai-off #otp-aprGo,.scout-app-wrapper.ai-off #otp-photoBtn,.scout-app-wrapper.ai-off #otp-guide,.scout-app-wrapper.ai-off #otp-picks,.scout-app-wrapper.ai-off .sgw-where{display:none!important}
 .scout-app-wrapper.ai-off #otp-dock{grid-template-columns:repeat(5,1fr)}
 /* ---- v6.19: Field Guide on anything ---- */
@@ -1136,7 +1136,7 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper .mail-del{margin:10px 0 0;font-size:12.5px }
 .scout-app-wrapper .mail-del button{color:var(--mu) }
 
-/* ==== v6.28 "Look 2": chunky cards, coloured header bands, big buttons, short copy.
+/* ==== v6.29 "Look 2": chunky cards, coloured header bands, big buttons, short copy.
    Preview with ?look=2 (remembered on the device), back with ?look=1. Scoped to .k2 so the
    current look is untouched until it is switched on for everyone. ==== */
 .scout-app-wrapper .k2-only{display:none}
@@ -1191,6 +1191,27 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper.k2 a.b.p{color:var(--k2-bandink);background:var(--k2-band)}
 .scout-app-wrapper.k2 .alrt p:has(> .b){display:flex;flex-wrap:wrap;gap:12px}
 .scout-app-wrapper.k2 .otp-fbk{margin:22px 0}
+
+/* ==== v6.29 Look 2 palette: daylight is bittersweet/amberina like a swung vase, dark is blue hour,
+   titles are a bold vintage slab with no italics. Uranium keeps its own colours. ==== */
+.scout-app-wrapper.k2{--k2-ln:#3B1E12;--k2-band:linear-gradient(90deg,#D9572B 0%,#E8743A 45%,#F2A743 100%);--k2-bandink:#2A140C;--k2-card:#FFFBF5;--k2-dot:rgba(59,30,18,.10);--k2-lab:#C2491F;--k2-slab:'Alfa Slab One',var(--display);--ac:#C2491F;--ac-ring:rgba(194,73,31,.18)}
+[data-theme=dark] .scout-app-wrapper.k2{
+  --bg:#0B1430;--cd:#12204A;--cd2:#15254F;--cd3:#1B2D5C;--ln:#2C4478;--l2:#4A68A6;
+  --ink:#F1F4FB;--i2:#D2DBEE;--i3:#A3B3D6;--mu:#8D9FC6;--mu2:#7286B0;--hover:#1B2D5C;
+  --bar-bg:rgba(11,20,48,.9);--dock-bg:rgba(11,20,48,.95);--modal-bg:#0F1B3F;--body-glow:none;
+  --k2-ln:#9DB7EA;--k2-band:linear-gradient(90deg,#E8743A 0%,#F2A743 100%);--k2-bandink:#1A0E06;--k2-card:#12204A;--k2-dot:rgba(157,183,234,.10);--k2-lab:#F2A743}
+[data-theme=dark] .scout-app-wrapper.k2{background-color:#0B1430}
+[data-theme=uranium] .scout-app-wrapper.k2{--k2-slab:'Alfa Slab One',var(--display)}
+.scout-app-wrapper.k2 #otp-sgw>.sgw-head,.scout-app-wrapper.k2 .found-title,.scout-app-wrapper.k2 .flock-head,
+.scout-app-wrapper.k2 .gd>h2,.scout-app-wrapper.k2 .alrt>h2,.scout-app-wrapper.k2 .b.p,.scout-app-wrapper.k2 a.b.p{background:var(--k2-band)}
+.scout-app-wrapper.k2 h1,.scout-app-wrapper.k2 #otp-sgw>.sgw-head b,.scout-app-wrapper.k2 .found-title,.scout-app-wrapper.k2 .flock-head b,
+.scout-app-wrapper.k2 .gd>h2,.scout-app-wrapper.k2 .alrt>h2{font-family:var(--k2-slab);font-style:normal;font-weight:400;letter-spacing:.01em}
+.scout-app-wrapper.k2 h1{font-size:clamp(34px,7vw,50px);color:var(--k2-ln)}
+.scout-app-wrapper.k2 #otp-sgw>.sgw-head b,.scout-app-wrapper.k2 .found-title,.scout-app-wrapper.k2 .flock-head b,.scout-app-wrapper.k2 .gd>h2,.scout-app-wrapper.k2 .alrt>h2{font-size:20px}
+.scout-app-wrapper.k2 .sgw-chip.on{background:#C2491F;border-color:#3B1E12;color:#FFF6EC}
+[data-theme=dark] .scout-app-wrapper.k2 .sgw-chip.on{background:#F2A743;border-color:#9DB7EA;color:#1A0E06}
+[data-theme=uranium] .scout-app-wrapper.k2 .sgw-chip.on{background:var(--ac);border-color:var(--ac);color:var(--onink)}
+[data-theme] .scout-app-wrapper.k2 .gd>h2,[data-theme] .scout-app-wrapper.k2 .alrt>h2,.scout-app-wrapper.k2 .gd>h2,.scout-app-wrapper.k2 .alrt>h2{color:var(--k2-bandink)!important}
 </style>
 
 <div class="scout-app-wrapper ot-r">
@@ -1518,7 +1539,7 @@ window.prowlEpn=function(u,cid){
   /* v6.08: a small JPEG of the photo for saved research (longest side 480px) */
   function resThumb(s,cb){var im=new Image();im.onerror=function(){cb('')};im.onload=function(){try{var k=Math.min(1,480/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*k));c.height=Math.max(1,Math.round(im.height*k));c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',0.7))}catch(e){cb('')} };im.src=s;}
   function researchIt(name,btn,r,src){
-    if(lsG('aiOff')==='1')return;   /* v6.28 */
+    if(lsG('aiOff')==='1')return;   /* v6.29 */
     if(btn.disabled)return;btn.disabled=true;btn.textContent='Researching\u2026 up to a minute';
     var old=document.getElementById('otp-aprRes');if(old&&old.parentNode)old.parentNode.removeChild(old);
     var oldS=document.getElementById('otp-aprSold');if(oldS&&oldS.parentNode)oldS.parentNode.removeChild(oldS);   /* v6.09 */
@@ -1628,7 +1649,7 @@ window.prowlEpn=function(u,cid){
     card.appendChild(box);O.appendChild(card);
     try{O.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}
   }
-  B.addEventListener('click',function(){if(lsG('aiOff')==='1')return;if(!busy)F.click();});   /* v6.28 */
+  B.addEventListener('click',function(){if(lsG('aiOff')==='1')return;if(!busy)F.click();});   /* v6.29 */
   var PF=null,F2=document.getElementById('otp-aprF2'),B2=document.getElementById('otp-aprB2');
   if(B2&&F2){B2.addEventListener('click',function(){if(!busy)F2.click();});F2.addEventListener('change',function(){PF=F2.files&&F2.files[0];F2.value='';if(PF){var ev;try{ev=new Event('change');}catch(e){ev=document.createEvent('Event');ev.initEvent('change',true,true);}F.dispatchEvent(ev);}});}
   F.addEventListener('change',function(){
@@ -2063,7 +2084,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.28';
+var PROWL_VERSION='v6.29';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -2099,7 +2120,7 @@ if(!sv||THEMES.indexOf(sv)===-1){
   sv=pd?'dark':'light';
 }
 applyTheme(sv);
-/* v6.28: Look 2 preview. ?look=2 turns it on for this device, ?look=1 turns it off. */
+/* v6.29: Look 2 preview. ?look=2 turns it on for this device, ?look=1 turns it off. */
 (function(){try{
   var m=/[?&]look=([12])(&|$)/.exec(location.search);
   if(m){if(m[1]==='2')localStorage.setItem('prowl.look','2');else localStorage.removeItem('prowl.look');}
@@ -2138,7 +2159,7 @@ mk('ebaysold','eBay Sold','bolo','https://www.ebay.com/sch/i.html?_nkw=','&LH_So
 mk('estatesales','EstateSales.net','bolo','https://www.estatesales.net/search/'),
 mk('hibid','HiBid','bolo','https://hibid.com/lots?q='),   /* v5.96: HiBid ignores ?search= */
 mk('liveauction','LiveAuctioneers','bolo','https://www.liveauctioneers.com/search/?keyword='),
-/* v6.28 Heritage Auctions: link-out only, no live parsing. */
+/* v6.29 Heritage Auctions: link-out only, no live parsing. */
 mk('heritage','Heritage Auctions','bolo','https://www.ha.com/c/search-results.zx?N=0&Ntt='),
 /* v5.92 Invaluable: auction houses worldwide. Its search wants + for spaces. */
 {id:'invaluable',n:'Invaluable',t:'bolo',u:function(q){return 'https://www.invaluable.com/search?keyword='+E(q).replace(/%20/g,'+')} },
@@ -2348,7 +2369,7 @@ function load(){
   if(Array.isArray(r.sel))st.sel=new Set(r.sel.filter(function(i){return i>=0&&i<st.hunts.length}));
   if(Array.isArray(r.lock))st.lock=new Set(r.lock.filter(function(i){return i>=0&&i<st.hunts.length}));
   if(Array.isArray(r.star))st.lock=new Set(r.star.filter(function(i){return i>=0&&i<st.hunts.length})); // migration from old key
-  if(Array.isArray(r.mkt)){var k=r.mkt.filter(function(i){return ALL.indexOf(i)>-1});if(k.length){if(!r.h21&&k.indexOf('heritage')<0)k.push('heritage');st.mkt=new Set(k)}}   /* v6.28: saved before Heritage was offered */ 
+  if(Array.isArray(r.mkt)){var k=r.mkt.filter(function(i){return ALL.indexOf(i)>-1});if(k.length){if(!r.h21&&k.indexOf('heritage')<0)k.push('heritage');st.mkt=new Set(k)}}   /* v6.29: saved before Heritage was offered */ 
   if(r.city)st.city=r.city;
   if(r.seen)st.seen=true;
   /* Additive field. A save written before v4.8 has no fbHub, so fall back to
@@ -2892,7 +2913,7 @@ function liveRunStrip(name,t,c){
   if(!c){
     return '<div class="rlive">'+head+'</div><div class="sgw-grid"><div class="sgw-skel"></div><div class="sgw-skel"></div><div class="sgw-skel"></div><div class="sgw-skel"></div></div></div>';
   }
-  if(c.err)return '<div class="rlive">'+head+'</div><p class="sgw-note">'+esc(liveErrNote(name,c))+'</p></div>';   /* v6.28: was silent */
+  if(c.err)return '<div class="rlive">'+head+'</div><p class="sgw-note">'+esc(liveErrNote(name,c))+'</p></div>';   /* v6.29: was silent */
   var items=[],i;
   for(i=0;i<c.items.length;i++){if(c.items[i]&&c.items[i].url&&c.items[i].title)items.push(c.items[i])}
   if(!items.length)return '<div class="rlive">'+head+'</div><p class="sgw-note">Nothing live for <b>'+esc(t)+'</b> on '+name+' right now. The rows below still search it everywhere else.</p></div>';
@@ -2903,7 +2924,7 @@ function sgwRunStrip(r){
   var t=sgwTermOf(r);
   return liveRunStrip('ShopGoodwill',t,t?sgw.cache[t.toLowerCase()]:null);
 }
-/* v6.28: when every live source has answered empty for a single-term run, one card instead of eight lines. */
+/* v6.29: when every live source has answered empty for a single-term run, one card instead of eight lines. */
 function runLive(r){
   var t=sgwTermOf(r);
   if(t&&r.terms&&r.terms.length===1){var sm=liveSummary(t);if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return '<div class="rlive">'+liveEmptyCard(t)+'</div>'}
@@ -3437,7 +3458,7 @@ function fpComps(cell){
   return out;
 }
 function fpAsk(btn){
-  if(aiOff())return;   /* v6.28 */
+  if(aiOff())return;   /* v6.29 */
   var cell=btn.parentNode,u=cell.getAttribute('data-u');
   if(!u||btn.disabled)return;
   btn.disabled=true;btn.textContent='Checking…';
@@ -3629,13 +3650,13 @@ function liveCount(c){
   for(i=0;i<c.items.length;i++){if(c.items[i]&&c.items[i].url&&c.items[i].title)n++}
   return n;
 }
-/* v6.28: why a live block failed, in words a visitor can act on. */
+/* v6.29: why a live block failed, in words a visitor can act on. */
 function liveErrNote(name,c){
   if(c.err===2)return 'Live results are busy on your connection right now. Try again in a little while. The rows below still search every site directly.';
   try{if(navigator.onLine===false)return 'You look offline. Live results come back when you reconnect.'}catch(e){}
   return 'Could not reach '+name+' just now. Try again in a minute. The rows below still search every site directly.';
 }
-/* v6.28: every live source answered and none had anything. One card instead of eight "nothing" lines:
+/* v6.29: every live source answered and none had anything. One card instead of eight "nothing" lines:
    keep watching by email, or try the sites Prowl can only link to. */
 var EMPTY_LINKS=['facebook','heritage','liveauction','hibid','mercari','rubylane','ebaysold'];
 function liveEmptyCard(t){
@@ -3646,7 +3667,7 @@ function liveEmptyCard(t){
     '<button type="button" class="b p" data-empty="watch" data-t="'+esc(t)+'">Email me when it shows up</button>'+
     (links?'<p class="sgw-empty-l">Also try the sites Prowl can only link to: '+links+'</p>':'')+'</div>';
 }
-/* v6.28: one look across ShopGoodwill and every live source for a term. */
+/* v6.29: one look across ShopGoodwill and every live source for a term. */
 function liveSummary(t){
   var k=t.toLowerCase(),list=[{c:sgw.cache[k],b:sgw.busy===t}],i,s,r={done:true,n:0,err1:0,err2:0,count:0};
   for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];list.push({c:lv[s.id].cache[k],b:lv[s.id].busy===t})}
@@ -3669,7 +3690,7 @@ function sgwBody(){
   var t=sgwCurTerm();
   if(!sgw.terms.length)return '<p class="sgw-note">Type something you hunt into the box above. It is saved to your hunts, locked for Daily, and checked on ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Depop, Vinted and Grailed right away.</p>';
   var sm=liveSummary(t);
-  if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return liveEmptyCard(t);   /* v6.28 */
+  if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return liveEmptyCard(t);   /* v6.29 */
   if(sm.done&&!sm.n&&sm.err1===sm.count)return '<div class="sgw-empty"><p class="sgw-empty-h">Prowl\u2019s live results are not reaching you.</p><p>Check your connection. If you use a content or ad blocker, allow <b>prowl.thebluecloud.workers.dev</b>. The rows below still search every site directly.</p></div>';
   var k=t.toLowerCase(),html=liveBlock('ShopGoodwill',t,sgw.cache[k],sgw.busy===t),i,s;
   for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];html+=liveBlock(s.name,t,lv[s.id].cache[k],lv[s.id].busy===t)}
@@ -3934,7 +3955,7 @@ function prefs(){
   o.zip=/^\d{5}$/.test(String(p.zip||''))?String(p.zip):'';   /* v6.06: local pickup */
   o.radius=PREF_RADII.indexOf(parseInt(p.radius,10))!==-1?parseInt(p.radius,10):50;
   o.local=(p.local||[]).map(function(h){return String(h).toLowerCase()});
-  o.noai=mGet('aiOff')==='1'?1:0;   /* v6.28 */
+  o.noai=mGet('aiOff')==='1'?1:0;   /* v6.29 */
   return o;
 }
 var PREF_RADII=[25,50,100];
@@ -4157,7 +4178,7 @@ function rMail(){try{rDenAcct()}catch(e){}
   var boxes=document.querySelectorAll('.scout-app-wrapper .otp-mail'),i,box,h;
   var wrap=document.querySelector('.scout-app-wrapper');if(wrap)wrap.classList.toggle('is-pro',mailPro());
   rAlertsHome();   /* v6.15 */
-  try{rAiRow()}catch(e){}   /* v6.28 */
+  try{rAiRow()}catch(e){}   /* v6.29 */
   var beta=true,live=alertsLive();
   for(i=0;i<boxes.length;i++){
     box=boxes[i];
@@ -4437,7 +4458,7 @@ function sgwWhereHtml(t,best){
   return h?'<span class="sgw-where">Best bets for '+esc(t)+':</span>'+h:'';
 }
 function sgwWhere(mount){
-  if(aiOff())return;   /* v6.28 */
+  if(aiOff())return;   /* v6.29 */
   var t=sgwCurTerm(),k=t.toLowerCase(),acts=mount.querySelector('.sgw-acts');
   if(!t||!acts||typeof fetch!=='function')return;
   if(WHERE.c[k]){if(WHERE.c[k]!=='wait')acts.insertAdjacentHTML('beforeend',sgwWhereHtml(t,WHERE.c[k]));return}
@@ -4462,7 +4483,7 @@ function sgwFetch(term,cb){
   }).then(function(d){
     sgw.cache[k]={items:cleanItems(d&&d.items)};
   })['catch'](function(e){
-    sgw.cache[k]={items:[],err:/http 429/.test(String(e&&e.message))?2:1};   /* v6.28: 2 = the visitor's daily lookup limit */
+    sgw.cache[k]={items:[],err:/http 429/.test(String(e&&e.message))?2:1};   /* v6.29: 2 = the visitor's daily lookup limit */
   }).then(function(){
     if(sgw.busy===term)sgw.busy='';
     rSGW();
@@ -4486,7 +4507,7 @@ function lvFetch(id,term,cb){
   }).then(function(d){
     S.cache[k]={items:cleanItems(d&&d.items)};
   })['catch'](function(e){
-    S.cache[k]={items:[],err:/http 429/.test(String(e&&e.message))?2:1};   /* v6.28 */
+    S.cache[k]={items:[],err:/http 429/.test(String(e&&e.message))?2:1};   /* v6.29 */
   }).then(function(){
     if(S.busy===term)S.busy='';
     rSGW();
@@ -4666,7 +4687,7 @@ function gdBusy(on){
 function gdMake(subject){
   subject=String(subject||'').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'');
   if(GD.busy)return;
-  if(aiOff()){gdNote('AI is turned off in your settings.');return}   /* v6.28 */
+  if(aiOff()){gdNote('AI is turned off in your settings.');return}   /* v6.29 */
   if(subject.length<2){gdNote('Type a subject first, like \u201cFire-King jadeite\u201d.');return}
   var at=gdIdx(subject);
   if(at>-1){gdRender(gdMine()[at]);gdNote('Opened from your saved guides.');return}
@@ -4759,7 +4780,7 @@ function sgwAdd(v){
 }
 /* v5.95: the Photo screen (its own script) adds the identified piece as a hunt through this. */
 window.prowlAddHunt=function(t){return sgwAdd(t)};
-/* v6.28: "Email me when it shows up" on the empty card: keep it as a locked hunt, then open Prowl Alerts. */
+/* v6.29: "Email me when it shows up" on the empty card: keep it as a locked hunt, then open Prowl Alerts. */
 document.addEventListener('click',function(e){
   var el=e.target;while(el&&el!==document&&!(el.getAttribute&&el.getAttribute('data-empty')))el=el.parentNode;
   if(!el||el===document||el.getAttribute('data-empty')!=='watch')return;
@@ -4775,7 +4796,7 @@ var SGW_SUG={t:'',list:[]};
 function sgwSugHide(){var b=$('#otp-sgw .sgw-sug');if(b){b.hidden=true;b.innerHTML='';}SGW_SUG={t:'',list:[]};}
 function sgwCheckName(t){
   sgwSugHide();
-  if(aiOff())return;   /* v6.28 */
+  if(aiOff())return;   /* v6.29 */
   if(!t||/\s/.test(t)||t.length<3||!window.fetch)return;
   fetch(SGW_API+'hunt-check?q='+encodeURIComponent(t)).then(function(r){return r.ok?r.json():null;}).then(function(j){
     var b=$('#otp-sgw .sgw-sug'),i,h,L=[];
@@ -4898,7 +4919,7 @@ function loadPicks(){
   PICKS.tm=setTimeout(function(){
     var box=$('#otp-picks'),row=$('#otp-picksRow'),cur=sgwCurTerm(),H=cur?[cur]:[];
     if(!box||!row||typeof fetch!=='function')return;
-    if(aiOff()){box.hidden=true;return}   /* v6.28 */
+    if(aiOff()){box.hidden=true;return}   /* v6.29 */
     var key=H.join('|').toLowerCase();
     var tt=box.querySelector('.found-title');if(tt&&cur)tt.textContent='From our shop \u00B7 for '+cur;
     if(!H.length){box.hidden=true;PICKS.key='';return}
@@ -5146,7 +5167,7 @@ try{if(/[?&]photo=1(&|$)/.test(location.search)){
   try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])photo=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
   setTimeout(openPhoto,400);
 } }catch(e){}
-/* v6.28: ?guide=subject (from the Prowl extension) fills the Field Guide box and scrolls to it. It does not run: a guide uses AI and a daily allowance, so the reader taps Make my guide. */
+/* v6.29: ?guide=subject (from the Prowl extension) fills the Field Guide box and scrolls to it. It does not run: a guide uses AI and a daily allowance, so the reader taps Make my guide. */
 try{var gdm=/[?&]guide=([^&#]+)/.exec(location.search);if(gdm){var gds='';try{gds=decodeURIComponent(gdm[1].replace(/\+/g,' '))}catch(e0){gds=gdm[1]}
   gds=gds.replace(/[\u0000-\u001f\u007f]/g,'').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'').slice(0,60);
   try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])guide=[^&#]*(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e1){}
@@ -5154,7 +5175,7 @@ try{var gdm=/[?&]guide=([^&#]+)/.exec(location.search);if(gdm){var gds='';try{gd
 } }catch(e){}
 /* v5.80: the old waitlist section now opens the live Prowl Alerts settings */
 var aGo=$('#otp-alertsGo');if(aGo)aGo.addEventListener('click',function(){openMailSettings()});
-/* ---------- AI HELPERS SWITCH (v6.28) ----------
+/* ---------- AI HELPERS SWITCH (v6.29) ----------
    Prowl uses AI in two ways. Tap-to-use: Fair price, Check a photo, Research this piece and Field Guides run
    only when you press their button. Small helpers run by themselves: matching our shop pieces to your hunts,
    suggesting where to search, checking a new hunt's name and, when switched on at the Worker, sorting results.
