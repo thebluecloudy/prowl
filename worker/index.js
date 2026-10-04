@@ -1007,21 +1007,20 @@ async function vintedVariants(term, up) {
   }
   return out;
 }
-/* v60d: the listing objects in the search page's flight text: any {"id":N,...} object that
-   carries a title and a price. Null when the page has no flight text at all. */
+/* v60e: the listings in the search page's flight text sit under "productItem":{"id":N,"title":...,
+   "url":"/items/...","price":{"amount","currencyCode"},"thumbnailUrl":...}. Null when the page has
+   no flight text at all. */
 function vintedItems(html, max) {
   const buf = flightText(html);
   if (!buf) return null;
-  const out = [], seen = {}, re = /\{"id":\d+,/g;
-  let m, looked = 0;
-  while (out.length < max && looked < 4000 && (m = re.exec(buf))) {
-    looked++;
-    const peek = buf.slice(m.index, m.index + 600);
-    if (peek.indexOf('"title":"') === -1 || peek.indexOf('"price"') === -1) continue;
-    const e = poshObjEnd(buf, m.index);
+  const out = [], seen = {}, re = /"productItem":\{"id":\d+,/g;
+  let m;
+  while (out.length < max && (m = re.exec(buf))) {
+    const b = m.index + 14;   /* the { after "productItem": */
+    const e = poshObjEnd(buf, b);
     if (e < 0) break;
     let o = null;
-    try { o = JSON.parse(buf.slice(m.index, e)); } catch (x) { continue; }
+    try { o = JSON.parse(buf.slice(b, e)); } catch (x) { continue; }
     re.lastIndex = e;
     if (!o || typeof o.title !== "string" || seen[o.id]) continue;
     seen[o.id] = 1;
@@ -1044,12 +1043,13 @@ function vintedNormalize(text) {
     const title = hibidText(String(x.title || "")).replace(/\s+/g, " ").trim().slice(0, 160);
     if (title.length < 3) continue;
     const pr = (x.price && typeof x.price === "object") ? x.price : { amount: x.price, currency_code: x.currency };
-    const amt = Number(pr.amount), cur = String(pr.currency_code || "USD");
+    const amt = Number(pr.amount), cur = String(pr.currencyCode || pr.currency_code || "USD");
     let u = String(x.url || "");
-    if (!/^https:\/\/(www\.)?vinted\.[a-z.]+\//.test(u)) u = "https://www.vinted.com/items/" + id;
+    if (/^\/items\//.test(u)) u = "https://www.vinted.com" + u;   /* v60e: the page gives a relative link */
+    if (!/^https:\/\/(www\.)?vinted\.[a-z.]+\/items\//.test(u)) u = "https://www.vinted.com/items/" + id;
     const ph = (x.photo && typeof x.photo === "object") ? x.photo : {};
-    let img = "";
-    if (Array.isArray(ph.thumbnails) && ph.thumbnails.length) {
+    let img = typeof x.thumbnailUrl === "string" ? x.thumbnailUrl : "";   /* v60e */
+    if (!img && Array.isArray(ph.thumbnails) && ph.thumbnails.length) {
       const t = ph.thumbnails.find(t => t && t.type === "thumb310") || ph.thumbnails[ph.thumbnails.length - 1];
       if (t && typeof t.url === "string") img = t.url;
     }
