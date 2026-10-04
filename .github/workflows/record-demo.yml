@@ -1,0 +1,74 @@
+name: Record Prowl demo
+
+# Drives the live Prowl page like a person (type a hunt, run it, check a price, open the Den, make a
+# Field Guide) and records it as video frames. The silent video and its scene timestamps are pushed to
+# the media/demo branch so they can be fetched and cut together with narration. Run by hand.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Page to record"
+        default: "https://owlandtwigvintage.com/pages/prowl-app"
+        type: string
+      width:
+        default: "1920"
+        type: string
+      height:
+        default: "1080"
+        type: string
+      dpr:
+        default: "1"
+        type: string
+      hunt:
+        default: "haeger panther"
+        type: string
+      guide:
+        default: "haeger panther"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Which version is live on each page
+        run: |
+          for u in https://owlandtwigvintage.com/pages/prowl https://owlandtwigvintage.com/pages/prowl-app; do
+            printf "%s -> " "$u"; curl -sL -A "Mozilla/5.0" "$u" | grep -o "PROWL_VERSION='v[0-9.]*'" | head -1 || true; echo
+          done
+      - name: Install the recorder
+        run: |
+          npm init -y >/dev/null
+          npm install playwright-core@1.49.0 --silent
+          which google-chrome || which chromium || true
+      - name: Record
+        env:
+          DEMO_URL: ${{ inputs.url }}
+          DEMO_W: ${{ inputs.width }}
+          DEMO_H: ${{ inputs.height }}
+          DEMO_DPR: ${{ inputs.dpr }}
+          DEMO_HUNT: ${{ inputs.hunt }}
+          DEMO_GUIDE: ${{ inputs.guide }}
+          CHROME: /usr/bin/google-chrome
+        run: node scripts/record-demo.mjs demo-out
+      - name: Keep a few stills and publish to the media/demo branch
+        run: |
+          mkdir -p pub
+          cp demo-out/raw.mp4 demo-out/marks_rel.json pub/
+          for t in 5 40 100; do ffmpeg -y -loglevel error -ss $t -i demo-out/raw.mp4 -frames:v 1 pub/still-$t.jpg || true; done
+          cd pub && git init -q && git config user.name "prowl-demo" && git config user.email "prowl-demo@users.noreply.github.com"
+          git checkout -q -b media/demo && git add -A && git commit -q -m "Prowl demo recording $(date -u +%FT%TZ)"
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/media/demo
+          ls -la
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prowl-demo-raw
+          path: pub/
+          retention-days: 7
