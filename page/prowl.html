@@ -1053,6 +1053,9 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper .flock-sub{margin:0 15px 10px;font-size:12px;color:var(--mu)}
 .scout-app-wrapper .flock .fl-for{font-size:10px;color:var(--mu);padding:0 8px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scout-app-wrapper .flock .sgw-note{margin:0 15px}
+/* ---- v6.20: AI helpers switch: with AI off, every AI entry point is hidden ---- */
+.scout-app-wrapper.ai-off .sgw-fp,.scout-app-wrapper.ai-off #otp-aprGo,.scout-app-wrapper.ai-off #otp-photoBtn,.scout-app-wrapper.ai-off #otp-guide,.scout-app-wrapper.ai-off #otp-picks,.scout-app-wrapper.ai-off .sgw-where{display:none!important}
+.scout-app-wrapper.ai-off #otp-dock{grid-template-columns:repeat(5,1fr)}
 /* ---- v6.19: Field Guide on anything ---- */
 .scout-app-wrapper .gd{margin:26px 0 0;padding:18px;border:1px solid var(--ln);border-radius:16px;background:var(--cd2)}
 .scout-app-wrapper .gd h2{font-family:var(--display);font-size:18px;margin:0 0 6px;color:var(--ink)!important}
@@ -1439,6 +1442,7 @@ window.prowlEpn=function(u,cid){
   /* v6.08: a small JPEG of the photo for saved research (longest side 480px) */
   function resThumb(s,cb){var im=new Image();im.onerror=function(){cb('')};im.onload=function(){try{var k=Math.min(1,480/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*k));c.height=Math.max(1,Math.round(im.height*k));c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',0.7))}catch(e){cb('')} };im.src=s;}
   function researchIt(name,btn,r,src){
+    if(lsG('aiOff')==='1')return;   /* v6.20 */
     if(btn.disabled)return;btn.disabled=true;btn.textContent='Researching\u2026 up to a minute';
     var old=document.getElementById('otp-aprRes');if(old&&old.parentNode)old.parentNode.removeChild(old);
     var oldS=document.getElementById('otp-aprSold');if(oldS&&oldS.parentNode)oldS.parentNode.removeChild(oldS);   /* v6.09 */
@@ -1548,7 +1552,7 @@ window.prowlEpn=function(u,cid){
     card.appendChild(box);O.appendChild(card);
     try{O.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}
   }
-  B.addEventListener('click',function(){if(!busy)F.click();});
+  B.addEventListener('click',function(){if(lsG('aiOff')==='1')return;if(!busy)F.click();});   /* v6.20 */
   var PF=null,F2=document.getElementById('otp-aprF2'),B2=document.getElementById('otp-aprB2');
   if(B2&&F2){B2.addEventListener('click',function(){if(!busy)F2.click();});F2.addEventListener('change',function(){PF=F2.files&&F2.files[0];F2.value='';if(PF){var ev;try{ev=new Event('change');}catch(e){ev=document.createEvent('Event');ev.initEvent('change',true,true);}F.dispatchEvent(ev);}});}
   F.addEventListener('change',function(){
@@ -1865,6 +1869,13 @@ window.prowlEpn=function(u,cid){
 </div>
         <button class="gh" id="otp-mktBtn" type="button">Open</button>
       </div>
+      <div class="setrow" id="otp-aiRow">
+        <div>
+<h3>AI helpers</h3>
+<p id="otp-aiTxt"></p>
+</div>
+        <button class="gh" id="otp-aiBtn" type="button">Turn off</button>
+      </div>
       <div class="setcol">
         <label class="setlab" for="otp-oneSel">One-site button</label>
         <select id="otp-oneSel"></select>
@@ -1976,7 +1987,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.19';
+var PROWL_VERSION='v6.20';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -2489,7 +2500,7 @@ $('#otp-denClose').addEventListener('click',closeDen);
 /* v5.93: Photo check has its own screen, like the Den. Opened from the dock,
    the home card or ?photo=1. The photo script binds by id, so it is unchanged. */
 var pho=$('#otp-photo');
-function openPhoto(){if(!pho||pho.classList.contains('on'))return;if(den.classList.contains('on'))closeDen();if(dw.classList.contains('on'))closeDw();lf=document.activeElement;pho.hidden=false;requestAnimationFrame(function(){sc.classList.add('on');pho.classList.add('on')});var c=$('#otp-photoClose');if(c)c.focus();}
+function openPhoto(){if(aiOff()){toast('AI is off in your settings.',2200);return}if(!pho||pho.classList.contains('on'))return;if(den.classList.contains('on'))closeDen();if(dw.classList.contains('on'))closeDw();lf=document.activeElement;pho.hidden=false;requestAnimationFrame(function(){sc.classList.add('on');pho.classList.add('on')});var c=$('#otp-photoClose');if(c)c.focus();}
 function closePhoto(){if(!pho)return;sc.classList.remove('on');pho.classList.remove('on');setTimeout(function(){if(!pho.classList.contains('on'))pho.hidden=true},300);if(lf&&lf.focus)lf.focus();}
 var phGo=$('#otp-aprGo');if(phGo)phGo.addEventListener('click',openPhoto);
 var phX=$('#otp-photoClose');if(phX)phX.addEventListener('click',closePhoto);
@@ -3334,6 +3345,7 @@ function fpComps(cell){
   return out;
 }
 function fpAsk(btn){
+  if(aiOff())return;   /* v6.20 */
   var cell=btn.parentNode,u=cell.getAttribute('data-u');
   if(!u||btn.disabled)return;
   btn.disabled=true;btn.textContent='Checking…';
@@ -3803,6 +3815,7 @@ function prefs(){
   o.zip=/^\d{5}$/.test(String(p.zip||''))?String(p.zip):'';   /* v6.06: local pickup */
   o.radius=PREF_RADII.indexOf(parseInt(p.radius,10))!==-1?parseInt(p.radius,10):50;
   o.local=(p.local||[]).map(function(h){return String(h).toLowerCase()});
+  o.noai=mGet('aiOff')==='1'?1:0;   /* v6.20 */
   return o;
 }
 var PREF_RADII=[25,50,100];
@@ -4025,6 +4038,7 @@ function rMail(){try{rDenAcct()}catch(e){}
   var boxes=document.querySelectorAll('.scout-app-wrapper .otp-mail'),i,box,h;
   var wrap=document.querySelector('.scout-app-wrapper');if(wrap)wrap.classList.toggle('is-pro',mailPro());
   rAlertsHome();   /* v6.15 */
+  try{rAiRow()}catch(e){}   /* v6.20 */
   var beta=true,live=alertsLive();
   for(i=0;i<boxes.length;i++){
     box=boxes[i];
@@ -4304,6 +4318,7 @@ function sgwWhereHtml(t,best){
   return h?'<span class="sgw-where">Best bets for '+esc(t)+':</span>'+h:'';
 }
 function sgwWhere(mount){
+  if(aiOff())return;   /* v6.20 */
   var t=sgwCurTerm(),k=t.toLowerCase(),acts=mount.querySelector('.sgw-acts');
   if(!t||!acts||typeof fetch!=='function')return;
   if(WHERE.c[k]){if(WHERE.c[k]!=='wait')acts.insertAdjacentHTML('beforeend',sgwWhereHtml(t,WHERE.c[k]));return}
@@ -4322,7 +4337,7 @@ function sgwFetch(term,cb){
   if(sgw.busy===term)return;
   if(typeof fetch!=='function')return;
   sgw.busy=term;rSGW();
-  fetch(SGW_API+'?q='+encodeURIComponent(term)).then(function(r){
+  fetch(SGW_API+'?q='+encodeURIComponent(term)+(aiOff()?'&ai=0':'')).then(function(r){
     if(!r.ok)throw new Error('http '+r.status);
     return r.json();
   }).then(function(d){
@@ -4346,7 +4361,7 @@ function lvFetch(id,term,cb){
   if(S.busy===term)return;
   if(typeof fetch!=='function')return;
   S.busy=term;rSGW();
-  fetch(SGW_API+id+'?q='+encodeURIComponent(term)).then(function(r){
+  fetch(SGW_API+id+'?q='+encodeURIComponent(term)+(aiOff()?'&ai=0':'')).then(function(r){
     if(!r.ok)throw new Error('http '+r.status);
     return r.json();
   }).then(function(d){
@@ -4532,6 +4547,7 @@ function gdBusy(on){
 function gdMake(subject){
   subject=String(subject||'').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'');
   if(GD.busy)return;
+  if(aiOff()){gdNote('AI is turned off in your settings.');return}   /* v6.20 */
   if(subject.length<2){gdNote('Type a subject first, like \u201cFire-King jadeite\u201d.');return}
   var at=gdIdx(subject);
   if(at>-1){gdRender(gdMine()[at]);gdNote('Opened from your saved guides.');return}
@@ -4632,6 +4648,7 @@ var SGW_SUG={t:'',list:[]};
 function sgwSugHide(){var b=$('#otp-sgw .sgw-sug');if(b){b.hidden=true;b.innerHTML='';}SGW_SUG={t:'',list:[]};}
 function sgwCheckName(t){
   sgwSugHide();
+  if(aiOff())return;   /* v6.20 */
   if(!t||/\s/.test(t)||t.length<3||!window.fetch)return;
   fetch(SGW_API+'hunt-check?q='+encodeURIComponent(t)).then(function(r){return r.ok?r.json():null;}).then(function(j){
     var b=$('#otp-sgw .sgw-sug'),i,h,L=[];
@@ -4754,6 +4771,7 @@ function loadPicks(){
   PICKS.tm=setTimeout(function(){
     var box=$('#otp-picks'),row=$('#otp-picksRow'),cur=sgwCurTerm(),H=cur?[cur]:[];
     if(!box||!row||typeof fetch!=='function')return;
+    if(aiOff()){box.hidden=true;return}   /* v6.20 */
     var key=H.join('|').toLowerCase();
     var tt=box.querySelector('.found-title');if(tt&&cur)tt.textContent='From our shop \u00B7 for '+cur;
     if(!H.length){box.hidden=true;PICKS.key='';return}
@@ -5003,6 +5021,33 @@ try{if(/[?&]photo=1(&|$)/.test(location.search)){
 } }catch(e){}
 /* v5.80: the old waitlist section now opens the live Prowl Alerts settings */
 var aGo=$('#otp-alertsGo');if(aGo)aGo.addEventListener('click',function(){openMailSettings()});
+/* ---------- AI HELPERS SWITCH (v6.20) ----------
+   Prowl uses AI in two ways. Tap-to-use: Fair price, Check a photo, Research this piece and Field Guides run
+   only when you press their button. Small helpers run by themselves: matching our shop pieces to your hunts,
+   suggesting where to search, checking a new hunt's name and, when switched on at the Worker, sorting results.
+   Prowl Pro members can turn all of it off here. The choice is kept on this device and, for signed-in members,
+   with their alert settings, so emails skip the AI sorting too. Nothing AI-related is requested while it is off. */
+function aiOff(){return mGet('aiOff')==='1'}
+function aiApply(){var w=document.querySelector('.scout-app-wrapper');if(w)w.classList.toggle('ai-off',aiOff())}
+function rAiRow(){
+  var t=$('#otp-aiTxt'),b=$('#otp-aiBtn');if(!t||!b)return;
+  var off=aiOff(),pro=mailPro();
+  t.textContent=off?'AI is off. Prowl will not send anything to an AI service: no Fair price checks, photo checks, Research, Field Guides or AI matching and sorting. Your searches still work.'
+    :'Prowl uses AI for Fair price checks, photo checks, Research and Field Guides, which only run when you tap them, and for small helpers that match shop pieces to your hunts and suggest where to look. '+(pro?'You can turn all of it off.':'Turning every AI helper off is part of Prowl Pro.');
+  b.textContent=off?'Turn on':(pro?'Turn off':'Try Pro');
+}
+function aiToggle(){
+  if(aiOff()){mSet('aiOff','');}
+  else if(mailPro()){mSet('aiOff','1');}
+  else{location.href='/products/prowl-pro';return}
+  aiApply();rAiRow();
+  if(mGet('alertTok')&&mGet('alertEmail')){try{prefsSet({noai:aiOff()?1:0});prefsPush()}catch(e){}}
+  toast(aiOff()?'AI is off. Reloading\u2026':'AI is on. Reloading\u2026',1200);
+  setTimeout(function(){location.reload()},1300);   /* so no earlier AI result or request stays on screen */
+}
+aiApply();
+var aiB=$('#otp-aiBtn');if(aiB)aiB.addEventListener('click',aiToggle);
+rAiRow();
 var gF=$('#otp-guideF');if(gF)gF.addEventListener('submit',function(e){e.preventDefault();gdMake(($('#otp-guideQ')||{}).value)});   /* v6.19 */
 var gS=$('#otp-guide');if(gS){gS.addEventListener('click',gdClick);gdMineRender()}
 var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function(){   /* v6.18 */
