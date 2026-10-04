@@ -6,22 +6,20 @@ Source is in `extension/`. Build the upload with: `cd extension && zip -r ../pro
 Prowl by Owl & Twig: Vintage Search
 
 ## Summary (132 characters max)
-A Prowl Pro bonus: search 26 vintage marketplaces at once, with live listings, Field Guides and your Daily Prowl in one click.
+A Prowl Pro bonus: search vintage marketplaces from one place, with live listings, Field Guides and your Daily Prowl.
 
 ## Description
-Prowl is the search tool for vintage collectors and resellers, built by Owl & Twig Vintage, a family vintage shop in Michigan. This extension brings it into your browser. It is a bonus for Prowl Pro members.
+Prowl helps vintage collectors and resellers search for the same piece in many places at once. It is built by Owl & Twig Vintage, a family vintage shop in Michigan. This extension is a bonus for Prowl Pro members.
 
-- Toolbar: type a piece once and see live listings from ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Depop, Vinted and Grailed.
-- Right-click any text on any page to hunt it: live listings, the Prowl page, every marketplace opened in one tab group, or eBay sold prices.
-- Right-click text for a Field Guide: a researched collector's guide to a maker, line or kind of object.
-- Open your Daily Prowl and Prowl's photo check straight from the toolbar.
-- Right-click a photo to identify it with Google Lens.
-- Address bar: type "prowl", press space, then what you are hunting.
-- Opens searches on 26 marketplaces, including Facebook Marketplace, Whatnot, ShopGoodwill, Heritage Auctions, LiveAuctioneers and Invaluable.
+What it does:
+- Type what you are hunting in the toolbar and see live listings from several marketplaces side by side.
+- Right-click any text on a page to search it, open it on all the marketplaces in one tab group, check sold prices, or get a Field Guide.
+- Open your Daily Prowl and Prowl's photo check from the toolbar.
+- Type "prowl" and a space in the address bar to search from there.
 
-Prowl Pro is $7 a month, first month free. Sign in once on owlandtwigvintage.com/pages/prowl (Den, Settings, Prowl Alerts) and the extension unlocks by itself. Without Prowl Pro the extension sends you to the free Prowl page.
+How to unlock it: Prowl Pro is $7 a month, first month free. Sign in once on the Prowl page (Den, Settings, Prowl Alerts) and the extension unlocks by itself. Without Prowl Pro it sends you to the free Prowl page.
 
-Prowl is an independent tool and is not affiliated with, endorsed by, or sponsored by any marketplace it searches.
+Prowl is an independent tool. It is not affiliated with, endorsed by, or sponsored by the marketplaces it searches. All trademarks belong to their owners.
 
 ## Category
 Shopping
@@ -51,3 +49,8 @@ https://owlandtwigvintage.com/policies/privacy-policy
 - Screenshots, 1280x800 or 640x400, 1 to 5. Take them with real listings: toolbar popup after a search, the locked Pro screen, the right-click menu.
 - Small promo tile 440x280 (required), marquee 1400x560 (optional).
 - Icon 128x128 is already in the package.
+
+## Rules to keep it accepted (Chrome "spam and placement in the store")
+- Do not list marketplace or brand names in the name, summary, description or tags. A string of site names reads as keyword stuffing, even when it is accurate.
+- Do not repeat a word or phrase over and over, and keep the description to plain sentences.
+- Do not claim endorsement by any marketplace.
