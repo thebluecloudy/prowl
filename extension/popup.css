@@ -1,0 +1,38 @@
+:root { --em: #0b3d2e; --gold: #f9a825; --ink: #1c1815; --mu: #7c7269; --ln: #e7ded1; --bg: #faf6ee; --cd: #fff; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; width: 380px; max-height: 590px; overflow-y: auto; padding: 14px 14px 12px; background: var(--bg); color: var(--ink);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+.top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+h1 { margin: 0; font-size: 18px; line-height: 1.1; color: var(--em); }
+.sub { margin: 0; font-size: 11.5px; color: var(--mu); }
+form { display: flex; gap: 6px; }
+input { flex: 1; min-width: 0; padding: 10px 11px; border: 1px solid var(--ln); border-radius: 10px; font: inherit; background: #fff; color: var(--ink); }
+input:focus { outline: 2px solid var(--em); outline-offset: 0; }
+button { font: inherit; border-radius: 10px; padding: 9px 12px; cursor: pointer; border: 1px solid var(--ln); }
+.primary { background: var(--gold); border-color: var(--gold); color: #1a1a1a; font-weight: 700; }
+.ghost { background: #fff; color: var(--ink); font-weight: 600; width: 100%; }
+.ghost:hover, .primary:hover { filter: brightness(0.96); }
+.msg { margin: 8px 0 0; font-size: 12.5px; color: #9c4a2f; }
+#results { margin-top: 10px; }
+.src { margin: 0 0 12px; }
+.src h2 { margin: 0 0 6px; font-size: 12px; font-weight: 700; color: var(--em); display: flex; justify-content: space-between; align-items: baseline; }
+.src h2 a { font-weight: 600; color: var(--mu); text-decoration: none; font-size: 11.5px; }
+.src h2 a:hover { text-decoration: underline; }
+.note { margin: 0; font-size: 12px; color: var(--mu); }
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.card { display: flex; flex-direction: column; background: var(--cd); border: 1px solid var(--ln); border-radius: 8px; overflow: hidden; color: inherit; text-decoration: none; }
+.card:hover { border-color: var(--em); }
+.card img { width: 100%; aspect-ratio: 1; object-fit: cover; background: #f1ebe0; display: block; }
+.card .t { font-size: 11px; line-height: 1.25; padding: 4px 5px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card .p { font-size: 11.5px; font-weight: 700; color: var(--em); padding: 2px 5px 5px; }
+.acts { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.pair { display: flex; gap: 6px; }
+.tip { margin: 12px 0 0; font-size: 11.5px; color: var(--mu); }
+.foot { margin: 8px 0 0; font-size: 10.5px; color: var(--mu); text-align: center; }
+
+#locked h2 { margin: 4px 0 6px; font-size: 15px; color: var(--em); }
+#locked p { margin: 0 0 10px; font-size: 13px; }
+#locked .tip { font-size: 12px; color: var(--mu); }
+#locked button { margin: 0 0 6px; }
+.wide { width: 100%; }

@@ -1,0 +1,169 @@
+// Prowl by Owl & Twig. (c) 2026 Owl & Twig Vintage. All rights reserved.
+import { SITES, LIVE, fetchLive, cleanTerm, prowlUrl, soldUrl, imagesUrl, PROWL } from './sites.js';
+import { isPro, PRO_PAGE } from './member.js';
+
+const $ = (s) => document.querySelector(s);
+const SHOW = 3;              // cards per marketplace; the rest are one tap away
+let current = '';
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+function need() {
+  const m = $('#msg');
+  m.textContent = 'Type what you are hunting first.';
+  m.hidden = false;
+  $('#q').focus();
+}
+
+async function openTab(url) {
+  try {
+    await chrome.tabs.create({ url });
+    window.close();
+  } catch (err) {
+    console.error('Prowl could not open a tab:', err);
+  }
+}
+
+// Every result link opens in a new tab. Only http(s) links from the server
+// are used, so nothing odd can be slipped into a link.
+function safeUrl(u) {
+  return /^https:\/\//i.test(String(u || '')) ? String(u) : '';
+}
+
+function renderSource(src, state, term) {
+  const box = el('section', 'src');
+  const h = el('h2', null, src.name + (state.items ? ` \u00b7 ${state.items.length}` : ''));
+  const site = SITES.find((s) => s.id === src.id);
+  if (site) {
+    const more = el('a', null, 'See all \u2192');
+    more.href = site.url(term);
+    more.target = '_blank';
+    more.rel = 'noopener noreferrer';
+    h.appendChild(more);
+  }
+  box.appendChild(h);
+  if (state.loading) { box.appendChild(el('p', 'note', 'Looking\u2026')); return box; }
+  if (state.error) { box.appendChild(el('p', 'note', `Couldn't reach ${src.name} just now.`)); return box; }
+  if (!state.items.length) { box.appendChild(el('p', 'note', 'Nothing right now.')); return box; }
+  const grid = el('div', 'cards');
+  for (const it of state.items.slice(0, SHOW)) {
+    const url = safeUrl(it.url);
+    if (!url) continue;
+    const a = el('a', 'card');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.title = String(it.title || '');
+    const img = el('img');
+    img.alt = '';
+    img.loading = 'lazy';
+    const src2 = safeUrl(it.image);
+    if (src2) img.src = src2;
+    a.appendChild(img);
+    a.appendChild(el('div', 't', String(it.title || '')));
+    a.appendChild(el('div', 'p', String(it.price || '')));
+    grid.appendChild(a);
+  }
+  box.appendChild(grid);
+  return box;
+}
+
+function render(term, states) {
+  const root = $('#results');
+  root.textContent = '';
+  for (const src of LIVE) root.appendChild(renderSource(src, states[src.id], term));
+  $('#acts').hidden = false;
+}
+
+async function search(raw) {
+  const term = cleanTerm(raw);
+  if (!term) { need(); return; }
+  $('#msg').hidden = true;
+  $('#q').value = term;
+  current = term;
+  const states = {};
+  for (const src of LIVE) states[src.id] = { loading: true };
+  render(term, states);
+  await Promise.all(LIVE.map(async (src) => {
+    try {
+      states[src.id] = { items: await fetchLive(src, term) };
+    } catch (err) {
+      console.error(`Prowl live search failed for ${src.name}:`, err);
+      states[src.id] = { error: true };
+    }
+    if (current === term) render(term, states);
+  }));
+  // Keep the last search for this browser session, so reopening the popup
+  // after tapping a result shows the same listings.
+  try {
+    await chrome.storage.session.set({ last: { term, states } });
+  } catch (err) {
+    console.error('Prowl could not keep the last search:', err);
+  }
+}
+
+$('#f').addEventListener('submit', (e) => {
+  e.preventDefault();
+  search($('#q').value);
+});
+
+function termOrAsk() {
+  const t = cleanTerm($('#q').value);
+  if (!t) need();
+  return t;
+}
+
+$('#prowl').addEventListener('click', async () => { const t = termOrAsk(); if (t) await openTab(prowlUrl(t)); });
+$('#sold').addEventListener('click', async () => { const t = termOrAsk(); if (t) await openTab(soldUrl(t)); });
+$('#images').addEventListener('click', async () => { const t = termOrAsk(); if (t) await openTab(imagesUrl(t)); });
+$('#all').addEventListener('click', async () => {
+  const t = termOrAsk();
+  if (!t) return;
+  try {
+    const win = await chrome.windows.getCurrent();
+    await chrome.runtime.sendMessage({ type: 'openAll', term: t, windowId: win.id });
+    window.close();
+  } catch (err) {
+    console.error('Prowl open-all failed:', err);
+  }
+});
+
+// ---------- Pro gate ----------
+function showLocked(on) {
+  for (const id of ['f', 'results', 'acts', 'tip']) { const n = $('#' + id); if (n) n.hidden = on; }
+  $('#locked').hidden = !on;
+}
+$('#getpro').addEventListener('click', () => openTab(PRO_PAGE));
+$('#signin').addEventListener('click', () => openTab(PROWL));
+$('#free').addEventListener('click', () => openTab(PROWL));
+$('#recheck').addEventListener('click', async () => {
+  const m = $('#lockmsg');
+  const pro = await isPro({ force: true });
+  if (pro) { showLocked(false); $('#q').focus(); return; }
+  m.textContent = 'No Prowl Pro sign-in found yet. Sign in on Prowl first, then try again.';
+  m.hidden = false;
+});
+
+// On open: a term handed over from the right-click menu wins; otherwise show
+// the last search from this session, if there is one.
+(async () => {
+  if (!(await isPro())) { showLocked(true); return; }
+  try {
+    const { pending, last } = await chrome.storage.session.get(['pending', 'last']);
+    if (pending) {
+      await chrome.storage.session.remove('pending');
+      await search(pending);
+    } else if (last && last.term) {
+      $('#q').value = last.term;
+      current = last.term;
+      render(last.term, last.states);
+    }
+  } catch (err) {
+    console.error('Prowl could not restore the last search:', err);
+  }
+})();
