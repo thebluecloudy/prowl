@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v63: /__whatnottest (2026-10-04). Tries whatnot.com's search page a few ways and reports what
+ *        comes back. Nothing wired yet.
  *   v62: /__offeruptest (2026-10-04). The probe showed offerup.com/search answers a Worker with
  *        its listings in __NEXT_DATA__; this reports where they sit. Nothing wired to the page yet.
  *   v61: Vinted joins the Prowl Alerts sites (2026-10-04). /__vintedtest showed 30 US listings
@@ -3586,6 +3588,36 @@ export default {
         firstItem: items && items[0] ? items[0] : null,
         rawHead: up && !(items && items.length) ? up.text.slice(0, 300) : null,
       }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/__whatnottest") {   /* v63: does whatnot.com talk to a Worker, and where are its listings? */
+      const term = url.searchParams.get("q") || "vintage pyrex";
+      const q = encodeURIComponent(term);
+      const tries = [
+        ["search", "https://www.whatnot.com/search?query=" + q],
+        ["search-listings", "https://www.whatnot.com/search?query=" + q + "&tab=listings"],
+        ["s", "https://www.whatnot.com/s?query=" + q],
+        ["home", "https://www.whatnot.com/"],
+      ];
+      const out = [];
+      for (const [name, u] of tries) {
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), UPSTREAM_TIMEOUT_MS);
+        const t0 = Date.now();
+        try {
+          const r = await fetch(u, { signal: ctl.signal, headers: { "User-Agent": PROBE_UA, "Accept": "text/html,application/xhtml+xml,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.9" } });
+          const t = await r.text();
+          const marks = {};
+          for (const m of ["__NEXT_DATA__", "self.__next_f.push", "__APOLLO_STATE__", "__INITIAL_STATE__", "application/ld+json", '"listings"', '"livestreams"', '"products"', "datadome", "px-captcha", "cf-browser-verification", "Just a moment"]) { const i = t.indexOf(m); if (i !== -1) marks[m] = i; }
+          const nd = nextData(t), fl = flightText(t);
+          let near = null;
+          for (const k of ['"listings":', '"products":', '"items":', '"edges":']) { const src = fl || t; const i = src.indexOf(k); if (i !== -1) { near = { key: k, from: fl ? "flight" : "html", text: src.slice(i, i + 700) }; break; } }
+          out.push({ name: name, status: r.status, type: r.headers.get("content-type"), bytes: t.length, ms: Date.now() - t0, finalUrl: r.url, hasTerm: t.toLowerCase().indexOf(term.toLowerCase()) !== -1,
+            marks: marks, nextDataKeys: nd ? Object.keys(nd.props && nd.props.pageProps || {}) : null, listings: nd ? jsonListings(nd, 3) : null, flightBytes: fl.length, near: near, head: t.slice(0, 200) });
+        } catch (e) { out.push({ name: name, error: String(e && e.message || e), ms: Date.now() - t0 }); }
+        finally { clearTimeout(timer); }
+      }
+      return new Response(JSON.stringify({ term: term, tries: out }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/__offeruptest") {   /* v62 */
