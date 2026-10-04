@@ -43,6 +43,8 @@ jobs:
           for u in https://owlandtwigvintage.com/pages/prowl https://owlandtwigvintage.com/pages/prowl-app; do
             printf "%s -> " "$u"; curl -sL -A "Mozilla/5.0" "$u" | grep -o "PROWL_VERSION='v[0-9.]*'" | head -1 || true; echo
           done
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - name: Install the recorder
         run: |
           npm init -y >/dev/null
