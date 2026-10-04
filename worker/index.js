@@ -13,11 +13,16 @@
  *   GET /poshmark?q=ceramic+panther -> same shape, from Poshmark's search page state (v58)
  *   GET /poshsold?q=ceramic+panther -> Poshmark sold listings, each with sold:"YYYY-MM-DD" (v58)
  *   GET /depop?q=ceramic+panther    -> same shape, from Depop's search page data (v59)
+ *   GET /vinted?q=ceramic+panther   -> same shape, from Vinted's catalog API with the cookie its home page sets (v60)
  *   GET /hibid?q=ceramic+panther -> same shape, parsed from hibid.com/lots. Built and
  *       tested offline, but hibid.com's WAF answers Workers with a 403 (2026-09-25),
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v60: Vinted (2026-10-04). /vinted asks Vinted's own catalog API, which wants the session
+ *        cookie vinted.com sets on its home page, so each miss is two fetches. No paid API.
+ *        Not yet in the page or the Prowl Alerts sites: /__vintedtest shows whether Vinted
+ *        answers a Worker at all before it is wired in.
  *   v59: Depop (2026-10-03). /depop reads the product data Depop puts in its own search page
  *        (Next.js flight strings). No paid API. Depop joins the Prowl Alerts sites; saved prefs
  *        without the src3 flag get it added. /__depoptest diagnoses.
@@ -178,6 +183,9 @@ const POSH_URL = "https://poshmark.com/search?type=listings&query=";   /* v58 */
 const POSH_LIMIT = 12, POSH_SOLD_LIMIT = 6, POSH_CACHE_SECONDS = 1800;
 const DEPOP_URL = "https://www.depop.com/search/?q=";   /* v59 */
 const DEPOP_LIMIT = 12, DEPOP_CACHE_SECONDS = 1800;
+const VINTED_HOME = "https://www.vinted.com/";   /* v60 */
+const VINTED_API = "https://www.vinted.com/api/v2/catalog/items?search_text=";
+const VINTED_LIMIT = 12, VINTED_CACHE_SECONDS = 1800;
 
 const HIBID_URL = "https://hibid.com/lots?q=";
 const HIBID_LIMIT = 12;
@@ -921,6 +929,65 @@ function depopNormalize(html) {
       url: "https://www.depop.com/products/" + o.slug + "/",
       image: depopPic(o),
       src: "depop",
+    });
+  }
+  return out;
+}
+
+/* v60: Vinted. The catalog API only answers with the cookies the home page sets, so a
+   miss is two fetches: home for the cookies, then the search. Cookies never leave here. */
+const VINTED_COOKIES = /^(access_token_web|refresh_token_web|_vinted_fr_session|anon_id|v_udt|datadome)$/;
+async function vintedCall(term) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), UPSTREAM_TIMEOUT_MS);
+  const base = { "User-Agent": PROBE_UA, "Accept-Language": "en-US,en;q=0.9" };
+  try {
+    const h = await fetch(VINTED_HOME, { signal: ctl.signal, headers: Object.assign({ "Accept": "text/html,application/xhtml+xml,*/*;q=0.8" }, base) });
+    const set = typeof h.headers.getSetCookie === "function" ? h.headers.getSetCookie() : String(h.headers.get("set-cookie") || "").split(/,(?=\s*[A-Za-z0-9_-]+=)/);
+    const jar = [];
+    for (const c of set) { const m = /^\s*([^=;\s]+)=([^;]*)/.exec(String(c)); if (m && VINTED_COOKIES.test(m[1])) jar.push(m[1] + "=" + m[2]); }
+    if (!jar.some(c => c.indexOf("access_token_web=") === 0)) return { status: h.status === 200 ? 401 : h.status, text: "", homeStatus: h.status, cookies: jar.length };
+    const r = await fetch(VINTED_API + encodeURIComponent(term) + "&per_page=24&order=newest_first", {
+      signal: ctl.signal,
+      headers: Object.assign({ "Accept": "application/json, text/plain, */*", "Cookie": jar.join("; "), "Referer": VINTED_HOME + "catalog?search_text=" + encodeURIComponent(term) }, base)
+    });
+    const text = await r.text();
+    return { status: r.status, text: text, homeStatus: h.status, cookies: jar.length };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+/* The API's items, or null when the answer is not the catalog JSON. */
+function vintedNormalize(text) {
+  let j = null;
+  try { j = JSON.parse(String(text || "")); } catch (e) { return null; }
+  const d = j && Array.isArray(j.items) ? j.items : null;
+  if (!d) return null;
+  const out = [], seen = {};
+  for (const x of d) {
+    if (!x || typeof x !== "object") continue;
+    const id = String(x.id || "");
+    if (!/^\d+$/.test(id) || seen[id]) continue;
+    const title = hibidText(String(x.title || "")).replace(/\s+/g, " ").trim().slice(0, 160);
+    if (title.length < 3) continue;
+    const pr = (x.price && typeof x.price === "object") ? x.price : { amount: x.price, currency_code: x.currency };
+    const amt = Number(pr.amount), cur = String(pr.currency_code || "USD");
+    let u = String(x.url || "");
+    if (!/^https:\/\/(www\.)?vinted\.com\//.test(u)) u = "https://www.vinted.com/items/" + id;
+    const ph = (x.photo && typeof x.photo === "object") ? x.photo : {};
+    let img = "";
+    if (Array.isArray(ph.thumbnails) && ph.thumbnails.length) {
+      const t = ph.thumbnails.find(t => t && t.type === "thumb310") || ph.thumbnails[ph.thumbnails.length - 1];
+      if (t && typeof t.url === "string") img = t.url;
+    }
+    if (!img && typeof ph.url === "string") img = ph.url;
+    seen[id] = 1;
+    out.push({
+      title: title,
+      price: isFinite(amt) && amt > 0 ? (cur === "USD" ? money(amt) : amt.toFixed(2) + " " + cur) : "",
+      url: u,
+      image: /^https:\/\//.test(img) ? img : "",
+      src: "vinted",
     });
   }
   return out;
@@ -3353,6 +3420,29 @@ export default {
       }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
+    if (url.pathname === "/__vintedtest") {   /* v60 */
+      const term = url.searchParams.get("q") || "jadeite fire king";
+      const started = Date.now();
+      let up, err = null;
+      try { up = await vintedCall(term); }
+      catch (e) { err = String(e && e.message || e); }
+      const items = up && up.status === 200 ? vintedNormalize(up.text) : null;
+      return new Response(JSON.stringify({
+        ok: !!(items && items.length),
+        term: term,
+        ms: Date.now() - started,
+        homeStatus: up ? up.homeStatus : null,
+        cookiesSeen: up ? up.cookies : null,
+        upstreamStatus: up ? up.status : null,
+        upstreamBytes: up ? up.text.length : 0,
+        parsedItems: items ? items.length : null,
+        parseFailed: up && up.status === 200 ? items === null : null,
+        error: err,
+        sample: items && items.length ? items.slice(0, 3) : null,
+        rawHead: up && !(items && items.length) ? up.text.slice(0, 300) : null,
+      }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
     if (url.pathname === "/__depoptest") {   /* v59 */
       const term = url.searchParams.get("q") || "jadeite fire king";
       const started = Date.now();
@@ -3426,11 +3516,11 @@ export default {
     if (!term) return json({ error: "missing q" }, 400, origin);
     if (term.length > MAX_TERM) term = term.slice(0, MAX_TERM);
 
-    const SOURCES = { "/": "shopgoodwill", "/ebay": "ebay", "/hibid": "hibid", "/chairish": "chairish", "/etsy": "etsy", "/poshmark": "poshmark", "/poshsold": "poshsold", "/depop": "depop" };   /* v58: poshmark, v59: depop */
+    const SOURCES = { "/": "shopgoodwill", "/ebay": "ebay", "/hibid": "hibid", "/chairish": "chairish", "/etsy": "etsy", "/poshmark": "poshmark", "/poshsold": "poshsold", "/depop": "depop", "/vinted": "vinted" };   /* v58: poshmark, v59: depop, v60: vinted */
     const source = SOURCES[url.pathname];
     if (!source) return json({ error: "not found" }, 404, origin);
     const isEbay = source === "ebay", isHibid = source === "hibid", isChairish = source === "chairish", isEtsy = source === "etsy";
-    const isPosh = source === "poshmark" || source === "poshsold", poshSold = source === "poshsold", isDepop = source === "depop";
+    const isPosh = source === "poshmark" || source === "poshsold", poshSold = source === "poshsold", isDepop = source === "depop", isVinted = source === "vinted";
 
     const cache = PCACHE;
     const key = new Request(
@@ -3457,6 +3547,7 @@ export default {
          : isEtsy ? await etsyCall(term, env)
          : isPosh ? await poshmarkCall(term, poshSold)
          : isDepop ? await depopCall(term)
+         : isVinted ? await vintedCall(term)
          : await callUpstream(term);
     }
     catch (e) {
@@ -3472,9 +3563,11 @@ export default {
               : isEtsy ? etsyNormalize(up.text)
               : isPosh ? poshmarkNormalize(up.text, poshSold, term)
               : isDepop ? depopNormalize(up.text)
+              : isVinted ? vintedNormalize(up.text)
               : normalize(up.text);
     if (isHibid && items && items.length > HIBID_LIMIT) items = items.slice(0, HIBID_LIMIT);
     if (isDepop && items && items.length > DEPOP_LIMIT) items = items.slice(0, DEPOP_LIMIT);
+    if (isVinted && items && items.length > VINTED_LIMIT) items = items.slice(0, VINTED_LIMIT);
     if (isPosh && items) { const lim = poshSold ? POSH_SOLD_LIMIT : POSH_LIMIT; if (items.length > lim) items = items.slice(0, lim); }
     if (isChairish && items && items.length > CHAIRISH_LIMIT) items = items.slice(0, CHAIRISH_LIMIT);
     if (items === null) {
@@ -3492,7 +3585,7 @@ export default {
       items: items,
     };
     const res = json(payload, 200, origin, {
-      "Cache-Control": "public, max-age=" + (isEbay ? EBAY_CACHE_SECONDS : isHibid ? HIBID_CACHE_SECONDS : isChairish ? CHAIRISH_CACHE_SECONDS : isEtsy ? ETSY_CACHE_SECONDS : isPosh ? POSH_CACHE_SECONDS : isDepop ? DEPOP_CACHE_SECONDS : CACHE_SECONDS),
+      "Cache-Control": "public, max-age=" + (isEbay ? EBAY_CACHE_SECONDS : isHibid ? HIBID_CACHE_SECONDS : isChairish ? CHAIRISH_CACHE_SECONDS : isEtsy ? ETSY_CACHE_SECONDS : isPosh ? POSH_CACHE_SECONDS : isDepop ? DEPOP_CACHE_SECONDS : isVinted ? VINTED_CACHE_SECONDS : CACHE_SECONDS),
       "X-Prowl-Cache": "miss",
     });
     try { await cache.put(key, res.clone()); } catch (e) { /* cache is best effort */ }
