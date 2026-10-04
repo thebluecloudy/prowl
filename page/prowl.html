@@ -1053,7 +1053,7 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper .flock-sub{margin:0 15px 10px;font-size:12px;color:var(--mu)}
 .scout-app-wrapper .flock .fl-for{font-size:10px;color:var(--mu);padding:0 8px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scout-app-wrapper .flock .sgw-note{margin:0 15px}
-/* ---- v6.20: AI helpers switch: with AI off, every AI entry point is hidden ---- */
+/* ---- v6.21: AI helpers switch: with AI off, every AI entry point is hidden ---- */
 .scout-app-wrapper.ai-off .sgw-fp,.scout-app-wrapper.ai-off #otp-aprGo,.scout-app-wrapper.ai-off #otp-photoBtn,.scout-app-wrapper.ai-off #otp-guide,.scout-app-wrapper.ai-off #otp-picks,.scout-app-wrapper.ai-off .sgw-where{display:none!important}
 .scout-app-wrapper.ai-off #otp-dock{grid-template-columns:repeat(5,1fr)}
 /* ---- v6.19: Field Guide on anything ---- */
@@ -1150,7 +1150,7 @@ window.prowlEpn=function(u,cid){
   </div>
 
   <h1>Find the prey</h1>
-  <p class="lede"><strong>Prowl by Owl &amp; Twig</strong> is a free search tool for vintage collectors. Type a hunt or tap one of yours below, and it builds the same search for all <span data-t>25</span> vintage marketplaces on one screen — open them one at a time, or all at once.</p>
+  <p class="lede"><strong>Prowl by Owl &amp; Twig</strong> is a free search tool for vintage collectors. Type a hunt or tap one of yours below, and it builds the same search for all <span data-t>26</span> vintage marketplaces on one screen — open them one at a time, or all at once.</p>
 
   <form id="otp-sf" autocomplete="off">
     <input id="otp-q" type="search" placeholder="ceramic panther, rookwood vase…" aria-label="Search term">
@@ -1442,7 +1442,7 @@ window.prowlEpn=function(u,cid){
   /* v6.08: a small JPEG of the photo for saved research (longest side 480px) */
   function resThumb(s,cb){var im=new Image();im.onerror=function(){cb('')};im.onload=function(){try{var k=Math.min(1,480/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*k));c.height=Math.max(1,Math.round(im.height*k));c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',0.7))}catch(e){cb('')} };im.src=s;}
   function researchIt(name,btn,r,src){
-    if(lsG('aiOff')==='1')return;   /* v6.20 */
+    if(lsG('aiOff')==='1')return;   /* v6.21 */
     if(btn.disabled)return;btn.disabled=true;btn.textContent='Researching\u2026 up to a minute';
     var old=document.getElementById('otp-aprRes');if(old&&old.parentNode)old.parentNode.removeChild(old);
     var oldS=document.getElementById('otp-aprSold');if(oldS&&oldS.parentNode)oldS.parentNode.removeChild(oldS);   /* v6.09 */
@@ -1552,7 +1552,7 @@ window.prowlEpn=function(u,cid){
     card.appendChild(box);O.appendChild(card);
     try{O.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}
   }
-  B.addEventListener('click',function(){if(lsG('aiOff')==='1')return;if(!busy)F.click();});   /* v6.20 */
+  B.addEventListener('click',function(){if(lsG('aiOff')==='1')return;if(!busy)F.click();});   /* v6.21 */
   var PF=null,F2=document.getElementById('otp-aprF2'),B2=document.getElementById('otp-aprB2');
   if(B2&&F2){B2.addEventListener('click',function(){if(!busy)F2.click();});F2.addEventListener('change',function(){PF=F2.files&&F2.files[0];F2.value='';if(PF){var ev;try{ev=new Event('change');}catch(e){ev=document.createEvent('Event');ev.initEvent('change',true,true);}F.dispatchEvent(ev);}});}
   F.addEventListener('change',function(){
@@ -1629,14 +1629,14 @@ window.prowlEpn=function(u,cid){
 </script>
 
 
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Prowl by Owl & Twig","url":"https://owlandtwigvintage.com/pages/prowl","applicationCategory":"ShoppingApplication","operatingSystem":"Any","description":"Free tool for vintage collectors - search 25 marketplaces at once, including sites Google does not index.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"Matt"},"publisher":{"@type":"Organization","name":"Owl & Twig Vintage","url":"https://owlandtwigvintage.com"}}</script>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is Prowl?","acceptedAnswer":{"@type":"Answer","text":"Prowl by Owl & Twig is a free search tool for vintage collectors. Type a piece once and it builds that search for 25 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist, which a regular Google search rarely reaches. It is built by Matt at Owl & Twig Vintage, a family vintage shop in Michigan."} },{"@type":"Question","name":"Which marketplaces does Prowl search?","acceptedAnswer":{"@type":"Answer","text":"eBay, Etsy, Mercari, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, EstateSales.net, HiBid, LiveAuctioneers, Invaluable and Craigslist, plus eBay sold listings for pricing. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Depop, Vinted and Grailed results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search."} },{"@type":"Question","name":"How do I find antique shops and estate sales near me?","acceptedAnswer":{"@type":"Answer","text":"Open the Den and tap Local. Tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area."} },{"@type":"Question","name":"Is Prowl free?","acceptedAnswer":{"@type":"Answer","text":"Yes. No account. Your search list stays on your device."} },{"@type":"Question","name":"Does it work on my phone?","acceptedAnswer":{"@type":"Answer","text":"Yes. Built mobile-first. Add it to your home screen, and allow pop-ups if you use Open all. On a phone, Facebook opens in your browser so the search sticks, so log in to Facebook there once."} },{"@type":"Question","name":"How does Price Check work?","acceptedAnswer":{"@type":"Answer","text":"One tap opens eBay's sold listings for your term — actual sale prices from the last 90 days, the most accurate read on what a piece is worth right now. Asking prices lie; sold prices don't."} },{"@type":"Question","name":"What if nothing sold in 90 days?","acceptedAnswer":{"@type":"Answer","text":"That happens with genuinely rare pieces. Price Check has a second button for three years of deep comps via eBay's Terapeak research — free with any eBay account. Open it in your browser rather than the eBay app, or the date range gets dropped."} }]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Prowl by Owl & Twig","url":"https://owlandtwigvintage.com/pages/prowl","applicationCategory":"ShoppingApplication","operatingSystem":"Any","description":"Free tool for vintage collectors - search 26 marketplaces at once, including sites Google does not index.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"Matt"},"publisher":{"@type":"Organization","name":"Owl & Twig Vintage","url":"https://owlandtwigvintage.com"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is Prowl?","acceptedAnswer":{"@type":"Answer","text":"Prowl by Owl & Twig is a free search tool for vintage collectors. Type a piece once and it builds that search for 26 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist, which a regular Google search rarely reaches. It is built by Matt at Owl & Twig Vintage, a family vintage shop in Michigan."} },{"@type":"Question","name":"Which marketplaces does Prowl search?","acceptedAnswer":{"@type":"Answer","text":"eBay, Etsy, Mercari, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, EstateSales.net, HiBid, LiveAuctioneers, Heritage Auctions, Invaluable and Craigslist, plus eBay sold listings for pricing. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Depop, Vinted and Grailed results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search."} },{"@type":"Question","name":"How do I find antique shops and estate sales near me?","acceptedAnswer":{"@type":"Answer","text":"Open the Den and tap Local. Tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area."} },{"@type":"Question","name":"Is Prowl free?","acceptedAnswer":{"@type":"Answer","text":"Yes. No account. Your search list stays on your device."} },{"@type":"Question","name":"Does it work on my phone?","acceptedAnswer":{"@type":"Answer","text":"Yes. Built mobile-first. Add it to your home screen, and allow pop-ups if you use Open all. On a phone, Facebook opens in your browser so the search sticks, so log in to Facebook there once."} },{"@type":"Question","name":"How does Price Check work?","acceptedAnswer":{"@type":"Answer","text":"One tap opens eBay's sold listings for your term — actual sale prices from the last 90 days, the most accurate read on what a piece is worth right now. Asking prices lie; sold prices don't."} },{"@type":"Question","name":"What if nothing sold in 90 days?","acceptedAnswer":{"@type":"Answer","text":"That happens with genuinely rare pieces. Price Check has a second button for three years of deep comps via eBay's Terapeak research — free with any eBay account. Open it in your browser rather than the eBay app, or the date range gets dropped."} }]}</script>
 
 
 <nav id="otp-dock" aria-label="Prowl modes">
   <button class="db on" data-m="prowl" aria-label="Prowl home"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path></svg><span>PROWL</span></button>
   <button class="db" data-m="one" id="otp-oneBtn"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11"></path><path d="M9 20v-6h6v6"></path></svg><span id="otp-oneLab">GOODWILL</span></button>
-  <button class="db" data-m="all" aria-label="Search all marketplaces"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4.2-4.2"></path></svg><span>ALL <span data-t>25</span></span></button>
+  <button class="db" data-m="all" aria-label="Search all marketplaces"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4.2-4.2"></path></svg><span>ALL <span data-t>26</span></span></button>
   <button class="db" data-m="photo" id="otp-photoBtn" aria-label="Photo check: snap a piece to identify and price it"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5h3.2l1.8-2.5h7l1.8 2.5h3.2v10.5h-17z"></path><circle cx="12" cy="13.5" r="3.4"></circle></svg><span>PHOTO</span></button>
   <button class="db" data-m="daily" aria-label="Daily prowl"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg><span>DAILY</span><em class="bd" id="otp-ds" hidden></em></button>
   <button class="db" data-m="den" id="otp-denBtn" aria-label="Den: hunts and settings"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"></path></svg><span>DEN</span></button>
@@ -1659,7 +1659,7 @@ window.prowlEpn=function(u,cid){
 </div>
   <ul class="mk" id="otp-mk"></ul>
   <div class="df">
-<span id="otp-dc"><span data-t>25</span> of <span data-t>25</span> selected</span><button class="mn" id="otp-shw">Show all <span data-t>25</span></button>
+<span id="otp-dc"><span data-t>26</span> of <span data-t>26</span> selected</span><button class="mn" id="otp-shw">Show all <span data-t>26</span></button>
 </div>
 </aside>
 
@@ -1753,8 +1753,8 @@ window.prowlEpn=function(u,cid){
 </ul>
 </div>
 </div>
-<p><strong>Prowl runs your search across 25 vintage marketplaces at once — including the ones Google skips.</strong> Free, no account, built by a collector who got tired of typing the same search into eight sites every morning.</p>
-<p class="trust-bar">🐾<span class="tb-note">25 marketplaces searched from one screen — no accounts, no fees.</span></p>
+<p><strong>Prowl runs your search across 26 vintage marketplaces at once — including the ones Google skips.</strong> Free, no account, built by a collector who got tired of typing the same search into eight sites every morning.</p>
+<p class="trust-bar">🐾<span class="tb-note">26 marketplaces searched from one screen — no accounts, no fees.</span></p>
 <h2>How collectors use it</h2>
 <div class="tiles">
 <div class="tile">
@@ -1796,7 +1796,7 @@ window.prowlEpn=function(u,cid){
 <p><strong>Estate sales and auction houses.</strong> EstateSales.net, HiBid, LiveAuctioneers and Invaluable, one tap each, so the Friday sale and the Saturday auction are in the same hunt as eBay.</p>
 <p><strong>Local, by city.</strong> Facebook Marketplace and Craigslist searched for your saved city, not a nationwide feed you have to filter down.</p>
 <p><strong>Sold prices, not wishes.</strong> Price Check opens eBay's sold listings, and three years of Terapeak comps when ninety days isn't enough. The Fair price verdict says whether its range came from sales or from listings, every time.</p>
-<p>One term, <span data-t>25</span> marketplaces, no account, your list stays on your phone.</p>
+<p>One term, <span data-t>26</span> marketplaces, no account, your list stays on your phone.</p>
 <div class="ctas">
 <div class="cta-vault vault">
 <h3>Hunting something specific?</h3>
@@ -1810,9 +1810,9 @@ window.prowlEpn=function(u,cid){
 </div>
 </div>
 <h3>What is Prowl?</h3>
-<p>Prowl by Owl &amp; Twig is a free search tool for vintage collectors. Type a piece once and it builds that search for 25 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist, which a regular Google search rarely reaches. It is built by Matt at Owl &amp; Twig Vintage, a family vintage shop in Michigan.</p>
+<p>Prowl by Owl &amp; Twig is a free search tool for vintage collectors. Type a piece once and it builds that search for 26 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist, which a regular Google search rarely reaches. It is built by Matt at Owl &amp; Twig Vintage, a family vintage shop in Michigan.</p>
 <h3>Which marketplaces does Prowl search?</h3>
-<p>eBay, Etsy, Mercari, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, EstateSales.net, HiBid, LiveAuctioneers, Invaluable and Craigslist, plus eBay sold listings for pricing. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Depop, Vinted and Grailed results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search.</p>
+<p>eBay, Etsy, Mercari, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, EstateSales.net, HiBid, LiveAuctioneers, Heritage Auctions, Invaluable and Craigslist, plus eBay sold listings for pricing. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Depop, Vinted and Grailed results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search.</p>
 <h3>How do I find antique shops and estate sales near me?</h3>
 <p>Open the Den and tap Local. Tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area.</p>
 <h3>Is Prowl free?</h3>
@@ -1823,7 +1823,7 @@ window.prowlEpn=function(u,cid){
 <p>One tap opens eBay's sold listings for your term — actual sale prices from the last 90 days, the most accurate read on what a piece is worth right now. Asking prices lie; sold prices don't.</p>
 <h3>What if nothing sold in 90 days?</h3>
 <p>That happens with genuinely rare pieces. Price Check has a second button for three years of deep comps via eBay's Terapeak research — free with any eBay account. Open it in your browser rather than the eBay app, or the date range gets dropped.</p>
-<p class="not-affiliated">Prowl is an independent tool built by Owl &amp; Twig Vintage and is not affiliated with, endorsed by, or sponsored by Goodwill, Facebook, Craigslist, eBay, Etsy, Mercari, Whatnot, Ruby Lane, EstateSales.net, HiBid, Chairish, 1stDibs, Poshmark, Depop, Vinted, AbeBooks, ThriftBooks, Biblio, Google, Instagram, OfferUp, or Shop App. All trademarks belong to their respective owners.</p>
+<p class="not-affiliated">Prowl is an independent tool built by Owl &amp; Twig Vintage and is not affiliated with, endorsed by, or sponsored by Goodwill, Facebook, Craigslist, eBay, Etsy, Mercari, Whatnot, Ruby Lane, EstateSales.net, HiBid, Heritage Auctions, Chairish, 1stDibs, Poshmark, Depop, Vinted, AbeBooks, ThriftBooks, Biblio, Google, Instagram, OfferUp, or Shop App. All trademarks belong to their respective owners.</p>
 <p class="not-affiliated">Prowl © 2026 Owl &amp; Twig Vintage. All rights reserved.</p>
 <div class="site-link">
 <div class="sl-copy">
@@ -1912,7 +1912,7 @@ window.prowlEpn=function(u,cid){
       <div class="setrow">
         <div>
 <h3>About</h3>
-<p>Prowl <span class="prowl-version"></span> — find the prey across <span data-t>25</span> vintage marketplaces.</p>
+<p>Prowl <span class="prowl-version"></span> — find the prey across <span data-t>26</span> vintage marketplaces.</p>
 </div>
       </div>
     </div>
@@ -1925,7 +1925,7 @@ window.prowlEpn=function(u,cid){
 <div class="mo" id="otp-ms">
   <div class="md" role="dialog" aria-modal="true" aria-labelledby="otp-mt">
     <h2 id="otp-mt">How Prowl works</h2>
-    <p>Prowl builds one search for <b><span data-t>25</span> vintage marketplaces</b> and puts them all on one screen. The basics:</p>
+    <p>Prowl builds one search for <b><span data-t>26</span> vintage marketplaces</b> and puts them all on one screen. The basics:</p>
     <div class="mi">
 <u>1</u><div>
 <h3>Search everywhere at once</h3>
@@ -1987,7 +1987,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.20';
+var PROWL_VERSION='v6.21';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -2054,6 +2054,8 @@ mk('ebaysold','eBay Sold','bolo','https://www.ebay.com/sch/i.html?_nkw=','&LH_So
 mk('estatesales','EstateSales.net','bolo','https://www.estatesales.net/search/'),
 mk('hibid','HiBid','bolo','https://hibid.com/lots?q='),   /* v5.96: HiBid ignores ?search= */
 mk('liveauction','LiveAuctioneers','bolo','https://www.liveauctioneers.com/search/?keyword='),
+/* v6.21 Heritage Auctions: link-out only, no live parsing. */
+mk('heritage','Heritage Auctions','bolo','https://www.ha.com/c/search-results.zx?N=0&Ntt='),
 /* v5.92 Invaluable: auction houses worldwide. Its search wants + for spaces. */
 {id:'invaluable',n:'Invaluable',t:'bolo',u:function(q){return 'https://www.invaluable.com/search?keyword='+E(q).replace(/%20/g,'+')} },
 {id:'craigslist',n:'Craigslist',t:'bolo',u:function(q){return clUrl(q)}}
@@ -2164,7 +2166,7 @@ var platformIcons={
 ebay:'\u25C6',etsy:'\u2740',mercari:'\u25B2',poshmark:'\u25C7',depop:'\u25CF',grailed:'\u25B0',
 rubylane:'\u2756',chairish:'\u25A0','1stdibs':'\u25C8',reverb:'\u266A',whatnot:'\u25B6',vinted:'\u25CB',
 bonanza:'\u25AA',ecrater:'\u25AB',abebooks:'\u25AC',aptdeco:'\u25AD',offerup:'\u25B4',facebook:'\u25BC',
-ebaysold:'\u2713',shopgoodwill:'\u2691',estatesales:'\u2302',hibid:'\u2692',liveauction:'\u2696',invaluable:'\u2726',craigslist:'\u2318'
+ebaysold:'\u2713',shopgoodwill:'\u2691',estatesales:'\u2302',hibid:'\u2692',liveauction:'\u2696',heritage:'\u2655',invaluable:'\u2726',craigslist:'\u2318'
 };
 
 var DEF=['Roseville jardiniere','Pyrex Butterprint','Fire-King jadeite','McCoy pottery','Hull pottery','Stangl birds','Bauer ringware','Blenko glass','Fenton hobnail','Mid-century lamp','Weller pottery','Vintage Fiestaware'];
@@ -2183,7 +2185,7 @@ ebay:'EBAY',etsy:'ETSY',mercari:'MERCARI',poshmark:'POSHMARK',depop:'DEPOP',grai
 rubylane:'RUBY LANE',chairish:'CHAIRISH','1stdibs':'1STDIBS',reverb:'REVERB',whatnot:'WHATNOT',
 vinted:'VINTED',bonanza:'BONANZA',ecrater:'ECRATER',abebooks:'ABEBOOKS',aptdeco:'APTDECO',
 offerup:'OFFERUP',facebook:'FACEBOOK',ebaysold:'EBAY SOLD',shopgoodwill:'GOODWILL',
-estatesales:'ESTATES',hibid:'HIBID',liveauction:'LIVEAUCT',invaluable:'INVALUABLE',craigslist:'CRAIGSLIST'
+estatesales:'ESTATES',hibid:'HIBID',liveauction:'LIVEAUCT',heritage:'HERITAGE',invaluable:'INVALUABLE',craigslist:'CRAIGSLIST'
 };
 function oneId(){return (st&&st.one&&mb(st.one))?st.one:ONE_DEFAULT}
 function oneName(){var m=mb(oneId());return m?m.n:'Goodwill'}
@@ -2262,7 +2264,7 @@ function load(){
   if(Array.isArray(r.sel))st.sel=new Set(r.sel.filter(function(i){return i>=0&&i<st.hunts.length}));
   if(Array.isArray(r.lock))st.lock=new Set(r.lock.filter(function(i){return i>=0&&i<st.hunts.length}));
   if(Array.isArray(r.star))st.lock=new Set(r.star.filter(function(i){return i>=0&&i<st.hunts.length})); // migration from old key
-  if(Array.isArray(r.mkt)){var k=r.mkt.filter(function(i){return ALL.indexOf(i)>-1});if(k.length)st.mkt=new Set(k)}
+  if(Array.isArray(r.mkt)){var k=r.mkt.filter(function(i){return ALL.indexOf(i)>-1});if(k.length){if(!r.h21&&k.indexOf('heritage')<0)k.push('heritage');st.mkt=new Set(k)}}   /* v6.21: saved before Heritage was offered */ 
   if(r.city)st.city=r.city;
   if(r.seen)st.seen=true;
   /* Additive field. A save written before v4.8 has no fbHub, so fall back to
@@ -2279,7 +2281,7 @@ function legacyFbHub(){
   try{lh=JSON.parse(lh)}catch(e2){}
   return (typeof lh==='string'&&fbHubKnown(lh))?lh:'';
 }
-function save(){try{localStorage.setItem(LS,JSON.stringify({hunts:st.hunts,sel:Array.from(st.sel),lock:Array.from(st.lock),mkt:Array.from(st.mkt),city:st.city,seen:st.seen,fbHub:st.fbHub,one:st.one}))}catch(e){}}
+function save(){try{localStorage.setItem(LS,JSON.stringify({hunts:st.hunts,sel:Array.from(st.sel),lock:Array.from(st.lock),mkt:Array.from(st.mkt),city:st.city,seen:st.seen,fbHub:st.fbHub,one:st.one,h21:1}))}catch(e){}}
 
 var tT=null;
 function toast(h,ms){var e=$('#otp-toast');e.innerHTML=h;e.classList.add('on');clearTimeout(tT);tT=setTimeout(function(){e.classList.remove('on')},ms||3600)}
@@ -3345,7 +3347,7 @@ function fpComps(cell){
   return out;
 }
 function fpAsk(btn){
-  if(aiOff())return;   /* v6.20 */
+  if(aiOff())return;   /* v6.21 */
   var cell=btn.parentNode,u=cell.getAttribute('data-u');
   if(!u||btn.disabled)return;
   btn.disabled=true;btn.textContent='Checking…';
@@ -3815,7 +3817,7 @@ function prefs(){
   o.zip=/^\d{5}$/.test(String(p.zip||''))?String(p.zip):'';   /* v6.06: local pickup */
   o.radius=PREF_RADII.indexOf(parseInt(p.radius,10))!==-1?parseInt(p.radius,10):50;
   o.local=(p.local||[]).map(function(h){return String(h).toLowerCase()});
-  o.noai=mGet('aiOff')==='1'?1:0;   /* v6.20 */
+  o.noai=mGet('aiOff')==='1'?1:0;   /* v6.21 */
   return o;
 }
 var PREF_RADII=[25,50,100];
@@ -4038,7 +4040,7 @@ function rMail(){try{rDenAcct()}catch(e){}
   var boxes=document.querySelectorAll('.scout-app-wrapper .otp-mail'),i,box,h;
   var wrap=document.querySelector('.scout-app-wrapper');if(wrap)wrap.classList.toggle('is-pro',mailPro());
   rAlertsHome();   /* v6.15 */
-  try{rAiRow()}catch(e){}   /* v6.20 */
+  try{rAiRow()}catch(e){}   /* v6.21 */
   var beta=true,live=alertsLive();
   for(i=0;i<boxes.length;i++){
     box=boxes[i];
@@ -4318,7 +4320,7 @@ function sgwWhereHtml(t,best){
   return h?'<span class="sgw-where">Best bets for '+esc(t)+':</span>'+h:'';
 }
 function sgwWhere(mount){
-  if(aiOff())return;   /* v6.20 */
+  if(aiOff())return;   /* v6.21 */
   var t=sgwCurTerm(),k=t.toLowerCase(),acts=mount.querySelector('.sgw-acts');
   if(!t||!acts||typeof fetch!=='function')return;
   if(WHERE.c[k]){if(WHERE.c[k]!=='wait')acts.insertAdjacentHTML('beforeend',sgwWhereHtml(t,WHERE.c[k]));return}
@@ -4547,7 +4549,7 @@ function gdBusy(on){
 function gdMake(subject){
   subject=String(subject||'').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'');
   if(GD.busy)return;
-  if(aiOff()){gdNote('AI is turned off in your settings.');return}   /* v6.20 */
+  if(aiOff()){gdNote('AI is turned off in your settings.');return}   /* v6.21 */
   if(subject.length<2){gdNote('Type a subject first, like \u201cFire-King jadeite\u201d.');return}
   var at=gdIdx(subject);
   if(at>-1){gdRender(gdMine()[at]);gdNote('Opened from your saved guides.');return}
@@ -4648,7 +4650,7 @@ var SGW_SUG={t:'',list:[]};
 function sgwSugHide(){var b=$('#otp-sgw .sgw-sug');if(b){b.hidden=true;b.innerHTML='';}SGW_SUG={t:'',list:[]};}
 function sgwCheckName(t){
   sgwSugHide();
-  if(aiOff())return;   /* v6.20 */
+  if(aiOff())return;   /* v6.21 */
   if(!t||/\s/.test(t)||t.length<3||!window.fetch)return;
   fetch(SGW_API+'hunt-check?q='+encodeURIComponent(t)).then(function(r){return r.ok?r.json():null;}).then(function(j){
     var b=$('#otp-sgw .sgw-sug'),i,h,L=[];
@@ -4771,7 +4773,7 @@ function loadPicks(){
   PICKS.tm=setTimeout(function(){
     var box=$('#otp-picks'),row=$('#otp-picksRow'),cur=sgwCurTerm(),H=cur?[cur]:[];
     if(!box||!row||typeof fetch!=='function')return;
-    if(aiOff()){box.hidden=true;return}   /* v6.20 */
+    if(aiOff()){box.hidden=true;return}   /* v6.21 */
     var key=H.join('|').toLowerCase();
     var tt=box.querySelector('.found-title');if(tt&&cur)tt.textContent='From our shop \u00B7 for '+cur;
     if(!H.length){box.hidden=true;PICKS.key='';return}
@@ -5021,7 +5023,7 @@ try{if(/[?&]photo=1(&|$)/.test(location.search)){
 } }catch(e){}
 /* v5.80: the old waitlist section now opens the live Prowl Alerts settings */
 var aGo=$('#otp-alertsGo');if(aGo)aGo.addEventListener('click',function(){openMailSettings()});
-/* ---------- AI HELPERS SWITCH (v6.20) ----------
+/* ---------- AI HELPERS SWITCH (v6.21) ----------
    Prowl uses AI in two ways. Tap-to-use: Fair price, Check a photo, Research this piece and Field Guides run
    only when you press their button. Small helpers run by themselves: matching our shop pieces to your hunts,
    suggesting where to search, checking a new hunt's name and, when switched on at the Worker, sorting results.
@@ -5524,7 +5526,7 @@ var PRO_TRIAL_CODE='PROWLMONTH';
 function planTableHtml(isPro){
   var signed=!!mGet('alertTok'),fh=signed?(MAIL.free||1):1,fw=signed?!!MAIL.freeWeekly:true;
   var rows=[
-    ['Search all 25 marketplaces, Den, saved finds, CSV','✓','✓'],
+    ['Search all 26 marketplaces, Den, saved finds, CSV','✓','✓'],
     ['Hunts in the alerts email',fh+' hunt'+(fh===1?'':'s'),'25, or your whole Den'],
     ['How often',fw?'Mondays':'You pick','Every day, at your time'],
     ['Price ceiling and skip-words','<span class="no">—</span>','✓'],
