@@ -184,7 +184,7 @@ const POSH_LIMIT = 12, POSH_SOLD_LIMIT = 6, POSH_CACHE_SECONDS = 1800;
 const DEPOP_URL = "https://www.depop.com/search/?q=";   /* v59 */
 const DEPOP_LIMIT = 12, DEPOP_CACHE_SECONDS = 1800;
 const VINTED_HOME = "https://www.vinted.com/";   /* v60 */
-const VINTED_API = "/api/v2/catalog/items?search_text=";   /* on whichever Vinted host the home page lands on (v60b) */
+const VINTED_PAGE = "/catalog?search_text=";   /* v60d: the search page itself; its API answers a Worker with a 404 */
 const VINTED_LIMIT = 12, VINTED_CACHE_SECONDS = 1800;
 
 const HIBID_URL = "https://hibid.com/lots?q=";
@@ -868,12 +868,17 @@ async function depopCall(term) {
     clearTimeout(timer);
   }
 }
-/* The product objects from the page's flight strings, or null when there are none to read. */
-function depopProducts(html, max) {
+/* v60d: the text a Next.js page streams in self.__next_f.push([1,"..."]) chunks, joined; "" when there is none */
+function flightText(html) {
   const s = String(html || "");
   const re = /self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)/g;
   let m, buf = "";
   while ((m = re.exec(s))) { try { buf += JSON.parse(m[1]); } catch (e) {} }
+  return buf;
+}
+/* The product objects from the page's flight strings, or null when there are none to read. */
+function depopProducts(html, max) {
+  const buf = flightText(html);
   if (!buf) return null;
   const out = [], seen = {}, r2 = /\{"id":\d+,"brand_id"/g;
   let k;
@@ -951,15 +956,24 @@ async function vintedCall(term) {
     let origin = VINTED_HOME.replace(/\/$/, "");
     try { const hu = new URL(h.url); if (/(^|\.)vinted\.[a-z.]+$/.test(hu.hostname)) origin = hu.origin; } catch (e) {}
     if (!jar.some(c => c.indexOf("access_token_web=") === 0)) return { status: h.status === 200 ? 401 : h.status, text: "", homeStatus: h.status, homeHost: origin, cookies: jar.length };
-    const r = await fetch(origin + VINTED_API + encodeURIComponent(term) + "&per_page=24&order=newest_first", {
+    const r = await fetch(origin + VINTED_PAGE + encodeURIComponent(term) + "&order=newest_first", {
       signal: ctl.signal,
-      headers: Object.assign({ "Accept": "application/json, text/plain, */*", "Cookie": jar.join("; "), "Referer": origin + "/catalog?search_text=" + encodeURIComponent(term) }, base)
+      headers: Object.assign({ "Accept": "text/html,application/xhtml+xml,*/*;q=0.8", "Cookie": jar.join("; "), "Referer": origin + "/" }, base)
     });
     const text = await r.text();
     return { status: r.status, text: text, homeStatus: h.status, homeHost: origin, cookies: jar.length, jar: jar, origin: origin };
   } finally {
     clearTimeout(timer);
   }
+}
+/* v60d: what the decoded flight text looks like, for /__vintedtest */
+function vintedPeek(html) {
+  const buf = flightText(html);
+  const at = {};
+  for (const k of ['"items":[', '/items/', '"title":"', '"price":{', '"price":"', '"photo":{', '"brand_title"', '"catalogItems"']) { const i = buf.indexOf(k); if (i !== -1) at[k] = i; }
+  const i = buf.indexOf('/items/');
+  const j = buf.indexOf('"title":"');
+  return { decodedBytes: buf.length, at: at, nearItems: i !== -1 ? buf.slice(Math.max(0, i - 400), i + 400) : null, nearTitle: j !== -1 ? buf.slice(Math.max(0, j - 200), j + 500) : null };
 }
 /* v60c: when the plain API call fails, /__vintedtest tries the other doors and reports each:
    the API with the headers Vinted's own web app adds, and the server-rendered catalog page. */
@@ -993,11 +1007,34 @@ async function vintedVariants(term, up) {
   }
   return out;
 }
-/* The API's items, or null when the answer is not the catalog JSON. */
+/* v60d: the listing objects in the search page's flight text: any {"id":N,...} object that
+   carries a title and a price. Null when the page has no flight text at all. */
+function vintedItems(html, max) {
+  const buf = flightText(html);
+  if (!buf) return null;
+  const out = [], seen = {}, re = /\{"id":\d+,/g;
+  let m, looked = 0;
+  while (out.length < max && looked < 4000 && (m = re.exec(buf))) {
+    looked++;
+    const peek = buf.slice(m.index, m.index + 600);
+    if (peek.indexOf('"title":"') === -1 || peek.indexOf('"price"') === -1) continue;
+    const e = poshObjEnd(buf, m.index);
+    if (e < 0) break;
+    let o = null;
+    try { o = JSON.parse(buf.slice(m.index, e)); } catch (x) { continue; }
+    re.lastIndex = e;
+    if (!o || typeof o.title !== "string" || seen[o.id]) continue;
+    seen[o.id] = 1;
+    out.push(o);
+  }
+  return out;
+}
+/* The page's listings (or, for an old JSON answer, the API's items); null when there is nothing to read. */
 function vintedNormalize(text) {
-  let j = null;
-  try { j = JSON.parse(String(text || "")); } catch (e) { return null; }
-  const d = j && Array.isArray(j.items) ? j.items : null;
+  const t = String(text || "");
+  let d = null;
+  if (/^\s*\{/.test(t)) { try { const j = JSON.parse(t); d = j && Array.isArray(j.items) ? j.items : null; } catch (e) { d = null; } }
+  else d = vintedItems(t, 30);
   if (!d) return null;
   const out = [], seen = {};
   for (const x of d) {
@@ -3477,6 +3514,7 @@ export default {
         error: err,
         sample: items && items.length ? items.slice(0, 3) : null,
         rawHead: up && !(items && items.length) ? up.text.slice(0, 300) : null,
+        page: up && up.status === 200 ? vintedPeek(up.text) : null,   /* v60d */
         variants: up && up.jar && !(items && items.length) ? await vintedVariants(term, up) : null,   /* v60c */
       }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
     }
