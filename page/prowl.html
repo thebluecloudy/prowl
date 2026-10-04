@@ -121,7 +121,7 @@ window.prowlEpn=function(u,cid){
   --scrim:rgba(0,0,0,.85);--modal-bg:#0a0a1e;
   --body-glow:none;}
 .scout-app-wrapper{margin:0;font:15px/1.5 var(--sans);color:var(--ink);background:var(--bg);background-image:var(--body-glow);padding-bottom:94px;-webkit-font-smoothing:antialiased;transition:background-color .3s,color .3s}
-[data-theme=uranium] .scout-app-wrapper{background:linear-gradient(180deg,#0a0e2e 0%,#050518 40%,#000000 100%) fixed;background-color:#000}
+[data-theme=uranium] .scout-app-wrapper{background:linear-gradient(180deg,#0a0e2e 0,#050518 700px,#000000 1500px) no-repeat;background-color:#000}   /* v6.25: no background-attachment:fixed; on iOS Safari it freezes a long page */
 .scout-app-wrapper button{font:inherit;cursor:pointer;color:inherit}
 .scout-app-wrapper a{color:inherit}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -149,6 +149,7 @@ window.prowlEpn=function(u,cid){
 [data-theme=uranium] .scout-app-wrapper .heromark{display:inline-flex;
   background:radial-gradient(circle at 50% 62%,rgba(57,255,20,.22) 0%,rgba(57,255,20,.06) 40%,transparent 72%);
   animation:glowPulse 3s ease-in-out infinite;}
+@media (hover:none),(prefers-reduced-motion:reduce){[data-theme=uranium] .scout-app-wrapper .heromark{animation:none}}   /* v6.25: an animated drop-shadow stalls phones */
 .scout-app-wrapper .heromark img{height:60px;width:auto;max-width:220px;display:block}
 .scout-app-wrapper h1{font-family:var(--display);font-weight:700;font-size:clamp(30px,6vw,44px);line-height:1.05;letter-spacing:-.028em;margin:0 0 12px}
 .scout-app-wrapper h1 em{color:var(--ac);font-style:italic;font-weight:600}
@@ -1053,7 +1054,7 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper .flock-sub{margin:0 15px 10px;font-size:12px;color:var(--mu)}
 .scout-app-wrapper .flock .fl-for{font-size:10px;color:var(--mu);padding:0 8px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scout-app-wrapper .flock .sgw-note{margin:0 15px}
-/* ---- v6.24: AI helpers switch: with AI off, every AI entry point is hidden ---- */
+/* ---- v6.25: AI helpers switch: with AI off, every AI entry point is hidden ---- */
 .scout-app-wrapper.ai-off .sgw-fp,.scout-app-wrapper.ai-off #otp-aprGo,.scout-app-wrapper.ai-off #otp-photoBtn,.scout-app-wrapper.ai-off #otp-guide,.scout-app-wrapper.ai-off #otp-picks,.scout-app-wrapper.ai-off .sgw-where{display:none!important}
 .scout-app-wrapper.ai-off #otp-dock{grid-template-columns:repeat(5,1fr)}
 /* ---- v6.19: Field Guide on anything ---- */
@@ -1442,7 +1443,7 @@ window.prowlEpn=function(u,cid){
   /* v6.08: a small JPEG of the photo for saved research (longest side 480px) */
   function resThumb(s,cb){var im=new Image();im.onerror=function(){cb('')};im.onload=function(){try{var k=Math.min(1,480/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*k));c.height=Math.max(1,Math.round(im.height*k));c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',0.7))}catch(e){cb('')} };im.src=s;}
   function researchIt(name,btn,r,src){
-    if(lsG('aiOff')==='1')return;   /* v6.24 */
+    if(lsG('aiOff')==='1')return;   /* v6.25 */
     if(btn.disabled)return;btn.disabled=true;btn.textContent='Researching\u2026 up to a minute';
     var old=document.getElementById('otp-aprRes');if(old&&old.parentNode)old.parentNode.removeChild(old);
     var oldS=document.getElementById('otp-aprSold');if(oldS&&oldS.parentNode)oldS.parentNode.removeChild(oldS);   /* v6.09 */
@@ -1552,7 +1553,7 @@ window.prowlEpn=function(u,cid){
     card.appendChild(box);O.appendChild(card);
     try{O.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}
   }
-  B.addEventListener('click',function(){if(lsG('aiOff')==='1')return;if(!busy)F.click();});   /* v6.24 */
+  B.addEventListener('click',function(){if(lsG('aiOff')==='1')return;if(!busy)F.click();});   /* v6.25 */
   var PF=null,F2=document.getElementById('otp-aprF2'),B2=document.getElementById('otp-aprB2');
   if(B2&&F2){B2.addEventListener('click',function(){if(!busy)F2.click();});F2.addEventListener('change',function(){PF=F2.files&&F2.files[0];F2.value='';if(PF){var ev;try{ev=new Event('change');}catch(e){ev=document.createEvent('Event');ev.initEvent('change',true,true);}F.dispatchEvent(ev);}});}
   F.addEventListener('change',function(){
@@ -1987,7 +1988,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.24';
+var PROWL_VERSION='v6.25';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -2054,7 +2055,7 @@ mk('ebaysold','eBay Sold','bolo','https://www.ebay.com/sch/i.html?_nkw=','&LH_So
 mk('estatesales','EstateSales.net','bolo','https://www.estatesales.net/search/'),
 mk('hibid','HiBid','bolo','https://hibid.com/lots?q='),   /* v5.96: HiBid ignores ?search= */
 mk('liveauction','LiveAuctioneers','bolo','https://www.liveauctioneers.com/search/?keyword='),
-/* v6.24 Heritage Auctions: link-out only, no live parsing. */
+/* v6.25 Heritage Auctions: link-out only, no live parsing. */
 mk('heritage','Heritage Auctions','bolo','https://www.ha.com/c/search-results.zx?N=0&Ntt='),
 /* v5.92 Invaluable: auction houses worldwide. Its search wants + for spaces. */
 {id:'invaluable',n:'Invaluable',t:'bolo',u:function(q){return 'https://www.invaluable.com/search?keyword='+E(q).replace(/%20/g,'+')} },
@@ -2264,7 +2265,7 @@ function load(){
   if(Array.isArray(r.sel))st.sel=new Set(r.sel.filter(function(i){return i>=0&&i<st.hunts.length}));
   if(Array.isArray(r.lock))st.lock=new Set(r.lock.filter(function(i){return i>=0&&i<st.hunts.length}));
   if(Array.isArray(r.star))st.lock=new Set(r.star.filter(function(i){return i>=0&&i<st.hunts.length})); // migration from old key
-  if(Array.isArray(r.mkt)){var k=r.mkt.filter(function(i){return ALL.indexOf(i)>-1});if(k.length){if(!r.h21&&k.indexOf('heritage')<0)k.push('heritage');st.mkt=new Set(k)}}   /* v6.24: saved before Heritage was offered */ 
+  if(Array.isArray(r.mkt)){var k=r.mkt.filter(function(i){return ALL.indexOf(i)>-1});if(k.length){if(!r.h21&&k.indexOf('heritage')<0)k.push('heritage');st.mkt=new Set(k)}}   /* v6.25: saved before Heritage was offered */ 
   if(r.city)st.city=r.city;
   if(r.seen)st.seen=true;
   /* Additive field. A save written before v4.8 has no fbHub, so fall back to
@@ -3347,7 +3348,7 @@ function fpComps(cell){
   return out;
 }
 function fpAsk(btn){
-  if(aiOff())return;   /* v6.24 */
+  if(aiOff())return;   /* v6.25 */
   var cell=btn.parentNode,u=cell.getAttribute('data-u');
   if(!u||btn.disabled)return;
   btn.disabled=true;btn.textContent='Checking…';
@@ -3818,7 +3819,7 @@ function prefs(){
   o.zip=/^\d{5}$/.test(String(p.zip||''))?String(p.zip):'';   /* v6.06: local pickup */
   o.radius=PREF_RADII.indexOf(parseInt(p.radius,10))!==-1?parseInt(p.radius,10):50;
   o.local=(p.local||[]).map(function(h){return String(h).toLowerCase()});
-  o.noai=mGet('aiOff')==='1'?1:0;   /* v6.24 */
+  o.noai=mGet('aiOff')==='1'?1:0;   /* v6.25 */
   return o;
 }
 var PREF_RADII=[25,50,100];
@@ -4041,7 +4042,7 @@ function rMail(){try{rDenAcct()}catch(e){}
   var boxes=document.querySelectorAll('.scout-app-wrapper .otp-mail'),i,box,h;
   var wrap=document.querySelector('.scout-app-wrapper');if(wrap)wrap.classList.toggle('is-pro',mailPro());
   rAlertsHome();   /* v6.15 */
-  try{rAiRow()}catch(e){}   /* v6.24 */
+  try{rAiRow()}catch(e){}   /* v6.25 */
   var beta=true,live=alertsLive();
   for(i=0;i<boxes.length;i++){
     box=boxes[i];
@@ -4321,7 +4322,7 @@ function sgwWhereHtml(t,best){
   return h?'<span class="sgw-where">Best bets for '+esc(t)+':</span>'+h:'';
 }
 function sgwWhere(mount){
-  if(aiOff())return;   /* v6.24 */
+  if(aiOff())return;   /* v6.25 */
   var t=sgwCurTerm(),k=t.toLowerCase(),acts=mount.querySelector('.sgw-acts');
   if(!t||!acts||typeof fetch!=='function')return;
   if(WHERE.c[k]){if(WHERE.c[k]!=='wait')acts.insertAdjacentHTML('beforeend',sgwWhereHtml(t,WHERE.c[k]));return}
@@ -4346,7 +4347,7 @@ function sgwFetch(term,cb){
   }).then(function(d){
     sgw.cache[k]={items:cleanItems(d&&d.items)};
   })['catch'](function(e){
-    sgw.cache[k]={items:[],err:/http 429/.test(String(e&&e.message))?2:1};   /* v6.24: 2 = the visitor's daily lookup limit */
+    sgw.cache[k]={items:[],err:/http 429/.test(String(e&&e.message))?2:1};   /* v6.25: 2 = the visitor's daily lookup limit */
   }).then(function(){
     if(sgw.busy===term)sgw.busy='';
     rSGW();
@@ -4370,7 +4371,7 @@ function lvFetch(id,term,cb){
   }).then(function(d){
     S.cache[k]={items:cleanItems(d&&d.items)};
   })['catch'](function(e){
-    S.cache[k]={items:[],err:/http 429/.test(String(e&&e.message))?2:1};   /* v6.24 */
+    S.cache[k]={items:[],err:/http 429/.test(String(e&&e.message))?2:1};   /* v6.25 */
   }).then(function(){
     if(S.busy===term)S.busy='';
     rSGW();
@@ -4550,7 +4551,7 @@ function gdBusy(on){
 function gdMake(subject){
   subject=String(subject||'').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'');
   if(GD.busy)return;
-  if(aiOff()){gdNote('AI is turned off in your settings.');return}   /* v6.24 */
+  if(aiOff()){gdNote('AI is turned off in your settings.');return}   /* v6.25 */
   if(subject.length<2){gdNote('Type a subject first, like \u201cFire-King jadeite\u201d.');return}
   var at=gdIdx(subject);
   if(at>-1){gdRender(gdMine()[at]);gdNote('Opened from your saved guides.');return}
@@ -4651,7 +4652,7 @@ var SGW_SUG={t:'',list:[]};
 function sgwSugHide(){var b=$('#otp-sgw .sgw-sug');if(b){b.hidden=true;b.innerHTML='';}SGW_SUG={t:'',list:[]};}
 function sgwCheckName(t){
   sgwSugHide();
-  if(aiOff())return;   /* v6.24 */
+  if(aiOff())return;   /* v6.25 */
   if(!t||/\s/.test(t)||t.length<3||!window.fetch)return;
   fetch(SGW_API+'hunt-check?q='+encodeURIComponent(t)).then(function(r){return r.ok?r.json():null;}).then(function(j){
     var b=$('#otp-sgw .sgw-sug'),i,h,L=[];
@@ -4774,7 +4775,7 @@ function loadPicks(){
   PICKS.tm=setTimeout(function(){
     var box=$('#otp-picks'),row=$('#otp-picksRow'),cur=sgwCurTerm(),H=cur?[cur]:[];
     if(!box||!row||typeof fetch!=='function')return;
-    if(aiOff()){box.hidden=true;return}   /* v6.24 */
+    if(aiOff()){box.hidden=true;return}   /* v6.25 */
     var key=H.join('|').toLowerCase();
     var tt=box.querySelector('.found-title');if(tt&&cur)tt.textContent='From our shop \u00B7 for '+cur;
     if(!H.length){box.hidden=true;PICKS.key='';return}
@@ -5022,7 +5023,7 @@ try{if(/[?&]photo=1(&|$)/.test(location.search)){
   try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])photo=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
   setTimeout(openPhoto,400);
 } }catch(e){}
-/* v6.24: ?guide=subject (from the Prowl extension) fills the Field Guide box and scrolls to it. It does not run: a guide uses AI and a daily allowance, so the reader taps Make my guide. */
+/* v6.25: ?guide=subject (from the Prowl extension) fills the Field Guide box and scrolls to it. It does not run: a guide uses AI and a daily allowance, so the reader taps Make my guide. */
 try{var gdm=/[?&]guide=([^&#]+)/.exec(location.search);if(gdm){var gds='';try{gds=decodeURIComponent(gdm[1].replace(/\+/g,' '))}catch(e0){gds=gdm[1]}
   gds=gds.replace(/[\u0000-\u001f\u007f]/g,'').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'').slice(0,60);
   try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])guide=[^&#]*(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e1){}
@@ -5030,7 +5031,7 @@ try{var gdm=/[?&]guide=([^&#]+)/.exec(location.search);if(gdm){var gds='';try{gd
 } }catch(e){}
 /* v5.80: the old waitlist section now opens the live Prowl Alerts settings */
 var aGo=$('#otp-alertsGo');if(aGo)aGo.addEventListener('click',function(){openMailSettings()});
-/* ---------- AI HELPERS SWITCH (v6.24) ----------
+/* ---------- AI HELPERS SWITCH (v6.25) ----------
    Prowl uses AI in two ways. Tap-to-use: Fair price, Check a photo, Research this piece and Field Guides run
    only when you press their button. Small helpers run by themselves: matching our shop pieces to your hunts,
    suggesting where to search, checking a new hunt's name and, when switched on at the Worker, sorting results.
