@@ -1,4 +1,4 @@
-# Prowl extension: Chrome Web Store listing (v1.4.0)
+# Prowl extension: Chrome Web Store listing (v1.5.0)
 
 Source is in `extension/`. Build the upload with: `cd extension && zip -r ../prowl-extension-X.Y.Z.zip . -x '.*'`
 
@@ -6,18 +6,23 @@ Source is in `extension/`. Build the upload with: `cd extension && zip -r ../pro
 Prowl by Owl & Twig: Vintage Search
 
 ## Summary (132 characters max)
-A Prowl Pro bonus: search vintage marketplaces from one place, with live listings, Field Guides and your Daily Prowl.
+Search vintage marketplaces from your toolbar, right-click menu or address bar. Prowl Pro adds live listings and Field Guides.
 
 ## Description
-Prowl helps vintage collectors and resellers search for the same piece in many places at once. It is built by Owl & Twig Vintage, a family vintage shop in Michigan. This extension is a bonus for Prowl Pro members.
+Prowl helps vintage collectors and resellers search for the same piece in many places at once. It is built by Owl & Twig Vintage, a family vintage shop in Michigan.
 
-What it does:
-- Type what you are hunting in the toolbar and see live listings from several marketplaces side by side.
-- Right-click any text on a page to search it, open it on all the marketplaces in one tab group, check sold prices, or get a Field Guide.
-- Open your Daily Prowl and Prowl's photo check from the toolbar.
+Free for everyone:
+- Type what you are hunting in the toolbar and open it on all the marketplaces in one tab group.
+- Right-click any text on a page to search it, open it everywhere, or check sold prices.
+- Right-click a photo to identify it with Google Lens.
 - Type "prowl" and a space in the address bar to search from there.
 
-How to unlock it: Prowl Pro is $7 a month, first month free. Sign in once on the Prowl page (Den, Settings, Prowl Alerts) and the extension unlocks by itself. Without Prowl Pro it sends you to the free Prowl page.
+With Prowl Pro ($7 a month, first month free):
+- Live listings from several marketplaces side by side in the toolbar.
+- Field Guides: a researched collector's guide to a maker, line or kind of object.
+- Your Daily Prowl and Prowl's photo check, one click away.
+
+To use the Pro features, sign in once on the Prowl page (Den, Settings, Prowl Alerts). The extension unlocks by itself. The free features need no account.
 
 Prowl is an independent tool. It is not affiliated with, endorsed by, or sponsored by the marketplaces it searches. All trademarks belong to their owners.
 
@@ -44,6 +49,9 @@ Search vintage marketplaces for the text the user types or selects, and show liv
 ## Privacy policy URL
 Use your Shopify privacy policy, which now has the section "Prowl, Prowl Alerts and Field Guides":
 https://owlandtwigvintage.com/policies/privacy-policy
+
+## Test instructions (Privacy practices tab)
+No account is needed for the free features. Click the toolbar icon, type "ceramic panther" and press Search. The buttons below open the search on every marketplace in tabs, eBay sold prices and Google Images. Highlight text on any page and right-click to see the Prowl menu. The Pro features (live listings, Field Guide, Daily, photo check) need a Prowl Pro account; the toolbar shows how to sign in. Without one they are hidden and the popup explains Prowl Pro.
 
 ## Assets you need to provide
 - Screenshots, 1280x800 or 640x400, 1 to 5. Take them with real listings: toolbar popup after a search, the locked Pro screen, the right-click menu.

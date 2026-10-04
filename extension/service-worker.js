@@ -8,11 +8,11 @@ chrome.runtime.onInstalled.addListener(async () => {
   await chrome.contextMenus.removeAll();
   const sel = ['selection'];
   chrome.contextMenus.create({ id: 'prowl', title: 'Prowl', contexts: sel });
-  chrome.contextMenus.create({ id: 'prowl-live', parentId: 'prowl', title: 'Live listings for \u201c%s\u201d', contexts: sel });
+  chrome.contextMenus.create({ id: 'prowl-live', parentId: 'prowl', title: 'Live listings for \u201c%s\u201d (Prowl Pro)', contexts: sel });
   chrome.contextMenus.create({ id: 'prowl-open', parentId: 'prowl', title: 'Search \u201c%s\u201d in Prowl', contexts: sel });
   chrome.contextMenus.create({ id: 'prowl-all', parentId: 'prowl', title: 'Open \u201c%s\u201d on every marketplace', contexts: sel });
   chrome.contextMenus.create({ id: 'prowl-sold', parentId: 'prowl', title: 'eBay sold prices for \u201c%s\u201d', contexts: sel });
-  chrome.contextMenus.create({ id: 'prowl-guide', parentId: 'prowl', title: 'Field Guide for \u201c%s\u201d', contexts: sel });
+  chrome.contextMenus.create({ id: 'prowl-guide', parentId: 'prowl', title: 'Field Guide for \u201c%s\u201d (Prowl Pro)', contexts: sel });
   chrome.contextMenus.create({ id: 'prowl-images', parentId: 'prowl', title: 'See \u201c%s\u201d on Google Images', contexts: sel });
   chrome.contextMenus.create({ id: 'prowl-lens', title: 'Prowl: identify this with Google Lens', contexts: ['image'] });
 });
@@ -20,19 +20,16 @@ chrome.runtime.onInstalled.addListener(async () => {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   try {
     if (info.menuItemId === 'prowl-lens') {
-      if (!(await isPro())) { await openTab(PRO_PAGE_URL, tab); return; }
       if (info.srcUrl && /^https?:/i.test(info.srcUrl)) await openTab(lensUrl(info.srcUrl), tab);
       return;
     }
     const term = cleanTerm(info.selectionText);
     if (!term) return;
-    // The extension is a Pro bonus. Everyone else lands on the free Prowl page.
-    if (!(await isPro())) { await openTab(prowlUrl(term), tab); return; }
     if (info.menuItemId === 'prowl-live') await showLive(term, tab);
     else if (info.menuItemId === 'prowl-open') await openTab(prowlUrl(term), tab);
     else if (info.menuItemId === 'prowl-all') await openAll(term, tab && tab.windowId);
     else if (info.menuItemId === 'prowl-sold') await openTab(soldUrl(term), tab);
-    else if (info.menuItemId === 'prowl-guide') await openTab(guideUrl(term), tab);
+    else if (info.menuItemId === 'prowl-guide') await openTab((await isPro()) ? guideUrl(term) : PRO_PAGE_URL, tab);
     else if (info.menuItemId === 'prowl-images') await openTab(imagesUrl(term), tab);
   } catch (err) {
     console.error('Prowl menu action failed:', err);
@@ -51,7 +48,7 @@ chrome.omnibox.onInputEntered.addListener(async (text, disposition) => {
   const all = /^all\s+/i.test(term);
   if (all) term = cleanTerm(term.replace(/^all\s+/i, ''));
   try {
-    if (all && term && (await isPro())) { await openAll(term); return; }
+    if (all && term) { await openAll(term); return; }
     const url = prowlUrl(term);
     if (disposition === 'currentTab') await chrome.tabs.update({ url });
     else await chrome.tabs.create({ url, active: disposition !== 'newBackgroundTab' });
@@ -71,9 +68,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   const term = cleanTerm(msg.term);
   // Answer first: the popup closes as soon as the first new tab takes focus.
   sendResponse({ ok: Boolean(term) });
-  if (term) {
-    isPro().then((pro) => pro && openAll(term, msg.windowId)).catch((err) => console.error('Prowl open-all failed:', err));
-  }
+  if (term) openAll(term, msg.windowId).catch((err) => console.error('Prowl open-all failed:', err));
   return false;
 });
 
