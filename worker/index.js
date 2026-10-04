@@ -956,10 +956,42 @@ async function vintedCall(term) {
       headers: Object.assign({ "Accept": "application/json, text/plain, */*", "Cookie": jar.join("; "), "Referer": origin + "/catalog?search_text=" + encodeURIComponent(term) }, base)
     });
     const text = await r.text();
-    return { status: r.status, text: text, homeStatus: h.status, homeHost: origin, cookies: jar.length };
+    return { status: r.status, text: text, homeStatus: h.status, homeHost: origin, cookies: jar.length, jar: jar, origin: origin };
   } finally {
     clearTimeout(timer);
   }
+}
+/* v60c: when the plain API call fails, /__vintedtest tries the other doors and reports each:
+   the API with the headers Vinted's own web app adds, and the server-rendered catalog page. */
+async function vintedVariants(term, up) {
+  const base = { "User-Agent": PROBE_UA, "Accept-Language": "en-US,en;q=0.9", "Cookie": up.jar.join("; ") };
+  const anon = (up.jar.find(c => c.indexOf("anon_id=") === 0) || "").slice(8);
+  const q = encodeURIComponent(term);
+  const tries = [
+    ["api+anon", up.origin + "/api/v2/catalog/items?search_text=" + q + "&per_page=24&order=newest_first&page=1",
+      { "Accept": "application/json, text/plain, */*", "X-Anon-Id": anon, "X-Money-Object": "true", "X-Requested-With": "XMLHttpRequest", "Referer": up.origin + "/catalog?search_text=" + q }],
+    ["api+currency", up.origin + "/api/v2/catalog/items?search_text=" + q + "&per_page=24&order=newest_first&page=1&currency=USD&time=" + Math.floor(Date.now() / 1000),
+      { "Accept": "application/json, text/plain, */*", "X-Anon-Id": anon, "X-Money-Object": "true", "Referer": up.origin + "/catalog?search_text=" + q }],
+    ["catalog-page", up.origin + "/catalog?search_text=" + q,
+      { "Accept": "text/html,application/xhtml+xml,*/*;q=0.8", "Referer": up.origin + "/" }],
+  ];
+  const out = [];
+  for (const [name, u, extra] of tries) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), UPSTREAM_TIMEOUT_MS);
+    const t0 = Date.now();
+    try {
+      const r = await fetch(u, { signal: ctl.signal, headers: Object.assign({}, base, extra) });
+      const t = await r.text();
+      const marks = {};
+      for (const m of ['"items":[', '"catalogItems"', "__NEXT_DATA__", "self.__next_f.push", "window.__INITIAL_STATE__", '"id":', "datadome", "captcha"]) { const i = t.indexOf(m); if (i !== -1) marks[m] = i; }
+      const i = t.indexOf('"items":[');
+      out.push({ name: name, status: r.status, type: r.headers.get("content-type"), bytes: t.length, ms: Date.now() - t0, marks: marks,
+        head: t.slice(0, 160), itemsNear: i !== -1 ? t.slice(i, i + 400) : null });
+    } catch (e) { out.push({ name: name, error: String(e && e.message || e), ms: Date.now() - t0 }); }
+    finally { clearTimeout(timer); }
+  }
+  return out;
 }
 /* The API's items, or null when the answer is not the catalog JSON. */
 function vintedNormalize(text) {
@@ -3445,6 +3477,7 @@ export default {
         error: err,
         sample: items && items.length ? items.slice(0, 3) : null,
         rawHead: up && !(items && items.length) ? up.text.slice(0, 300) : null,
+        variants: up && up.jar && !(items && items.length) ? await vintedVariants(term, up) : null,   /* v60c */
       }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
