@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v64: /__grailedtest (2026-10-04). Grailed searches through Algolia: reports whether the shop
+ *        page answers a Worker, any app id / search key in it, and what the index returns.
  *   v63: /__whatnottest (2026-10-04). Tries whatnot.com's search page a few ways and reports what
  *        comes back. Nothing wired yet.
  *   v62: /__offeruptest (2026-10-04). The probe showed offerup.com/search answers a Worker with
@@ -3588,6 +3590,46 @@ export default {
         firstItem: items && items[0] ? items[0] : null,
         rawHead: up && !(items && items.length) ? up.text.slice(0, 300) : null,
       }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/__grailedtest") {   /* v64: Grailed searches through Algolia; is the search key in the page, and does the index answer? */
+      const term = url.searchParams.get("q") || "vintage pendleton";
+      const H = { "User-Agent": PROBE_UA, "Accept": "text/html,application/xhtml+xml,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.9" };
+      const res = { term: term };
+      let html = "";
+      try {
+        const r = await fetch("https://www.grailed.com/shop?query=" + encodeURIComponent(term), { headers: H });
+        html = await r.text();
+        const marks = {};
+        for (const m of ["algolia", "Algolia", "ALGOLIA", "__NEXT_DATA__", "self.__next_f.push", "application/ld+json", "Just a moment", "datadome", "px-captcha"]) { const i = html.indexOf(m); if (i !== -1) marks[m] = i; }
+        res.page = { status: r.status, bytes: html.length, hasTerm: html.toLowerCase().indexOf(term.toLowerCase()) !== -1, marks: marks, head: html.slice(0, 200) };
+        /* keys: an Algolia app id is 10 upper-case letters and digits; a search key is 32 hex */
+        const apps = {}, keys = {};
+        let m;
+        const reA = /["']([A-Z0-9]{10})["']/g; while ((m = reA.exec(html))) apps[m[1]] = (apps[m[1]] || 0) + 1;
+        const reK = /["']([a-f0-9]{32})["']/g; while ((m = reK.exec(html))) keys[m[1]] = (keys[m[1]] || 0) + 1;
+        const ctx = []; const reC = /algolia[^"'\n]{0,80}["'][^"'\n]{0,120}/gi; let n = 0; while ((m = reC.exec(html)) && n++ < 12) ctx.push(m[0].slice(0, 200));
+        res.appIds = Object.keys(apps).slice(0, 10); res.keys32 = Object.keys(keys).slice(0, 10); res.algoliaContext = ctx;
+        /* the bundles the page loads, so the key can be hunted there next if it is not inline */
+        const scripts = []; const reS = /<script[^>]+src=["']([^"']+)["']/g; while ((m = reS.exec(html)) && scripts.length < 20) scripts.push(m[1]);
+        res.scripts = scripts;
+      } catch (e) { res.pageError = String(e && e.message || e); }
+      /* try the index with whatever looks like credentials (the known app id first) */
+      const appId = url.searchParams.get("app") || (res.appIds || []).find(a => a === "MNRWEFSS2Q") || (res.appIds || [])[0];
+      const key = url.searchParams.get("key") || (res.keys32 || [])[0];
+      if (appId && key) {
+        try {
+          const r = await fetch("https://" + appId + "-dsn.algolia.net/1/indexes/" + (url.searchParams.get("index") || "Listing_production") + "/query", {
+            method: "POST",
+            headers: { "X-Algolia-Application-Id": appId, "X-Algolia-API-Key": key, "Content-Type": "application/json" },
+            body: JSON.stringify({ query: term, hitsPerPage: 5 })
+          });
+          const t = await r.text();
+          let j = null; try { j = JSON.parse(t); } catch (e) {}
+          res.algolia = { appId: appId, keyUsed: key.slice(0, 6) + "…", status: r.status, nbHits: j && j.nbHits, hitKeys: j && j.hits && j.hits[0] ? Object.keys(j.hits[0]) : null, firstHit: j && j.hits && j.hits[0] ? JSON.stringify(j.hits[0]).slice(0, 1200) : null, error: j && j.message, head: j ? undefined : t.slice(0, 200) };
+        } catch (e) { res.algoliaError = String(e && e.message || e); }
+      }
+      return new Response(JSON.stringify(res, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/__whatnottest") {   /* v63: does whatnot.com talk to a Worker, and where are its listings? */
