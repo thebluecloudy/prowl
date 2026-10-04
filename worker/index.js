@@ -1958,7 +1958,7 @@ async function research(request, env, origin) {
 const GUIDE_FREE_PER_DAY = 3, GUIDE_PRO_PER_DAY = 15, GUIDE_PER_DAY = 150;
 const GUIDE_BLOCK = /\b(porn\w*|nude|nudes|sex|sexual|rape|cocaine|heroin|meth|bomb|explosive|nazi|kkk|suicide)\b/i;
 function gdText(v, n) {
-  return String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/[*_`#>]+/g, "").replace(/\s+/g, " ").trim().replace(/\bebay\b/gi, "eBay").slice(0, n);
+  return String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/[*_`#>]+/g, "").replace(/\s+/g, " ").replace(/\s+([.,;:!?])/g, "$1").trim().replace(/\bebay\b/gi, "eBay").slice(0, n);   /* v68b: dropped citation marks left " ." behind */
 }
 async function guide(request, env, origin, ctx) {
   if (!env || !env.MUSE_API_KEY) return json({ error: "not configured" }, 500, origin);
