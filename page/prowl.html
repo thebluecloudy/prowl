@@ -1034,17 +1034,17 @@ window.prowlEpn=function(u,cid){
 @media (prefers-reduced-motion:reduce){
   .scout-app-wrapper .drawer{transition:none }
 }
-/* ---- v6.13: the installed app on a desktop runs edge to edge, 8 cards across ---- */
+/* ---- v6.13: the installed app on a desktop runs edge to edge, 4 or 5 cards across. v6.14: no 100vw
+   break-out; the theme section is already full width and the negative margin pushed the page off the left edge. ---- */
 @media (min-width:1000px){
-  .scout-app-wrapper.otp-wide{width:100vw;margin-left:calc(50% - 50vw);overflow-x:clip }
   .scout-app-wrapper.otp-wide main{max-width:none;padding:0 28px }
   .scout-app-wrapper.otp-wide #otp-dock{max-width:none }
-  .scout-app-wrapper.otp-wide .sgw-grid{grid-template-columns:repeat(6,minmax(0,1fr)) }
+  .scout-app-wrapper.otp-wide .sgw-grid{grid-template-columns:repeat(4,minmax(0,1fr)) }
   .scout-app-wrapper.otp-wide .sgw-cols{grid-template-columns:minmax(300px,24%) 1fr }
   .scout-app-wrapper.otp-wide .scout-seo{max-width:900px }
 }
 @media (min-width:1200px){
-  .scout-app-wrapper.otp-wide .sgw-grid{grid-template-columns:repeat(8,minmax(0,1fr)) }
+  .scout-app-wrapper.otp-wide .sgw-grid{grid-template-columns:repeat(5,minmax(0,1fr)) }
 }
 /* ---- v6.04: which email is which ---- */
 .scout-app-wrapper .mail-acct{display:grid;gap:10px;margin:0 0 12px;padding:12px 14px;border:1px solid var(--ln);border-radius:12px;background:var(--cd2) }
@@ -1906,7 +1906,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.13';
+var PROWL_VERSION='v6.14';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
