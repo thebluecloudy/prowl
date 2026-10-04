@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v61: Vinted joins the Prowl Alerts sites (2026-10-04). /__vintedtest showed 30 US listings
+ *        from the search page. Saved prefs without the src4 flag get Vinted added.
  *   v60: Vinted (2026-10-04). /vinted asks Vinted's own catalog API, which wants the session
  *        cookie vinted.com sets on its home page, so each miss is two fetches. No paid API.
  *        Not yet in the page or the Prowl Alerts sites: /__vintedtest shows whether Vinted
@@ -2239,8 +2241,8 @@ const AL_SEEN_CAP = 6000;   // v50: URLs and title keys
 const AL_SUB_PER_IP = 12;
 const AL_CONFIRM_PER_EMAIL = 3;
 const AL_TZ = "America/Detroit";
-const AL_SOURCES = ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark", "depop"];   /* v58: poshmark, v59: depop */
-const AL_SRC_NAME = { shopgoodwill: "ShopGoodwill", ebay: "eBay", etsy: "Etsy", chairish: "Chairish", poshmark: "Poshmark", depop: "Depop" };
+const AL_SOURCES = ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark", "depop", "vinted"];   /* v58: poshmark, v59: depop, v61: vinted */
+const AL_SRC_NAME = { shopgoodwill: "ShopGoodwill", ebay: "eBay", etsy: "Etsy", chairish: "Chairish", poshmark: "Poshmark", depop: "Depop", vinted: "Vinted" };
 /* v50: the member's email settings, sub.prefs = { freq, sources, mute, max, skip, pause }.
    freq: "daily" (default), "mwf" (Mon/Wed/Fri) or "weekly" (Monday), Detroit days.
    sources: which of AL_SOURCES to search. mute: hunts kept in the list but left out
@@ -2287,12 +2289,14 @@ function alPrefs(sub) {
   /* v58: prefs saved before the Poshmark chip existed (no src2) get Poshmark too */
   if (!p.src2 && sources.length && sources.indexOf("poshmark") === -1) sources.push("poshmark");
   if (!p.src3 && sources.length && sources.indexOf("depop") === -1) sources.push("depop");   /* v59 */
+  if (!p.src4 && sources.length && sources.indexOf("vinted") === -1) sources.push("vinted");   /* v61 */
   const max = Math.floor(Number(p.max));
   return {
     freq: AL_FREQ_DAYS[p.freq] ? p.freq : "daily",
     sources: sources.length ? sources : AL_SOURCES.slice(),
     src2: p.src2 ? 1 : 0,   /* v58: the page knows about Poshmark */
     src3: p.src3 ? 1 : 0,   /* v59: the page knows about Depop */
+    src4: p.src4 ? 1 : 0,   /* v61: the page knows about Vinted */
     mute: Array.isArray(p.mute) ? p.mute.map(h => vClean(h, 60).toLowerCase()).filter(Boolean).slice(0, AL_MAX_HUNTS) : [],
     max: max > 0 ? Math.min(max, AL_MAX_PRICE) : 0,
     skip: Array.isArray(p.skip) ? p.skip.map(w => alWords(vClean(w, AL_SKIP_LEN)).trim()).filter(Boolean).slice(0, AL_SKIP_MAX) : [],
@@ -2537,11 +2541,11 @@ async function alSearch(env, source, term, filter) {
   if (source === "ebay" && !(env && env.EBAY_CLIENT_ID)) return [];
   up = source === "ebay" ? await ebayLean(term, env, filter) : source === "etsy" ? await etsyCall(term, env)
      : source === "chairish" ? await chairishCall(term) : source === "poshmark" ? await poshmarkCall(term, false)
-     : source === "depop" ? await depopCall(term) : await callUpstream(term);
+     : source === "depop" ? await depopCall(term) : source === "vinted" ? await vintedCall(term) : await callUpstream(term);
   if (!up || up.status !== 200) return [];
   let items = source === "ebay" ? ebayNormalize(up.text) : source === "etsy" ? etsyNormalize(up.text)
             : source === "chairish" ? chairishNormalize(up.text) : source === "poshmark" ? poshmarkNormalize(up.text, false, term)
-            : source === "depop" ? depopNormalize(up.text) : normalize(up.text);   /* v58: poshmark, v59: depop */
+            : source === "depop" ? depopNormalize(up.text) : source === "vinted" ? vintedNormalize(up.text) : normalize(up.text);   /* v58: poshmark, v59: depop, v61: vinted */
   if (!items || !items.length) return [];
   items = items.slice(0, AL_PER_SITE);
   return items.filter(x => x && /^https:\/\//.test(x.url || "")).map(x => ({
