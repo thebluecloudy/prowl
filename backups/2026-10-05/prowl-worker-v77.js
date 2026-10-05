@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v77: 2026-10-05. Mercari Japan joins the email "Also search" links and the where-to-look list (page v6.36 adds it
+ *        as a link-out). /__mercarijptest tries its search API (api.mercari.jp, DPoP proof from a key made here);
+ *        not wired to the page until it is shown to answer a Worker.
  *   v76: 2026-10-05. Depop is link-only: its firewall answers every Worker request (search page, home page, web API
  *        v2/v4/v5, presentation v1) with "Forbidden - Depop" in a few ms, and API v3 is retired (410). DEPOP_LIVE=false:
  *        /depop answers an empty list and alerts skip Depop. The page drops it from live results (v6.35).
@@ -1053,6 +1056,67 @@ async function vintedCall(term, fresh) {
   } finally {
     clearTimeout(timer);
   }
+}
+/* v77: Mercari Japan. Its search API wants a DPoP proof: a short ES256 token signed with a key the
+   caller makes itself (no account). One key per isolate. Prices come in yen. Test-only until proven. */
+const MERCARIJP_API = "https://api.mercari.jp/v2/entities:search";
+let mjpKey = null;
+function b64u(buf) { const b = buf instanceof ArrayBuffer ? new Uint8Array(buf) : buf; let s = ""; for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+function b64uStr(str) { return b64u(new TextEncoder().encode(str)); }
+async function mercariJpProof(method, url) {
+  if (!mjpKey) {
+    const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    const jwk = await crypto.subtle.exportKey("jwk", kp.publicKey);
+    mjpKey = { priv: kp.privateKey, jwk: { crv: jwk.crv, kty: jwk.kty, x: jwk.x, y: jwk.y } };
+  }
+  const head = b64uStr(JSON.stringify({ typ: "dpop+jwt", alg: "ES256", jwk: mjpKey.jwk }));
+  const body = b64uStr(JSON.stringify({ iat: Math.floor(Date.now() / 1000), jti: crypto.randomUUID(), htu: url, htm: method, uuid: crypto.randomUUID() }));
+  const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, mjpKey.priv, new TextEncoder().encode(head + "." + body));
+  return head + "." + body + "." + b64u(sig);
+}
+async function mercariJpCall(term) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), UPSTREAM_TIMEOUT_MS);
+  try {
+    const dpop = await mercariJpProof("POST", MERCARIJP_API);
+    const payload = {
+      userId: "", pageSize: 40, pageToken: "", searchSessionId: crypto.randomUUID().replace(/-/g, ""),
+      indexRouting: "INDEX_ROUTING_UNSPECIFIED", thumbnailTypes: [],
+      searchCondition: { keyword: term, excludeKeyword: "", sort: "SORT_CREATED_TIME", order: "ORDER_DESC", status: ["STATUS_ON_SALE"],
+        sizeId: [], categoryId: [], brandId: [], sellerId: [], priceMin: 0, priceMax: 0, itemConditionId: [], shippingPayerId: [],
+        shippingFromArea: [], shippingMethod: [], colorId: [], hasCoupon: false, attributes: [], itemTypes: [], skuIds: [] },
+      defaultDatasets: ["DATASET_TYPE_MERCARI", "DATASET_TYPE_BEYOND"], serviceFrom: "suruga", withItemBrand: true, withItemSize: false,
+      withItemPromotions: false, withItemSizes: false, withShopname: false
+    };
+    const r = await fetch(MERCARIJP_API, {
+      method: "POST", signal: ctl.signal,
+      headers: { "Content-Type": "application/json; charset=utf-8", "Accept": "application/json", "DPoP": dpop, "X-Platform": "web",
+        "User-Agent": PROBE_UA, "Accept-Language": "en-US,en;q=0.9", "Origin": "https://jp.mercari.com", "Referer": "https://jp.mercari.com/" },
+      body: JSON.stringify(payload)
+    });
+    const text = await r.text();
+    return { status: r.status, text: text };
+  } finally { clearTimeout(timer); }
+}
+function mercariJpNormalize(text) {
+  let j; try { j = JSON.parse(text); } catch (e) { return null; }
+  if (!j || !Array.isArray(j.items)) return null;
+  const out = [];
+  for (const it of j.items) {
+    if (!it || !it.id || !it.name) continue;
+    const shop = it.itemType === "ITEM_TYPE_BEYOND" || !/^m\d+$/.test(String(it.id));   /* Mercari items are m + digits; Shops items are not */
+    const yen = Number(it.price) || 0;
+    out.push({
+      title: String(it.name).slice(0, 140),
+      price: yen ? "\u00a5" + yen.toLocaleString("en-US") : "",
+      yen: yen,
+      url: shop ? "https://jp.mercari.com/shops/product/" + encodeURIComponent(it.id) : "https://jp.mercari.com/item/" + encodeURIComponent(it.id),
+      image: Array.isArray(it.thumbnails) && it.thumbnails[0] ? String(it.thumbnails[0]) : "",
+      src: "mercarijp"
+    });
+    if (out.length >= 24) break;
+  }
+  return out;
 }
 async function grailedCall(term, env) {
   const app = String((env && env.GRAILED_ALGOLIA_APP) || "").trim();
@@ -2392,6 +2456,7 @@ async function shopPicks(env, url, origin, request) {
 const WHERE_MKTS = {
   etsy: "Etsy: vintage and handmade decor, jewelry, clothing, pottery, small collectibles",
   mercari: "Mercari: everyday resale, toys, games, collectibles, small household items",
+  mercarijp: "Mercari Japan: Japanese pottery, porcelain, Noritake, Kutani, toys, anime and Showa-era collectibles (US buyers can buy direct)",
   poshmark: "Poshmark: clothing, shoes, handbags, fashion accessories",
   depop: "Depop: streetwear and young-crowd vintage clothing",
   grailed: "Grailed: menswear and designer clothing",
@@ -2798,6 +2863,7 @@ const PROWL_APP = "https://www.owlandtwigvintage.com/pages/prowl-app";   /* v50:
 const AL_ALSO = [
   ["Facebook", q => "https://www.facebook.com/marketplace/search/?query=" + encodeURIComponent(q)],
   ["Mercari", q => "https://www.mercari.com/search/?keyword=" + encodeURIComponent(q)],
+  ["Mercari Japan", q => "https://jp.mercari.com/search?keyword=" + encodeURIComponent(q)],   // v77
   ["Ruby Lane", q => "https://www.rubylane.com/search?q=" + encodeURIComponent(q)],
   ["LiveAuctioneers", q => "https://www.liveauctioneers.com/search/?keyword=" + encodeURIComponent(q)],
   ["Invaluable", q => "https://www.invaluable.com/search?keyword=" + encodeURIComponent(q).replace(/%20/g, "+")],
@@ -4190,6 +4256,21 @@ export default {
         else out.push(row);
       }
       return new Response(JSON.stringify({ term: term, colo: (request.cf && request.cf.colo) || null, tries: out }, null, 1), { headers: { "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/__mercarijptest") {   /* v77: does Mercari Japan's search API answer a Worker? */
+      const term = url.searchParams.get("q") || "noritake";
+      const started = Date.now();
+      let up, err = null;
+      try { up = await mercariJpCall(term); } catch (e) { err = String(e && e.message || e); }
+      const items = up && up.status === 200 ? mercariJpNormalize(up.text) : null;
+      return new Response(JSON.stringify({
+        ok: !!(items && items.length), term: term, ms: Date.now() - started,
+        upstreamStatus: up ? up.status : null, upstreamBytes: up ? up.text.length : 0,
+        parsedItems: items ? items.length : null, error: err,
+        first: items ? items.slice(0, 3) : null,
+        rawHead: up && !(items && items.length) ? up.text.slice(0, 400) : null
+      }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/__depoptest") {   /* v59 */
