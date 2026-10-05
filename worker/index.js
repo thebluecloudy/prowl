@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v75: 2026-10-05. /__depopprobe tries several ways into Depop (search page with fuller browser headers, /us/ page,
+ *        web API v2/v3, home page) and reports status and bot-wall headers for each. Diagnostic only.
  *   v74: 2026-10-05. Daily emails were going out hours late: the cron checked 2 hunts per 15 minutes for all
  *        members together, in rotation. The cron now runs every 5 minutes, and members whose email is due
  *        soonest are checked first. /__alerts-why shows each member's state (masked) and hunts left today.
@@ -4140,6 +4142,42 @@ export default {
         page: up && up.status === 200 ? vintedPeek(up.text) : null,   /* v60d */
         variants: up && up.jar && !(items && items.length) ? await vintedVariants(term, up) : null,   /* v60c */
       }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
+    if (url.pathname === "/__depopprobe") {   /* v75: which way into Depop still answers a Worker? */
+      const term = url.searchParams.get("q") || "vintage pyrex";
+      const q = encodeURIComponent(term);
+      const ua = PROBE_UA;
+      const html = { "User-Agent": ua, "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.9" };
+      const browser = Object.assign({}, html, { "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "none", "Sec-Fetch-User": "?1", "Upgrade-Insecure-Requests": "1",
+        "Sec-CH-UA": '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"', "Sec-CH-UA-Mobile": "?0", "Sec-CH-UA-Platform": '"Windows"' });
+      const api = { "User-Agent": ua, "Accept": "application/json, text/plain, */*", "Accept-Language": "en-US,en;q=0.9", "Origin": "https://www.depop.com", "Referer": "https://www.depop.com/" };
+      const tries = [
+        ["page", DEPOP_URL + q, html],
+        ["page+browser", DEPOP_URL + q, browser],
+        ["page-us", "https://www.depop.com/us/search/?q=" + q, browser],
+        ["api-v3", "https://webapi.depop.com/api/v3/search/products/?what=" + q + "&itemsPerPage=24&country=us&currency=USD&sort=relevance", api],
+        ["api-v2", "https://webapi.depop.com/api/v2/search/products/?what=" + q + "&itemsPerPage=24&country=us&currency=USD", api],
+        ["home", "https://www.depop.com/", browser]
+      ];
+      const out = [];
+      for (const [name, u, h] of tries) {
+        const t0 = Date.now(); const row = { name: name };
+        try {
+          const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 12000);
+          const r = await fetch(u, { headers: h, signal: ctl.signal, redirect: "follow" }); clearTimeout(timer);
+          const body = await r.text();
+          const set = typeof r.headers.getSetCookie === "function" ? r.headers.getSetCookie() : [];
+          Object.assign(row, { status: r.status, ms: Date.now() - t0, finalUrl: r.url, type: r.headers.get("content-type"), server: r.headers.get("server"),
+            cfMitigated: r.headers.get("cf-mitigated"), datadome: r.headers.get("x-datadome") || r.headers.get("x-dd-b"), akamai: r.headers.get("x-akamai-transformed") || r.headers.get("akamai-grn"),
+            cookies: set.map(c => String(c).split("=")[0]).slice(0, 10), bytes: body.length,
+            hasFlight: body.indexOf("self.__next_f.push") !== -1, hasProducts: /"products"\s*:\s*\[/.test(body),
+            parsed: name.indexOf("page") === 0 ? ((depopNormalize(body) || []).length) : null,
+            head: body.slice(0, 220) });
+        } catch (e) { row.error = String(e && e.message || e); }
+        out.push(row);
+      }
+      return new Response(JSON.stringify({ term: term, colo: (request.cf && request.cf.colo) || null, tries: out }, null, 1), { headers: { "Content-Type": "application/json" } });
     }
 
     if (url.pathname === "/__depoptest") {   /* v59 */
