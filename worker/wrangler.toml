@@ -25,7 +25,7 @@ tag = "v1"
 new_sqlite_classes = ["Caps"]
 
 [triggers]
-crons = ["*/15 * * * *"]
+crons = ["*/5 * * * *"]
 
 [vars]
 EPN_CAMPAIGN_ID = "5339216838"
