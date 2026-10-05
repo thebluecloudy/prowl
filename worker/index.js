@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v76: 2026-10-05. Depop is link-only: its firewall answers every Worker request (search page, home page, web API
+ *        v2/v4/v5, presentation v1) with "Forbidden - Depop" in a few ms, and API v3 is retired (410). DEPOP_LIVE=false:
+ *        /depop answers an empty list and alerts skip Depop. The page drops it from live results (v6.35).
  *   v75b: /__depopprobe answers compactly (full=1 for every field) and also tries Depop web API v4, v5 and presentation v1.
  *   v75: 2026-10-05. /__depopprobe tries several ways into Depop (search page with fuller browser headers, /us/ page,
  *        web API v2/v3, home page) and reports status and bot-wall headers for each. Diagnostic only.
@@ -224,6 +227,9 @@ const POSH_URL = "https://poshmark.com/search?type=listings&query=";   /* v58 */
 const POSH_LIMIT = 12, POSH_SOLD_LIMIT = 6, POSH_CACHE_SECONDS = 1800;
 const DEPOP_URL = "https://www.depop.com/search/?q=";   /* v59 */
 const DEPOP_LIMIT = 12, DEPOP_CACHE_SECONDS = 1800;
+/* v76: Depop's firewall refuses every Worker request (search page, home page and web API, 2026-10-05,
+   see /__depopprobe). Off: /depop answers an empty list and alerts skip Depop. Set true to try again. */
+const DEPOP_LIVE = false;
 const VINTED_HOME = "https://www.vinted.com/";   /* v60 */
 const VINTED_PAGE = "/catalog?search_text=";   /* v60d: the search page itself; its API answers a Worker with a 404 */
 const VINTED_LIMIT = 12, VINTED_CACHE_SECONDS = 1800;
@@ -2931,7 +2937,7 @@ async function alSearch(env, source, term, filter) {
 async function alHunt(env, term, sub) {
   const local = alNear(sub, term);   /* v56: Pro + ZIP + marked local */
   const p = sub ? alPrefs(sub) : null;
-  const srcs = local ? ["ebay"] : (sub ? p.sources : AL_SOURCES);   /* v50: only the sites this member wants */
+  const srcs = (local ? ["ebay"] : (sub ? p.sources : AL_SOURCES)).filter(s => s !== "depop" || DEPOP_LIVE);   /* v50: only the sites this member wants; v76: Depop off */
   const filter = local ? ebayLocalFilter(p.zip, p.radius) : "";
   const got = await Promise.all(srcs.map(s => alSearch(env, s, term, filter).catch(() => [])));
   let out = [];
@@ -4259,6 +4265,9 @@ export default {
     if (!term) return json({ error: "missing q" }, 400, origin);
     if (term.length > MAX_TERM) term = term.slice(0, MAX_TERM);
 
+    if (url.pathname === "/depop" && !DEPOP_LIVE) {   /* v76 */
+      return json({ term: String(url.searchParams.get("q") || "").slice(0, 80), source: "depop", off: "Depop no longer answers automated lookups; open it from the marketplace list.", items: [] }, 200, origin, { "Cache-Control": "public, max-age=3600" });
+    }
     const SOURCES = { "/": "shopgoodwill", "/ebay": "ebay", "/hibid": "hibid", "/chairish": "chairish", "/etsy": "etsy", "/poshmark": "poshmark", "/poshsold": "poshsold", "/depop": "depop", "/vinted": "vinted", "/grailed": "grailed" };   /* v58: poshmark, v59: depop, v60: vinted, v65: grailed */
     const source = SOURCES[url.pathname];
     if (!source) return json({ error: "not found" }, 404, origin);

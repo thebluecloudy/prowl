@@ -19,6 +19,12 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v76: 2026-10-05. Depop is link-only: its firewall answers every Worker request (search page, home page, web API
+ *        v2/v4/v5, presentation v1) with "Forbidden - Depop" in a few ms, and API v3 is retired (410). DEPOP_LIVE=false:
+ *        /depop answers an empty list and alerts skip Depop. The page drops it from live results (v6.35).
+ *   v75b: /__depopprobe answers compactly (full=1 for every field) and also tries Depop web API v4, v5 and presentation v1.
+ *   v75: 2026-10-05. /__depopprobe tries several ways into Depop (search page with fuller browser headers, /us/ page,
+ *        web API v2/v3, home page) and reports status and bot-wall headers for each. Diagnostic only.
  *   v74: 2026-10-05. Daily emails were going out hours late: the cron checked 2 hunts per 15 minutes for all
  *        members together, in rotation. The cron now runs every 5 minutes, and members whose email is due
  *        soonest are checked first. /__alerts-why shows each member's state (masked) and hunts left today.
@@ -221,6 +227,9 @@ const POSH_URL = "https://poshmark.com/search?type=listings&query=";   /* v58 */
 const POSH_LIMIT = 12, POSH_SOLD_LIMIT = 6, POSH_CACHE_SECONDS = 1800;
 const DEPOP_URL = "https://www.depop.com/search/?q=";   /* v59 */
 const DEPOP_LIMIT = 12, DEPOP_CACHE_SECONDS = 1800;
+/* v76: Depop's firewall refuses every Worker request (search page, home page and web API, 2026-10-05,
+   see /__depopprobe). Off: /depop answers an empty list and alerts skip Depop. Set true to try again. */
+const DEPOP_LIVE = false;
 const VINTED_HOME = "https://www.vinted.com/";   /* v60 */
 const VINTED_PAGE = "/catalog?search_text=";   /* v60d: the search page itself; its API answers a Worker with a 404 */
 const VINTED_LIMIT = 12, VINTED_CACHE_SECONDS = 1800;
@@ -2928,7 +2937,7 @@ async function alSearch(env, source, term, filter) {
 async function alHunt(env, term, sub) {
   const local = alNear(sub, term);   /* v56: Pro + ZIP + marked local */
   const p = sub ? alPrefs(sub) : null;
-  const srcs = local ? ["ebay"] : (sub ? p.sources : AL_SOURCES);   /* v50: only the sites this member wants */
+  const srcs = (local ? ["ebay"] : (sub ? p.sources : AL_SOURCES)).filter(s => s !== "depop" || DEPOP_LIVE);   /* v50: only the sites this member wants; v76: Depop off */
   const filter = local ? ebayLocalFilter(p.zip, p.radius) : "";
   const got = await Promise.all(srcs.map(s => alSearch(env, s, term, filter).catch(() => [])));
   let out = [];
@@ -4142,6 +4151,47 @@ export default {
       }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
+    if (url.pathname === "/__depopprobe") {   /* v75: which way into Depop still answers a Worker? */
+      const term = url.searchParams.get("q") || "vintage pyrex";
+      const q = encodeURIComponent(term);
+      const ua = PROBE_UA;
+      const html = { "User-Agent": ua, "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.9" };
+      const browser = Object.assign({}, html, { "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "none", "Sec-Fetch-User": "?1", "Upgrade-Insecure-Requests": "1",
+        "Sec-CH-UA": '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"', "Sec-CH-UA-Mobile": "?0", "Sec-CH-UA-Platform": '"Windows"' });
+      const api = { "User-Agent": ua, "Accept": "application/json, text/plain, */*", "Accept-Language": "en-US,en;q=0.9", "Origin": "https://www.depop.com", "Referer": "https://www.depop.com/" };
+      const tries = [
+        ["page", DEPOP_URL + q, html],
+        ["page+browser", DEPOP_URL + q, browser],
+        ["page-us", "https://www.depop.com/us/search/?q=" + q, browser],
+        ["api-v2", "https://webapi.depop.com/api/v2/search/products/?what=" + q + "&itemsPerPage=24&country=us&currency=USD", api],
+        ["api-v4", "https://webapi.depop.com/api/v4/search/products/?what=" + q + "&items_per_page=24&country=us&currency=USD", api],
+        ["api-v5", "https://webapi.depop.com/api/v5/search/products/?what=" + q + "&items_per_page=24&country=us&currency=USD", api],
+        ["api-v3-nosort", "https://webapi.depop.com/api/v3/search/products/?what=" + q + "&items_per_page=24&country=us&currency=USD", api],
+        ["api-v1-presentation", "https://webapi.depop.com/presentation/api/v1/search/products/?what=" + q + "&items_per_page=24&country=us&currency=USD", api],
+        ["home", "https://www.depop.com/", browser]
+      ];
+      const compact = url.searchParams.get("full") !== "1";
+      const out = [];
+      for (const [name, u, h] of tries) {
+        const t0 = Date.now(); const row = { name: name };
+        try {
+          const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 12000);
+          const r = await fetch(u, { headers: h, signal: ctl.signal, redirect: "follow" }); clearTimeout(timer);
+          const body = await r.text();
+          const set = typeof r.headers.getSetCookie === "function" ? r.headers.getSetCookie() : [];
+          Object.assign(row, { status: r.status, ms: Date.now() - t0, finalUrl: r.url, type: r.headers.get("content-type"), server: r.headers.get("server"),
+            cfMitigated: r.headers.get("cf-mitigated"), datadome: r.headers.get("x-datadome") || r.headers.get("x-dd-b"), akamai: r.headers.get("x-akamai-transformed") || r.headers.get("akamai-grn"),
+            cookies: set.map(c => String(c).split("=")[0]).slice(0, 10), bytes: body.length,
+            hasFlight: body.indexOf("self.__next_f.push") !== -1, hasProducts: /"products"\s*:\s*\[/.test(body),
+            parsed: name.indexOf("page") === 0 ? ((depopNormalize(body) || []).length) : null,
+            head: body.slice(0, 220) });
+        } catch (e) { row.error = String(e && e.message || e); }
+        if (compact) { const c = { n: row.name, s: row.status, ms: row.ms, b: row.bytes }; if (row.error) c.err = row.error; if (row.parsed) c.parsed = row.parsed; if (row.hasProducts) c.products = true; c.h = String(row.head || "").replace(/\s+/g, " ").slice(0, row.status === 200 ? 260 : 110); out.push(c); }
+        else out.push(row);
+      }
+      return new Response(JSON.stringify({ term: term, colo: (request.cf && request.cf.colo) || null, tries: out }, null, 1), { headers: { "Content-Type": "application/json" } });
+    }
+
     if (url.pathname === "/__depoptest") {   /* v59 */
       const term = url.searchParams.get("q") || "jadeite fire king";
       const started = Date.now();
@@ -4215,6 +4265,9 @@ export default {
     if (!term) return json({ error: "missing q" }, 400, origin);
     if (term.length > MAX_TERM) term = term.slice(0, MAX_TERM);
 
+    if (url.pathname === "/depop" && !DEPOP_LIVE) {   /* v76 */
+      return json({ term: String(url.searchParams.get("q") || "").slice(0, 80), source: "depop", off: "Depop no longer answers automated lookups; open it from the marketplace list.", items: [] }, 200, origin, { "Cache-Control": "public, max-age=3600" });
+    }
     const SOURCES = { "/": "shopgoodwill", "/ebay": "ebay", "/hibid": "hibid", "/chairish": "chairish", "/etsy": "etsy", "/poshmark": "poshmark", "/poshsold": "poshsold", "/depop": "depop", "/vinted": "vinted", "/grailed": "grailed" };   /* v58: poshmark, v59: depop, v60: vinted, v65: grailed */
     const source = SOURCES[url.pathname];
     if (!source) return json({ error: "not found" }, 404, origin);
