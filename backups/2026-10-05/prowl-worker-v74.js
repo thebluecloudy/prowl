@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v74: 2026-10-05. Daily emails were going out hours late: the cron checked 2 hunts per 15 minutes for all
+ *        members together, in rotation. The cron now runs every 5 minutes, and members whose email is due
+ *        soonest are checked first. /__alerts-why shows each member's state (masked) and hunts left today.
  *   v73: 2026-10-05. Vinted home-page cookies cached per isolate for 10 minutes (refreshed when a search is refused;
  *        /__vintedtest?fresh=1 forces fresh ones). Jev's reproduction option, the fair-price, research and field-guide
  *        prompts now also flag confusable makers (Robinson-Ransbottom "RRP Co. Roseville, Ohio" is not Roseville
@@ -2580,7 +2583,7 @@ async function appraise(request, env, origin) {
      KV binding     PROWL_ALERTS        (Storage -> KV namespace, bound under this name)
      Secret         RESEND_API_KEY      (resend.com API key)
      Text var       ALERT_ALLOW         comma list of emails allowed while in beta
-     Cron trigger   every 15 minutes (dashboard: Triggers -> Cron -> "*" slash 15, then four "*")
+     Cron trigger   every 5 minutes since v74 (set in wrangler.toml)
    Optional text vars:
      ALERTS         "off" stops everything; "public" lets any email sign up (double opt-in)
      ALERT_HOUR     hour the email goes out, Detroit time (default 7)
@@ -3143,7 +3146,7 @@ async function alTrialNotes(env, sub) {
   return "trial " + kind + " sent";
 }
 
-/* Every 15 minutes: check a few hunts; after the member's hour (v52: prefs.slot,
+/* Every 5 minutes (v74; was 15): check a few hunts; after the member's hour (v52: prefs.slot,
    else ALERT_HOUR), once all of their hunts are checked for the day, send the one email. */
 async function alTick(env) {
   if (!alReady(env)) return { skipped: "off or no KV" };
@@ -3158,12 +3161,16 @@ async function alTick(env) {
     listed.keys.forEach(k => names.push(k.name));
     cursor = listed.list_complete ? undefined : listed.cursor;
   } while (cursor);
-  const off = names.length ? Math.floor(Date.now() / 900000) % names.length : 0;
+  const off = names.length ? Math.floor(Date.now() / 300000) % names.length : 0;
   const order = names.slice(off).concat(names.slice(0, off));
+  /* v74: members whose email is due soonest are checked first, so the shared hunt budget goes to the
+     emails about to go out instead of to whoever is next in the rotation. */
+  const subs = [];
+  for (let i = 0; i < order.length; i++) { const sub = await kvGet(env, order[i], null); if (sub) subs.push({ sub: sub, i: i, k: alUrgency(env, sub, now) }); }
+  subs.sort((a, b) => a.k - b.k || a.i - b.i);
   const log = [];
-  for (const name of order) {
-    const sub = await kvGet(env, name, null);
-    if (!sub) continue;
+  for (const it of subs) {
+    const sub = it.sub;
     if (sub.pro && sub.plan && sub.plan.trial) { try { const tn = await alTrialNotes(env, sub); if (tn) log.push(sub.email + " " + tn); } catch (e) { log.push(sub.email + " trial mail error"); } }   /* v55 */
     if (!sub.hunts || !sub.hunts.length) continue;
     if (sub.mail === "off") continue;   /* v55: emails off, membership and Pro stay */
@@ -3188,6 +3195,36 @@ async function alTick(env) {
   }
   console.log(JSON.stringify({ alTick: now.day + " " + now.hour + "h", members: names.length, from: off, log: log }));   /* v51: visible in Workers Logs */
   return { at: now, log: log };
+}
+
+/* v74: hours until this member's email is due today (negative = overdue); not due today sorts last. */
+function alUrgency(env, sub, now) {
+  try {
+    if (!sub.hunts || !sub.hunts.length || sub.mail === "off") return 1000;
+    const loc = alLocal(sub, now);
+    if (alPaused(sub, loc) || sub.sent === loc.day || !alSendDay(sub, loc)) return 1000;
+    return alSlotHour(env, sub) - loc.hour;
+  } catch (e) { return 1000; }
+}
+/* v74: why each member's email has or has not gone out today. Read-only; emails are masked. */
+async function alState(env) {
+  const now = alNow(env), out = [];
+  let cursor;
+  do {
+    const listed = await env.PROWL_ALERTS.list({ prefix: "sub:", cursor: cursor });
+    for (const k of listed.keys) {
+      const sub = await kvGet(env, k.name, null); if (!sub) continue;
+      const loc = alLocal(sub, now), act = sub.hunts && sub.hunts.length ? alActive(env, sub) : [];
+      const done = sub.day === now.day ? act.filter(h => (sub.done || []).indexOf(h.toLowerCase()) !== -1).length : 0;
+      const e = String(sub.email || ""), at = e.indexOf("@");
+      out.push({ who: e.slice(0, 2) + "***" + (at > 0 ? e.slice(at) : ""), pro: !!sub.pro, hunts: act.length, checkedToday: done,
+        sentToday: sub.sent === loc.day, slotHour: alSlotHour(env, sub), localHour: loc.hour, sendDay: alSendDay(sub, loc),
+        paused: alPaused(sub, loc), mailOff: sub.mail === "off", freq: alPrefs(sub).freq, urgency: alUrgency(env, sub, now) });
+    }
+    cursor = listed.list_complete ? undefined : listed.cursor;
+  } while (cursor);
+  const need = out.filter(m => m.urgency < 1000).reduce((n, m) => n + m.hunts - m.checkedToday, 0);
+  return { now: now, batch: alBatch(env), members: out.length, huntsLeftToday: need, list: out };
 }
 
 /* v51: links in email are fetched by security scanners before a person taps them,
@@ -3624,6 +3661,7 @@ export default {
     if (url.pathname === "/alerts/move-confirm") return alMoveConfirm(request, env, url);   /* v54 */
     if (url.pathname === "/alerts/move" && request.method === "POST") return alMove(request, env, origin);   /* v54 */
     if (url.pathname === "/__alerts-preview" || url.pathname === "/__alerts-run") return alDebug(env, url);
+    if (url.pathname === "/__alerts-why") return new Response(JSON.stringify(await alState(env), null, 1), { headers: { "Content-Type": "application/json" } });   /* v74 */
     if (request.method === "POST" && ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);
 
     if (request.method === "OPTIONS") {
