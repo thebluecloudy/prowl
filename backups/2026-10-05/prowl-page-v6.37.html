@@ -15,7 +15,7 @@
 /* v6.00: set the saved theme before the page paints, so dark and uranium do not
    flash light on load. applyTheme in the main script does the rest. */
 (function(){
-  try{var t=localStorage.getItem('prowl.theme');if(t==='dark'||t==='uranium')document.documentElement.setAttribute('data-theme',t);}catch(e){ }
+  try{var t=localStorage.getItem('prowl.theme');if(t==='midnight'){document.documentElement.setAttribute('data-theme','dark');document.documentElement.setAttribute('data-dark','midnight');}else if(t==='dark'||t==='uranium')document.documentElement.setAttribute('data-theme',t);}catch(e){ }   /* v6.37: midnight */
 })();
 /* v5.79 eBay Partner Network. Adds Owl & Twig's EPN campaign to eBay search and
    item links (ebay.com/sch and /itm only), so a purchase after a Prowl click can
@@ -1202,12 +1202,12 @@ window.prowlEpn=function(u,cid){
 /* ==== v6.33 Look 2 palette: daylight is bittersweet/amberina like a swung vase, dark is blue hour,
    titles are a bold vintage slab with no italics. Uranium keeps its own colours. ==== */
 .scout-app-wrapper.k2{--k2-ln:#3B1E12;--k2-band:linear-gradient(90deg,#D9572B 0%,#E8743A 45%,#F2A743 100%);--k2-bandink:#2A140C;--k2-card:#FFFBF5;--k2-dot:rgba(59,30,18,.10);--k2-lab:#C2491F;--k2-slab:'Alfa Slab One',var(--display);--ac:#C2491F;--ac-ring:rgba(194,73,31,.18)}
-[data-theme=dark] .scout-app-wrapper.k2{
+[data-theme=dark]:not([data-dark=midnight]) .scout-app-wrapper.k2{
   --bg:#0B1430;--cd:#12204A;--cd2:#15254F;--cd3:#1B2D5C;--ln:#2C4478;--l2:#4A68A6;
   --ink:#F1F4FB;--i2:#D2DBEE;--i3:#A3B3D6;--mu:#8D9FC6;--mu2:#7C90BA;--hover:#1B2D5C;
   --bar-bg:rgba(11,20,48,.9);--dock-bg:rgba(11,20,48,.95);--modal-bg:#0F1B3F;--body-glow:none;
   --k2-ln:#9DB7EA;--k2-band:linear-gradient(90deg,#E8743A 0%,#F2A743 100%);--k2-bandink:#1A0E06;--k2-card:#12204A;--k2-dot:rgba(157,183,234,.10);--k2-lab:#F2A743}
-[data-theme=dark] .scout-app-wrapper.k2{background-color:#0B1430}
+[data-theme=dark]:not([data-dark=midnight]) .scout-app-wrapper.k2{background-color:#0B1430}
 [data-theme=uranium] .scout-app-wrapper.k2{--k2-slab:'Alfa Slab One',var(--display)}
 .scout-app-wrapper.k2 #otp-sgw>.sgw-head,.scout-app-wrapper.k2 .found-title,.scout-app-wrapper.k2 .flock-head,
 .scout-app-wrapper.k2 .gd>h2,.scout-app-wrapper.k2 .alrt>h2,.scout-app-wrapper.k2 .b.p,.scout-app-wrapper.k2 a.b.p{background:var(--k2-band)}
@@ -1217,6 +1217,7 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper.k2 #otp-sgw>.sgw-head b,.scout-app-wrapper.k2 .found-title,.scout-app-wrapper.k2 .flock-head b,.scout-app-wrapper.k2 .gd>h2,.scout-app-wrapper.k2 .alrt>h2{font-size:20px}
 .scout-app-wrapper.k2 .sgw-chip.on{background:#C2491F;border-color:#3B1E12;color:#FFF6EC}
 [data-theme=dark] .scout-app-wrapper.k2 .sgw-chip.on{background:#F2A743;border-color:#9DB7EA;color:#1A0E06}
+[data-dark=midnight] .scout-app-wrapper.k2 .sgw-chip.on{border-color:#F2A743}
 [data-theme=uranium] .scout-app-wrapper.k2 .sgw-chip.on{background:var(--ac);border-color:var(--ac);color:var(--onink)}
 [data-theme] .scout-app-wrapper.k2 .gd>h2,[data-theme] .scout-app-wrapper.k2 .alrt>h2,.scout-app-wrapper.k2 .gd>h2,.scout-app-wrapper.k2 .alrt>h2{color:var(--k2-bandink)!important}
 
@@ -1279,7 +1280,8 @@ window.prowlEpn=function(u,cid){
 [data-theme=uranium] .scout-app-wrapper.k2{--ac:#39ff14;--ac-ring:rgba(57,255,20,.35)}
 </style>
 
-<div class="scout-app-wrapper ot-r">
+<div class="scout-app-wrapper ot-r k2">
+<script>/* v6.37: the New look is in the markup so it paints first; Classic is taken off here before paint */try{if(/[?&]look=1(&|$)/.test(location.search)||(localStorage.getItem('prowl.look')==='1'&&!/[?&]look=2(&|$)/.test(location.search)))document.currentScript.parentNode.classList.remove('k2')}catch(e){}</script>
 <header class="bar">
   <span class="brand">
     <span class="markwrap">
@@ -2159,7 +2161,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.36';
+var PROWL_VERSION='v6.37';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -2168,15 +2170,18 @@ function mk(id,n,t,b,s){return{id:id,n:n,t:t,u:function(q){var x=b+E(q)+(s||'');
 
 /* ---------- THEME (3-way cycle) ---------- */
 var TK='prowl.theme';
-var THEMES=['light','dark','uranium'];
-var THEME_META_COLOR={light:'#FAF6EE',dark:'#070706',uranium:'#0a0e2e'};
-var THEME_ICON={light:'☾',dark:'☀',uranium:'🍄'};
-var THEME_NEXT={light:'Dark mode',dark:'Uranium mode',uranium:'Light mode'};
-var THEME_LABEL={light:'Light',dark:'Dark',uranium:'Uranium'};
+/* v6.37: four modes. dark is Blue hour in the New look; midnight is the original near-black dark
+   (data-theme=dark plus data-dark=midnight, so every dark rule still applies). */
+var THEMES=['light','dark','midnight','uranium'];
+var THEME_META_COLOR={light:'#FAF6EE',dark:'#0B1430',midnight:'#070706',uranium:'#0a0e2e'};
+var THEME_ICON={light:'☾',dark:'✦',midnight:'🍄',uranium:'☀'};
+var THEME_NEXT={light:'Blue hour mode',dark:'Midnight mode',midnight:'Uranium mode',uranium:'Light mode'};
+var THEME_LABEL={light:'Light',dark:'Blue hour',midnight:'Midnight',uranium:'Uranium'};
 
 function applyTheme(t){
   if(THEMES.indexOf(t)===-1)t='light';
-  document.documentElement.setAttribute('data-theme',t);
+  document.documentElement.setAttribute('data-theme',t==='midnight'?'dark':t);
+  if(t==='midnight')document.documentElement.setAttribute('data-dark','midnight');else document.documentElement.removeAttribute('data-dark');
   try{localStorage.setItem(TK,t)}catch(e){}
   var m=document.querySelector('meta[name=theme-color]');
   if(m)m.setAttribute('content',THEME_META_COLOR[t]);
@@ -2185,9 +2190,9 @@ function applyTheme(t){
   if(b2){b2.textContent=THEME_LABEL[t];}
 }
 function cycleTheme(){
-  var cur=document.documentElement.getAttribute('data-theme')||'light';
+  var h=document.documentElement,cur=h.getAttribute('data-dark')==='midnight'?'midnight':(h.getAttribute('data-theme')||'light');
   var i=THEMES.indexOf(cur);
-  applyTheme(THEMES[(i+1)%3]);
+  applyTheme(THEMES[(i+1)%THEMES.length]);
 }
 var sv;try{sv=localStorage.getItem(TK)}catch(e){}
 if(!sv||THEMES.indexOf(sv)===-1){
