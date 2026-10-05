@@ -1,0 +1,30 @@
+name: Fetch test
+
+# One-off check (2026-10-05): do Mercari Japan, Mercari US and Depop answer a
+# server outside Cloudflare? They refuse Prowl's Cloudflare Worker. Run it from
+# the Actions tab; it changes nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      term:
+        description: "Search term"
+        required: false
+        default: "noritake"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Ask each marketplace
+        env:
+          T: ${{ inputs.term }}
+        run: node .github/scripts/fetch-test.mjs "$T"
