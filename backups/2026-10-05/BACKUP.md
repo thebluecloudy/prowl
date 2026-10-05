@@ -4,27 +4,27 @@ A snapshot of Prowl as it runs today, with what you need to put it back if somet
 
 | File | What it is | Version |
 |---|---|---|
-| `prowl-page-v6.31.html` | The whole Prowl page (HTML, CSS and JavaScript) that lives in Shopify | Page v6.31 |
+| `prowl-page-v6.32.html` | The whole Prowl page (HTML, CSS and JavaScript) that lives in Shopify | Page v6.32 |
 | `prowl-worker-v71.js` | The Cloudflare Worker that fetches live listings, runs Prowl Alerts, Pro, Field Guides and photo checks | Worker v71 |
 | `wrangler.toml` | The Worker's settings: name, storage, schedule and plain (non-secret) variables | matches v71 |
 
-Snapshot of `main` after page v6.31. Check a file is intact with `md5sum`:
+Snapshot of `main` after page v6.32. Check a file is intact with `md5sum`:
 
-- `prowl-page-v6.31.html`: `6b8115bece022deaf5efa127d8fb683d`
+- `prowl-page-v6.32.html`: `4a57cf016095cad9a81ffec447153d07`
 - `prowl-worker-v71.js`: `6959e0d06697dbeb0160e08b2ee8f2ad`
 
 ## What is in this version
 
 - **Look:** "New" style (Look 2) is the default on the home page, the Den (all four tabs), the marketplace and photo drawers and Help: outlined cards, swung-vase orange bands, slab titles, pill tabs, short copy. **Classic** (the original look) is kept: Den > Settings > Style, or add `?look=1` to the address (`?look=2` goes back).
 - **Colour modes:** Light (swung-vase bittersweet), Dark (blue hour), Uranium (blacklight green).
-- **Live listings:** ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Depop, Vinted and Grailed. 26 marketplaces in total, the rest as links (including Heritage Auctions).
+- **Live listings:** ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Depop, Vinted and Grailed. 26 marketplaces in total, the rest as links (including Heritage Auctions). Facebook Marketplace city chips: New York, Los Angeles, San Francisco, Chicago, Detroit, Dallas, Houston, Phoenix, Miami, Atlanta, Seattle, plus My city and All USA.
 - **Features:** hunts and the Den, Daily Prowl, Flock, Field Guide, photo check, Fair price, Prowl Alerts emails, Prowl Pro ($7/month), AI off switch for Pro, empty-search card, clear live-error messages, feedback link to the contact page.
 - **Worker limits:** 2,500 fresh lookups per visitor address per day (cache hits are free).
 
 ## How to restore the page
 
 1. Shopify admin > Online Store > Pages > **Prowl**. Switch the content editor to HTML view (the `<>` button).
-2. Select everything, delete it, paste the whole of `prowl-page-v6.31.html`, and save.
+2. Select everything, delete it, paste the whole of `prowl-page-v6.32.html`, and save.
 
 Or let GitHub do it: copy the file over `page/prowl.html` in the repo and push to `main`. The **Deploy Prowl page to Shopify** workflow sends it and checks Shopify saved it.
 
