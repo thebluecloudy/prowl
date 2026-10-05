@@ -2877,6 +2877,7 @@ async function alProSet(env, sub, force) {
   if (p.pro === false && Array.isArray(sub.prev)) for (const old of sub.prev.slice(0, 2)) { const q = await alPro(env, old, force); if (q.pro) { p = q; break; } }
   if (p.pro !== null) sub.pro = p.pro;
   if (p.pro !== null) sub.plan = p.plan || null;
+  sub.proCheck = p.pro === null ? String(p.via || "check failed").slice(0, 40) : "";   /* v78: shown as "pro check failing" in the admin */
   if (sub.pro) sub.hadPro = true;   /* v55: the free month is once per member */
   sub.proDay = alNow(env).day;
   return sub.pro;
@@ -3281,7 +3282,7 @@ async function alTick(env) {
     if ((sub.proDay !== now.day && proLeft > 0) || !sub.utok) {
       if (sub.proDay !== now.day) { proLeft--; await alProSet(env, sub, false); }
       if (!sub.utok) sub.utok = alToken();   /* v51: members from before v51 get an unsubscribe token */
-      if (!(await alMerge(env, sub, ["pro", "plan", "proDay", "utok"]))) continue;
+      if (!(await alMerge(env, sub, ["pro", "plan", "proDay", "utok", "proCheck"]))) continue;
     }
     let n = 0;
     if (budget > 0) { try { n = await alCheck(env, sub, budget, now); } catch (e) { log.push(sub.email + " check failed: " + String(e && e.message || e)); note("check failed: " + String(e && e.message || e)); budget = 0; } budget -= n; tally.checked += n; if (n) log.push(sub.email + " checked " + n); }

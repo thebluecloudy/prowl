@@ -14,7 +14,7 @@ const ID_RE = /^M-[0-9a-f]{8}$/;
 const HIDDEN = "(hidden \u2014 looks personal)";
 const ACTIONS = ["signin-link", "refresh-pro", "recheck-today", "resend-today", "mail-on", "mail-off", "unpause", "signout-all", "clear-seen", "delete"];
 const CONFIRM = { "signout-all": 1, "clear-seen": 1, "delete": 1 };   // the owner types the member id first
-const ISSUE_FLAGS = ["email late", "pro check failing", "sign-in link waiting", "record unreadable"];
+const ISSUE_FLAGS = ["email late", "pro check failing", "sign-in link waiting", "record unreadable", "no hunts"];
 const BASE_HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff" };
 
 /* ---------- small helpers ---------- */
@@ -49,6 +49,7 @@ function clean(s, n) {
     .replace(/[^\s@<>"',;:=&?\/]+(@|%40)[^\s@<>"',;:&?\/]+/gi, "[email]")
     .replace(/[A-Za-z0-9_-]{24,}/g, "[hidden]")
     .replace(/\d[\d\s().-]{5,}\d/g, "[number]")
+    .replace(/\b\d{5}(?:-\d{4})?\b/g, "[number]")   // a ZIP code
     .slice(0, n || 160);
 }
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[c]);
@@ -186,6 +187,17 @@ export function scrubHunt(h) {
   const t = String(h == null ? "" : h).slice(0, 80);
   return looksPersonal(t) ? { text: HIDDEN, hidden: true } : { text: t, hidden: false };
 }
+/* alPrefs turns skip words into plain lower-case words ("jane.doe@x.com" -> "jane doe x com"), which drops the @
+   that gives an address away. So a word is also hidden when the member's own typing of it looked personal. */
+const plainWords = s => String(s == null ? "" : s).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function skipView(sub, words) {
+  const raw = sub && sub.prefs && Array.isArray(sub.prefs.skip) ? sub.prefs.skip : [];
+  const bad = raw.map(r => String(r == null ? "" : r).slice(0, 200)).filter(looksPersonal).map(plainWords).filter(Boolean);
+  return arr(words).map(w => {
+    const t = plainWords(w);
+    return scrubHunt(w).hidden || (t && bad.some(b => b.indexOf(t) === 0)) ? HIDDEN : String(w).slice(0, 40);
+  });
+}
 function listing(x) {
   x = x || {};
   return { title: String(x.title || "").slice(0, 160), price: String(x.price || "").slice(0, 40), src: word(x.src, 20), url: https(x.url) };
@@ -216,7 +228,7 @@ function summaryOf(st, H, extra) {
   if (st.paused) flags.push("paused");
   if (!st.hunts.length) flags.push("no hunts");
   if (st.late) flags.push("email late");
-  if (s.pro === null || /shopify|error|unreachable|token|fail/i.test(via)) flags.push("pro check failing");
+  if (s.pro === null || (s.proCheck && String(s.proCheck).length) || /shopify|error|unreachable|token|fail/i.test(via)) flags.push("pro check failing");   // v78: proCheck = last failed Shopify check
   if (extra && extra.signin) flags.push("sign-in link waiting");
   if (arr(s.prev).length || s.movedAt) flags.push("moved address");
   if (unmuted > st.active.length) flags.push("hunts over plan limit");   // only the first few are checked on the free plan
@@ -248,7 +260,7 @@ export async function memberDetail(env, sub, H, now) {
     return { text: v.text, hidden: v.hidden, active: act.indexOf(l) !== -1, muted: mute.indexOf(l) !== -1, local: !!H.alNear(s, h), checkedToday: st.done.indexOf(l) !== -1 };
   });
   d.prefs = { freq: d.freq, slotHour: d.slotHour, tz: d.tz, sources: arr(p.sources).map(x => word(x, 20)), maxPrice: num(p.max),
-    skipWords: arr(p.skip).map(w => scrubHunt(w).text), filtersApply: !!s.pro, pauseUntil: day10(p.pause), aiOff: !!p.noai,
+    skipWords: skipView(s, p.skip), filtersApply: !!s.pro, pauseUntil: day10(p.pause), aiOff: !!p.noai,
     zipSet: !!p.zip, radius: num(p.radius), localHunts: arr(p.local).length };
   d.plan = { name: d.planName, via: d.via, trial: !!pl.trial, paidDay: day10(pl.paid), renewsDay: day10(pl.renews), amount: word(pl.amount, 12),
     currency: word(pl.currency, 8), order: word(pl.order, 20), hadPro: !!s.hadPro, checkedDay: day10(s.proDay) };
@@ -286,7 +298,7 @@ function upView(u) {
   u = u || {};
   return { source: word(u.source, 20), pct24: u.pct24 == null ? null : num(u.pct24), pct7d: u.pct7d == null ? null : num(u.pct7d),
     checks24: num(u.checks24), checks7d: num(u.checks7d), lastOkAt: u.lastOkAt ? word(u.lastOkAt, 20) : null, lastStatus: num(u.lastStatus),
-    lastMs: num(u.lastMs), lastErr: clean(u.lastErr, 160), lastN: num(u.lastN), down: !!u.down };
+    lastMs: num(u.lastMs), lastAt: num(u.lastAt), lastErr: clean(u.lastErr, 160), lastN: num(u.lastN), down: !!u.down };
 }
 function topView(c, j) {
   const out = [];
@@ -419,7 +431,7 @@ async function apiAction(c) {
   } else if (action === "refresh-pro") {
     const was = !!sub.pro;
     await H.alProSet(env, sub, true);
-    if (await merge(["pro", "plan", "proDay", "hadPro"])) {
+    if (await merge(["pro", "plan", "proDay", "hadPro", "proCheck"])) {
       msg = sub.pro ? (sub.plan && sub.plan.trial ? "Checked the store: they are on the free Prowl Pro month." : "Checked the store: Prowl Pro is active.")
         : "Checked the store: no current Prowl Pro order, so they are on the free plan.";
       if (was !== !!sub.pro) msg += was ? " They were Pro before this check." : " They were not Pro before this check.";
@@ -491,7 +503,14 @@ async function apiDiagnose(c) {
   if (!srcs.length) srcs = live.slice();
   let seen = new Set();
   if (sub) { const sl = await H.kvGet(env, "seen:" + m.email, []); seen = new Set(arr(sl).map(String)); }
-  const why = r => { if (!r) return null; const v = scrubHunt(r); return v.hidden ? "has one of their skip words" : String(r).slice(0, 80); };
+  /* memberDropReason says "not in their sites", "over their max price $N" or 'has skip word "w"'; only the word can be personal */
+  const why = r => {
+    if (!r) return null;
+    const s = String(r).slice(0, 80), w = /^has skip word "(.*)"$/.exec(s);
+    if (w) return skipView(sub, [w[1]])[0] === HIDDEN ? "has one of their skip words" : s;
+    if (s === "not in their sites" || /^over their max price \$\d+$/.test(s)) return s;
+    return scrubHunt(s).hidden ? "filtered out by their settings" : s;
+  };
   const results = await Promise.all(srcs.map(async src => {
     let r = null;
     try { r = await H.liveFetch(env, src, term); } catch (e) { r = { status: 0, ms: 0, items: null, err: "could not search" }; }
@@ -519,7 +538,7 @@ async function apiDiagnose(c) {
   return jres({
     term: shown.hidden ? "(hidden)" : shown.text,
     member: m ? { id: m.id, pro: !!sub.pro, aiOff: aiOff, filters: { sources: arr(p.sources).map(x => word(x, 20)), maxPrice: sub.pro ? num(p.max) : 0,
-      skipWords: sub.pro ? arr(p.skip).map(w => scrubHunt(w).text) : [] } } : null,
+      skipWords: sub.pro ? skipView(sub, p.skip) : [] } } : null,
     local: local, results: results,
     summary: { sources: results.length, ok: okN, failed: results.length - okN, items: sum(() => true), aiDropped: sum(x => x.aiDrop),
       memberDropped: sum(x => !!x.memberDrop), alreadySent: sum(x => x.alreadySent) }

@@ -27,4 +27,4 @@ jobs:
           mkdir -p /tmp/w && cp worker/*.js /tmp/w/ && echo '{"type":"module"}' > /tmp/w/package.json
           for f in /tmp/w/*.js; do node --check "$f"; done
       - name: Unit tests
-        run: node --test worker/__tests__/
+        run: node --test "worker/__tests__/*.test.mjs"

@@ -694,6 +694,37 @@ test("diagnose a member's hunt: their filters, already-sent, hidden term; AI off
   assert.equal(j.local, true, "pyrex is their local hunt");
 });
 
+test("skip words stay hidden after alPrefs strips the @; a $100000 max price is not mistaken for one", async () => {
+  /* index.js stores skip words as alWords(vClean(w, 24)): lower-case words with every other character turned into a space */
+  const norm = w => String(w).replace(/\s+/g, " ").trim().slice(0, 24).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const realish = sub => { const p = prefsOf(sub); p.skip = (Array.isArray(sub.prefs && sub.prefs.skip) ? sub.prefs.skip : []).map(norm).filter(Boolean); return p; };
+  const H = makeH(undefined, { alPrefs: realish }), env = makeEnv();
+  H.memberDropReason = (sub, x) => {
+    const p = realish(sub), n = Number(String(x.price).replace(/[^\d.]/g, ""));
+    if (p.max && n > p.max) return "over their max price $" + p.max;
+    const t = " " + x.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() + " ";
+    for (const w of p.skip) if (t.includes(" " + w + " ")) return "has skip word \"" + w + "\"";
+    return null;
+  };
+  H.liveFetch = async (e, source) => ({ source, status: 200, ms: 5, err: "", items: [
+    { title: "Lamp jane doe example com", price: "$5", url: "https://ebay.example/itm/9", src: source },
+    { title: "Big lamp", price: "$250000", url: "https://ebay.example/itm/10", src: source },
+    { title: "Cracked lamp", price: "$5", url: "https://ebay.example/itm/11", src: source }] });
+  env.PROWL_ALERTS.set("sub:" + EMAIL, janeRecord({ prefs: Object.assign({}, janeRecord().prefs, { max: 100000, skip: ["cracked", "Jane.Doe@Example.com", "someone.with.a.long.name@example.org", "555-123-4567"] }) }));
+  const leaks = ["jane doe", "example com", "someone with", "555 123"];
+  const id = await idOf(env, EMAIL), HID = "(hidden — looks personal)";
+  const d = JSON.parse(await (await call(env, H, "GET", "/admin/api/member?id=" + id)).text());
+  assert.deepEqual(d.prefs.skipWords, ["cracked", HID, HID, HID]);
+  const j = await (await apiPost(env, H, "/admin/api/diagnose", { id, hunt: 0, sources: ["ebay"] })).json();
+  const mine = JSON.stringify([d, j.member, j.results.map(r => r.items.map(x => x.memberDrop))]);   // listing titles are the marketplace's, not the member's
+  for (const s of leaks) assert.ok(!mine.includes(s), "leaked " + s);
+  assert.deepEqual(j.member.filters.skipWords, ["cracked", HID, HID, HID]);
+  assert.deepEqual(j.results[0].items.map(x => x.memberDrop), ["has one of their skip words", "over their max price $100000", "has skip word \"cracked\""]);
+  H.capsData["metrics mget"] = { errors: [{ t: 1, r: "live:ebay", s: 502, m: "bad filter pickupPostalCode:48375 for 48375-1234", q: "" }] };
+  const errs = await (await call(env, H, "GET", "/admin/api/errors")).text();
+  assert.ok(!errs.includes("48375"), "ZIP codes in log text are masked");
+});
+
 test("diagnose input checks and rate limit", async () => {
   const H = makeH(), env = makeEnv();
   const id = await idOf(env, EMAIL);

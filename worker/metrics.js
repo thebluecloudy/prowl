@@ -7,10 +7,12 @@
 const HOUR = 3600000, DAY = 86400000;
 
 /* Which bucket a request lands in. Exact paths, matching how index.js routes them. */
-const LIVE = { "/": "shopgoodwill", "/ebay": "ebay", "/etsy": "etsy", "/chairish": "chairish", "/poshmark": "poshmark",
-  "/poshsold": "poshsold", "/depop": "depop", "/vinted": "vinted", "/grailed": "grailed", "/hibid": "hibid" };
-const NAMED = { "/verdict": "ai:fairprice", "/appraise": "ai:photo", "/research": "ai:research", "/guide": "ai:guide",
-  "/where": "ai:where", "/hunt-check": "ai:huntcheck", "/shop-picks": "shop:picks" };
+/* null-prototype tables, so a path like "constructor" can never pick up an inherited property */
+const table = o => Object.assign(Object.create(null), o);
+const LIVE = table({ "/": "shopgoodwill", "/ebay": "ebay", "/etsy": "etsy", "/chairish": "chairish", "/poshmark": "poshmark",
+  "/poshsold": "poshsold", "/depop": "depop", "/vinted": "vinted", "/grailed": "grailed", "/hibid": "hibid" });
+const NAMED = table({ "/verdict": "ai:fairprice", "/appraise": "ai:photo", "/research": "ai:research", "/guide": "ai:guide",
+  "/where": "ai:where", "/hunt-check": "ai:huntcheck", "/shop-picks": "shop:picks" });
 const ALERTS = new Set(["subscribe", "confirm", "signin", "in", "status", "prefs", "mail", "delete", "move", "move-confirm", "unsub", "test"]);
 
 export function routeKey(pathname) {
@@ -28,8 +30,15 @@ export function routeKey(pathname) {
 export function hourKey(ms) { return new Date(ms).toISOString().slice(0, 13); }
 const hourMs = hk => Date.parse(String(hk || "") + ":00:00Z") || 0;
 const pad13 = t => String(Math.max(0, Math.floor(Number(t) || 0))).padStart(13, "0");
-const num = v => Math.max(0, Number(v) || 0);
+const num = v => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : 0; };   /* NaN, negatives and Infinity count as 0 */
 const str = (v, n) => String(v == null ? "" : v).slice(0, n);
+/* A usable epoch-ms time (13 digits at most, so padded keys keep sorting), else 0. A bad time from a caller
+   must not throw out of toISOString() and lose the rest of the batch. */
+const okT = v => { const t = Number(v); return t > 0 && t < 1e13 ? t : 0; };
+const nowOf = v => okT(v) || Date.now();
+/* Defence in depth for the no-PII rule: callers already scrub, but no stored text may hold an email address. */
+const EMAILISH = /[^\s@<>"',;:]+@[^\s@<>"',;:]+/g;
+const txt = (v, n) => str(v, 400).replace(EMAILISH, "[email]").slice(0, n);
 
 /* ---------- latency histogram ---------- */
 export const HIST_EDGES = [100, 250, 500, 1000, 2000, 4000, 8000];
@@ -65,14 +74,18 @@ export function addToAgg(agg, ev) {
 }
 /* Adds b into a and returns a (a new one when a is missing). Tolerates stored records missing fields. */
 export function mergeAgg(a, b) {
-  if (!a || !Array.isArray(a.h) || a.h.length !== 8) a = Object.assign(emptyAgg(), a || {}, { h: fixHist(a && a.h) });
-  if (!b) return a;
-  for (const k of ["n", "hit", "e4", "e5", "lim", "ms"]) a[k] = num(a[k]) + num(b[k]);
+  /* a malformed a is rebuilt from its seven agg fields only (never copied wholesale), then b is added */
+  if (!a || typeof a !== "object" || !Array.isArray(a.h) || a.h.length !== 8) a = addInto(emptyAgg(), a);
+  return addInto(a, b);
+}
+const AGG_KEYS = ["n", "hit", "e4", "e5", "lim", "ms"];
+function addInto(a, b) {
+  if (!b || typeof b !== "object") return a;
+  for (const k of AGG_KEYS) a[k] = num(a[k]) + num(b[k]);
   const bh = Array.isArray(b.h) ? b.h : [];
   for (let i = 0; i < 8; i++) a.h[i] = num(a.h[i]) + num(bh[i]);
   return a;
 }
-const fixHist = h => { const o = [0, 0, 0, 0, 0, 0, 0, 0]; if (Array.isArray(h)) for (let i = 0; i < 8; i++) o[i] = num(h[i]); return o; };
 const aggOf = v => mergeAgg(emptyAgg(), v);
 const pct = (x, n) => n ? Math.round(x / n * 1000) / 10 : 0;
 /* What the dashboard reads off an aggregate: the averages and percentiles it cannot work out itself. */
@@ -92,13 +105,13 @@ export class MetricsBuffer {
   reset() { this.b = {}; this.e = []; this.count = 0; this.first = 0; }
   due(nowMs) { return this.count > 0 && (this.count >= this.maxEvents || nowMs - this.first >= this.maxAgeMs); }
   add(ev, nowMs) {
-    const now = nowMs == null ? Date.now() : nowMs;
+    const now = nowOf(nowMs);
     if (!ev || !ev.r) return this.due(now);
     if (!this.count) this.first = now;
     const k = hourKey(now) + "|" + ev.r;
     addToAgg(this.b[k] || (this.b[k] = emptyAgg()), ev);
     /* an error storm keeps its count in the aggregate but only the first few messages */
-    if (Number(ev.s) >= 500 && this.e.length < this.maxErrors) this.e.push({ t: now, r: ev.r, s: Number(ev.s), m: str(ev.err, 160), q: str(ev.q, 60) });
+    if (Number(ev.s) >= 500 && this.e.length < this.maxErrors) this.e.push({ t: now, r: ev.r, s: Number(ev.s), m: txt(ev.err, 160), q: txt(ev.q, 60) });
     this.count += 1;
     return this.due(now);
   }
@@ -130,7 +143,7 @@ async function trim(storage, prefix) {
 }
 
 export async function metricsOp(storage, op, q, nowMs) {
-  const now = nowMs == null ? Date.now() : nowMs;
+  const now = nowOf(nowMs);
   q = q && typeof q === "object" ? q : {};
   if (op === "mrec") {
     if (q.b && typeof q.b === "object") {
@@ -143,30 +156,30 @@ export async function metricsOp(storage, op, q, nowMs) {
     if (Array.isArray(q.e) && q.e.length) {
       for (const e of q.e.slice(0, 100)) {
         if (!e) continue;
-        const t = Number(e.t) || now;
-        await storage.put("y:" + pad13(t) + ":" + rand4(), { t: t, r: str(e.r, 40), s: Number(e.s) || 0, m: str(e.m, 160), q: str(e.q, 60) });
+        const t = okT(e.t) || now;
+        await storage.put("y:" + pad13(t) + ":" + rand4(), { t: t, r: str(e.r, 40), s: num(e.s), m: txt(e.m, 160), q: txt(e.q, 60) });
       }
       await trim(storage, "y:");
     }
     if (q.c && typeof q.c === "object") {
-      const c = q.c, t = Number(c.t) || now;
+      const c = q.c, t = okT(c.t) || now;
       await storage.put("z:" + pad13(t), { t: t, ms: num(c.ms), members: num(c.members), checked: num(c.checked), sent: num(c.sent), failed: num(c.failed),
-        errors: (Array.isArray(c.errors) ? c.errors : []).slice(0, 5).map(x => str(x, 160)) });
+        errors: (Array.isArray(c.errors) ? c.errors : []).slice(0, 5).map(x => txt(x, 160)) });
       await trim(storage, "z:");
     }
     if (Array.isArray(q.p)) {
       for (const p of q.p.slice(0, 50)) {
         if (!p || !SRC.test(String(p.source || ""))) continue;
-        const t = Number(p.t) || now;
+        const t = okT(p.t) || now;
         /* one per source per hour: a manual health check replaces that hour's scheduled one */
-        await storage.put("p:" + hourKey(t) + "|" + p.source, { t: t, source: String(p.source), ok: !!p.ok, status: Number(p.status) || 0, n: num(p.n), ms: num(p.ms), err: str(p.err, 160) });
+        await storage.put("p:" + hourKey(t) + "|" + p.source, { t: t, source: String(p.source), ok: !!p.ok, status: num(p.status), n: num(p.n), ms: num(p.ms), err: txt(p.err, 160) });
       }
     }
     if (Array.isArray(q.a) && q.a.length) {
       for (const a of q.a.slice(0, 50)) {
         if (!a) continue;
-        const t = Number(a.t) || now;
-        await storage.put("a:" + pad13(t) + ":" + rand4(), { t: t, action: str(a.action, 40), id: str(a.id, 20), ok: !!a.ok, note: str(a.note, 200) });
+        const t = okT(a.t) || now;
+        await storage.put("a:" + pad13(t) + ":" + rand4(), { t: t, action: txt(a.action, 40), id: txt(a.id, 20), ok: !!a.ok, note: txt(a.note, 200) });
       }
       await trim(storage, "a:");
     }
@@ -200,7 +213,7 @@ export async function metricsOp(storage, op, q, nowMs) {
 /* Housekeeping for the Caps alarm: hourly buckets and probes for 8 days, errors and the audit log for 30,
    cron runs for 7. Returns how many metrics keys are left, so the alarm knows whether to come back. */
 export async function metricsPrune(storage, nowMs) {
-  const now = nowMs == null ? Date.now() : nowMs;
+  const now = nowOf(nowMs);
   const rules = [["x:", 8, hourMs], ["p:", 8, hourMs], ["y:", 30, Number], ["a:", 30, Number], ["z:", 7, Number]];
   const del = [];
   let kept = 0;
@@ -217,12 +230,12 @@ export async function metricsPrune(storage, nowMs) {
 
 /* ---------- summaries for the dashboard ---------- */
 export function summarize(buckets, nowMs, hours) {
-  const now = nowMs == null ? Date.now() : nowMs, nh = lim(hours, 24, 1, 24 * 8);
+  const now = nowOf(nowMs), nh = lim(hours, 24, 1, 24 * 8);
   const keys = [];
   for (let i = nh - 1; i >= 0; i--) keys.push(hourKey(now - i * HOUR));
   const at = new Map(keys.map((k, i) => [k, i]));
   const req = keys.map(() => 0), err5 = keys.map(() => 0), slow = keys.map(() => 0);
-  const per = {}, totals = emptyAgg(), live = emptyAgg();
+  const per = Object.create(null), totals = emptyAgg(), live = emptyAgg();   /* null prototype: a route named __proto__ stays data */
   for (const b of Array.isArray(buckets) ? buckets : []) {
     const i = b ? at.get(b.hour) : undefined;
     if (i === undefined || !b.route) continue;   /* outside the window, or a future hour from clock skew */
@@ -243,10 +256,10 @@ export function summarize(buckets, nowMs, hours) {
 /* Per marketplace, from the hourly probe results: share of checks that worked over 24 h and 7 days
    (null when there were no checks), and what the latest check saw. */
 export function uptimeFrom(probes, nowMs) {
-  const now = nowMs == null ? Date.now() : nowMs, by = {};
+  const now = nowOf(nowMs), by = Object.create(null);   /* null prototype: a source named __proto__ cannot break the grouping */
   for (const p of Array.isArray(probes) ? probes : []) {
     if (!p || !p.source) continue;
-    (by[p.source] || (by[p.source] = [])).push({ p: p, t: Number(p.t) || hourMs(p.hour) });
+    (by[p.source] || (by[p.source] = [])).push({ p: p, t: okT(p.t) || okT(hourMs(p.hour)) });
   }
   return Object.keys(by).sort().map(source => {
     const list = by[source].sort((x, y) => x.t - y.t);
@@ -259,7 +272,7 @@ export function uptimeFrom(probes, nowMs) {
     }
     const last = list[list.length - 1], lp = last.p;
     return { source: source, pct24: c24 ? pct(ok24, c24) : null, pct7d: c7 ? pct(ok7, c7) : null, checks24: c24, checks7d: c7,
-      lastOkAt: lastOk ? (lastOk.p.hour || hourKey(lastOk.t)) : null, lastAt: last.t || null,
+      lastOkAt: lastOk ? (lastOk.p.hour ? String(lastOk.p.hour) : lastOk.t ? hourKey(lastOk.t) : null) : null, lastAt: last.t || null,
       lastStatus: lp.status == null ? null : Number(lp.status), lastMs: lp.ms == null ? null : Number(lp.ms), lastErr: str(lp.err, 160),
       lastN: lp.n == null ? null : Number(lp.n), down: !lp.ok };
   });

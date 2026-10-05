@@ -509,3 +509,58 @@ test("buffer drain feeds mrec, and mget feeds summarize and uptimeFrom", async (
   const up = uptimeFrom(got.probes, NOW);
   assert.deepEqual(up.map(x => [x.source, x.pct24, x.down]), [["ebay", 100, false]]);
 });
+
+/* ---------- hardening (review fixes) ---------- */
+test("routeKey never answers an inherited property name", () => {
+  for (const p of ["constructor", "toString", "__proto__", "hasOwnProperty"]) assert.equal(routeKey(p), "other", p);
+});
+
+test("mergeAgg rebuilds a malformed first argument from the agg fields only", () => {
+  const out = mergeAgg({ n: 2, email: "pii@example.com", route: "x" }, { n: 1, h: [1] });
+  assert.deepEqual(out, { n: 3, hit: 0, e4: 0, e5: 0, lim: 0, ms: 0, h: [1, 0, 0, 0, 0, 0, 0, 0] });
+  assert.deepEqual(mergeAgg("abc", { n: 1 }), { n: 1, hit: 0, e4: 0, e5: 0, lim: 0, ms: 0, h: [0, 0, 0, 0, 0, 0, 0, 0] });
+  /* Infinity and NaN never get into a stored count (JSON would turn them into null) */
+  assert.deepEqual(mergeAgg(emptyAgg(), { n: Infinity, ms: NaN, h: [Infinity, -3, 2] }), { n: 0, hit: 0, e4: 0, e5: 0, lim: 0, ms: 0, h: [0, 0, 2, 0, 0, 0, 0, 0] });
+});
+
+test("mrec survives out-of-range times instead of losing the rest of the batch", async () => {
+  const s = new FakeStorage();
+  const r = await metricsOp(s, "mrec", {
+    p: [{ t: 1e20, source: "ebay", ok: true, status: 200, n: 3, ms: 100 }],
+    e: [{ t: 1e20, r: "other", s: 500, m: "x" }, { t: -5, r: "other", s: 500, m: "y" }],
+    c: { t: 1e20, sent: 1 },
+    a: [{ t: "soon", action: "login", ok: true }],
+  }, NOW);
+  assert.deepEqual(r, { ok: true });
+  assert.deepEqual(s.keys("p:"), ["p:" + hourKey(NOW) + "|ebay"]);
+  for (const k of [...s.keys("y:"), ...s.keys("a:"), ...s.keys("z:")]) assert.equal(k.slice(2, 15), String(NOW).padStart(13, "0"), k);
+  assert.equal(s.keys("y:").length, 2);
+  /* a bad clock on the caller's side falls back to now rather than throwing */
+  assert.equal(summarize([], NaN).series.hours.length, 24);
+  assert.equal(new MetricsBuffer().add({ r: "other", s: 200, ms: 1 }, NaN), false);
+  assert.equal(uptimeFrom([{ source: "ebay", t: 1e20, ok: true }], NOW)[0].lastOkAt, null);
+});
+
+test("no stored text keeps an email address, even if a caller forgets to scrub", async () => {
+  const s = new FakeStorage();
+  const b = new MetricsBuffer();
+  b.add({ r: "alerts:signin", s: 502, ms: 5, err: "no member jane.doe@example.com", q: "jane@example.com" }, NOW);
+  const d = b.drain();
+  assert.deepEqual(d.e[0], { t: NOW, r: "alerts:signin", s: 502, m: "no member [email]", q: "[email]" });
+  await metricsOp(s, "mrec", {
+    e: [{ t: NOW, r: "other", s: 500, m: "send to bob@example.org failed", q: "x@y.zz" }],
+    c: { t: NOW, errors: ["bounce from carol@example.net"] },
+    p: [{ t: NOW, source: "ebay", ok: false, err: "contact dave@example.com" }],
+    a: [{ t: NOW, action: "find", id: "e@x.io", ok: true, note: "for erin@example.com" }],
+  }, NOW);
+  const all = JSON.stringify([...s.m.values()]);
+  assert.ok(!/@/.test(all), all);
+  assert.match(all, /\[email\]/);
+});
+
+test("a route or source named __proto__ is ordinary data", () => {
+  const sum = summarize([{ hour: hourKey(NOW), route: "__proto__", ...agg({ n: 2, h: [2] }) }, { hour: hourKey(NOW), route: "other", ...agg({ n: 1, h: [1] }) }], NOW);
+  assert.deepEqual(sum.routes.map(r => [r.route, r.n]), [["__proto__", 2], ["other", 1]]);
+  const up = uptimeFrom([{ source: "__proto__", t: NOW, ok: true }, { source: "ebay", t: NOW, ok: false }], NOW);
+  assert.deepEqual(up.map(u => [u.source, u.pct24, u.down]), [["__proto__", 100, false], ["ebay", 0, true]]);
+});
