@@ -1,0 +1,36 @@
+# Prowl worker: deployed by Cloudflare Workers Builds on every push to main.
+# Secrets (API keys, tokens, PRO_EMAILS, etc.) live only in the Cloudflare
+# dashboard and are never stored here. keep_vars stops a deploy from wiping
+# the plain-text variables that are set in the dashboard.
+
+name = "prowl"
+main = "index.js"
+compatibility_date = "2026-09-21"
+workers_dev = true
+preview_urls = false
+keep_vars = true
+
+[[kv_namespaces]]
+binding = "PROWL_ALERTS"
+id = "102ebd733ced41f3806399872dd19027"
+
+# v48: counters and the response cache live in a Durable Object. The Cache API
+# does nothing on workers.dev, so the daily caps were never enforced before this.
+[[durable_objects.bindings]]
+name = "CAPS"
+class_name = "Caps"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Caps"]
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[vars]
+EPN_CAMPAIGN_ID = "5339216838"
+# Prowl Alerts sign-ups: "beta" = only ALERT_ALLOW emails (while Alerts/Pro are
+# being finished; page v5.85 shows "Coming soon"). Set "public" to launch.
+ALERTS = "public"
+# Mailing address in every Prowl Alerts email footer (required by CAN-SPAM).
+ALERT_ADDRESS = "Owl & Twig Vintage · 6311 Haggerty Rd, Unit #699 · West Bloomfield, MI 48322"
