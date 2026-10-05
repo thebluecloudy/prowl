@@ -19,6 +19,13 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v78: 2026-10-05. Admin area at /admin (admin.js + admin-page.js): sign in with ADMIN_KEY (or OWNER_KEY), 12-hour
+ *        HttpOnly session cookie. Members by pseudonymous id only (no emails, tokens, ZIPs or Shopify ids shown);
+ *        find a member by typing their email (hashed, never stored). Support actions (sign-in link, re-check Pro,
+ *        re-check today, resend, mail on/off, unpause, sign out all devices, clear seen, delete) and a Diagnose
+ *        view that runs a hunt live and shows what the AI and the member's own filters would hide. metrics.js
+ *        records speed, cache hits and errors per route (batched into the Caps "metrics" object), every cron run
+ *        and an hourly test search per live marketplace for uptime. Unhandled errors now answer 500 JSON.
  *   v77: 2026-10-05. Mercari Japan joins the email "Also search" links and the where-to-look list (page v6.36 adds it
  *        as a link-out). /__mercarijptest tries its search API (api.mercari.jp, DPoP proof from a key made here);
  *        not wired to the page until it is shown to answer a Worker.
@@ -209,6 +216,11 @@
  * Client-credentials grant: an application token, no user login, public
  * listings only. The token lives in the isolate for its 2h lifetime.
  */
+
+/* v78: admin area (/admin) and the traffic numbers behind it */
+import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
+import { adminFetch } from "./admin.js";
+const WORKER_VERSION = "v78";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -1524,6 +1536,12 @@ export class Caps {
   }
   async op(op, q) {
     const J = (o, st) => new Response(JSON.stringify(o), { status: st || 200, headers: { "Content-Type": "application/json" } });
+    /* v78: traffic, error, cron, probe and admin-audit records for the admin dashboard (metrics.js) */
+    if (op === "mrec" || op === "mget" || op === "peek") {
+      const r = await metricsOp(this.s, op, q, Date.now());
+      if (op === "mrec") await this.arm(86400000);
+      return J(r, r && r.error ? 400 : 200);
+    }
     if (op === "take") {
       const k = "c:" + String(q.k || ""), lim = Number(q.lim) || 0;
       const n = (await this.s.get(k)) || 0;
@@ -1601,8 +1619,10 @@ export class Caps {
       for (const [k] of rowsS) { const day = k.slice(4, 14); if (dayMs(day) && dayMs(day) < cut) del.push(k); else keep++; }
     }
     for (let i = 0; i < del.length; i += 128) await this.s.delete(del.slice(i, i + 128));
+    let mkeep = 0;
+    try { mkeep = await metricsPrune(this.s, now); } catch (e) { console.error("metrics prune", String(e && e.message || e)); }   /* v78 */
     this.armed = false;
-    if (left || keep) { await this.s.setAlarm(now + (keep ? 86400000 : 6 * 3600000)); this.armed = true; }
+    if (left || keep || mkeep) { await this.s.setAlarm(now + (keep || mkeep ? 86400000 : 6 * 3600000)); this.armed = true; }
   }
 }
 
@@ -2270,6 +2290,8 @@ async function jevClassify(env, term, items) {
   finally { clearTimeout(timer); }
 }
 /* Returns { items, dropped } . Tags items in shadow and on; drops only in on. */
+/* v78: the live rule for hiding a listing (also shown in the admin Diagnose view) */
+function jevWouldDrop(x) { return !!x && (x.jev === "wrong_item" || x.jev === "part") && x.jevp >= JEV_DROP_P; }
 async function jevClean(env, term, items, force) {
   const mode = force || jevResultsMode(env);
   const t0 = Date.now();
@@ -2282,7 +2304,7 @@ async function jevClean(env, term, items, force) {
   if (!tags) return { items: items, dropped: [], info: info("jev failed") };
   const tagged = items.map((x, i) => tags[i] ? Object.assign({}, x, { jev: tags[i].tag, jevp: tags[i].p }) : x);
   if (mode !== "on") return { items: tagged, dropped: [], info: info("tagged", tags.length) };
-  const bad = (x) => (x.jev === "wrong_item" || x.jev === "part") && x.jevp >= JEV_DROP_P;
+  const bad = jevWouldDrop;
   const kept = tagged.filter(x => !bad(x));
   if (!kept.length) return { items: tagged, dropped: [], info: info("all flagged, kept", tags.length) };
   return { items: kept, dropped: tagged.filter(bad), info: info("ok", tags.length, tagged.length - kept.length) };
@@ -2758,14 +2780,16 @@ function alPaused(sub, now) { const p = alPrefs(sub).pause; return !!p && now.da
 function alSendDay(sub, now) { return AL_FREQ_DAYS[alFreeWeekly(sub) ? "weekly" : alPrefs(sub).freq].indexOf(now.wday) !== -1; }   /* v55: new free = Mondays */
 function alPrice(s) { const m = /(\d[\d,]*)(\.\d+)?/.exec(String(s || "")); return m ? Number(m[1].replace(/,/g, "")) : NaN; }
 function alTitleKey(x) { return "t:" + String(x.src || "") + "|" + alWords(x.title).trim().slice(0, 100); }
-function alFilter(sub, items, local) {
+/* v78: why the member's own settings drop a listing (null = kept). alFilter and the admin Diagnose view share it. */
+function memberDropReason(sub, x, local) {
   const p = alPrefs(sub), pro = !!sub.pro;
-  return items.filter(x => {
-    if (!local && p.sources.indexOf(x.src) === -1) return false;   /* v56: local hunts are eBay by design */
-    if (pro && p.max) { const n = alPrice(x.price); if (isFinite(n) && n > p.max) return false; }
-    if (pro && p.skip.length) { const t = alWords(x.title); for (const w of p.skip) if (t.indexOf(" " + w + " ") !== -1) return false; }
-    return true;
-  });
+  if (!local && p.sources.indexOf(x.src) === -1) return "not in their sites";   /* v56: local hunts are eBay by design */
+  if (pro && p.max) { const n = alPrice(x.price); if (isFinite(n) && n > p.max) return "over their max price $" + p.max; }
+  if (pro && p.skip.length) { const t = alWords(x.title); for (const w of p.skip) if (t.indexOf(" " + w + " ") !== -1) return "has skip word \"" + w + "\""; }
+  return null;
+}
+function alFilter(sub, items, local) {
+  return items.filter(x => !memberDropReason(sub, x, local));
 }
 /* v32: Prowl Pro. Free = alerts for the first ALERT_FREE_HUNTS hunts (default 3).
    Pro = up to 25. Pro means: email is in PRO_EMAILS (text var, comma list), or the
@@ -3244,9 +3268,12 @@ async function alTick(env) {
   for (let i = 0; i < order.length; i++) { const sub = await kvGet(env, order[i], null); if (sub) subs.push({ sub: sub, i: i, k: alUrgency(env, sub, now) }); }
   subs.sort((a, b) => a.k - b.k || a.i - b.i);
   const log = [];
+  /* v78: counts for the admin dashboard, with no addresses in them */
+  const tally = { checked: 0, sent: 0, failed: 0, errors: [] };
+  const note = m => { if (tally.errors.length < 5) tally.errors.push(scrubPII(m).slice(0, 160)); };
   for (const it of subs) {
     const sub = it.sub;
-    if (sub.pro && sub.plan && sub.plan.trial) { try { const tn = await alTrialNotes(env, sub); if (tn) log.push(sub.email + " " + tn); } catch (e) { log.push(sub.email + " trial mail error"); } }   /* v55 */
+    if (sub.pro && sub.plan && sub.plan.trial) { try { const tn = await alTrialNotes(env, sub); if (tn) log.push(sub.email + " " + tn); } catch (e) { log.push(sub.email + " trial mail error"); note("trial mail error"); } }   /* v55 */
     if (!sub.hunts || !sub.hunts.length) continue;
     if (sub.mail === "off") continue;   /* v55: emails off, membership and Pro stay */
     const loc = alLocal(sub, now);   /* v53: the member's own clock */
@@ -3257,7 +3284,7 @@ async function alTick(env) {
       if (!(await alMerge(env, sub, ["pro", "plan", "proDay", "utok"]))) continue;
     }
     let n = 0;
-    if (budget > 0) { try { n = await alCheck(env, sub, budget, now); } catch (e) { log.push(sub.email + " check failed: " + String(e && e.message || e)); budget = 0; } budget -= n; if (n) log.push(sub.email + " checked " + n); }
+    if (budget > 0) { try { n = await alCheck(env, sub, budget, now); } catch (e) { log.push(sub.email + " check failed: " + String(e && e.message || e)); note("check failed: " + String(e && e.message || e)); budget = 0; } budget -= n; tally.checked += n; if (n) log.push(sub.email + " checked " + n); }
     if (n) continue;
     const allDone = sub.day === now.day && alActive(env, sub).every(h => sub.done.indexOf(h.toLowerCase()) !== -1);
     if (allDone && loc.hour >= alSlotHour(env, sub) && sub.sent !== loc.day && alSendDay(sub, loc)) {   /* v50: only on the member's days; v52: at their hour; v53: their local time */
@@ -3266,10 +3293,11 @@ async function alTick(env) {
       budget = 0;
       if (r.sent || r.reason === "nothing new") { sub.sent = loc.day; await alMerge(env, sub, ["sent"]); }
       log.push(sub.email + " email: " + (r.sent ? "sent" : (r.reason || r.error)));
+      if (r.sent) tally.sent++; else if (r.reason !== "nothing new") { tally.failed++; note("email not sent: " + (r.reason || r.error || "unknown")); }
     }
   }
   console.log(JSON.stringify({ alTick: now.day + " " + now.hour + "h", members: names.length, from: off, log: log }));   /* v51: visible in Workers Logs */
-  return { at: now, log: log };
+  return { at: now, log: log, members: names.length, checked: tally.checked, sent: tally.sent, failed: tally.failed, errors: tally.errors };
 }
 
 /* v74: hours until this member's email is due today (negative = overdue); not due today sorts last. */
@@ -3482,6 +3510,13 @@ async function alSignin(request, env, origin) {
   const sub = await kvGet(env, "sub:" + email, null);
   if (!sub) return json({ ok: true, sent: true }, 200, origin);   /* v51: same answer either way; the inbox tells */
   if (!(await vCount("alin:" + email, AL_SIGNIN_PER_EMAIL))) return json({ error: "We already sent sign-in links today. Use the newest one in your inbox, or check spam." }, 429, origin);
+  const r = await alSendSignin(env, sub);
+  if (!r.ok) { console.error("signin mail", r.error); return json({ error: "Could not send the sign-in email." }, 502, origin); }
+  return json({ ok: true, sent: true }, 200, origin);
+}
+/* v78: a one-time sign-in link by email (the member's own request, or the owner from the admin page) */
+async function alSendSignin(env, sub) {
+  const email = sub.email;
   const code = alToken();
   await env.PROWL_ALERTS.put("in:" + email, JSON.stringify({ code: code }), { expirationTtl: 86400 });
   const link = WORKER_BASE + "/alerts/in?e=" + encodeURIComponent(email) + "&c=" + code;
@@ -3492,8 +3527,7 @@ async function alSignin(request, env, origin) {
     'Someone asked to sign in to Prowl with this address at owlandtwigvintage.com/pages/prowl. If that was not you, ignore this email. Nothing changes until the link is tapped.', '');
   const r = await alSend(env, email, "Your Prowl sign-in link", html,
     "Sign in to Prowl: " + link + "\n\nThe link works once, for 24 hours. Did not ask for this? Ignore this email." + alFootText(env, null), "");
-  if (!r.ok) { console.error("signin mail", r.error); return json({ error: "Could not send the sign-in email." }, 502, origin); }
-  return json({ ok: true, sent: true }, 200, origin);
+  return r.ok ? { ok: true } : { ok: false, error: scrubPII(String(r.error || "send failed")) };
 }
 async function alIn(request, env, url) {
   if (!alReady(env)) return alPage("Not on yet", "Prowl Alerts is switched off right now.");
@@ -3712,16 +3746,122 @@ async function alDebug(env, url) {
   return new Response(JSON.stringify(out, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
 }
 
+/* ---------- v78: admin helpers ----------
+   Shared by the admin area (admin.js) and the hourly uptime probes. */
+function scrubPII(s) { return String(s == null ? "" : s).replace(/[^\s@<>"',;:]+@[^\s@<>"',;:]+/g, "[email]").replace(/\d[\d\s().-]{6,}\d/g, "[number]"); }
+const AI_POOLS = [
+  { key: "all", name: "Fair price checks", limit: VERDICT_PER_DAY },
+  { key: "ap:all", name: "Photo checks", limit: APPRAISE_PER_DAY },
+  { key: "apx:all", name: "Photo price lookups", limit: APRICE_PER_DAY },
+  { key: "rs:all", name: "Research", limit: RESEARCH_PER_DAY },
+  { key: "gd:all", name: "Field Guides", limit: GUIDE_PER_DAY },
+  { key: "jr:all", name: "AI sorting of results", limit: JEV_RESULTS_PER_DAY },
+  { key: "hc:all", name: "Hunt name checks", limit: HC_PER_DAY },
+  { key: "sp:all", name: "Shop picks", limit: SP_PER_DAY },
+  { key: "wh:all", name: "Where to look", limit: SP_PER_DAY }
+];
+function liveSources() { return ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark"].concat(DEPOP_LIVE ? ["depop"] : [], ["vinted", "grailed"]); }
+const LIVE_CALLS = {
+  shopgoodwill: [(t) => callUpstream(t), (x) => normalize(x)],
+  ebay: [(t, env) => ebayCall(t, env), (x) => ebayNormalize(x)],
+  etsy: [(t, env) => etsyCall(t, env), (x) => etsyNormalize(x)],
+  chairish: [(t) => chairishCall(t), (x) => chairishNormalize(x)],
+  poshmark: [(t) => poshmarkCall(t, false), (x, t) => poshmarkNormalize(x, false, t)],
+  depop: [(t) => depopCall(t), (x) => depopNormalize(x)],
+  vinted: [(t) => vintedCall(t), (x) => vintedNormalize(x)],
+  grailed: [(t, env) => grailedCall(t, env), (x) => grailedNormalize(x)],
+  hibid: [(t) => hibidCall(t), (x) => hibidNormalize(x)]
+};
+/* One live search on one marketplace, the same calls the page's live results use, without the cache. Never throws. */
+async function liveFetch(env, source, term) {
+  const t0 = Date.now(), out = { source: source, status: 0, ms: 0, items: null, err: "" };
+  const c = LIVE_CALLS[source];
+  if (!c) { out.err = "unknown marketplace"; return out; }
+  try {
+    const up = await c[0](term, env);
+    out.status = up ? up.status : 0;
+    if (up && up.status === 200) {
+      const items = c[1](up.text, term);
+      if (items === null) out.err = "could not read the page";
+      else out.items = (items || []).slice(0, 40).filter(x => x && /^https:\/\//.test(x.url || "")).map(x => ({
+        title: String(x.title || "").slice(0, 160), price: String(x.price || ""), url: x.url,
+        image: /^https:\/\//.test(x.image || "") ? x.image : "", src: source }));
+    } else out.err = up ? "answered " + up.status : "no answer";
+  } catch (e) { out.err = scrubPII(String(e && e.message || e)).slice(0, 160) || "unreachable"; }
+  out.ms = Date.now() - t0;
+  return out;
+}
+const PROBE_TERMS = { chairish: "vintage lamp", grailed: "vintage levis" };
+/* v78: one small test search per live marketplace (hourly from the cron, or the admin's "Run health check now") */
+async function runProbes(env) {
+  return Promise.all(liveSources().map(async src => {
+    const r = await liveFetch(env, src, PROBE_TERMS[src] || "vintage pyrex");
+    const n = r.items ? r.items.length : 0;
+    return { t: Date.now(), source: src, ok: r.status === 200 && n > 0, status: r.status, n: n, ms: r.ms, err: r.err || (r.status === 200 && !n ? "no listings" : "") };
+  }));
+}
+const ADMIN_H = {
+  kvGet, kvPut, alNow, alLocal, alPrefs, alActive, alSlotHour, alSendDay, alPaused, alFree, alFreeWeekly, alLegacyFree, alUrgency,
+  alProSet, alMerge, alSendSignin, alToken, liveSources, liveFetch, jevClean, jevWouldDrop, memberDropReason, alNear, runProbes,
+  capsCall, capsDay, vCount, ipKey, alSame, statTerm, scrubPII, summarize, uptimeFrom, pctFromHist,
+  WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE
+};
+
+/* v78: speed, cache hits and errors per route, batched so most requests add no extra call */
+const MBUF = new MetricsBuffer();
+async function mTrack(request, res, t0, thrown, ctx) {
+  const url = new URL(request.url);
+  const r = routeKey(url.pathname);
+  if (!r || request.method === "OPTIONS" || !res) return;
+  const ev = { r: r, s: res.status, ms: Date.now() - t0, hit: res.headers.get("X-Prowl-Cache") === "hit" };
+  if (res.status >= 500) {
+    let m = thrown ? String(thrown && thrown.message || thrown) : "";
+    if (!m) { try { const t = await res.clone().text(); try { m = String(JSON.parse(t).error || ""); } catch (e) { m = t.slice(0, 120); } } catch (e) {} }
+    ev.err = scrubPII(m).slice(0, 160);
+    ev.q = statTerm(url.searchParams.get("q") || "");
+  }
+  if (MBUF.add(ev, Date.now())) { const d = MBUF.drain(); if (d) ctx.waitUntil(capsCall("metrics", "mrec", d).catch(() => {})); }
+}
+/* v78: the alert clock, timed and counted for the admin dashboard */
+async function cronRun(env) {
+  const t0 = Date.now();
+  let r = null, err = "";
+  try { r = await alTick(env); } catch (e) { err = String(e && e.message || e); console.error("alTick", err); }   /* v51: never silent */
+  try {
+    await capsCall("metrics", "mrec", { c: { t: t0, ms: Date.now() - t0, members: (r && r.members) || 0, checked: (r && r.checked) || 0,
+      sent: (r && r.sent) || 0, failed: ((r && r.failed) || 0) + (err ? 1 : 0), errors: err ? [scrubPII("alert clock crashed: " + err).slice(0, 160)] : ((r && r.errors) || []), skipped: (r && r.skipped) || "" } });
+  } catch (e) { console.error("cron metrics", String(e && e.message || e)); }
+}
+
 export default {
   /* v28: the daily-email clock. Cloudflare runs this on the Cron Trigger. */
   async scheduled(event, env, ctx) {
     G_ENV = env;
-    ctx.waitUntil(alTick(env).catch(e => { console.error("alTick", String(e && e.message || e)); }));   /* v51: never silent */
+    ctx.waitUntil(cronRun(env));
+    /* v78: at the top of each hour, one test search per live marketplace, for the uptime numbers */
+    if (new Date().getUTCMinutes() < 5) ctx.waitUntil(runProbes(env).then(p => capsCall("metrics", "mrec", { p: p })).catch(e => console.error("probes", String(e && e.message || e))));
   },
   async fetch(request, env, ctx) {
     G_ENV = env;
+    const t0 = Date.now();
+    let res = null, thrown = null;
+    try { res = await handleFetch(request, env, ctx); }
+    catch (e) { thrown = e; console.error("unhandled", String(e && e.stack || e)); res = json({ error: "server error" }, 500, request.headers.get("Origin") || ""); }
+    try { await mTrack(request, res, t0, thrown, ctx); } catch (e) {}
+    return res;
+  },
+};
+
+async function handleFetch(request, env, ctx) {
+    G_ENV = env;
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") || "";
+
+    /* v78: the owner's admin area. Its own sign-in, same-origin only, no CORS. */
+    if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
+      const ar = await adminFetch(request, env, ctx, ADMIN_H);
+      if (ar) return ar;
+    }
 
     /* v12 red-team: debug routes need the DEBUG_KEY secret; cross-site POSTs are refused. */
     if (url.pathname.startsWith("/__")) {
@@ -4427,5 +4567,4 @@ export default {
     });
     try { await cache.put(key, res.clone()); } catch (e) { /* cache is best effort */ }
     return res;
-  },
-};
+}
