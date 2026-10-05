@@ -3,7 +3,7 @@ name: Scraper health
 # Once a day, asks the worker's live search routes for a common term and checks
 # each marketplace still returns listings. A source that answers with zero items
 # (or an error) twice in a row fails the run, and GitHub emails the repo owner
-# about failed scheduled runs. ai=0 skips the AI sorting, so this costs nothing.
+# about failed scheduled runs. Depop is left out: it blocks Workers (worker v76). ai=0 skips the AI sorting, so this costs nothing.
 on:
   schedule:
     - cron: "17 13 * * *"   # 13:17 UTC daily
@@ -42,7 +42,6 @@ jobs:
           check "Etsy"         "/etsy?q=vintage+pyrex&ai=0"
           check "Chairish"     "/chairish?q=vintage+lamp&ai=0"
           check "Poshmark"     "/poshmark?q=vintage+pyrex&ai=0"
-          check "Depop"        "/depop?q=vintage+pyrex&ai=0"
           check "Vinted"       "/vinted?q=vintage+pyrex&ai=0"
           check "Grailed"      "/grailed?q=vintage+levis&ai=0"
           exit $fail
