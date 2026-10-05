@@ -1,0 +1,48 @@
+name: Scraper health
+
+# Once a day, asks the worker's live search routes for a common term and checks
+# each marketplace still returns listings. A source that answers with zero items
+# (or an error) twice in a row fails the run, and GitHub emails the repo owner
+# about failed scheduled runs. ai=0 skips the AI sorting, so this costs nothing.
+on:
+  schedule:
+    - cron: "17 13 * * *"   # 13:17 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check each marketplace
+        run: |
+          W="https://prowl.thebluecloud.workers.dev"
+          fail=0
+          check() {
+            name="$1"; path="$2"; n=""
+            for attempt in 1 2; do
+              body=$(curl -sS -m 60 -H "Origin: https://owlandtwigvintage.com" "$W$path" || true)
+              n=$(printf '%s' "$body" | jq -r 'if (.items|type)=="array" then (.items|length) else 0 end' 2>/dev/null || echo 0)
+              [ "${n:-0}" -gt 0 ] && break
+              [ $attempt = 1 ] && sleep 20
+            done
+            if [ "${n:-0}" -gt 0 ]; then
+              echo "OK    $name: $n items"
+            else
+              echo "FAIL  $name: no items. Answer: $(printf '%s' "$body" | head -c 300)"
+              echo "::error title=$name returned no items::$path"
+              fail=1
+            fi
+          }
+          check "ShopGoodwill" "/?q=vintage+pyrex&ai=0"
+          check "eBay"         "/ebay?q=vintage+pyrex&ai=0"
+          check "Etsy"         "/etsy?q=vintage+pyrex&ai=0"
+          check "Chairish"     "/chairish?q=vintage+lamp&ai=0"
+          check "Poshmark"     "/poshmark?q=vintage+pyrex&ai=0"
+          check "Depop"        "/depop?q=vintage+pyrex&ai=0"
+          check "Vinted"       "/vinted?q=vintage+pyrex&ai=0"
+          check "Grailed"      "/grailed?q=vintage+levis&ai=0"
+          exit $fail

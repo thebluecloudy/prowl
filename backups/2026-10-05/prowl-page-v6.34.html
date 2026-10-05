@@ -159,6 +159,13 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper form{display:flex;gap:8px;margin:22px 0 10px;flex-wrap:wrap}
 .scout-app-wrapper input[type=search],.scout-app-wrapper input[type=text]{flex:1 1 220px;min-width:0;height:50px;padding:0 16px;border:1px solid var(--l2);border-radius:12px;background:var(--cd2);font:inherit;font-size:15px;font-weight:500;color:var(--ink);transition:border-color .15s,box-shadow .15s,background .15s}
 .scout-app-wrapper input::placeholder{color:var(--mu2)}
+/* v6.34: Photo check lives in the search bar as a camera button (replaces the "At a sale? Check a photo" card) */
+.scout-app-wrapper .sf-in{position:relative;display:flex;flex:1 1 220px;min-width:0}
+.scout-app-wrapper .sf-in input[type=search]{flex:1 1 auto;width:100%;padding-right:56px}
+.scout-app-wrapper .sf-cam{position:absolute;top:50%;right:5px;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;width:44px;height:40px;padding:0;border:0;border-radius:10px;background:transparent;color:var(--ac);cursor:pointer;-webkit-appearance:none;appearance:none}
+.scout-app-wrapper .sf-cam:hover{background:var(--hover)}
+.scout-app-wrapper .sf-cam svg{width:25px;height:25px}
+.scout-app-wrapper.ai-off .sf-in input[type=search]{padding-right:16px}
 .scout-app-wrapper input.wantterm{border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-ring)}
 @media(prefers-reduced-motion:no-preference){.scout-app-wrapper input.wantterm{animation:otpWant .5s ease-in-out 2} }
 @keyframes otpWant{0%,100%{box-shadow:0 0 0 3px var(--ac-ring)}50%{box-shadow:0 0 0 7px var(--ac-ring)} }
@@ -1068,7 +1075,7 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper .flock .fl-for{font-size:10px;color:var(--mu);padding:0 8px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scout-app-wrapper .flock .sgw-note{margin:0 15px}
 /* ---- v6.33: AI helpers switch: with AI off, every AI entry point is hidden ---- */
-.scout-app-wrapper.ai-off .sgw-fp,.scout-app-wrapper.ai-off #otp-aprGo,.scout-app-wrapper.ai-off #otp-photoBtn,.scout-app-wrapper.ai-off #otp-guide,.scout-app-wrapper.ai-off #otp-picks,.scout-app-wrapper.ai-off .sgw-where{display:none!important}
+.scout-app-wrapper.ai-off .sgw-fp,.scout-app-wrapper.ai-off #otp-aprGo,.scout-app-wrapper.ai-off #otp-cam,.scout-app-wrapper.ai-off #otp-photoBtn,.scout-app-wrapper.ai-off #otp-guide,.scout-app-wrapper.ai-off #otp-picks,.scout-app-wrapper.ai-off .sgw-where{display:none!important}
 .scout-app-wrapper.ai-off #otp-dock{grid-template-columns:repeat(5,1fr)}
 /* ---- v6.19: Field Guide on anything ---- */
 .scout-app-wrapper .gd{margin:26px 0 0;padding:18px;border:1px solid var(--ln);border-radius:16px;background:var(--cd2)}
@@ -1301,7 +1308,10 @@ window.prowlEpn=function(u,cid){
   <p class="lede k2-hide"><strong>Prowl by Owl &amp; Twig</strong> is a free search tool for vintage collectors. Type a hunt or tap one of yours below, and it builds the same search for all <span data-t>26</span> vintage marketplaces on one screen — open them one at a time, or all at once.</p>
 
   <form id="otp-sf" autocomplete="off">
-    <input id="otp-q" type="search" placeholder="ceramic panther, rookwood vase…" aria-label="Search term">
+    <div class="sf-in">
+      <input id="otp-q" type="search" placeholder="ceramic panther, rookwood vase…" aria-label="Search term">
+      <button type="button" class="sf-cam" id="otp-cam" aria-haspopup="dialog" aria-label="Photo check: snap a piece to identify and price it" title="Check a photo"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5h3.2l1.8-2.5h7l1.8 2.5h3.2v10.5h-17z"></path><circle cx="12" cy="13.5" r="3.4"></circle></svg></button>
+    </div>
     <button class="b p" type="submit">Hunt</button>
     <button class="b" id="otp-sa" type="button">Search All</button>
     <button class="b fb" id="otp-fb" type="button">Facebook USA</button>
@@ -1309,7 +1319,6 @@ window.prowlEpn=function(u,cid){
 
   <div class="gapp otp-getapp" data-mode="home" hidden></div>
 
-  <button type="button" class="apr-go" id="otp-aprGo" aria-haspopup="dialog"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5h3.2l1.8-2.5h7l1.8 2.5h3.2v10.5h-17z"></path><circle cx="12" cy="13.5" r="3.4"></circle></svg><span class="apr-gt"><b>At a sale? Check a photo.</b><span>Snap a piece: what it is, visible flaws and a fair price.</span></span><span class="apr-gx" aria-hidden="true">›</span></button>
   <section id="otp-sgw" class="sgw-panel" hidden aria-label="Your hunts, live on ShopGoodwill"></section>
   <section id="otp-picks" class="found-strip picks" hidden aria-label="From our shop, matching your hunts"><div class="found-title">From our shop · matches your hunts</div>
 <div class="picks-row" id="otp-picksRow"></div></section>
@@ -2150,7 +2159,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.33';
+var PROWL_VERSION='v6.34';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -2691,6 +2700,12 @@ var pho=$('#otp-photo');
 function openPhoto(){if(aiOff()){toast('AI is off in your settings.',2200);return}if(!pho||pho.classList.contains('on'))return;if(den.classList.contains('on'))closeDen();if(dw.classList.contains('on'))closeDw();lf=document.activeElement;pho.hidden=false;requestAnimationFrame(function(){sc.classList.add('on');pho.classList.add('on')});var c=$('#otp-photoClose');if(c)c.focus();}
 function closePhoto(){if(!pho)return;sc.classList.remove('on');pho.classList.remove('on');setTimeout(function(){if(!pho.classList.contains('on'))pho.hidden=true},300);if(lf&&lf.focus)lf.focus();}
 var phGo=$('#otp-aprGo');if(phGo)phGo.addEventListener('click',openPhoto);
+var phCam=$('#otp-cam');if(phCam)phCam.addEventListener('click',openPhoto);
+/* v6.34: on phones the Get the app card sits below your hunts, so the hunts come first */
+(function(){var g=document.querySelector('.scout-app-wrapper .otp-getapp[data-mode="home"]'),sg=$('#otp-sgw'),fm=$('#otp-sf');if(!g||!sg||!fm||!window.matchMedia)return;
+  var mq=window.matchMedia('(max-width:700px)');
+  function place(){try{if(mq.matches){if(g.previousElementSibling!==sg)sg.parentNode.insertBefore(g,sg.nextSibling)}else if(fm.nextElementSibling!==g)fm.parentNode.insertBefore(g,fm.nextSibling)}catch(e){} }
+  place();try{if(mq.addEventListener)mq.addEventListener('change',place);else if(mq.addListener)mq.addListener(place)}catch(e){} })();
 var phX=$('#otp-photoClose');if(phX)phX.addEventListener('click',closePhoto);
 /* the photo screen's "Sign in" link (Pro members) */
 document.addEventListener('prowl-signin',function(){closePhoto();setTimeout(openMailSettings,320)});
@@ -3492,7 +3507,7 @@ function sgwCard(it,hunt){
   if(typeof it.bids==='number')m+=' · '+esc(String(it.bids))+' bid'+(it.bids===1?'':'s');
   if(it.time_left)m+=' · '+esc(it.time_left)+' left';
   /* v5.63: worker v21 Jev tags likely reproductions; turning JEV_RESULTS off removes the tag */
-  if(it.repro)m+='<br><span class="sgw-repro" title="The title reads like a reproduction or reissue">Possible reproduction</span>';
+  if(it.repro)m+='<br><span class="sgw-repro" title="The title reads like a reproduction, reissue or a lookalike from another maker">Possible reproduction</span>';
   var a='<a class="sgw-card" href="'+esc(window.prowlEpn(it.url,'prowl-live'))+'" target="_blank" rel="noopener noreferrer">'+
     img+
     '<div class="sgw-t">'+esc(it.title)+'</div>'+
