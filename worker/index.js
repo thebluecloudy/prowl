@@ -19,6 +19,7 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v75b: /__depopprobe answers compactly (full=1 for every field) and also tries Depop web API v4, v5 and presentation v1.
  *   v75: 2026-10-05. /__depopprobe tries several ways into Depop (search page with fuller browser headers, /us/ page,
  *        web API v2/v3, home page) and reports status and bot-wall headers for each. Diagnostic only.
  *   v74: 2026-10-05. Daily emails were going out hours late: the cron checked 2 hunts per 15 minutes for all
@@ -4156,10 +4157,14 @@ export default {
         ["page", DEPOP_URL + q, html],
         ["page+browser", DEPOP_URL + q, browser],
         ["page-us", "https://www.depop.com/us/search/?q=" + q, browser],
-        ["api-v3", "https://webapi.depop.com/api/v3/search/products/?what=" + q + "&itemsPerPage=24&country=us&currency=USD&sort=relevance", api],
         ["api-v2", "https://webapi.depop.com/api/v2/search/products/?what=" + q + "&itemsPerPage=24&country=us&currency=USD", api],
+        ["api-v4", "https://webapi.depop.com/api/v4/search/products/?what=" + q + "&items_per_page=24&country=us&currency=USD", api],
+        ["api-v5", "https://webapi.depop.com/api/v5/search/products/?what=" + q + "&items_per_page=24&country=us&currency=USD", api],
+        ["api-v3-nosort", "https://webapi.depop.com/api/v3/search/products/?what=" + q + "&items_per_page=24&country=us&currency=USD", api],
+        ["api-v1-presentation", "https://webapi.depop.com/presentation/api/v1/search/products/?what=" + q + "&items_per_page=24&country=us&currency=USD", api],
         ["home", "https://www.depop.com/", browser]
       ];
+      const compact = url.searchParams.get("full") !== "1";
       const out = [];
       for (const [name, u, h] of tries) {
         const t0 = Date.now(); const row = { name: name };
@@ -4175,7 +4180,8 @@ export default {
             parsed: name.indexOf("page") === 0 ? ((depopNormalize(body) || []).length) : null,
             head: body.slice(0, 220) });
         } catch (e) { row.error = String(e && e.message || e); }
-        out.push(row);
+        if (compact) { const c = { n: row.name, s: row.status, ms: row.ms, b: row.bytes }; if (row.error) c.err = row.error; if (row.parsed) c.parsed = row.parsed; if (row.hasProducts) c.products = true; c.h = String(row.head || "").replace(/\s+/g, " ").slice(0, row.status === 200 ? 260 : 110); out.push(c); }
+        else out.push(row);
       }
       return new Response(JSON.stringify({ term: term, colo: (request.cf && request.cf.colo) || null, tries: out }, null, 1), { headers: { "Content-Type": "application/json" } });
     }
