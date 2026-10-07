@@ -249,11 +249,16 @@ test("session: sign and verify, tampered, expired, wrong key, malformed", async 
 
 test("admin key missing or short: every /admin route answers 503", async () => {
   const H = makeH();
-  for (const env of [{ PROWL_ALERTS: new FakeKV() }, { PROWL_ALERTS: new FakeKV(), ADMIN_KEY: "short" }]) {
+  const cases = [
+    [{ PROWL_ALERTS: new FakeKV() }, /Admin is not set up: add an ADMIN_KEY secret in Cloudflare/],
+    [{ PROWL_ALERTS: new FakeKV(), ADMIN_KEY: "short" }, /ADMIN_KEY is shorter than 20 characters\. In Cloudflare, replace it/]
+  ];
+  for (const [env, says] of cases) {
     for (const [m, p] of [["GET", "/admin"], ["GET", "/admin/api/overview"], ["POST", "/admin/login"]]) {
       const res = await adminFetch(new Request(ORIGIN + p, { method: m }), env, ctxOf(), H);
       assert.equal(res.status, 503);
-      assert.match(await res.text(), /Admin is not set up: add an ADMIN_KEY secret in Cloudflare/);
+      const t = await res.text();
+      assert.match(t, says);
       assertBaseHeaders(res);
     }
   }
@@ -266,6 +271,21 @@ test("admin key missing or short: every /admin route answers 503", async () => {
   assert.match(await res.text(), /use a different key for ADMIN_KEY than OWNER_KEY/);
   res = await adminFetch(new Request(ORIGIN + "/admin"), { PROWL_ALERTS: new FakeKV(), ADMIN_KEY: "only-19-characters!" }, ctxOf(), H);
   assert.equal(res.status, 503, "at least 20 characters");
+  let t = await res.text();
+  assert.match(t, /shorter than 20 characters/);
+  assert.ok(!t.includes("only-19-characters!") && !/\b19\b/.test(t), "neither the key nor its length is shown");
+  /* a near-miss name (wrong case, a space or dash) is named so the owner can fix it; its value is never shown */
+  for (const name of ["admin_key", "ADMIN KEY", "Admin-Key", "ADMINKEY", "ADMIN_KEY "]) {
+    res = await adminFetch(new Request(ORIGIN + "/admin"), { PROWL_ALERTS: new FakeKV(), [name]: "misnamed-but-long-enough-0123" }, ctxOf(), H);
+    assert.equal(res.status, 503, name);
+    t = await res.text();
+    assert.match(t, /the name must be exactly ADMIN_KEY/, name);
+    assert.ok(t.includes("&quot;" + name + "&quot;"), name);
+    assert.ok(!t.includes("misnamed-but-long-enough"), "the misnamed secret's value is never shown");
+  }
+  /* other settings are never mistaken for a misnamed admin key */
+  res = await adminFetch(new Request(ORIGIN + "/admin"), { PROWL_ALERTS: new FakeKV(), ADMIN_KEYS: "x", MY_ADMIN_KEY_OLD: "y", OWNER_KEY: "owner-key-long-enough-0123" }, ctxOf(), H);
+  assert.match(await res.text(), /add an ADMIN_KEY secret/);
   res = await adminFetch(new Request(ORIGIN + "/admin"), { PROWL_ALERTS: new FakeKV(), ADMIN_KEY: KEY, OWNER_KEY: "owner-key-long-enough-0123" }, ctxOf(), H);
   assert.equal(res.status, 200, "ADMIN_KEY works when it differs from OWNER_KEY");
   res = await call(makeEnv({ OWNER_KEY: "owner-key-long-enough-0123" }), H, "POST", "/admin/login", { cookie: false, body: "key=owner-key-long-enough-0123",
