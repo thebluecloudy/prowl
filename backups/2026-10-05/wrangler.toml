@@ -24,8 +24,11 @@ class_name = "Caps"
 tag = "v1"
 new_sqlite_classes = ["Caps"]
 
+# Every 5 minutes: the Prowl Alerts clock. "2 * * * *" (v78): the hourly uptime test searches for the admin
+# dashboard, in their own run so they never use the alert clock's budget of outside calls. index.js PROBE_CRON
+# must match the second entry.
 [triggers]
-crons = ["*/5 * * * *"]
+crons = ["*/5 * * * *", "2 * * * *"]
 
 [vars]
 EPN_CAMPAIGN_ID = "5339216838"

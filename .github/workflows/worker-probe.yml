@@ -27,7 +27,7 @@ jobs:
           K: ${{ secrets.PROWL_DEBUG_KEY }}
         run: |
           if [ -z "$K" ]; then echo "PROWL_DEBUG_KEY secret is not set"; exit 1; fi
-          case "$P" in /__*|/ebay\?*|/etsy\?*|/chairish\?*|/poshmark\?*|/depop\?*|/vinted\?*|/grailed\?*|/\?*) ;; *) echo "path must start with /__ or be a live route like /ebay?q=..."; exit 1;; esac
+          case "$P" in /admin|/__*|/ebay\?*|/etsy\?*|/chairish\?*|/poshmark\?*|/depop\?*|/vinted\?*|/grailed\?*|/\?*) ;; *) echo "path must start with /__ or be a live route like /ebay?q=..."; exit 1;; esac
           echo "GET https://prowl.thebluecloud.workers.dev$P"
           echo "=====BEGIN====="
           curl -sS -m 60 -i -H "X-Prowl-Debug: $K" -H "Origin: https://owlandtwigvintage.com" "https://prowl.thebluecloud.workers.dev$P" | head -c 3000
