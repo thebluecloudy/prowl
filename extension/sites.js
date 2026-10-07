@@ -22,6 +22,7 @@ export const SITES = [
   plain('ebay', 'eBay', 'https://www.ebay.com/sch/i.html?_nkw='),
   plain('etsy', 'Etsy', 'https://www.etsy.com/search?q='),
   plain('mercari', 'Mercari', 'https://www.mercari.com/search/?keyword='),
+  plain('mercarijp', 'Mercari Japan', 'https://jp.mercari.com/search?keyword='),
   plain('poshmark', 'Poshmark', 'https://poshmark.com/search?query='),
   plain('depop', 'Depop', 'https://www.depop.com/search/?q='),
   plain('grailed', 'Grailed', 'https://www.grailed.com/shop?query='),
@@ -52,6 +53,7 @@ export const SITES = [
       '&cadb=7&scs=false&sis=false&col=1&p=1&ps=40&desc=false&ss=0&UseBuyerPrefs=true' +
       '&sus=false&cln=1&catIds=&pn=&wc=false&mci=false&hmt=false&layout=grid&ihp=true',
   },
+  plain('salvation', 'Salvation Army', 'https://shopthesalvationarmy.com/Browse?FullTextQuery='),
   plain('estatesales', 'EstateSales.net', 'https://www.estatesales.net/search/'),
   plain('hibid', 'HiBid', 'https://hibid.com/lots?q='),
   plain('liveauction', 'LiveAuctioneers', 'https://www.liveauctioneers.com/search/?keyword='),
