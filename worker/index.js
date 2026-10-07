@@ -26,6 +26,8 @@
  *        view that runs a hunt live and shows what the AI and the member's own filters would hide. metrics.js
  *        records speed, cache hits and errors per route (batched into the Caps "metrics" object), every cron run
  *        and an hourly test search per live marketplace for uptime. Unhandled errors now answer 500 JSON.
+ *        Gift Pro: the owner gives free Pro from the admin area (KV gift:<hash of the address>, never the address
+ *        itself), and can switch off a PRO_EMAILS address there (giftoff:<hash>). alPro checks both before Shopify.
  *   v77: 2026-10-05. Mercari Japan joins the email "Also search" links and the where-to-look list (page v6.36 adds it
  *        as a link-out). /__mercarijptest tries its search API (api.mercari.jp, DPoP proof from a key made here);
  *        not wired to the page until it is shown to answer a Worker.
@@ -219,7 +221,7 @@
 
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
-import { adminFetch } from "./admin.js";
+import { adminFetch, giftPro } from "./admin.js";
 const WORKER_VERSION = "v78";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
@@ -2792,7 +2794,8 @@ function alFilter(sub, items, local) {
   return items.filter(x => !memberDropReason(sub, x, local));
 }
 /* v32: Prowl Pro. Free = alerts for the first ALERT_FREE_HUNTS hunts (default 3).
-   Pro = up to 25. Pro means: email is in PRO_EMAILS (text var, comma list), or the
+   Pro = up to 25. Pro means: email is in PRO_EMAILS (text var, comma list) and not
+   switched off in the admin area, or the owner gifted it there (v78), or the
    store has a paid, not-cancelled order for SKU PROWL-PRO-MONTHLY under that email
    in the last 35 days (the Subscriptions app makes a new order every renewal).
    Needs secret SHOPIFY_ORDERS_TOKEN (read_orders). SHOPIFY_SHOP overrides the
@@ -2814,9 +2817,23 @@ function alActive(env, sub) {
   const mute = alPrefs(sub).mute, hs = sub.hunts.filter(h => mute.indexOf(h.toLowerCase()) === -1);   /* v50 */
   return sub.pro ? hs.slice(0, AL_MAX_HUNTS) : hs.slice(0, alFree(env, sub));
 }
+/* v78: free Pro the owner gives from the admin area. KV gift:<giftHash(email)> = { note, added, until, by } and
+   giftoff:<hash> = { at } (switches off the PRO_EMAILS free Pro for that address). Only the hash is stored,
+   so a gift can wait for someone who has not signed up yet without keeping their address. */
+async function giftHash(email) {
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("prowl-gift|" + String(email == null ? "" : email)));
+  return Array.from(new Uint8Array(d), x => ("0" + x.toString(16)).slice(-2)).join("");
+}
+function proList(env) { return String((env && env.PRO_EMAILS) || "").toLowerCase().split(/[\s,]+/).filter(Boolean); }
+function proListHas(env, email) { return proList(env).indexOf(String(email == null ? "" : email).trim().toLowerCase()) !== -1; }
+function proListCount(env) { return new Set(proList(env)).size; }
 async function alPro(env, email, force) {
-  const list = String((env && env.PRO_EMAILS) || "").toLowerCase().split(/[\s,]+/).filter(Boolean);
-  if (list.indexOf(email) !== -1) return { pro: true, via: "list", plan: { via: "list" } };
+  /* v78: free Pro comes first: the PRO_EMAILS list (unless switched off in the admin area), then an admin gift
+     that has not ended (Detroit day). Two KV reads, no Shopify call. */
+  const gh = await giftHash(email);
+  const [off, gift] = await Promise.all([kvGet(env, "giftoff:" + gh, null), kvGet(env, "gift:" + gh, null)]);
+  const free = giftPro(proListHas(env, email), !!off, gift, gift ? alNow(env).day : "");
+  if (free) return free;
   const ck = "pro:" + email;
   if (!force) { const c = await kvGet(env, ck, null); if (c && Date.now() - c.at < 6 * 3600 * 1000) return { pro: !!c.pro, via: "cache", plan: c.plan || null }; }
   if (!env.SHOPIFY_ORDERS_TOKEN) return { pro: null, via: "no token" };
@@ -2875,6 +2892,8 @@ async function alProSet(env, sub, force) {
   let p = await alPro(env, sub.email, force);
   /* v54: a moved member's Pro order can still be under an earlier address */
   if (p.pro === false && Array.isArray(sub.prev)) for (const old of sub.prev.slice(0, 2)) { const q = await alPro(env, old, force); if (q.pro) { p = q; break; } }
+  /* v78: free Pro from a gift or the PRO_EMAILS list ends with them, even when the shop cannot be asked about a paid plan */
+  if (p.pro === null && sub.plan && (sub.plan.via === "gift" || sub.plan.via === "list")) { sub.pro = false; sub.plan = null; }
   if (p.pro !== null) sub.pro = p.pro;
   if (p.pro !== null) sub.plan = p.plan || null;
   sub.proCheck = p.pro === null ? String(p.via || "check failed").slice(0, 40) : "";   /* v78: shown as "pro check failing" in the admin */
@@ -3805,6 +3824,7 @@ const ADMIN_H = {
   kvGet, kvPut, alNow, alLocal, alPrefs, alActive, alSlotHour, alSendDay, alPaused, alFree, alFreeWeekly, alLegacyFree, alUrgency,
   alProSet, alMerge, alSendSignin, alToken, liveSources, liveFetch, jevClean, jevWouldDrop, memberDropReason, alNear, runProbes,
   capsCall, capsDay, vCount, ipKey, alSame, statTerm, scrubPII, summarize, uptimeFrom, pctFromHist,
+  giftHash, alEmail, proListHas, proListCount,
   WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE
 };
 

@@ -246,6 +246,7 @@ th:last-child,td:last-child{padding-right:0}
 .mrow:last-child{border-bottom:0}
 .mhead{display:none;font-size:12.5px;font-weight:650;color:var(--ink2);border-bottom:1.5px solid var(--hair2);padding-top:0}
 .c-id{font-weight:700}
+.c-plan{display:inline-flex;flex-wrap:wrap;gap:4px}
 .c-meta{display:flex;flex-wrap:wrap;gap:2px 12px;width:100%;font-size:13.5px;color:var(--ink2)}
 .c-flags{display:flex;flex-wrap:wrap;gap:5px;width:100%}
 .c-flags:empty{display:none}
@@ -280,6 +281,18 @@ th:last-child,td:last-child{padding-right:0}
 .conf .frow{margin:0;flex-wrap:wrap}
 .conf .frow input{flex:1 1 160px}
 .lastmsg{margin:0 0 12px}
+.gform{display:flex;flex-direction:column;gap:12px}
+.ggrid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+@media (min-width:760px){.ggrid{grid-template-columns:minmax(0,3fr) minmax(0,3fr) minmax(0,2fr)}}
+.ggrid label{display:block;margin-bottom:6px}
+.gform .btn{align-self:flex-start}
+.gl-h{margin:18px 0 6px;padding-top:14px;border-top:1.5px solid var(--hair2)}
+.gbox{display:flex;flex-direction:column;gap:8px;margin-top:14px;padding-top:12px;border-top:1.5px solid var(--hair2)}
+.gbox h4{font-size:15px}
+.gbox .frow{margin:0;flex-wrap:wrap;align-items:center}
+.gbox label{font-size:14px}
+.gbox select{width:auto;min-height:38px;padding:6px 10px;font-size:15px}
+.gbox .hint{margin:0}
 .waits{display:flex;flex-direction:column;gap:14px}
 .waits h4{font-size:15px;margin-bottom:6px}
 .samp{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:14px}
@@ -345,7 +358,8 @@ const SS = {
 const TABS = ["overview", "members", "diagnose", "errors", "searches"];
 const S = { tab: "", ov: null, ovAt: 0, ovSeq: 0, out: false, health: null, routesAll: false, top: "today",
   mFilter: "all", mSort: "created", mData: null, mAt: 0, mSeq: 0, member: null, memberId: "", pushed: false, lastMsg: null,
-  late: null, diag: null, dSel: null, diagRes: null, diagShow: "all", diagSeq: 0, errSeq: 0, sDays: 7, sSeq: 0, toastT: 0 };
+  late: null, diag: null, dSel: null, diagRes: null, diagShow: "all", diagSeq: 0, errSeq: 0, sDays: 7, sSeq: 0, toastT: 0,
+  gData: null, gAt: 0, gSeq: 0, giftsAll: false };
 
 /* ---------- DOM: API data only ever lands in textContent or vetted https attributes ---------- */
 function h(tag, a, kids) {
@@ -479,7 +493,7 @@ function planOf(m) {
   return p ? String(p) : m.pro ? (pl.trial ? "trial" : "pro") : "free";
 }
 function planBadge(p) { p = String(p || "free"); return h("span", { class: "bdg" + (p === "pro" ? " b-pro" : p === "trial" ? " b-trial" : ""), text: PLAN[p] || cap(p) }); }
-const VIA = { list: "Added by hand (Pro list)", order: "Shop order", subscription: "Shop subscription", trial: "Free trial", manual: "Added by hand" };
+const VIA = { list: "Free Pro from the Cloudflare list (PRO_EMAILS)", gift: "Free Pro gift (from you)", order: "Shop order", subscription: "Shop subscription", trial: "Free trial", manual: "Added by hand" };
 const FREQ = { daily: "Every day", mwf: "Mon, Wed and Fri", weekly: "Mondays" };
 const FLAGS = {
   "emails off": "They turned emails off or unsubscribed. Nothing is sent until emails are back on.",
@@ -490,7 +504,8 @@ const FLAGS = {
   "sign-in link waiting": "A sign-in link was emailed and has not been used yet. It works once, for 24 hours.",
   "moved address": "They changed their email address. Old addresses are never shown here.",
   "hunts over plan limit": "They have more hunts than their plan checks, so only the first few are searched.",
-  "record unreadable": "Their saved record could not be read. Ask a developer to look at it."
+  "record unreadable": "Their saved record could not be read. Ask a developer to look at it.",
+  "gift ended": "Their free Pro gift has ended. Their plan switches at the next daily check, or press Re-check Pro to do it now."
 };
 const ISSUE_FLAGS = ["email late", "pro check failing", "no hunts", "record unreadable"];
 function flagChip(f) { return h("span", { class: "bdg" + (ISSUE_FLAGS.indexOf(f) >= 0 ? "" : " b-out") }, [ISSUE_FLAGS.indexOf(f) >= 0 ? icon("warning") : null, f]); }
@@ -498,7 +513,8 @@ const AI = { match: "Match", lot: "Lot or set", reproduction: "Reproduction", pa
 const AUDIT = { login: "Admin sign-in", logout: "Admin sign-out", "signin-link": "Sent a sign-in link", "refresh-pro": "Re-checked Pro",
   "recheck-today": "Re-check hunts today", "resend-today": "Send today's email again", "mail-on": "Turned emails on", "mail-off": "Turned emails off",
   unpause: "Unpaused", "signout-all": "Signed out all devices", "clear-seen": "Cleared already-sent memory", delete: "Deleted a member",
-  find: "Looked up a member", diagnose: "Ran Diagnose", healthcheck: "Ran a health check" };
+  find: "Looked up a member", diagnose: "Ran Diagnose", healthcheck: "Ran a health check",
+  "gift-add": "Gifted Pro", "gift-remove": "Turned off a gift", "gift-on": "Gifted Pro to a member", "gift-off": "Turned off free Pro" };
 const ISSUES = { members: "member counts", alerts: "alert emails", metrics: "speed, errors and uptime", traffic: "speed and errors", uptime: "uptime",
   ai: "AI usage", pools: "AI usage", searches: "top searches", audit: "admin activity", errors: "recent errors" };
 
@@ -546,6 +562,7 @@ function selectTab(tab, detail) {
   if (tab === "members" && !detail) {
     $("#mlist").hidden = false; $("#mdetail").hidden = true; S.memberId = ""; S.pushed = false;
     if (!S.mData || Date.now() - S.mAt > 60000) loadMembers();
+    if (!S.gData || Date.now() - S.gAt > 60000) loadGifts();
   }
   if (tab === "overview" && (!S.ov || Date.now() - S.ovAt > 60000)) loadOverview();
   if (tab === "diagnose") prepDiag();
@@ -575,7 +592,7 @@ tabBtns.forEach((b, i) => {
 addEventListener("popstate", route);
 $("#refresh").addEventListener("click", () => {
   if (S.tab === "overview") loadOverview();
-  else if (S.tab === "members") { if (S.memberId) openMember(S.memberId, true); else loadMembers(); }
+  else if (S.tab === "members") { if (S.memberId) openMember(S.memberId, true); else { loadMembers(); loadGifts(); } }
   else if (S.tab === "errors") loadErrors();
   else if (S.tab === "searches") loadSearches();
   else if (S.tab === "diagnose") { if (!S.ov) loadOverview(); stamp(); }
@@ -660,7 +677,8 @@ function tiles(ov) {
   const m = ov.members, a = ov.alerts, tr = ov.traffic, up = Array.isArray(ov.uptime) ? ov.uptime : null;
   const live = tr && (tr.live || null), tot = tr && tr.totals, ser = tr && tr.series;
   const T = [];
-  T.push(tile("Members", m ? num(m.total) : "\u2014", m ? [num(m.pro) + " Pro", m.trial ? num(m.trial) + " on trial" : null, num(m.new7d) + " new this week"].filter(Boolean).join(" \u00b7 ") : "Could not load"));
+  T.push(tile("Members", m ? num(m.total) : "\u2014", m ? [num(m.pro) + " Pro" + (m.gifted ? " (" + num(m.gifted) + " free)" : ""), m.trial ? num(m.trial) + " on trial" : null,
+    num(m.new7d) + " new this week"].filter(Boolean).join(" \u00b7 ") : "Could not load"));
   const counts = a && a.sentToday != null ? a : null;   /* per-member counts are null when the member list failed */
   const checked = counts && (a.checkedToday != null ? a.checkedToday : a.huntsCheckedToday);
   T.push(tile("Active hunts", m ? num(m.activeHunts) : "\u2014", m && counts ? [checked != null ? num(checked) + " checked today" : null,
@@ -763,14 +781,16 @@ function marketsCard(ov) {
   let body;
   if (!up) body = note("warn", "Uptime could not be loaded right now.");
   else if (!up.length) body = h("p", { class: "empty", text: "No checks yet. A test search runs on each marketplace at the top of every hour, or press Run health check now." });
-  else body = tableOf([{ t: "Marketplace" }, { t: "Status", bare: 1 }, { t: "Up (24 h)", num: 1 }, { t: "Up (7 days)", num: 1 }, { t: "Last worked" }, { t: "Speed", num: 1 }, { t: "Listings", num: 1 }, { t: "Note", cls: "wide" }],
+  else body = tableOf([{ t: "Marketplace" }, { t: "Status", bare: 1 }, { t: "Up (24 h)", num: 1 }, { t: "Up (7 days)", num: 1 }, { t: "Last check" }, { t: "Speed", num: 1 }, { t: "Listings", num: 1 }, { t: "Note", cls: "wide" }],
     up.map(u => [h("span", { class: "term", text: srcName(u.source) }), u.down ? st("critical", "Down") : st("good", "Up"),
       u.pct24 == null ? "\u2014" : pc(u.pct24), u.pct7d == null ? "\u2014" : pc(u.pct7d),
-      h("span", { class: "nw", text: u.lastOkAt ? fmtWhen(u.lastOkAt) : "Not in 7 days" }), u.lastMs == null ? "\u2014" : secs(u.lastMs), num(u.lastN),
-      u.lastErr || u.down ? h("span", { class: "small", text: u.lastErr || "Last test search failed" }) : ""]),
+      h("span", { class: "nw", text: lastCheck(u) }), u.lastMs == null ? "\u2014" : secs(u.lastMs), num(u.lastN),
+      u.lastErr || u.down ? h("span", { class: "small", text: (u.lastErr || "Last test search failed") + (u.down ? ". " + (u.lastOkAt ? "Last worked " + fmtWhen(u.lastOkAt) + "." : "No good check in 7 days.") : "") }) : ""]),
     "Marketplaces", true);
   return card("markets", "Marketplaces", btn, [body, hbox], "A small test search runs on each marketplace every hour.");
 }
+/* lastAt = when the latest test search ran (ms); older data only has the hour it last worked */
+function lastCheck(u) { const at = u.lastAt || u.lastOkAt; return at ? fmtWhen(at) : "\u2014"; }
 function healthView() {
   const H = S.health;
   if (!H) return null;
@@ -876,7 +896,8 @@ function topCard(ov) {
 }
 function auditRows(A) {
   return A.map(x => [h("span", { class: "nw", text: fmtWhen(x.t) }), AUDIT[x.action] || String(x.action || "\u2014"),
-    /^M-[0-9a-f]{8}$/i.test(x.id || "") ? h("button", { class: "lnk id", type: "button", text: x.id, onclick: () => openMember(x.id) }) : "",
+    /^M-[0-9a-f]{8}$/i.test(x.id || "") ? h("button", { class: "lnk id", type: "button", text: x.id, onclick: () => openMember(x.id) })
+      : /^[0-9a-f]{10}$/.test(x.id || "") ? h("span", { class: "code small nw", text: "gift " + x.id }) : "",
     x.ok === false ? st("critical", "Failed") : st("good", "Done"), x.note ? h("span", { class: "small", text: x.note }) : ""]);
 }
 function auditCard(ov) {
@@ -906,6 +927,73 @@ $("#findf").addEventListener("submit", async e => {
     if (j.id) openMember(j.id);
   } catch (err) { if (err.status !== 401) msg.textContent = err.message; }
 });
+/* ---------- Gift Pro (free service) ---------- */
+const GIFT_LEN = [[0, "Forever"], [1, "1 month"], [3, "3 months"], [6, "6 months"], [12, "12 months"]];
+$("#giftf").addEventListener("submit", async e => {
+  e.preventDefault();
+  const inp = $("#gift-email"), nt = $("#gift-note"), len = $("#gift-len"), msg = $("#gift-msg"), btn = $("#gift-go");
+  const email = inp.value.trim(), months = Number(len.value) || 0, text = nt.value.trim();
+  inp.value = "";   /* gone from the page as soon as it is sent */
+  if (!email) { msg.textContent = "Type their email address first."; inp.focus(); return; }
+  btn.disabled = true; msg.textContent = "Saving\u2026";
+  try {
+    const j = await api("/admin/api/gift", { email: email, note: text, months: months });
+    nt.value = ""; len.value = "0";
+    fill(msg, [j.message || "Gift saved.", j.memberId ? [" ", h("button", { class: "lnk", type: "button", text: "Open " + j.memberId, onclick: () => openMember(j.memberId) })] : null]);
+    S.mData = null; loadGifts(); loadMembers();
+  } catch (err) { if (err.status !== 401) msg.textContent = err.message; }
+  finally { btn.disabled = false; }
+});
+async function loadGifts() {
+  const box = $("#glist"), seq = ++S.gSeq;
+  if (!S.gData) fill(box, loading("Loading gifts\u2026"));
+  box.classList.add("busy");
+  try {
+    const j = await api("/admin/api/gifts");
+    if (seq !== S.gSeq) return;
+    S.gData = j; S.gAt = Date.now(); renderGifts(j);
+  } catch (e) {
+    if (e.status === 401 || seq !== S.gSeq) return;
+    fill(box, note("bad", "Could not load the gift list. " + e.message, loadGifts));
+  } finally { if (seq === S.gSeq) box.classList.remove("busy"); }
+}
+const GIFT_COLS = [{ t: "Note" }, { t: "Status", bare: 1 }, { t: "Member" }, { t: "Added" }, { t: "Ends" }, { t: "", bare: 1 }];
+function renderGifts(j) {
+  const G = Array.isArray(j.gifts) ? j.gifts : [], on = G.filter(g => g.active).length;
+  const off = Number(j.listOff) || 0, left = Math.max(0, (Number(j.listCount) || 0) - off);
+  const list = S.giftsAll ? G : G.slice(0, 5);
+  const more = G.length > 5 ? h("button", { class: "btn btn-s more", type: "button", text: S.giftsAll ? "Show the newest 5" : "Show all " + G.length, onclick: () => {
+    S.giftsAll = !S.giftsAll; renderGifts(S.gData); const b = $("#glist button.more"); if (b) b.focus(); } }) : null;
+  fill($("#glist"), [h("div", { class: "ch gl-h" }, [h("h3", { text: "Gifts" }), G.length ? h("span", { class: "muted small", text: num(on) + " active" + (G.length > on ? ", " + num(G.length - on) + " ended" : "") }) : null]),
+    G.length ? tableOf(GIFT_COLS, list.map(giftRow), "Gifts", true) : h("p", { class: "empty", text: "No gifts yet. People you gift Pro to show up here, even before they sign up." }),
+    more,
+    left ? h("p", { class: "hint", text: plural(left, "more person gets", "more people get") + " free Pro from the PRO_EMAILS list in Cloudflare \u2014 turn any of them off from their member page." +
+      (off ? " (" + plural(off, "address is", "addresses are") + " turned off here.)" : "") }) : null,
+    j.truncated ? h("p", { class: "hint" }, st("warning", "Only the first 2,000 gifts are listed.")) : null]);
+}
+function giftRow(g) {
+  const who = g.note ? " \u201c" + g.note + "\u201d" : g.memberId ? " for " + g.memberId : "";
+  const b = h("button", { class: "btn btn-s", type: "button", text: g.active ? "Turn off" : "Remove", "aria-label": (g.active ? "Turn off the gift" : "Remove the ended gift") + who });
+  b.addEventListener("click", () => removeGift(g, b));
+  return [h("span", { class: g.note ? "term" : "muted", text: g.note || "(no note)" }), g.active ? st("good", "Active") : st("info", "Ended"),
+    g.memberId ? h("button", { class: "lnk id", type: "button", text: g.memberId, onclick: () => openMember(g.memberId) }) : h("span", { class: "muted", text: "Not signed up yet" }),
+    h("span", { class: "nw", text: g.added ? fmtDay(g.added) : "\u2014" }), h("span", { class: "nw", text: g.until ? fmtDay(g.until) : "No end" }), b];
+}
+async function removeGift(g, btn) {
+  const who = g.memberId || (g.note ? "\u201c" + g.note + "\u201d" : "this person");
+  if (!window.confirm(g.active ? "Turn off free Pro for " + who + "? They go back to the free plan unless they pay." : "Remove the ended gift for " + who + " from the list?")) return;
+  const was = btn.textContent;
+  btn.disabled = true; btn.textContent = "Working\u2026";
+  try {
+    const j = await api("/admin/api/gift/remove", { gid: g.gid });
+    const text = j.message || "Gift turned off.";
+    $("#gift-msg").textContent = text; toast(text, j.ok === false);
+    S.mData = null; loadGifts(); loadMembers();
+  } catch (e) {
+    if (e.status === 401) return;
+    toast(e.message, true); btn.disabled = false; btn.textContent = was;
+  }
+}
 async function loadMembers() {
   const box = $("#mrows"), seq = ++S.mSeq;
   if (!S.mData) fill(box, loading("Loading members\u2026"));
@@ -935,7 +1023,8 @@ function renderMembers(j) {
 }
 function mrow(m) {
   return h("button", { class: "mrow", type: "button", onclick: () => openMember(m.id) }, [
-    h("span", { class: "c-id", text: m.id }), h("span", { class: "c-plan" }, planBadge(planOf(m))),
+    h("span", { class: "c-id", text: m.id }), h("span", { class: "c-plan" }, [planBadge(planOf(m)),
+      m.via === "gift" || m.via === "list" ? h("span", { class: "bdg b-out", text: m.via === "gift" ? "Gift" : "List", title: m.via === "gift" ? "Free Pro gift" : "Free Pro from the PRO_EMAILS list" }) : null]),
     h("span", { class: "c-meta" }, [
       h("span", [h("span", { class: "lbl", text: "Hunts " }), num(m.active) + " / " + num(m.hunts)]),
       h("span", [h("span", { class: "lbl", text: "Emails " }), m.mail === "off" ? "Off" : "On"]),
@@ -1018,10 +1107,41 @@ function settingsCard(m, P) {
     m.mailOffDay ? [h("dt", { text: "Emails off since" }), h("dd", { text: fmtDay(m.mailOffDay) })] : null,
     h("dt", { text: "Local hunts" }), h("dd", { text: P.zipSet ? "ZIP code set, within " + num(P.radius) + " miles, " + plural(P.localHunts, "local hunt", "local hunts") : "No ZIP code set" })])]);
 }
+/* What free Pro this member has, in plain words: the gift (with its end and note) and the Cloudflare list. */
+function giftLines(g) {
+  const L = [];
+  if (!g || typeof g !== "object") return L;
+  if (g.listed) L.push(g.listOff ? "In the Cloudflare list (PRO_EMAILS), but turned off here" : "Free Pro from the Cloudflare list");
+  if (g.source === "gift" || g.ended || g.added) L.push((g.ended ? "Free Pro gift ended " + (g.until ? fmtDay(g.until) : "") : "Free Pro gift \u2014 " + (g.until ? "ends " + fmtDay(g.until) : "no end")) +
+    (g.note ? " (" + g.note + ")" : ""));
+  return L;
+}
+const GIFT_ON = { a: "gift-on", t: "Gift Pro", box: "mplan" }, GIFT_OFF = { a: "gift-off", t: "Turn off free Pro", box: "mplan" };
+function giftBox(m) {
+  const g = m.gift;
+  if (!g || typeof g !== "object") return null;
+  const sel = h("select", { id: "gl-len" }, GIFT_LEN.map(o => h("option", { value: String(o[0]), text: o[1] })));
+  const on = h("button", { class: "btn btn-s btn-p", type: "button", text: g.source === "gift" ? "Gift Pro again" : "Gift Pro", "aria-describedby": "gl-help" });
+  on.addEventListener("click", () => doAction(m.id, GIFT_ON, null, on, { months: Number(sel.value) || 0 }));
+  const off = g.active ? h("button", { class: "btn btn-s", type: "button", text: "Turn off free Pro", "aria-describedby": "gl-help" }) : null;
+  if (off) off.addEventListener("click", () => {
+    if (window.confirm("Turn off free Pro for " + m.id + "? They go back to the free plan unless they pay.")) doAction(m.id, GIFT_OFF, null, off);
+  });
+  const help = g.source === "list" ? "Their address is in the PRO_EMAILS list in Cloudflare. Turn off free Pro stops that here, without editing Cloudflare."
+    : g.source === "gift" ? "Gift Pro again sets a new end, counted from today. Turn off free Pro ends the gift now; they keep Pro only if they pay."
+    : "Gives them Prowl Pro free, starting now. Forever means until you turn it off." + (g.listOff ? " It also turns the Cloudflare list back on for them." : "");
+  return h("div", { class: "gbox" }, [h("h4", { text: "Gift Pro (free service)" }),
+    h("div", { class: "frow" }, [h("label", { for: "gl-len", text: "How long" }), sel, on]), off ? h("div", off) : null,
+    h("p", { id: "gl-help", class: "hint", text: help })]);
+}
 function planCard(m, pl, plan) {
-  return h("section", { class: "card" }, [h("div", { class: "ch" }, h("h3", { text: "Plan and sign-in" })), h("dl", { class: "kv" }, [
+  const last = S.lastMsg && S.lastMsg.id === m.id && S.lastMsg.box === "mplan" ? note(S.lastMsg.ok ? "ok" : "bad", S.lastMsg.text) : null;
+  if (last) last.classList.add("lastmsg");
+  const gl = giftLines(m.gift);
+  return h("section", { class: "card", id: "mplan" }, [h("div", { class: "ch" }, h("h3", { text: "Plan and sign-in" })), last, h("dl", { class: "kv" }, [
     h("dt", { text: "Plan" }), h("dd", null, planBadge(plan)),
     h("dt", { text: "How" }), h("dd", { text: VIA[pl.via || m.via] || pl.via || m.via || "\u2014" }),
+    m.gift ? [h("dt", { text: "Free Pro" }), h("dd", null, gl.length ? gl.map(t => h("div", { text: t })) : "None")] : null,
     h("dt", { text: "Trial" }), h("dd", { text: pl.trial === true ? "Yes" : pl.trial ? String(pl.trial) : "No" }),
     h("dt", { text: "Paid" }), h("dd", { text: pl.paidDay ? fmtDay(pl.paidDay) : "\u2014" }),
     h("dt", { text: "Renews" }), h("dd", { text: pl.renewsDay ? fmtDay(pl.renewsDay) : "\u2014" }),
@@ -1033,7 +1153,7 @@ function planCard(m, pl, plan) {
     h("dt", { text: "Address confirm waiting" }), h("dd", { text: yesNo(m.confirmWaiting) }),
     h("dt", { text: "Address change waiting" }), h("dd", { text: yesNo(m.moveWaiting) }),
     h("dt", { text: "Earlier addresses" }), h("dd", { text: num(m.previousAddresses || 0) + (m.movedAt ? ", last change " + fmtDay(m.movedAt) : "") }),
-    h("dt", { text: "Listings already emailed" }), h("dd", { text: num(m.seenCount || 0) })])]);
+    h("dt", { text: "Listings already emailed" }), h("dd", { text: num(m.seenCount || 0) })]), giftBox(m)]);
 }
 function waitingCard(m) {
   const W = m.pending || {}, list = Array.isArray(W.hunts) ? W.hunts : [];
@@ -1059,7 +1179,7 @@ const ACTIONS = [
   { a: "delete", t: "Delete member", p: "Removes their account, hunts, settings and waiting listings for good. This cannot be undone.", confirm: true, danger: true }
 ];
 function actionsCard(m) {
-  const last = S.lastMsg && S.lastMsg.id === m.id ? note(S.lastMsg.ok ? "ok" : "bad", S.lastMsg.text) : null;
+  const last = S.lastMsg && S.lastMsg.id === m.id && S.lastMsg.box === "acts" ? note(S.lastMsg.ok ? "ok" : "bad", S.lastMsg.text) : null;
   if (last) last.classList.add("lastmsg");
   return h("section", { class: "card", id: "acts" }, [h("div", { class: "ch" }, h("h3", { text: "Help this member" })), last,
     h("ul", { class: "acts" }, ACTIONS.filter(x => !x.when || x.when(m)).map(x => actionItem(m, x)))]);
@@ -1085,23 +1205,25 @@ function actionItem(m, x) {
   });
   return li;
 }
-async function doAction(id, x, confirm, btn) {
-  const was = btn.textContent;
+/* extra: more fields for the request (a gift's length); x.box: the card that shows the result ("acts" or "mplan") */
+async function doAction(id, x, confirm, btn, extra) {
+  const was = btn.textContent, box = x.box || "acts";
   btn.disabled = true; btn.textContent = "Working\u2026";
   try {
-    const body = { id: id, action: x.a };
+    const body = Object.assign({ id: id, action: x.a }, extra || {});
     if (confirm) body.confirm = confirm;
     const j = await api("/admin/api/member/action", body);
     const text = j.message || (j.ok ? "Done." : "That did not work.");
-    S.lastMsg = { id: id, ok: j.ok !== false, text: text };
+    S.lastMsg = { id: id, ok: j.ok !== false, text: text, box: box };
     toast(text, j.ok === false);
     S.mData = null;   /* the list is out of date now */
+    if (box === "mplan") S.gData = null;
     if (x.a === "delete" && j.ok !== false) { S.member = null; go("members"); return; }
     if (j.member && j.member.id === id) { S.member = j.member; renderMember(j.member); } else openMember(id, true);
-    const a = $("#acts"); if (a) a.scrollIntoView({ block: "nearest" });
+    const a = $("#" + box); if (a) a.scrollIntoView({ block: "nearest" });
   } catch (e) {
     if (e.status === 401) return;
-    S.lastMsg = { id: id, ok: false, text: e.message };
+    S.lastMsg = { id: id, ok: false, text: e.message, box: box };
     toast(e.message, true);
     btn.disabled = false; btn.textContent = was;
     if (S.member) renderMember(S.member);
@@ -1324,6 +1446,16 @@ function appBody() {
       '<button class="btn btn-p" type="submit">Find</button></div>' +
       '<p class="hint" id="find-hint">The email is only used for this one lookup. It is not stored, logged or shown, and the box clears as soon as you press Find.</p>' +
       '<p class="msg" id="find-msg" aria-live="polite"></p></form>' +
+      '<section class="card" id="giftc" aria-labelledby="gift-h"><div class="ch"><h2 id="gift-h">Gift Pro (free service)</h2></div>' +
+      '<p class="sub">Give someone Prowl Pro for free, for a while or for good. It works even before they sign up: Pro starts as soon as they join Prowl Alerts with that email.</p>' +
+      '<form class="gform" id="giftf" autocomplete="off"><div class="ggrid">' +
+      '<div><label for="gift-email">Their email</label><input id="gift-email" type="email" inputmode="email" autocomplete="off" spellcheck="false" placeholder="name@example.com" aria-describedby="gift-hint"></div>' +
+      '<div><label for="gift-note">Note <span class="opt">(optional, only for you)</span></label><input id="gift-note" type="text" maxlength="60" autocomplete="off" placeholder="e.g. helped test Prowl"></div>' +
+      '<div><label for="gift-len">How long</label><select id="gift-len">' +
+      [[0, "Forever"], [1, "1 month"], [3, "3 months"], [6, "6 months"], [12, "12 months"]].map(o => '<option value="' + o[0] + '">' + o[1] + "</option>").join("") + "</select></div></div>" +
+      '<button class="btn btn-p" id="gift-go" type="submit">Gift Pro</button>' +
+      '<p class="hint" id="gift-hint">The email is only used to switch Pro on. It is not stored or shown, and the box clears as soon as you press Gift Pro. Keep email addresses and phone numbers out of the note.</p>' +
+      '<p class="msg" id="gift-msg" aria-live="polite"></p></form><div id="glist"></div></section>' +
       '<section class="card"><div class="mtools"><div class="chips" role="group" aria-label="Show members">' +
       chip("all", "All") + chip("pro", "Pro") + chip("trial", "Trial") + chip("free", "Free") + chip("late", "Late email") +
       chip("mailoff", "Emails off") + chip("paused", "Paused") + chip("issues", "Has issues") + "</div>" +

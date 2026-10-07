@@ -2,11 +2,30 @@
    Run: node --test worker/__tests__/admin.test.mjs */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { adminFetch, signSession, verifySession, memberId, scrubHunt, memberSummary, memberDetail } from "../admin.js";
+import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { adminFetch, signSession, verifySession, memberId, scrubHunt, memberSummary, memberDetail, giftActive, giftPro } from "../admin.js";
 
 const KEY = "test-admin-key-0123456789";
 const ORIGIN = "https://prowl.example.workers.dev";
 const TODAY = "2026-10-05";
+
+/* index.js needs the Workers runtime to import, so its small Gift Pro helpers (and alPro / alProSet) are lifted
+   out of the source and run here on their own, with stubs for what they call. */
+const INDEX = readFileSync(new URL("../index.js", import.meta.url), "utf8");
+function indexFn(name) {
+  const m = new RegExp("^(async )?function " + name + "\\(", "m").exec(INDEX);
+  assert.ok(m, name + " is in index.js");
+  const nl = INDEX.indexOf("\n", m.index), line = INDEX.slice(m.index, nl);
+  if ((line.match(/\{/g) || []).length === (line.match(/\}/g) || []).length) return line;   // a one-line function
+  return INDEX.slice(m.index, INDEX.indexOf("\n}\n", m.index) + 2);
+}
+function fromIndex(names, deps = {}) {
+  const keys = Object.keys(deps);
+  return new Function(...keys, names.map(indexFn).join("\n") + "\nreturn { " + names.join(", ") + " };")(...keys.map(k => deps[k]));
+}
+const IX = fromIndex(["giftHash", "proList", "proListHas", "proListCount", "alEmail"]);
+const giftHashOf = email => createHash("sha256").update("prowl-gift|" + email).digest("hex");
 
 /* ---------- fakes ---------- */
 class FakeKV {
@@ -66,7 +85,16 @@ function makeH(kvOf, over = {}) {
     alFreeWeekly: sub => !!sub && !sub.pro && !legacy(sub),
     alLegacyFree: legacy,
     alUrgency: () => 1000,
-    alProSet: async (env, sub, force) => { calls.proSet.push(force); if (H.nextPro.pro !== null) { sub.pro = H.nextPro.pro; sub.plan = H.nextPro.plan; } if (sub.pro) sub.hadPro = true; sub.proDay = TODAY; return sub.pro; },
+    /* like index.js: free Pro (list, then gift) before the shop's answer (H.nextPro); a gift or list Pro ends with them */
+    alProSet: async (env, sub, force) => {
+      calls.proSet.push(force);
+      const gh = await IX.giftHash(sub.email), off = await H.kvGet(env, "giftoff:" + gh, null), gift = await H.kvGet(env, "gift:" + gh, null);
+      const p = giftPro(IX.proListHas(env, sub.email), !!off, gift, TODAY) || H.nextPro;
+      if (p.pro === null && sub.plan && (sub.plan.via === "gift" || sub.plan.via === "list")) { sub.pro = false; sub.plan = null; }
+      if (p.pro !== null) { sub.pro = p.pro; sub.plan = p.plan; }
+      sub.proCheck = p.pro === null ? String(p.via || "check failed") : "";
+      if (sub.pro) sub.hadPro = true; sub.proDay = TODAY; return sub.pro;
+    },
     alMerge: async (env, sub, fields) => { const cur = await H.kvGet(env, "sub:" + sub.email, null); if (!cur) return null; fields.forEach(f => { cur[f] = sub[f]; }); await H.kvPut(env, "sub:" + sub.email, cur); Object.keys(cur).forEach(k => { sub[k] = cur[k]; }); return cur; },
     alSendSignin: async (env, sub) => { calls.signin.push(sub.email); await env.PROWL_ALERTS.put("in:" + sub.email, JSON.stringify({ code: "SIGNIN-CODE-SECRET" })); return H.signinResult || { ok: true }; },
     alToken: () => "fresh-token-" + Math.random().toString(16).slice(2),
@@ -114,6 +142,7 @@ function makeH(kvOf, over = {}) {
     summarize: (buckets, nowMs, hours) => ({ routes: buckets.map(b => ({ route: b.route, n: b.n })), series: { hours: [], req: [], err5: [], slow: [] }, totals: { n: buckets.reduce((t, b) => t + b.n, 0) }, live: { n: 0 }, hoursAsked: hours }),
     uptimeFrom: (probes) => probes.map(p => ({ source: p.source, pct24: p.ok ? 100 : 0, pct7d: 90, checks24: 1, checks7d: 7, lastOkAt: p.ok ? p.hour : null, lastStatus: p.status, lastMs: p.ms, lastErr: p.err, lastN: p.n, down: !p.ok })),
     pctFromHist: () => 0,
+    giftHash: IX.giftHash, alEmail: IX.alEmail, proListHas: IX.proListHas, proListCount: IX.proListCount,
     pages: {
       loginPage: (nonce, msg) => '<!doctype html><title>Prowl admin</title><style nonce="' + nonce + '"></style><form method="post" action="/admin/login"><input name="key" type="password"></form><p class="msg">' + msg + '</p><script nonce="' + nonce + '"></script>',
       adminPage: (nonce, version) => '<!doctype html><title>Prowl admin</title><style nonce="' + nonce + '"></style><main id="dash" data-v="' + version + '"></main><script nonce="' + nonce + '"></script>'
@@ -759,7 +788,7 @@ test("overview: full shape, PII-free", async () => {
   const j = JSON.parse(text);
   assert.equal(j.version, "v78");
   assert.equal(j.now.detroitDay, TODAY); assert.equal(j.now.detroitHour, 10); assert.match(j.now.iso, /Z$/);
-  assert.deepEqual(j.members, { total: 5, pro: 1, trial: 0, free: 1, freeLegacy: 3, mailOff: 1, paused: 1, noHunts: 0, new7d: 1, hunts: 9, activeHunts: 8, truncated: false });
+  assert.deepEqual(j.members, { total: 5, pro: 1, gifted: 0, trial: 0, free: 1, freeLegacy: 3, mailOff: 1, paused: 1, noHunts: 0, new7d: 1, hunts: 9, activeHunts: 8, truncated: false });
   assert.equal(j.alerts.late, 2); assert.equal(j.alerts.dueToday, 3); assert.equal(j.alerts.sentToday, 1); assert.equal(j.alerts.checkedToday, 2);
   assert.equal(j.alerts.huntsLeftToday, 3, "jane 3-1 and the late member 2-1; the free member's email already went");
   assert.equal(j.alerts.lastCron.ageMin, 4); assert.equal(j.alerts.lastCron.sent, 1);
@@ -856,4 +885,287 @@ test("an unexpected failure is a plain 500 without a stack trace", async () => {
     assert.ok(!(await page.text()).includes("page broke"));
     noPII(logged.join("\n"), "log");
   } finally { console.error = orig; }
+});
+
+/* ---------- Gift Pro ---------- */
+const FRIEND = "gift.friend@example.com";   // gifted before they sign up
+/* the stored gift values (their keys are gift:<64-hex hash>, never an address) */
+function allGiftRecords(env) {
+  const E = [...env.PROWL_ALERTS.m.entries()].filter(([k]) => k.startsWith("gift:") || k.startsWith("giftoff:"));
+  for (const [k] of E) assert.match(k, /^gift(off)?:[0-9a-f]{64}$/);
+  return E.map(([, v]) => v).join("\n");
+}
+function noAddress(text, label, emails) {
+  for (const e of emails.concat([FRIEND, "Gift.Friend@Example.com", "gift.friend"])) assert.ok(!String(text).includes(e), (label || "response") + " leaked " + e);
+  for (const e of emails.concat([FRIEND])) assert.ok(!String(text).includes(giftHashOf(e)), (label || "response") + " leaked a full gift hash");
+}
+
+test("giftActive and giftPro: the PRO_EMAILS list first unless switched off, then a gift that has not ended", () => {
+  assert.equal(giftActive({ until: "" }, TODAY), true, "no end");
+  assert.equal(giftActive({ note: "x" }, TODAY), true, "no until field = no end");
+  assert.equal(giftActive({ until: TODAY }, TODAY), true, "the last day still counts");
+  assert.equal(giftActive({ until: "2026-10-04" }, TODAY), false, "ended yesterday");
+  assert.equal(giftActive({ until: "2027-01-05" }, TODAY), true);
+  for (const bad of [null, undefined, "gift", [], { until: "soon" }, { until: "2026-1-5" }, { until: 20270105 }]) assert.equal(giftActive(bad, TODAY), false, JSON.stringify(bad));
+  const gift = { note: "", added: "2026-10-01T00:00:00Z", until: "2026-12-01", by: "admin" };
+  assert.deepEqual(giftPro(true, false, null, TODAY), { pro: true, via: "list", plan: { via: "list" } });
+  assert.deepEqual(giftPro(true, false, gift, TODAY), { pro: true, via: "list", plan: { via: "list" } }, "the list wins over a gift");
+  assert.equal(giftPro(true, true, null, TODAY), null, "switched off in the admin area");
+  assert.deepEqual(giftPro(true, true, gift, TODAY), { pro: true, via: "gift", plan: { via: "gift", until: "2026-12-01" } }, "a gift still counts when the list is off");
+  assert.deepEqual(giftPro(false, false, { until: "" }, TODAY), { pro: true, via: "gift", plan: { via: "gift", until: "" } });
+  assert.equal(giftPro(false, false, { until: "2026-09-30" }, TODAY), null, "an ended gift falls through to the shop");
+  assert.equal(giftPro(false, false, null, TODAY), null);
+});
+
+test("index.js Gift Pro helpers: giftHash, the PRO_EMAILS list and alEmail", async () => {
+  assert.equal(await IX.giftHash(FRIEND), giftHashOf(FRIEND));
+  assert.match(await IX.giftHash(FRIEND), /^[0-9a-f]{64}$/);
+  assert.notEqual(await IX.giftHash(FRIEND), createHash("sha256").update(FRIEND).digest("hex"), "prefixed, so it is not the plain address hash");
+  const env = { PRO_EMAILS: " A@x.com, b@y.org\nc@z.net,,a@x.com " };
+  assert.equal(IX.proListHas(env, "a@x.com"), true); assert.equal(IX.proListHas(env, "B@Y.org"), true); assert.equal(IX.proListHas(env, "d@x.com"), false);
+  assert.equal(IX.proListCount(env), 3, "repeats count once");
+  assert.equal(IX.proListCount({}), 0); assert.equal(IX.proListHas(undefined, "a@x.com"), false);
+  assert.equal(IX.alEmail("  Gift.Friend@Example.COM "), FRIEND);
+  assert.equal(IX.alEmail("not an email"), ""); assert.equal(IX.alEmail("a@b"), "");
+});
+
+/* alPro and alProSet straight from index.js, with KV and the shop stubbed */
+function realPro(env, shop) {
+  const kvGet = async (e, k, d) => { const v = await e.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; };
+  const calls = { shop: 0 };
+  const fetch = async () => { calls.shop++; if (!shop) throw new Error("offline"); return { status: 200, json: async () => ({ data: { orders: { nodes: shop } } }) }; };
+  const deps = { kvGet, kvPut: async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v)), giftHash: IX.giftHash, giftPro, proListHas: IX.proListHas,
+    alNow: () => ({ day: TODAY, hour: 10, wday: 1 }), PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", fetch };
+  const fns = fromIndex(["alPro"], deps);
+  return Object.assign(fromIndex(["alProSet"], { alPro: fns.alPro, alNow: deps.alNow }), { alPro: fns.alPro, calls });
+}
+test("index.js alPro: the list, then a gift, both before the cache and Shopify; switching the list off falls through", async () => {
+  const kv = new FakeKV(), L = "listed@example.com", G = FRIEND, P = "payer@example.com";
+  const env = { PROWL_ALERTS: kv, PRO_EMAILS: L + ", someone@example.com", SHOPIFY_ORDERS_TOKEN: "shpat_test" };
+  const order = { name: "#1001", createdAt: "2026-10-01T10:00:00Z", cancelledAt: null, displayFinancialStatus: "PAID", email: P, statusPageUrl: "https://store.example/r", discountCodes: [],
+    totalPriceSet: { shopMoney: { amount: "7.00", currencyCode: "USD" } }, lineItems: { nodes: [{ sku: "PROWL-PRO-MONTHLY", customAttributes: [] }] } };
+  const X = realPro(env, [order]);
+  assert.deepEqual(await X.alPro(env, L, true), { pro: true, via: "list", plan: { via: "list" } });
+  kv.set("gift:" + giftHashOf(G), { note: "", added: "2026-10-05T12:00:00Z", until: "2027-01-05", by: "admin" });
+  assert.deepEqual(await X.alPro(env, G, true), { pro: true, via: "gift", plan: { via: "gift", until: "2027-01-05" } }, "even a forced check takes the gift");
+  assert.equal(X.calls.shop, 0, "free Pro never asks Shopify");
+  kv.set("giftoff:" + giftHashOf(L), { at: "2026-10-05T12:00:00Z" });
+  const off = await X.alPro(env, L, true);
+  assert.equal(off.via, "orders"); assert.equal(off.pro, false, "the list no longer counts; the shop has no order for them");
+  assert.equal(X.calls.shop, 2, "both shop look-ups ran");
+  kv.set("gift:" + giftHashOf(L), { until: "" });
+  assert.equal((await X.alPro(env, L, false)).via, "gift", "a gift still counts with the list switched off");
+  kv.set("gift:" + giftHashOf(G), { until: "2026-10-04" });
+  kv.set("pro:" + G, { pro: false, at: Date.now(), plan: null });
+  assert.deepEqual(await X.alPro(env, G, false), { pro: false, via: "cache", plan: null }, "an ended gift falls through to the cache");
+  const paid = await X.alPro(env, P, true);
+  assert.equal(paid.pro, true); assert.equal(paid.via, "orders"); assert.equal(paid.plan.order, "#1001");
+  const env2 = { PROWL_ALERTS: kv, PRO_EMAILS: "" };
+  assert.deepEqual(await realPro(env2, null).alPro(env2, "nobody@example.com", false), { pro: null, via: "no token" });
+});
+
+test("index.js alProSet: free Pro from a gift or the list ends with it, even when the shop cannot be asked", async () => {
+  const kv = new FakeKV(), env = { PROWL_ALERTS: kv };   // no Shopify token: every shop check answers null
+  const X = realPro(env, null);
+  const gifted = { email: FRIEND, pro: true, plan: { via: "gift", until: "2026-10-01" }, hadPro: true };
+  assert.equal(await X.alProSet(env, gifted, false), false);
+  assert.equal(gifted.plan, null); assert.equal(gifted.proCheck, "no token"); assert.equal(gifted.hadPro, true);
+  const payer = { email: "payer@example.com", pro: true, plan: { via: "order", order: "#1" } };
+  assert.equal(await X.alProSet(env, payer, false), true, "a shop error never downgrades a paying member");
+  assert.equal(payer.plan.order, "#1");
+  kv.set("gift:" + giftHashOf(FRIEND), { until: "" });
+  const back = { email: FRIEND, pro: false, plan: null };
+  assert.equal(await X.alProSet(env, back, false), true);
+  assert.deepEqual(back.plan, { via: "gift", until: "" }); assert.equal(back.proCheck, ""); assert.equal(back.hadPro, true);
+});
+
+test("gift for someone not signed up yet: stored by hash only, note masked, length, input checks, guards and rate limit", async () => {
+  const H = makeH(), env = makeEnv();
+  let res = await apiPost(env, H, "/admin/api/gift", { email: "  Gift.Friend@Example.com ", note: "my niece, jane@example.com 555-123-4567, zip 48375", months: 3 });
+  assert.equal(res.status, 200);
+  let text = await res.text(); noAddress(text, "gift add", []); noPII(text, "gift add");
+  let j = JSON.parse(text);
+  const gh = giftHashOf(FRIEND);
+  assert.deepEqual(j, { ok: true, message: j.message, gid: gh.slice(0, 10), memberId: null });
+  assert.match(j.message, /until 2027-01-05/); assert.match(j.message, /sign up/);
+  const g = env.PROWL_ALERTS.json("gift:" + gh);
+  assert.deepEqual(Object.keys(g).sort(), ["added", "by", "note", "until"]);
+  assert.equal(g.until, "2027-01-05"); assert.equal(g.by, "admin"); assert.match(g.added, /^\d{4}-\d{2}-\d{2}T/);
+  assert.ok(g.note.length <= 60);
+  assert.ok(g.note.startsWith("my niece, [email] [number]"), g.note);
+  for (const s of ["jane@", "555-123", "48375"]) assert.ok(!g.note.includes(s), "note keeps " + s);
+  noAddress(allGiftRecords(env), "stored gift", []);
+  const a = H.calls.caps.filter(x => x.op === "mrec" && x.body.a).map(x => x.body.a[0]).find(x => x.action === "gift-add");
+  assert.deepEqual([a.id, a.ok, a.note], [gh.slice(0, 10), true, "3 months"]);
+  noAddress(JSON.stringify(a), "audit", []);
+  // renewing keeps the note when none is typed; forever = no end; a waiting giftoff is cleared
+  env.PROWL_ALERTS.set("giftoff:" + gh, { at: "x" });
+  j = await (await apiPost(env, H, "/admin/api/gift", { email: FRIEND, months: 0 })).json();
+  assert.match(j.message, /with no end date/);
+  assert.equal(env.PROWL_ALERTS.json("gift:" + gh).until, ""); assert.ok(env.PROWL_ALERTS.json("gift:" + gh).note.startsWith("my niece"));
+  assert.equal(env.PROWL_ALERTS.m.has("giftoff:" + gh), false);
+  j = await (await apiPost(env, H, "/admin/api/gift", { email: FRIEND, months: "12", note: "" })).json();
+  assert.equal(env.PROWL_ALERTS.json("gift:" + gh).until, "2027-10-05", "a select sends the months as text");
+  for (const [body, why] of [[{ email: "not an email", months: 1 }, "bad email"], [{ months: 1 }, "no email"], [{ email: FRIEND, months: 2 }, "2 months is not offered"],
+    [{ email: FRIEND, months: -1 }, "negative"], [{ email: FRIEND, months: "forever" }, "words"]]) {
+    res = await apiPost(env, H, "/admin/api/gift", body);
+    assert.equal(res.status, 400, why);
+    noAddress(await res.text(), why, []);
+  }
+  assert.equal((await call(env, H, "POST", "/admin/api/gift", { body: { email: FRIEND }, headers: { Origin: ORIGIN } })).status, 403, "missing X-Prowl-Admin");
+  assert.equal((await apiPost(env, H, "/admin/api/gift", { email: FRIEND }, { headers: { Origin: "https://evil.example" } })).status, 403, "cross-origin");
+  for (const p of ["/admin/api/gifts"]) assert.equal((await call(env, H, "GET", p, { cookie: false })).status, 401);
+  assert.equal((await call(env, H, "POST", "/admin/api/gift/remove", { cookie: false, body: { gid: gh.slice(0, 10) }, headers: { "X-Prowl-Admin": "1", Origin: ORIGIN } })).status, 401);
+  assert.equal((await call(env, H, "GET", "/admin/api/gift")).status, 405);
+  H.deny.add("admgift");
+  assert.equal((await apiPost(env, H, "/admin/api/gift", { email: FRIEND, months: 1 })).status, 429);
+  assert.equal((await apiPost(env, H, "/admin/api/gift/remove", { gid: gh.slice(0, 10) })).status, 429);
+});
+
+test("gift for a member switches Pro on now; the gift list shows member, dates and status; remove switches it off", async () => {
+  const H = makeH(), env = makeEnv({ PRO_EMAILS: "quiet@example.com, someone.else@example.com, third@example.com" });
+  H.nextPro = { pro: false, plan: null };   // the shop has no order for them
+  const L = "late@example.com", lateId = await idOf(env, L);
+  let j = await (await apiPost(env, H, "/admin/api/gift", { email: L, note: "beta tester", months: 1 })).json();
+  assert.equal(j.memberId, lateId); assert.match(j.message, new RegExp("free for " + lateId + " until 2026-11-05"));
+  assert.deepEqual(H.calls.proSet, [false], "a normal (cached) check: the gift comes before Shopify");
+  let r = rec(env, L);
+  assert.equal(r.pro, true); assert.deepEqual(r.plan, { via: "gift", until: "2026-11-05" }); assert.equal(r.hadPro, true); assert.equal(r.proCheck, "");
+  // jane pays in the shop: the owner is told a gift does not cancel that
+  j = await (await apiPost(env, H, "/admin/api/gift", { email: EMAIL, months: 0 })).json();
+  assert.match(j.message, /subscription in the shop/);
+  noPII(JSON.stringify(j), "gift for jane");
+  // an older gift that has ended, for someone who never signed up
+  env.PROWL_ALERTS.set("gift:" + giftHashOf(FRIEND), { note: "old promo", added: "2026-08-01T09:00:00.000Z", until: "2026-09-01", by: "admin" });
+  env.PROWL_ALERTS.set("giftoff:" + giftHashOf("quiet@example.com"), { at: "2026-10-01T00:00:00Z" });
+  const res = await call(env, H, "GET", "/admin/api/gifts");
+  assert.equal(res.status, 200); assertBaseHeaders(res);
+  const text = await res.text(); noPII(text, "gifts"); noAddress(text, "gifts", [L, "quiet@example.com"]);
+  j = JSON.parse(text);
+  assert.equal(j.listCount, 3); assert.equal(j.listOff, 1); assert.equal(j.truncated, false);
+  assert.equal(j.gifts.length, 3);
+  const [newest, , oldest] = j.gifts;
+  assert.equal(oldest.note, "old promo"); assert.equal(oldest.memberId, null, "not signed up yet");
+  assert.deepEqual([oldest.added, oldest.until, oldest.active, oldest.expired], ["2026-08-01", "2026-09-01", false, true]);
+  const late = j.gifts.find(g => g.memberId === lateId);
+  assert.deepEqual(late, { gid: giftHashOf(L).slice(0, 10), memberId: lateId, note: "beta tester", added: late.added, until: "2026-11-05", active: true, expired: false });
+  assert.match(late.added, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(newest.memberId, await idOf(env, EMAIL), "newest first"); assert.equal(newest.until, ""); assert.equal(newest.active, true);
+  // members list and overview see the gift
+  const list = await (await call(env, H, "GET", "/admin/api/members?filter=pro")).json();
+  const lm = list.members.find(m => m.id === lateId);
+  assert.equal(lm.plan, "pro"); assert.equal(lm.via, "gift");
+  const ov = await (await call(env, H, "GET", "/admin/api/overview")).json();
+  assert.equal(ov.members.gifted, 2); assert.equal(ov.members.pro, 2);
+  // turning it off from the list
+  j = await (await apiPost(env, H, "/admin/api/gift/remove", { gid: late.gid })).json();
+  assert.equal(j.ok, true); assert.equal(j.memberId, lateId); assert.match(j.message, /free plan now/);
+  r = rec(env, L);
+  assert.equal(r.pro, false); assert.equal(r.plan, null);
+  assert.equal(env.PROWL_ALERTS.m.has("gift:" + giftHashOf(L)), false);
+  j = await (await apiPost(env, H, "/admin/api/gift/remove", { gid: oldest.gid.toUpperCase() })).json();
+  assert.match(j.message, /had not signed up/);
+  const audits = H.calls.caps.filter(x => x.op === "mrec" && x.body.a).map(x => x.body.a[0]);
+  assert.deepEqual(audits.filter(a => /^gift/.test(a.action)).map(a => [a.action, a.id]),
+    [["gift-add", lateId], ["gift-add", await idOf(env, EMAIL)], ["gift-remove", lateId], ["gift-remove", oldest.gid]]);
+  noAddress(JSON.stringify(audits), "audit", [L]);
+  // the overview's admin activity keeps a gift id but nothing else that is not a member id
+  H.capsData["metrics mget"] = { audit: [{ t: 1, action: "gift-remove", id: oldest.gid, ok: true, note: "" }, { t: 1, action: "gift-add", id: giftHashOf(FRIEND), ok: true, note: "" }] };
+  const ov2 = await (await call(env, H, "GET", "/admin/api/overview")).json();
+  assert.deepEqual(ov2.audit.map(a => a.id), [oldest.gid, ""]);
+});
+
+test("gift remove: bad id 400, unknown 404, two gifts sharing the id 409", async () => {
+  const H = makeH(), env = makeEnv();
+  for (const gid of ["", "xyz", "abcdef012", "abcdef01234", "gift:abcdef0123", null]) assert.equal((await apiPost(env, H, "/admin/api/gift/remove", { gid })).status, 400, String(gid));
+  assert.equal((await apiPost(env, H, "/admin/api/gift/remove", { gid: "0123456789" })).status, 404);
+  env.PROWL_ALERTS.set("gift:abcdef0123" + "a".repeat(54), { until: "" });
+  env.PROWL_ALERTS.set("gift:abcdef0123" + "b".repeat(54), { until: "" });
+  const res = await apiPost(env, H, "/admin/api/gift/remove", { gid: "abcdef0123" });
+  assert.equal(res.status, 409);
+  assert.equal([...env.PROWL_ALERTS.m.keys()].filter(k => k.startsWith("gift:")).length, 2, "nothing deleted");
+});
+
+test("member actions gift-on and gift-off; a PRO_EMAILS member is switched off and back on without touching Cloudflare", async () => {
+  const H = makeH(), env = makeEnv({ PRO_EMAILS: "quiet@example.com" });
+  H.nextPro = { pro: false, plan: null };
+  const F = "free.person@example.com";
+  let { res, j, id } = await act(env, H, F, "gift-on");
+  assert.equal(res.status, 200); assert.equal(j.ok, true);
+  assert.match(j.message, /^Prowl Pro is now free for this member with no end date\./);
+  assert.deepEqual(rec(env, F).plan, { via: "gift", until: "" });
+  assert.equal(j.member.plan.name, "pro"); assert.equal(j.member.via, "gift");
+  assert.deepEqual(j.member.gift, { active: true, source: "gift", until: "", note: "", added: new Date().toISOString().slice(0, 10), ended: false, listed: false, listOff: false });
+  // a length from the member page
+  ({ res, j } = await act2(env, H, F, "gift-on", { months: 6, note: "thanks for the feedback" }));
+  assert.match(j.message, /until 2027-04-05/); assert.equal(j.member.gift.note, "thanks for the feedback"); assert.equal(j.member.gift.until, "2027-04-05");
+  ({ res } = await act2(env, H, F, "gift-on", { months: 5 }));
+  assert.equal(res.status, 400);
+  // off: the gift goes, and with no paid order they are free again
+  ({ j } = await act(env, H, F, "gift-off"));
+  assert.equal(j.ok, true); assert.match(j.message, /^Free Pro is off\. They are on the free plan unless they pay\.$/);
+  assert.equal(env.PROWL_ALERTS.m.has("gift:" + giftHashOf(F)), false);
+  assert.equal(env.PROWL_ALERTS.m.has("giftoff:" + giftHashOf(F)), false, "not on the list, so no switch-off is stored");
+  let r = rec(env, F);
+  assert.equal(r.pro, false); assert.equal(r.plan, null); assert.equal(j.member.gift.source, null);
+  ({ j } = await act(env, H, F, "gift-off"));
+  assert.match(j.message, /had no free Pro/);
+  // the PRO_EMAILS member
+  const Q = "quiet@example.com";
+  ({ j, id } = await act(env, H, Q, "refresh-pro"));
+  assert.deepEqual(rec(env, Q).plan, { via: "list" });
+  assert.deepEqual([j.member.gift.source, j.member.gift.listed, j.member.gift.listOff], ["list", true, false]);
+  ({ j } = await act(env, H, Q, "gift-off"));
+  assert.match(j.message, /^Free Pro is off\./); assert.match(j.message, /still in the PRO_EMAILS list/);
+  assert.match(env.PROWL_ALERTS.json("giftoff:" + giftHashOf(Q)).at, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(rec(env, Q).pro, false);
+  assert.deepEqual([j.member.gift.active, j.member.gift.source, j.member.gift.listOff], [false, null, true]);
+  // the shop cannot be reached: free Pro still ends, and the failed check is shown
+  ({ j } = await act(env, H, Q, "gift-on"));
+  assert.match(j.message, /from the PRO_EMAILS list in Cloudflare again/);
+  assert.equal(env.PROWL_ALERTS.m.has("giftoff:" + giftHashOf(Q)), false, "Gift Pro clears the switch-off");
+  H.nextPro = { pro: null, via: "shopify unreachable" };
+  ({ j } = await act(env, H, Q, "gift-off"));
+  assert.match(j.message, /could not be checked/);
+  assert.equal(rec(env, Q).pro, false); assert.ok(j.member.flags.includes("pro check failing"));
+  // a payer keeps Pro
+  H.nextPro = { pro: true, plan: { via: "order", order: "#1001" } };
+  await act(env, H, F, "gift-on");
+  ({ j } = await act(env, H, F, "gift-off"));
+  assert.match(j.message, /pay for it in the shop/); assert.equal(rec(env, F).pro, true);
+  const audits = H.calls.caps.filter(x => x.op === "mrec" && x.body.a).map(x => x.body.a[0]).filter(a => /^gift/.test(a.action));
+  assert.deepEqual(audits.slice(0, 2).map(a => [a.action, a.note]), [["gift-on", "no end"], ["gift-on", "6 months"]]);
+  noAddress(JSON.stringify(audits), "audit", [F, Q]);
+  noAddress(allGiftRecords(env), "stored gifts", [F, Q]);
+});
+async function act2(env, H, email, action, extra) {
+  const id = await idOf(env, email);
+  const res = await apiPost(env, H, "/admin/api/member/action", Object.assign({ id, action }, extra));
+  const text = await res.text();
+  noPII(text, action);
+  return { res, j: JSON.parse(text), id };
+}
+
+test("member detail and summary: gift fields, plan badge via gift or list, an ended gift is flagged; no address anywhere", async () => {
+  const H = makeH(), env = makeEnv({ PRO_EMAILS: EMAIL }), now = H.alNow();
+  env.PROWL_ALERTS.set("gift:" + giftHashOf(EMAIL), { note: "launch helper", added: "2026-09-01T10:00:00.000Z", until: "2026-12-31", by: "admin" });
+  const d = await memberDetail(env, janeRecord({ plan: { via: "list" } }), H, now);
+  noPII(JSON.stringify(d), "detail"); noAddress(JSON.stringify(d), "detail", [EMAIL]);
+  assert.deepEqual(d.gift, { active: true, source: "list", until: "2026-12-31", note: "launch helper", added: "2026-09-01", ended: false, listed: true, listOff: false });
+  assert.equal(d.plan.via, "list"); assert.equal(d.planName, "pro");
+  env.PROWL_ALERTS.set("giftoff:" + giftHashOf(EMAIL), { at: "2026-10-01T00:00:00Z" });
+  assert.equal((await memberDetail(env, janeRecord(), H, now)).gift.source, "gift", "the list is off, the gift still counts");
+  env.PROWL_ALERTS.set("gift:" + giftHashOf(EMAIL), { note: "", added: "2026-08-01T10:00:00.000Z", until: "2026-10-04", by: "admin" });
+  const ended = await memberDetail(env, janeRecord({ plan: { via: "gift", until: "2026-10-04" } }), H, now);
+  assert.deepEqual([ended.gift.active, ended.gift.ended, ended.gift.source, ended.gift.listOff], [false, true, null, true]);
+  assert.equal(ended.plan.until, "2026-10-04");
+  assert.ok(ended.flags.includes("gift ended"), "shown until the daily Pro check catches up");
+  const s = memberSummary(env, janeRecord({ plan: { via: "gift", until: "" } }), H, now);
+  assert.deepEqual([s.plan, s.via], ["pro", "gift"]); assert.ok(!s.flags.includes("gift ended"));
+  assert.deepEqual([memberSummary(env, janeRecord({ plan: { via: "list" } }), H, now).plan, memberSummary(env, janeRecord({ plan: { via: "list" } }), H, now).via], ["pro", "list"]);
+  const plain = await memberDetail(env, { email: "free.person@example.com", hunts: [] }, H, now);
+  assert.deepEqual(plain.gift, { active: false, source: null, until: "", note: "", added: "", ended: false, listed: false, listOff: false });
+  // the API answer for a member is just as clean
+  const t = await (await call(env, H, "GET", "/admin/api/member?id=" + await idOf(env, EMAIL))).text();
+  noPII(t, "member"); noAddress(t, "member", [EMAIL]);
 });

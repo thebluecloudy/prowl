@@ -4,7 +4,9 @@
    Members appear only as a pseudonymous id (M-xxxxxxxx, a salted hash of the address). Every view is
    built field by field from an allowlist, so an email, token, Shopify id, receipt, ZIP or code can
    never reach a response. H = helpers from index.js (this file never imports index.js). The page
-   builders and metrics summaries come from H when present, else load lazily from their own files. */
+   builders and metrics summaries come from H when present, else load lazily from their own files.
+   Gift Pro: the owner gives free Pro by typing an address once; only a hash of it is kept (gift:<hash>), and
+   index.js alPro checks it (giftPro below) before any Shopify call. */
 
 const COOKIE = "prowl_admin";
 const SESSION_S = 43200;                         // 12 hours
@@ -12,9 +14,13 @@ const BODY_MAX = 8192;
 const ROSTER_MAX = 5000, ROSTER_TTL = 60000;
 const ID_RE = /^M-[0-9a-f]{8}$/;
 const HIDDEN = "(hidden \u2014 looks personal)";
-const ACTIONS = ["signin-link", "refresh-pro", "recheck-today", "resend-today", "mail-on", "mail-off", "unpause", "signout-all", "clear-seen", "delete"];
+const ACTIONS = ["signin-link", "refresh-pro", "recheck-today", "resend-today", "mail-on", "mail-off", "unpause", "signout-all", "clear-seen", "delete", "gift-on", "gift-off"];
 const CONFIRM = { "signout-all": 1, "clear-seen": 1, "delete": 1 };   // the owner types the member id first
 const ISSUE_FLAGS = ["email late", "pro check failing", "sign-in link waiting", "record unreadable", "no hunts"];
+const GIFT_MONTHS = [0, 1, 3, 6, 12];            // 0 = no end
+const GIFT_MAX = 2000;
+const GID_RE = /^[0-9a-f]{10}$/;
+const PRO_FIELDS = ["pro", "plan", "proDay", "hadPro", "proCheck"];
 const BASE_HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff" };
 
 /* ---------- small helpers ---------- */
@@ -53,6 +59,34 @@ function clean(s, n) {
     .slice(0, n || 160);
 }
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[c]);
+
+/* ---------- Gift Pro: the rules index.js alPro uses (pure, so they can be tested) ---------- */
+/* A gift counts while its last day ("until", Detroit YYYY-MM-DD) is today or later; "" means no end. A malformed record never counts. */
+export function giftActive(g, today) {
+  if (!g || typeof g !== "object" || Array.isArray(g)) return false;
+  const u = g.until == null ? "" : String(g.until);
+  if (u === "") return true;
+  return /^\d{4}-\d{2}-\d{2}$/.test(u) && u >= String(today == null ? "" : today);
+}
+/* Free Pro, in alPro's order: the PRO_EMAILS list unless the owner switched it off for that address (giftoff),
+   then a gift that has not ended. null = no free Pro, so alPro goes on to the cache and Shopify. */
+export function giftPro(listed, off, gift, today) {
+  if (listed && !off) return { pro: true, via: "list", plan: { via: "list" } };
+  if (giftActive(gift, today)) return { pro: true, via: "gift", plan: { via: "gift", until: String(gift.until == null ? "" : gift.until) } };
+  return null;
+}
+/* "2026-10-05" + 3 months = "2027-01-05"; a day the shorter month lacks becomes its last day (Jan 31 + 1 = Feb 28). */
+function addMonths(day, n) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(day || ""));
+  if (!m) return "";
+  const y = +m[1], mo = +m[2] - 1 + n, last = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(y, mo, Math.min(+m[3], last))).toISOString().slice(0, 10);
+}
+const giftMonths = v => { const n = v == null || v === "" ? 0 : Number(v); return GIFT_MONTHS.indexOf(n) === -1 ? -1 : n; };
+const monthsWord = n => n ? n + (n === 1 ? " month" : " months") : "no end";
+const giftEnds = until => until ? "until " + until : "with no end date";
+/* The owner's note on a gift: one line, at most 60 characters, addresses and phone numbers masked. */
+const giftNote = v => clean(String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim(), 60).trim();
 
 function headers(extra) { return Object.assign({}, BASE_HEADERS, extra || {}); }
 function jres(o, status) { return new Response(JSON.stringify(o), { status: status || 200, headers: headers({ "Content-Type": "application/json; charset=utf-8" }) }); }
@@ -146,7 +180,7 @@ async function roster(c, withRecs) {
       const part = keys.slice(i, i + 100), ids = await Promise.all(part.map(k => memberId(c.salt, k.slice(4))));
       part.forEach((k, j) => { idOf.set(k, ids[j]); if (!byId.has(ids[j])) byId.set(ids[j], k); });
     }
-    R = ROSTER = { kv: kv, salt: c.salt, at: c.nowMs, keys: keys, byId: byId, idOf: idOf, truncated: more, recs: null, signin: null };
+    R = ROSTER = { kv: kv, salt: c.salt, at: c.nowMs, keys: keys, byId: byId, idOf: idOf, truncated: more, recs: null, signin: null, giftOf: null };
   }
   if (withRecs && !R.recs) {
     const recs = new Map(), signin = new Set();
@@ -163,6 +197,18 @@ async function roster(c, withRecs) {
     R.recs = recs; R.signin = signin;
   }
   return R;
+}
+/* gift hash -> KV key for every member, worked out once per roster (the gift list shows who a gift belongs to). */
+async function giftIndex(c, R) {
+  if (!R.giftOf) {
+    const m = new Map();
+    for (let i = 0; i < R.keys.length; i += 100) {
+      const part = R.keys.slice(i, i + 100), hs = await Promise.all(part.map(k => c.H.giftHash(k.slice(4))));
+      part.forEach((k, j) => m.set(String(hs[j]), k));
+    }
+    R.giftOf = m;
+  }
+  return R.giftOf;
 }
 async function findMember(c, id) {
   id = String(id || "");
@@ -213,7 +259,7 @@ function state(env, sub, H, now) {
   const slot = num(H.alSlotHour(env, s));
   const due = working && !!H.alSendDay(s, loc);
   const sentToday = !!s.sent && s.sent === loc.day;
-  return { s: s, hunts: hunts, p: p, loc: loc, active: active, done: done, mailOn: mailOn, paused: paused, working: working, slot: slot,
+  return { s: s, now: now, hunts: hunts, p: p, loc: loc, active: active, done: done, mailOn: mailOn, paused: paused, working: working, slot: slot,
     due: due, sentToday: sentToday, late: due && !sentToday && num(loc.hour) > slot };
 }
 export function memberSummary(env, sub, H, now, extra) { return summaryOf(state(env, sub, H, now), H, extra); }
@@ -232,6 +278,8 @@ function summaryOf(st, H, extra) {
   if (extra && extra.signin) flags.push("sign-in link waiting");
   if (arr(s.prev).length || s.movedAt) flags.push("moved address");
   if (unmuted > st.active.length) flags.push("hunts over plan limit");   // only the first few are checked on the free plan
+  const until = day10(pl.until);
+  if (s.pro && pl.via === "gift" && until && st.now && until < String(st.now.day || "")) flags.push("gift ended");   // until the daily Pro check catches up
   return {
     id: "", plan: plan, via: via, hunts: st.hunts.length, active: st.active.length, mail: st.mailOn ? "on" : "off",
     paused: st.paused, pauseUntil: st.paused ? day10(st.p.pause) : "",
@@ -246,11 +294,19 @@ function brokenSummary() {
 }
 function safeSummary(env, sub, H, now, extra) { try { return memberSummary(env, sub, H, now, extra); } catch (e) { return brokenSummary(); } }
 
+/* Free Pro for one member: the gift record (note, dates) and whether the PRO_EMAILS list counts for them. */
+function giftInfo(listed, gift, off, today) {
+  const g = gift && typeof gift === "object" && !Array.isArray(gift) ? gift : null, on = giftActive(g, today), viaList = !!listed && !off;
+  return { active: viaList || on, source: viaList ? "list" : on ? "gift" : null, until: g ? day10(g.until) : "", note: g ? giftNote(g.note) : "",
+    added: g ? day10(g.added) : "", ended: !!g && !on, listed: !!listed, listOff: !!listed && !!off };
+}
 export async function memberDetail(env, sub, H, now) {
   const email = String(sub.email || ""), kv = env.PROWL_ALERTS;
   const has = async k => { try { return email !== "" && (await kv.get(k)) != null; } catch (e) { return false; } };
-  const [pend, seen, signin, conf, mvf] = email ? await Promise.all([H.kvGet(env, "pend:" + email, {}), H.kvGet(env, "seen:" + email, []),
-    has("in:" + email), has("conf:" + email), has("mvf:" + email)]) : [{}, [], false, false, false];
+  const gh = email && typeof H.giftHash === "function" ? String(await H.giftHash(email)) : "";
+  const [pend, seen, signin, conf, mvf, gift, goff] = email ? await Promise.all([H.kvGet(env, "pend:" + email, {}), H.kvGet(env, "seen:" + email, []),
+    has("in:" + email), has("conf:" + email), has("mvf:" + email), gh ? H.kvGet(env, "gift:" + gh, null) : null, gh ? H.kvGet(env, "giftoff:" + gh, null) : null])
+    : [{}, [], false, false, false, null, null];
   const st = state(env, sub, H, now), p = st.p, s = st.s, pl = s.plan && typeof s.plan === "object" ? s.plan : {};
   const d = summaryOf(st, H, { signin: signin });
   const mute = arr(p.mute), act = st.active.map(h => h.toLowerCase());
@@ -273,6 +329,9 @@ export async function memberDetail(env, sub, H, now) {
   d.seenCount = arr(seen).filter(u => !/^t:/.test(String(u))).length;   // listings remembered (each also has a title key)
   d.signinWaiting = signin; d.confirmWaiting = conf; d.moveWaiting = mvf;
   d.previousAddresses = arr(s.prev).length; d.movedAt = day10(s.movedAt); d.mailOffDay = day10(s.mailOffAt);
+  d.plan.until = day10(pl.until);
+  const listed = !!(email && typeof H.proListHas === "function" && H.proListHas(env, email));
+  d.gift = gh ? giftInfo(listed, gift, goff, day10(now && now.day) || utcDay(Date.now())) : null;
   return d;
 }
 function summaries(c, R, now) {
@@ -292,7 +351,7 @@ function errView(c, e) {
 }
 function auditView(a) {
   a = a || {};
-  return { t: num(a.t), action: word(a.action, 30), id: ID_RE.test(String(a.id)) ? a.id : "", ok: !!a.ok, note: clean(a.note, 80) };
+  return { t: num(a.t), action: word(a.action, 30), id: ID_RE.test(String(a.id)) || GID_RE.test(String(a.id)) ? a.id : "", ok: !!a.ok, note: clean(a.note, 80) };
 }
 function upView(u) {
   u = u || {};
@@ -334,7 +393,8 @@ async function apiOverview(c) {
   if (R) {
     const list = summaries(c, R, now), n = f => list.filter(f).length, sum = f => list.reduce((t, s) => t + f(s), 0);
     const cut = utcDay(nowMs - 6 * 86400000);
-    members = { total: list.length, pro: n(s => s.plan === "pro"), trial: n(s => s.plan === "trial"), free: n(s => s.plan === "free"),
+    members = { total: list.length, pro: n(s => s.plan === "pro"), gifted: n(s => (s.plan === "pro" || s.plan === "trial") && (s.via === "gift" || s.via === "list")),
+      trial: n(s => s.plan === "trial"), free: n(s => s.plan === "free"),
       freeLegacy: n(s => s.plan === "free (legacy)"), mailOff: n(s => s.mail === "off"), paused: n(s => s.paused), noHunts: n(s => !s.hunts),
       new7d: n(s => !!s.created && s.created >= cut), hunts: sum(s => s.hunts), activeHunts: sum(s => s.active), truncated: R.truncated };
     alerts = { dueToday: n(s => s.dueToday), sentToday: n(s => s.sentToday), late: n(s => s.late), checkedToday: sum(s => s.checkedToday),
@@ -407,6 +467,96 @@ async function apiMember(c) {
   return jres(d);
 }
 
+/* ---------- Gift Pro ---------- */
+const todayOf = c => day10(c.H.alNow(c.env).day) || utcDay(c.nowMs);   // Detroit day, as alPro counts it
+/* A paid (or free-month) Prowl Pro order in the shop: a gift does not cancel it, so the owner is told. */
+const paidPro = sub => !!sub.pro && !!sub.plan && typeof sub.plan === "object" && sub.plan.via === "order";
+/* Writes (or renews) the gift for one address and clears a PRO_EMAILS switch-off. Only the hash is stored.
+   An empty note keeps the note already on the gift. */
+async function saveGift(c, email, months, rawNote) {
+  const H = c.H, gh = String(await H.giftHash(email)), until = months ? addMonths(todayOf(c), months) : "";
+  const old = await H.kvGet(c.env, "gift:" + gh, null), n = giftNote(rawNote);
+  await H.kvPut(c.env, "gift:" + gh, { note: n || (old && typeof old === "object" ? giftNote(old.note) : ""), added: new Date(c.nowMs).toISOString(), until: until, by: "admin" });
+  await c.env.PROWL_ALERTS.delete("giftoff:" + gh);
+  return { gh: gh, gid: gh.slice(0, 10), until: until };
+}
+async function listKeys(kv, prefix, max) {
+  const names = []; let cursor, more = false;
+  do {
+    const l = await kv.list({ prefix: prefix, cursor: cursor, limit: 1000 });
+    for (const k of arr(l && l.keys)) names.push(String(k.name));
+    cursor = l && !l.list_complete ? l.cursor : undefined;
+    if (names.length >= max) { more = names.length > max || !!cursor; names.length = max; break; }
+  } while (cursor);
+  return { names: names, more: more };
+}
+async function apiGifts(c) {
+  const H = c.H, env = c.env, kv = env.PROWL_ALERTS, today = todayOf(c);
+  const [G, O] = await Promise.all([listKeys(kv, "gift:", GIFT_MAX), listKeys(kv, "giftoff:", GIFT_MAX)]);
+  const recs = [];
+  for (let i = 0; i < G.names.length; i += 50) recs.push.apply(recs, await Promise.all(G.names.slice(i, i + 50).map(k => H.kvGet(env, k, null))));
+  let R = null, idx = null;
+  try { R = await roster(c, false); idx = await giftIndex(c, R); } catch (e) { idx = null; }   // the list still shows, just without member links
+  const rows = G.names.map((k, i) => {
+    const hash = k.slice(5), g = recs[i] && typeof recs[i] === "object" && !Array.isArray(recs[i]) ? recs[i] : {}, mk = idx && idx.get(hash);
+    const until = day10(g.until), active = giftActive(g, today);
+    return { at: String(g.added || ""), v: { gid: hash.slice(0, 10), memberId: mk ? R.idOf.get(mk) || null : null, note: giftNote(g.note), added: day10(g.added),
+      until: until, active: active, expired: !!until && until < today } };
+  });
+  rows.sort((a, b) => byStr(b.at, a.at) || byStr(a.v.gid, b.v.gid));   // newest first
+  return jres({ gifts: rows.map(r => r.v), listCount: num(typeof H.proListCount === "function" ? H.proListCount(env) : 0), listOff: O.names.length,
+    truncated: G.more, today: today });
+}
+async function apiGiftAdd(c) {
+  const H = c.H, env = c.env;
+  if (!(await H.vCount("admgift", 100))) return jerr(429, "That is a lot of gifts today. Try again tomorrow.");
+  const email = H.alEmail(String(c.body.email == null ? "" : c.body.email));   // used for the hash only: never echoed, logged or stored
+  if (!email) return jerr(400, "Type the person's whole email address.");
+  const months = giftMonths(c.body.months);
+  if (months < 0) return jerr(400, "Pick how long: forever, 1, 3, 6 or 12 months.");
+  const g = await saveGift(c, email, months, c.body.note);
+  const sub = await H.kvGet(env, "sub:" + email, null);
+  let id = null, msg = "Gift saved. Prowl Pro is free for this person " + giftEnds(g.until) + ", starting as soon as they sign up for Prowl Alerts with that email.";
+  if (sub && typeof sub === "object") {
+    id = await memberId(c.salt, email);
+    const paid = paidPro(sub);
+    await H.alProSet(env, sub, false);   // the gift check comes before any Shopify call
+    const r = await H.alMerge(env, sub, PRO_FIELDS);
+    ROSTER = null;
+    msg = !r ? "Gift saved. That member deleted their account a moment ago; the gift still applies if they sign up again with that email."
+      : r.pro ? "Prowl Pro is now free for " + id + " " + giftEnds(g.until) + "." + (r.plan && r.plan.via === "list" ? " (They also get it from the PRO_EMAILS list in Cloudflare.)" : "")
+      : "Gift saved for " + id + ", but Pro did not switch on yet. Press Re-check Pro on their page in a minute.";
+    if (r && paid) msg += " They also have a Prowl Pro subscription in the shop; the gift does not cancel it, so cancel it there if they should not be charged.";
+  }
+  await audit(c, { action: "gift-add", id: id || g.gid, ok: true, note: monthsWord(months) });
+  return jres({ ok: true, message: msg, gid: g.gid, memberId: id });
+}
+async function apiGiftRemove(c) {
+  const H = c.H, env = c.env, kv = env.PROWL_ALERTS;
+  if (!(await H.vCount("admgift", 100))) return jerr(429, "That is a lot of gift changes today. Try again tomorrow.");
+  const gid = String(c.body.gid == null ? "" : c.body.gid).trim().toLowerCase();
+  if (!GID_RE.test(gid)) return jerr(400, "That gift id is not right. Reload the page and try again.");
+  const l = await kv.list({ prefix: "gift:" + gid, limit: 2 }), names = arr(l && l.keys).map(k => String(k.name));
+  if (!names.length) return jerr(404, "No gift with that id. It may have been turned off already.");
+  if (names.length > 1) return jerr(409, "Two gifts share that id, so nothing changed. Turn it off from the member's page instead.");
+  const hash = names[0].slice(5);
+  await kv.delete(names[0]);
+  let id = null, k = null, R = null, msg = "Gift turned off. This person had not signed up yet, so nothing else changed.";
+  try { R = await roster(c, false); k = (await giftIndex(c, R)).get(hash) || null; } catch (e) { k = null; }
+  const sub = k ? await H.kvGet(env, k, null) : null;
+  if (sub && typeof sub === "object") {
+    id = R.idOf.get(k) || null;
+    await H.alProSet(env, sub, false);
+    const r = await H.alMerge(env, sub, PRO_FIELDS);
+    ROSTER = null;
+    msg = !r ? "Gift turned off." : r.pro && r.plan && r.plan.via === "list" ? "Gift turned off. " + id + " still gets free Pro from the PRO_EMAILS list in Cloudflare; turn that off from their member page."
+      : r.pro ? "Gift turned off. " + id + " still has Prowl Pro because they pay for it in the shop."
+      : "Gift turned off. " + id + " is on the free plan now unless they pay.";
+  }
+  await audit(c, { action: "gift-remove", id: id || gid, ok: true });
+  return jres({ ok: true, message: msg, gid: gid, memberId: id });
+}
+
 async function apiAction(c) {
   const H = c.H, env = c.env, kv = env.PROWL_ALERTS;
   if (!(await H.vCount("admact", 300))) return jerr(429, "That is a lot of changes today. Try again tomorrow.");
@@ -421,6 +571,7 @@ async function apiAction(c) {
   const sub = m.sub, email = m.email;
   let ok = true, msg = "", note = "";
   const merge = async f => { const r = await H.alMerge(env, sub, f); if (!r) { ok = false; msg = "That member deleted their account a moment ago, so nothing changed."; } return r; };
+  const refresh = async () => { await H.alProSet(env, sub, false); return merge(PRO_FIELDS); };   // free Pro is checked before any Shopify call
   if (action === "signin-link") {
     if (!(await H.vCount("admsig:" + id, 5))) return jerr(429, "This member already got 5 sign-in links from here today. Ask them to use the newest one, or check spam.");
     const r = await H.alSendSignin(env, sub);
@@ -463,6 +614,31 @@ async function apiAction(c) {
   } else if (action === "clear-seen") {
     await kv.delete("seen:" + email);
     msg = "Cleared. The next check treats every listing as new, so their next email may repeat listings they already saw.";
+  } else if (action === "gift-on") {
+    const months = giftMonths(c.body.months);
+    if (months < 0) return jerr(400, "Pick how long: forever, 1, 3, 6 or 12 months.");
+    const paid = paidPro(sub), g = await saveGift(c, email, months, c.body.note);
+    note = monthsWord(months);
+    if (await refresh()) {
+      msg = !sub.pro ? "The gift is saved, but Pro did not switch on yet. Press Re-check Pro in a minute."
+        : sub.plan && sub.plan.via === "list" ? "Prowl Pro is free for this member from the PRO_EMAILS list in Cloudflare again. The gift (" + giftEnds(g.until) + ") is saved too, in case they leave that list."
+        : "Prowl Pro is now free for this member " + giftEnds(g.until) + ".";
+      if (paid) msg += " They also have a Prowl Pro subscription in the shop; the gift does not cancel it, so cancel it there if they should not be charged.";
+    }
+  } else if (action === "gift-off") {
+    const gh = String(await H.giftHash(email)), listed = !!(typeof H.proListHas === "function" && H.proListHas(env, email));
+    const [had, wasOff] = await Promise.all([H.kvGet(env, "gift:" + gh, null), H.kvGet(env, "giftoff:" + gh, null)]);
+    await kv.delete("gift:" + gh);
+    if (listed) await H.kvPut(env, "giftoff:" + gh, { at: new Date(c.nowMs).toISOString() });   // the PRO_EMAILS list no longer counts for them
+    const nothing = !had && (!listed || !!wasOff);
+    if (await refresh()) {
+      msg = nothing ? "This member had no free Pro to turn off, so nothing changed."
+        : sub.pro ? "Free Pro is off. They still have Prowl Pro because they pay for it in the shop."
+        : sub.proCheck ? "Free Pro is off. The shop could not be checked for a paid plan just now, so they are on the free plan; press Re-check Pro later if they pay."
+        : "Free Pro is off. They are on the free plan unless they pay.";
+      if (listed && !nothing) msg += " Their address is still in the PRO_EMAILS list in Cloudflare, but it no longer gives them Pro. Gift Pro turns it back on.";
+    }
+    if (nothing) note = "nothing to turn off";
   } else if (action === "delete") {
     for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "pro:"]) await kv.delete(p + email);
     if (sub.cid) { const cc = await H.kvGet(env, "cid:" + sub.cid, null); if (cc && cc.email === email) await kv.delete("cid:" + sub.cid); }
@@ -572,8 +748,8 @@ async function apiSearches(c) {
   return jres({ top: topView(c, j), days: days });
 }
 
-const GETS = { overview: apiOverview, members: apiMembers, member: apiMember, errors: apiErrors, searches: apiSearches };
-const POSTS = { find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth };
+const GETS = { overview: apiOverview, members: apiMembers, member: apiMember, errors: apiErrors, searches: apiSearches, gifts: apiGifts };
+const POSTS = { find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, gift: apiGiftAdd, "gift/remove": apiGiftRemove };
 
 /* ---------- sign in / out ---------- */
 async function login(c) {

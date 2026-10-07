@@ -133,7 +133,8 @@ test("sign out is a plain form post; searches offer 1/7/30 days", () => {
 
 test("script calls every admin API route, same-origin, with the admin header on POSTs", () => {
   for (const r of ['"/admin/api/overview"', '"/admin/api/members?filter="', '"/admin/api/member?id="', '"/admin/api/member/action"',
-    '"/admin/api/find"', '"/admin/api/diagnose"', '"/admin/api/healthcheck"', '"/admin/api/errors?limit=100"', '"/admin/api/searches?days="']) {
+    '"/admin/api/find"', '"/admin/api/diagnose"', '"/admin/api/healthcheck"', '"/admin/api/errors?limit=100"', '"/admin/api/searches?days="',
+    '"/admin/api/gifts"', '"/admin/api/gift"', '"/admin/api/gift/remove"']) {
     assert.ok(SCRIPT.includes(r), r);
   }
   assert.match(SCRIPT, /credentials: "same-origin"/);
@@ -141,7 +142,7 @@ test("script calls every admin API route, same-origin, with the admin header on 
   assert.match(SCRIPT, /o\.headers\["Content-Type"\] = "application\/json"/);
   assert.match(SCRIPT, /r\.status === 401\) \{ signedOut\(\)/);
   // every member action the server knows about has a button
-  for (const a of ["signin-link", "refresh-pro", "recheck-today", "resend-today", "mail-on", "mail-off", "unpause", "signout-all", "clear-seen", "delete"]) {
+  for (const a of ["signin-link", "refresh-pro", "recheck-today", "resend-today", "mail-on", "mail-off", "unpause", "signout-all", "clear-seen", "delete", "gift-on", "gift-off"]) {
     assert.ok(SCRIPT.includes('a: "' + a + '"'), a);
   }
 });
@@ -176,4 +177,64 @@ test("dark mode, focus outlines, tabular numbers and the fixed status colours ar
   assert.match(page, /table\{[^}]*font-variant-numeric:tabular-nums/);
   for (const c of ["#0ca30c", "#fab219", "#ec835a", "#d03b3b", "#2a78d6", "#6da7ec", "#FAF6EE", "#2A140C", "#C2491F", "#0B1430", "#12204A", "#9DB7EA"]) assert.ok(page.includes(c), c);
   assert.match(page, /\[hidden\]\{display:none!important\}/);
+});
+
+/* A multi-line top-level function from the page script, run with stubs for the helpers it calls. */
+const pickFn = (name, deps = {}) => {
+  const i = SCRIPT.indexOf("\nfunction " + name + "(");
+  assert.ok(i >= 0, name);
+  const body = SCRIPT.slice(i + 1, SCRIPT.indexOf("\n}\n", i) + 2), keys = Object.keys(deps);
+  return new Function(...keys, body + "\nreturn " + name + ";")(...keys.map(k => deps[k]));
+};
+
+test("Marketplaces: a Last check column from lastAt, falling back to the hour it last worked", () => {
+  assert.ok(SCRIPT.includes('{ t: "Last check" }'));
+  assert.equal(SCRIPT.includes('{ t: "Last worked" }'), false);
+  const lastCheck = pickFn("lastCheck", { fmtWhen: x => "at " + x });
+  assert.equal(lastCheck({ lastAt: 1759700000000, lastOkAt: "2026-10-05T10" }), "at 1759700000000");
+  assert.equal(lastCheck({ lastAt: 0, lastOkAt: "2026-10-05T10" }), "at 2026-10-05T10", "older answers without lastAt");
+  assert.equal(lastCheck({ lastAt: null, lastOkAt: null }), "\u2014");
+});
+
+test("Members tab: a Gift Pro card above the member list, with an email field that has no name and is cleared on send", () => {
+  const mk = markupOf(page);
+  const card = /<section class="card" id="giftc"[\s\S]*?<\/section>/.exec(mk)[0];
+  assert.ok(mk.indexOf('id="giftc"') < mk.indexOf('id="mrows"'), "above the member list");
+  assert.ok(mk.indexOf('id="findf"') < mk.indexOf('id="giftc"'));
+  assert.match(card, /<h2 id="gift-h">Gift Pro \(free service\)<\/h2>/);
+  assert.doesNotMatch(card, /\sname=/, "no name attributes, so the address is never part of a form post");
+  assert.match(card, /<label for="gift-email">[^<]+<\/label><input id="gift-email" type="email"[^>]*autocomplete="off"/);
+  assert.match(card, /<label for="gift-note">/); assert.match(card, /id="gift-note" type="text" maxlength="60"/);
+  assert.deepEqual((card.match(/<option value="(\d+)">([^<]+)<\/option>/g) || []).map(o => o.replace(/<[^>]+>/g, "|")),
+    ["|Forever|", "|1 month|", "|3 months|", "|6 months|", "|12 months|"]);
+  assert.deepEqual((card.match(/<option value="(\d+)"/g) || []).map(o => o.slice(15, -1)), ["0", "1", "3", "6", "12"]);
+  assert.match(card, /<button class="btn btn-p" id="gift-go" type="submit">Gift Pro<\/button>/);
+  assert.match(card, /not stored or shown/);
+  assert.match(card, /id="gift-msg" aria-live="polite"/);
+  assert.match(card, /<div id="glist"><\/div>/);
+  // the field is cleared before the gift is sent
+  const k = SCRIPT.indexOf('$("#giftf").addEventListener("submit"'), i = SCRIPT.indexOf('inp.value = ""', k), j = SCRIPT.indexOf('api("/admin/api/gift"', k);
+  assert.ok(k > 0 && i > k && j > i);
+  // the PRO_EMAILS line and a confirm before turning a gift off
+  assert.ok(SCRIPT.includes("free Pro from the PRO_EMAILS list in Cloudflare \\u2014 turn any of them off from their member page."));
+  assert.ok(SCRIPT.includes('window.confirm(g.active ? "Turn off free Pro for "'));
+  assert.ok(SCRIPT.includes('window.confirm("Turn off free Pro for " + m.id'));
+  assert.ok(SCRIPT.includes('"Not signed up yet"'));
+});
+
+test("Member detail: free Pro in plain words, with Gift Pro (length) and Turn off free Pro", () => {
+  const giftLines = pickFn("giftLines", { fmtDay: d => "<" + d + ">" });
+  assert.deepEqual(giftLines({ active: true, source: "gift", until: "2027-01-05", note: "beta tester", added: "2026-10-05", ended: false, listed: false, listOff: false }),
+    ["Free Pro gift \u2014 ends <2027-01-05> (beta tester)"]);
+  assert.deepEqual(giftLines({ active: true, source: "gift", until: "", note: "", added: "2026-10-05", ended: false, listed: false, listOff: false }), ["Free Pro gift \u2014 no end"]);
+  assert.deepEqual(giftLines({ active: true, source: "list", until: "", note: "", added: "", ended: false, listed: true, listOff: false }), ["Free Pro from the Cloudflare list"]);
+  assert.deepEqual(giftLines({ active: false, source: null, until: "2026-09-01", note: "", added: "2026-08-01", ended: true, listed: true, listOff: true }),
+    ["In the Cloudflare list (PRO_EMAILS), but turned off here", "Free Pro gift ended <2026-09-01>"]);
+  assert.deepEqual(giftLines({ active: false, source: null, until: "", note: "", added: "", ended: false, listed: false, listOff: false }), []);
+  assert.deepEqual(giftLines(null), []);
+  assert.ok(SCRIPT.includes('{ a: "gift-on", t: "Gift Pro", box: "mplan" }'));
+  assert.ok(SCRIPT.includes('{ a: "gift-off", t: "Turn off free Pro", box: "mplan" }'));
+  assert.match(SCRIPT, /doAction\(m\.id, GIFT_ON, null, on, \{ months: Number\(sel\.value\) \|\| 0 \}\)/);
+  assert.match(SCRIPT, /const body = Object\.assign\(\{ id: id, action: x\.a \}, extra \|\| \{\}\)/);
+  assert.ok(SCRIPT.includes('gift: "Free Pro gift (from you)"') && SCRIPT.includes('list: "Free Pro from the Cloudflare list (PRO_EMAILS)"'));
 });
