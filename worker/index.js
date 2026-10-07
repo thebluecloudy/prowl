@@ -19,6 +19,13 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v82: 2026-10-07. Store sessions. A verified store sign-in (/proxy/login) now also returns a 30-day session token
+ *        (secret PROWL_SESSION_SECRET, 32+ characters; without it nothing changes). The page sends it as
+ *        Authorization: Bearer, and proMember (Fair price, research, guides, photo checks) and /alerts/status accept
+ *        it next to the old email + token, so a signed-in member needs no emailed token on this device. Pro also
+ *        comes from the signed-in customer's own paid orders (orders query by customer_id, cached as pro:cid:<id>),
+ *        after gifts and the PRO_EMAILS list and before the email / "Prowl Alerts email" tag check, which stays so
+ *        no one who checked out under another address loses Pro. CORS allows Authorization.
  *   v81: 2026-10-07. Listing popup: GET /item?url=<listing> answers the photos, description, price and details of one
  *        eBay, ShopGoodwill or Salvation Army listing, fetched on tap only and cached 24 hours (ended listings too,
  *        as {gone:true}). eBay: Browse getItemByLegacyId with the EPN context header, so itemAffiliateWebUrl comes
@@ -242,7 +249,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
-const WORKER_VERSION = "v81";
+const WORKER_VERSION = "v82";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -295,7 +302,7 @@ const ALLOW_ORIGINS = [
 function cors(origin) {
   const h = {
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Prowl-Owner",
+    "Access-Control-Allow-Headers": "Content-Type, X-Prowl-Owner, Authorization",   /* v82: Authorization */
     "Access-Control-Expose-Headers": "X-Prowl-Cache",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
@@ -1949,12 +1956,15 @@ async function vTake(name, limit) {
   await cache.put(key, new Response(String(n + 1), { headers: { "Cache-Control": "max-age=90000" } }));
   return limit - n - 1;
 }
-/* v43: a signed-in Prowl Pro member (email + token from Prowl Alerts). */
-async function proMember(env, b) {
+/* v43: a signed-in Prowl Pro member (email + token from Prowl Alerts). v82: or a store session (Bearer). */
+async function proMember(env, b, request) {
   const email = alEmail(b && b.e), t = String((b && b.t) || "");
-  if (!email || !t || !env || !env.PROWL_ALERTS) return null;
-  const sub = await kvGet(env, "sub:" + email, null);
-  return sub && sub.pro && alSame(t, sub.tok) ? email : null;
+  if (email && t && env && env.PROWL_ALERTS) {
+    const sub = await kvGet(env, "sub:" + email, null);
+    if (sub && sub.pro && alSame(t, sub.tok)) return email;
+  }
+  const s = request ? await sessMember(request, env) : null;
+  return s && s.pro ? s.email : null;
 }
 async function vCount(name, limit) {
   let j = null;
@@ -2063,7 +2073,7 @@ async function verdict(request, env, origin) {
   /* v43: free = 3 checks a day per visitor; Prowl Pro = unlimited (100/day ceiling). */
   let left = null;
   if (!isOwner(request, env)) {
-    const pro = await proMember(env, b);
+    const pro = await proMember(env, b, request);
     if (pro) {
       if (!(await vCount("pro:" + pro, VERDICT_PRO_PER_DAY))) return json({ error: "daily limit", limit: VERDICT_PRO_PER_DAY, pro: true }, 429, origin);
     } else {
@@ -2404,7 +2414,7 @@ async function guide(request, env, origin, ctx) {
   const ck = new Request("https://prowl-verdicts.invalid/gd1/" + encodeURIComponent(key));
   try { const hit = await PCACHE.match(ck); if (hit) return json({ guide: await hit.json(), cached: true }, 200, origin, { "X-Prowl-Cache": "hit" }); } catch (e) {}
   const ip = ipKey(request.headers.get("CF-Connecting-IP"));
-  const pro = await proMember(env, b);
+  const pro = await proMember(env, b, request);
   let left;
   if (!isOwner(request, env)) {
     if (pro) { left = await vTake("gdp:" + pro, GUIDE_PRO_PER_DAY); if (left < 0) return json({ error: "daily limit", limit: GUIDE_PRO_PER_DAY, pro: true }, 429, origin); }
@@ -2907,7 +2917,7 @@ async function appraise(request, env, origin) {
   /* v45: free = PHOTO_FREE_PER_DAY photo checks a day per visitor; Prowl Pro = PHOTO_PRO_PER_DAY. */
   let left = null, pro = null;
   if (!isOwner(request, env)) {
-    pro = await proMember(env, b);
+    pro = await proMember(env, b, request);
     if (pro) {
       if (!(await vCount("appro:" + pro, PHOTO_PRO_PER_DAY))) return json({ error: "daily limit", limit: PHOTO_PRO_PER_DAY, pro: true }, 429, origin);
     } else {
@@ -3126,12 +3136,15 @@ async function alPro(env, email, force) {
   return free || alProShop(env, email, c);
 }
 /* The 6-hour cache, then the shop's orders. c = the cached pro:<email> record, already read (null when forced). */
-async function alProShop(env, email, c) {
-  const ck = "pro:" + email;
+async function alProShop(env, email, c, cid) {
+  /* v82: with cid, the store customer's own orders: every paid Prowl Pro order on that account counts, whatever
+     email it was placed under, and the line-item tag is not needed */
+  cid = /^\d{1,20}$/.test(String(cid || "")) ? String(cid) : "";
+  const ck = cid ? "pro:cid:" + cid : "pro:" + email;
   if (c && Date.now() - c.at < 6 * 3600 * 1000) return { pro: !!c.pro, via: "cache", plan: c.plan || null };
   if (!env.SHOPIFY_ORDERS_TOKEN) return { pro: null, via: "no token" };
   const since = new Date(Date.now() - PRO_DAYS * 86400000).toISOString().slice(0, 10);
-  const q = 'email:"' + email.replace(/"/g, "") + '" AND sku:' + PRO_SKU + " AND created_at:>=" + since;
+  const q = cid ? "customer_id:" + cid + " AND sku:" + PRO_SKU + " AND created_at:>=" + since : 'email:"' + email.replace(/"/g, "") + '" AND sku:' + PRO_SKU + " AND created_at:>=" + since;
   try {
     const ask = async (qq, n) => {
       const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 12000);   /* v51 */
@@ -3156,8 +3169,8 @@ async function alProShop(env, email, c) {
     const okPay = o => !o.cancelledAt && ["PAID", "PARTIALLY_REFUNDED", "AUTHORIZED"].indexOf(o.displayFinancialStatus) !== -1;
     let res = await ask(q, 5);
     if (res.err) return { pro: null, via: res.err };
-    let good = res.nodes.filter(o => okPay(o) && mine(o));
-    if (!good.length) {
+    let good = res.nodes.filter(o => okPay(o) && (cid || mine(o)));
+    if (!good.length && !cid) {
       res = await ask("sku:" + PRO_SKU + " AND created_at:>=" + since, 100);
       if (res.err) return { pro: null, via: res.err };
       good = res.nodes.filter(o => okPay(o) && tagged(o));
@@ -3178,7 +3191,7 @@ async function alProShop(env, email, c) {
       if (Number(m.amount || 0) === 0 || codes.indexOf(PRO_TRIAL_CODE) !== -1) { plan.trial = true; plan.amount = "0.00"; plan.next = "7.00"; }
     }
     await kvPut(env, ck, { pro: ok, at: Date.now(), plan: plan });
-    return { pro: ok, via: "orders", plan: plan };
+    return { pro: ok, via: cid ? "customer orders" : "orders", plan: plan };
   } catch (e) { return { pro: null, via: "shopify unreachable" }; }
 }
 async function alProSet(env, sub, force) {
@@ -3187,6 +3200,11 @@ async function alProSet(env, sub, force) {
      call, read together with the cached shop answer. */
   const [frees, c] = await Promise.all([Promise.all([sub.email].concat(prev).map(a => alFreePro(env, a))), force ? null : kvGet(env, "pro:" + sub.email, null)]);
   let p = frees.find(Boolean) || null;
+  /* v82: a member linked to a store account: that customer's own paid orders, before the email and tag check */
+  if (!p && /^\d{1,20}$/.test(String(sub.cid || ""))) {
+    const pc = await alProShop(env, sub.email, force ? null : await kvGet(env, "pro:cid:" + sub.cid, null), sub.cid);
+    if (pc.pro) p = pc;
+  }
   if (!p) {
     p = await alProShop(env, sub.email, c);
     /* v54: a moved member's Pro order can still be under an earlier address */
@@ -3771,6 +3789,38 @@ async function alConfirm(request, env, url) {
      the signed-in customer is the same id, the sig, and its age (15 minutes). Then
      an existing member gets their token; join:true creates the membership. */
 const PX_MAX_AGE = 15 * 60;
+/* v82: store sessions. A token is base64url(cid "." exp "." hmac), signed with PROWL_SESSION_SECRET, and only minted
+   by /proxy/login after Shopify's signature, the Liquid HMAC and the replay check have all passed. It names the store
+   customer; what that customer may do is looked up fresh each time (cid: -> sub:), so a token never carries Pro. */
+const SESS_DAYS = 30;
+function unb64u(s) { s = String(s).replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return atob(s); }
+function sessKey(env) { const k = String((env && env.PROWL_SESSION_SECRET) || ""); return k.length >= 32 ? k : ""; }
+async function sessMint(env, cid, now) {
+  const k = sessKey(env); cid = String(cid == null ? "" : cid);
+  if (!k || !/^\d{1,20}$/.test(cid)) return "";
+  const body = cid + "." + (Math.floor((now || Date.now()) / 1000) + SESS_DAYS * 86400);
+  return b64uStr(body + "." + await pxHmac(k, "prowl-session-v1:" + body));   /* b64uStr: the Mercari helper (v77) */
+}
+/* the customer id in a valid, unexpired Bearer token, else null */
+async function sessVerify(request, env) {
+  const k = sessKey(env);
+  if (!k || !request || !request.headers) return null;
+  const m = /^Bearer\s+([A-Za-z0-9_-]{10,400})$/.exec(request.headers.get("Authorization") || "");
+  if (!m) return null;
+  let raw; try { raw = unb64u(m[1]); } catch (e) { return null; }
+  const p = raw.split(".");
+  if (p.length !== 3 || !/^\d{1,20}$/.test(p[0]) || !/^\d{9,11}$/.test(p[1])) return null;
+  if (Number(p[1]) * 1000 <= Date.now()) return null;
+  return alSame(p[2], await pxHmac(k, "prowl-session-v1:" + p[0] + "." + p[1])) ? p[0] : null;
+}
+/* the Prowl Alerts member linked to a valid session (the cid: link must point back), else null */
+async function sessMember(request, env) {
+  const cid = await sessVerify(request, env);
+  if (!cid || !env || !env.PROWL_ALERTS) return null;
+  const link = await kvGet(env, "cid:" + cid, null);
+  const sub = link && link.email ? await kvGet(env, "sub:" + link.email, null) : null;
+  return sub && String(sub.cid || "") === cid ? sub : null;
+}
 async function pxHmac(key, msg) {
   const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const sig = await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(msg));
@@ -3827,7 +3877,7 @@ async function proxyHandle(request, env, url) {
       const ls = linked && linked.email ? await kvGet(env, "sub:" + linked.email, null) : null;
       if (ls && ls.cid === id) sub = ls;
     }
-    if (!sub && !b.join) return pxJson({ ok: true, member: false, email: email });
+    if (!sub && !b.join) return pxJson({ ok: true, member: false, email: email, session: await sessMint(env, id) });   /* v82 */
     if (!sub) {
       if (!alAllowed(env, email)) return pxJson({ error: "Prowl Alerts is in a small test right now." }, 403);
       if (!(await vCount("alsub:c:" + v.cid, AL_SUB_PER_IP))) return pxJson({ error: "Too many tries today." }, 429);   /* v51: the signed customer id cannot be forged */
@@ -3837,7 +3887,7 @@ async function proxyHandle(request, env, url) {
     if (sub.cid !== id) sub.cid = id;
     await kvPut(env, "sub:" + sub.email, sub);
     await kvPut(env, "cid:" + id, { email: sub.email });   /* v54 */
-    return pxJson({ ok: true, member: true, email: sub.email, store: email, tok: sub.tok, pro: !!sub.pro, free: alFree(env, sub), hunts: sub.hunts, active: alActive(env, sub).length });
+    return pxJson({ ok: true, member: true, email: sub.email, store: email, tok: sub.tok, pro: !!sub.pro, free: alFree(env, sub), hunts: sub.hunts, active: alActive(env, sub).length, session: await sessMint(env, id) });   /* v82: session */
   }
   return pxJson({ ok: true, prowl: true });
 }
@@ -4143,13 +4193,20 @@ async function alTest(request, env, url, origin) {
 
 async function alStatus(request, env, url, origin) {
   const p = await alParams(request, url);
-  const email = alEmail(p.e);
-  const sub = env && env.PROWL_ALERTS && email ? await kvGet(env, "sub:" + email, null) : null;
-  if (!sub && email) {   /* v54: moved to a new address with the same token */
-    const mv = await kvGet(env, "moved:" + email, null);
-    if (mv && mv.to && alSame(p.t, mv.tok)) return json({ on: false, moved: mv.to }, 200, origin);
+  let email = alEmail(p.e);
+  let sub = env && env.PROWL_ALERTS && email ? await kvGet(env, "sub:" + email, null) : null;
+  if (!sub || !alSame(p.t, sub.tok)) {
+    /* v82: a store session stands in for the email token, for the member that session is linked to */
+    const ss = await sessMember(request, env);
+    if (ss && (!email || ss.email === email)) { sub = ss; email = ss.email; }
+    else {
+      if (!sub && email) {   /* v54: moved to a new address with the same token */
+        const mv = await kvGet(env, "moved:" + email, null);
+        if (mv && mv.to && alSame(p.t, mv.tok)) return json({ on: false, moved: mv.to }, 200, origin);
+      }
+      return json({ on: false }, 200, origin);
+    }
   }
-  if (!sub || !alSame(p.t, sub.tok)) return json({ on: false }, 200, origin);
   const was = !!sub.pro;
   /* v51: a forced Shopify look-up is capped per member, so the Admin API is never hammered */
   const fresh = p.fresh === "1" && (await vCount("profresh:" + email, 10));
