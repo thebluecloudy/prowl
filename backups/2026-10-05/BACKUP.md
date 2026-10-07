@@ -5,13 +5,17 @@ A snapshot of Prowl as it runs today, with what you need to put it back if somet
 | File | What it is | Version |
 |---|---|---|
 | `prowl-page-v6.37.html` | The whole Prowl page (HTML, CSS and JavaScript) that lives in Shopify | Page v6.37 |
-| `prowl-worker-v77.js` | The Cloudflare Worker that fetches live listings, runs Prowl Alerts, Pro, Field Guides and photo checks | Worker v77 |
-| `wrangler.toml` | The Worker's settings: name, storage, schedule and plain (non-secret) variables | matches v77 |
+| `prowl-worker-v78.js` | The Cloudflare Worker (`worker/index.js`) that fetches live listings, runs Prowl Alerts, Pro, Field Guides and photo checks | Worker v78 |
+| `prowl-worker-v78-admin.js`, `prowl-worker-v78-admin-page.js`, `prowl-worker-v78-metrics.js` | The admin area and its numbers (`worker/admin.js`, `worker/admin-page.js`, `worker/metrics.js`); the Worker imports them | Worker v78 |
+| `wrangler.toml` | The Worker's settings: name, storage, schedule and plain (non-secret) variables | matches v78 |
 
-Snapshot of `main` after page v6.37 and worker v77. Check a file is intact with `md5sum`:
+Snapshot of `main` after page v6.37 and worker v78. Check a file is intact with `md5sum`:
 
 - `prowl-page-v6.37.html`: `10b9a5876f45253a146c6586d7a0ada8`
-- `prowl-worker-v77.js`: `f52e5807bd98c0dce8fa0a1162ef55aa`
+- `prowl-worker-v78.js`: `5b7266dfdf0444aa0c1ff0f4177f1a78`
+- `prowl-worker-v78-admin.js`: `bcb3265d093c941bdebf590be83ad818`
+- `prowl-worker-v78-admin-page.js`: `2b1c550b124f9241ae273a193054960d`
+- `prowl-worker-v78-metrics.js`: `260f474e1c1ddbaac487462dbb9b3bb2`
 
 ## What is in this version
 
@@ -27,6 +31,7 @@ Snapshot of `main` after page v6.37 and worker v77. Check a file is intact with 
 - **New in page v6.35 / worker v76:** Depop is a link-out, not a live source (its firewall refuses the Worker). Alerts skip it and the health check no longer checks it.
 - **New in page v6.36 / worker v77:** Mercari Japan is a link-out marketplace (US buyers can buy direct through Mercari Global) and appears in the emails' "Also search" links. `/__mercarijptest` tests its search API for live results.
 - **New in page v6.37:** Midnight colour mode; the New look is in the page markup so a refresh no longer flashes the Classic dark first.
+- **New in worker v78: admin area** at `https://prowl.thebluecloud.workers.dev/admin`, signed in with the `ADMIN_KEY` secret. It shows health (uptime from hourly test searches, speed, errors, the alert-email clock, AI usage, top searches) and members by anonymous id only, never emails, tokens or ZIP codes. Find a member by typing their email (looked up, never stored). Support buttons: sign-in link, re-check Pro, re-check today, resend today's email, emails on/off, unpause, sign out all devices, clear "already sent" memory, delete. Diagnose runs a hunt live and shows what the AI and the member's own filters hide. **Gift Pro** gives free Pro by email (only a fingerprint of the address is stored) and can switch off anyone on the `PRO_EMAILS` list.
 - **Health check:** the GitHub workflow **Scraper health** runs every day and fails (GitHub emails you) if a live marketplace returns nothing.
 - **Accessibility (page v6.33 and later):** all text colours pass 4.5:1 in every theme; every button, link, tab and checkbox shows a focus ring when you use the keyboard; ticking a marketplace with the keyboard keeps focus; Uranium glows are softer.
 
@@ -41,8 +46,8 @@ Shopify rewrites some markup when it saves (lower-case `viewbox`, explicit closi
 
 ## How to restore the Worker
 
-1. Copy `prowl-worker-v77.js` over `worker/index.js` (and `wrangler.toml` over `worker/wrangler.toml` if it changed), then push to `main`. Cloudflare Workers Builds deploys it.
-2. Or in the Cloudflare dashboard: Workers & Pages > **prowl** > Edit code, paste the file, Deploy.
+1. Copy `prowl-worker-v78.js` over `worker/index.js`, and the three `prowl-worker-v78-*.js` files over `worker/admin.js`, `worker/admin-page.js` and `worker/metrics.js` (and `wrangler.toml` over `worker/wrangler.toml`), then push to `main`. Cloudflare Workers Builds deploys them together.
+2. Since v78 the Worker is four files, so pasting into the Cloudflare dashboard's code editor no longer works on its own. Use the repo (step 1), or roll back a deploy in Cloudflare (Workers & Pages > **prowl** > Deployments).
 
 The Worker keeps its secrets and storage across a code restore; nothing in these files deletes data.
 
@@ -57,8 +62,9 @@ Set in Cloudflare > Workers > prowl > Settings > Variables and Secrets. If you e
 - **Email (Prowl Alerts):** `RESEND_API_KEY`, `ALERT_FROM`, `ALERT_REPLY_TO`, `ALERT_ADDRESS`, `ALERT_HOUR`, `ALERT_BATCH`, `ALERTS`, `ALERT_ALLOW`, `ALERT_FREE_HUNTS`, `ALERT_FREE_HUNTS_NEW`
 - **Shopify / Pro:** `SHOPIFY_SHOP`, `SHOPIFY_ORDERS_TOKEN`, `SHOPIFY_PROXY_SECRET`, `PRO_EMAILS` (complimentary Pro list)
 - **Owner and debugging:** `OWNER_KEY`, `DEBUG_KEY`
+- **Admin area (v78):** `ADMIN_KEY` (at least 20 characters, different from `OWNER_KEY`; without it /admin says it is not set up). Optional `MEMBER_ID_SALT` keeps member ids the same if you ever change `ADMIN_KEY`.
 
-Storage bindings (in `wrangler.toml`): KV namespace `PROWL_ALERTS` (members, hunts, settings) and the `CAPS` Durable Object (counters, cache, search stats). A cron runs every 5 minutes to send Alerts.
+Storage bindings (in `wrangler.toml`): KV namespace `PROWL_ALERTS` (members, hunts, settings) and the `CAPS` Durable Object (counters, cache, search stats). Two crons: every 5 minutes for Alerts, and at 2 minutes past each hour for the admin's uptime test searches. The `CAPS` Durable Object also keeps the admin's traffic, error and activity records ("metrics"), pruned after 7–30 days.
 
 ## Other pieces that live elsewhere
 
