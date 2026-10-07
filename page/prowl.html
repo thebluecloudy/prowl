@@ -1075,8 +1075,7 @@ window.prowlEpn=function(u,cid){
 .scout-app-wrapper .flock .fl-for{font-size:10px;color:var(--mu);padding:0 8px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scout-app-wrapper .flock .sgw-note{margin:0 15px}
 /* ---- v6.33: AI helpers switch: with AI off, every AI entry point is hidden ---- */
-.scout-app-wrapper.ai-off .sgw-fp,.scout-app-wrapper.ai-off #otp-aprGo,.scout-app-wrapper.ai-off #otp-cam,.scout-app-wrapper.ai-off #otp-photoBtn,.scout-app-wrapper.ai-off #otp-guide,.scout-app-wrapper.ai-off #otp-picks,.scout-app-wrapper.ai-off .sgw-where{display:none!important}
-.scout-app-wrapper.ai-off #otp-dock{grid-template-columns:repeat(5,1fr)}
+.scout-app-wrapper.ai-off .sgw-fp,.scout-app-wrapper.ai-off #otp-aprGo,.scout-app-wrapper.ai-off #otp-cam,.scout-app-wrapper.ai-off #otp-guide,.scout-app-wrapper.ai-off #otp-picks,.scout-app-wrapper.ai-off .sgw-where{display:none!important}
 /* ---- v6.19: Field Guide on anything ---- */
 .scout-app-wrapper .gd{margin:26px 0 0;padding:18px;border:1px solid var(--ln);border-radius:16px;background:var(--cd2)}
 .scout-app-wrapper .gd h2{font-family:var(--display);font-size:18px;margin:0 0 6px;color:var(--ink)!important}
@@ -1278,6 +1277,63 @@ window.prowlEpn=function(u,cid){
 /* v6.33: the bittersweet accent is for daylight only; dark keeps amber and uranium keeps green (contrast) */
 [data-theme=dark] .scout-app-wrapper.k2{--ac:#F2A743;--ac-ring:rgba(242,167,67,.3)}
 [data-theme=uranium] .scout-app-wrapper.k2{--ac:#39ff14;--ac-ring:rgba(57,255,20,.35)}
+/* ---- v6.38: Flock tab. A full-screen feed that stops on every card; Saved view; swipe right to discard ---- */
+.scout-app-wrapper.flock-mode #otp-sf,.scout-app-wrapper.flock-mode #otp-sgw,.scout-app-wrapper.flock-mode #otp-picks,.scout-app-wrapper.flock-mode #otp-quick,.scout-app-wrapper.flock-mode #otp-res,.scout-app-wrapper.flock-mode #otp-guide{display:none!important}
+.scout-app-wrapper .fl-seg,.scout-app-wrapper .fl-x,.scout-app-wrapper .fl-auc{display:none}
+.scout-app-wrapper #otp-flock.as-feed{display:flex!important;flex-direction:column;position:fixed;left:0;right:0;top:0;bottom:calc(70px + env(safe-area-inset-bottom));z-index:39;margin:0;padding:0;max-width:none;border:0;border-radius:0;box-shadow:none;background:var(--bg);overflow:hidden}
+.scout-app-wrapper #otp-flock.as-feed .flock-head{flex:0 0 auto;flex-wrap:wrap;gap:10px 12px;margin:0;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;background:var(--bg);border:0;border-bottom:1px solid var(--ln);border-radius:0;box-shadow:none}
+.scout-app-wrapper #otp-flock.as-feed .flock-head b{font-size:28px;line-height:1.1;font-weight:800;color:var(--ink);text-transform:none;letter-spacing:0}
+.scout-app-wrapper #otp-flock.as-feed .flock-head .gh{margin-left:auto;border-radius:99px;background:var(--ink);color:var(--bg);border:0;padding:6px 16px;font-size:15px}
+.scout-app-wrapper #otp-flock.as-feed.fl-saved .flock-head .gh{visibility:hidden}
+.scout-app-wrapper #otp-flock.as-feed .flock-sub{display:none}
+.scout-app-wrapper #otp-flock.as-feed .fl-seg{display:flex;order:3;flex:1 1 100%;gap:3px;padding:3px;border-radius:99px;background:var(--cd3)}
+.scout-app-wrapper .fl-seg button{-webkit-appearance:none;appearance:none;text-transform:none;flex:1 1 0;min-height:38px;padding:6px 14px;border:0;border-radius:99px;background:none;color:var(--mu);font:700 15px/1 var(--sans);cursor:pointer}
+.scout-app-wrapper .fl-seg button[aria-selected=true]{background:var(--ink);color:var(--bg)}
+.scout-app-wrapper .fl-seg button:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.scout-app-wrapper #otp-flock.as-feed #otp-flockRow{position:relative;flex:1 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-snap-type:y mandatory;scroll-behavior:smooth;scrollbar-width:none;outline:0}
+.scout-app-wrapper #otp-flock.as-feed #otp-flockRow::-webkit-scrollbar{display:none}
+.scout-app-wrapper #otp-flock.as-feed .sgw-grid{display:block!important;height:100%;padding:0!important;margin:0}
+.scout-app-wrapper #otp-flock.as-feed .fl-card,.scout-app-wrapper #otp-flock.as-feed .fl-note{position:relative;box-sizing:border-box;height:100%;max-width:520px;margin:0 auto;padding:12px 16px 14px;scroll-snap-align:start;scroll-snap-stop:always}
+.scout-app-wrapper #otp-flock.as-feed .fl-card{display:flex;flex-direction:column;gap:0;touch-action:pan-y;transition:transform .22s ease,opacity .22s ease;-webkit-user-select:none;user-select:none}
+.scout-app-wrapper #otp-flock.as-feed .fl-card.fl-drag{transition:none}
+.scout-app-wrapper #otp-flock.as-feed .fl-card.fl-fly{opacity:0}
+.scout-app-wrapper #otp-flock.as-feed .fl-card>.sgw-card{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;position:static;overflow:visible;background:none;border:0;border-radius:0;box-shadow:none;transform:none}
+.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-card img{flex:1 1 0;min-height:0;height:0;width:100%;aspect-ratio:auto;object-fit:contain;border:0;border-radius:16px;background:#F3EFE8;-webkit-user-drag:none}
+.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-t{display:block;height:26px;margin:10px 2px 0;padding:0;font-size:17px;font-weight:500;line-height:26px;letter-spacing:0;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:0;max-height:none;color:var(--ink);-webkit-line-clamp:unset}
+.scout-app-wrapper #otp-flock.as-feed .fl-card .fl-for{height:18px;padding:0 2px;font-size:13px;line-height:18px;color:var(--mu)}
+.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-m{display:none}
+.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-p{position:absolute;top:24px;right:28px;z-index:2;margin:0;padding:7px 14px;border-radius:99px;background:#fff;color:#111;font-size:17px;font-weight:800;line-height:1.2;box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer}
+.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-p:empty{display:none}
+.scout-app-wrapper #otp-flock.as-feed .fl-auc{display:block;position:absolute;left:28px;bottom:78px;z-index:2;padding:6px 12px;border-radius:99px;background:#D9541E;color:#fff;font-size:14px;font-weight:800;line-height:1.2;pointer-events:none}
+.scout-app-wrapper #otp-flock.as-feed .fl-x,.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv{-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;position:absolute;z-index:3;width:40px;height:40px;min-width:40px;padding:0;border:0;border-radius:99px;background:#fff;color:#111;font-size:18px;line-height:1;box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
+.scout-app-wrapper #otp-flock.as-feed .fl-x{top:24px;left:28px}
+.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv{top:auto;right:28px;bottom:76px;font-size:20px}
+.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv.on{color:#D9541E;background:#fff;border:0}
+.scout-app-wrapper #otp-flock.as-feed .fl-x:focus-visible,.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.scout-app-wrapper #otp-flock.as-feed .fl-note{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;color:var(--ink);font-size:19px;font-weight:600;line-height:1.4}
+.scout-app-wrapper #otp-flock.as-feed .fl-note p{margin:0;max-width:22em}
+.scout-app-wrapper #otp-flock.as-feed .fl-note .gh{border-radius:99px}
+.scout-app-wrapper #otp-toast.act{pointer-events:auto}
+.scout-app-wrapper #otp-toast .gh{margin-left:8px;min-height:34px;padding:4px 12px;border-color:currentColor;color:inherit;font-weight:800}
+@media(prefers-reduced-motion:reduce){.scout-app-wrapper #otp-flock.as-feed #otp-flockRow{scroll-behavior:auto}.scout-app-wrapper #otp-flock.as-feed .fl-card{transition:none}}
+@media(min-width:1024px){
+  .scout-app-wrapper #otp-flock.as-feed .flock-head{flex-wrap:nowrap;padding:16px 32px}
+  .scout-app-wrapper #otp-flock.as-feed .fl-seg{order:0;flex:0 0 auto;margin-left:24px}
+  .scout-app-wrapper #otp-flock.as-feed #otp-flockRow{scroll-snap-type:none}
+  .scout-app-wrapper #otp-flock.as-feed .sgw-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px 24px;height:auto;max-width:1600px;margin:0 auto;padding:28px 32px 40px!important}
+  .scout-app-wrapper #otp-flock.as-feed .fl-card{height:auto;max-width:none;margin:0;padding:0;scroll-snap-align:none;scroll-snap-stop:normal}
+  .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-card img{flex:none;height:auto;aspect-ratio:1/1;object-fit:cover}
+  .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-p{top:12px;right:12px}
+  .scout-app-wrapper #otp-flock.as-feed .fl-x{top:12px;left:12px}
+  .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv{right:12px;bottom:62px}
+  .scout-app-wrapper #otp-flock.as-feed .fl-auc{left:12px;bottom:64px}
+  .scout-app-wrapper #otp-flock.as-feed .fl-note{grid-column:1/-1;height:auto;max-width:none;padding:48px 0}
+}
+@media(min-width:1024px) and (hover:hover){
+  .scout-app-wrapper #otp-flock.as-feed .fl-x,.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv:not(.on){opacity:0}
+  .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .fl-x,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .fl-x,
+  .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .sgw-sv,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .sgw-sv{opacity:1}
+}
 </style>
 
 <div class="scout-app-wrapper ot-r k2">
@@ -1329,14 +1385,14 @@ window.prowlEpn=function(u,cid){
   <section id="otp-res" hidden aria-live="polite"></section>
 
   <section id="otp-flock" class="found-strip flock show" hidden aria-label="Flock: a look across your hunts">
-    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="otp-swallow" viewbox="0 0 24 24"><path fill="currentColor" d="M22.2 8.8 20.4 7.6 18.3 8C17.7 8.1 17.1 8.1 16.5 8.2 14 4.4 9.8 2.8 5.6 1.4 9.2 4.4 11.2 7.6 11.8 10.4 10.2 11.4 6.8 13.2 2.2 16.2L5.6 17.2 3.2 20.4 9.3 15.8C12 15.2 15.8 14.4 18.2 12.4 19.6 11.3 20.4 10.4 20.8 9.9Z"></path></symbol></svg>
     <div class="flock-head">
       <span class="fl-birds" aria-hidden="true"><svg class="fl-ico fl-b1" viewbox="0 0 24 24"><use href="#otp-swallow"></use></svg><svg class="fl-ico fl-b2" viewbox="0 0 24 24"><use href="#otp-swallow"></use></svg><svg class="fl-ico fl-b3" viewbox="0 0 24 24"><use href="#otp-swallow"></use></svg></span>
       <b>Flock</b>
+      <div class="fl-seg" role="tablist" aria-label="Flock view"><button type="button" role="tab" data-fv="feed" aria-selected="true">Feed</button><button type="button" role="tab" data-fv="saved" aria-selected="false">Saved</button></div>
       <button type="button" class="gh" id="otp-flockShuf">Shuffle</button>
     </div>
     <p class="flock-sub k2-hide">A look across your hunts: a find or two from each.</p>
-    <div id="otp-flockRow"></div>
+    <div id="otp-flockRow" role="feed" aria-label="Finds across your hunts" tabindex="0"></div>
   </section>
 
   <section id="otp-guide" class="gd" aria-labelledby="otp-guideT">
@@ -1800,11 +1856,13 @@ window.prowlEpn=function(u,cid){
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is Prowl?","acceptedAnswer":{"@type":"Answer","text":"Prowl by Owl & Twig is a free search tool for vintage collectors. Type a piece once and it builds that search for 27 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist, which a regular Google search rarely reaches. It is built by Matt at Owl & Twig Vintage, a family vintage shop in Michigan."} },{"@type":"Question","name":"Which marketplaces does Prowl search?","acceptedAnswer":{"@type":"Answer","text":"eBay, Etsy, Mercari, Mercari Japan, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, EstateSales.net, HiBid, LiveAuctioneers, Heritage Auctions, Invaluable and Craigslist, plus eBay sold listings for pricing. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted and Grailed results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search."} },{"@type":"Question","name":"How do I find antique shops and estate sales near me?","acceptedAnswer":{"@type":"Answer","text":"Open the Den and tap Local. Tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area."} },{"@type":"Question","name":"Is Prowl free?","acceptedAnswer":{"@type":"Answer","text":"Yes. No account. Your search list stays on your device."} },{"@type":"Question","name":"Does it work on my phone?","acceptedAnswer":{"@type":"Answer","text":"Yes. Built mobile-first. Add it to your home screen, and allow pop-ups if you use Open all. On a phone, Facebook opens in your browser so the search sticks, so log in to Facebook there once."} },{"@type":"Question","name":"How does Price Check work?","acceptedAnswer":{"@type":"Answer","text":"One tap opens eBay's sold listings for your term — actual sale prices from the last 90 days, the most accurate read on what a piece is worth right now. Asking prices lie; sold prices don't."} },{"@type":"Question","name":"What if nothing sold in 90 days?","acceptedAnswer":{"@type":"Answer","text":"That happens with genuinely rare pieces. Price Check has a second button for three years of deep comps via eBay's Terapeak research — free with any eBay account. Open it in your browser rather than the eBay app, or the date range gets dropped."} }]}</script>
 
 
+<!-- v6.38: the swallow sprite sits outside the hidden Flock section, so the dock icon draws before Flock opens -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="otp-swallow" viewbox="0 0 24 24"><path fill="currentColor" d="M22.2 8.8 20.4 7.6 18.3 8C17.7 8.1 17.1 8.1 16.5 8.2 14 4.4 9.8 2.8 5.6 1.4 9.2 4.4 11.2 7.6 11.8 10.4 10.2 11.4 6.8 13.2 2.2 16.2L5.6 17.2 3.2 20.4 9.3 15.8C12 15.2 15.8 14.4 18.2 12.4 19.6 11.3 20.4 10.4 20.8 9.9Z"></path></symbol></svg>
 <nav id="otp-dock" aria-label="Prowl modes">
   <button class="db on" data-m="prowl" aria-label="Prowl home"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path></svg><span>PROWL</span></button>
   <button class="db" data-m="one" id="otp-oneBtn"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11"></path><path d="M9 20v-6h6v6"></path></svg><span id="otp-oneLab">GOODWILL</span></button>
   <button class="db" data-m="all" aria-label="Search all marketplaces"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4.2-4.2"></path></svg><span>ALL <span data-t>26</span></span></button>
-  <button class="db" data-m="photo" id="otp-photoBtn" aria-label="Photo check: snap a piece to identify and price it"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5h3.2l1.8-2.5h7l1.8 2.5h3.2v10.5h-17z"></path><circle cx="12" cy="13.5" r="3.4"></circle></svg><span>PHOTO</span></button>
+  <button class="db" data-m="flock" id="otp-flockBtn" aria-label="Flock: a look across your hunts"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#otp-swallow"></use></svg><span>FLOCK</span><em class="bd" id="otp-flbd" hidden></em></button>
   <button class="db" data-m="daily" aria-label="Daily prowl"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg><span>DAILY</span><em class="bd" id="otp-ds" hidden></em></button>
   <button class="db" data-m="den" id="otp-denBtn" aria-label="Den: hunts and settings"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"></path></svg><span>DEN</span></button>
 </nav>
@@ -1849,7 +1907,6 @@ window.prowlEpn=function(u,cid){
       </div>
       <div class="dx-wrap" id="otp-denAcct"></div>
       <ul class="tl" id="otp-denList"></ul>
-      <div class="dx-wrap" id="otp-denFinds"></div>
       <div class="dx-wrap" id="otp-denRes"></div>
       <div class="dx-wrap" id="otp-denRuns"></div>
     </div>
@@ -2161,7 +2218,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.37';
+var PROWL_VERSION='v6.38';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -2486,7 +2543,7 @@ function legacyFbHub(){
 function save(){try{localStorage.setItem(LS,JSON.stringify({hunts:st.hunts,sel:Array.from(st.sel),lock:Array.from(st.lock),mkt:Array.from(st.mkt),city:st.city,seen:st.seen,fbHub:st.fbHub,one:st.one,h21:1,h36:1}))}catch(e){}}
 
 var tT=null;
-function toast(h,ms){var e=$('#otp-toast');e.innerHTML=h;e.classList.add('on');clearTimeout(tT);tT=setTimeout(function(){e.classList.remove('on')},ms||3600)}
+function toast(h,ms){var e=$('#otp-toast');e.innerHTML=h;e.classList.toggle('act',/<button/i.test(h));e.classList.add('on');clearTimeout(tT);tT=setTimeout(function(){e.classList.remove('on');e.classList.remove('act')},ms||3600)}
 
 function counts(){
   $$('[data-t]:not(.sgw-cell)').forEach(function(e){e.textContent=TOTAL});   /* v6.00: live cards carry data-t too */
@@ -3259,12 +3316,13 @@ function clearRun(){
 function rDock(){
   var n=st.lock.size;
   var dsb=$('#otp-ds');if(dsb){dsb.textContent=n;dsb.hidden=n===0;}
+  flBadge();   /* v6.38 */
   var ol=$('#otp-oneLab'),ob=$('#otp-oneBtn');
   if(ol)ol.textContent=oneShort();
   if(ob)ob.title='Search '+oneName()+' on its own';
   $$('#otp-dock .db').forEach(function(b){
     var m=b.dataset.m;
-    if(m==='den'||m==='photo')return;
+    if(m==='den')return;
     b.classList.toggle('on',m===st.mode);
     if(m==='daily')b.classList.toggle('dim',n===0);
   });
@@ -3274,7 +3332,9 @@ dock.addEventListener('click',function(e){
   var b=e.target.closest('.db');if(!b)return;
   var m=b.dataset.m;
   if(m==='den')return;
-  if(m==='photo'){openPhoto();return;}
+  /* v6.38: Flock is a tab; every other mode closes it */
+  if(m==='flock'){if(flockOpen())flTop();else openFlock();return;}
+  closeFlock();
   if(m==='prowl'){clearRun();window.scrollTo({top:0,behavior:'smooth'});return;}
   if(m==='one'){if(q.value.trim()){runProwl('one',chips(),[oneId()],oneName())}else{openFocus()}return;}
   if(m==='all'){runProwl('all',chips(),ALL);return;}
@@ -3307,8 +3367,9 @@ $('#otp-sa').addEventListener('click',function(){
      v3  {hunts, locked, selected, mkt, city, theme}
      v4  v3 + runs, finds, mktStats (v6.02, each optional on import)
      v5  v4 + research (v6.08, optional on import)
+     v6  v5 + discarded (v6.38, optional on import)
    plus any of the above base64-encoded. */
-var BACKUP_V=5,IMPORT_MAX=200;
+var BACKUP_V=6,IMPORT_MAX=200;
 
 function exportData(){
   var payload={
@@ -3323,6 +3384,7 @@ function exportData(){
     one:oneId(),
     runs:runsGet(),finds:findsGet(),mktStats:statsGet(),   /* v6.02 */
     research:resGet(),   /* v6.08 */
+    discarded:disGet().slice(),   /* v6.38 */
     list:st.hunts.slice()
   };
   var name='prowl-backup-'+new Date().toISOString().slice(0,10)+'.json';
@@ -3450,7 +3512,7 @@ $('#otp-clearBtn').addEventListener('click',function(){
      the last-synced list, and pull the list back from the Worker afterwards. */
   var member=!!(mGet('alertTok')&&mGet('alertEmail'));
   if(member){clearTimeout(MAIL.timer);MAIL.ready=false;mSet('alertSig','')}
-  try{localStorage.removeItem(LS);localStorage.removeItem(SGW_KEY);localStorage.removeItem('prowl.lastHunt');localStorage.removeItem(SEEN_KEY);localStorage.removeItem(RUNS_KEY);localStorage.removeItem(FINDS_KEY);localStorage.removeItem(STATS_KEY);localStorage.removeItem(RES_KEY)}catch(e){}FC=null;RC=null;rDenX();
+  try{localStorage.removeItem(LS);localStorage.removeItem(SGW_KEY);localStorage.removeItem('prowl.lastHunt');localStorage.removeItem(SEEN_KEY);localStorage.removeItem(RUNS_KEY);localStorage.removeItem(FINDS_KEY);localStorage.removeItem(STATS_KEY);localStorage.removeItem(RES_KEY);localStorage.removeItem(DIS_KEY)}catch(e){}FC=null;RC=null;DIS=null;FLOCK.picks=Object.create(null);rDenX();
   st.hunts=DEF.slice();st.sel=new Set();st.lock=new Set();st.mkt=new Set(ALL);st.city='';st.fbHub='local';st.one=ONE_DEFAULT;
   /* v5.87 (B1): save the cleared state, or the next load re-imports the old
      owlTwigSearches list through legacySeed(). */
@@ -3475,6 +3537,7 @@ document.addEventListener('keydown',function(e){
   if(dw.classList.contains('on')){closeDw();return;}
   if(den.classList.contains('on')){closeDen();return;}
   if(pho&&pho.classList.contains('on')){closePhoto();return;}
+  if(flockOpen()){closeFlock();return;}   /* v6.38 */
 });
 
 /* ---------- FOUND STRIP (ported from live v3.0) ----------
@@ -4551,7 +4614,7 @@ function rSGW(){
   mount.querySelector('.sgw-acts').innerHTML=sgwActs();
   sgwWhere(mount);
   mount.hidden=!!st.run;
-  try{flockSync()}catch(e){}   /* v6.18 */
+  try{flockHunts()}catch(e){}   /* v6.38: keeps an open Flock in step with the hunts */
   rMail();
   mailSync(false);
 }
@@ -4630,51 +4693,111 @@ function liveFetch(t){if(!t)return;sgwFetch(t);for(var i=0;i<LIVE_SRC.length;i++
    shuffled. It reads the same per-term caches the hunts panel and Daily fill (sgw.cache, lv[id].cache),
    and tops them up only when the section scrolls into view: a few random hunts, a few random sources
    each, 250ms apart. Shuffle picks again from what is in hand and fetches more only if the pool is thin. */
-var FLOCK={order:[],started:false,pend:0,tm:null,obs:null,asked:Object.create(null),n:0};
+/* v6.38: Flock is its own dock tab. The feed stops on every card (scroll-snap-stop), the Saved view
+   shows starred finds, and a swipe right (or the ✕) discards a find for good: its URL goes into
+   prowl.discarded (500 kept, oldest dropped) and every later render skips it. Picks stay put until
+   Shuffle, so finds arriving in the background never move the card you are looking at. */
+var FLOCK={order:[],started:false,pend:0,tm:null,asked:Object.create(null),view:'feed',picks:Object.create(null),sup:false,last:null,prev:'prowl'};
 var FLOCK_HUNTS=5,FLOCK_SRCS=3,FLOCK_CARDS=10;
+var DIS_KEY='prowl.discarded',DIS_MAX=500,DIS=null;
+function disGet(){
+  if(DIS)return DIS;
+  var a=xGet(DIS_KEY,[]),out=[],seen=Object.create(null),i,u;
+  if(Array.isArray(a))for(i=0;i<a.length;i++){u=a[i];if(typeof u==='string'&&/^https:\/\//i.test(u)&&u.length<=800&&!seen[u]){seen[u]=1;out.push(u)} }
+  DIS=out.slice(-DIS_MAX);return DIS;
+}
+function disPut(a){DIS=a.slice(-DIS_MAX);xSet(DIS_KEY,DIS)}
+function disMap(){var a=disGet(),m=Object.create(null),i;for(i=0;i<a.length;i++)m[a[i]]=1;return m}
+function disAdd(u){var a=disGet().filter(function(x){return x!==u});a.push(u);disPut(a)}
+function disDrop(u){disPut(disGet().filter(function(x){return x!==u}))}
 function flockMix(a){var b=a.slice(),i,j,x;for(i=b.length-1;i>0;i--){j=Math.floor(Math.random()*(i+1));x=b[i];b[i]=b[j];b[j]=x}return b}
 function flockSrcs(){var a=['shopgoodwill'],i;for(i=0;i<LIVE_SRC.length;i++)a.push(LIVE_SRC[i].id);return a}
 function flockCache(src,k){return src==='shopgoodwill'?sgw.cache[k]:(lv[src]&&lv[src].cache[k])}
-function flockPool(t){
+function flockPool(t,dm){
   var k=t.toLowerCase(),out=[],S=flockSrcs(),i,j,c,it;
   for(i=0;i<S.length;i++){
     c=flockCache(S[i],k);if(!c||c.err||!c.items)continue;
-    for(j=0;j<c.items.length;j++){it=c.items[j];if(it&&it.url&&it.title)out.push({it:it,src:S[i]})}
+    for(j=0;j<c.items.length;j++){it=c.items[j];if(it&&it.url&&it.title&&!(dm&&dm[it.url]))out.push({it:it,src:S[i]})}
   }
   return out;
 }
-/* up to n finds for one hunt, photos first, from different sources where it can */
-function flockPick(t,n){
-  var pool=flockMix(flockPool(t)),out=[],used={},i,p;
-  pool.sort(function(a,b){return (b.it.image?1:0)-(a.it.image?1:0)});
-  for(i=0;i<pool.length&&out.length<n;i++){p=pool[i];if(!used[p.src]){used[p.src]=1;out.push(p.it)}}
-  for(i=0;i<pool.length&&out.length<n;i++){if(out.indexOf(pool[i].it)===-1)out.push(pool[i].it)}
-  return out;
+/* up to n finds for one hunt, photos first, from different sources where it can. Earlier picks are
+   kept until Shuffle; only empty slots are filled from what has arrived since. */
+function flockPick(t,n,dm){
+  var k=t.toLowerCase(),prev=FLOCK.picks[k]||[],out=[],have=Object.create(null),used=Object.create(null),pool,i,p;
+  for(i=0;i<prev.length&&out.length<n;i++){p=prev[i];if(!(dm&&dm[p.it.url])){out.push(p);have[p.it.url]=1;used[p.src]=1}}
+  if(out.length<n){
+    pool=flockMix(flockPool(t,dm));
+    pool.sort(function(a,b){return (b.it.image?1:0)-(a.it.image?1:0)});
+    for(i=0;i<pool.length&&out.length<n;i++){p=pool[i];if(!have[p.it.url]&&!used[p.src]){used[p.src]=1;have[p.it.url]=1;out.push(p)} }
+    for(i=0;i<pool.length&&out.length<n;i++){p=pool[i];if(!have[p.it.url]){have[p.it.url]=1;out.push(p)} }
+  }
+  FLOCK.picks[k]=out;
+  return out.map(function(x){return x.it});
 }
-function flockCards(){
+function flockCards(dm){
   var rounds=[[],[]],i,h,got,cards=[];
-  for(i=0;i<FLOCK.order.length;i++){h=FLOCK.order[i];got=flockPick(h,2);if(got[0])rounds[0].push({t:h,it:got[0]});if(got[1])rounds[1].push({t:h,it:got[1]})}
-  /* one from every hunt first, then second finds, so the strip covers the Den before it repeats a hunt */
+  for(i=0;i<FLOCK.order.length;i++){h=FLOCK.order[i];got=flockPick(h,2,dm);if(got[0])rounds[0].push({t:h,it:got[0]});if(got[1])rounds[1].push({t:h,it:got[1]})}
+  /* one from every hunt first, then second finds, so the feed covers the Den before it repeats a hunt */
   var all=rounds[0].concat(rounds[1]);
   for(i=0;i<all.length&&cards.length<FLOCK_CARDS;i++)cards.push(all[i]);
   return cards;
 }
 function flockCardHtml(c){
-  var h=sgwCard(c.it,c.t);
+  var it=c.it,u=it.url,h=sgwCard(it,c.t),auc=[];
   h=h.replace('<button type="button" class="sgw-fp">Fair price?</button>','');   /* comps would come from other hunts */
-  return h.replace('</a>','<div class="fl-for">for '+esc(c.t)+'</div></a>');
+  if(FP&&FP[u])h=h.replace(fpHtml(FP[u]),'');   /* v6.38: a verdict already in hand stays out too */
+  h=h.replace('<div class="sgw-cell"','<div class="sgw-cell fl-card" role="article" aria-label="'+esc(it.title)+'"'+(h.indexOf(' data-u="')<0?' data-u="'+esc(u)+'"':''));
+  h=h.replace('<div class="sgw-p">','<div class="sgw-p" data-act="margin">');
+  if(it.time_left)auc.push(esc(it.time_left));
+  if(typeof it.bids==='number')auc.push(esc(String(it.bids))+' bid'+(it.bids===1?'':'s'));
+  return h.replace('</a>',(c.t?'<div class="fl-for">for '+esc(c.t)+'</div>':'')+'</a>'+
+    (auc.length?'<span class="fl-auc">'+auc.join(' · ')+'</span>':'')+
+    '<button type="button" class="fl-x" aria-label="Not for me: hide this find" title="Not for me">✕</button>');
 }
-function flockRender(){
+function flNote(cls,html){return '<div class="fl-note '+cls+'">'+html+'</div>'}
+function flSavedHtml(dm){
+  var a=findsGet().filter(function(f){return !dm[f.url]}),h='',i,f;
+  a.sort(function(x,y){return (y.at||0)-(x.at||0)});
+  if(!a.length)return flNote('fl-empty','<p>Nothing saved yet. Tap the star on any find to keep it here.</p>');
+  for(i=0;i<a.length;i++){f=a[i];h+=flockCardHtml({t:f.hunt,it:{title:f.title,price:f.price,url:f.url,image:f.image,src:f.src}})}
+  return h+flNote('fl-end','<p>That’s everything you’ve saved.</p><button type="button" class="gh" data-csv="1">Download as a spreadsheet</button>');
+}
+function flockOpen(){var s=$('#otp-flock');return !!(s&&s.classList.contains('as-feed'))}
+function flReduced(){try{return window.matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false} }
+function flWide(){try{return window.matchMedia('(min-width:1024px)').matches}catch(e){return false} }
+/* the card at the top of the feed, so a background render can put you back on it */
+function flAnchor(row){
+  var cs=row.querySelectorAll('.fl-card'),y=row.scrollTop,i;
+  if(!y)return '';
+  for(i=0;i<cs.length;i++)if(cs[i].offsetTop+cs[i].offsetHeight/2>y)return cs[i].getAttribute('data-u')||'';
+  return '';
+}
+function flockRender(top){
   var sec=$('#otp-flock'),row=$('#otp-flockRow');if(!sec||!row)return;
-  var cards=flockCards(),i,h='';
-  if(!cards.length){
-    row.innerHTML=FLOCK.pend>0?'<p class="sgw-note">Looking across your hunts\u2026</p>':'<p class="sgw-note">Nothing in the flock right now. Shuffle to look again.</p>';
-    return;
+  var dm=disMap(),h='',i,cards,y=row.scrollTop,anchor=top?'':flAnchor(row);
+  if(FLOCK.view==='saved')h=flSavedHtml(dm);
+  else if(sgw.terms.length<2)h=flNote('fl-empty','<p>Add two hunts and the flock takes flight.</p><button type="button" class="gh" data-fl="home">Back to Prowl</button>');
+  else{
+    cards=flockCards(dm);
+    if(!cards.length)h=FLOCK.pend>0?flNote('fl-empty','<p>Looking across your hunts…</p>'):flNote('fl-empty','<p>Nothing in the flock right now.</p><button type="button" class="gh" data-fl="shuffle">Look again</button>');
+    else{
+      for(i=0;i<cards.length;i++)h+=flockCardHtml(cards[i]);
+      h+=flNote('fl-end','<p>That’s the flock.</p><button type="button" class="gh" data-fl="shuffle">Fresh look</button>');
+    }
   }
-  for(i=0;i<cards.length;i++)h+=flockCardHtml(cards[i]);
   row.innerHTML='<div class="sgw-grid">'+h+'</div>';
+  row.setAttribute('aria-busy',FLOCK.pend>0&&FLOCK.view==='feed'?'true':'false');
+  if(top){flTop(true);FLOCK.at=0}
+  else{
+    row.scrollTop=y;
+    if(anchor){var cs=row.querySelectorAll('.fl-card');for(i=0;i<cs.length;i++)if(cs[i].getAttribute('data-u')===anchor){row.scrollTop=cs[i].offsetTop;break}}
+    FLOCK.at=row.clientHeight?Math.round(row.scrollTop/row.clientHeight):0;
+  }
+  flBadge();
 }
-function flockRenderSoon(){clearTimeout(FLOCK.tm);FLOCK.tm=setTimeout(flockRender,180)}
+function flockRenderSoon(){clearTimeout(FLOCK.tm);FLOCK.tm=setTimeout(function(){if(flockOpen())flockRender()},180)}
+function flTop(now){var row=$('#otp-flockRow');if(!row)return;try{row.scrollTo({top:0,behavior:(now||flReduced())?'auto':'smooth'})}catch(e){row.scrollTop=0}}
 /* fetch a few random hunt+source pairs we have nothing for yet, 250ms apart */
 function flockWarm(){
   var hunts=FLOCK.order.slice(0,FLOCK_HUNTS),S=flockSrcs(),i,j,t,k,srcs,n,jobs=[];
@@ -4695,26 +4818,72 @@ function flockWarm(){
     })(jobs[i],i*250);
   }
 }
+function flTermsKey(){return sgw.terms.map(function(x){return x.t.toLowerCase()}).sort().join('\n')}
+/* shuffle the hunts into a fresh order and start over from the top */
 function flockStart(){
-  var sec=$('#otp-flock');if(!sec||sgw.terms.length<2)return;
-  FLOCK.started=true;
+  FLOCK.picks=Object.create(null);
+  if(sgw.terms.length<2){FLOCK.started=false;FLOCK.order=[];flockRender(true);return}
+  FLOCK.started=true;FLOCK.key=flTermsKey();
   FLOCK.order=flockMix(sgw.terms.map(function(x){return x.t}));
-  flockRender();
+  flockRender(true);
   flockWarm();
 }
-/* keep the section's visibility in step with the Den, and start it when it scrolls into view */
-function flockSync(){
-  var sec=$('#otp-flock');if(!sec)return;
-  var show=sgw.terms.length>=2;
-  if(sec.hidden===show)sec.hidden=!show;
-  if(!show||FLOCK.started||FLOCK.obs)return;
-  if(typeof IntersectionObserver==='function'){
-    FLOCK.obs=new IntersectionObserver(function(es){
-      for(var i=0;i<es.length;i++)if(es[i].isIntersecting){try{FLOCK.obs.disconnect()}catch(e){}flockStart();return}
-    },{rootMargin:'200px'});
-    FLOCK.obs.observe(sec);
-  }else flockStart();
+/* the hunts changed while Flock is open (or since it was last open): start over only then */
+function flockHunts(){
+  if(!flockOpen())return;
+  if(!FLOCK.started||FLOCK.key!==flTermsKey()){if(FLOCK.view==='feed')flockStart();else{FLOCK.started=false;flockRender()}}
 }
+function flSeg(){
+  var sec=$('#otp-flock');if(!sec)return;
+  sec.classList.toggle('fl-saved',FLOCK.view==='saved');
+  $$('#otp-flock .fl-seg [data-fv]').forEach(function(b){b.setAttribute('aria-selected',String(b.getAttribute('data-fv')===FLOCK.view))});
+}
+function flBadge(){
+  var b=$('#otp-flbd');if(!b||typeof FINDS_KEY!=='string')return;   /* rDock runs before the finds store is set up */
+  var n=findsGet().length;b.textContent=n;b.hidden=n===0;
+  var sb=$('#otp-flock .fl-seg [data-fv=saved]');if(sb)sb.textContent=n?'Saved '+n:'Saved';
+}
+function openFlock(){
+  var sec=$('#otp-flock'),w=sec&&sec.closest('.scout-app-wrapper');if(!sec||flockOpen())return;
+  if(den.classList.contains('on'))closeDen();
+  if(dw.classList.contains('on'))closeDw();
+  if(pho&&pho.classList.contains('on'))closePhoto();
+  FLOCK.prev=st.mode;
+  sec.hidden=false;sec.classList.add('as-feed');if(w)w.classList.add('flock-mode');
+  try{var dh=dock&&dock.offsetHeight;if(dh)sec.style.bottom=dh+'px'}catch(e){}
+  st.mode='flock';rDock();flSeg();
+  if(FLOCK.view==='feed'&&(!FLOCK.started||FLOCK.key!==flTermsKey()))flockStart();
+  else{flockRender();if(FLOCK.view==='feed')flockWarm()}
+  var row=$('#otp-flockRow');try{row.focus({preventScroll:true})}catch(e){}
+}
+function closeFlock(){
+  if(!flockOpen())return;
+  var sec=$('#otp-flock'),w=sec.closest('.scout-app-wrapper');
+  sec.classList.remove('as-feed');sec.hidden=true;sec.style.bottom='';if(w)w.classList.remove('flock-mode');
+  if(st.mode==='flock')st.mode=(FLOCK.prev&&FLOCK.prev!=='flock')?FLOCK.prev:'prowl';
+  rDock();
+}
+function flShuffle(){FLOCK.view='feed';flSeg();flockStart()}
+/* discard: the card leaves, its URL is never shown again, and a starred find is unstarred too */
+function flDiscard(card){
+  var u=card&&card.getAttribute('data-u');if(!u)return;
+  var i=findIdx(u),was=null,a;
+  if(i>-1){a=findsGet();was=a[i];a.splice(i,1);findsPut(a);svPaint(u)}
+  disAdd(u);FLOCK.last={u:u,f:was};
+  if(card.parentNode)card.parentNode.removeChild(card);
+  var row=$('#otp-flockRow');if(row&&!row.querySelector('.fl-card'))flockRender();
+  flBadge();
+  toast('Discarded. <button type="button" class="gh" id="otp-undis">Undo</button>',5000);
+}
+function flUndo(){
+  var L=FLOCK.last,a;if(!L)return;
+  FLOCK.last=null;disDrop(L.u);
+  if(L.f&&findIdx(L.u)<0){a=findsGet();a.unshift(L.f);findsPut(a)}
+  svPaint(L.u);
+  var e=$('#otp-toast');if(e){e.classList.remove('on');e.classList.remove('act')}
+  if(flockOpen())flockRender();else flBadge();
+}
+function flSavedChanged(){flBadge();if(flockOpen()&&FLOCK.view==='saved')flockRender()}
 
 /* ---------- FIELD GUIDE ON ANYTHING (v6.19) ----------
    POST /guide on the Worker (Muse with web search) writes a collector's field guide for any subject.
@@ -5273,6 +5442,11 @@ try{if(/[?&]photo=1(&|$)/.test(location.search)){
   try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])photo=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
   setTimeout(openPhoto,400);
 } }catch(e){}
+/* v6.38: ?flock=1 opens the Flock tab */
+try{if(/[?&]flock=1(&|$)/.test(location.search)){
+  try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])flock=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
+  setTimeout(openFlock,400);
+} }catch(e){}
 /* v6.33: ?guide=subject (from the Prowl extension) fills the Field Guide box and scrolls to it. It does not run: a guide uses AI and a daily allowance, so the reader taps Make my guide. */
 try{var gdm=/[?&]guide=([^&#]+)/.exec(location.search);if(gdm){var gds='';try{gds=decodeURIComponent(gdm[1].replace(/\+/g,' '))}catch(e0){gds=gdm[1]}
   gds=gds.replace(/[\u0000-\u001f\u007f]/g,'').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'').slice(0,60);
@@ -5310,12 +5484,90 @@ var aiB=$('#otp-aiBtn');if(aiB)aiB.addEventListener('click',aiToggle);
 rAiRow();
 var gF=$('#otp-guideF');if(gF)gF.addEventListener('submit',function(e){e.preventDefault();gdMake(($('#otp-guideQ')||{}).value)});   /* v6.19 */
 var gS=$('#otp-guide');if(gS){gS.addEventListener('click',gdClick);gdMineRender()}
-var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function(){   /* v6.18 */
-  if(sgw.terms.length<2)return;
-  FLOCK.started=true;
-  FLOCK.order=flockMix(sgw.terms.map(function(x){return x.t}));
-  flockRender();flockWarm();
-});
+var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function(){if(sgw.terms.length>=2)flShuffle()});   /* v6.18, v6.38 */
+/* v6.38: Flock tab wiring. Taps on the row are delegated; a swipe that moved more than 10px swallows the click
+   that follows it, so a discard never opens the listing. */
+(function(){
+  var sec=$('#otp-flock'),row=$('#otp-flockRow'),tst=$('#otp-toast');if(!sec||!row)return;
+  sec.addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('[data-fv]');if(!b||!sec.contains(b))return;
+    var v=b.getAttribute('data-fv')==='saved'?'saved':'feed';if(v===FLOCK.view)return;
+    FLOCK.view=v;flSeg();
+    if(v==='feed'&&(!FLOCK.started||FLOCK.key!==flTermsKey()))flockStart();else{flockRender(true);if(v==='feed')flockWarm()}
+  });
+  row.addEventListener('click',function(e){if(FLOCK.sup){FLOCK.sup=false;e.preventDefault();e.stopPropagation()}},true);
+  row.addEventListener('click',function(e){
+    var t=e.target,x;if(!t||!t.closest)return;
+    if((x=t.closest('.fl-x'))){e.preventDefault();flDiscard(x.closest('.fl-card'));return}
+    if((x=t.closest('[data-fl]'))){
+      if(x.getAttribute('data-fl')==='home'){closeFlock();clearRun();return}
+      flShuffle();return;
+    }
+    if(t.closest('[data-csv]')){exportFinds();return}
+  });
+  row.addEventListener('dragstart',function(e){if(flockOpen())e.preventDefault()});
+  row.addEventListener('keydown',function(e){
+    if(!flockOpen()||flWide())return;
+    var k=e.key,d=(k==='ArrowDown'||k==='PageDown')?1:((k==='ArrowUp'||k==='PageUp')?-1:0);if(!d)return;
+    var cs=row.querySelectorAll('.fl-card,.fl-note'),i,cur=0;if(!cs.length)return;
+    for(i=0;i<cs.length;i++)if(cs[i].offsetTop<=row.scrollTop+4)cur=i;
+    e.preventDefault();flGoIdx(cur+d);
+  });
+  /* never fly past a card. scroll-snap-stop:always does this for touch where the browser honors it; these two
+     back it up: one wheel or trackpad gesture moves exactly one card, and a flick that settles more than one
+     card away from where it started eases back to the next card. */
+  var wl=false,wt=null,stT=null;
+  function flIdx(){return row.clientHeight?Math.round(row.scrollTop/row.clientHeight):0}
+  function flGoIdx(i){var cs=row.querySelectorAll('.fl-card,.fl-note'),n=cs[Math.max(0,Math.min(cs.length-1,i))];if(!n)return;FLOCK.at=Math.max(0,Math.min(cs.length-1,i));try{row.scrollTo({top:n.offsetTop,behavior:flReduced()?'auto':'smooth'})}catch(er){row.scrollTop=n.offsetTop}}
+  row.addEventListener('wheel',function(e){
+    if(!flockOpen()||flWide()||e.ctrlKey||Math.abs(e.deltaY)<Math.abs(e.deltaX))return;
+    e.preventDefault();
+    if(!wl&&Math.abs(e.deltaY)>=4){wl=true;flGoIdx(flIdx()+(e.deltaY>0?1:-1))}
+    clearTimeout(wt);wt=setTimeout(function(){wl=false},220);
+  },{passive:false});
+  row.addEventListener('scroll',function(){
+    if(!flockOpen()||flWide())return;
+    clearTimeout(stT);stT=setTimeout(function(){
+      var i=flIdx(),a=typeof FLOCK.at==='number'?FLOCK.at:i;
+      if(Math.abs(i-a)>1)flGoIdx(a+(i>a?1:-1));else FLOCK.at=i;
+    },140);
+  },{passive:true});
+  /* swipe right to discard: the card follows the finger, then flies off past 35% of its width or a fast flick */
+  var g=null;
+  row.addEventListener('pointerdown',function(e){
+    if(!flockOpen()||(e.pointerType==='mouse'&&e.button!==0))return;
+    var t=e.target,c=t&&t.closest&&t.closest('.fl-card');
+    if(!c||t.closest('button'))return;
+    g={c:c,id:e.pointerId,x:e.clientX,y:e.clientY,t:Date.now(),dx:0,on:false,dead:false};
+  });
+  row.addEventListener('pointermove',function(e){
+    if(!g||e.pointerId!==g.id||g.dead)return;
+    var dx=e.clientX-g.x,dy=e.clientY-g.y;
+    if(!g.on){
+      if(Math.abs(dx)<=10&&Math.abs(dy)<=10)return;
+      if(Math.abs(dy)>=Math.abs(dx)){g.dead=true;return}
+      g.on=true;FLOCK.sup=true;g.c.classList.add('fl-drag');
+      try{g.c.setPointerCapture(g.id)}catch(er){}
+    }
+    g.dx=dx;
+    if(!flReduced())g.c.style.transform='translateX('+(dx>0?dx:dx*0.25)+'px) rotate('+(dx>0?dx/40:0)+'deg)';
+  });
+  function end(e,cancel){
+    if(!g||e.pointerId!==g.id)return;
+    var c=g.c,dx=g.dx,dt=Math.max(1,Date.now()-g.t),on=g.on,w=c.offsetWidth||320;g=null;
+    if(!on)return;
+    c.classList.remove('fl-drag');
+    setTimeout(function(){FLOCK.sup=false},400);
+    if(!cancel&&dx>0&&(dx>w*0.35||(dx>40&&dx/dt>0.6))){
+      if(flReduced()){flDiscard(c);return}
+      c.classList.add('fl-fly');c.style.transform='translateX(120%) rotate(8deg)';
+      setTimeout(function(){flDiscard(c)},220);
+    }else c.style.transform='';
+  }
+  row.addEventListener('pointerup',function(e){end(e,false)});
+  row.addEventListener('pointercancel',function(e){end(e,true)});
+  if(tst)tst.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('#otp-undis'))flUndo()});
+})();
 
 /* ---------- DEEP LINK ---------- */
 /* Field Guide posts link in as /pages/prowl?q=<term>. Nothing on this page
@@ -5474,25 +5726,10 @@ function svToggle(u){
     f=findClean({title:it.title,price:it.price,url:it.url,image:it.image,src:it.src,hunt:it.hunt,at:Date.now()});if(!f)return;
     a.unshift(f);
     if(a.length>FINDS_MAX)toast('Saved. Your oldest saved find made room for it.',3200);
-    else toast('★ Saved. It is in <b>Den › All hunts</b>.',2600);
+    else toast('★ Saved. It is in <b>Flock › Saved</b>.',2600);
     findsPut(a);mstat(f.src,'f');
   }
-  svPaint(u);rDenFinds();rDenStats();
-}
-function rDenFinds(){
-  var box=$('#otp-denFinds');if(!box)return;
-  var a=findsGet(),h;
-  if(!a.length){box.innerHTML='<p class="dx-empty">☆ Tap the star on any live listing to save it here. Saved finds download as a spreadsheet.</p>';return}
-  h='<details class="dx" data-dx="finds"'+(xOpen.finds?' open':'')+'><summary><b>Saved finds</b><small>'+a.length+'</small></summary><ul class="dx-list">';
-  a.forEach(function(f,i){
-    var href=typeof window.prowlEpn==='function'?window.prowlEpn(f.url,'prowl-saved'):f.url;
-    var meta=[f.price,mktName(f.src),f.hunt?'for '+f.hunt:'',f.at?ago(f.at):''].filter(Boolean).join(' · ');
-    h+='<li class="dx-row dx-find">'+(f.image?'<img src="'+esc(f.image)+'" alt="" loading="lazy" decoding="async">':'<span class="dx-noimg"></span>')+
-      '<a class="dx-txt" href="'+esc(href)+'" target="_blank" rel="noopener noreferrer"><b>'+esc(f.title)+'</b><small>'+esc(meta)+'</small></a>'+
-      '<button type="button" class="dx-x" data-fx="'+i+'" aria-label="Remove '+esc(f.title.slice(0,40))+'">✕</button></li>';
-  });
-  h+='</ul><div class="dx-acts"><button type="button" class="b p dx-csv" data-csv="1">Export CSV</button><button type="button" class="sgw-ml" data-fxc="1">Clear all</button></div></details>';
-  box.innerHTML=h;
+  svPaint(u);flSavedChanged();rDenStats();
 }
 /* v6.08 saved research (prowl.research): newest first, RES_MAX kept, a small photo each */
 var RES_KEY='prowl.research',RES_MAX=20,RC=null;
@@ -5623,7 +5860,7 @@ function rDenStats(){
   h+='</ul><button type="button" class="sgw-ml dx-clear" data-stc="1">Reset these numbers</button></div>';
   box.innerHTML=h;
 }
-function rDenX(){rDenFinds();rDenResearch();rDenRuns();rDenStats()}
+function rDenX(){rDenResearch();rDenRuns();rDenStats();flSavedChanged()}
 
 /* backup v4: replace a list only when the backup carries it */
 function xImport(o){
@@ -5632,6 +5869,7 @@ function xImport(o){
   if(Array.isArray(o.finds)){out=[];seen=Object.create(null);for(i=0;i<o.finds.length&&out.length<FINDS_MAX;i++){c=findClean(o.finds[i]);if(c&&!seen[c.url]){seen[c.url]=1;out.push(c)} }findsPut(out)}
   if(o.mktStats&&typeof o.mktStats==='object'&&!Array.isArray(o.mktStats)){xSet(STATS_KEY,o.mktStats);xSet(STATS_KEY,statsGet())}
   if(Array.isArray(o.research)){out=[];for(i=0;i<o.research.length&&out.length<RES_MAX;i++){c=resClean(o.research[i]);if(c)out.push(c)}resPut(out)}   /* v6.08 */
+  if(Array.isArray(o.discarded)){DIS=null;xSet(DIS_KEY,o.discarded);DIS=null;disPut(disGet().slice())}   /* v6.38: cleaned on read */
   FC=null;rDenX();
 }
 
@@ -5642,11 +5880,9 @@ document.addEventListener('click',function(e){
   var x;
   if((x=t.closest('[data-rp]'))){runReplay(+x.getAttribute('data-rp'));return}
   if(t.closest('[data-rpc]')){xSet(RUNS_KEY,[]);rDenRuns();toast('Recent runs cleared.',1800);return}
-  if((x=t.closest('[data-fx]'))){var a=findsGet(),k=+x.getAttribute('data-fx'),gone=a[k];if(!gone)return;a.splice(k,1);findsPut(a);rDenFinds();svPaint(gone.url);return}
   if((x=t.closest('[data-rsh]'))){resShare(+x.getAttribute('data-rsh'));return}   /* v6.08 */
   if((x=t.closest('[data-rsx]'))){var ra=resGet();ra.splice(+x.getAttribute('data-rsx'),1);resPut(ra);rDenResearch();return}
   if(t.closest('[data-rsc]')){if(!confirm('Remove all '+resGet().length+' saved research notes?'))return;resPut([]);rDenResearch();return}
-  if(t.closest('[data-fxc]')){if(!confirm('Remove all '+findsGet().length+' saved finds? Export the CSV first if you want a copy.'))return;var old=findsGet();findsPut([]);rDenFinds();old.forEach(function(f){svPaint(f.url)});return}
   if(t.closest('[data-csv]')){exportFinds();return}
   if(t.closest('[data-stc]')){xSet(STATS_KEY,{});rDenStats();toast('Marketplace numbers reset.',1800);return}
 });
