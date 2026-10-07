@@ -65,6 +65,17 @@ window.amzSearch=function(keywords){
   return 'https://www.amazon.com/s?k='+encodeURIComponent(k)+'&tag='+encodeURIComponent(window.AMAZON_TAG);
 };
 /* the disclosure names exactly the merchants whose links are tagged today */
+/* v6.44 store session: /apps/prowl/login hands back a 30-day token (prowl.session, outside the backup). It is sent as
+   Authorization: Bearer on the Worker's AI and Prowl Alerts calls, so a signed-in member is known without the emailed
+   token. An expired or malformed token is dropped here, never sent. */
+window.prowlSess=function(){
+  var t='';try{t=localStorage.getItem('prowl.session')||''}catch(e){}
+  if(!/^[A-Za-z0-9_-]{10,400}$/.test(t))return '';
+  var p=[];try{p=atob(t.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((t.length+3)%4)).split('.')}catch(e){return ''}
+  if(p.length!==3||!/^\d{1,20}$/.test(p[0])||!/^\d{9,11}$/.test(p[1])||Number(p[1])*1000<=Date.now()){try{localStorage.removeItem('prowl.session')}catch(e){}return ''}
+  return t;
+};
+window.prowlAuth=function(h){h=h||{};var t=window.prowlSess();if(t)h.Authorization='Bearer '+t;return h};
 window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Object.prototype.hasOwnProperty.call(window.PROWL_AFF,d)&&window.prowlAffLive(d))a.push(window.PROWL_AFF[d].n);if(window.prowlAmzOn())a.push('Amazon');return a};
 </script>
 <style>
@@ -169,6 +180,9 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 }
 .scout-app-wrapper .pulse{animation:pulse 2.4s ease-in-out infinite}
 .scout-app-wrapper.theme-menu-open .bar,.scout-app-wrapper.theme-menu-open #otp-dock,.scout-app-wrapper.theme-menu-open .oabar{visibility:hidden}
+.scout-app-wrapper .bar .hi:not([hidden]){display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mu);white-space:nowrap}
+.scout-app-wrapper .bar .hi b{font-weight:600;max-width:9em;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom}
+@media (max-width:420px){.scout-app-wrapper .bar .hi .hi-n{display:none}}
 .scout-app-wrapper .bar{position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 18px;background:var(--bar-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--ln)}
 .scout-app-wrapper .brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.02em}
 .scout-app-wrapper .brand i{color:var(--ac);font-style:normal}
@@ -1448,6 +1462,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
     Prowl<span class="probadge" title="Prowl Pro is on">PRO</span><a class="homedots" href="/" aria-label="Owl &amp; Twig home" title="Owl &amp; Twig home"><i> . . .</i></a>
   </span>
   <div class="bar-actions">
+    <span class="hi" id="otp-hi" hidden></span>
     <button class="gh apphdr" id="otp-appHdr" type="button" hidden>App</button>
     <button class="gh" id="otp-themeBtn" type="button" aria-label="Cycle theme" title="Dark mode">☾</button>
     <button class="gh" id="otp-how" type="button" aria-label="How Prowl works">Help</button>
@@ -1586,7 +1601,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
   /* v5.59 owner pass: open the page once with ?owner=CODE and this device
      skips the Worker's daily caps. Kept in prowl.owner, outside the backup. */
   try{var om=/[?&]owner=([A-Za-z0-9_-]{12,80})/.exec(location.search);if(om){localStorage.setItem('prowl.owner',om[1]);if(history.replaceState)history.replaceState(null,'',location.pathname);} }catch(e){}
-  function OH(){var h={'Content-Type':'application/json'};try{var k=localStorage.getItem('prowl.owner');if(k&&/^[A-Za-z0-9_-]{12,80}$/.test(k))h['X-Prowl-Owner']=k;}catch(e){}return h;}
+  function OH(){var h={'Content-Type':'application/json'};try{var k=localStorage.getItem('prowl.owner');if(k&&/^[A-Za-z0-9_-]{12,80}$/.test(k))h['X-Prowl-Owner']=k;}catch(e){}return window.prowlAuth?window.prowlAuth(h):h;}   /* v6.44: + Bearer */
   /* v5.93: free = 2 photo checks a day, Prowl Pro = 15. The Worker counts;
      signed-in members send their Prowl Alerts email + token so Pro is seen. */
   var LF=document.getElementById('otp-aprLeft');
@@ -2324,7 +2339,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.43';
+var PROWL_VERSION='v6.44';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3751,7 +3766,7 @@ function fpAsk(btn){
     var tmp=document.createElement('div');tmp.innerHTML=fpHtml(r);
     if(btn.parentNode)btn.parentNode.replaceChild(tmp.firstChild,btn);
   }
-  fetch(FP_API,{method:'POST',headers:(function(){var h={'Content-Type':'application/json'};try{var k=localStorage.getItem('prowl.owner');if(k&&/^[A-Za-z0-9_-]{12,80}$/.test(k))h['X-Prowl-Owner']=k;}catch(e){}return h;})(),body:JSON.stringify(body)}).then(function(res){
+  fetch(FP_API,{method:'POST',headers:(function(){var h={'Content-Type':'application/json'};try{var k=localStorage.getItem('prowl.owner');if(k&&/^[A-Za-z0-9_-]{12,80}$/.test(k))h['X-Prowl-Owner']=k;}catch(e){}return window.prowlAuth(h);})(),body:JSON.stringify(body)}).then(function(res){
     return res.json().then(function(j){return {ok:res.ok,status:res.status,j:j} });
   }).then(function(x){
     if(x.ok&&x.j&&x.j.verdict)show(x.j);
@@ -4384,7 +4399,7 @@ function mailStatus(fresh,cb){
   var tok=mGet('alertTok'),em=mGet('alertEmail');
   if(!tok||!em||typeof fetch!=='function'){if(cb)cb(null);return}
   /* v6.00: POST keeps the token out of URLs and logs */
-  fetch(SGW_API+'alerts/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,tok:tok,fresh:fresh?'1':''})})
+  fetch(SGW_API+'alerts/status',{method:'POST',headers:window.prowlAuth({'Content-Type':'application/json'}),body:JSON.stringify({email:em,tok:tok,fresh:fresh?'1':''})})
     .then(function(r){return r.json()}).then(function(j){
       /* v6.04: the membership moved to a new address (same token): follow it once */
       if(j&&j.on===false&&j.moved&&!MAIL.movedHop){MAIL.movedHop=1;var mv=String(j.moved).toLowerCase();mSet('alertEmail',mv);mSet('alertSig','');MAIL.moving='';MAIL.msg='Your Prowl Alerts now go to '+mv+'. This device switched over.';setTimeout(function(){mailStatus(true,cb)},0);return}
@@ -4529,25 +4544,55 @@ function pxLogin(me,join,cb){
     body:JSON.stringify({id:me.id,e:me.e,ts:me.ts,sig:me.sig,hunts:mailHunts(),join:!!join})})
     .then(function(r){return r.json()['catch'](function(){return null})}).then(cb,function(){cb(null)});
 }
+function sessSet(t){mSet('session',typeof t==='string'&&/^[A-Za-z0-9_-]{10,400}$/.test(t)?t:'')}   /* v6.44 */
 function pxTake(j,msg){
+  sessSet(j.session);
   mSet('alertEmail',j.email);mSet('alertTok',j.tok);mSet('alertWait','');mSet('alertNoAuto','');mSet('alertLoginAt','');
-  mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;
+  mSet('alertPro',j.pro?'1':'');hiRender();if(j.free)MAIL.free=j.free;
   MAIL.shop=null;MAIL.signin=false;MAIL.ready=false;MAIL.msg=msg;if(j.store)MAIL.store=String(j.store).toLowerCase();rMail();
   mailStatus(true);
 }
 /* On load: if the visitor is signed in to the store, sign Prowl in too. */
 function shopCheck(fromLogin){
   if(!alertsLive())return;
-  if(mGet('alertTok')||(!fromLogin&&mGet('alertNoAuto')==='1'))return;
+  if(mGet('alertTok')){hiCheck();return}   /* v6.44: signed in already: the greeting, and a session if missing */
+  if(!fromLogin&&mGet('alertNoAuto')==='1')return;
   pxMe(function(me){
+    hiMe(me);
     if(!me){if(fromLogin){MAIL.msg='Sign-in did not finish here. Try again, or use email only below.';MAIL.open=true;rMail();openMailSettings()}return}
     if(!me.in){if(fromLogin){MAIL.msg='Sign-in did not finish. Tap Sign in to try again.';MAIL.open=true;rMail();openMailSettings()}return}
     pxLogin(me,false,function(j){
       if(j&&j.member&&j.tok){pxTake(j,'Signed in as '+j.email+'. Your hunts and plan are on this device.');if(fromLogin){MAIL.open=true;openMailSettings()} }
-      else if(j&&j.member===false){MAIL.shop={e:j.email,first:me.first||''};rMail();if(fromLogin){MAIL.open=true;openMailSettings()} }
+      else if(j&&j.member===false){sessSet(j.session);hiRender();MAIL.shop={e:j.email,first:me.first||''};rMail();if(fromLogin){MAIL.open=true;openMailSettings()} }
     });
   });
 }
+/* v6.44 header greeting. "Hi, {first name}" from the store sign-in (/apps/prowl/me), with Log out: Prowl's session
+   and alert token go, then the store account logs out and comes back here. Store signed out elsewhere: the session
+   goes too. A failed check (null) changes nothing. */
+function hiMe(me){
+  if(!me)return;
+  if(me.in)MAIL.first=String(me.first||'').slice(0,40);
+  else{MAIL.first='';sessSet('')}
+  hiRender();
+}
+function hiCheck(){
+  pxMe(function(me){
+    hiMe(me);
+    if(me&&me.in&&!window.prowlSess())pxLogin(me,false,function(j){if(j&&j.member&&j.email===mGet('alertEmail'))sessSet(j.session)});
+  });
+}
+function hiRender(){
+  var el=document.getElementById('otp-hi');if(!el)return;
+  var on=!!(MAIL.first&&(window.prowlSess()||mGet('alertTok')));
+  el.hidden=!on;
+  el.innerHTML=on?'<span class="hi-n">Hi, <b>'+esc(MAIL.first)+'</b></span><button class="gh hi-out" type="button" data-hi="out">Log out</button>':'';
+}
+function hiLogout(){
+  sessSet('');mSet('alertTok','');mSet('alertSig','');mSet('alertPro','');mSet('alertNoAuto','1');MAIL.first='';hiRender();
+  location.href='/customer_authentication/logout?return_to='+encodeURIComponent('/pages/prowl');
+}
+(function(){var el=document.getElementById('otp-hi');if(el)el.addEventListener('click',function(e){var b=e.target&&e.target.closest?e.target.closest('[data-hi="out"]'):null;if(b)hiLogout()})})();
 /* v5.90: in the installed app, the store sign-in opens in a browser panel and
    the app itself never reloads, so it would not notice the sign-in. When the
    app comes back to the front within 20 minutes of tapping Sign in, check the
@@ -4580,6 +4625,7 @@ function shopJoin(){
   });
 }
 function mailSignout(){
+  sessSet('');MAIL.first='';setTimeout(hiRender,0);   /* v6.44 */
   mSet('alertTok','');mSet('alertSig','');mSet('alertWait','');mSet('alertPro','');mSet('alertNoAuto','1');
   MAIL.store=undefined;MAIL.storeAsk=0;MAIL.moving='';MAIL.chg=false;
   MAIL.shop=null;MAIL.plan=null;MAIL.prefs=null;MAIL.msg='Signed out of Prowl on this device. Your alerts keep coming. (Your Owl & Twig account stays signed in; log out of it under Account.)';rMail();
@@ -5287,7 +5333,7 @@ function gdMake(subject){
   var body={subject:subject};
   if(mGet('alertTok')&&mGet('alertEmail')){body.e=mGet('alertEmail');body.t=mGet('alertTok')}
   var ctl=typeof AbortController==='function'?new AbortController():null,tm=setTimeout(function(){if(ctl)ctl.abort()},80000);
-  var opt={method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)};
+  var opt={method:'POST',headers:window.prowlAuth({'Content-Type':'application/json'}),body:JSON.stringify(body)};   /* v6.44: + Bearer */
   if(ctl)opt.signal=ctl.signal;
   fetch(SGW_API+'guide',opt).then(function(r){
     return r.json().then(function(j){return {s:r.status,j:j}},function(){return {s:r.status,j:null}});
