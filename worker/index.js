@@ -19,6 +19,12 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v80: 2026-10-07. Salvation Army (shopthesalvationarmy.com, RainWorx AuctionWorx) is marketplace #28: GET
+ *        /salvation?q= parses its server-rendered Browse page (title, link, photo, current bid, bids, time left;
+ *        end times are US Pacific). 15-minute cache, browser User-Agent. No affiliate program: links stay clean.
+ *        Joins liveSources/LIVE_CALLS (admin Diagnose and hourly uptime), metrics and the daily scraper check.
+ *        Not added to alert emails yet (each extra source costs every member's hunts more outside calls).
+ *        /__salvationtest shows the raw answer, to tell a firewall block from a markup change.
  *   v79: 2026-10-07. Long eBay hunts no longer get stuck on the exact phrase. A hunt of 4+ words whose exact phrase
  *        finds fewer than a full page now also runs the plain-words search and shows both, phrase matches first
  *        ("1970's General Mills MONSTER Cereal" matched cereal boxes as a phrase and hid the vinyl figures that the
@@ -230,7 +236,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
-const WORKER_VERSION = "v79";
+const WORKER_VERSION = "v80";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -267,6 +273,9 @@ const OFFERUP_URL = "https://offerup.com/search?q=";   /* v62: /__offeruptest on
 
 const HIBID_URL = "https://hibid.com/lots?q=";
 const HIBID_LIMIT = 12;
+/* v80: Salvation Army. Auctions move, so a short cache. */
+const SALVATION_BASE = "https://shopthesalvationarmy.com";
+const SALVATION_LIMIT = 12, SALVATION_CACHE_SECONDS = 900;
 const HIBID_CACHE_SECONDS = 600;
 
 const ALLOW_ORIGINS = [
@@ -1177,6 +1186,78 @@ function mercariJpNormalize(text) {
   }
   return out;
 }
+/* ---------- v80: Salvation Army (shopthesalvationarmy.com) ----------
+   RainWorx AuctionWorx, ASP.NET MVC. The Browse page is server-rendered: each result is a
+   <div class="... galleryUnit" data-listingid="N"> holding the photo (img alt = the title), a bid count
+   (awe-rt-AcceptedListingActionCount, auctions only), the price (<span class="NumberPart">) and the end time
+   (data-action-time="MM/DD/YYYY HH:MM:SS", US Pacific). Live bid changes come later over SignalR; ignored. */
+async function salvationCall(term) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), UPSTREAM_TIMEOUT_MS);
+  try {
+    const r = await fetch(SALVATION_BASE + "/Browse?FullTextQuery=" + encodeURIComponent(term), {
+      signal: ctl.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.9",
+      },
+    });
+    const text = await r.text();
+    return { status: r.status, text: text.length > SCRAPE_MAX ? text.slice(0, SCRAPE_MAX) : text };
+  } finally { clearTimeout(timer); }
+}
+/* "10/07/2026 12:45:25" in America/Los_Angeles -> epoch ms. DST-aware through Intl; null if unreadable. */
+function salvationEnd(s) {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(String(s || "").trim());
+  if (!m) return null;
+  const asUtc = Date.UTC(+m[3], +m[1] - 1, +m[2], +m[4], +m[5], +(m[6] || 0));
+  let off = -7 * 3600000;   /* PDT if Intl is missing */
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(new Date(asUtc));
+    const g = (t) => +((parts.find(p => p.type === t) || {}).value || 0);
+    off = Date.UTC(g("year"), g("month") - 1, g("day"), g("hour") % 24, g("minute"), g("second")) - asUtc;
+  } catch (e) {}
+  return asUtc - off;
+}
+function salvationNormalize(html) {
+  const text = String(html || "");
+  if (!/galleryContainer|galleryUnit|\/Browse/i.test(text)) return null;   /* not the Browse page (a block page, say) */
+  const units = text.split(/<div class="[^"]*\bgalleryUnit\b[^"]*"/).slice(1);
+  const out = [], seen = {};
+  for (let i = 0; i < units.length && out.length < SALVATION_LIMIT; i++) {
+    const u = units[i].slice(0, 12000);
+    const id = (/data-listingid="(\d+)"/.exec(u) || [])[1];
+    const href = (/href="(\/Listing\/Details\/\d+\/[^"?#]*)"/.exec(u) || [])[1];
+    if (!id || !href || seen[id]) continue;
+    const img = (/<img[^>]+src="(https:\/\/[a-z0-9.-]+\.blob\.core\.windows\.net\/[^"]+)"/i.exec(u) || [])[1] || "";
+    let title = hibidText((/<img[^>]+alt="([^"]*)"/i.exec(u) || [])[1] || "");
+    if (!title) {
+      const h2 = (/<h2[^>]*galleryTitle[^>]*>([\s\S]*?)<\/h2>/i.exec(u) || [])[1] || "";
+      title = hibidText(h2.replace(/<span[^>]*>[\s\S]*?<\/span>/g, " "));
+    }
+    if (!title) continue;
+    const num = (/class="NumberPart">\s*([\d,]+(?:\.\d+)?)\s*</.exec(u) || [])[1];
+    const item = {
+      title: title.slice(0, 160),
+      price: num ? money(Number(num.replace(/,/g, ""))) : "",
+      url: SALVATION_BASE + href,
+      image: img,
+      src: "salvation",
+    };
+    const bids = /AcceptedListingActionCount"[^>]*>\s*(\d+)\s*</.exec(u);
+    if (bids) item.bids = Number(bids[1]);
+    const end = salvationEnd((/data-action-time="([^"]+)"/.exec(u) || [])[1]);
+    if (end) {
+      const tl = timeLeft(new Date(end).toISOString());
+      if (!tl) continue;   /* already ended */
+      item.time_left = tl;
+    }
+    seen[id] = 1;
+    out.push(item);
+  }
+  return out;
+}
+
 async function grailedCall(term, env) {
   const app = String((env && env.GRAILED_ALGOLIA_APP) || "").trim();
   const key = String((env && env.GRAILED_ALGOLIA_KEY) || "").trim();
@@ -2525,6 +2606,7 @@ async function shopPicks(env, url, origin, request) {
 const WHERE_MKTS = {
   etsy: "Etsy: vintage and handmade decor, jewelry, clothing, pottery, small collectibles",
   mercari: "Mercari: everyday resale, toys, games, collectibles, small household items",
+  salvation: "Salvation Army: thrift auctions from donated goods; toys, collectibles, home decor, jewelry, media lots",
   mercarijp: "Mercari Japan: Japanese pottery, porcelain, Noritake, Kutani, toys, anime and Showa-era collectibles (US buyers can buy direct)",
   poshmark: "Poshmark: clothing, shoes, handbags, fashion accessories",
   depop: "Depop: streetwear and young-crowd vintage clothing",
@@ -3974,7 +4056,7 @@ const AI_POOLS = [
   { key: "sp:all", name: "Shop picks", limit: SP_PER_DAY },
   { key: "wh:all", name: "Where to look", limit: SP_PER_DAY }
 ];
-function liveSources() { return ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark"].concat(DEPOP_LIVE ? ["depop"] : [], ["vinted", "grailed"]); }
+function liveSources() { return ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark"].concat(DEPOP_LIVE ? ["depop"] : [], ["vinted", "grailed", "salvation"]); }
 const LIVE_CALLS = {
   shopgoodwill: [(t) => callUpstream(t), (x) => normalize(x)],
   ebay: [(t, env) => ebayCall(t, env), (x) => ebayNormalize(x)],
@@ -3984,6 +4066,7 @@ const LIVE_CALLS = {
   depop: [(t) => depopCall(t), (x) => depopNormalize(x)],
   vinted: [(t) => vintedCall(t), (x) => vintedNormalize(x)],
   grailed: [(t, env) => grailedCall(t, env), (x) => grailedNormalize(x)],
+  salvation: [(t) => salvationCall(t), (x) => salvationNormalize(x)],   /* v80 */
   hibid: [(t) => hibidCall(t), (x) => hibidNormalize(x)]
 };
 /* One live search on one marketplace, the same calls the page's live results use, without the cache. Never throws. */
@@ -4644,6 +4727,14 @@ async function handleFetch(request, env, ctx) {
       return new Response(JSON.stringify({ term: term, colo: (request.cf && request.cf.colo) || null, tries: out }, null, 1), { headers: { "Content-Type": "application/json" } });
     }
 
+    if (url.pathname === "/__salvationtest") {   /* v80: does Salvation Army answer a Worker, and does the parser still read it? */
+      const q = url.searchParams.get("q") || "panther";
+      let up = null, err = "";
+      try { up = await salvationCall(q); } catch (e) { err = String(e && e.message || e); }
+      const items = up && up.status === 200 ? salvationNormalize(up.text) : null;
+      const blocked = !!(up && /Attention Required|cf-chl|captcha|Access denied|Request unsuccessful/i.test(up.text.slice(0, 5000)));
+      return new Response(JSON.stringify({ q: q, status: up ? up.status : null, bytes: up ? up.text.length : 0, blocked: blocked, parsed: items ? items.length : null, first: items && items[0] ? items[0] : null, error: err, head: up && !items ? up.text.slice(0, 300) : "" }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
     if (url.pathname === "/__mercarijptest") {   /* v77: does Mercari Japan's search API answer a Worker? */
       const term = url.searchParams.get("q") || "noritake";
       const started = Date.now();
@@ -4735,12 +4826,12 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/depop" && !DEPOP_LIVE) {   /* v76 */
       return json({ term: String(url.searchParams.get("q") || "").slice(0, 80), source: "depop", off: "Depop no longer answers automated lookups; open it from the marketplace list.", items: [] }, 200, origin, { "Cache-Control": "public, max-age=3600" });
     }
-    const SOURCES = { "/": "shopgoodwill", "/ebay": "ebay", "/hibid": "hibid", "/chairish": "chairish", "/etsy": "etsy", "/poshmark": "poshmark", "/poshsold": "poshsold", "/depop": "depop", "/vinted": "vinted", "/grailed": "grailed" };   /* v58: poshmark, v59: depop, v60: vinted, v65: grailed */
+    const SOURCES = { "/": "shopgoodwill", "/ebay": "ebay", "/hibid": "hibid", "/chairish": "chairish", "/etsy": "etsy", "/poshmark": "poshmark", "/poshsold": "poshsold", "/depop": "depop", "/vinted": "vinted", "/grailed": "grailed", "/salvation": "salvation" };   /* v58: poshmark, v59: depop, v60: vinted, v65: grailed, v80: salvation */
     const source = SOURCES[url.pathname];
     if (!source) return json({ error: "not found" }, 404, origin);
     const isEbay = source === "ebay", isHibid = source === "hibid", isChairish = source === "chairish", isEtsy = source === "etsy";
     if (source !== "poshsold") ctx.waitUntil(statTick(request, env, "t", term));   /* v67 */
-    const isPosh = source === "poshmark" || source === "poshsold", poshSold = source === "poshsold", isDepop = source === "depop", isVinted = source === "vinted", isGrailed = source === "grailed";
+    const isPosh = source === "poshmark" || source === "poshsold", poshSold = source === "poshsold", isDepop = source === "depop", isVinted = source === "vinted", isGrailed = source === "grailed", isSalvation = source === "salvation";
 
     const cache = PCACHE;
     const key = new Request(
@@ -4769,6 +4860,7 @@ async function handleFetch(request, env, ctx) {
          : isDepop ? await depopCall(term)
          : isVinted ? await vintedCall(term)
          : isGrailed ? await grailedCall(term, env)
+         : isSalvation ? await salvationCall(term)
          : await callUpstream(term);
     }
     catch (e) {
@@ -4786,6 +4878,7 @@ async function handleFetch(request, env, ctx) {
               : isDepop ? depopNormalize(up.text)
               : isVinted ? vintedNormalize(up.text)
               : isGrailed ? grailedNormalize(up.text)
+              : isSalvation ? salvationNormalize(up.text)
               : normalize(up.text);
     if (isHibid && items && items.length > HIBID_LIMIT) items = items.slice(0, HIBID_LIMIT);
     if (isDepop && items && items.length > DEPOP_LIMIT) items = items.slice(0, DEPOP_LIMIT);
@@ -4808,7 +4901,7 @@ async function handleFetch(request, env, ctx) {
       items: items,
     };
     const res = json(payload, 200, origin, {
-      "Cache-Control": "public, max-age=" + (isEbay ? EBAY_CACHE_SECONDS : isHibid ? HIBID_CACHE_SECONDS : isChairish ? CHAIRISH_CACHE_SECONDS : isEtsy ? ETSY_CACHE_SECONDS : isPosh ? POSH_CACHE_SECONDS : isDepop ? DEPOP_CACHE_SECONDS : isVinted ? VINTED_CACHE_SECONDS : isGrailed ? GRAILED_CACHE_SECONDS : CACHE_SECONDS),
+      "Cache-Control": "public, max-age=" + (isEbay ? EBAY_CACHE_SECONDS : isHibid ? HIBID_CACHE_SECONDS : isChairish ? CHAIRISH_CACHE_SECONDS : isEtsy ? ETSY_CACHE_SECONDS : isPosh ? POSH_CACHE_SECONDS : isDepop ? DEPOP_CACHE_SECONDS : isVinted ? VINTED_CACHE_SECONDS : isGrailed ? GRAILED_CACHE_SECONDS : isSalvation ? SALVATION_CACHE_SECONDS : CACHE_SECONDS),
       "X-Prowl-Cache": "miss",
     });
     try { await cache.put(key, res.clone()); } catch (e) { /* cache is best effort */ }
