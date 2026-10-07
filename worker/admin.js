@@ -26,6 +26,7 @@ const ISSUE_FLAGS = ["email late", "pro check failing", "record unreadable", "no
 const GIFT_MONTHS = [0, 1, 3, 6, 12];            // 0 = no end
 const GIFT_MAX = 2000;
 const GID_RE = /^[0-9a-f]{10}$/;
+const GIFT_MAIL_PER_DAY = 30, GIFT_MAIL_PER_PERSON = 2;   // the "email them how to start" box on a gift
 const PRO_FIELDS = ["pro", "plan", "proDay", "hadPro", "proCheck"];
 const BASE_HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff" };
 
@@ -577,14 +578,58 @@ const SUB_NOTE = " They also have a Prowl Pro subscription in the shop; the gift
 /* index.js counts any Pro as their one free month (hadPro), so the page then offers the paid plan, not a free month */
 const FIRST_NOTE = " This counts as their one free Prowl Pro month: after the gift ends, the Prowl page offers them the paid plan rather than a free month.";
 /* Writes (or renews) the gift for one address and clears a PRO_EMAILS switch-off. Only the hash is stored.
-   An empty note keeps the note already on the gift. */
-async function saveGift(c, email, months, rawNote) {
+   An empty note keeps the note already on the gift. paid: they paid for Pro in the shop when gifted; kept on the
+   gift, because the gift then replaces the shop plan on their record, so a later Gift Pro cannot see it. */
+async function saveGift(c, email, months, rawNote, paid) {
   const H = c.H, gh = String(await H.giftHash(email)), until = months ? addMonths(todayOf(c), months) : "";
-  const old = await H.kvGet(c.env, "gift:" + gh, null), n = giftNote(rawNote);
-  await H.kvPut(c.env, "gift:" + gh, { note: n || (old && typeof old === "object" ? giftNote(old.note) : ""), added: new Date(c.nowMs).toISOString(), until: until, by: "admin" });
+  const old = await H.kvGet(c.env, "gift:" + gh, null), n = giftNote(rawNote), o = old && typeof old === "object" ? old : {};
+  const rec = { note: n || giftNote(o.note), added: new Date(c.nowMs).toISOString(), until: until, by: "admin" };
+  if (paid || o.paid === true) rec.paid = true;
+  await H.kvPut(c.env, "gift:" + gh, rec);
   await c.env.PROWL_ALERTS.delete("giftoff:" + gh);
-  return { gh: gh, gid: gh.slice(0, 10), until: until };
+  return { gh: gh, gid: gh.slice(0, 10), until: until, paid: !!rec.paid };
 }
+/* The member an address moved to, following up to three moves (as alProSet checks up to two earlier addresses). */
+async function movedMember(c, email) {
+  let a = email;
+  for (let i = 0; i < 3; i++) {
+    const mv = await c.H.kvGet(c.env, "moved:" + a, null), to = mv && typeof mv.to === "string" ? mv.to.trim().toLowerCase() : "";
+    if (!to || to === email || to === a) return null;
+    const s = await c.H.kvGet(c.env, "sub:" + to, null);
+    if (s && typeof s === "object") return { email: to, sub: s };
+    a = to;
+  }
+  return null;
+}
+/* The how-to email for a gift, when the owner ticks "Email them". Never to a member who turned Prowl emails off or
+   whose Pro did not switch on; at most GIFT_MAIL_PER_DAY a day and GIFT_MAIL_PER_PERSON a day to one person (counted
+   by gift id, so no address goes into a counter), and only emails that went out are counted. The mail service's own
+   error is never shown: it can quote the address. paid: they also pay for Pro in the shop, so the email says the gift
+   does not cancel that. Returns the owner's words, starting with a space. */
+async function giftMail(c, email, gid, until, sub, paid) {
+  const H = c.H, dayKey = "admgiftmail", oneKey = "admgiftmail:" + gid;
+  if (typeof H.alSendGift !== "function") return { sent: false, text: " No email was sent: this worker cannot send gift emails." };
+  if (sub && sub.mail === "off") return { sent: false, text: " No email was sent: they have turned Prowl emails off." };
+  if (sub && !sub.pro) return { sent: false, text: " No email was sent, because Pro is not on for them yet." };
+  const [all, one] = await Promise.all([peekCount(c, dayKey), peekCount(c, oneKey)]);
+  if (all === null || one === null) return { sent: false, text: " No email was sent: the daily email count did not answer. Try again in a minute." };
+  if (all >= GIFT_MAIL_PER_DAY) return { sent: false, text: " No email was sent: that is " + GIFT_MAIL_PER_DAY + " gift emails today. Try again tomorrow." };
+  if (one >= GIFT_MAIL_PER_PERSON) return { sent: false, text: " No email was sent: they already got " + GIFT_MAIL_PER_PERSON + " gift emails today." };
+  let r = null;
+  try { r = await H.alSendGift(c.env, email, until, sub || null, { paid: !!paid }); } catch (e) { r = null; }
+  if (r && r.ok) {
+    await Promise.all([take(c, dayKey, GIFT_MAIL_PER_DAY), take(c, oneKey, GIFT_MAIL_PER_PERSON)]);
+    return { sent: true, text: sub ? " We emailed them that Pro is on, with a link that opens Prowl signed in." + (paid ? " The email also says a shop subscription keeps going until it is cancelled." : "")
+      : " We emailed them how to start, with a one-tap link that signs them up (it works for 14 days)." };
+  }
+  const why = r && r.why;
+  return { sent: false, text: why === "stopped" ? " No email was sent: this address used the link in an earlier gift email to stop gift emails."
+    : why === "off" ? " No email was sent: Prowl Alerts is switched off (ALERTS in Cloudflare)."
+    : why === "nomail" ? " No email was sent: Prowl email is not set up (RESEND_API_KEY in Cloudflare)."
+    : why === "nokey" ? " No email was sent: the start link could not be made (ADMIN_KEY)."
+    : " The email to them did not send, but the gift still counts. To try again, gift them again with the same length." };
+}
+const wantsMail = b => b.tell === true;
 async function listKeys(kv, prefix, max) {
   const names = []; let cursor, more = false;
   do {
@@ -619,23 +664,32 @@ async function apiGiftAdd(c) {
   if (!email) return jerr(400, "Type the person's whole email address.");
   const months = giftMonths(c.body.months);
   if (months < 0) return jerr(400, "Pick how long: forever, 1, 3, 6 or 12 months.");
-  const g = await saveGift(c, email, months, c.body.note);
-  const sub = await H.kvGet(env, "sub:" + email, null);
-  let id = null, msg = "Gift saved. Prowl Pro is free for this person " + giftEnds(g.until) + ", starting as soon as they sign up for Prowl Alerts with that email.";
-  if (sub && typeof sub === "object") {
-    id = await memberId(c.salt, email);
-    const paid = paidPro(sub), first = !sub.hadPro;
+  let sub = await H.kvGet(env, "sub:" + email, null), target = email, moved = false;
+  if (!sub || typeof sub !== "object") {   // an address a member moved away from: the gift goes to the member's own address
+    const mm = await movedMember(c, email);
+    if (mm) { sub = mm.sub; target = mm.email; moved = true; } else sub = null;
+  }
+  const paid = !!sub && paidPro(sub);
+  const g = await saveGift(c, target, months, c.body.note, paid);
+  let id = null, gone = false, msg = "Gift saved. Prowl Pro is free for this person " + giftEnds(g.until) + ", starting as soon as they sign up for Prowl Alerts with that email.";
+  if (sub) {
+    id = await memberId(c.salt, target);
+    const first = !sub.hadPro;
     await H.alProSet(env, sub, false);   // the gift check comes before any Shopify call
     const r = await H.alMerge(env, sub, PRO_FIELDS);
     ROSTER = null;
     msg = !r ? "Gift saved. That member deleted their account a moment ago; the gift still applies if they sign up again with that email."
       : r.pro ? "Prowl Pro is now free for " + id + " " + giftEnds(g.until) + "." + (r.plan && r.plan.via === "list" ? " (They also get it from the PRO_EMAILS list in Cloudflare.)" : "")
       : "Gift saved for " + id + ", but Pro did not switch on yet. Press Re-check Pro on their page in a minute.";
+    if (r && moved) msg += " That address moved to " + id + ", so the gift follows them there.";
     if (r && paid) msg += SUB_NOTE;
     if (r && r.pro && first) msg += FIRST_NOTE;
+    gone = !r;
   }
-  await audit(c, { action: "gift-add", id: id || g.gid, ok: true, note: monthsWord(months) });
-  return jres({ ok: true, message: msg, gid: g.gid, memberId: id });
+  let mailed = false;
+  if (wantsMail(c.body) && !gone) { const m = await giftMail(c, target, g.gid, g.until, sub, g.paid); msg += m.text; mailed = m.sent; }
+  await audit(c, { action: "gift-add", id: id || g.gid, ok: true, note: monthsWord(months) + (mailed ? ", emailed" : "") });
+  return jres({ ok: true, message: msg, gid: g.gid, memberId: id, emailed: mailed });
 }
 async function apiGiftRemove(c) {
   const H = c.H, env = c.env, kv = env.PROWL_ALERTS;
@@ -647,8 +701,12 @@ async function apiGiftRemove(c) {
   if (names.length > 1) return jerr(409, "Two gifts share that id, so nothing changed. Turn it off from the member's page instead.");
   const hash = names[0].slice(5);
   await kv.delete(names[0]);
-  let id = null, k = null, R = null, msg = "Gift turned off. This person had not signed up yet, so nothing else changed.";
-  try { R = await roster(c, false); k = (await giftIndex(c, R)).get(hash) || null; } catch (e) { k = null; }
+  let id = null, k = null, R = null, msg = "Gift turned off. This person had not signed up yet, so nothing else changed. If you emailed them a start link, it now says the gift has ended.";
+  try {
+    const cached = ROSTER;
+    R = await roster(c, false); k = (await giftIndex(c, R)).get(hash) || null;
+    if (!k && R === cached) { ROSTER = null; R = await roster(c, false); k = (await giftIndex(c, R)).get(hash) || null; }   // they may have joined since the cached list was made
+  } catch (e) { k = null; }
   const sub = k ? await H.kvGet(env, k, null) : null;
   if (sub && typeof sub === "object") {
     id = R.idOf.get(k) || null;
@@ -778,7 +836,7 @@ async function apiAction(c) {
   } else if (action === "gift-on") {
     const months = giftMonths(c.body.months);
     if (months < 0) return jerr(400, "Pick how long: forever, 1, 3, 6 or 12 months.");
-    const paid = paidPro(sub), first = !sub.hadPro, g = await saveGift(c, email, months, c.body.note);
+    const paid = paidPro(sub), first = !sub.hadPro, g = await saveGift(c, email, months, c.body.note, paid);
     note = monthsWord(months);
     if (await refresh()) {
       msg = !sub.pro ? "The gift is saved, but Pro did not switch on yet. Press Re-check Pro in a minute."
@@ -786,6 +844,7 @@ async function apiAction(c) {
         : "Prowl Pro is now free for this member " + giftEnds(g.until) + ".";
       if (paid) msg += SUB_NOTE;
       if (sub.pro && first) msg += FIRST_NOTE;
+      if (wantsMail(c.body)) { const gm = await giftMail(c, email, g.gid, g.until, sub, g.paid); msg += gm.text; if (gm.sent) note += ", emailed"; }
     }
   } else if (action === "gift-off") {
     /* their own address and up to two earlier ones, as index.js alProSet checks them for free Pro */

@@ -19,7 +19,9 @@ about a minute. No dashboard paste needed.
 - Secrets (Resend, eBay, Etsy, Shopify, Muse, TypeSafe, DEBUG_KEY, OWNER_KEY,
   PRO_EMAILS, ALERT_FROM, ALERT_REPLY_TO, ADMIN_KEY) live only in Cloudflare. Never commit them.
   ADMIN_KEY signs in to /admin: at least 20 characters and never the same as OWNER_KEY
-  (the public page keeps OWNER_KEY in the browser).
+  (the public page keeps OWNER_KEY in the browser). The Start Prowl and stop links in Gift Pro
+  emails are signed with a random key the worker makes once and keeps in KV (`giftkey:v1`);
+  deleting that key retires every gift link already emailed.
 
 ## Rolling back
 

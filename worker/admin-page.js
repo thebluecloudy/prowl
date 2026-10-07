@@ -287,6 +287,7 @@ th:last-child,td:last-child{padding-right:0}
 @media (min-width:760px){.ggrid{grid-template-columns:minmax(0,3fr) minmax(0,3fr) minmax(0,2fr)}}
 .ggrid label{display:block;margin-bottom:6px}
 .gform .btn{align-self:flex-start}
+.gform .ck,.gbox .ck{align-self:flex-start}
 .gl-h{margin:18px 0 6px;padding-top:14px;border-top:1.5px solid var(--hair2)}
 .gbox{display:flex;flex-direction:column;gap:8px;margin-top:14px;padding-top:12px;border-top:1.5px solid var(--hair2)}
 .gbox h4{font-size:15px}
@@ -360,7 +361,7 @@ const TABS = ["overview", "members", "diagnose", "errors", "searches"];
 const S = { tab: "", ov: null, ovAt: 0, ovSeq: 0, out: false, health: null, routesAll: false, top: "today",
   mFilter: "all", mSort: "created", mData: null, mAt: 0, mSeq: 0, member: null, memberId: "", pushed: false, lastMsg: null,
   late: null, diag: null, dSel: null, diagRes: null, diagShow: "all", diagSeq: 0, errSeq: 0, sDays: 7, sSeq: 0, toastT: 0,
-  gData: null, gAt: 0, gSeq: 0, giftsAll: false };
+  gData: null, gAt: 0, gSeq: 0, giftsAll: false, glen: null };
 
 /* ---------- DOM: API data only ever lands in textContent or vetted https attributes ---------- */
 function h(tag, a, kids) {
@@ -956,14 +957,15 @@ $("#findf").addEventListener("submit", async e => {
 const GIFT_LEN = [[0, "Forever"], [1, "1 month"], [3, "3 months"], [6, "6 months"], [12, "12 months"]];
 $("#giftf").addEventListener("submit", async e => {
   e.preventDefault();
-  const inp = $("#gift-email"), nt = $("#gift-note"), len = $("#gift-len"), msg = $("#gift-msg"), btn = $("#gift-go");
+  const inp = $("#gift-email"), nt = $("#gift-note"), len = $("#gift-len"), tell = $("#gift-tell"), msg = $("#gift-msg"), btn = $("#gift-go");
   const email = inp.value.trim(), months = Number(len.value) || 0, text = nt.value.trim();
   inp.value = "";   /* gone from the page as soon as it is sent */
   if (!email) { msg.textContent = "Type their email address first."; inp.focus(); return; }
   btn.disabled = true; msg.textContent = "Saving\u2026";
   try {
-    const j = await api("/admin/api/gift", { email: email, note: text, months: months });
-    nt.value = ""; len.value = "0";
+    const j = await api("/admin/api/gift", { email: email, note: text, months: months, tell: !!tell.checked });
+    nt.value = ""; tell.checked = true;
+    if (j.emailed || !/gift them again/.test(j.message || "")) len.value = "0";   /* after a failed email the length stays, for the retry */
     fill(msg, [j.message || "Gift saved.", j.memberId ? [" ", h("button", { class: "lnk", type: "button", text: "Open " + j.memberId, onclick: () => openMember(j.memberId) })] : null]);
     S.mData = null; loadGifts(); loadMembers();
   } catch (err) { if (err.status !== 401) msg.textContent = err.message; }
@@ -1149,8 +1151,11 @@ function giftBox(m) {
   const g = m.gift;
   if (!g || typeof g !== "object") return null;
   const sel = h("select", { id: "gl-len" }, GIFT_LEN.map(o => h("option", { value: String(o[0]), text: o[1] })));
+  if (S.glen && S.glen.id === m.id) sel.value = S.glen.v;   /* the length last picked for this member stays, e.g. for a retry */
+  sel.addEventListener("change", () => { S.glen = { id: m.id, v: sel.value }; });
   const on = h("button", { class: "btn btn-s btn-p", type: "button", text: g.source === "gift" ? "Gift Pro again" : "Gift Pro", "aria-describedby": "gl-help" });
-  on.addEventListener("click", () => doAction(m.id, GIFT_ON, null, on, { months: Number(sel.value) || 0 }));
+  const tell = h("input", { id: "gl-tell", type: "checkbox", checked: true });
+  on.addEventListener("click", () => doAction(m.id, GIFT_ON, null, on, { months: Number(sel.value) || 0, tell: !!tell.checked }));
   const off = g.active ? h("button", { class: "btn btn-s", type: "button", text: "Turn off free Pro", "aria-describedby": "gl-help" }) : null;
   if (off) off.addEventListener("click", () => {
     if (window.confirm("Turn off free Pro for " + m.id + "? They go back to the free plan unless they pay.")) doAction(m.id, GIFT_OFF, null, off);
@@ -1159,7 +1164,8 @@ function giftBox(m) {
     : g.source === "gift" ? "Gift Pro again sets a new end, counted from today. Turn off free Pro ends the gift now; they keep Pro only if they pay."
     : "Gives them Prowl Pro free, starting now. Forever means until you turn it off." + (g.listOff ? " It also turns the Cloudflare list back on for them." : "");
   return h("div", { class: "gbox" }, [h("h4", { text: "Gift Pro (free service)" }),
-    h("div", { class: "frow" }, [h("label", { for: "gl-len", text: "How long" }), sel, on]), off ? h("div", off) : null,
+    h("div", { class: "frow" }, [h("label", { for: "gl-len", text: "How long" }), sel, on]),
+    h("label", { class: "ck" }, [tell, "Email them that Pro is on"]), off ? h("div", off) : null,
     h("p", { id: "gl-help", class: "hint", text: help })]);
 }
 function planCard(m, pl, plan) {
@@ -1498,8 +1504,10 @@ function appBody() {
       '<div><label for="gift-note">Note <span class="opt">(optional, only for you)</span></label><input id="gift-note" type="text" maxlength="60" autocomplete="off" placeholder="e.g. helped test Prowl"></div>' +
       '<div><label for="gift-len">How long</label><select id="gift-len">' +
       [[0, "Forever"], [1, "1 month"], [3, "3 months"], [6, "6 months"], [12, "12 months"]].map(o => '<option value="' + o[0] + '">' + o[1] + "</option>").join("") + "</select></div></div>" +
+      '<label class="ck" for="gift-tell"><input id="gift-tell" type="checkbox" checked aria-describedby="gift-tell-hint"> Email them how to start</label>' +
+      '<p class="hint" id="gift-tell-hint">They get a short email from Owl &amp; Twig Vintage with a button that signs them up with Pro already on (or opens Prowl, if they are already a member).</p>' +
       '<button class="btn btn-p" id="gift-go" type="submit">Gift Pro</button>' +
-      '<p class="hint" id="gift-hint">The email is only used to switch Pro on. It is not stored or shown, and the box clears as soon as you press Gift Pro. Keep email addresses and phone numbers out of the note.</p>' +
+      '<p class="hint" id="gift-hint">The email is only used to switch Pro on and, if the box is ticked, to send them that one email. It is not stored or shown, and the box clears as soon as you press Gift Pro. Keep email addresses and phone numbers out of the note.</p>' +
       '<p class="msg" id="gift-msg" aria-live="polite"></p></form><div id="glist"></div></section>' +
       '<section class="card"><div class="mtools"><div class="chips" role="group" aria-label="Show members">' +
       chip("all", "All") + chip("pro", "Pro") + chip("trial", "Trial") + chip("free", "Free") + chip("late", "Late email") +

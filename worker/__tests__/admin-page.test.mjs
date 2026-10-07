@@ -235,7 +235,9 @@ test("Member detail: free Pro in plain words, with Gift Pro (length) and Turn of
   assert.deepEqual(giftLines(null), []);
   assert.ok(SCRIPT.includes('{ a: "gift-on", t: "Gift Pro", box: "mplan" }'));
   assert.ok(SCRIPT.includes('{ a: "gift-off", t: "Turn off free Pro", box: "mplan" }'));
-  assert.match(SCRIPT, /doAction\(m\.id, GIFT_ON, null, on, \{ months: Number\(sel\.value\) \|\| 0 \}\)/);
+  assert.match(SCRIPT, /doAction\(m\.id, GIFT_ON, null, on, \{ months: Number\(sel\.value\) \|\| 0, tell: !!tell\.checked \}\)/);
+  assert.match(SCRIPT, /const tell = h\("input", \{ id: "gl-tell", type: "checkbox", checked: true \}\)/, "the member page's email box starts ticked");
+  assert.ok(SCRIPT.includes('h("label", { class: "ck" }, [tell, "Email them that Pro is on"])'));
   assert.match(SCRIPT, /const body = Object\.assign\(\{ id: id, action: x\.a \}, extra \|\| \{\}\)/);
   assert.ok(SCRIPT.includes('gift: "Free Pro gift (from you)"') && SCRIPT.includes('list: "Free Pro from the Cloudflare list (PRO_EMAILS)"'));
 });
@@ -321,4 +323,20 @@ test("Diagnose: a listing waiting for the member's next email is labelled so, no
   assert.ok(SCRIPT.includes('["Waiting for their next email", "An earlier check already found it, so it goes out in their next email."]'));
   const leftOut = pickFn("leftOut");
   assert.equal(leftOut({ waiting: true }), false, "it goes out in their next email, so it is kept");
+});
+
+test("Gift Pro form: 'Email them how to start' starts ticked, is sent as tell, and is ticked again after each gift", () => {
+  const mk = markupOf(page);
+  assert.match(mk, /<label class="ck" for="gift-tell"><input id="gift-tell" type="checkbox" checked aria-describedby="gift-tell-hint"> Email them how to start<\/label>/);
+  assert.ok(mk.indexOf('id="gift-tell"') < mk.indexOf('id="gift-go"'), "the box sits above the Gift Pro button");
+  assert.match(mk, /id="gift-tell-hint">They get a short email from Owl &amp; Twig Vintage/);
+  assert.match(SCRIPT, /api\("\/admin\/api\/gift", \{ email: email, note: text, months: months, tell: !!tell\.checked \}\)/);
+  assert.match(SCRIPT, /nt\.value = ""; tell\.checked = true;\n\s*if \(j\.emailed \|\| !\/gift them again\/\.test\(j\.message \|\| ""\)\) len\.value = "0";/, "after a failed email the length stays for the retry the message asks for");
+  assert.match(mk, /The email is only used to switch Pro on and, if the box is ticked, to send them that one email\./);
+});
+
+test("member page Gift Pro: the length picked for a member stays when their card redraws (after a failed email, for the retry)", () => {
+  assert.match(SCRIPT, /if \(S\.glen && S\.glen\.id === m\.id\) sel\.value = S\.glen\.v;/);
+  assert.match(SCRIPT, /sel\.addEventListener\("change", \(\) => \{ S\.glen = \{ id: m\.id, v: sel\.value \}; \}\);/);
+  assert.match(SCRIPT, /giftsAll: false, glen: null \}/);
 });
