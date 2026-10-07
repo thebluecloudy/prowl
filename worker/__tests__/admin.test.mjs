@@ -1094,6 +1094,9 @@ test("gift for a member switches Pro on now; the gift list shows member, dates a
   assert.deepEqual(H.calls.proSet, [false], "a normal (cached) check: the gift comes before Shopify");
   let r = rec(env, L);
   assert.equal(r.pro, true); assert.deepEqual(r.plan, { via: "gift", until: "2026-11-05" }); assert.equal(r.hadPro, true); assert.equal(r.proCheck, "");
+  // a second earlier, so "newest first" does not hang on two gifts saved in the same millisecond
+  const gl = env.PROWL_ALERTS.json("gift:" + giftHashOf(L));
+  env.PROWL_ALERTS.set("gift:" + giftHashOf(L), Object.assign(gl, { added: new Date(Date.parse(gl.added) - 1000).toISOString() }));
   // jane pays in the shop: the owner is told a gift does not cancel that
   j = await (await apiPost(env, H, "/admin/api/gift", { email: EMAIL, months: 0 })).json();
   assert.match(j.message, /subscription in the shop/);
