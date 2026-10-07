@@ -19,7 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
- *   v78: 2026-10-05. Admin area at /admin (admin.js + admin-page.js): sign in with ADMIN_KEY (or OWNER_KEY), 12-hour
+ *   v78: 2026-10-05. Admin area at /admin (admin.js + admin-page.js): sign in with ADMIN_KEY (its own secret, 20+
+ *        characters, never the same as OWNER_KEY, which the public page keeps in the browser), 12-hour
  *        HttpOnly session cookie. Members by pseudonymous id only (no emails, tokens, ZIPs or Shopify ids shown);
  *        find a member by typing their email (hashed, never stored). Support actions (sign-in link, re-check Pro,
  *        re-check today, resend, mail on/off, unpause, sign out all devices, clear seen, delete) and a Diagnose
@@ -221,7 +222,7 @@
 
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
-import { adminFetch, giftPro } from "./admin.js";
+import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
 const WORKER_VERSION = "v78";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
@@ -2827,15 +2828,22 @@ async function giftHash(email) {
 function proList(env) { return String((env && env.PRO_EMAILS) || "").toLowerCase().split(/[\s,]+/).filter(Boolean); }
 function proListHas(env, email) { return proList(env).indexOf(String(email == null ? "" : email).trim().toLowerCase()) !== -1; }
 function proListCount(env) { return new Set(proList(env)).size; }
-async function alPro(env, email, force) {
-  /* v78: free Pro comes first: the PRO_EMAILS list (unless switched off in the admin area), then an admin gift
-     that has not ended (Detroit day). Two KV reads, no Shopify call. */
+/* v78: free Pro for one address: the PRO_EMAILS list (unless switched off in the admin area), then an admin gift
+   that has not ended (Detroit day). Two KV reads (in parallel), no Shopify call. null = no free Pro. */
+async function alFreePro(env, email) {
   const gh = await giftHash(email);
   const [off, gift] = await Promise.all([kvGet(env, "giftoff:" + gh, null), kvGet(env, "gift:" + gh, null)]);
-  const free = giftPro(proListHas(env, email), !!off, gift, gift ? alNow(env).day : "");
-  if (free) return free;
+  return giftPro(proListHas(env, email), !!off, gift, gift ? alNow(env).day : "");
+}
+async function alPro(env, email, force) {
+  /* v78: free Pro comes first; the cached shop answer is read in the same round of KV reads */
+  const [free, c] = await Promise.all([alFreePro(env, email), force ? null : kvGet(env, "pro:" + email, null)]);
+  return free || alProShop(env, email, c);
+}
+/* The 6-hour cache, then the shop's orders. c = the cached pro:<email> record, already read (null when forced). */
+async function alProShop(env, email, c) {
   const ck = "pro:" + email;
-  if (!force) { const c = await kvGet(env, ck, null); if (c && Date.now() - c.at < 6 * 3600 * 1000) return { pro: !!c.pro, via: "cache", plan: c.plan || null }; }
+  if (c && Date.now() - c.at < 6 * 3600 * 1000) return { pro: !!c.pro, via: "cache", plan: c.plan || null };
   if (!env.SHOPIFY_ORDERS_TOKEN) return { pro: null, via: "no token" };
   const since = new Date(Date.now() - PRO_DAYS * 86400000).toISOString().slice(0, 10);
   const q = 'email:"' + email.replace(/"/g, "") + '" AND sku:' + PRO_SKU + " AND created_at:>=" + since;
@@ -2889,11 +2897,24 @@ async function alPro(env, email, force) {
   } catch (e) { return { pro: null, via: "shopify unreachable" }; }
 }
 async function alProSet(env, sub, force) {
-  let p = await alPro(env, sub.email, force);
-  /* v54: a moved member's Pro order can still be under an earlier address */
-  if (p.pro === false && Array.isArray(sub.prev)) for (const old of sub.prev.slice(0, 2)) { const q = await alPro(env, old, force); if (q.pro) { p = q; break; } }
-  /* v78: free Pro from a gift or the PRO_EMAILS list ends with them, even when the shop cannot be asked about a paid plan */
-  if (p.pro === null && sub.plan && (sub.plan.via === "gift" || sub.plan.via === "list")) { sub.pro = false; sub.plan = null; }
+  const prev = Array.isArray(sub.prev) ? sub.prev.slice(0, 2).filter(Boolean) : [];
+  /* v78: free Pro (a gift or the PRO_EMAILS list) on their address or an earlier one comes first, before any Shopify
+     call, read together with the cached shop answer. */
+  const [frees, c] = await Promise.all([Promise.all([sub.email].concat(prev).map(a => alFreePro(env, a))), force ? null : kvGet(env, "pro:" + sub.email, null)]);
+  let p = frees.find(Boolean) || null;
+  if (!p) {
+    p = await alProShop(env, sub.email, c);
+    /* v54: a moved member's Pro order can still be under an earlier address */
+    if (p.pro === false) for (const old of prev) { const q = await alProShop(env, old, force ? null : await kvGet(env, "pro:" + old, null)); if (q.pro) { p = q; break; } }
+    /* v78: free Pro from a gift or the PRO_EMAILS list ends with them, even when the shop cannot be asked about a paid plan */
+    if (p.pro === null && sub.plan && (sub.plan.via === "gift" || sub.plan.via === "list")) { sub.pro = false; sub.plan = null; }
+  } else {
+    /* v78: free Pro hides a free month still running in the shop. Its order and renewal day are kept with the plan,
+       so the email 3 days before the first charge still goes (alTrialPlan). */
+    const old = sub.plan && typeof sub.plan === "object" ? (sub.plan.via === "order" && sub.plan.trial ? sub.plan : sub.plan.shop) : null;
+    if (old && old.trial && old.order && Date.parse(old.renews || "") > Date.now())
+      p = Object.assign({}, p, { plan: Object.assign({}, p.plan, { shop: { trial: true, order: String(old.order), renews: String(old.renews), next: String(old.next || "7.00") } }) });
+  }
   if (p.pro !== null) sub.pro = p.pro;
   if (p.pro !== null) sub.plan = p.plan || null;
   sub.proCheck = p.pro === null ? String(p.via || "check failed").slice(0, 40) : "";   /* v78: shown as "pro check failing" in the admin */
@@ -3076,24 +3097,31 @@ async function alMerge(env, sub, fields) {
 
 /* Check some hunts for one subscriber and hold the new listings. */
 async function alCheck(env, sub, limit, now) {
+  const readDay = sub.day;
   if (sub.day !== now.day) { sub.day = now.day; sub.done = []; }
   const todo = alActive(env, sub).filter(h => sub.done.indexOf(h.toLowerCase()) === -1).slice(0, limit);
   if (!todo.length) return 0;
   const seenArr = await kvGet(env, "seen:" + sub.email, []);
   const seen = {}; seenArr.forEach(u => { seen[u] = 1; });
-  const pend = await kvGet(env, "pend:" + sub.email, {});
+  const found = {}, newKeys = [], checked = [];
   for (const h of todo) {
     const items = await alHunt(env, h, sub);
     /* v50: remembered by URL and by title, so a relisted piece is not new again */
     const fresh = items.filter(x => !seen[x.url] && !seen[alTitleKey(x)]);
-    fresh.forEach(x => { const tk = alTitleKey(x); seen[x.url] = 1; seen[tk] = 1; seenArr.push(x.url, tk); });
-    const cap = alPrefs(sub).freq === "daily" ? AL_PEND_CAP : AL_PEND_CAP * 2;
-    if (fresh.length) pend[h] = (pend[h] || []).concat(fresh).slice(0, cap);
-    sub.done.push(h.toLowerCase());
+    fresh.forEach(x => { const tk = alTitleKey(x); seen[x.url] = 1; seen[tk] = 1; newKeys.push(x.url, tk); });
+    if (fresh.length) found[h] = fresh;
+    sub.done.push(h.toLowerCase()); checked.push(h.toLowerCase());
   }
-  if (!(await kvGet(env, "sub:" + sub.email, null))) return todo.length;   /* v51: unsubscribed while we searched */
-  await kvPut(env, "seen:" + sub.email, seenArr.slice(-AL_SEEN_CAP));
+  const cur = await kvGet(env, "sub:" + sub.email, null);
+  if (!cur) return todo.length;   /* v51: unsubscribed while we searched */
+  /* v78: the owner may have cleared the "already sent" memory, reset today's checks or put today's email back
+     (admin area) while this run searched. What this run found is added to what is stored now, so none of that is undone. */
+  const [seenNow, pend] = await Promise.all([kvGet(env, "seen:" + sub.email, []), kvGet(env, "pend:" + sub.email, {})]);
+  const cap = alPrefs(sub).freq === "daily" ? AL_PEND_CAP : AL_PEND_CAP * 2;
+  Object.keys(found).forEach(h => { pend[h] = (Array.isArray(pend[h]) ? pend[h] : []).concat(found[h]).slice(0, cap); });
+  await kvPut(env, "seen:" + sub.email, (Array.isArray(seenNow) ? seenNow : []).concat(newKeys).slice(-AL_SEEN_CAP));
   await kvPut(env, "pend:" + sub.email, pend);
+  if (String(cur.day || "") !== String(readDay || "")) { sub.day = now.day; sub.done = checked; }   /* reset meanwhile: only what this call checked counts as done */
   await alMerge(env, sub, ["day", "done"]);
   return todo.length;
 }
@@ -3214,7 +3242,11 @@ async function alDigest(env, sub, send) {
   const html = alEmailHtml(Object.assign({}, sub, { allCount: sub.hunts.length }), pend, picks, top, env);
   if (!send) return { sent: false, html: html, subject: alSubject(sub, pend) };
   const r = await alSend(env, sub.email, alSubject(sub, pend), html, alEmailText(sub, pend, env), alUnsubUrl(sub));
-  if (r.ok) await kvPut(env, "pend:" + sub.email, {});
+  if (r.ok) {
+    await kvPut(env, "pend:" + sub.email, {});
+    /* v78: what went out, for two days, so the owner's "Send today's email again" can really send it again */
+    try { await env.PROWL_ALERTS.put("last:" + sub.email, JSON.stringify({ day: alLocal(sub, alNow(env)).day, pend: pend }), { expirationTtl: 2 * 86400 }); } catch (e) { console.error("last mail", String(e && e.message || e)); }
+  }
   return { sent: r.ok, error: r.error, hunts: hunts.length };
 }
 
@@ -3246,6 +3278,11 @@ function alTrialMail(env, sub, kind) {
     "\n\nFirst charge: $7.00 on " + when + ", then $7.00 a month. Cancel any time in your Owl & Twig account under Subscriptions: " + PRO_MANAGE_URL +
     "\nTurning off Prowl emails does not cancel Pro." + alFootText(env, null);
   return { subject: kind === "hi" ? "Your Prowl Pro free month has started" : "Reminder: your Prowl Pro free month ends " + when, html: html, text: text };
+}
+/* v78: the free month whose emails are due: the plan itself, or one a gift or the PRO_EMAILS list now covers (alProSet keeps it as plan.shop) */
+function alTrialPlan(sub) {
+  const p = sub && sub.pro && sub.plan && typeof sub.plan === "object" ? sub.plan : null;
+  return !p ? null : p.trial ? p : p.shop && typeof p.shop === "object" && p.shop.trial ? p.shop : null;
 }
 async function alTrialNotes(env, sub) {
   const p = sub.plan;
@@ -3293,7 +3330,8 @@ async function alTick(env) {
   const note = m => { if (tally.errors.length < 5) tally.errors.push(scrubPII(m).slice(0, 160)); };
   for (const it of subs) {
     const sub = it.sub;
-    if (sub.pro && sub.plan && sub.plan.trial) { try { const tn = await alTrialNotes(env, sub); if (tn) log.push(sub.email + " " + tn); } catch (e) { log.push(sub.email + " trial mail error"); note("trial mail error"); } }   /* v55 */
+    const tp = alTrialPlan(sub);   /* v55; v78: also a free month that a gift now covers */
+    if (tp) { try { const tn = await alTrialNotes(env, tp === sub.plan ? sub : Object.assign({}, sub, { plan: tp })); if (tn) log.push(sub.email + " " + tn); } catch (e) { log.push(sub.email + " trial mail error"); note("trial mail error"); } }
     if (!sub.hunts || !sub.hunts.length) continue;
     if (sub.mail === "off") continue;   /* v55: emails off, membership and Pro stay */
     const loc = alLocal(sub, now);   /* v53: the member's own clock */
@@ -3311,13 +3349,18 @@ async function alTick(env) {
       let r;
       try { r = await alDigest(env, sub, true); } catch (e) { r = { sent: false, error: String(e && e.message || e) }; }
       budget = 0;
-      if (r.sent || r.reason === "nothing new") { sub.sent = loc.day; await alMerge(env, sub, ["sent"]); }
+      /* sent = today's run is finished (an email went, or there was nothing new); v78: mailed = the day an email really went */
+      if (r.sent || r.reason === "nothing new") { sub.sent = loc.day; if (r.sent) sub.mailed = loc.day; await alMerge(env, sub, r.sent ? ["sent", "mailed"] : ["sent"]); }
       log.push(sub.email + " email: " + (r.sent ? "sent" : (r.reason || r.error)));
       if (r.sent) tally.sent++; else if (r.reason !== "nothing new") { tally.failed++; note("email not sent: " + (r.reason || r.error || "unknown")); }
     }
   }
   console.log(JSON.stringify({ alTick: now.day + " " + now.hour + "h", members: names.length, from: off, log: log }));   /* v51: visible in Workers Logs */
-  return { at: now, log: log, members: names.length, checked: tally.checked, sent: tally.sent, failed: tally.failed, errors: tally.errors };
+  /* v78: the admin overview's member counts (numbers only), worked out from the records this run already holds,
+     so the dashboard does not read every member from KV each time it refreshes */
+  let counts = null;
+  try { counts = rosterCounts(env, subs.map(x => x.sub), ADMIN_H, alNow(env), Date.now()); } catch (e) { console.error("admin counts", String(e && e.message || e)); }
+  return { at: now, log: log, members: names.length, checked: tally.checked, sent: tally.sent, failed: tally.failed, errors: tally.errors, counts: counts };
 }
 
 /* v74: hours until this member's email is due today (negative = overdue); not due today sorts last. */
@@ -3643,7 +3686,7 @@ async function alDelete(request, env, origin) {
   const email = alEmail(b.email);
   const sub = email ? await kvGet(env, "sub:" + email, null) : null;
   if (!sub || !alSame(String(b.tok || ""), sub.tok)) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
-  for (const k of ["sub:", "pend:", "seen:", "mvf:"]) await env.PROWL_ALERTS.delete(k + email);
+  for (const k of ["sub:", "pend:", "seen:", "mvf:", "last:"]) await env.PROWL_ALERTS.delete(k + email);   /* v78: last: */
   if (sub.cid) { const c = await kvGet(env, "cid:" + sub.cid, null); if (c && c.email === email) await env.PROWL_ALERTS.delete("cid:" + sub.cid); }
   return json({ ok: true, on: false, wasPro: !!sub.pro }, 200, origin);
 }
@@ -3811,6 +3854,28 @@ async function liveFetch(env, source, term) {
   out.ms = Date.now() - t0;
   return out;
 }
+/* v78: what a member's local hunt searches in their emails: eBay only, near their ZIP code (alHunt), the lean way
+   alerts search it. Same answer shape as liveFetch; the ZIP never leaves the worker. Never throws. */
+async function liveFetchLocal(env, sub, term) {
+  const t0 = Date.now(), out = { source: "ebay", status: 0, ms: 0, items: null, err: "" };
+  try {
+    const p = alPrefs(sub);
+    if (!(env && env.EBAY_CLIENT_ID)) out.err = "eBay is not set up";
+    else {
+      const up = await ebayLean(term, env, ebayLocalFilter(p.zip, p.radius));
+      out.status = up ? up.status : 0;
+      if (up && up.status === 200) {
+        const items = ebayNormalize(up.text);
+        if (items === null) out.err = "could not read the page";
+        else out.items = (items || []).slice(0, AL_PER_SITE).filter(x => x && /^https:\/\//.test(x.url || "")).map(x => ({
+          title: String(x.title || "").slice(0, 160), price: String(x.price || ""), url: x.url,
+          image: /^https:\/\//.test(x.image || "") ? x.image : "", src: "ebay" }));
+      } else out.err = up ? "answered " + up.status : "no answer";
+    }
+  } catch (e) { out.err = scrubPII(String(e && e.message || e)).slice(0, 160) || "unreachable"; }
+  out.ms = Date.now() - t0;
+  return out;
+}
 const PROBE_TERMS = { chairish: "vintage lamp", grailed: "vintage levis" };
 /* v78: one small test search per live marketplace (hourly from the cron, or the admin's "Run health check now") */
 async function runProbes(env) {
@@ -3823,13 +3888,15 @@ async function runProbes(env) {
 const ADMIN_H = {
   kvGet, kvPut, alNow, alLocal, alPrefs, alActive, alSlotHour, alSendDay, alPaused, alFree, alFreeWeekly, alLegacyFree, alUrgency,
   alProSet, alMerge, alSendSignin, alToken, liveSources, liveFetch, jevClean, jevWouldDrop, memberDropReason, alNear, runProbes,
-  capsCall, capsDay, vCount, ipKey, alSame, statTerm, scrubPII, summarize, uptimeFrom, pctFromHist,
+  capsCall, capsDay, vCount, ipKey, ipNet, alSame, statTerm, scrubPII, summarize, uptimeFrom, pctFromHist,
   giftHash, alEmail, proListHas, proListCount,
-  WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE
+  jevResultsMode, liveFetchLocal, alTitleKey,   /* v78: Diagnose follows what alerts really do */
+  WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, AL_PEND_CAP, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE
 };
 
-/* v78: speed, cache hits and errors per route, batched so most requests add no extra call */
-const MBUF = new MetricsBuffer();
+/* v78: speed, cache hits and errors per route, batched so most requests add no extra call. A server error is sent
+   straight away (metrics.js); routine counts wait up to 2 minutes, so a quiet isolate costs few Durable Object calls. */
+const MBUF = new MetricsBuffer({ maxAgeMs: 120000 });
 async function mTrack(request, res, t0, thrown, ctx) {
   const url = new URL(request.url);
   const r = routeKey(url.pathname);
@@ -3839,7 +3906,8 @@ async function mTrack(request, res, t0, thrown, ctx) {
     let m = thrown ? String(thrown && thrown.message || thrown) : "";
     if (!m) { try { const t = await res.clone().text(); try { m = String(JSON.parse(t).error || ""); } catch (e) { m = t.slice(0, 120); } } catch (e) {} }
     ev.err = scrubPII(m).slice(0, 160);
-    ev.q = statTerm(url.searchParams.get("q") || "");
+    const q = statTerm(url.searchParams.get("q") || "");
+    ev.q = q && !looksPersonal(q) ? q : "";   /* a phone number split by dashes or dots passes statTerm; never keep it */
   }
   if (MBUF.add(ev, Date.now())) { const d = MBUF.drain(); if (d) ctx.waitUntil(capsCall("metrics", "mrec", d).catch(() => {})); }
 }
@@ -3850,17 +3918,21 @@ async function cronRun(env) {
   try { r = await alTick(env); } catch (e) { err = String(e && e.message || e); console.error("alTick", err); }   /* v51: never silent */
   try {
     await capsCall("metrics", "mrec", { c: { t: t0, ms: Date.now() - t0, members: (r && r.members) || 0, checked: (r && r.checked) || 0,
-      sent: (r && r.sent) || 0, failed: ((r && r.failed) || 0) + (err ? 1 : 0), errors: err ? [scrubPII("alert clock crashed: " + err).slice(0, 160)] : ((r && r.errors) || []), skipped: (r && r.skipped) || "" } });
+      sent: (r && r.sent) || 0, failed: ((r && r.failed) || 0) + (err ? 1 : 0), errors: err ? [scrubPII("alert clock crashed: " + err).slice(0, 160)] : ((r && r.errors) || []), skipped: (r && r.skipped) || "",
+      counts: (r && r.counts) || null } });
   } catch (e) { console.error("cron metrics", String(e && e.message || e)); }
 }
 
+/* v78: the hourly uptime probes have their own Cron Trigger (wrangler.toml), so they never share the alert clock's
+   per-run budget of outside calls (50 on the free plan) or its connections. */
+const PROBE_CRON = "2 * * * *";
 export default {
   /* v28: the daily-email clock. Cloudflare runs this on the Cron Trigger. */
   async scheduled(event, env, ctx) {
     G_ENV = env;
+    /* v78: one test search per live marketplace each hour, for the uptime numbers */
+    if (event && event.cron === PROBE_CRON) { ctx.waitUntil(runProbes(env).then(p => capsCall("metrics", "mrec", { p: p })).catch(e => console.error("probes", String(e && e.message || e)))); return; }
     ctx.waitUntil(cronRun(env));
-    /* v78: at the top of each hour, one test search per live marketplace, for the uptime numbers */
-    if (new Date().getUTCMinutes() < 5) ctx.waitUntil(runProbes(env).then(p => capsCall("metrics", "mrec", { p: p })).catch(e => console.error("probes", String(e && e.message || e))));
   },
   async fetch(request, env, ctx) {
     G_ENV = env;

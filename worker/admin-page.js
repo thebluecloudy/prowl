@@ -16,14 +16,14 @@ function esc(s) {
 /* Brand tokens shared by both pages. Status colors are fixed across modes and always ship with an icon + word. */
 const BASE_CSS = String.raw`
 :root{color-scheme:light;
---bg:#FAF6EE;--card:#FFFFFF;--card2:#FBF6EE;--ink:#2A140C;--ink2:#5A4033;--mu:#735A4B;--ol:#3B1E12;--hair:#ECE3D6;--hair2:#D8CAB7;
+--bg:#FAF6EE;--card:#FFFFFF;--card2:#FBF6EE;--ink:#2A140C;--ink2:#5A4033;--mu:#735A4B;--ol:#3B1E12;--hair:#ECE3D6;--hair2:#D8CAB7;--field:#8A7262;
 --ac:#C2491F;--onac:#FFFFFF;--amber:#F2A743;--chip:#F4ECDF;--chip2:#FBE6DC;--chip3:#FDF0D5;--link:#A63B15;
 --req:#2a78d6;--err:#d03b3b;--good:#0ca30c;--warn:#fab219;--ser:#ec835a;--crit:#d03b3b;
 --track:#cde2fb;--wtrack:#fbe7bd;--ctrack:#f5d0d0;
 --good-bg:#EAF6E8;--warn-bg:#FFF5DD;--crit-bg:#FCEAEA;--danger:#B42E2E;--ondanger:#FFFFFF;
 --tipbg:#2A140C;--tipfg:#FAF6EE}
 @media (prefers-color-scheme:dark){:root{color-scheme:dark;
---bg:#0B1430;--card:#12204A;--card2:#0F1B3F;--ink:#F1F4FB;--ink2:#C9D3EA;--mu:#A3B1D4;--ol:#9DB7EA;--hair:#24386A;--hair2:#3A528C;
+--bg:#0B1430;--card:#12204A;--card2:#0F1B3F;--ink:#F1F4FB;--ink2:#C9D3EA;--mu:#A3B1D4;--ol:#9DB7EA;--hair:#24386A;--hair2:#3A528C;--field:#6F86BE;
 --ac:#F2A743;--onac:#0B1430;--chip:#1C2D5E;--chip2:#3B2B33;--chip3:#3A3320;--link:#F7C27A;
 --req:#6da7ec;--track:#1f3c70;--wtrack:#4a3c18;--ctrack:#4d2232;
 --good-bg:#11331F;--warn-bg:#352C12;--crit-bg:#3B1824;--danger:#F08A8A;--ondanger:#2A0B0B;
@@ -46,7 +46,7 @@ a{color:var(--link)}
 .btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
 .btn-s{min-height:36px;padding:6px 11px;font-size:13.5px}
 input[type=text],input[type=email],input[type=password],input[type=search],select{font:inherit;font-size:16px;color:var(--ink);background:var(--card);
-  border:2px solid var(--hair2);border-radius:10px;padding:9px 12px;min-height:44px;width:100%;min-width:0}
+  border:2px solid var(--field);border-radius:10px;padding:9px 12px;min-height:44px;width:100%;min-width:0}
 input:focus-visible,select:focus-visible{border-color:var(--ac);outline-offset:0}
 label{font-weight:650}
 .hint{color:var(--mu);font-size:13px;margin:8px 0 0}
@@ -84,7 +84,7 @@ export function loginPage(nonce, message) {
     '<label for="key">Admin key</label>' +
     '<input id="key" name="key" type="password" autocomplete="current-password" required autofocus spellcheck="false">' +
     '<button class="btn btn-p" type="submit">Sign in</button>' +
-    '<p class="hint">Use the admin key from Cloudflare (ADMIN_KEY, or OWNER_KEY).</p>' +
+    '<p class="hint">Use the admin key from Cloudflare (the ADMIN_KEY secret).</p>' +
     "</form></main></body></html>";
 }
 
@@ -100,6 +100,7 @@ const APP_CSS = String.raw`
 .tools form{margin:0}
 .upd{font-size:13px;color:var(--mu);font-variant-numeric:tabular-nums}
 .tabbar{position:sticky;top:0;z-index:5;background:var(--bg);margin-top:10px;border-bottom:2px solid var(--ol)}
+.card,.view{scroll-margin-top:60px}
 .tabs{display:flex;justify-content:space-between}
 .tab{font:inherit;font-weight:650;font-size:13px;color:var(--ink2);background:none;border:0;border-bottom:4px solid transparent;
   padding:12px 3px 9px;min-height:46px;cursor:pointer;white-space:nowrap;text-align:center}
@@ -255,7 +256,7 @@ th:last-child,td:last-child{padding-right:0}
   .mrow,.mhead{display:grid;grid-template-columns:130px 110px 80px 70px 110px 110px minmax(0,1fr);gap:12px;padding:10px 6px}
   .mhead{display:grid}
   .c-meta{display:contents}
-  .lbl{display:none}
+  .lbl{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
   .c-flags:empty{display:block}
 }
 @media (max-width:859px){.mgrid .stack{display:contents}.o1{order:1}.o2{order:2}.o3{order:3}.o4{order:4}.o5{order:5}.o6{order:6}}
@@ -592,7 +593,7 @@ tabBtns.forEach((b, i) => {
 addEventListener("popstate", route);
 $("#refresh").addEventListener("click", () => {
   if (S.tab === "overview") loadOverview();
-  else if (S.tab === "members") { if (S.memberId) openMember(S.memberId, true); else { loadMembers(); loadGifts(); } }
+  else if (S.tab === "members") { if (S.memberId) openMember(S.memberId, true); else { loadMembers(true); loadGifts(); } }
   else if (S.tab === "errors") loadErrors();
   else if (S.tab === "searches") loadSearches();
   else if (S.tab === "diagnose") { if (!S.ov) loadOverview(); stamp(); }
@@ -621,8 +622,10 @@ async function loadOverview() {
 function renderOverview(ov) {
   fill($("#ov"), [banner(ov), tiles(ov), marketsCard(ov), h("div", { class: "two" }, [alertsCard(ov), aiCard(ov)]),
     routesCard(ov), errorsCard(ov), h("div", { class: "two" }, [topCard(ov), auditCard(ov)])]);
+  /* the late list reads every member, so it loads when the owner asks for it (then at most every 5 minutes) */
   const a = ov.alerts;
-  if (a && a.late > 0) loadLate(); else S.late = null;
+  if (!(a && a.late > 0)) { S.late = null; S.lateOpen = false; }
+  else if (S.lateOpen && (!S.late || Date.now() - S.lateAt > 300000)) loadLate();
 }
 function pools(ov) { return ov && ov.ai && Array.isArray(ov.ai.pools) ? ov.ai.pools : null; }
 function poolPct(p) { return p.pct != null ? Number(p.pct) : p.limit ? (Number(p.used) || 0) / p.limit * 100 : 0; }
@@ -660,8 +663,11 @@ function jump(where) {
 }
 function banner(ov) {
   const p = problems(ov);
-  if (!p.length) return h("section", { class: "banner ok", "aria-label": "Status" }, [icon("good", true), h("div", [h("h2", { text: "All systems normal" }),
-    h("p", { text: "Every marketplace answered its last check, alert emails are on time and nothing is near a limit." })])]);
+  /* before the first hourly check (a fresh deploy) there is nothing to say about the marketplaces yet */
+  const unchecked = Array.isArray(ov.uptime) && !ov.uptime.length;
+  if (!p.length) return h("section", { class: "banner ok", "aria-label": "Status" }, [icon("good", true), h("div", [h("h2", { text: unchecked ? "No problems found" : "All systems normal" }),
+    h("p", { text: unchecked ? "No marketplace has been checked yet (a test search runs every hour, or press Run health check now). Alert emails are on time and nothing is near a limit."
+      : "Every marketplace answered its last check, alert emails are on time and nothing is near a limit." })])]);
   const worst = p.some(x => x.lv === "critical") ? "critical" : "warning";
   p.sort((x, y) => (x.lv === "critical" ? 0 : 1) - (y.lv === "critical" ? 0 : 1));
   return h("section", { class: "banner " + worst, "aria-label": "Status" }, [icon(worst, true), h("div", { class: "grow" }, [
@@ -677,7 +683,7 @@ function tiles(ov) {
   const m = ov.members, a = ov.alerts, tr = ov.traffic, up = Array.isArray(ov.uptime) ? ov.uptime : null;
   const live = tr && (tr.live || null), tot = tr && tr.totals, ser = tr && tr.series;
   const T = [];
-  T.push(tile("Members", m ? num(m.total) : "\u2014", m ? [num(m.pro) + " Pro" + (m.gifted ? " (" + num(m.gifted) + " free)" : ""), m.trial ? num(m.trial) + " on trial" : null,
+  T.push(tile("Members", m ? num(m.total) : "\u2014", m ? [num(m.pro) + " Pro" + (m.gifted ? " (" + num(m.gifted) + " free Pro)" : ""), m.trial ? num(m.trial) + " on trial" : null,
     num(m.new7d) + " new this week"].filter(Boolean).join(" \u00b7 ") : "Could not load"));
   const counts = a && a.sentToday != null ? a : null;   /* per-member counts are null when the member list failed */
   const checked = counts && (a.checkedToday != null ? a.checkedToday : a.huntsCheckedToday);
@@ -764,8 +770,10 @@ function tableOf(cols, rows, caption, stack) {
 function marketsCard(ov) {
   const up = Array.isArray(ov.uptime) ? ov.uptime : null;
   const hbox = h("div", { class: "hbox" }, healthView());
-  const btn = h("button", { class: "btn btn-s", type: "button", text: "Run health check now" });
+  /* the overview redraws every minute; a check still running keeps the new button disabled too */
+  const btn = h("button", { class: "btn btn-s", type: "button", text: "Run health check now", disabled: !!(S.health && S.health.busy) });
   btn.addEventListener("click", async () => {
+    if (S.health && S.health.busy) return;
     btn.disabled = true; S.health = { busy: true }; fill(hbox, healthView());
     try {
       const j = await api("/admin/api/healthcheck", {});
@@ -780,7 +788,7 @@ function marketsCard(ov) {
   });
   let body;
   if (!up) body = note("warn", "Uptime could not be loaded right now.");
-  else if (!up.length) body = h("p", { class: "empty", text: "No checks yet. A test search runs on each marketplace at the top of every hour, or press Run health check now." });
+  else if (!up.length) body = h("p", { class: "empty", text: "No checks yet. A test search runs on each marketplace every hour, or press Run health check now." });
   else body = tableOf([{ t: "Marketplace" }, { t: "Status", bare: 1 }, { t: "Up (24 h)", num: 1 }, { t: "Up (7 days)", num: 1 }, { t: "Last check" }, { t: "Speed", num: 1 }, { t: "Listings", num: 1 }, { t: "Note", cls: "wide" }],
     up.map(u => [h("span", { class: "term", text: srcName(u.source) }), u.down ? st("critical", "Down") : st("good", "Up"),
       u.pct24 == null ? "\u2014" : pc(u.pct24), u.pct7d == null ? "\u2014" : pc(u.pct7d),
@@ -811,6 +819,7 @@ function alertsCard(ov) {
   const lateBox = h("div", { id: "late" });
   if (a.late > 0) fill(lateBox, lateView());
   return card("alerts", "Alert emails", null, [run,
+    ov.countsAt ? h("p", { class: "hint", text: "Member numbers as of " + fmtWhen(ov.countsAt) + " (they are worked out by each alert run, every few minutes)." }) : null,
     h("dl", { class: "facts" }, [
       fact("Due today", num(a.dueToday)), fact("Sent today", num(a.sentToday)), fact("Late", a.late > 0 ? st("warning", num(a.late)) : num(a.late)),
       fact("Hunts left to check today", num(a.huntsLeftToday)), fact("Runs in last 24 h", num(a.cronRuns24h)), fact("Runs with problems (24 h)", a.cronFails24h > 0 ? st("warning", num(a.cronFails24h)) : num(a.cronFails24h))]),
@@ -821,6 +830,8 @@ function alertsCard(ov) {
 }
 function fact(k, v) { return h("div", [h("dt", { text: k }), h("dd", null, v)]); }
 async function loadLate() {
+  S.lateOpen = true; S.lateAt = Date.now();
+  if (!S.late) { const b0 = $("#late"); if (b0) fill(b0, lateView()); }
   try {
     const j = await api("/admin/api/members?filter=late&sort=lastSent");
     S.late = Array.isArray(j.members) ? j.members : [];
@@ -831,6 +842,7 @@ async function loadLate() {
 function lateView() {
   const L = S.late;
   const head = h("h3", { class: "small more", text: "Late today" });
+  if (!S.lateOpen) return [head, h("button", { class: "btn btn-s", type: "button", text: "Show who is late", onclick: loadLate })];
   if (!L) return [head, loading("Finding who is late\u2026")];
   if (L.error) return [head, note("warn", "Could not list late members. " + L.error)];
   if (!L.length) return [head, h("p", { class: "empty small", text: "No one is late any more." })];
@@ -849,8 +861,15 @@ function aiCard(ov) {
     return h("li", [h("div", { class: "mh" }, [h("span", { text: p.name || p.key }), h("span", { class: "v" }, [
       v >= 100 ? st("critical", "Full") : v >= 90 ? st("warning", "Nearly full") : null, num(p.used) + " of " + num(p.limit)])]),
       h("div", { class: "meter" + cls, role: "meter", "aria-valuemin": "0", "aria-valuemax": String(p.limit || 0), "aria-valuenow": String(Number(p.used) || 0), "aria-label": (p.name || p.key) + " used today" }, bar)]);
-  })), "Daily limits reset at midnight.");
+  })), "Daily limits reset at " + utcMidnight().time + " your time (midnight UTC).");
 }
+/* The daily limits and "today" in Top searches follow the UTC day: in Detroit it starts at 8 PM (7 PM in winter). */
+function utcMidnight(prev) {
+  const n = new Date(), d = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() + (prev ? 0 : 1)));
+  const time = d.getHours() || d.getMinutes() ? d.toLocaleTimeString([], d.getMinutes() ? { hour: "numeric", minute: "2-digit" } : { hour: "numeric" }) : "midnight";
+  return { time: time, yesterday: !sameDay(d, n) };
+}
+function todayHint() { const u = utcMidnight(true); return "\u201cToday\u201d counts from " + u.time + (u.yesterday ? " yesterday" : "") + " your time (midnight UTC)."; }
 function routesCard(ov) {
   const tr = ov.traffic;
   if (!tr) return card("routes", "Speed by page", null, note("warn", "Speed numbers could not be loaded right now."));
@@ -891,8 +910,9 @@ function topCard(ov) {
     h("button", { type: "button", "aria-pressed": S.top === o[0] ? "true" : "false", "data-k": o[0], text: o[1], onclick: () => {
       S.top = o[0]; const old = $("#ov-top"), nw = topCard(S.ov); old.replaceWith(nw); $("[data-k=" + o[0] + "]", nw).focus(); } })));
   const T = s && Array.isArray(s[S.top]) ? s[S.top] : null;   /* each period is null on its own when it failed */
+  const hint = S.top === "today" ? h("p", { class: "hint", text: todayHint() }) : null;
   if (!T) return card("top", "Top searches", seg, note("warn", "Top searches could not be loaded right now."));
-  return card("top", "Top searches", seg, T.length ? tableOf(TOP_COLS, topRows(T), "Top searches") : h("p", { class: "empty", text: "No searches recorded yet for this period." }));
+  return card("top", "Top searches", seg, [T.length ? tableOf(TOP_COLS, topRows(T), "Top searches") : h("p", { class: "empty", text: "No searches recorded yet for this period." }), hint]);
 }
 function auditRows(A) {
   return A.map(x => [h("span", { class: "nw", text: fmtWhen(x.t) }), AUDIT[x.action] || String(x.action || "\u2014"),
@@ -923,7 +943,9 @@ $("#findf").addEventListener("submit", async e => {
   msg.textContent = "Looking\u2026";
   try {
     const j = await api("/admin/api/find", { email: email });
-    msg.textContent = j.moved ? "Found " + j.id + " by an address they used before." : "";
+    msg.textContent = "";
+    /* the list (and this box) is hidden once the member opens, so say it where the owner is looking */
+    if (j.moved) toast("Found " + j.id + " by an email address they used before. They use a different one now.");
     if (j.id) openMember(j.id);
   } catch (err) { if (err.status !== 401) msg.textContent = err.message; }
 });
@@ -994,12 +1016,13 @@ async function removeGift(g, btn) {
     toast(e.message, true); btn.disabled = false; btn.textContent = was;
   }
 }
-async function loadMembers() {
+/* fresh: the Refresh button reads every member again now (otherwise the server keeps the list up to 10 minutes) */
+async function loadMembers(fresh) {
   const box = $("#mrows"), seq = ++S.mSeq;
   if (!S.mData) fill(box, loading("Loading members\u2026"));
   box.classList.add("busy");
   try {
-    const j = await api("/admin/api/members?filter=" + encodeURIComponent(S.mFilter) + "&sort=" + encodeURIComponent(S.mSort));
+    const j = await api("/admin/api/members?filter=" + encodeURIComponent(S.mFilter) + "&sort=" + encodeURIComponent(S.mSort) + (fresh === true ? "&fresh=1" : ""));
     if (seq !== S.mSeq) return;
     S.mData = j; S.mAt = Date.now(); renderMembers(j); stamp();
   } catch (e) {
@@ -1028,7 +1051,7 @@ function mrow(m) {
     h("span", { class: "c-meta" }, [
       h("span", [h("span", { class: "lbl", text: "Hunts " }), num(m.active) + " / " + num(m.hunts)]),
       h("span", [h("span", { class: "lbl", text: "Emails " }), m.mail === "off" ? "Off" : "On"]),
-      h("span", [h("span", { class: "lbl", text: "Last email " }), m.lastSent ? fmtDay(m.lastSent) : "Never"]),
+      h("span", [h("span", { class: "lbl", text: "Last email " }), m.lastSent ? fmtDay(m.lastSent) : "None recorded"]),
       h("span", [h("span", { class: "lbl", text: "Checked today " }), num(m.checkedToday) + " / " + num(m.activeToday)])]),
     h("span", { class: "c-flags" }, (Array.isArray(m.flags) ? m.flags : []).map(flagChip))]);
 }
@@ -1042,6 +1065,7 @@ async function openMember(id, fromRoute) {
   if (!fromRoute) { const fromList = S.tab === "members" && !S.memberId; history.pushState(null, "", "#member/" + id); S.pushed = fromList; }
   const fresh = S.memberId !== id;
   S.memberId = id;
+  $("#find-msg").textContent = "";
   selectTab("members", true);
   $("#mlist").hidden = true; $("#mdetail").hidden = false;
   const body = $("#mbody");
@@ -1073,7 +1097,7 @@ function renderMember(m) {
     h("p", { class: "dline", text: (m.created ? "Member since " + fmtDay(m.created) + ". " : "") + (FREQ[m.freq || P.freq] || "Emails") + " at " + clock(m.slotHour != null ? m.slotHour : P.slotHour) +
       " their time" + ((m.tz || P.tz) ? " (" + (m.tz || P.tz) + ")" : "") + "." }),
     h("dl", { class: "facts f4" }, [fact("Hunts active", num(m.active) + " of " + num(Array.isArray(m.hunts) ? m.hunts.length : m.hunts)),
-      fact("Last email", m.lastSent ? fmtDay(m.lastSent) : "Never"), fact("Checked today", num(m.checkedToday) + " of " + num(m.activeToday)),
+      fact("Last email", m.lastSent ? fmtDay(m.lastSent) : "None recorded"), fact("Checked today", num(m.checkedToday) + " of " + num(m.activeToday)),
       fact("Email due today", m.late ? st("warning", "Late") : m.dueToday ? "Yes" : "No")])]);
   const flagsCard = h("section", { class: "card" }, [h("div", { class: "ch" }, h("h3", { text: "What needs attention" })),
     flags.length ? h("ul", { class: "flags" }, flags.map(f => h("li", [ISSUE_FLAGS.indexOf(f) >= 0 ? icon("warning") : icon("info"), h("div", [h("b", { text: cap(f) }), h("span", { class: "muted small", text: FLAGS[f] || "" })])])))
@@ -1114,6 +1138,7 @@ function giftLines(g) {
   if (g.listed) L.push(g.listOff ? "In the Cloudflare list (PRO_EMAILS), but turned off here" : "Free Pro from the Cloudflare list");
   if (g.source === "gift" || g.ended || g.added) L.push((g.ended ? "Free Pro gift ended " + (g.until ? fmtDay(g.until) : "") : "Free Pro gift \u2014 " + (g.until ? "ends " + fmtDay(g.until) : "no end")) +
     (g.note ? " (" + g.note + ")" : ""));
+  if (g.earlier && L.length) L.push("This is for an email address they used before.");
   return L;
 }
 const GIFT_ON = { a: "gift-on", t: "Gift Pro", box: "mplan" }, GIFT_OFF = { a: "gift-off", t: "Turn off free Pro", box: "mplan" };
@@ -1170,9 +1195,9 @@ const ACTIONS = [
   { a: "signin-link", t: "Send sign-in link", p: "Emails them a one-time link to their alerts page. Use it when they cannot sign in. It works once, for 24 hours." },
   { a: "refresh-pro", t: "Re-check Pro", p: "Asks the shop again whether they have Prowl Pro. Use it when they paid but still see the free plan." },
   { a: "recheck-today", t: "Re-check hunts today", p: "Starts today's checks over, so every hunt is searched again over the next alert runs (every few minutes). If today's email has not gone out yet, it still goes today." },
-  { a: "resend-today", t: "Send today's email again", p: "Re-checks every hunt and sends today's email again after that, even if one already went out." },
-  { a: "mail-off", t: "Turn emails off", p: "Stops their alert emails. Their hunts and plan stay as they are.", when: m => m.mail !== "off" },
-  { a: "mail-on", t: "Turn emails on", p: "Starts their alert emails again (for example after an accidental unsubscribe).", when: m => m.mail === "off" },
+  { a: "resend-today", t: "Send today's email again", p: "If today's email went out, sends it again in a few minutes (for example when it never arrived), with anything new added. If no email went out today, it only checks their hunts again, and sends one only if something new turns up." },
+  { a: "mail-off", t: "Turn emails off", p: "Stops their alert emails. Their hunts and plan stay as they are; listings waiting for their next email are dropped.", when: m => m.mail !== "off" },
+  { a: "mail-on", t: "Turn emails on", p: "Starts their alert emails again (for example after an accidental unsubscribe), from their next email day after today.", when: m => m.mail === "off" },
   { a: "unpause", t: "Unpause", p: "Ends their pause now, so emails start again on their next email day.", when: m => !!m.paused },
   { a: "signout-all", t: "Sign out all devices", p: "Signs them out everywhere, for example if they think someone else has access. They can sign back in with a new link.", confirm: true },
   { a: "clear-seen", t: "Clear \u201calready sent\u201d memory", p: "Prowl remembers every listing it has emailed so it never sends one twice. Clearing this lets older listings come back in their next email.", confirm: true },
@@ -1295,8 +1320,9 @@ async function runDiag() {
     const j = await api("/admin/api/diagnose", body);
     if (seq !== S.diagSeq) return;
     S.diagRes = j; S.diagShow = "all"; renderDiag(j);
-    const sm = j.summary || {};
-    say.textContent = "Done: " + num(sm.ok) + " of " + num(sm.sources) + " marketplaces answered, " + plural(sm.items, "listing", "listings") + " found, AI would hide " + num(sm.aiDropped) + ".";
+    const sm = j.summary || {}, live = aiLive(j);
+    say.textContent = "Done: " + num(sm.ok) + " of " + num(sm.sources) + " marketplaces answered, " + plural(sm.items, "listing", "listings") + " found, " +
+      (live ? "AI hides " + num(sm.aiDropped) : "AI would hide " + num(sm.aiWould != null ? sm.aiWould : sm.aiDropped) + " if AI sorting were on") + ".";
   } catch (e) {
     if (e.status === 401 || seq !== S.diagSeq) return;
     say.textContent = "";
@@ -1318,6 +1344,9 @@ const AI_STATUS = { "no key": "AI sorting is not set up (no AI key), so the AI d
   "AI check failed": "The AI check failed, so the AI did not check these listings.",
   off: "AI sorting is switched off, so the AI did not check these listings." };
 function leftOut(it) { return !!(it.aiDrop || it.memberDrop || it.alreadySent); }
+/* the server says whether the AI really hides listings right now (JEV_RESULTS "on", and for a member's emails ALERT_JEV
+   and their own switch); older answers without it are read as on */
+function aiLive(j) { return !(j && j.ai && j.ai.live === false); }
 function itemRow(it) {
   const u = https(it.url), img = https(it.image), out = leftOut(it);
   return h("li", { class: "item" + (out ? " out" : "") }, [
@@ -1325,7 +1354,7 @@ function itemRow(it) {
     h("div", { class: "ib" }, [
       u ? h("a", { class: "it", href: u, target: "_blank", rel: "noopener noreferrer", text: it.title || "(no title)" }) : h("span", { class: "it", text: it.title || "(no title)" }),
       h("div", { class: "ip", text: [it.price, srcName(it.src)].filter(Boolean).join(" \u00b7 ") }),
-      h("div", { class: "badges" }, [aiBadge(it), it.aiDrop ? h("span", { class: "bdg b-pro", text: "AI hides" }) : null,
+      h("div", { class: "badges" }, [aiBadge(it), it.aiDrop ? h("span", { class: "bdg b-pro", text: "AI hides" }) : it.aiWould ? h("span", { class: "bdg b-out", text: "AI would hide (not on)" }) : null,
         it.memberDrop ? h("span", { class: "bdg b-trial", text: "Their filter: " + it.memberDrop }) : null,
         it.alreadySent ? h("span", { class: "bdg b-out", text: "Already emailed" }) : null]),
       h("div", { class: "io" }, out ? st("serious", "Left out") : st("good", "Kept"))])]);
@@ -1334,11 +1363,12 @@ function legend() {
   const rows = [["AI: Match", "Prowl's AI thinks it is what was searched for."], ["AI: Lot or set", "A bundle that includes the item among other things."],
     ["AI: Reproduction", "Likely a new copy, reissue or 'style' piece rather than an original."], ["AI: Part or accessory", "A part, lid, manual or box rather than the piece itself."],
     ["AI: Wrong item", "Only shares a word with the search (a person, a card, a different object)."], ["AI: Match 85%", "The number is how sure the AI is."],
-    ["AI hides", "Part or wrong item, 70% sure or more: left out of emails and live results."],
+    ["AI hides", "Part or wrong item, 70% sure or more: left out of emails and live results while AI sorting is switched on."],
+    ["AI would hide (not on)", "The AI flags it, but AI sorting is not switched on where these results go, so it is still shown and emailed."],
     ["Their filter", "The member's own settings leave it out (their sites, max price or skip words)."],
     ["Already emailed", "They were sent this listing before, so it is not sent again."]];
   const d = h("details", { class: "legend card", open: S.legendOpen !== false }, [h("summary", { text: "What the badges mean" }),
-    h("dl", rows.map(r => [h("dt", null, h("span", { class: "bdg" + (r[0] === "AI hides" ? " b-pro" : r[0] === "Their filter" ? " b-trial" : r[0] === "Already emailed" ? " b-out" : ""), text: r[0] })), h("dd", { text: r[1] })]))]);
+    h("dl", rows.map(r => [h("dt", null, h("span", { class: "bdg" + (r[0] === "AI hides" ? " b-pro" : r[0] === "Their filter" ? " b-trial" : r[0] === "Already emailed" || r[0] === "AI would hide (not on)" ? " b-out" : ""), text: r[0] })), h("dd", { text: r[1] })]))]);
   d.addEventListener("toggle", () => { S.legendOpen = d.open; });
   return d;
 }
@@ -1353,10 +1383,17 @@ function renderDiag(j) {
     notes.push(note("info", "Using " + mb.id + "'s settings (" + parts.join("; ") + ")" + (mb.pro ? ", Pro member." : ".")));
     if (mb.aiOff) notes.push(note("warn", "This member turned AI sorting off, so the AI was not run and hides nothing for them."));
   } else notes.push(note("info", "No member chosen, so only the AI is applied (as in live results on the Prowl page)."));
-  if (j.local) notes.push(note("info", "This is a local hunt: eBay searches near the member's ZIP code (the ZIP is not shown)."));
+  const live = aiLive(j), ai = j.ai || {};
+  if (!live && !(mb && mb.aiOff)) notes.push(note("warn", ai.mode !== "on" ? "AI sorting is not switched on (JEV_RESULTS is \u201c" + (ai.mode || "off") + "\u201d in Cloudflare): the AI labels listings but hides nothing, in live results or emails."
+    : "AI sorting is switched off for alert emails (ALERT_JEV is \u201coff\u201d in Cloudflare): the AI labels listings but hides nothing from emails."));
+  if (j.hunt === "muted") notes.push(note("warn", "They muted this hunt, so their emails do not search it at all."));
+  else if (j.hunt === "over plan limit") notes.push(note("warn", "This hunt is past the number of hunts their plan checks, so their emails do not search it at all."));
+  if (j.local) notes.push(note("info", j.localOnly ? "This is a local hunt: their emails search only eBay, near their ZIP code, so that is what was searched here (the ZIP is not shown)."
+    : "This is a local hunt: their emails search eBay near their ZIP code (the ZIP is not shown)."));
   const summary = h("section", { class: "card" }, [h("div", { class: "ch" }, h("h2", { text: "Results for \u201c" + (j.term || "") + "\u201d" })),
     h("dl", { class: "dsum" }, [fact("Marketplaces answered", num(sm.ok) + " of " + num(sm.sources)), fact("Listings found", num(sm.items)),
-      fact("AI would hide", num(sm.aiDropped)), fact("Their filters hide", mb ? num(sm.memberDropped) : "\u2014"), fact("Already emailed", mb ? num(sm.alreadySent) : "\u2014")]),
+      live ? fact("AI hides", num(sm.aiDropped)) : fact("AI would hide (not on)", num(sm.aiWould != null ? sm.aiWould : sm.aiDropped)),
+      fact("Their filters hide", mb ? num(sm.memberDropped) : "\u2014"), fact("Already emailed", mb ? num(sm.alreadySent) : "\u2014")]),
     h("div", { class: "stack more" }, notes)]);
   const show = h("div", { class: "chips", role: "group", "aria-label": "Show listings" }, [["all", "All listings"], ["out", "Left out"], ["kept", "Kept"]].map(o =>
     h("button", { class: "chip", type: "button", "aria-pressed": S.diagShow === o[0] ? "true" : "false", "data-k": o[0], text: o[1], onclick: () => {
@@ -1367,7 +1404,7 @@ function sourceCard(r) {
   const ok = r.status === 200 && !r.err;
   const items = Array.isArray(r.items) ? r.items : [];
   const shown = items.filter(it => S.diagShow === "all" || (S.diagShow === "out" ? leftOut(it) : !leftOut(it)));
-  const ai = items.filter(it => it.aiDrop).length, mine = items.filter(it => it.memberDrop).length, sent = items.filter(it => it.alreadySent).length;
+  const live = aiLive(S.diagRes), ai = items.filter(it => live ? it.aiDrop : it.aiWould).length, mine = items.filter(it => it.memberDrop).length, sent = items.filter(it => it.alreadySent).length;
   const list = h("ul", { class: "items" });
   const LIMIT = 12;
   put(list, shown.slice(0, LIMIT).map(itemRow));
@@ -1375,10 +1412,11 @@ function sourceCard(r) {
   if (more) more.addEventListener("click", () => { put(list, shown.slice(LIMIT).map(itemRow)); more.remove(); });
   return h("section", { class: "card" }, [
     h("div", { class: "srch" }, [h("h3", { text: srcName(r.source) }), ok ? st("good", "Answered") : st("critical", "Failed"), h("span", { class: "muted small", text: r.ms != null ? "in " + secs(r.ms) : "" })]),
-    h("p", { class: "cnt", text: [num(r.count != null ? r.count : items.length) + " found", ai + " AI would hide", mine + " their filters hide", sent + " already emailed",
+    h("p", { class: "cnt", text: [num(r.count != null ? r.count : items.length) + " found", ai + (live ? " AI hides" : " AI would hide (not on)"), mine + " their filters hide", sent + " already emailed",
       num(r.kept != null ? r.kept : items.length - items.filter(leftOut).length) + " kept"].join(" \u00b7 ") }),
     !ok ? note("bad", r.err || ("Answered " + (r.status || "nothing"))) : null,
     r.ai && !AI_FINE.test(r.ai) && items.length ? note("warn", AI_STATUS[r.ai] || "AI: " + r.ai) : null,
+    r.aiAllFlagged ? note("info", "The AI flagged every listing here, so it hides none of them (it never empties a list).") : null,
     ok && !items.length ? h("p", { class: "empty", text: "No listings came back for this search." }) : null,
     items.length && !shown.length ? h("p", { class: "empty", text: "None in this view." }) : null,
     shown.length ? list : null, more]);
@@ -1413,7 +1451,8 @@ async function loadSearches() {
     const j = await api("/admin/api/searches?days=" + S.sDays);
     if (seq !== S.sSeq) return;
     const T = Array.isArray(j.top) ? j.top : [];
-    fill(box, T.length ? tableOf(TOP_COLS, topRows(T), "Top searches") : h("p", { class: "empty", text: "No searches recorded for this period yet." }));
+    fill(box, [T.length ? tableOf(TOP_COLS, topRows(T), "Top searches") : h("p", { class: "empty", text: "No searches recorded for this period yet." }),
+      S.sDays === 1 ? h("p", { class: "hint", text: todayHint() }) : null]);
     stamp();
   } catch (e) { if (e.status !== 401 && seq === S.sSeq) fill(box, note("bad", "Could not load searches. " + e.message, loadSearches)); }
   finally { if (seq === S.sSeq) box.classList.remove("busy"); }
@@ -1433,10 +1472,11 @@ function appBody() {
     '<header class="top"><div class="wrap top-in"><div class="brand">' + MARK + '<h1>Prowl admin</h1><span class="ver" id="ver"></span></div>' +
     '<div class="tools"><span class="upd" id="upd">Loading&hellip;</span>' +
     '<button class="btn btn-s" id="refresh" type="button">Refresh</button>' +
-    '<form method="post" action="/admin/logout"><button class="btn btn-s" type="submit">Sign out</button></form></div></div>' +
+    '<form method="post" action="/admin/logout"><button class="btn btn-s" type="submit">Sign out</button></form></div></div></header>' +
+    /* outside the header: a sticky element only sticks within its parent, and the header is just as tall as itself */
     '<div class="tabbar"><div class="wrap"><nav class="tabs" role="tablist" aria-label="Admin sections">' +
     tab("overview", "Overview") + tab("members", "Members") + tab("diagnose", "Diagnose") + tab("errors", "Errors") + tab("searches", "Searches") +
-    "</nav></div></div></header>" +
+    "</nav></div></div>" +
     '<main id="main" class="wrap">' +
     panel("overview", '<div class="view" id="ov"></div>') +
     panel("members",

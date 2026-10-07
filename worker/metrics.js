@@ -95,11 +95,15 @@ function stats(a) {
 
 /* ---------- worker-side buffer ----------
    One isolate sees a trickle of requests; writing each to the Durable Object would cost a call per request,
-   so they are summed here and sent in one go every maxEvents requests or maxAgeMs, whichever comes first. */
+   so they are summed here and sent in one go every maxEvents requests or maxAgeMs, whichever comes first.
+   Nothing flushes a buffer whose isolate goes quiet, so a server error (5xx) asks for a flush straight away:
+   the rare errors are the records the owner most needs. At most one such early flush per errEveryMs, so an
+   error storm still goes out in batches. */
 export class MetricsBuffer {
   constructor(opts) {
     const o = opts || {};
     this.maxEvents = o.maxEvents || 20; this.maxAgeMs = o.maxAgeMs || 30000; this.maxErrors = o.maxErrors == null ? 20 : o.maxErrors;
+    this.errEveryMs = o.errEveryMs == null ? 5000 : o.errEveryMs; this.lastErrFlush = 0;
     this.reset();
   }
   reset() { this.b = {}; this.e = []; this.count = 0; this.first = 0; }
@@ -111,8 +115,10 @@ export class MetricsBuffer {
     const k = hourKey(now) + "|" + ev.r;
     addToAgg(this.b[k] || (this.b[k] = emptyAgg()), ev);
     /* an error storm keeps its count in the aggregate but only the first few messages */
-    if (Number(ev.s) >= 500 && this.e.length < this.maxErrors) this.e.push({ t: now, r: ev.r, s: Number(ev.s), m: txt(ev.err, 160), q: txt(ev.q, 60) });
+    const err = Number(ev.s) >= 500;
+    if (err && this.e.length < this.maxErrors) this.e.push({ t: now, r: ev.r, s: Number(ev.s), m: txt(ev.err, 160), q: txt(ev.q, 60) });
     this.count += 1;
+    if (err && now - this.lastErrFlush >= this.errEveryMs) { this.lastErrFlush = now; return true; }
     return this.due(now);
   }
   drain() {
@@ -124,8 +130,8 @@ export class MetricsBuffer {
 }
 
 /* ---------- Durable Object side ----------
-   Runs inside the "metrics" Caps object. Prefixes x: y: z: p: a: belong to metrics only (Caps itself uses
-   c: v: s: n: m:). Records are rebuilt field by field, so whatever is stored has a known shape. */
+   Runs inside the "metrics" Caps object. Prefixes x: y: z: p: a: (and q:, the trim counters) belong to metrics
+   only (Caps itself uses c: v: s: n: m:). Records are rebuilt field by field, so whatever is stored has a known shape. */
 const CAP = { "y:": 500, "z:": 400, "a:": 300 };
 const rand4 = () => { const b = new Uint8Array(2); crypto.getRandomValues(b); return Array.from(b, x => x.toString(16).padStart(2, "0")).join(""); };
 const BKEY = /^\d{4}-\d{2}-\d{2}T\d{2}\|[a-z0-9:_-]{1,40}$/;
@@ -135,11 +141,30 @@ const lim = (v, d, lo, hi) => { const n = v == null || v === "" ? d : Math.floor
 async function delKeys(storage, keys) {
   for (let i = 0; i < keys.length; i += 128) await storage.delete(keys.slice(i, i + 128));   /* storage deletes at most 128 at once */
 }
-/* Keys sort oldest first (padded time), so the surplus is the front of the list. */
-async function trim(storage, prefix) {
-  const rows = await storage.list({ prefix: prefix });
-  const extra = rows.size - CAP[prefix];
-  if (extra > 0) await delKeys(storage, Array.from(rows.keys()).slice(0, extra));
+/* How many keys a capped prefix holds is kept in a counter ("q:y:" for "y:"), so a write does not list the whole
+   prefix (hundreds of rows read) just to count it. Keys sort oldest first (padded time), so the surplus is the front
+   of the list and only that many rows are read. The first trim counts once; metricsPrune re-counts every day, which
+   also corrects the rare drift (an age-pruned key, or two entries in the same millisecond with the same random tag). */
+const countKey = prefix => "q:" + prefix;
+async function trim(storage, prefix, added) {
+  const ck = countKey(prefix), had = await storage.get(ck);
+  let n = typeof had === "number" && had >= 0 ? had + added : (await storage.list({ prefix: prefix })).size;
+  const extra = n - CAP[prefix];
+  if (extra > 0) {
+    const old = Array.from((await storage.list({ prefix: prefix, limit: extra })).keys());
+    await delKeys(storage, old);
+    n -= old.length;
+  }
+  await storage.put(ck, Math.max(0, n));
+}
+/* the cron record's member counts for the overview (numbers only, by allowlist) */
+const COUNT_KEYS = ["total", "pro", "gifted", "trial", "free", "freeLegacy", "mailOff", "paused", "noHunts", "new7d", "hunts", "activeHunts",
+  "dueToday", "sentToday", "late", "checkedToday", "huntsLeftToday"];
+function countsOf(v) {
+  if (!v || typeof v !== "object") return null;
+  const o = {};
+  for (const k of COUNT_KEYS) o[k] = Math.floor(num(v[k]));
+  return o;
 }
 
 export async function metricsOp(storage, op, q, nowMs) {
@@ -154,18 +179,23 @@ export async function metricsOp(storage, op, q, nowMs) {
       }
     }
     if (Array.isArray(q.e) && q.e.length) {
+      let added = 0;
       for (const e of q.e.slice(0, 100)) {
         if (!e) continue;
         const t = okT(e.t) || now;
         await storage.put("y:" + pad13(t) + ":" + rand4(), { t: t, r: str(e.r, 40), s: num(e.s), m: txt(e.m, 160), q: txt(e.q, 60) });
+        added++;
       }
-      await trim(storage, "y:");
+      if (added) await trim(storage, "y:", added);
     }
     if (q.c && typeof q.c === "object") {
-      const c = q.c, t = okT(c.t) || now;
-      await storage.put("z:" + pad13(t), { t: t, ms: num(c.ms), members: num(c.members), checked: num(c.checked), sent: num(c.sent), failed: num(c.failed),
-        errors: (Array.isArray(c.errors) ? c.errors : []).slice(0, 5).map(x => txt(x, 160)) });
-      await trim(storage, "z:");
+      const c = q.c, t = okT(c.t) || now, k = "z:" + pad13(t), counts = countsOf(c.counts);
+      const isNew = (await storage.get(k)) === undefined;
+      const row = { t: t, ms: num(c.ms), members: num(c.members), checked: num(c.checked), sent: num(c.sent), failed: num(c.failed),
+        errors: (Array.isArray(c.errors) ? c.errors : []).slice(0, 5).map(x => txt(x, 160)) };
+      if (counts) row.counts = counts;   /* v78: member counts worked out by the alert clock, so the overview need not read every member */
+      await storage.put(k, row);
+      await trim(storage, "z:", isNew ? 1 : 0);
     }
     if (Array.isArray(q.p)) {
       for (const p of q.p.slice(0, 50)) {
@@ -176,26 +206,29 @@ export async function metricsOp(storage, op, q, nowMs) {
       }
     }
     if (Array.isArray(q.a) && q.a.length) {
+      let added = 0;
       for (const a of q.a.slice(0, 50)) {
         if (!a) continue;
         const t = okT(a.t) || now;
         await storage.put("a:" + pad13(t) + ":" + rand4(), { t: t, action: txt(a.action, 40), id: txt(a.id, 20), ok: !!a.ok, note: txt(a.note, 200) });
+        added++;
       }
-      await trim(storage, "a:");
+      if (added) await trim(storage, "a:", added);
     }
     return { ok: true };
   }
   if (op === "mget") {
-    const hours = lim(q.hours, 48, 1, 24 * 8), nErr = lim(q.errors, 100, 0, 500), nCron = lim(q.crons, 60, 0, 400);
-    const probeDays = lim(q.probeDays, 7, 1, 8), nAudit = lim(q.audit, 50, 0, 300);
+    /* hours 0 or probeDays 0 skip that section (the overview reads the slow-changing parts less often) */
+    const hours = lim(q.hours, 48, 0, 24 * 8), nErr = lim(q.errors, 100, 0, 500), nCron = lim(q.crons, 60, 0, 400);
+    const probeDays = lim(q.probeDays, 7, 0, 8), nAudit = lim(q.audit, 50, 0, 300);
     const newest = async (prefix, n) => n ? Array.from((await storage.list({ prefix: prefix, reverse: true, limit: n })).values()) : [];
     const buckets = [];
-    for (const [k, v] of await storage.list({ prefix: "x:", start: "x:" + hourKey(now - (hours - 1) * HOUR) })) {
+    if (hours) for (const [k, v] of await storage.list({ prefix: "x:", start: "x:" + hourKey(now - (hours - 1) * HOUR) })) {
       const i = k.indexOf("|");
       buckets.push(Object.assign({ hour: k.slice(2, i), route: k.slice(i + 1) }, aggOf(v)));
     }
     const probes = [];
-    for (const [k, v] of await storage.list({ prefix: "p:", start: "p:" + hourKey(now - probeDays * DAY) })) {
+    if (probeDays) for (const [k, v] of await storage.list({ prefix: "p:", start: "p:" + hourKey(now - probeDays * DAY) })) {
       const i = k.indexOf("|"), p = v || {};
       probes.push({ hour: k.slice(2, i), source: k.slice(i + 1), t: p.t, ok: !!p.ok, status: p.status, n: p.n, ms: p.ms, err: p.err || "" });
     }
@@ -217,14 +250,22 @@ export async function metricsPrune(storage, nowMs) {
   const rules = [["x:", 8, hourMs], ["p:", 8, hourMs], ["y:", 30, Number], ["a:", 30, Number], ["z:", 7, Number]];
   const del = [];
   let kept = 0;
+  const left = {};
   for (const [prefix, days, when] of rules) {
     const cut = now - days * DAY;
+    let n = 0;
     for (const k of (await storage.list({ prefix: prefix })).keys()) {
       const t = when(k.slice(2, 15));
-      if (!(t > 0) || t < cut) del.push(k); else kept++;   /* a key whose time cannot be read is junk, not history */
+      if (!(t > 0) || t < cut) del.push(k); else { kept++; n++; }   /* a key whose time cannot be read is junk, not history */
     }
+    left[prefix] = n;
   }
   await delKeys(storage, del);
+  /* the trim counters start again from the true count (only where metrics are kept at all) */
+  for (const prefix of Object.keys(CAP)) {
+    const ck = countKey(prefix);
+    if (left[prefix] || (await storage.get(ck)) !== undefined) await storage.put(ck, left[prefix] || 0);
+  }
   return kept;
 }
 

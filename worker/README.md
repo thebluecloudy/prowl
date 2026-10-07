@@ -10,10 +10,13 @@ Cloudflare Workers Builds watches this repo. Every push to `main` runs
 about a minute. No dashboard paste needed.
 
 - `index.js` is the whole worker (ES module, no dependencies, no build step).
-- `wrangler.toml` holds the name, KV binding, 15-minute cron and compatibility date.
+- `wrangler.toml` holds the name, KV binding, crons (the 5-minute alert clock and the hourly uptime
+  test searches) and compatibility date.
   `keep_vars = true` means the plain-text variables set in the dashboard survive a deploy.
 - Secrets (Resend, eBay, Etsy, Shopify, Muse, TypeSafe, DEBUG_KEY, OWNER_KEY,
-  PRO_EMAILS, ALERT_FROM, ALERT_REPLY_TO) live only in Cloudflare. Never commit them.
+  PRO_EMAILS, ALERT_FROM, ALERT_REPLY_TO, ADMIN_KEY) live only in Cloudflare. Never commit them.
+  ADMIN_KEY signs in to /admin: at least 20 characters and never the same as OWNER_KEY
+  (the public page keeps OWNER_KEY in the browser).
 
 ## Rolling back
 

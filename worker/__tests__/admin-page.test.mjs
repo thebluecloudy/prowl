@@ -163,7 +163,8 @@ test("login page: one password field posting to /admin/login, escaped message, C
   assert.equal(tags(p, "input").length, 1);
   assert.match(p, /<input id="key" name="key" type="password" autocomplete="current-password"/);
   assert.match(p, /<button class="btn btn-p" type="submit">Sign in<\/button>/);
-  assert.match(p, /Use the admin key from Cloudflare \(ADMIN_KEY, or OWNER_KEY\)/);
+  assert.match(p, /Use the admin key from Cloudflare \(the ADMIN_KEY secret\)/);
+  assert.equal(p.includes("OWNER_KEY"), false, "OWNER_KEY never signs in, so the page does not suggest it");
   assert.ok(p.includes('role="alert">Wrong key &lt;img src=x onerror=&quot;alert(1)&quot;&gt; &amp; more</p>'));
   assert.equal(p.includes("<img"), false);
   assert.doesNotMatch(loginPage(NONCE), /role="alert"/);
@@ -237,4 +238,63 @@ test("Member detail: free Pro in plain words, with Gift Pro (length) and Turn of
   assert.match(SCRIPT, /doAction\(m\.id, GIFT_ON, null, on, \{ months: Number\(sel\.value\) \|\| 0 \}\)/);
   assert.match(SCRIPT, /const body = Object\.assign\(\{ id: id, action: x\.a \}, extra \|\| \{\}\)/);
   assert.ok(SCRIPT.includes('gift: "Free Pro gift (from you)"') && SCRIPT.includes('list: "Free Pro from the Cloudflare list (PRO_EMAILS)"'));
+});
+
+test("the tab bar sits outside the header, so it stays on screen while a long page scrolls; jumps stop below it", () => {
+  const mk = markupOf(page);
+  assert.ok(mk.indexOf("</header>") < mk.indexOf('<div class="tabbar">'), "a sticky element only sticks inside its parent");
+  assert.match(page, /\.tabbar\{position:sticky;top:0/);
+  assert.match(page, /\.card,\.view\{scroll-margin-top:\d+px\}/);
+});
+
+test("desktop member rows keep their column words for screen readers; form fields have a 3:1 border", () => {
+  const desk = /@media \(min-width:860px\)\{\n[\s\S]*?\n\}/.exec(page)[0];
+  assert.doesNotMatch(desk, /\.lbl\{display:none\}/);
+  assert.match(desk, /\.lbl\{position:absolute;width:1px;height:1px;[^}]*clip:rect\(0 0 0 0\)/);
+  assert.match(page, /select\{[^}]*\n?\s*border:2px solid var\(--field\)/);
+  const lum = c => { const v = parseInt(c.slice(1), 16); return [v >> 16, (v >> 8) & 255, v & 255].map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }).reduce((t, x, i) => t + x * [0.2126, 0.7152, 0.0722][i], 0); };
+  const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const tok = (css, k) => new RegExp("--" + k + ":(#[0-9A-Fa-f]{6})").exec(css)[1];
+  const light = /:root\{color-scheme:light;[\s\S]*?\}/.exec(page)[0], dark = /prefers-color-scheme:dark\)\{:root\{[\s\S]*?\}\}/.exec(page)[0];
+  for (const css of [light, dark]) for (const bg of ["card", "card2"]) assert.ok(ratio(tok(css, "field"), tok(css, bg)) >= 3, "field border on " + bg);
+});
+
+test("overview: the late list loads only when asked; the health check button stays disabled while a check runs", () => {
+  assert.ok(SCRIPT.includes('text: "Show who is late", onclick: loadLate'));
+  assert.doesNotMatch(SCRIPT, /if \(a && a\.late > 0\) loadLate\(\)/, "no member-wide read on every minute's refresh");
+  assert.ok(SCRIPT.includes('disabled: !!(S.health && S.health.busy)'));
+  assert.ok(SCRIPT.includes("if (S.health && S.health.busy) return;"));
+  assert.ok(SCRIPT.includes('" free Pro)"'), "gifted Pro is not mistaken for the Free plan");
+  assert.ok(SCRIPT.includes('"No problems found"'), "no claim that every marketplace answered before any check ran");
+});
+
+test("daily limits and Today's searches are explained in the owner's own time (they follow the UTC day)", () => {
+  const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const utcMidnight = pickFn("utcMidnight", { sameDay });
+  const u = utcMidnight(), p = utcMidnight(true);
+  assert.equal(typeof u.time, "string"); assert.ok(u.time.length > 0);
+  if (new Date().getTimezoneOffset() === 0) { assert.equal(u.time, "midnight"); assert.equal(p.yesterday, false); }
+  const todayHint = pickFn("todayHint", { utcMidnight });
+  assert.match(todayHint(), /^“Today” counts from .+ your time \(midnight UTC\)\.$/);
+  assert.ok(SCRIPT.includes('"Daily limits reset at " + utcMidnight().time + " your time (midnight UTC)."'));
+  assert.equal(SCRIPT.includes("Daily limits reset at midnight."), false);
+});
+
+test("Diagnose: listings the AI flags are 'AI hides' only while AI sorting really hides them", () => {
+  const aiLive = pickFn("aiLive");
+  assert.equal(aiLive({ ai: { mode: "on", alerts: true, live: true } }), true);
+  assert.equal(aiLive({ ai: { mode: "shadow", alerts: true, live: false } }), false);
+  assert.equal(aiLive({}), true, "an older answer without the field");
+  assert.ok(SCRIPT.includes('"AI would hide (not on)"'));
+  assert.ok(SCRIPT.includes("JEV_RESULTS is \\u201c"));
+  assert.ok(SCRIPT.includes("their emails do not search it at all"), "a muted or over-limit hunt says so");
+  assert.ok(SCRIPT.includes("their emails search only eBay, near their ZIP code"));
+});
+
+test("Members: the find box's 'earlier address' note is a toast, and Refresh reads the members again", () => {
+  assert.ok(SCRIPT.includes('if (j.moved) toast("Found " + j.id + " by an email address they used before.'));
+  assert.ok(SCRIPT.includes('$("#find-msg").textContent = "";'));
+  assert.ok(SCRIPT.includes('loadMembers(true); loadGifts();'));
+  assert.ok(SCRIPT.includes('(fresh === true ? "&fresh=1" : "")'));
+  assert.ok(SCRIPT.includes('"None recorded"'), "no email recorded is not the same as never");
 });

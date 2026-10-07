@@ -1,5 +1,6 @@
 /* ---------- v78: Prowl admin area (/admin) ----------
-   The owner's support and health dashboard. One shared admin key (ADMIN_KEY, or OWNER_KEY) signs in;
+   The owner's support and health dashboard. One admin key signs in: ADMIN_KEY, its own secret of 20+ characters.
+   OWNER_KEY is never accepted (the public page keeps it in the browser, where any script on the shop can read it);
    the session is an HMAC-signed expiry in an HttpOnly, Secure, SameSite=Strict cookie scoped to /admin.
    Members appear only as a pseudonymous id (M-xxxxxxxx, a salted hash of the address). Every view is
    built field by field from an allowlist, so an email, token, Shopify id, receipt, ZIP or code can
@@ -11,12 +12,17 @@
 const COOKIE = "prowl_admin";
 const SESSION_S = 43200;                         // 12 hours
 const BODY_MAX = 8192;
-const ROSTER_MAX = 5000, ROSTER_TTL = 60000;
+const ROSTER_MAX = 5000, ROSTER_TTL = 600000;    // 10 minutes: the overview's counts come from the alert clock, not from here
+const SLOW_TTL = 600000;                         // the overview's weekly searches, 7-day uptime and 24 h run counts
+const KEY_MIN = 20;
+/* sign-in limits: every try per address (IPv6: per /64) and per neighbourhood (/24, /48); wrong keys site-wide per
+   hour; wrong keys logged one by one only up to a few a day, so a flood cannot push real entries out of the audit log */
+const LOGIN_PER_IP = 10, LOGIN_PER_NET = 30, LOGIN_FAILS_PER_HOUR = 30, LOGIN_LOG_PER_DAY = 20;
 const ID_RE = /^M-[0-9a-f]{8}$/;
 const HIDDEN = "(hidden \u2014 looks personal)";
 const ACTIONS = ["signin-link", "refresh-pro", "recheck-today", "resend-today", "mail-on", "mail-off", "unpause", "signout-all", "clear-seen", "delete", "gift-on", "gift-off"];
 const CONFIRM = { "signout-all": 1, "clear-seen": 1, "delete": 1 };   // the owner types the member id first
-const ISSUE_FLAGS = ["email late", "pro check failing", "sign-in link waiting", "record unreadable", "no hunts"];
+const ISSUE_FLAGS = ["email late", "pro check failing", "record unreadable", "no hunts"];   // the page marks the same ones
 const GIFT_MONTHS = [0, 1, 3, 6, 12];            // 0 = no end
 const GIFT_MAX = 2000;
 const GID_RE = /^[0-9a-f]{10}$/;
@@ -131,7 +137,7 @@ async function readBody(request, max) {
   try { t = await request.text(); } catch (e) { return ""; }
   return t.length > max ? null : t;
 }
-function adminKey(env) { const k = String((env && (env.ADMIN_KEY || env.OWNER_KEY)) || ""); return k.length >= 12 ? k : ""; }
+function adminKey(env) { const k = String((env && env.ADMIN_KEY) || ""); return k.length >= KEY_MIN ? k : ""; }
 /* Audit writes never hold up or fail the owner's request. */
 function audit(c, entry) {
   const e = { t: c.nowMs, action: entry.action, id: entry.id || "", ok: !!entry.ok, note: String(entry.note || "").slice(0, 80) };
@@ -159,8 +165,11 @@ export async function memberId(salt, email) {
   const h = await sha256(String(salt) + "|" + String(email));
   return "M-" + Array.from(h.slice(0, 4), x => ("0" + x.toString(16)).slice(-2)).join("");
 }
-/* id -> KV key for every member, cached a minute per isolate. Records and waiting sign-in links load
-   only for the list views. Module memory only; nothing here is ever returned. */
+/* id -> KV key for every member, cached 10 minutes per isolate (an action, or the Members tab's Refresh, starts it
+   again). Records load only for the list views; the overview's counts normally come from the alert clock's run
+   record instead, so the dashboard's minute-by-minute refresh does not read every member from KV (the free plan
+   allows 1,000 KV lists and 100,000 reads a day, and the alert clock needs most of them). Waiting sign-in links are
+   checked per member in the detail view, not listed here. Module memory only; nothing here is ever returned. */
 let ROSTER = null;
 async function roster(c, withRecs) {
   const kv = c.env && c.env.PROWL_ALERTS;
@@ -180,21 +189,15 @@ async function roster(c, withRecs) {
       const part = keys.slice(i, i + 100), ids = await Promise.all(part.map(k => memberId(c.salt, k.slice(4))));
       part.forEach((k, j) => { idOf.set(k, ids[j]); if (!byId.has(ids[j])) byId.set(ids[j], k); });
     }
-    R = ROSTER = { kv: kv, salt: c.salt, at: c.nowMs, keys: keys, byId: byId, idOf: idOf, truncated: more, recs: null, signin: null, giftOf: null };
+    R = ROSTER = { kv: kv, salt: c.salt, at: c.nowMs, keys: keys, byId: byId, idOf: idOf, truncated: more, recs: null, giftOf: null };
   }
   if (withRecs && !R.recs) {
-    const recs = new Map(), signin = new Set();
+    const recs = new Map();
     for (let i = 0; i < R.keys.length; i += 50) {
       const part = R.keys.slice(i, i + 50), got = await Promise.all(part.map(k => c.H.kvGet(c.env, k, null)));
       part.forEach((k, j) => { if (got[j] && typeof got[j] === "object") recs.set(k, got[j]); });
     }
-    let cur;
-    do {
-      const l = await kv.list({ prefix: "in:", cursor: cur, limit: 1000 });
-      for (const k of arr(l && l.keys)) signin.add(String(k.name).slice(3));
-      cur = l && !l.list_complete ? l.cursor : undefined;
-    } while (cur && signin.size < ROSTER_MAX);
-    R.recs = recs; R.signin = signin;
+    R.recs = recs;
   }
   return R;
 }
@@ -221,27 +224,32 @@ async function findMember(c, id) {
 }
 
 /* ---------- PII-free views ---------- */
-/* An @, 6+ digits in a row, or a phone-like run (7+ digits split by spaces, dots, dashes or parens).
-   A run made only of years ("1950-1960", "1960 1970s") is a date range, not a number. */
-const YEARS = /^(?:1[89]\d\d|20\d\d)(?:[\s.\/-]+(?:1[89]\d\d|20\d\d))*$/;
-function looksPersonal(t) {
+/* An @, 6+ digits in a row, or a phone-like run (7+ digits split by spaces, dots, slashes, underscores, dashes or
+   parens). A run made only of years ("1950-1960", "1960 1970s") is a date range, not a number. index.js also uses
+   this on search terms before keeping them. */
+const YEARS = /^(?:1[89]\d\d|20\d\d)(?:[\s.\/_-]+(?:1[89]\d\d|20\d\d))*$/;
+export function looksPersonal(t) {
+  t = String(t == null ? "" : t);
   if (/@/.test(t) || /\d{6,}/.test(t)) return true;
-  for (const run of t.match(/\d[\d\s.()-]*\d/g) || []) if (run.replace(/\D/g, "").length >= 7 && !YEARS.test(run)) return true;
+  for (const run of t.match(/\d[\d\s.\/_()-]*\d/g) || []) if (run.replace(/\D/g, "").length >= 7 && !YEARS.test(run)) return true;
   return false;
 }
-export function scrubHunt(h) {
+/* The member's own ZIP code (from their settings) as a whole number anywhere in their text: a hunt like
+   "estate sale 48375" would show it. Other 5-digit numbers (model and pattern numbers) stay visible. */
+function hasZip(t, zip) { zip = String(zip == null ? "" : zip); return /^\d{5}$/.test(zip) && new RegExp("(^|\\D)" + zip + "(\\D|$)").test(t); }
+export function scrubHunt(h, zip) {
   const t = String(h == null ? "" : h).slice(0, 80);
-  return looksPersonal(t) ? { text: HIDDEN, hidden: true } : { text: t, hidden: false };
+  return looksPersonal(t) || hasZip(t, zip) ? { text: HIDDEN, hidden: true } : { text: t, hidden: false };
 }
 /* alPrefs turns skip words into plain lower-case words ("jane.doe@x.com" -> "jane doe x com"), which drops the @
    that gives an address away. So a word is also hidden when the member's own typing of it looked personal. */
 const plainWords = s => String(s == null ? "" : s).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-function skipView(sub, words) {
+function skipView(sub, words, zip) {
   const raw = sub && sub.prefs && Array.isArray(sub.prefs.skip) ? sub.prefs.skip : [];
   const bad = raw.map(r => String(r == null ? "" : r).slice(0, 200)).filter(looksPersonal).map(plainWords).filter(Boolean);
   return arr(words).map(w => {
     const t = plainWords(w);
-    return scrubHunt(w).hidden || (t && bad.some(b => b.indexOf(t) === 0)) ? HIDDEN : String(w).slice(0, 40);
+    return scrubHunt(w, zip).hidden || (t && bad.some(b => b.indexOf(t) === 0)) ? HIDDEN : String(w).slice(0, 40);
   });
 }
 function listing(x) {
@@ -258,9 +266,11 @@ function state(env, sub, H, now) {
   const working = hunts.length > 0 && mailOn && !paused;        // the alert clock checks this member today
   const slot = num(H.alSlotHour(env, s));
   const due = working && !!H.alSendDay(s, loc);
-  const sentToday = !!s.sent && s.sent === loc.day;
+  /* sent = the member-local day today's run finished (an email went, or nothing was new, or they turned emails back
+     on); mailed (v78) = the day an email really went out. Only mailed counts as "sent" or "last email". */
+  const doneToday = !!s.sent && s.sent === loc.day, mailedToday = !!s.mailed && s.mailed === loc.day;
   return { s: s, now: now, hunts: hunts, p: p, loc: loc, active: active, done: done, mailOn: mailOn, paused: paused, working: working, slot: slot,
-    due: due, sentToday: sentToday, late: due && !sentToday && num(loc.hour) > slot };
+    due: due, doneToday: doneToday, mailedToday: mailedToday, late: due && !doneToday && !mailedToday && num(loc.hour) > slot };
 }
 export function memberSummary(env, sub, H, now, extra) { return summaryOf(state(env, sub, H, now), H, extra); }
 function summaryOf(st, H, extra) {
@@ -284,13 +294,13 @@ function summaryOf(st, H, extra) {
     id: "", plan: plan, via: via, hunts: st.hunts.length, active: st.active.length, mail: st.mailOn ? "on" : "off",
     paused: st.paused, pauseUntil: st.paused ? day10(st.p.pause) : "",
     freq: H.alFreeWeekly(s) ? "weekly" : word(st.p.freq, 12), slotHour: st.slot, tz: word(st.p.tz || H.AL_TZ || "", 64),
-    created: day10(s.created), lastSent: day10(s.sent), sentToday: st.sentToday, checkedToday: checked,
+    created: day10(s.created), lastSent: day10(s.mailed), sentToday: st.mailedToday, doneToday: st.doneToday, checkedToday: checked,
     activeToday: st.working ? st.active.length : 0, dueToday: st.due, late: st.late, flags: flags
   };
 }
 function brokenSummary() {
   return { id: "", plan: "free", via: "", hunts: 0, active: 0, mail: "on", paused: false, pauseUntil: "", freq: "", slotHour: 0, tz: "",
-    created: "", lastSent: "", sentToday: false, checkedToday: 0, activeToday: 0, dueToday: false, late: false, flags: ["record unreadable"] };
+    created: "", lastSent: "", sentToday: false, doneToday: false, checkedToday: 0, activeToday: 0, dueToday: false, late: false, flags: ["record unreadable"] };
 }
 function safeSummary(env, sub, H, now, extra) { try { return memberSummary(env, sub, H, now, extra); } catch (e) { return brokenSummary(); } }
 
@@ -300,54 +310,87 @@ function giftInfo(listed, gift, off, today) {
   return { active: viaList || on, source: viaList ? "list" : on ? "gift" : null, until: g ? day10(g.until) : "", note: g ? giftNote(g.note) : "",
     added: g ? day10(g.added) : "", ended: !!g && !on, listed: !!listed, listOff: !!listed && !!off };
 }
+/* Free Pro for a member: their own address first, then up to two earlier ones (as index.js alProSet checks them).
+   The first that gives free Pro is shown, marked earlier when it is an old address; the address itself never is. */
+async function giftOf(env, H, email, prev, today) {
+  if (!email || typeof H.giftHash !== "function") return null;
+  const addrs = [email].concat(arr(prev).map(String).filter(Boolean).slice(0, 2));
+  const infos = await Promise.all(addrs.map(async a => {
+    const gh = String(await H.giftHash(a));
+    const [g, off] = await Promise.all([H.kvGet(env, "gift:" + gh, null), H.kvGet(env, "giftoff:" + gh, null)]);
+    return giftInfo(!!(typeof H.proListHas === "function" && H.proListHas(env, a)), g, off, today);
+  }));
+  const i = Math.max(0, infos.findIndex(x => x.active));
+  return Object.assign(infos[i], { earlier: i > 0 });
+}
 export async function memberDetail(env, sub, H, now) {
   const email = String(sub.email || ""), kv = env.PROWL_ALERTS;
   const has = async k => { try { return email !== "" && (await kv.get(k)) != null; } catch (e) { return false; } };
-  const gh = email && typeof H.giftHash === "function" ? String(await H.giftHash(email)) : "";
-  const [pend, seen, signin, conf, mvf, gift, goff] = email ? await Promise.all([H.kvGet(env, "pend:" + email, {}), H.kvGet(env, "seen:" + email, []),
-    has("in:" + email), has("conf:" + email), has("mvf:" + email), gh ? H.kvGet(env, "gift:" + gh, null) : null, gh ? H.kvGet(env, "giftoff:" + gh, null) : null])
-    : [{}, [], false, false, false, null, null];
-  const st = state(env, sub, H, now), p = st.p, s = st.s, pl = s.plan && typeof s.plan === "object" ? s.plan : {};
+  const [pend, seen, signin, conf, mvf] = email ? await Promise.all([H.kvGet(env, "pend:" + email, {}), H.kvGet(env, "seen:" + email, []),
+    has("in:" + email), has("conf:" + email), has("mvf:" + email)])
+    : [{}, [], false, false, false];
+  const st = state(env, sub, H, now), p = st.p, s = st.s, pl = s.plan && typeof s.plan === "object" ? s.plan : {}, zip = p.zip;
   const d = summaryOf(st, H, { signin: signin });
   const mute = arr(p.mute), act = st.active.map(h => h.toLowerCase());
   d.planName = d.plan;
   d.hunts = st.hunts.map(h => {
-    const v = scrubHunt(h), l = h.toLowerCase();
+    const v = scrubHunt(h, zip), l = h.toLowerCase();
     return { text: v.text, hidden: v.hidden, active: act.indexOf(l) !== -1, muted: mute.indexOf(l) !== -1, local: !!H.alNear(s, h), checkedToday: st.done.indexOf(l) !== -1 };
   });
   d.prefs = { freq: d.freq, slotHour: d.slotHour, tz: d.tz, sources: arr(p.sources).map(x => word(x, 20)), maxPrice: num(p.max),
-    skipWords: skipView(s, p.skip), filtersApply: !!s.pro, pauseUntil: day10(p.pause), aiOff: !!p.noai,
+    skipWords: skipView(s, p.skip, zip), filtersApply: !!s.pro, pauseUntil: day10(p.pause), aiOff: !!p.noai,
     zipSet: !!p.zip, radius: num(p.radius), localHunts: arr(p.local).length };
   d.plan = { name: d.planName, via: d.via, trial: !!pl.trial, paidDay: day10(pl.paid), renewsDay: day10(pl.renews), amount: word(pl.amount, 12),
     currency: word(pl.currency, 8), order: word(pl.order, 20), hadPro: !!s.hadPro, checkedDay: day10(s.proDay) };
   const ph = []; let total = 0;
   if (pend && typeof pend === "object" && !Array.isArray(pend)) for (const k of Object.keys(pend).slice(0, 60)) {
     const items = arr(pend[k]); total += items.length;
-    ph.push({ text: scrubHunt(k).text, n: items.length, sample: items.slice(0, 3).map(listing) });
+    ph.push({ text: scrubHunt(k, zip).text, n: items.length, sample: items.slice(0, 3).map(listing) });
   }
   d.pending = { total: total, hunts: ph };
   d.seenCount = arr(seen).filter(u => !/^t:/.test(String(u))).length;   // listings remembered (each also has a title key)
   d.signinWaiting = signin; d.confirmWaiting = conf; d.moveWaiting = mvf;
   d.previousAddresses = arr(s.prev).length; d.movedAt = day10(s.movedAt); d.mailOffDay = day10(s.mailOffAt);
   d.plan.until = day10(pl.until);
-  const listed = !!(email && typeof H.proListHas === "function" && H.proListHas(env, email));
-  d.gift = gh ? giftInfo(listed, gift, goff, day10(now && now.day) || utcDay(Date.now())) : null;
+  d.gift = await giftOf(env, H, email, s.prev, day10(now && now.day) || utcDay(Date.now()));
   return d;
 }
 function summaries(c, R, now) {
   const out = [];
   for (const k of R.keys) {
     const sub = R.recs.get(k); if (!sub) continue;
-    const v = safeSummary(c.env, sub, c.H, now, { signin: R.signin.has(k.slice(4)) });
+    const v = safeSummary(c.env, sub, c.H, now);
     v.id = R.idOf.get(k); out.push(v);
   }
   return out;
 }
+/* The overview's member and alert-email numbers (counts only, nothing personal). The alert clock (index.js alTick)
+   works them out from the records it has already read and sends them with its run record; apiOverview falls back
+   to reading the members itself only when no recent run carried them. */
+function countsFrom(list, nowMs) {
+  const n = f => list.filter(f).length, sum = f => list.reduce((t, s) => t + f(s), 0), cut = utcDay(nowMs - 6 * 86400000);
+  return { total: list.length, pro: n(s => s.plan === "pro"), gifted: n(s => (s.plan === "pro" || s.plan === "trial") && (s.via === "gift" || s.via === "list")),
+    trial: n(s => s.plan === "trial"), free: n(s => s.plan === "free"), freeLegacy: n(s => s.plan === "free (legacy)"), mailOff: n(s => s.mail === "off"),
+    paused: n(s => s.paused), noHunts: n(s => !s.hunts), new7d: n(s => !!s.created && s.created >= cut), hunts: sum(s => s.hunts), activeHunts: sum(s => s.active),
+    dueToday: n(s => s.dueToday), sentToday: n(s => s.sentToday), late: n(s => s.late), checkedToday: sum(s => s.checkedToday),
+    huntsLeftToday: sum(s => s.dueToday && !s.doneToday ? Math.max(0, s.activeToday - s.checkedToday) : 0) };
+}
+export function rosterCounts(env, subs, H, now, nowMs) {
+  const list = [];
+  for (const sub of arr(subs)) if (sub && typeof sub === "object") list.push(safeSummary(env, sub, H, now));
+  return countsFrom(list, num(nowMs) || Date.now());
+}
 
 /* ---------- metrics views ---------- */
+/* A search term from the logs: statTerm turns "555-123-4567" into "555 123 4567" and keeps it, so the
+   phone-number rule runs on its answer too. */
+function termView(c, raw) {
+  const t = c.H.statTerm ? c.H.statTerm(String(raw == null ? "" : raw)) : "";
+  return t && !looksPersonal(t) ? t : "";
+}
 function errView(c, e) {
   e = e || {};
-  return { t: num(e.t), r: word(e.r, 40), s: num(e.s), m: clean(e.m, 160), q: c.H.statTerm ? c.H.statTerm(String(e.q || "")) : "" };
+  return { t: num(e.t), r: word(e.r, 40), s: num(e.s), m: clean(e.m, 160), q: termView(c, e.q) };
 }
 function auditView(a) {
   a = a || {};
@@ -362,7 +405,7 @@ function upView(u) {
 function topView(c, j) {
   const out = [];
   for (const r of arr(j && j.top)) {
-    const t = c.H.statTerm ? c.H.statTerm(String((r && r.term) || "")) : "";   // stored terms are scrubbed already; this is the second net
+    const t = termView(c, r && r.term);   // stored terms are scrubbed already; this is the second net
     if (t) out.push({ term: t, visitors: num(r.visitorDays), requests: num(r.requests) });
   }
   return out;
@@ -375,46 +418,66 @@ async function capsJson(c, name, op, q) {
 const utcDay = ms => new Date(ms).toISOString().slice(0, 10);
 
 /* ---------- API ---------- */
+const MSG_METRICS = "Speed, error and uptime numbers are not available.", MSG_SEARCH = "Search counts are not available.";
+const MEMBER_KEYS = ["total", "pro", "gifted", "trial", "free", "freeLegacy", "mailOff", "paused", "noHunts", "new7d", "hunts", "activeHunts"];
+const ALERT_KEYS = ["dueToday", "sentToday", "late", "checkedToday", "huntsLeftToday"];
+const pickNums = (o, keys) => { const r = {}; for (const k of keys) r[k] = num(o && o[k]); return r; };
+/* The parts of the overview that change slowly (the week's top searches, 7 days of hourly uptime checks, the day's
+   alert runs) are read at most every 10 minutes per isolate, not on every 60-second refresh: each read lists
+   thousands of Durable Object rows, and the free plan allows 5 million row reads a day for the whole site. */
+let SLOW = null;
+async function slowParts(c, grab) {
+  if (SLOW && SLOW.h === c.H && c.nowMs >= SLOW.at && c.nowMs - SLOW.at < SLOW_TTL) return SLOW;
+  const today = utcDay(c.nowMs);
+  const [M2, topW] = await Promise.all([
+    grab(MSG_METRICS, () => capsJson(c, "metrics", "mget", { hours: 0, errors: 0, crons: 300, probeDays: 7, audit: 0 })),
+    grab(MSG_SEARCH, () => capsJson(c, "stats", "top", { kind: "t", from: utcDay(c.nowMs - 6 * 86400000), to: today, limit: 15 }))]);
+  const out = { h: c.H, at: c.nowMs, M2: M2, topW: topW };
+  if (M2 && topW) SLOW = out;
+  return out;
+}
+const COUNTS_FRESH_MS = 30 * 60000;   // a newer alert run carries newer counts; older than this, the members are read here
 async function apiOverview(c) {
   const H = c.H, env = c.env, nowMs = c.nowMs, issues = [];
   const grab = async (what, fn) => { try { return await fn(); } catch (e) { if (issues.indexOf(what) === -1) issues.push(what); return null; } };
   const now = H.alNow(env), today = utcDay(nowMs);
   const capsDay = typeof H.capsDay === "function" ? H.capsDay() : "caps:" + today;
   const pools = arr(H.POOLS);
-  const [R, M, peek, topT, topW, lib] = await Promise.all([
-    grab("The member list could not be read.", () => roster(c, true)),
-    grab("Speed, error and uptime numbers are not available.", () => capsJson(c, "metrics", "mget", { hours: 26, errors: 20, crons: 300, probeDays: 7, audit: 15 })),
+  const [M, peek, topT, lib, slow] = await Promise.all([
+    grab(MSG_METRICS, () => capsJson(c, "metrics", "mget", { hours: 26, errors: 20, crons: 1, probeDays: 0, audit: 15 })),
     grab("AI usage is not available.", () => capsJson(c, capsDay, "peek", { keys: pools.map(p => p.key) })),
-    grab("Search counts are not available.", () => capsJson(c, "stats", "top", { kind: "t", from: today, to: today, limit: 15 })),
-    grab("Search counts are not available.", () => capsJson(c, "stats", "top", { kind: "t", from: utcDay(nowMs - 6 * 86400000), to: today, limit: 15 })),
-    grab("Speed, error and uptime numbers are not available.", () => metricsLib(H))
+    grab(MSG_SEARCH, () => capsJson(c, "stats", "top", { kind: "t", from: today, to: today, limit: 15 })),
+    grab(MSG_METRICS, () => metricsLib(H)),
+    slowParts(c, grab)
   ]);
-  let members = null, alerts = null;
-  if (R) {
-    const list = summaries(c, R, now), n = f => list.filter(f).length, sum = f => list.reduce((t, s) => t + f(s), 0);
-    const cut = utcDay(nowMs - 6 * 86400000);
-    members = { total: list.length, pro: n(s => s.plan === "pro"), gifted: n(s => (s.plan === "pro" || s.plan === "trial") && (s.via === "gift" || s.via === "list")),
-      trial: n(s => s.plan === "trial"), free: n(s => s.plan === "free"),
-      freeLegacy: n(s => s.plan === "free (legacy)"), mailOff: n(s => s.mail === "off"), paused: n(s => s.paused), noHunts: n(s => !s.hunts),
-      new7d: n(s => !!s.created && s.created >= cut), hunts: sum(s => s.hunts), activeHunts: sum(s => s.active), truncated: R.truncated };
-    alerts = { dueToday: n(s => s.dueToday), sentToday: n(s => s.sentToday), late: n(s => s.late), checkedToday: sum(s => s.checkedToday),
-      huntsLeftToday: sum(s => s.dueToday && !s.sentToday ? Math.max(0, s.activeToday - s.checkedToday) : 0) };
+  const M2 = slow.M2, topW = slow.topW;
+  const c0 = M ? arr(M.crons).filter(x => x && typeof x === "object")[0] : null;
+  let members = null, alerts = null, countsAt = null;
+  if (c0 && c0.counts && typeof c0.counts === "object" && nowMs - num(c0.t) < COUNTS_FRESH_MS) {
+    members = Object.assign(pickNums(c0.counts, MEMBER_KEYS), { truncated: false });
+    alerts = pickNums(c0.counts, ALERT_KEYS);
+    countsAt = new Date(num(c0.t)).toISOString();
+  } else {
+    const R = await grab("The member list could not be read.", () => roster(c, true));
+    if (R) {
+      const k = countsFrom(summaries(c, R, now), nowMs);
+      members = Object.assign(pickNums(k, MEMBER_KEYS), { truncated: R.truncated });
+      alerts = pickNums(k, ALERT_KEYS);
+      countsAt = new Date(R.at).toISOString();
+    }
   }
   let traffic = null, uptime = null, errors = null, auditList = null;
-  if (M) {
-    const crons = arr(M.crons).filter(x => x && typeof x === "object"), c0 = crons[0], day = nowMs - 86400000;
+  if (M || M2) {
+    const crons = M2 ? arr(M2.crons).filter(x => x && typeof x === "object") : [], day = nowMs - 86400000;
     const recent = crons.filter(x => num(x.t) >= day);
     const cron = {
       lastCron: c0 ? { at: new Date(num(c0.t)).toISOString(), ageMin: Math.max(0, Math.round((nowMs - num(c0.t)) / 60000)), ms: num(c0.ms),
         members: num(c0.members), checked: num(c0.checked), sent: num(c0.sent), failed: num(c0.failed), errors: arr(c0.errors).slice(0, 5).map(e => clean(e, 160)) } : null,
-      cronRuns24h: recent.length, cronFails24h: recent.filter(x => num(x.failed) > 0 || arr(x.errors).length > 0).length };
+      cronRuns24h: M2 ? recent.length : null, cronFails24h: M2 ? recent.filter(x => num(x.failed) > 0 || arr(x.errors).length > 0).length : null };
     alerts = Object.assign(alerts || { dueToday: null, sentToday: null, late: null, checkedToday: null, huntsLeftToday: null }, cron);
-    if (lib) {
-      traffic = await grab("Speed numbers could not be worked out.", async () => lib.summarize(arr(M.buckets), nowMs, 24));
-      uptime = await grab("Uptime numbers could not be worked out.", async () => arr(lib.uptimeFrom(arr(M.probes), nowMs)).map(upView));
-    }
-    errors = arr(M.errors).slice(0, 20).map(e => errView(c, e));
-    auditList = arr(M.audit).slice(0, 15).map(auditView);
+    if (lib && M) traffic = await grab("Speed numbers could not be worked out.", async () => lib.summarize(arr(M.buckets), nowMs, 24));
+    if (lib && M2) uptime = await grab("Uptime numbers could not be worked out.", async () => arr(lib.uptimeFrom(arr(M2.probes), nowMs)).map(upView));
+    if (M) { errors = arr(M.errors).slice(0, 20).map(e => errView(c, e)); auditList = arr(M.audit).slice(0, 15).map(auditView); }
   } else if (alerts) Object.assign(alerts, { lastCron: null, cronRuns24h: null, cronFails24h: null });
   const values = (peek && peek.values) || {};
   const ai = peek ? { pools: pools.map(p => { const used = num(values[p.key]), limit = num(p.limit); return { name: String(p.name || p.key), used: used, limit: limit, pct: limit ? Math.round(used * 100 / limit) : 0 }; }) } : null;
@@ -422,7 +485,7 @@ async function apiOverview(c) {
   try { live = arr(H.liveSources()).map(s => word(s, 20)); } catch (e) {}
   return jres({
     version: H.WORKER_VERSION, now: { iso: new Date(nowMs).toISOString(), detroitDay: now.day, detroitHour: now.hour },
-    members: members, alerts: alerts, traffic: traffic, uptime: uptime, ai: ai, errors: errors,
+    members: members, alerts: alerts, countsAt: countsAt, traffic: traffic, uptime: uptime, ai: ai, errors: errors,
     searches: topT || topW ? { today: topT ? topView(c, topT) : null, week: topW ? topView(c, topW) : null } : null,
     audit: auditList, liveSources: live, issues: issues
   });
@@ -435,6 +498,7 @@ const FILTERS = {
 const byStr = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const SORTS = { created: (a, b) => byStr(b.created, a.created), hunts: (a, b) => b.hunts - a.hunts, lastSent: (a, b) => byStr(b.lastSent, a.lastSent) };
 async function apiMembers(c) {
+  if (c.url.searchParams.get("fresh") === "1") ROSTER = null;   // the page's Refresh button: read every member again now
   const R = await roster(c, true), now = c.H.alNow(c.env);
   const f = c.url.searchParams.get("filter"), o = c.url.searchParams.get("sort");
   const filter = Object.prototype.hasOwnProperty.call(FILTERS, f) ? f : "all", sort = Object.prototype.hasOwnProperty.call(SORTS, o) ? o : "created";
@@ -453,7 +517,13 @@ async function apiFind(c) {
     const mv = await c.H.kvGet(c.env, "moved:" + email, null), to = mv && typeof mv.to === "string" ? mv.to.trim().toLowerCase() : "";
     if (to) { sub = await c.H.kvGet(c.env, "sub:" + to, null); if (sub) { target = to; moved = true; } }
   }
-  if (!sub) { await audit(c, { action: "find", ok: false }); return jerr(404, "No member with that email."); }
+  if (!sub) {
+    /* the usual "I signed up but get nothing": they never tapped the confirm link, so only conf:<email> exists */
+    const waiting = !!(await c.H.kvGet(c.env, "conf:" + email, null));
+    await audit(c, { action: "find", ok: false, note: waiting ? "confirm link waiting" : "" });
+    return jerr(404, waiting ? "Not a member yet: they started signing up but have not tapped the confirm link we emailed them (it works for 2 days). Ask them to look in spam for the Prowl email and tap \u201cYes, email me\u201d. Then they show up here."
+      : "No member with that email. Check the spelling; they may have signed up with a different address.");
+  }
   const id = await memberId(c.salt, target);
   await audit(c, { action: "find", id: id, ok: true, note: moved ? "found by an earlier address" : "" });
   return jres(moved ? { id: id, moved: true } : { id: id });
@@ -469,8 +539,12 @@ async function apiMember(c) {
 
 /* ---------- Gift Pro ---------- */
 const todayOf = c => day10(c.H.alNow(c.env).day) || utcDay(c.nowMs);   // Detroit day, as alPro counts it
-/* A paid (or free-month) Prowl Pro order in the shop: a gift does not cancel it, so the owner is told. */
+/* A paid (or free-month) Prowl Pro order in the shop: a gift does not cancel it, so the owner is told. A free month
+   keeps running under the gift, and Prowl still emails them 3 days before its first charge (index.js alTrialPlan). */
 const paidPro = sub => !!sub.pro && !!sub.plan && typeof sub.plan === "object" && sub.plan.via === "order";
+const SUB_NOTE = " They also have a Prowl Pro subscription in the shop; the gift does not cancel it, so cancel it there if they should not be charged.";
+/* index.js counts any Pro as their one free month (hadPro), so the page then offers the paid plan, not a free month */
+const FIRST_NOTE = " This counts as their one free Prowl Pro month: after the gift ends, the Prowl page offers them the paid plan rather than a free month.";
 /* Writes (or renews) the gift for one address and clears a PRO_EMAILS switch-off. Only the hash is stored.
    An empty note keeps the note already on the gift. */
 async function saveGift(c, email, months, rawNote) {
@@ -519,14 +593,15 @@ async function apiGiftAdd(c) {
   let id = null, msg = "Gift saved. Prowl Pro is free for this person " + giftEnds(g.until) + ", starting as soon as they sign up for Prowl Alerts with that email.";
   if (sub && typeof sub === "object") {
     id = await memberId(c.salt, email);
-    const paid = paidPro(sub);
+    const paid = paidPro(sub), first = !sub.hadPro;
     await H.alProSet(env, sub, false);   // the gift check comes before any Shopify call
     const r = await H.alMerge(env, sub, PRO_FIELDS);
     ROSTER = null;
     msg = !r ? "Gift saved. That member deleted their account a moment ago; the gift still applies if they sign up again with that email."
       : r.pro ? "Prowl Pro is now free for " + id + " " + giftEnds(g.until) + "." + (r.plan && r.plan.via === "list" ? " (They also get it from the PRO_EMAILS list in Cloudflare.)" : "")
       : "Gift saved for " + id + ", but Pro did not switch on yet. Press Re-check Pro on their page in a minute.";
-    if (r && paid) msg += " They also have a Prowl Pro subscription in the shop; the gift does not cancel it, so cancel it there if they should not be charged.";
+    if (r && paid) msg += SUB_NOTE;
+    if (r && r.pro && first) msg += FIRST_NOTE;
   }
   await audit(c, { action: "gift-add", id: id || g.gid, ok: true, note: monthsWord(months) });
   return jres({ ok: true, message: msg, gid: g.gid, memberId: id });
@@ -557,6 +632,42 @@ async function apiGiftRemove(c) {
   return jres({ ok: true, message: msg, gid: gid, memberId: id });
 }
 
+/* "Send today's email again": index.js alDigest keeps what today's email carried for two days (last:<email>). It goes
+   back with the listings waiting for the next email (already-sent listings are never found again by the checks), so
+   the re-sent email really holds them. Returns how many listings came back (0 = no email went out today). */
+async function restoreLast(c, sub, email) {
+  const H = c.H, env = c.env, now = H.alNow(env), loc = H.alLocal(sub, now) || now;
+  const last = await H.kvGet(env, "last:" + email, null), lp = last && typeof last === "object" ? last.pend : null;
+  if (!lp || typeof lp !== "object" || Array.isArray(lp) || String(last.day || "") !== String(loc.day || "")) return 0;
+  const cur = await H.kvGet(env, "pend:" + email, {}), pend = cur && typeof cur === "object" && !Array.isArray(cur) ? cur : {};
+  const cap = 2 * (num(H.AL_PEND_CAP) || 30);
+  let n = 0;
+  for (const h of Object.keys(lp).slice(0, 60)) {
+    const back = arr(lp[h]).filter(x => x && typeof x === "object"), urls = new Set(), out = [];
+    for (const x of back.concat(arr(pend[h]))) { const u = String(x.url || ""); if (u && urls.has(u)) continue; if (u) urls.add(u); out.push(x); }
+    n += back.length;
+    pend[h] = out.slice(0, cap);
+  }
+  if (n) await H.kvPut(env, "pend:" + email, pend);
+  return n;
+}
+/* "Sign out all devices" also cancels a waiting change of email address: its confirm link (in the new inbox) moves
+   the whole membership and hands over the new token. An earlier address's forwarding record (moved:<old>) keeps
+   working for the owner's look-ups, but gets a token nobody has, so an old token no longer reveals where they went. */
+async function cancelMove(c, sub, email) {
+  const H = c.H, env = c.env, kv = env.PROWL_ALERTS;
+  const mf = await H.kvGet(env, "mvf:" + email, null), to = mf && typeof mf.to === "string" ? mf.to : "";
+  if (to) { const mv = await H.kvGet(env, "mv:" + to, null); if (mv && mv.from === email) await kv.delete("mv:" + to); }
+  if (mf) await kv.delete("mvf:" + email);
+  for (const old of arr(sub.prev).map(String).filter(Boolean).slice(0, 3)) {
+    const k = "moved:" + old, mv = await H.kvGet(env, k, null);
+    if (!mv || typeof mv !== "object" || mv.to !== email || !mv.tok) continue;
+    const ttl = num(mv.at) ? Math.floor((num(mv.at) + 90 * 86400000 - c.nowMs) / 1000) : 90 * 86400;
+    if (ttl >= 60) await kv.put(k, JSON.stringify({ to: mv.to, tok: H.alToken(), at: mv.at }), { expirationTtl: ttl });
+    else await kv.delete(k);
+  }
+  return !!mf;
+}
 async function apiAction(c) {
   const H = c.H, env = c.env, kv = env.PROWL_ALERTS;
   if (!(await H.vCount("admact", 300))) return jerr(429, "That is a lot of changes today. Try again tomorrow.");
@@ -582,25 +693,41 @@ async function apiAction(c) {
   } else if (action === "refresh-pro") {
     const was = !!sub.pro;
     await H.alProSet(env, sub, true);
-    if (await merge(["pro", "plan", "proDay", "hadPro", "proCheck"])) {
-      msg = sub.pro ? (sub.plan && sub.plan.trial ? "Checked the store: they are on the free Prowl Pro month." : "Checked the store: Prowl Pro is active.")
-        : "Checked the store: no current Prowl Pro order, so they are on the free plan.";
-      if (was !== !!sub.pro) msg += was ? " They were Pro before this check." : " They were not Pro before this check.";
-      msg += " If the store could not be reached, nothing changed.";
+    if (await merge(PRO_FIELDS)) {
+      const pl = sub.plan && typeof sub.plan === "object" ? sub.plan : {};
+      if (sub.proCheck) {   // the shop was asked and did not answer (or is not set up): say so, not "checked"
+        ok = false; note = "shop not reached";
+        msg = (String(sub.proCheck) === "no token" ? "The shop is not connected (the SHOPIFY_ORDERS_TOKEN secret is missing in Cloudflare), so Prowl could not check it."
+          : "Could not reach the shop just now (" + clean(sub.proCheck, 40) + ").") +
+          (was && !sub.pro ? " Their free Pro has ended, so they are on the free plan for now." : " Nothing changed.") + " Try again in a few minutes.";
+      } else if (sub.pro && pl.via === "gift") msg = "They have free Pro from your gift (" + giftEnds(day10(pl.until)) + "), so the shop was not asked.";
+      else if (sub.pro && pl.via === "list") msg = "They have free Pro from the PRO_EMAILS list in Cloudflare, so the shop was not asked.";
+      else {
+        msg = sub.pro ? (pl.trial ? "Checked the shop: they are on the free Prowl Pro month." : "Checked the shop: Prowl Pro is active.")
+          : "Checked the shop: no current Prowl Pro order, so they are on the free plan.";
+        if (was !== !!sub.pro) msg += was ? " They were Pro before this check." : " They were not Pro before this check.";
+      }
     }
   } else if (action === "recheck-today" || action === "resend-today") {
+    const again = action === "resend-today" ? await restoreLast(c, sub, email) : 0;
     sub.day = ""; sub.done = [];
     const f = ["day", "done"];
     if (action === "resend-today") { sub.sent = ""; f.push("sent"); }
     if (await merge(f)) msg = action === "recheck-today"
       ? "Their hunts will be checked again over the next few runs (every 5 minutes). If today's email has not gone out yet, it includes anything new."
-      : "Their hunts will be checked again, then today's email goes out again with anything new since the last one. Listings already sent are not repeated (clear the \"already sent\" memory to include them).";
+      : again ? "Today's email (" + again + (again === 1 ? " listing" : " listings") + ") goes out again in a few minutes, once their hunts are checked again. Anything new since is added."
+      : "No email went out to them today, so there is nothing to send again. Their hunts are checked again: anything new goes in today's email, and if nothing new turns up, no email is sent.";
+    if (action === "resend-today") note = again ? "resent " + again : "nothing to resend";
   } else if (action === "mail-on") {
-    sub.mail = "on"; sub.mailOffAt = "";
-    if (await merge(["mail", "mailOffAt"])) msg = "Emails are on again. The next one goes out at their usual time on their next email day.";
+    /* as when they turn emails on themselves: today counts as done, so the next email is on their next email day */
+    sub.mail = "on"; sub.mailOffAt = ""; sub.sent = (H.alLocal(sub, H.alNow(env)) || H.alNow(env)).day;
+    if (await merge(["mail", "mailOffAt", "sent"])) msg = "Emails are on again. The next one goes out at their usual time on their next email day after today.";
   } else if (action === "mail-off") {
     sub.mail = "off"; sub.mailOffAt = new Date(c.nowMs).toISOString();
-    if (await merge(["mail", "mailOffAt"])) msg = "Emails are off. Their hunts, settings and plan stay; nothing is checked or sent until emails are back on.";
+    if (await merge(["mail", "mailOffAt"])) {
+      await kv.delete("pend:" + email);   // as when they turn emails off themselves: held listings would be stale by the time emails are back on
+      msg = "Emails are off. Their hunts, settings and plan stay; listings that were waiting for their next email are dropped, and nothing is checked or sent until emails are back on.";
+    }
   } else if (action === "unpause") {
     const fresh = await H.kvGet(env, m.k, null), base = fresh && fresh.prefs && typeof fresh.prefs === "object" && !Array.isArray(fresh.prefs) ? fresh.prefs : (sub.prefs && typeof sub.prefs === "object" ? sub.prefs : {});
     sub.prefs = Object.assign({}, base, { pause: "" });
@@ -609,7 +736,10 @@ async function apiAction(c) {
     sub.tok = H.alToken();
     if (await merge(["tok"])) {
       await kv.delete("in:" + email);   // a waiting sign-in link would let a lost device straight back in
-      msg = "Signed out on every phone and computer. They can sign back in with a new sign-in link.";
+      const moved = await cancelMove(c, sub, email);
+      msg = "Signed out on every phone and computer. They can sign back in with a new sign-in link." +
+        (moved ? " A waiting change of email address was cancelled too; they can ask for it again once signed back in." : "");
+      if (moved) note = "address change cancelled";
     }
   } else if (action === "clear-seen") {
     await kv.delete("seen:" + email);
@@ -617,30 +747,40 @@ async function apiAction(c) {
   } else if (action === "gift-on") {
     const months = giftMonths(c.body.months);
     if (months < 0) return jerr(400, "Pick how long: forever, 1, 3, 6 or 12 months.");
-    const paid = paidPro(sub), g = await saveGift(c, email, months, c.body.note);
+    const paid = paidPro(sub), first = !sub.hadPro, g = await saveGift(c, email, months, c.body.note);
     note = monthsWord(months);
     if (await refresh()) {
       msg = !sub.pro ? "The gift is saved, but Pro did not switch on yet. Press Re-check Pro in a minute."
         : sub.plan && sub.plan.via === "list" ? "Prowl Pro is free for this member from the PRO_EMAILS list in Cloudflare again. The gift (" + giftEnds(g.until) + ") is saved too, in case they leave that list."
         : "Prowl Pro is now free for this member " + giftEnds(g.until) + ".";
-      if (paid) msg += " They also have a Prowl Pro subscription in the shop; the gift does not cancel it, so cancel it there if they should not be charged.";
+      if (paid) msg += SUB_NOTE;
+      if (sub.pro && first) msg += FIRST_NOTE;
     }
   } else if (action === "gift-off") {
-    const gh = String(await H.giftHash(email)), listed = !!(typeof H.proListHas === "function" && H.proListHas(env, email));
-    const [had, wasOff] = await Promise.all([H.kvGet(env, "gift:" + gh, null), H.kvGet(env, "giftoff:" + gh, null)]);
-    await kv.delete("gift:" + gh);
-    if (listed) await H.kvPut(env, "giftoff:" + gh, { at: new Date(c.nowMs).toISOString() });   // the PRO_EMAILS list no longer counts for them
-    const nothing = !had && (!listed || !!wasOff);
+    /* their own address and up to two earlier ones, as index.js alProSet checks them for free Pro */
+    const addrs = [email].concat(arr(sub.prev).map(String).filter(Boolean).slice(0, 2));
+    let had = false, listedAny = false, allOff = true, earlier = false;
+    for (let i = 0; i < addrs.length; i++) {
+      const gh = String(await H.giftHash(addrs[i])), listed = !!(typeof H.proListHas === "function" && H.proListHas(env, addrs[i]));
+      const [g, off] = await Promise.all([H.kvGet(env, "gift:" + gh, null), H.kvGet(env, "giftoff:" + gh, null)]);
+      if (g) { had = true; if (i) earlier = true; await kv.delete("gift:" + gh); }
+      if (listed) {   // the PRO_EMAILS list no longer counts for that address
+        listedAny = true; if (!off) { allOff = false; if (i) earlier = true; }
+        await H.kvPut(env, "giftoff:" + gh, { at: new Date(c.nowMs).toISOString() });
+      }
+    }
+    const nothing = !had && (!listedAny || allOff);
     if (await refresh()) {
       msg = nothing ? "This member had no free Pro to turn off, so nothing changed."
         : sub.pro ? "Free Pro is off. They still have Prowl Pro because they pay for it in the shop."
         : sub.proCheck ? "Free Pro is off. The shop could not be checked for a paid plan just now, so they are on the free plan; press Re-check Pro later if they pay."
         : "Free Pro is off. They are on the free plan unless they pay.";
-      if (listed && !nothing) msg += " Their address is still in the PRO_EMAILS list in Cloudflare, but it no longer gives them Pro. Gift Pro turns it back on.";
+      if (!nothing && earlier) msg += " It came from an email address they used before.";
+      if (listedAny && !nothing) msg += " Their address is still in the PRO_EMAILS list in Cloudflare, but it no longer gives them Pro. Gift Pro turns it back on.";
     }
     if (nothing) note = "nothing to turn off";
   } else if (action === "delete") {
-    for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "pro:"]) await kv.delete(p + email);
+    for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "pro:", "last:"]) await kv.delete(p + email);
     if (sub.cid) { const cc = await H.kvGet(env, "cid:" + sub.cid, null); if (cc && cc.email === email) await kv.delete("cid:" + sub.cid); }
     ROSTER = null;
     await audit(c, { action: action, id: id, ok: true });
@@ -664,32 +804,47 @@ async function apiAction(c) {
 async function apiDiagnose(c) {
   const H = c.H, env = c.env, b = c.body;
   if (!(await H.vCount("admdiag", 150))) return jerr(429, "That is a lot of checks today. Try again tomorrow.");
-  let term = String(b.term == null ? "" : b.term).replace(/\s+/g, " ").trim().slice(0, 60), m = null;
+  let term = String(b.term == null ? "" : b.term).replace(/\s+/g, " ").trim().slice(0, 60), m = null, huntIdx = -1;
   if (b.id != null && b.id !== "") { m = await findMember(c, b.id); if (!m) return jerr(404, "No member with that id."); }
   if (b.hunt != null && b.hunt !== "") {
     if (!m) return jerr(400, "Pick a member to check one of their hunts.");
     const i = Number(b.hunt), hs = arr(m.sub.hunts);
     if (!Number.isInteger(i) || i < 0 || i >= hs.length) return jerr(400, "That hunt is not on their list any more.");
-    term = String(hs[i]).slice(0, 60);
+    term = String(hs[i]).slice(0, 60); huntIdx = i;
   }
   if (!term) return jerr(400, "Type a search term, or pick one of a member's hunts.");
-  const sub = m && m.sub, p = sub ? H.alPrefs(sub) : null, aiOff = !!(p && p.noai), local = !!(sub && H.alNear(sub, term));
+  const sub = m && m.sub, p = sub ? H.alPrefs(sub) : null, aiOff = !!(p && p.noai), local = !!(sub && H.alNear(sub, term)), zip = p ? p.zip : "";
+  /* Whether the AI really hides anything: live results only when JEV_RESULTS is "on"; a member's emails also need
+     ALERT_JEV not "off" and their own AI switch on (index.js alHunt). Otherwise it only labels listings. */
+  const mode = typeof H.jevResultsMode === "function" ? String(H.jevResultsMode(env) || "off") : "off";
+  const alertsAi = String((env && env.ALERT_JEV) || "on").toLowerCase() !== "off";
+  const aiLive = mode === "on" && (!sub || (alertsAi && !aiOff));
+  /* a member's hunt that their emails never search: muted, or past their plan's number of hunts */
+  let hunt = null;
+  if (huntIdx >= 0) {
+    const l = term.toLowerCase();
+    hunt = arr(p.mute).indexOf(l) !== -1 ? "muted" : arr(H.alActive(env, sub)).map(x => String(x).toLowerCase()).indexOf(l) === -1 ? "over plan limit" : "active";
+  }
   const live = arr(H.liveSources()).map(String);
   let srcs = arr(b.sources).map(String).filter((s, i, a) => live.indexOf(s) !== -1 && a.indexOf(s) === i);
   if (!srcs.length) srcs = live.slice();
+  /* a local hunt's emails search eBay only, near their ZIP code (alHunt), so that is what runs here */
+  const localOnly = local && typeof H.liveFetchLocal === "function";
+  if (localOnly) srcs = live.indexOf("ebay") !== -1 ? ["ebay"] : [];
   let seen = new Set();
   if (sub) { const sl = await H.kvGet(env, "seen:" + m.email, []); seen = new Set(arr(sl).map(String)); }
+  const titleKey = typeof H.alTitleKey === "function" ? H.alTitleKey : null;   // a relisted piece is remembered by its title too
   /* memberDropReason says "not in their sites", "over their max price $N" or 'has skip word "w"'; only the word can be personal */
   const why = r => {
     if (!r) return null;
     const s = String(r).slice(0, 80), w = /^has skip word "(.*)"$/.exec(s);
-    if (w) return skipView(sub, [w[1]])[0] === HIDDEN ? "has one of their skip words" : s;
+    if (w) return skipView(sub, [w[1]], zip)[0] === HIDDEN ? "has one of their skip words" : s;
     if (s === "not in their sites" || /^over their max price \$\d+$/.test(s)) return s;
-    return scrubHunt(s).hidden ? "filtered out by their settings" : s;
+    return scrubHunt(s, zip).hidden ? "filtered out by their settings" : s;
   };
   const results = await Promise.all(srcs.map(async src => {
     let r = null;
-    try { r = await H.liveFetch(env, src, term); } catch (e) { r = { status: 0, ms: 0, items: null, err: "could not search" }; }
+    try { r = localOnly ? await H.liveFetchLocal(env, sub, term) : await H.liveFetch(env, src, term); } catch (e) { r = { status: 0, ms: 0, items: null, err: "could not search" }; }
     r = r || {};
     let items = arr(r.items), ai = aiOff ? "off for this member" : "";
     if (items.length && !aiOff) {
@@ -698,25 +853,31 @@ async function apiDiagnose(c) {
     }
     const out = items.slice(0, 40).map(x => {
       x = x || {};
-      const tag = typeof x.jev === "string" && x.jev && !aiOff ? word(x.jev, 20) : null;
+      const tag = typeof x.jev === "string" && x.jev && !aiOff ? word(x.jev, 20) : null, would = !aiOff && !!H.jevWouldDrop(x);
+      const sent = !!x.url && (seen.has(String(x.url)) || (!!titleKey && seen.has(String(titleKey(Object.assign({ src: src }, x))))));
       return { title: String(x.title || "").slice(0, 160), price: String(x.price || "").slice(0, 40), url: https(x.url), image: https(x.image),
         src: word(x.src || src, 20), ai: tag, aiP: tag && typeof x.jevp === "number" && isFinite(x.jevp) ? x.jevp : null,
-        aiDrop: !aiOff && !!H.jevWouldDrop(x), memberDrop: sub ? why(H.memberDropReason(sub, x, local)) : null,
-        alreadySent: !!x.url && seen.has(String(x.url)) };
+        aiWould: would, aiDrop: aiLive && would, memberDrop: sub ? why(H.memberDropReason(sub, x, local)) : null, alreadySent: sent };
     });
-    return { source: src, status: num(r.status), ms: num(r.ms), err: clean(r.err, 160), count: out.length, ai: ai,
-      kept: out.filter(x => !x.aiDrop && !x.memberDrop && !x.alreadySent).length, items: out };
+    return { source: src, status: num(r.status), ms: num(r.ms), err: clean(r.err, 160), count: out.length, ai: ai, aiAllFlagged: false, items: out };
   }));
+  /* the AI never empties a list: when it flags every listing it hides none. Emails ask it once for the whole hunt,
+     live results once per marketplace. */
+  for (const g of sub ? [results] : results.map(r => [r])) {
+    const all = [].concat.apply([], g.map(r => r.items));
+    if (all.length && all.every(x => x.aiDrop)) { all.forEach(x => { x.aiDrop = false; }); g.forEach(r => { r.aiAllFlagged = r.items.length > 0; }); }
+  }
+  results.forEach(r => { r.kept = r.items.filter(x => !x.aiDrop && !x.memberDrop && !x.alreadySent).length; });
   const sum = f => results.reduce((t, r) => t + r.items.filter(f).length, 0);
   const okN = results.filter(r => r.status === 200 && !r.err).length;
-  const shown = scrubHunt(term);
+  const shown = scrubHunt(term, zip);
   await audit(c, { action: "diagnose", id: m ? m.id : "", ok: true, note: srcs.length + " sites" });
   return jres({
     term: shown.hidden ? "(hidden)" : shown.text,
     member: m ? { id: m.id, pro: !!sub.pro, aiOff: aiOff, filters: { sources: arr(p.sources).map(x => word(x, 20)), maxPrice: sub.pro ? num(p.max) : 0,
-      skipWords: sub.pro ? skipView(sub, p.skip) : [] } } : null,
-    local: local, results: results,
-    summary: { sources: results.length, ok: okN, failed: results.length - okN, items: sum(() => true), aiDropped: sum(x => x.aiDrop),
+      skipWords: sub.pro ? skipView(sub, p.skip, zip) : [] } } : null,
+    local: local, localOnly: localOnly, hunt: hunt, ai: { mode: word(mode, 10), alerts: alertsAi, live: aiLive }, results: results,
+    summary: { sources: results.length, ok: okN, failed: results.length - okN, items: sum(() => true), aiDropped: sum(x => x.aiDrop), aiWould: sum(x => x.aiWould),
       memberDropped: sum(x => !!x.memberDrop), alreadySent: sum(x => x.alreadySent) }
   });
 }
@@ -752,17 +913,48 @@ const GETS = { overview: apiOverview, members: apiMembers, member: apiMember, er
 const POSTS = { find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, gift: apiGiftAdd, "gift/remove": apiGiftRemove };
 
 /* ---------- sign in / out ---------- */
+const capsDayOf = c => typeof c.H.capsDay === "function" ? c.H.capsDay() : "caps:" + utcDay(c.nowMs);
+/* A daily counter that tells "over the limit" (false) from "the counter did not answer" (null). vCount alone says
+   false for both, which would tell the owner to wait until tomorrow when the counter only hiccuped. */
+async function take(c, k, lim) {
+  let j;
+  try { j = await c.H.capsCall(capsDayOf(c), "take", { k: k, lim: lim }); } catch (e) { return null; }
+  if (j == null) return !!(await c.H.vCount(k, lim));   // no Durable Object binding: vCount's own fallback counter
+  return typeof j === "object" && typeof j.left === "number" ? j.left >= 0 : null;
+}
+async function peekCount(c, k) {
+  let j;
+  try { j = await c.H.capsCall(capsDayOf(c), "peek", { keys: [k] }); } catch (e) { return null; }
+  return j && typeof j === "object" && j.values && typeof j.values === "object" ? num(j.values[k]) : 0;
+}
 async function login(c) {
   const H = c.H, req = c.request;
-  /* Bad-origin and over-limit tries are refused before any work and not logged, so a flood cannot push real entries out of the audit log. */
+  /* Bad-origin and over-limit tries are refused before the key is even compared, and are not logged. */
   if (!sameOrigin(req, c.url)) return page(H, "login", 403, "That sign-in did not come from this page. Open /admin and try again.");
-  if (!(await H.vCount("admlogin:" + H.ipKey(req.headers.get("CF-Connecting-IP")), 10))) return page(H, "login", 429, "Too many sign-in tries from here today. Try again tomorrow.");
+  const ip = H.ipKey(req.headers.get("CF-Connecting-IP")), net = typeof H.ipNet === "function" ? H.ipNet(ip) : ip;
+  const failKey = "admloginfail:" + new Date(c.nowMs).toISOString().slice(0, 13);   // wrong keys site-wide, this UTC hour
+  const busy = () => page(H, "login", 503, "Sign-in is briefly unavailable (the sign-in counter did not answer). Try again in a minute.");
+  const perIp = await take(c, "admlogin:" + ip, LOGIN_PER_IP);
+  if (perIp === null) return busy();
+  if (!perIp) return page(H, "login", 429, "Too many sign-in tries from here today. Try again tomorrow.");
+  const perNet = await take(c, "admlogin:n:" + net, LOGIN_PER_NET);
+  if (perNet === null) return busy();
+  if (!perNet) return page(H, "login", 429, "Too many sign-in tries from this network today. Try again tomorrow.");
+  /* guesses spread over many addresses still meet this; a lock-out it causes ends with the hour, and a signed-in session is not affected */
+  const fails = await peekCount(c, failKey);
+  if (fails === null) return busy();
+  if (fails >= LOGIN_FAILS_PER_HOUR) return page(H, "login", 429, "Sign-in is paused for the rest of this hour because many wrong keys were tried. Try again after the hour, or keep using a page that is already signed in.");
   const raw = await readBody(req, 2048);
   if (raw === null) return page(H, "login", 413, "That was too long to be the admin key.");
   let given = "";
   try { given = new URLSearchParams(raw).get("key") || ""; } catch (e) {}
   const ok = await sameSecret(c.key, given);
-  await audit(c, { action: "login", ok: ok, note: ok ? "" : "wrong key" });
+  if (ok) await audit(c, { action: "login", ok: true });
+  else {
+    await take(c, failKey, 1000000);
+    /* one audit row per wrong key only for the first few each day, so a flood cannot push real entries out of the log */
+    if ((await take(c, "admloginlog", LOGIN_LOG_PER_DAY)) === true) await audit(c, { action: "login", ok: false, note: "wrong key" });
+  }
   if (!ok) return page(H, "login", 401, "That key did not match. Check ADMIN_KEY in Cloudflare and try again.");
   const v = await signSession(c.key, c.nowMs + SESSION_S * 1000);
   return redirect("/admin", COOKIE + "=" + v + "; Path=/admin; HttpOnly; Secure; SameSite=Strict; Max-Age=" + SESSION_S);
@@ -771,7 +963,9 @@ async function login(c) {
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 async function handle(request, env, ctx, H, url, path, isApi) {
   const key = adminKey(env);
-  if (!key) return plain(503, "Admin is not set up: add an ADMIN_KEY secret in Cloudflare (12 characters or more).");
+  if (!key) return plain(503, "Admin is not set up: add an ADMIN_KEY secret in Cloudflare (" + KEY_MIN + " characters or more, not the same as OWNER_KEY).");
+  /* OWNER_KEY lives in the public page's browser storage on the shop, so it must never also open the admin area */
+  if (env.OWNER_KEY && ctEq(key, String(env.OWNER_KEY))) return plain(503, "Admin is not set up: use a different key for ADMIN_KEY than OWNER_KEY. The public Prowl page keeps OWNER_KEY in the browser.");
   const c = { request: request, env: env, ctx: ctx, H: H, url: url, key: key, salt: String(env.MEMBER_ID_SALT || key), nowMs: Date.now(), body: {} };
   const authed = await verifySession(key, readCookie(request, COOKIE), c.nowMs);
   const method = request.method;

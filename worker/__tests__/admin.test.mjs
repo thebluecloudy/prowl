@@ -85,11 +85,16 @@ function makeH(kvOf, over = {}) {
     alFreeWeekly: sub => !!sub && !sub.pro && !legacy(sub),
     alLegacyFree: legacy,
     alUrgency: () => 1000,
-    /* like index.js: free Pro (list, then gift) before the shop's answer (H.nextPro); a gift or list Pro ends with them */
+    /* like index.js: free Pro (list, then gift) on their address or an earlier one before the shop's answer (H.nextPro);
+       a gift or list Pro ends with them */
     alProSet: async (env, sub, force) => {
       calls.proSet.push(force);
-      const gh = await IX.giftHash(sub.email), off = await H.kvGet(env, "giftoff:" + gh, null), gift = await H.kvGet(env, "gift:" + gh, null);
-      const p = giftPro(IX.proListHas(env, sub.email), !!off, gift, TODAY) || H.nextPro;
+      let free = null;
+      for (const a of [sub.email].concat(Array.isArray(sub.prev) ? sub.prev.slice(0, 2) : [])) {
+        const gh = await IX.giftHash(a), off = await H.kvGet(env, "giftoff:" + gh, null), gift = await H.kvGet(env, "gift:" + gh, null);
+        free = giftPro(IX.proListHas(env, a), !!off, gift, TODAY); if (free) break;
+      }
+      const p = free || H.nextPro;
       if (p.pro === null && sub.plan && (sub.plan.via === "gift" || sub.plan.via === "list")) { sub.pro = false; sub.plan = null; }
       if (p.pro !== null) { sub.pro = p.pro; sub.plan = p.plan; }
       sub.proCheck = p.pro === null ? String(p.via || "check failed") : "";
@@ -99,6 +104,14 @@ function makeH(kvOf, over = {}) {
     alSendSignin: async (env, sub) => { calls.signin.push(sub.email); await env.PROWL_ALERTS.put("in:" + sub.email, JSON.stringify({ code: "SIGNIN-CODE-SECRET" })); return H.signinResult || { ok: true }; },
     alToken: () => "fresh-token-" + Math.random().toString(16).slice(2),
     liveSources: () => ["shopgoodwill", "ebay", "etsy"],
+    jevMode: "on",
+    jevResultsMode: () => H.jevMode,
+    alTitleKey: x => "t:" + String(x.src || "") + "|" + String(x.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(),
+    /* a local hunt: eBay near the member's ZIP only */
+    liveFetchLocal: async (env, sub, term) => {
+      calls.live.push(["ebay-local", term]);
+      return { source: "ebay", status: 200, ms: 300, err: "", items: [{ title: "Pyrex bowl pickup", price: "$12", url: "https://ebay.example/itm/near1", image: "", src: "ebay" }] };
+    },
     liveFetch: async (env, source, term) => {
       calls.live.push([source, term]);
       if (source === "etsy") return { source, status: 0, ms: 12000, items: null, err: "timed out for buyer@example.com" };
@@ -131,11 +144,13 @@ function makeH(kvOf, over = {}) {
       if (H.capsFail.has(name + " " + op) || H.capsFail.has("*")) throw new Error("caps 500");
       const d = H.capsData[name + " " + op];
       if (d !== undefined) return typeof d === "function" ? d(body) : d;
+      if (op === "take") return { left: (await H.vCount(body.k, body.lim)) ? 0 : -1 };   // the daily counters, as vCount sees them
       return { ok: true };
     },
     capsDay: () => "caps:" + TODAY,
     vCount: async (name, limit) => { calls.vCount.push([name, limit]); return !H.deny.has(name.split(":")[0]) && !H.deny.has(name); },
     ipKey: raw => String(raw || "anon").split(",")[0].trim() || "anon",
+    ipNet: key => /^\d+\.\d+\.\d+\.\d+$/.test(key) ? key.split(".").slice(0, 3).join(".") + ".0/24" : key,
     alSame: (a, b) => a === b,
     statTerm: raw => { const t = String(raw == null ? "" : raw).toLowerCase().replace(/[^a-z0-9'& ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 60); return t.length < 2 || /@|https?|www|\.com/.test(String(raw)) || /\d{6,}/.test(t) ? "" : t; },
     scrubPII: s => String(s),
@@ -147,7 +162,7 @@ function makeH(kvOf, over = {}) {
       loginPage: (nonce, msg) => '<!doctype html><title>Prowl admin</title><style nonce="' + nonce + '"></style><form method="post" action="/admin/login"><input name="key" type="password"></form><p class="msg">' + msg + '</p><script nonce="' + nonce + '"></script>',
       adminPage: (nonce, version) => '<!doctype html><title>Prowl admin</title><style nonce="' + nonce + '"></style><main id="dash" data-v="' + version + '"></main><script nonce="' + nonce + '"></script>'
     },
-    WORKER_VERSION: "v78", AL_TZ: "America/Detroit", AL_MAX_HUNTS: 25,
+    WORKER_VERSION: "v78", AL_TZ: "America/Detroit", AL_MAX_HUNTS: 25, AL_PEND_CAP: 30,
     POOLS: [{ key: "all", name: "Fair price checks", limit: 400 }, { key: "jr:all", name: "AI sorting of results", limit: 3000 }],
     PAGE_URL: "https://shop.example/pages/prowl"
   };
@@ -165,7 +180,7 @@ function janeRecord(over = {}) {
     hunts: ["Roseville vase", "call me 555-123-4567", "pyrex", "mccoy planter"],
     prefs: { freq: "daily", sources: ["shopgoodwill", "ebay"], zip: "48375", radius: 25, local: ["pyrex"], max: 500, skip: ["cracked", "jane@example.com"], mute: ["mccoy planter"], tz: "America/Detroit", slot: 7 },
     pro: true, plan: { via: "order", order: "#1001", paid: "2026-10-01T10:00:00Z", renews: "2026-11-01T10:00:00Z", amount: "7.00", currency: "USD", receipt: "https://store.example/orders/RECEIPT-SECRET-xyz", trial: false },
-    hadPro: true, created: "2026-09-20T08:00:00.000Z", day: TODAY, done: ["roseville vase"], sent: "2026-10-04", mail: "on", proDay: TODAY
+    hadPro: true, created: "2026-09-20T08:00:00.000Z", day: TODAY, done: ["roseville vase"], sent: "2026-10-04", mailed: "2026-10-04", mail: "on", proDay: TODAY
   }, over);
 }
 function makeEnv(extra = {}) {
@@ -181,7 +196,7 @@ function makeEnv(extra = {}) {
   kv.set("moved:old.address@example.org", { to: EMAIL, tok: "TOKEN-SECRET-abc123def456", at: 1 });
   kv.set("pro:" + EMAIL, { pro: true, at: 1, plan: { receipt: "https://store.example/orders/RECEIPT-SECRET-xyz" } });
   // a free member, a paused one, a member with emails off and a late one
-  kv.set("sub:free.person@example.com", { email: "free.person@example.com", tok: "t2", hunts: ["fiesta"], prefs: {}, created: new Date().toISOString().slice(0, 10), day: TODAY, done: [], sent: TODAY, mail: "on" });
+  kv.set("sub:free.person@example.com", { email: "free.person@example.com", tok: "t2", hunts: ["fiesta"], prefs: {}, created: new Date().toISOString().slice(0, 10), day: TODAY, done: [], sent: TODAY, mailed: TODAY, mail: "on" });
   kv.set("sub:paused@example.com", { email: "paused@example.com", tok: "t3", hunts: ["hull"], prefs: { pause: "2026-10-20" }, created: "2026-08-01", mail: "on" });
   kv.set("sub:quiet@example.com", { email: "quiet@example.com", tok: "t4", hunts: ["kron"], prefs: {}, created: "2026-07-01", mail: "off", mailOffAt: "2026-10-01T00:00:00Z" });
   kv.set("sub:late@example.com", { email: "late@example.com", tok: "t5", hunts: ["weller", "frankoma"], prefs: { slot: 6 }, created: "2026-05-01", pro: false, day: TODAY, done: ["weller"], sent: "2026-10-04", mail: "on" });
@@ -242,8 +257,20 @@ test("admin key missing or short: every /admin route answers 503", async () => {
       assertBaseHeaders(res);
     }
   }
-  const res = await adminFetch(new Request(ORIGIN + "/admin"), { PROWL_ALERTS: new FakeKV(), OWNER_KEY: "owner-key-long-enough" }, ctxOf(), H);
-  assert.equal(res.status, 200, "OWNER_KEY works as the admin key");
+  /* OWNER_KEY sits in the public page's browser storage, so it never opens the admin area */
+  let res = await adminFetch(new Request(ORIGIN + "/admin"), { PROWL_ALERTS: new FakeKV(), OWNER_KEY: "owner-key-long-enough-0123" }, ctxOf(), H);
+  assert.equal(res.status, 503, "OWNER_KEY alone is not an admin key");
+  assert.match(await res.text(), /add an ADMIN_KEY secret/);
+  res = await adminFetch(new Request(ORIGIN + "/admin"), { PROWL_ALERTS: new FakeKV(), ADMIN_KEY: "same-key-for-both-0123", OWNER_KEY: "same-key-for-both-0123" }, ctxOf(), H);
+  assert.equal(res.status, 503);
+  assert.match(await res.text(), /use a different key for ADMIN_KEY than OWNER_KEY/);
+  res = await adminFetch(new Request(ORIGIN + "/admin"), { PROWL_ALERTS: new FakeKV(), ADMIN_KEY: "only-19-characters!" }, ctxOf(), H);
+  assert.equal(res.status, 503, "at least 20 characters");
+  res = await adminFetch(new Request(ORIGIN + "/admin"), { PROWL_ALERTS: new FakeKV(), ADMIN_KEY: KEY, OWNER_KEY: "owner-key-long-enough-0123" }, ctxOf(), H);
+  assert.equal(res.status, 200, "ADMIN_KEY works when it differs from OWNER_KEY");
+  res = await call(makeEnv({ OWNER_KEY: "owner-key-long-enough-0123" }), H, "POST", "/admin/login", { cookie: false, body: "key=owner-key-long-enough-0123",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Origin: ORIGIN } });
+  assert.equal(res.status, 401, "OWNER_KEY does not sign in");
 });
 
 test("paths outside /admin are not handled", async () => {
@@ -481,7 +508,7 @@ test("members list: ids, filters, sorts, PII-free, salted by MEMBER_ID_SALT", as
   assert.notEqual(janeId, await memberId(KEY, EMAIL));
   const jane = j.members.find(m => m.id === janeId);
   assert.ok(jane, "id uses MEMBER_ID_SALT");
-  assert.ok(jane.flags.includes("sign-in link waiting"));
+  assert.ok(!jane.flags.includes("sign-in link waiting"), "the list does not list waiting sign-in links (the detail view shows them)");
   assert.deepEqual(j.members.map(m => m.created), j.members.map(m => m.created).slice().sort().reverse(), "newest first by default");
   const get = async q => (await (await call(env, H, "GET", "/admin/api/members?" + q)).json());
   assert.deepEqual((await get("filter=pro")).members.map(m => m.plan), ["pro"]);
@@ -511,7 +538,14 @@ test("find: by email, by an earlier address, 404, rate limit; the email is never
   assert.equal(res.status, 404);
   text = await res.text();
   assert.ok(!text.includes("nobody"));
-  assert.equal(JSON.parse(text).error, "No member with that email.");
+  assert.match(JSON.parse(text).error, /^No member with that email\. Check the spelling/);
+  /* someone who signed up but never tapped the confirm link: only conf:<email> exists */
+  env.PROWL_ALERTS.set("conf:waiting.person@example.com", { code: "CONF-CODE-SECRET", hunts: ["pyrex"] });
+  res = await apiPost(env, H, "/admin/api/find", { email: "Waiting.Person@example.com" });
+  assert.equal(res.status, 404);
+  text = await res.text(); noPII(text, "find waiting");
+  assert.ok(!text.includes("waiting.person"));
+  assert.match(JSON.parse(text).error, /not tapped the confirm link/); assert.match(JSON.parse(text).error, /spam/);
   res = await apiPost(env, H, "/admin/api/find", { email: "not an email" });
   assert.equal(res.status, 400);
   const audits = H.calls.caps.filter(x => x.op === "mrec" && x.body.a).map(x => JSON.stringify(x.body));
@@ -688,7 +722,8 @@ test("diagnose a typed term: every live source, AI tags, https-only links, failu
   assert.equal(ebay.kept, 2);
   assert.equal(etsy.status, 0); assert.equal(etsy.count, 0); assert.ok(etsy.err.includes("[email]"), "error text scrubbed");
   for (const r of j.results) for (const it of r.items) { assert.equal(it.memberDrop, null); assert.equal(it.alreadySent, false); }
-  assert.deepEqual(j.summary, { sources: 3, ok: 2, failed: 1, items: 5, aiDropped: 1, memberDropped: 0, alreadySent: 0 });
+  assert.deepEqual(j.summary, { sources: 3, ok: 2, failed: 1, items: 5, aiDropped: 1, aiWould: 1, memberDropped: 0, alreadySent: 0 });
+  assert.deepEqual(j.ai, { mode: "on", alerts: true, live: true });
   assert.equal(H.calls.jev.length, 2, "AI only for sources that returned listings");
   assert.ok(H.calls.jev.every(c => c[2] === "shadow"));
 });
@@ -803,9 +838,10 @@ test("overview: full shape, PII-free", async () => {
   assert.equal(j.audit.length, 2); assert.equal(j.audit[1].id, "", "a bad id in the log is not passed on");
   assert.deepEqual(j.liveSources, ["shopgoodwill", "ebay", "etsy"]);
   assert.deepEqual(j.issues, []);
-  const mget = H.calls.caps.find(x => x.op === "mget");
-  assert.equal(mget.name, "metrics");
-  assert.ok(mget.body.crons >= 288, "enough cron runs for 24 hours of 5-minute runs");
+  const mgets = H.calls.caps.filter(x => x.op === "mget");
+  assert.ok(mgets.every(x => x.name === "metrics"));
+  assert.ok(mgets.some(x => x.body.crons >= 288 && x.body.probeDays === 7), "enough cron runs for 24 hours of 5-minute runs, and a week of uptime checks");
+  assert.ok(mgets.some(x => x.body.crons === 1 && x.body.probeDays === 0 && x.body.hours === 26), "the minute-by-minute part reads only the newest run");
   const peek = H.calls.caps.find(x => x.op === "peek");
   assert.equal(peek.name, "caps:" + TODAY); assert.deepEqual(peek.body.keys, ["all", "jr:all"]);
 });
@@ -936,8 +972,8 @@ function realPro(env, shop) {
   const fetch = async () => { calls.shop++; if (!shop) throw new Error("offline"); return { status: 200, json: async () => ({ data: { orders: { nodes: shop } } }) }; };
   const deps = { kvGet, kvPut: async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v)), giftHash: IX.giftHash, giftPro, proListHas: IX.proListHas,
     alNow: () => ({ day: TODAY, hour: 10, wday: 1 }), PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", fetch };
-  const fns = fromIndex(["alPro"], deps);
-  return Object.assign(fromIndex(["alProSet"], { alPro: fns.alPro, alNow: deps.alNow }), { alPro: fns.alPro, calls });
+  const fns = fromIndex(["alFreePro", "alProShop", "alPro", "alProSet"], deps);
+  return Object.assign(fns, { calls });
 }
 test("index.js alPro: the list, then a gift, both before the cache and Shopify; switching the list off falls through", async () => {
   const kv = new FakeKV(), L = "listed@example.com", G = FRIEND, P = "payer@example.com";
@@ -1095,7 +1131,7 @@ test("member actions gift-on and gift-off; a PRO_EMAILS member is switched off a
   assert.match(j.message, /^Prowl Pro is now free for this member with no end date\./);
   assert.deepEqual(rec(env, F).plan, { via: "gift", until: "" });
   assert.equal(j.member.plan.name, "pro"); assert.equal(j.member.via, "gift");
-  assert.deepEqual(j.member.gift, { active: true, source: "gift", until: "", note: "", added: new Date().toISOString().slice(0, 10), ended: false, listed: false, listOff: false });
+  assert.deepEqual(j.member.gift, { active: true, source: "gift", until: "", note: "", added: new Date().toISOString().slice(0, 10), ended: false, listed: false, listOff: false, earlier: false });
   // a length from the member page
   ({ res, j } = await act2(env, H, F, "gift-on", { months: 6, note: "thanks for the feedback" }));
   assert.match(j.message, /until 2027-04-05/); assert.equal(j.member.gift.note, "thanks for the feedback"); assert.equal(j.member.gift.until, "2027-04-05");
@@ -1151,7 +1187,7 @@ test("member detail and summary: gift fields, plan badge via gift or list, an en
   env.PROWL_ALERTS.set("gift:" + giftHashOf(EMAIL), { note: "launch helper", added: "2026-09-01T10:00:00.000Z", until: "2026-12-31", by: "admin" });
   const d = await memberDetail(env, janeRecord({ plan: { via: "list" } }), H, now);
   noPII(JSON.stringify(d), "detail"); noAddress(JSON.stringify(d), "detail", [EMAIL]);
-  assert.deepEqual(d.gift, { active: true, source: "list", until: "2026-12-31", note: "launch helper", added: "2026-09-01", ended: false, listed: true, listOff: false });
+  assert.deepEqual(d.gift, { active: true, source: "list", until: "2026-12-31", note: "launch helper", added: "2026-09-01", ended: false, listed: true, listOff: false, earlier: false });
   assert.equal(d.plan.via, "list"); assert.equal(d.planName, "pro");
   env.PROWL_ALERTS.set("giftoff:" + giftHashOf(EMAIL), { at: "2026-10-01T00:00:00Z" });
   assert.equal((await memberDetail(env, janeRecord(), H, now)).gift.source, "gift", "the list is off, the gift still counts");
@@ -1164,7 +1200,7 @@ test("member detail and summary: gift fields, plan badge via gift or list, an en
   assert.deepEqual([s.plan, s.via], ["pro", "gift"]); assert.ok(!s.flags.includes("gift ended"));
   assert.deepEqual([memberSummary(env, janeRecord({ plan: { via: "list" } }), H, now).plan, memberSummary(env, janeRecord({ plan: { via: "list" } }), H, now).via], ["pro", "list"]);
   const plain = await memberDetail(env, { email: "free.person@example.com", hunts: [] }, H, now);
-  assert.deepEqual(plain.gift, { active: false, source: null, until: "", note: "", added: "", ended: false, listed: false, listOff: false });
+  assert.deepEqual(plain.gift, { active: false, source: null, until: "", note: "", added: "", ended: false, listed: false, listOff: false, earlier: false });
   // the API answer for a member is just as clean
   const t = await (await call(env, H, "GET", "/admin/api/member?id=" + await idOf(env, EMAIL))).text();
   noPII(t, "member"); noAddress(t, "member", [EMAIL]);
