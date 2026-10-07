@@ -138,6 +138,21 @@ async function readBody(request, max) {
   return t.length > max ? null : t;
 }
 function adminKey(env) { const k = String((env && env.ADMIN_KEY) || ""); return k.length >= KEY_MIN ? k : ""; }
+/* Why the admin area is off, in words the owner can act on in Cloudflare ("" when ADMIN_KEY is usable). The message
+   names a setting and says what is wrong with it; it never shows a secret's value or length. */
+function setupProblem(env) {
+  const raw = String((env && env.ADMIN_KEY) || "");
+  const owner = String((env && env.OWNER_KEY) || "");
+  if (!raw) {
+    const near = Object.keys(env || {}).find(n => n !== "ADMIN_KEY" && /^\s*admin[\s_-]*key\s*$/i.test(n));
+    if (near) return "Admin is not set up: there is a secret named \"" + near + "\", but the name must be exactly ADMIN_KEY (capitals, with the underscore). In Cloudflare, add ADMIN_KEY with the same value and delete \"" + near + "\".";
+    return "Admin is not set up: add an ADMIN_KEY secret in Cloudflare (" + KEY_MIN + " characters or more, not the same as OWNER_KEY).";
+  }
+  if (raw.length < KEY_MIN) return "Admin is not set up: ADMIN_KEY is shorter than " + KEY_MIN + " characters. In Cloudflare, replace it with a key of " + KEY_MIN + " characters or more (not the same as OWNER_KEY).";
+  /* OWNER_KEY lives in the public page's browser storage on the shop, so it must never also open the admin area */
+  if (owner && ctEq(raw, owner)) return "Admin is not set up: use a different key for ADMIN_KEY than OWNER_KEY. The public Prowl page keeps OWNER_KEY in the browser.";
+  return "";
+}
 /* Audit writes never hold up or fail the owner's request. */
 function audit(c, entry) {
   const e = { t: c.nowMs, action: entry.action, id: entry.id || "", ok: !!entry.ok, note: String(entry.note || "").slice(0, 80) };
@@ -983,10 +998,9 @@ async function login(c) {
 
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 async function handle(request, env, ctx, H, url, path, isApi) {
+  const problem = setupProblem(env);
+  if (problem) return plain(503, problem);
   const key = adminKey(env);
-  if (!key) return plain(503, "Admin is not set up: add an ADMIN_KEY secret in Cloudflare (" + KEY_MIN + " characters or more, not the same as OWNER_KEY).");
-  /* OWNER_KEY lives in the public page's browser storage on the shop, so it must never also open the admin area */
-  if (env.OWNER_KEY && ctEq(key, String(env.OWNER_KEY))) return plain(503, "Admin is not set up: use a different key for ADMIN_KEY than OWNER_KEY. The public Prowl page keeps OWNER_KEY in the browser.");
   const c = { request: request, env: env, ctx: ctx, H: H, url: url, key: key, salt: String(env.MEMBER_ID_SALT || key), nowMs: Date.now(), body: {} };
   const authed = await verifySession(key, readCookie(request, COOKIE), c.nowMs);
   const method = request.method;
