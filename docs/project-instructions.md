@@ -32,7 +32,7 @@ Any React/TypeScript/Zustand preferences in general profiles do **NOT** apply he
 - **Facebook city-slug regional sourcing is a differentiating feature.** Don't replace it with generic category URLs globally; the FB mobile app dropping the city slug is handled with a note, not by removing the feature.
 
 ### Safety & content
-- **Escape all dynamic HTML.** Anything rendered from product data or user input goes through `escapeHtml()` or DOM APIs (`textContent`, `createElement`). The found-strip is the only sanctioned innerHTML render and its title is escaped — keep it that way.
+- **Escape all dynamic HTML.** Anything rendered from product data or user input goes through `esc()` (the page's escaper) or DOM APIs (`textContent`, `createElement`). The found-strip is the only sanctioned innerHTML render and its title is escaped — keep it that way.
 - **Preserve the business layer:** the SEO section, JSON-LD schema block, Vintage Vault CTA, share buttons, Ko-fi link, and byline are revenue/discovery features, not decoration. Don't remove or reorder them without being asked.
 - **`isVintageProduct()` filter list (`studioTags`)** gates what appears in the found strip. Only modify when explicitly asked; it hides non-vintage studio products from the showcase.
 - **Collector positioning only.** Copy, features, and SEO frame the tool for collectors — never "how resellers use it" framing.
@@ -41,16 +41,16 @@ Any React/TypeScript/Zustand preferences in general profiles do **NOT** apply he
 
 1. Fetch the live page body first — backups frequently lag behind live. Check `updatedAt`, then grep for known markers.
 2. Apply edits to the full body (partial updates not supported — `pageUpdate` requires the complete `body` string plus `id` every time).
-3. Extract the `<script>` block and run `node --check` — zero parse errors.
+3. `npm run lint`: every inline `<script>` parses, JSON-LD is valid, no Liquid openers (`scripts/check-page.mjs`), worker and extension files parse.
 4. Scan for Liquid tokens — none present.
-5. Run the jsdom behavioral test suite (89 tests; harness uses `runScripts:'dangerously'`, localStorage mock, `window.open` capture array, stubbed `fetch`/`clipboard`/`matchMedia`; async waits for staggered opens).
+5. `npm test`: the jsdom page tests in `__tests__/` (loader `__tests__/helpers/loadPage.mjs`: `runScripts:'dangerously'`, localStorage, `window.open` capture, stubbed `fetch`/`clipboard`/`matchMedia`) plus the worker tests in `worker/__tests__/`. CI (`.github/workflows/blank.yml`) runs both on every PR.
 6. Push via `pageUpdate`, verify `updatedAt` in the response.
 7. SEO metafields go separately via `metafieldsSet` (`namespace: "global"`, keys `title_tag`/`description_tag`, type `single_line_text_field`, `ownerId` = page GID) — never through `pageUpdate`.
 
 ## Verification — run before delivering any change
 
 **Syntax & structure**
-- [ ] `node --check` on the extracted script — clean.
+- [ ] `npm run lint` and `npm test` — clean.
 - [ ] No Liquid tokens anywhere in the file.
 - [ ] File is one self-contained block, no external references (except the existing Shopify CDN icon and `/products.json` fetch).
 
