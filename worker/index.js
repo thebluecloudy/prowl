@@ -19,6 +19,13 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v79: 2026-10-07. Long eBay hunts no longer get stuck on the exact phrase. A hunt of 4+ words whose exact phrase
+ *        finds fewer than a full page now also runs the plain-words search and shows both, phrase matches first
+ *        ("1970's General Mills MONSTER Cereal" matched cereal boxes as a phrase and hid the vinyl figures that the
+ *        plain search finds). 2-3 word hunts keep the phrase-wins rule ("ceramic panther" vs Jaguar converters).
+ *        Curly quotes become straight ones and 1970's / 1970’s becomes 1970s before eBay or Etsy sees the hunt
+ *        (Etsy's every-word title check also reads a title's 1970's as 1970s). Live
+ *        strips and alert emails share the change; alerts still spend at most 2 eBay calls per hunt.
  *   v78: 2026-10-05. Admin area at /admin (admin.js + admin-page.js): sign in with ADMIN_KEY (its own secret, 20+
  *        characters, never the same as OWNER_KEY, which the public page keeps in the browser), 12-hour
  *        HttpOnly session cookie. Members by pseudonymous id only (no emails, tokens, ZIPs or Shopify ids shown);
@@ -223,7 +230,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
-const WORKER_VERSION = "v78c";
+const WORKER_VERSION = "v79";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -495,16 +502,52 @@ function ebayPhrase(term) {
   return t.split(/\s+/).length >= 2 ? '"' + t + '"' : "";
 }
 
-async function ebayCall(term, env) {
-  const phrase = ebayPhrase(term);
-  if (phrase) {
-    const first = await ebaySearchRaw(phrase, env);
-    const got = first.status === 200 ? ebayNormalize(first.text) : null;
-    if (got === null || got.length) return first;
+/* v79: sellers type straight quotes and "1970s"; hunts pasted from elsewhere carry curly ones and "1970’s". */
+function ebayClean(term) {
+  return String(term || "")
+    .replace(/[\u2018\u2019\u201A\u2032]/g, "'").replace(/[\u201C\u201D\u201E\u2033]/g, '"')
+    .replace(/\b(1[89]\d0|20[0-2]0|[2-9]0)'s\b/gi, "$1s")
+    .replace(/\s+/g, " ").trim();
+}
+/* v79: phrase hits first, then plain-words hits that are not already there, one page at most */
+function ebayMerge(first, loose) {
+  let a = [], b = [];
+  try { a = JSON.parse(first.text).itemSummaries || []; } catch (e) {}
+  try { b = JSON.parse(loose.text).itemSummaries || []; } catch (e) {}
+  const seen = {}, out = [];
+  const key = (it) => String((it && (it.legacyItemId || it.itemId || it.itemWebUrl)) || "");
+  for (const it of a.concat(b)) {
+    const k = key(it);
+    if (!k || seen[k]) continue;
+    seen[k] = 1; out.push(it);
+    if (out.length >= EBAY_LIMIT) break;
   }
-  const loose = await ebaySearchRaw(term, env);
+  return { status: 200, text: JSON.stringify({ total: out.length, itemSummaries: out }) };
+}
+/* v79: the exact phrase first. 2-3 word hunts keep the old rule: any phrase hit wins, because the plain words
+   of a short hunt drift ("ceramic panther"). A 4+ word phrase is so specific that a thin result means the
+   phrase missed the listings people actually write, so a short phrase page is topped up with the plain search.
+   Two eBay calls at most either way. */
+async function ebayPhraseFirst(term, env, filter) {
+  const t = ebayClean(term);
+  const phrase = ebayPhrase(t);
+  if (!phrase) return ebaySearchRaw(t, env, false, filter);
+  const first = await ebaySearchRaw(phrase, env, false, filter);
+  const got = first.status === 200 ? ebayNormalize(first.text) : null;
+  if (got === null) return first;
+  const long = t.split(" ").length >= 4;
+  if (got.length && (!long || got.length >= EBAY_LIMIT)) return first;
+  const loose = await ebaySearchRaw(t, env, false, filter);
+  if (!got.length) return loose;
   const lg = loose.status === 200 ? ebayNormalize(loose.text) : null;
-  if (lg === null || lg.length) return loose;
+  return lg && lg.length ? ebayMerge(first, loose) : first;
+}
+
+async function ebayCall(term, env) {
+  const up = await ebayPhraseFirst(term, env);
+  const ug = up.status === 200 ? ebayNormalize(up.text) : null;
+  if (ug === null || ug.length) return up;
+  term = ebayClean(term);
   /* v25: nothing yet. eBay's own spelling fix first, then shorter versions. */
   const fixed = await ebaySearchRaw(term, env, true);
   const fg = fixed.status === 200 ? ebayNormalize(fixed.text) : null;
@@ -524,7 +567,7 @@ async function ebayCall(term, env) {
       if (g && g.length) return r;
     }
   }
-  return loose;
+  return up;
 }
 
 async function ebaySearchRaw(term, env, autocorrect, filter) {
@@ -765,6 +808,7 @@ async function etsyGet(path, env) {
   } finally { clearTimeout(timer); }
 }
 async function etsyCall(term, env) {
+  term = ebayClean(term);   /* v79: curly quotes and 1970's -> 1970s, as for eBay */
   const phrase = ebayPhrase(term);
   let s = await etsyGet("listings/active?limit=" + ETSY_FETCH + "&keywords=" + encodeURIComponent(phrase || term), env);
   let j = null; try { j = JSON.parse(s.text); } catch (e) {}
@@ -777,7 +821,7 @@ async function etsyCall(term, env) {
      Keep only listings whose TITLE holds every searched word, as a whole word. */
   const words = String(term).toLowerCase().replace(/"/g, " ").split(/\s+/).filter(Boolean);
   const hasAll = (t) => {
-    const T = " " + hibidText(String(t || "")).toLowerCase().replace(/[^a-z0-9]+/g, " ") + " ";
+    const T = (" " + hibidText(String(t || "")).toLowerCase().replace(/[^a-z0-9]+/g, " ") + " ").replace(/ (\d{2,4}0) s /g, " $1s ");   /* v79: a title's "1970's" counts as 1970s */
     /* v25: "ripcord" also matches "rip cord" */
     const J = T.replace(/ /g, "");
     return words.every(w => { const ww = w.replace(/[^a-z0-9]+/g, " ").trim(); return T.indexOf(" " + ww + " ") !== -1 || (ww.length >= 6 && J.indexOf(ww.replace(/ /g, "")) !== -1); });
@@ -3017,13 +3061,7 @@ async function alSend(env, to, subject, html, text, unsub) {
    hunt costs about 9 calls. Runs check ALERT_BATCH hunts (default 2). */
 const AL_PER_SITE = 10;
 async function ebayLean(term, env, filter) {
-  const phrase = ebayPhrase(term);
-  if (phrase) {
-    const first = await ebaySearchRaw(phrase, env, false, filter);
-    const got = first.status === 200 ? ebayNormalize(first.text) : null;
-    if (got === null || got.length) return first;
-  }
-  return ebaySearchRaw(term, env, false, filter);
+  return ebayPhraseFirst(term, env, filter);   /* v79: same rule as the live strip */
 }
 /* v56: eBay's local-pickup filter set. All five must travel together (Browse API rule). */
 const AL_RADII = [25, 50, 100];
