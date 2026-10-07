@@ -6,11 +6,21 @@ async function page() { const p = loadPage(); await tick(30); return p; }
 
 test('placeholders mean clean links: nothing is tagged until the real IDs are in', async () => {
   const p = await page();
-  for (const u of ['https://www.etsy.com/listing/1/x', 'https://reverb.com/item/2', 'https://www.1stdibs.com/furniture/3', 'https://www.depop.com/products/4/']) {
+  for (const u of ['https://www.etsy.com/listing/1/x', 'https://reverb.com/item/2', 'https://www.1stdibs.com/furniture/3']) {
     assert.equal(p.win.prowlAff(u, 'prowl-live'), u);
   }
-  assert.deepEqual([...p.win.prowlAffNames()], ['eBay']);
-  assert.equal(p.$('.copyr .aff-list').textContent, 'eBay');
+  assert.deepEqual([...p.win.prowlAffNames()], ['eBay', 'Depop']);
+  assert.equal(p.$('.copyr .aff-list').textContent, 'eBay and Depop');
+  await p.close();
+});
+
+test('Depop is live: listings and search links go out through the Rakuten deep link', async () => {
+  const p = await page();
+  const RAN = 'https://click.linksynergy.com/deeplink?id=jh1j/r7*wkQ&mid=53555&murl=';
+  for (const u of ['https://www.depop.com/products/abc-vintage-tee/', 'https://www.depop.com/search/?q=ceramic%20panther', 'https://depop.com/products/x/']) {
+    assert.equal(p.win.prowlAff(u, 'prowl-live'), RAN + encodeURIComponent(u));
+  }
+  assert.ok(p.win.prowlAffLive('depop.com'));
   await p.close();
 });
 

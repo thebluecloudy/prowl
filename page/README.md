@@ -9,6 +9,6 @@ Outbound listing and search links go through `prowlAff()` in the first `<script>
 | Etsy | Awin (or Rakuten, check at signup) | `YOUR_ETSY_MID`, `YOUR_AWIN_ID` |
 | Reverb | Awin | `YOUR_REVERB_MID`, `YOUR_AWIN_ID` |
 | 1stDibs | Partnerize | `YOUR_1STDIBS_CAMREF` |
-| Depop | Rakuten (merchant 53555) | `YOUR_RAN_ID`, once Depop approves the exception |
+| Depop | Rakuten (merchant 53555) | Live since v6.46: publisher id `jh1j/r7*wkQ`. The same link is in `worker/index.js` (`DEPOP_AFF`) and `extension/sites.js` (`AFF.depop`); change all three together. |
 
 A template that still contains `YOUR_` is off, and that merchant's links go out clean. The footer and Help disclosure list exactly the merchants that are on.

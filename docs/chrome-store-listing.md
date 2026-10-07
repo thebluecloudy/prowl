@@ -26,6 +26,8 @@ To use the Pro features, sign in once on the Prowl page (Den, Settings, Prowl Al
 
 Prowl is an independent tool. It is not affiliated with, endorsed by, or sponsored by the marketplaces it searches. All trademarks belong to their owners.
 
+Affiliate disclosure: Depop search links you open from Prowl go through Owl & Twig's affiliate link (Rakuten), so a purchase can earn Owl & Twig a small commission at no cost to you. Links are only tagged when you click them.
+
 ## Category
 Shopping
 
