@@ -1,5 +1,5 @@
 // Prowl by Owl & Twig. (c) 2026 Owl & Twig Vintage. All rights reserved.
-import { SITES, cleanTerm, prowlUrl, soldUrl, imagesUrl, lensUrl, guideUrl } from './sites.js';
+import { SITES, cleanTerm, prowlUrl, soldUrl, imagesUrl, lensUrl, guideUrl, amazonOn, amazonUrl } from './sites.js';
 import { isPro, saveMember, PRO_PAGE } from './member.js';
 const PRO_PAGE_URL = PRO_PAGE;
 
@@ -14,6 +14,7 @@ chrome.runtime.onInstalled.addListener(async () => {
   chrome.contextMenus.create({ id: 'prowl-sold', parentId: 'prowl', title: 'eBay sold prices for \u201c%s\u201d', contexts: sel });
   chrome.contextMenus.create({ id: 'prowl-guide', parentId: 'prowl', title: 'Field Guide for \u201c%s\u201d (Prowl Pro)', contexts: sel });
   chrome.contextMenus.create({ id: 'prowl-images', parentId: 'prowl', title: 'See \u201c%s\u201d on Google Images', contexts: sel });
+  if (amazonOn()) chrome.contextMenus.create({ id: 'prowl-amazon', parentId: 'prowl', title: 'Search Amazon for \u201c%s\u201d', contexts: sel });
   chrome.contextMenus.create({ id: 'prowl-lens', title: 'Prowl: identify this with Google Lens', contexts: ['image'] });
 });
 
@@ -31,6 +32,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     else if (info.menuItemId === 'prowl-sold') await openTab(soldUrl(term), tab);
     else if (info.menuItemId === 'prowl-guide') await openTab((await isPro()) ? guideUrl(term) : PRO_PAGE_URL, tab);
     else if (info.menuItemId === 'prowl-images') await openTab(imagesUrl(term), tab);
+    else if (info.menuItemId === 'prowl-amazon') { const u = amazonUrl(term); if (u) await openTab(u, tab); }
   } catch (err) {
     console.error('Prowl menu action failed:', err);
   }
