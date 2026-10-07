@@ -662,9 +662,9 @@ async function cancelMove(c, sub, email) {
   for (const old of arr(sub.prev).map(String).filter(Boolean).slice(0, 3)) {
     const k = "moved:" + old, mv = await H.kvGet(env, k, null);
     if (!mv || typeof mv !== "object" || mv.to !== email || !mv.tok) continue;
-    const ttl = num(mv.at) ? Math.floor((num(mv.at) + 90 * 86400000 - c.nowMs) / 1000) : 90 * 86400;
-    if (ttl >= 60) await kv.put(k, JSON.stringify({ to: mv.to, tok: H.alToken(), at: mv.at }), { expirationTtl: ttl });
-    else await kv.delete(k);
+    /* index.js keeps these 90 days from the move; KV still has it, so it has time left (KV's shortest is 60 s) */
+    const ttl = Math.min(90 * 86400, Math.max(60, num(mv.at) ? Math.floor((num(mv.at) + 90 * 86400000 - c.nowMs) / 1000) : 90 * 86400));
+    await kv.put(k, JSON.stringify({ to: mv.to, tok: H.alToken(), at: mv.at }), { expirationTtl: ttl });
   }
   return !!mf;
 }

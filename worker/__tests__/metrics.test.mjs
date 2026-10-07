@@ -564,3 +564,63 @@ test("a route or source named __proto__ is ordinary data", () => {
   const up = uptimeFrom([{ source: "__proto__", t: NOW, ok: true }, { source: "ebay", t: NOW, ok: false }], NOW);
   assert.deepEqual(up.map(u => [u.source, u.pct24, u.down]), [["__proto__", 100, false], ["ebay", 0, true]]);
 });
+
+/* ---------- review fixes ---------- */
+test("MetricsBuffer: a lone server error asks for a flush straight away (a quiet isolate may never see another request); a storm still batches", () => {
+  const b = new MetricsBuffer({ maxAgeMs: 120000 });
+  assert.equal(b.add({ r: "live:ebay", s: 200, ms: 5 }, NOW), false);
+  assert.equal(b.add({ r: "live:ebay", s: 502, ms: 900, err: "upstream" }, NOW + 10), true, "the error goes out now");
+  const d = b.drain();
+  assert.equal(d.e.length, 1); assert.equal(d.b["2026-10-05T21|live:ebay"].e5, 1);
+  assert.equal(b.add({ r: "live:ebay", s: 503, ms: 900 }, NOW + 1000), false, "at most one early flush every 5 seconds");
+  assert.equal(b.add({ r: "live:ebay", s: 503, ms: 900 }, NOW + 6000), true);
+  assert.equal(b.add({ r: "other", s: 404, ms: 3 }, NOW + 20000), false, "a 4xx waits for the batch");
+});
+
+/* counts the rows each storage.list call reads */
+class CountingStorage extends FakeStorage {
+  constructor() { super(); this.rowsRead = 0; }
+  async list(o) { const m = await super.list(o); this.rowsRead += m.size; return m; }
+}
+test("mrec keeps the caps without listing every key on each write", async () => {
+  const s = new CountingStorage();
+  for (let i = 0; i < 400; i++) await metricsOp(s, "mrec", { c: { t: NOW + i * 300000, sent: i } }, NOW);
+  assert.equal(s.keys("z:").length, 400);
+  s.rowsRead = 0;
+  for (let i = 400; i < 450; i++) await metricsOp(s, "mrec", { c: { t: NOW + i * 300000, sent: i } }, NOW);
+  assert.equal(s.keys("z:").length, 400, "still capped at 400");
+  assert.equal((await s.get(s.keys("z:")[0])).sent, 50, "the oldest went first");
+  assert.ok(s.rowsRead <= 50, "about one row read per run once full, not 400 (read " + s.rowsRead + ")");
+  /* errors in batches, the way the worker sends them */
+  for (let i = 0; i < 30; i++) await metricsOp(s, "mrec", { e: Array.from({ length: 20 }, (_, j) => ({ t: NOW + i * 20 + j, r: "other", s: 500, m: "m" + (i * 20 + j) })) }, NOW);
+  assert.equal(s.keys("y:").length, 500);
+  assert.equal((await s.get(s.keys("y:")[0])).m, "m100");
+  /* the daily prune re-counts, so a counter that drifted is put right */
+  await s.put("q:z:", 9999);
+  await metricsPrune(s, NOW);
+  assert.equal(await s.get("q:z:"), s.keys("z:").length);
+  assert.equal(await s.get("q:y:"), s.keys("y:").length);
+  assert.equal(await s.get("q:a:"), undefined, "no counter is made for a prefix that holds nothing");
+  const empty = new FakeStorage();
+  await metricsPrune(empty, NOW);
+  assert.equal(empty.m.size, 0, "a Caps object without metrics gets no counters");
+});
+
+test("a cron record can carry the overview's member counts, numbers only", async () => {
+  const s = new FakeStorage();
+  await metricsOp(s, "mrec", { c: { t: NOW, sent: 1, counts: { total: 12, late: 2, sentToday: "3", email: "jane@example.com", huntsLeftToday: -4, bogus: 9 } } }, NOW);
+  const v = await s.get("z:" + String(NOW).padStart(13, "0"));
+  assert.deepEqual(Object.keys(v.counts), ["total", "pro", "gifted", "trial", "free", "freeLegacy", "mailOff", "paused", "noHunts", "new7d", "hunts", "activeHunts",
+    "dueToday", "sentToday", "late", "checkedToday", "huntsLeftToday"]);
+  assert.deepEqual([v.counts.total, v.counts.late, v.counts.sentToday, v.counts.huntsLeftToday], [12, 2, 3, 0]);
+  assert.ok(!JSON.stringify(v).includes("@"));
+  const got = await metricsOp(s, "mget", { crons: 1 }, NOW);
+  assert.equal(got.crons[0].counts.total, 12);
+});
+
+test("mget: hours 0 and probeDays 0 skip those sections (the overview reads them less often)", async () => {
+  const s = await seeded();
+  const r = await metricsOp(s, "mget", { hours: 0, errors: 0, crons: 1, probeDays: 0, audit: 0 }, NOW);
+  assert.deepEqual([r.buckets, r.probes, r.errors, r.audit], [[], [], [], []]);
+  assert.equal(r.crons.length, 1);
+});

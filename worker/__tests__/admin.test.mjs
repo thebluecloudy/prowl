@@ -1205,3 +1205,343 @@ test("member detail and summary: gift fields, plan badge via gift or list, an en
   const t = await (await call(env, H, "GET", "/admin/api/member?id=" + await idOf(env, EMAIL))).text();
   noPII(t, "member"); noAddress(t, "member", [EMAIL]);
 });
+
+/* ---------- review fixes (v78) ---------- */
+const FORM = { "Content-Type": "application/x-www-form-urlencoded", Origin: ORIGIN };
+const login = (env, H, key, ip = "203.0.113.9") => call(env, H, "POST", "/admin/login", { cookie: false, body: "key=" + encodeURIComponent(key), headers: Object.assign({ "CF-Connecting-IP": ip }, FORM) });
+const auditsOf = H => H.calls.caps.filter(x => x.op === "mrec" && x.body.a).map(x => x.body.a[0]);
+
+test("login: per-address and per-network limits, a site-wide hourly budget of wrong keys, and no 'tomorrow' when the counter fails", async () => {
+  const H = makeH(), env = makeEnv();
+  let res = await login(env, H, KEY);
+  assert.equal(res.status, 303);
+  assert.deepEqual(H.calls.vCount.slice(0, 2), [["admlogin:203.0.113.9", 10], ["admlogin:n:203.0.113.0/24", 30]], "every try counts per address and per network");
+  H.deny.add("admlogin:n:203.0.113.0/24");
+  res = await login(env, H, KEY, "203.0.113.77");
+  assert.equal(res.status, 429, "a fresh address on a busy network is refused too");
+  assert.match(await res.text(), /from this network/);
+  H.deny.clear();
+  // wrong keys count site-wide for the hour; once the budget is used, even the right key waits
+  H.calls.caps.length = 0;
+  res = await login(env, H, "wrong-key-wrong-key-0");
+  assert.equal(res.status, 401);
+  const failTake = H.calls.caps.find(x => x.op === "take" && /^admloginfail:\d{4}-\d{2}-\d{2}T\d{2}$/.test(x.body.k));
+  assert.ok(failTake, "a wrong key takes one from this hour's site-wide budget");
+  H.capsData["caps:" + TODAY + " peek"] = q => ({ values: { [q.keys[0]]: /^admloginfail:/.test(q.keys[0]) ? 30 : 0 } });
+  res = await login(env, H, KEY, "198.51.100.4");
+  assert.equal(res.status, 429); assert.equal(res.headers.get("Set-Cookie"), null);
+  assert.match(await res.text(), /paused for the rest of this hour/);
+  delete H.capsData["caps:" + TODAY + " peek"];
+  // the counter not answering is "try again in a minute", never "tomorrow", and the key is not compared
+  H.capsFail.add("caps:" + TODAY + " take");
+  res = await login(env, H, KEY, "198.51.100.5");
+  assert.equal(res.status, 503);
+  const t = await res.text();
+  assert.match(t, /briefly unavailable/); assert.ok(!/tomorrow/.test(t));
+  assert.equal(res.headers.get("Set-Cookie"), null);
+  H.capsFail.clear();
+  H.capsFail.add("caps:" + TODAY + " peek");
+  assert.equal((await login(env, H, KEY, "198.51.100.6")).status, 503);
+});
+
+test("login: wrong keys are logged one by one only up to a small daily budget, so a flood cannot empty the audit log", async () => {
+  const H = makeH(), env = makeEnv();
+  await login(env, H, "wrong-key-wrong-key-1");
+  assert.deepEqual(auditsOf(H).map(a => [a.action, a.ok, a.note]), [["login", false, "wrong key"]]);
+  assert.ok(H.calls.vCount.some(x => x[0] === "admloginlog" && x[1] === 20));
+  H.deny.add("admloginlog");   // today's budget of logged wrong keys is used up
+  H.calls.caps.length = 0;
+  assert.equal((await login(env, H, "wrong-key-wrong-key-2")).status, 401);
+  assert.equal(auditsOf(H).length, 0, "not logged one by one any more");
+  assert.equal((await login(env, H, KEY)).status, 303);
+  assert.deepEqual(auditsOf(H).map(a => [a.action, a.ok]), [["login", true]], "a real sign-in is always logged");
+});
+
+test("signout-all also cancels a waiting change of address and retires the old address's forwarding token", async () => {
+  const H = makeH(), env = makeEnv(), id = await idOf(env, EMAIL);
+  const { j } = await act(env, H, EMAIL, "signout-all", id);
+  assert.equal(j.ok, true); assert.match(j.message, /change of email address was cancelled/);
+  assert.equal(env.PROWL_ALERTS.m.has("mvf:" + EMAIL), false);
+  assert.equal(env.PROWL_ALERTS.m.has("mv:new.place@example.com"), false, "the confirm link in the other inbox no longer works");
+  const fw = env.PROWL_ALERTS.json("moved:old.address@example.org");
+  assert.equal(fw.to, EMAIL, "the owner can still find them by the old address");
+  assert.notEqual(fw.tok, "TOKEN-SECRET-abc123def456", "the old token no longer reveals their address");
+  assert.notEqual(fw.tok, rec(env).tok);
+  assert.equal(auditsOf(H).pop().note, "address change cancelled");
+  assert.deepEqual(await (await apiPost(env, H, "/admin/api/find", { email: "old.address@example.org" })).json(), { id, moved: true });
+  // a move someone else asked for (mv: from another address) is left alone; nothing waiting = nothing said
+  const env2 = makeEnv();
+  env2.PROWL_ALERTS.set("mv:new.place@example.com", { code: "MOVE-CODE-SECRET", from: "someone.else@example.com" });
+  const r2 = await act(env2, H, EMAIL, "signout-all", id);
+  assert.ok(env2.PROWL_ALERTS.m.has("mv:new.place@example.com"));
+  assert.equal(env2.PROWL_ALERTS.m.has("mvf:" + EMAIL), false);
+  const env3 = makeEnv(); env3.PROWL_ALERTS.delete("mvf:" + EMAIL);
+  assert.doesNotMatch((await act(env3, H, EMAIL, "signout-all", id)).j.message, /cancelled/);
+  assert.ok(r2.j.ok);
+});
+
+test("a member's own ZIP code and slash-separated phone numbers are hidden in hunts, waiting listings, skip words and Diagnose", async () => {
+  assert.equal(scrubHunt("555/123/4567").hidden, true);
+  assert.equal(scrubHunt("call 555_123_4567").hidden, true);
+  assert.equal(scrubHunt("pyrex 48375", "48375").hidden, true);
+  assert.equal(scrubHunt("estate sale 48375-1234", "48375").hidden, true);
+  assert.equal(scrubHunt("pyrex 48375").hidden, false, "without their ZIP a 5-digit number is a model number");
+  assert.equal(scrubHunt("mccoy 12345", "48375").hidden, false);
+  assert.equal(scrubHunt("lot 148375", "48375").hidden, true, "6 digits in a row");
+  for (const h of ["1950/1960 lamp", "pyrex 443/444", "1960_1970 vase"]) assert.equal(scrubHunt(h).hidden, false, h);
+  const H = makeH(), env = makeEnv();
+  env.PROWL_ALERTS.set("sub:" + EMAIL, janeRecord({ hunts: ["pyrex 48375", "555/123/4567", "lamp"],
+    prefs: Object.assign({}, janeRecord().prefs, { skip: ["48375", "cracked"], local: [], mute: [] }) }));
+  env.PROWL_ALERTS.set("pend:" + EMAIL, { "pyrex 48375": [{ title: "Bowl", price: "$5", url: "https://x.example/1", src: "ebay" }] });
+  const id = await idOf(env, EMAIL);
+  const text = await (await call(env, H, "GET", "/admin/api/member?id=" + id)).text();
+  noPII(text, "member with ZIP hunts"); assert.ok(!text.includes("555/123"));
+  const d = JSON.parse(text);
+  assert.deepEqual(d.hunts.map(x => x.hidden), [true, true, false]);
+  assert.equal(d.pending.hunts[0].text, "(hidden — looks personal)");
+  assert.deepEqual(d.prefs.skipWords, ["(hidden — looks personal)", "cracked"]);
+  const dj = await (await apiPost(env, H, "/admin/api/diagnose", { id, hunt: 0 })).text();
+  noPII(dj, "diagnose ZIP hunt");
+  assert.equal(JSON.parse(dj).term, "(hidden)");
+});
+
+test("phone numbers in search terms never reach the Errors and Top searches views; 5-digit numbers in anonymous searches stay", async () => {
+  const H = makeH(), env = makeEnv();
+  H.capsData["metrics mget"] = { errors: [{ t: 1, r: "live:ebay", s: 502, m: "upstream", q: "call me 555-123-4567" }, { t: 2, r: "live:ebay", s: 502, m: "upstream", q: "roseville" }] };
+  H.capsData["stats top"] = { top: [{ term: "call me 555-123-4567", visitorDays: 9, requests: 9 }, { term: "(313) 555-0199 lamp", visitorDays: 8, requests: 8 },
+    { term: "lego 10179", visitorDays: 2, requests: 2 }, { term: "roseville", visitorDays: 1, requests: 1 }] };
+  const e = await (await call(env, H, "GET", "/admin/api/errors")).json();
+  assert.deepEqual(e.errors.map(x => x.q), ["", "roseville"]);
+  const s = await (await call(env, H, "GET", "/admin/api/searches?days=7")).json();
+  assert.deepEqual(s.top.map(x => x.term), ["lego 10179", "roseville"]);
+  const ov = await (await call(env, H, "GET", "/admin/api/overview")).text();
+  assert.ok(!ov.includes("555"), "overview errors and searches too");
+});
+
+test("Re-check Pro says when the shop could not be asked, and that free Pro needs no shop check", async () => {
+  const H = makeH(), env = makeEnv();
+  H.nextPro = { pro: null, via: "shopify unreachable" };
+  let { j } = await act(env, H, EMAIL, "refresh-pro");
+  assert.equal(j.ok, false); assert.match(j.message, /^Could not reach the shop just now \(shopify unreachable\)\. Nothing changed\./);
+  assert.ok(!/Checked the shop/.test(j.message));
+  assert.equal(rec(env).pro, true, "a paying member keeps Pro");
+  H.nextPro = { pro: null, via: "no token" };
+  ({ j } = await act(env, H, EMAIL, "refresh-pro"));
+  assert.match(j.message, /SHOPIFY_ORDERS_TOKEN/); assert.equal(j.ok, false);
+  env.PROWL_ALERTS.set("gift:" + giftHashOf(EMAIL), { note: "", added: "2026-10-01T00:00:00Z", until: "2027-01-05", by: "admin" });
+  ({ j } = await act(env, H, EMAIL, "refresh-pro"));
+  assert.equal(j.ok, true); assert.match(j.message, /free Pro from your gift \(until 2027-01-05\), so the shop was not asked/);
+  assert.equal(auditsOf(H).filter(a => a.action === "refresh-pro").map(a => a.ok).join(), "false,false,true");
+});
+
+test("Send today's email again really resends today's listings; with no email today it says nothing will be resent", async () => {
+  const H = makeH(), env = makeEnv();
+  const item = n => ({ title: "Sent " + n, price: "$" + n, url: "https://sgw.example/sent/" + n, src: "shopgoodwill" });
+  env.PROWL_ALERTS.set("sub:" + EMAIL, janeRecord({ sent: TODAY, mailed: TODAY, day: TODAY, done: ["roseville vase", "call me 555-123-4567", "pyrex"] }));
+  env.PROWL_ALERTS.set("last:" + EMAIL, { day: TODAY, pend: { "Roseville vase": [item(1), item(2)], "pyrex": [item(3)] } });
+  env.PROWL_ALERTS.set("pend:" + EMAIL, { "Roseville vase": [item(2), item(9)] });
+  const { j } = await act(env, H, EMAIL, "resend-today");
+  assert.equal(j.ok, true); assert.match(j.message, /^Today's email \(3 listings\) goes out again/);
+  const pend = env.PROWL_ALERTS.json("pend:" + EMAIL);
+  assert.deepEqual(pend["Roseville vase"].map(x => x.title), ["Sent 1", "Sent 2", "Sent 9"], "today's listings first, then new ones, no repeats");
+  assert.deepEqual(pend.pyrex.map(x => x.title), ["Sent 3"]);
+  const r = rec(env);
+  assert.equal(r.sent, ""); assert.equal(r.day, ""); assert.equal(r.mailed, TODAY);
+  assert.equal(j.member.late, false, "an email already went today, so the resend is not 'late'");
+  assert.equal(j.member.sentToday, true);
+  // yesterday's email, or none at all: nothing to resend, and it says so
+  const env2 = makeEnv();
+  env2.PROWL_ALERTS.set("last:" + EMAIL, { day: "2026-10-04", pend: { "Roseville vase": [item(1)] } });
+  const r2 = await act(env2, H, EMAIL, "resend-today");
+  assert.match(r2.j.message, /^No email went out to them today, so there is nothing to send again\./);
+  assert.match(r2.j.message, /if nothing new turns up, no email is sent/);
+  assert.equal(env2.PROWL_ALERTS.json("pend:" + EMAIL)["Roseville vase"].length, 2, "the waiting listings are untouched");
+  // deleting a member removes the kept email too
+  await act(env, H, EMAIL, "delete", await idOf(env, EMAIL));
+  assert.equal(env.PROWL_ALERTS.m.has("last:" + EMAIL), false);
+});
+
+test("'Emails sent today' and 'Last email' count only emails that went out, not days with nothing new", async () => {
+  const H = makeH(), env = makeEnv(), now = H.alNow();
+  // today's run finished with nothing new: sent is today, but no email went
+  const quietDay = memberSummary(env, janeRecord({ sent: TODAY, mailed: "2026-09-01" }), H, now);
+  assert.equal(quietDay.sentToday, false); assert.equal(quietDay.doneToday, true); assert.equal(quietDay.lastSent, "2026-09-01");
+  assert.equal(quietDay.late, false, "today's run is done, so not late");
+  const never = memberSummary(env, janeRecord({ sent: TODAY, mailed: undefined }), H, now);
+  assert.equal(never.lastSent, ""); assert.equal(never.sentToday, false);
+  const mailed = memberSummary(env, janeRecord({ sent: TODAY, mailed: TODAY }), H, now);
+  assert.equal(mailed.sentToday, true); assert.equal(mailed.lastSent, TODAY);
+  env.PROWL_ALERTS.set("sub:free.person@example.com", { email: "free.person@example.com", tok: "t2", hunts: ["fiesta"], prefs: {}, created: "2026-10-05", day: TODAY, done: [], sent: TODAY, mail: "on" });
+  metricsData(H, Date.now());
+  const ov = await (await call(env, H, "GET", "/admin/api/overview")).json();
+  assert.equal(ov.alerts.sentToday, 0, "nothing new is not an email");
+});
+
+test("admin mail-on and mail-off behave like the member's own switch", async () => {
+  const H = makeH(), env = makeEnv();
+  let { j } = await act(env, H, EMAIL, "mail-off");
+  assert.equal(env.PROWL_ALERTS.m.has("pend:" + EMAIL), false, "listings held for the next email are dropped");
+  assert.match(j.message, /listings that were waiting for their next email are dropped/);
+  ({ j } = await act(env, H, EMAIL, "mail-on"));
+  assert.equal(rec(env).sent, TODAY, "today counts as done, so the next email is on their next email day");
+  assert.equal(j.member.late, false, "not flagged late the moment emails are back on");
+  assert.match(j.message, /next email day after today/);
+});
+
+test("overview: member numbers come from the alert clock's run record (no KV reads); slow parts are read at most every 10 minutes", async () => {
+  const H = makeH(), env = makeEnv(), nowMs = Date.now();
+  metricsData(H, nowMs);
+  const counts = { total: 42, pro: 7, gifted: 2, trial: 1, free: 30, freeLegacy: 4, mailOff: 3, paused: 2, noHunts: 1, new7d: 5, hunts: 80, activeHunts: 60,
+    dueToday: 20, sentToday: 9, late: 1, checkedToday: 33, huntsLeftToday: 4 };
+  const base = H.capsData["metrics mget"];
+  H.capsData["metrics mget"] = Object.assign({}, base, { crons: [Object.assign({ counts: counts }, base.crons[0])].concat(base.crons.slice(1)) });
+  let lists = 0;
+  const list = env.PROWL_ALERTS.list.bind(env.PROWL_ALERTS);
+  env.PROWL_ALERTS.list = async o => { lists++; return list(o); };
+  let j = await (await call(env, H, "GET", "/admin/api/overview")).json();
+  assert.equal(lists, 0, "no member list read");
+  assert.deepEqual(j.members, { total: 42, pro: 7, gifted: 2, trial: 1, free: 30, freeLegacy: 4, mailOff: 3, paused: 2, noHunts: 1, new7d: 5, hunts: 80, activeHunts: 60, truncated: false });
+  assert.deepEqual([j.alerts.dueToday, j.alerts.sentToday, j.alerts.late, j.alerts.checkedToday, j.alerts.huntsLeftToday], [20, 9, 1, 33, 4]);
+  assert.equal(j.alerts.lastCron.ageMin, 4); assert.equal(j.alerts.cronRuns24h, 2);
+  assert.equal(Date.parse(j.countsAt), base.crons[0].t);
+  const slow = () => H.calls.caps.filter(x => x.op === "mget" && x.body.probeDays === 7).length;
+  const weekTop = () => H.calls.caps.filter(x => x.op === "top" && x.body.from !== x.body.to).length;
+  assert.equal(slow(), 1); assert.equal(weekTop(), 1);
+  await call(env, H, "GET", "/admin/api/overview");
+  assert.equal(slow(), 1, "the week of uptime checks and cron runs is not read again within 10 minutes"); assert.equal(weekTop(), 1);
+  assert.equal(H.calls.caps.filter(x => x.op === "mget" && x.body.crons === 1).length, 2, "the newest run, errors and traffic are");
+  // counts from an old run: the members are read here instead
+  H.capsData["metrics mget"] = Object.assign({}, base, { crons: [{ t: nowMs - 3 * 3600000, counts: counts }] });
+  j = await (await call(env, H, "GET", "/admin/api/overview")).json();
+  assert.equal(j.members.total, 5); assert.ok(lists > 0);
+});
+
+test("members list: read again only on Refresh (fresh=1) within 10 minutes, and without listing sign-in links", async () => {
+  const H = makeH(), env = makeEnv();
+  const prefixes = [];
+  const list = env.PROWL_ALERTS.list.bind(env.PROWL_ALERTS);
+  env.PROWL_ALERTS.list = async o => { prefixes.push(o.prefix); return list(o); };
+  await call(env, H, "GET", "/admin/api/members");
+  await call(env, H, "GET", "/admin/api/members?filter=late");
+  assert.deepEqual(prefixes, ["sub:"], "cached; no in: listing");
+  await call(env, H, "GET", "/admin/api/members?fresh=1");
+  assert.deepEqual(prefixes, ["sub:", "sub:"]);
+  const d = await (await call(env, H, "GET", "/admin/api/member?id=" + await idOf(env, EMAIL))).json();
+  assert.ok(d.flags.includes("sign-in link waiting") && d.signinWaiting, "the detail view still shows it");
+});
+
+test("Diagnose follows what really happens: AI hiding only when switched on, local hunts on eBay only, title keys, muted hunts", async () => {
+  const H = makeH(), env = makeEnv(), id = await idOf(env, EMAIL);
+  H.jevMode = "shadow";
+  let j = await (await apiPost(env, H, "/admin/api/diagnose", { term: "roseville vase" })).json();
+  assert.deepEqual(j.ai, { mode: "shadow", alerts: true, live: false });
+  const ebay = j.results.find(r => r.source === "ebay");
+  assert.equal(ebay.items[0].aiWould, true); assert.equal(ebay.items[0].aiDrop, false, "not hidden: AI sorting only labels in shadow mode");
+  assert.equal(ebay.kept, 3); assert.equal(j.summary.aiDropped, 0); assert.equal(j.summary.aiWould, 1);
+  H.jevMode = "on";
+  j = await (await apiPost(makeEnv({ ALERT_JEV: "off" }), H, "/admin/api/diagnose", { id, hunt: 0, sources: ["ebay"] })).json();
+  assert.equal(j.ai.live, false, "emails skip the AI when ALERT_JEV is off");
+  assert.ok(j.results[0].items.every(x => !x.aiDrop));
+  j = await (await apiPost(makeEnv({ ALERT_JEV: "off" }), H, "/admin/api/diagnose", { term: "roseville" })).json();
+  assert.equal(j.ai.live, true, "live results do not read ALERT_JEV");
+  // the AI never empties a list: every listing flagged = none hidden
+  H.liveFetch = async (e, source) => ({ source, status: 200, ms: 5, err: "", items: [{ title: "Roseville phone case", price: "$5", url: "https://ebay.example/itm/c1", src: source }, { title: "Roseville case two", price: "$6", url: "https://ebay.example/itm/c2", src: source }] });
+  j = await (await apiPost(env, H, "/admin/api/diagnose", { term: "roseville", sources: ["ebay"] })).json();
+  assert.equal(j.results[0].aiAllFlagged, true); assert.ok(j.results[0].items.every(x => x.aiWould && !x.aiDrop));
+  H.liveFetch = makeH().liveFetch;
+  // a local hunt: only eBay near their ZIP, whatever boxes were ticked
+  H.calls.live.length = 0;
+  j = await (await apiPost(env, H, "/admin/api/diagnose", { id, hunt: 2, sources: ["shopgoodwill", "ebay", "etsy"] })).json();
+  assert.equal(j.local, true); assert.equal(j.localOnly, true);
+  assert.deepEqual(j.results.map(r => r.source), ["ebay"]);
+  assert.deepEqual(H.calls.live, [["ebay-local", "pyrex"]]);
+  noPII(JSON.stringify(j), "local diagnose");
+  // already sent by title key (a relisted piece), and the hunt's state
+  env.PROWL_ALERTS.set("seen:" + EMAIL, ["t:shopgoodwill|roseville vase blue"]);
+  j = await (await apiPost(env, H, "/admin/api/diagnose", { id, hunt: 0, sources: ["shopgoodwill"] })).json();
+  assert.equal(j.results[0].items[0].alreadySent, true); assert.equal(j.hunt, "active");
+  j = await (await apiPost(env, H, "/admin/api/diagnose", { id, hunt: 3, sources: ["shopgoodwill"] })).json();
+  assert.equal(j.hunt, "muted");
+  j = await (await apiPost(env, H, "/admin/api/diagnose", { term: "pyrex" })).json();
+  assert.equal(j.hunt, null);
+});
+
+test("free Pro from an earlier address shows on the member page and can be turned off there; a first gift says it uses the free month", async () => {
+  const H = makeH(), env = makeEnv({ PRO_EMAILS: "old.address@example.org" });
+  H.nextPro = { pro: false, plan: null };
+  let { j } = await act(env, H, EMAIL, "refresh-pro");
+  assert.deepEqual(rec(env).plan, { via: "list" });
+  assert.deepEqual([j.member.gift.active, j.member.gift.source, j.member.gift.earlier], [true, "list", true]);
+  noAddress(JSON.stringify(j), "earlier-address gift", ["old.address@example.org"]);
+  ({ j } = await act(env, H, EMAIL, "gift-off"));
+  assert.match(j.message, /^Free Pro is off\./); assert.match(j.message, /email address they used before/);
+  assert.ok(env.PROWL_ALERTS.m.has("giftoff:" + giftHashOf("old.address@example.org")));
+  assert.equal(rec(env).pro, false);
+  // a member who never had Pro: the gift is their one free month
+  ({ j } = await act(env, H, "late@example.com", "gift-on"));
+  assert.match(j.message, /one free Prowl Pro month/);
+  ({ j } = await act(env, H, EMAIL, "gift-on"));
+  assert.doesNotMatch(j.message, /one free Prowl Pro month/, "jane had Pro before");
+});
+
+/* index.js functions lifted out with stubs, for the parts of the fixes that live there */
+test("index.js alProSet: free Pro on an earlier address counts even when the shop cannot be asked; a free month under a gift keeps its reminder", async () => {
+  const kv = new FakeKV(), env = { PROWL_ALERTS: kv, PRO_EMAILS: "old@example.com" };   // no Shopify token
+  const X = realPro(env, null);
+  const moved = { email: "new@example.com", prev: ["old@example.com"], pro: true, plan: { via: "list" } };
+  assert.equal(await X.alProSet(env, moved, false), true, "before v78's fix this member lost Pro whenever the shop was unreachable");
+  assert.deepEqual(moved.plan, { via: "list" }); assert.equal(moved.proCheck, ""); assert.equal(X.calls.shop, 0);
+  const renews = new Date(Date.now() + 10 * 86400000).toISOString();
+  const trial = { email: FRIEND, pro: true, plan: { via: "order", trial: true, order: "#77", renews: renews, amount: "0.00", receipt: "https://store.example/r" } };
+  kv.set("gift:" + giftHashOf(FRIEND), { until: "" });
+  await X.alProSet(env, trial, false);
+  assert.deepEqual(trial.plan, { via: "gift", until: "", shop: { trial: true, order: "#77", renews: renews, next: "7.00" } });
+  const T = fromIndex(["alTrialPlan"]);
+  assert.deepEqual(T.alTrialPlan(trial), trial.plan.shop, "the reminder before the first charge still goes");
+  assert.equal(T.alTrialPlan({ pro: true, plan: { via: "gift", until: "" } }), null);
+  assert.equal(T.alTrialPlan({ pro: true, plan: { via: "order", trial: true, order: "#1" } }).order, "#1");
+  await X.alProSet(env, trial, false);
+  assert.equal(trial.plan.shop.order, "#77", "kept on the next daily check");
+  const past = { email: FRIEND, pro: true, plan: { via: "order", trial: true, order: "#78", renews: "2020-01-01T00:00:00Z" } };
+  await X.alProSet(env, past, false);
+  assert.equal(past.plan.shop, undefined, "a free month that has already renewed is not kept");
+});
+
+test("index.js alCheck: a reset or a cleared 'already sent' memory made while the run searched is not undone", async () => {
+  const kv = new FakeKV(), env = { PROWL_ALERTS: kv }, E = "m@example.com", now = { day: TODAY, hour: 9, wday: 1 };
+  kv.set("sub:" + E, { email: E, hunts: ["a", "b", "c"], day: TODAY, done: ["a"], prefs: {} });
+  kv.set("seen:" + E, ["https://old/1", "t:x|old"]);
+  kv.set("pend:" + E, { a: [{ url: "https://p/0" }] });
+  const kvGet = async (e, k, d) => { const v = await e.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; };
+  const kvPut = async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v));
+  const deps = { kvGet, kvPut, alActive: (e, s) => s.hunts, alPrefs: () => ({ freq: "daily" }), AL_PEND_CAP: 30, AL_SEEN_CAP: 6000,
+    alTitleKey: x => "t:" + x.src + "|" + x.title,
+    alHunt: async (e, h) => {
+      if (h === "b") {   // the owner presses "Re-check hunts today" and "Clear already sent" while this hunt is being searched
+        const cur = kv.json("sub:" + E); cur.day = ""; cur.done = []; kv.set("sub:" + E, cur);
+        await kv.delete("seen:" + E);
+        kv.set("pend:" + E, { a: [{ url: "https://p/0" }], c: [{ url: "https://p/back" }] });   // and today's email is put back
+      }
+      return [{ url: "https://new/" + h, title: "new " + h, src: "ebay" }];
+    } };
+  const X = fromIndex(["alMerge", "alCheck"], deps);
+  const sub = kv.json("sub:" + E);
+  assert.equal(await X.alCheck(env, sub, 2, now), 2);
+  assert.deepEqual(kv.json("seen:" + E), ["https://new/b", "t:ebay|new b", "https://new/c", "t:ebay|new c"], "the cleared memory stays cleared, plus what this run found");
+  const r = kv.json("sub:" + E);
+  assert.equal(r.day, TODAY); assert.deepEqual(r.done, ["b", "c"], "after the reset only the hunts checked since count as done, so 'a' is checked again");
+  assert.deepEqual(kv.json("pend:" + E), { a: [{ url: "https://p/0" }], c: [{ url: "https://p/back" }, { url: "https://new/c", title: "new c", src: "ebay" }],
+    b: [{ url: "https://new/b", title: "new b", src: "ebay" }] }, "listings put back meanwhile are kept");
+});
+
+test("index.js: hourly probes have their own cron trigger, and search terms in error records go through the phone-number rule", () => {
+  const toml = readFileSync(new URL("../wrangler.toml", import.meta.url), "utf8");
+  const crons = JSON.parse(/^crons = (\[.*\])$/m.exec(toml)[1]);
+  const probe = /^const PROBE_CRON = "([^"]+)";$/m.exec(INDEX)[1];
+  assert.ok(crons.includes("*/5 * * * *") && crons.includes(probe) && probe !== "*/5 * * * *");
+  const sched = INDEX.slice(INDEX.indexOf("async scheduled(event, env, ctx) {"), INDEX.indexOf("async fetch(request, env, ctx) {"));
+  assert.match(sched, /if \(event && event\.cron === PROBE_CRON\) \{[^\n]*runProbes\(env\)[^\n]*return; \}/);
+  assert.doesNotMatch(sched, /getUTCMinutes/, "the alert clock's run no longer starts the probes");
+  assert.match(INDEX, /ev\.q = q && !looksPersonal\(q\) \? q : "";/);
+  assert.match(INDEX, /const MBUF = new MetricsBuffer\(\{ maxAgeMs: 120000 \}\);/);
+});
