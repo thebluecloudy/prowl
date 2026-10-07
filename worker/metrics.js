@@ -10,9 +10,10 @@ const HOUR = 3600000, DAY = 86400000;
 /* null-prototype tables, so a path like "constructor" can never pick up an inherited property */
 const table = o => Object.assign(Object.create(null), o);
 const LIVE = table({ "/": "shopgoodwill", "/ebay": "ebay", "/etsy": "etsy", "/chairish": "chairish", "/poshmark": "poshmark",
-  "/poshsold": "poshsold", "/depop": "depop", "/vinted": "vinted", "/grailed": "grailed", "/hibid": "hibid" });
+  "/poshsold": "poshsold", "/depop": "depop", "/vinted": "vinted", "/grailed": "grailed", "/hibid": "hibid",
+  "/salvation": "salvation" });   /* v80 */
 const NAMED = table({ "/verdict": "ai:fairprice", "/appraise": "ai:photo", "/research": "ai:research", "/guide": "ai:guide",
-  "/where": "ai:where", "/hunt-check": "ai:huntcheck", "/shop-picks": "shop:picks" });
+  "/where": "ai:where", "/hunt-check": "ai:huntcheck", "/shop-picks": "shop:picks", "/item": "item:popup" });   /* v81: item */
 const ALERTS = new Set(["subscribe", "confirm", "signin", "in", "status", "prefs", "mail", "delete", "move", "move-confirm", "unsub", "test", "gift", "giftstop"]);
 
 export function routeKey(pathname) {
