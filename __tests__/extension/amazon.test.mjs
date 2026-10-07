@@ -46,3 +46,12 @@ test('service worker: no Amazon menu item while the switch is off', async () => 
   assert.ok(!ids.includes('prowl-amazon'));
   delete globalThis.chrome;
 });
+
+test('sites.js 1.6.2: the Depop search link goes through the Rakuten deep link; other sites stay clean', async () => {
+  const s = await import('../../extension/sites.js');
+  const RAN = 'https://click.linksynergy.com/deeplink?id=jh1j/r7*wkQ&mid=53555&murl=';
+  const dep = s.SITES.find((x) => x.id === 'depop');
+  assert.equal(dep.url('ceramic panther'), RAN + encodeURIComponent('https://www.depop.com/search/?q=ceramic%20panther'));
+  for (const x of s.SITES.filter((y) => y.id !== 'depop')) assert.equal(x.url('x').indexOf('linksynergy'), -1, x.id);
+  assert.equal(s.depopAff('https://www.etsy.com/x'), 'https://www.etsy.com/x');
+});

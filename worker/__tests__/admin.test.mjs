@@ -1811,7 +1811,8 @@ function giftIndexFns(over = {}) {
     scrubPII: v => String(v).replace(/[^\s@:]+@[^\s@]+/g, "[email]"), alEmail: IX.alEmail,
     alSend: async (e, to, subject, html, text, unsub) => { sent.push({ to, subject, html, text, unsub }); return over.sendResult || { ok: true }; },
     alFreePro: async () => free.v, alProSet: async (e, sub) => { sub.pro = !!free.v; sub.plan = free.v ? free.v.plan : null; return sub.pro; },
-    alPage: (t, m) => new Response("PAGE|" + t + "|" + m, { status: 200 }), alGate: (t, m, b) => new Response("GATE|" + t + "|" + m + "|" + b, { status: 200 })
+    alPage: (t, m) => new Response("PAGE|" + t + "|" + m, { status: 200 }), alGate: (t, m, b) => new Response("GATE|" + t + "|" + m + "|" + b, { status: 200 }),
+    AL_AFF_NOTE: "Some links earn a commission."   /* v84 footer line */
   }, over.deps || {});
   const X = fromIndex(["alSendGift", "alGiftStart", "alGiftStop", "alBadLink", "alMovedTo", "giftKey", "giftSig", "giftLinks", "pxHmac", "giftHash", "alLongDay", "alAndList",
     "alReady", "alMode", "alShell", "alCopy", "alAddr", "alEsc", "alSame"], deps);

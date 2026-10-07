@@ -2,6 +2,9 @@
 
 Versions follow `extension/manifest.json`. Bump `version` there in the same change as any edit under `extension/`; the workflow builds the zip and publishes a GitHub release named `ext-vX.Y.Z` when it lands on main.
 
+## 1.6.2
+- Depop search links go through Owl & Twig's Rakuten affiliate link, so a Depop purchase can earn Owl & Twig a commission at no cost to you. Said in the popup footer and the store listing.
+
 ## 1.6.1
 - "Open on every marketplace" now includes Salvation Army and Mercari Japan, matching the Prowl page.
 

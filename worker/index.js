@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v84: 2026-10-07. Depop commission (Rakuten, merchant 53555, approved 2026-10-07). Depop is link-only, so it joins
+ *        the "Also search" links in every alert email, through the Rakuten deep link (DEPOP_AFF, depopAff). Footers with
+ *        links now say some links (eBay, Depop) earn Owl & Twig a commission.
  *   v83: 2026-10-07. Privacy. One purge list, alPurge (sub: pend: seen: mvf: in: pro: last:, the member's own cid: link
  *        and its pro:cid: cache), used by Delete in Prowl (/alerts/delete) and the admin's delete, so they cannot drift.
  *        Gifts (gift:, giftoff:, giftnomail:) are owner-granted or an opt-out and stay. Key names are logged, never the
@@ -254,7 +257,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
-const WORKER_VERSION = "v83";
+const WORKER_VERSION = "v84";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -278,6 +281,10 @@ const CHAIRISH_CACHE_SECONDS = 600;
 const POSH_URL = "https://poshmark.com/search?type=listings&query=";   /* v58 */
 const POSH_LIMIT = 12, POSH_SOLD_LIMIT = 6, POSH_CACHE_SECONDS = 1800;
 const DEPOP_URL = "https://www.depop.com/search/?q=";   /* v59 */
+/* v84: Depop pays through Rakuten. The id is the public publisher id that is in every Rakuten link; the page
+   (PROWL_AFF) and the extension (AFF.depop) carry the same link. */
+const DEPOP_AFF = "https://click.linksynergy.com/deeplink?id=jh1j/r7*wkQ&mid=53555&murl=";
+function depopAff(u) { return /^https:\/\/(www\.)?depop\.com\//.test(String(u || "")) ? DEPOP_AFF + encodeURIComponent(u) : u; }
 const DEPOP_LIMIT = 12, DEPOP_CACHE_SECONDS = 1800;
 /* v76: Depop's firewall refuses every Worker request (search page, home page and web API, 2026-10-05,
    see /__depopprobe). Off: /depop answers an empty list and alerts skip Depop. Set true to try again. */
@@ -3237,6 +3244,7 @@ const AL_ALSO = [
   ["Facebook", q => "https://www.facebook.com/marketplace/search/?query=" + encodeURIComponent(q)],
   ["Mercari", q => "https://www.mercari.com/search/?keyword=" + encodeURIComponent(q)],
   ["Mercari Japan", q => "https://jp.mercari.com/search?keyword=" + encodeURIComponent(q)],   // v77
+  ["Depop", q => depopAff(DEPOP_URL + encodeURIComponent(q))],   // v84: link-only, and it pays (Rakuten)
   ["Ruby Lane", q => "https://www.rubylane.com/search?q=" + encodeURIComponent(q)],
   ["LiveAuctioneers", q => "https://www.liveauctioneers.com/search/?keyword=" + encodeURIComponent(q)],
   ["Invaluable", q => "https://www.invaluable.com/search?keyword=" + encodeURIComponent(q).replace(/%20/g, "+")],
@@ -3302,7 +3310,8 @@ function alUnsubUrl(sub, hunt) {
   return WORKER_BASE + "/alerts/unsub?e=" + encodeURIComponent(sub.email) + "&t=" + (sub.utok || sub.tok) + (hunt ? "&h=" + encodeURIComponent(hunt) : "");
 }
 
-const AL_UNSUB_MAIL = "hello@owlandtwigvintage.com";   /* v83: a reply or a mailto unsubscribe lands here */
+const AL_UNSUB_MAIL = "hello@owlandtwigvintage.com";
+const AL_AFF_NOTE = "Some links (eBay, Depop) earn Owl & Twig a small commission, at no cost to you.";   /* v84 */   /* v83: a reply or a mailto unsubscribe lands here */
 async function alSend(env, to, subject, html, text, unsub) {
   if (!env.RESEND_API_KEY) return { ok: false, error: "RESEND_API_KEY not set" };
   const body = { from: env.ALERT_FROM || "Prowl by Owl & Twig <onboarding@resend.dev>", to: [to], subject: subject, html: html, text: text };
@@ -3454,13 +3463,13 @@ function alShell(env, inner, why, links) {
     '<a href="' + PROWL_PAGE + '" style="color:#8a4b1f;text-decoration:none">Prowl Alerts</a> <span style="color:#9a8b7a;font-weight:normal;letter-spacing:0;text-transform:none">by <a href="https://www.owlandtwigvintage.com" style="color:#9a8b7a">Owl &amp; Twig Vintage</a></span></td></tr>' +
     inner +
     '<tr><td style="padding:26px 12px 22px;font:12px/1.6 Arial,sans-serif;color:#9a8b7a;border-top:1px solid #efe8dc">' +
-    why + '<br>' + (links ? links + '<br>Or just reply &quot;unsubscribe&quot; to this email.<br>' : '') + alCopy() + '<br>' + alEsc(alAddr(env)) + ' · <a href="https://www.owlandtwigvintage.com" style="color:#9a8b7a">owlandtwigvintage.com</a>' +
+    why + '<br>' + (links ? links + '<br>Or just reply &quot;unsubscribe&quot; to this email.<br>' + AL_AFF_NOTE + '<br>' : '') + alCopy() + '<br>' + alEsc(alAddr(env)) + ' · <a href="https://www.owlandtwigvintage.com" style="color:#9a8b7a">owlandtwigvintage.com</a>' +
     '</td></tr></table></td></tr></table></body></html>';
 }
 function alWhy(sub) { return 'You are getting this because you turned on Prowl Alerts at owlandtwigvintage.com/prowl. One email ' + (sub ? alFreqName(G_ENV, sub) : 'a day') + ' for every hunt, from ShopGoodwill, eBay, Etsy and Chairish. Change how often, what time, or which hunts, or turn emails off, in Prowl under Den, then Settings.'; }
 /* v41: copyright line in every footer, above the mailing address. */
 function alCopy() { return 'Copyright \u00a9 ' + new Date().getUTCFullYear() + ' Owl &amp; Twig Vintage. All rights reserved.'; }
-function alFootText(env, sub) { return ["", "--", "Prowl Alerts by Owl & Twig Vintage. You turned on Prowl Alerts at owlandtwigvintage.com/prowl.", sub ? "Open Prowl signed in: " + alHomeUrl(sub) : "", sub ? "Unsubscribe: " + alUnsubUrl(sub) : "", sub ? 'Or just reply "unsubscribe" to this email.' : "", "Copyright \u00a9 " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(Boolean).join("\n"); }
+function alFootText(env, sub) { return ["", "--", "Prowl Alerts by Owl & Twig Vintage. You turned on Prowl Alerts at owlandtwigvintage.com/prowl.", sub ? "Open Prowl signed in: " + alHomeUrl(sub) : "", sub ? "Unsubscribe: " + alUnsubUrl(sub) : "", sub ? 'Or just reply "unsubscribe" to this email.' : "", sub ? AL_AFF_NOTE : "", "Copyright \u00a9 " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(Boolean).join("\n"); }
 
 /* The email. Tables and inline styles only: that is what Gmail and Outlook render. */
 function alEmailHtml(sub, pend, picks, pickHunt, env, test) {

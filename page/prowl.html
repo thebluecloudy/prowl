@@ -38,7 +38,7 @@ window.PROWL_AFF={
   'etsy.com':{n:'Etsy',t:'https://www.awin1.com/cread.php?awinmid=YOUR_ETSY_MID&awinaffid=YOUR_AWIN_ID&ued={url}'},
   'reverb.com':{n:'Reverb',t:'https://www.awin1.com/cread.php?awinmid=YOUR_REVERB_MID&awinaffid=YOUR_AWIN_ID&ued={url}'},
   '1stdibs.com':{n:'1stDibs',t:'https://prf.hn/click/camref:YOUR_1STDIBS_CAMREF/destination:{url}'},
-  'depop.com':{n:'Depop',t:'https://click.linksynergy.com/deeplink?id=YOUR_RAN_ID&mid=53555&murl={url}'}   /* waiting on Depop's written approval */
+  'depop.com':{n:'Depop',t:'https://click.linksynergy.com/deeplink?id=jh1j/r7*wkQ&mid=53555&murl={url}'}   /* v6.46: live, Rakuten (Depop approved 2026-10-07) */
 };
 window.prowlAffLive=function(d){var a=window.PROWL_AFF[d];return !!(a&&typeof a.t==='string'&&a.t.indexOf('YOUR_')<0&&a.t.indexOf('{url}')>-1&&/^https:\/\//.test(a.t))};
 window.prowlAff=function(u,cid,affUrl){
@@ -2347,7 +2347,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.45';
+var PROWL_VERSION='v6.46';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
