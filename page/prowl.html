@@ -30,6 +30,31 @@ window.prowlEpn=function(u,cid){
     return u+(u.indexOf('?')>-1?'&':'?')+'mkcid=1&mkrid=711-53200-19255-0&siteid=0&campid='+c+'&customid='+encodeURIComponent(cid||'prowl')+'&toolid=10001&mkevt=1';
   }catch(e){return u}
 };
+/* v6.40 affiliate router. Every outbound listing and search link goes through prowlAff: eBay keeps its EPN tag
+   (prowlEpn), and merchants with a program get their network's click URL. A template still holding YOUR_ is not
+   live yet, so that merchant's links go out clean. Mercari, Poshmark, ShopGoodwill and the rest have no program
+   and are never touched. A tagged link behaves exactly like a clean one: same tab, no markers. */
+window.PROWL_AFF={
+  'etsy.com':{n:'Etsy',t:'https://www.awin1.com/cread.php?awinmid=YOUR_ETSY_MID&awinaffid=YOUR_AWIN_ID&ued={url}'},
+  'reverb.com':{n:'Reverb',t:'https://www.awin1.com/cread.php?awinmid=YOUR_REVERB_MID&awinaffid=YOUR_AWIN_ID&ued={url}'},
+  '1stdibs.com':{n:'1stDibs',t:'https://prf.hn/click/camref:YOUR_1STDIBS_CAMREF/destination:{url}'},
+  'depop.com':{n:'Depop',t:'https://click.linksynergy.com/deeplink?id=YOUR_RAN_ID&mid=53555&murl={url}'}   /* waiting on Depop's written approval */
+};
+window.prowlAffLive=function(d){var a=window.PROWL_AFF[d];return !!(a&&typeof a.t==='string'&&a.t.indexOf('YOUR_')<0&&a.t.indexOf('{url}')>-1&&/^https:\/\//.test(a.t))};
+window.prowlAff=function(u,cid,affUrl){
+  /* the listing popup hands over eBay's own itemAffiliateWebUrl; eBay pays only on that exact URL */
+  if(typeof affUrl==='string'&&/^https:\/\/([a-z0-9-]+\.)*ebay\.com\//i.test(affUrl))return affUrl;
+  u=window.prowlEpn(u,cid);if(u==='#')return u;
+  var m=/^https:\/\/([^\/?#:]+)/i.exec(u),h,d;if(!m)return u;
+  h=m[1].toLowerCase().replace(/^www\./,'');
+  for(d in window.PROWL_AFF){
+    if(!Object.prototype.hasOwnProperty.call(window.PROWL_AFF,d))continue;
+    if(h===d||(h.length>d.length&&h.slice(-(d.length+1))==='.'+d))return window.prowlAffLive(d)?window.PROWL_AFF[d].t.replace('{url}',encodeURIComponent(u)):u;
+  }
+  return u;
+};
+/* the disclosure names exactly the merchants whose links are tagged today */
+window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Object.prototype.hasOwnProperty.call(window.PROWL_AFF,d)&&window.prowlAffLive(d))a.push(window.PROWL_AFF[d].n);return a};
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Space+Grotesk:wght@400;500;600;700&family=Alfa+Slab+One&display=swap');
@@ -1484,7 +1509,7 @@ window.prowlEpn=function(u,cid){
     <p class="appnote" id="otp-appnote" hidden></p>
   </div>
 
-  <p class="copyr">Prowl © 2026 Owl &amp; Twig Vintage. All rights reserved. Some links to eBay earn Owl &amp; Twig a small commission, at no cost to you.</p>
+  <p class="copyr">Prowl © 2026 Owl &amp; Twig Vintage. All rights reserved. Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</p>
 
 </main>
 <aside class="drawer" id="otp-photo" role="dialog" aria-modal="true" aria-labelledby="otp-photoT" hidden>
@@ -1674,7 +1699,7 @@ window.prowlEpn=function(u,cid){
     var LK=[];if(r.looks&&r.looks.length)for(var li=0;li<r.looks.length&&LK.length<3;li++){var x=r.looks[li];if(x&&typeof x.url==='string'&&/^https:\/\/(www\.)?ebay\.com\//.test(x.url)&&x.title)LK.push(x);}
     if(LK.length){var lw=document.createElement('div');lw.className='apr-looks';var lh=document.createElement('p');lh.className='apr-lkh';lh.textContent='Looks like these on eBay';lw.appendChild(lh);
       var lg=document.createElement('div');lg.className='apr-lkg';
-      for(var lj=0;lj<LK.length;lj++){var a1=document.createElement('a');a1.className='apr-lk';a1.href=window.prowlEpn(LK[lj].url,'prowl-photo');a1.target='_blank';a1.rel='noopener noreferrer';
+      for(var lj=0;lj<LK.length;lj++){var a1=document.createElement('a');a1.className='apr-lk';a1.href=window.prowlAff(LK[lj].url,'prowl-photo');a1.target='_blank';a1.rel='noopener noreferrer';
         if(typeof LK[lj].image==='string'&&/^https:\/\//.test(LK[lj].image)){var i1=document.createElement('img');i1.src=LK[lj].image;i1.alt='';i1.loading='lazy';a1.appendChild(i1);}
         var t1=document.createElement('span');t1.className='apr-lkt';t1.textContent=String(LK[lj].title).slice(0,80);a1.appendChild(t1);
         if(LK[lj].price){var p1=document.createElement('span');p1.className='apr-lkp';p1.textContent=String(LK[lj].price).slice(0,20)+' listed';a1.appendChild(p1);}
@@ -1692,7 +1717,7 @@ window.prowlEpn=function(u,cid){
       if(typeof window.prowlAddHunt==='function'){var fb=document.createElement('button');fb.type='button';fb.className='b';fb.textContent='\u2605 Add to favorites';fb.addEventListener('click',function(){if(window.prowlAddHunt(hq)){fb.textContent='\u2605 In your favorites';fb.disabled=true;}});L.appendChild(fb);}}
     try{var bs=atob(src.split(',')[1]),ar=new Uint8Array(bs.length);for(var k=0;k<bs.length;k++)ar[k]=bs.charCodeAt(k);var fl=new File([ar],'prowl-photo.jpg',{type:'image/jpeg'});
       if(navigator.canShare&&navigator.canShare({files:[fl]})){var sb=document.createElement('button');sb.type='button';sb.className='b';sb.textContent='Search this photo on Google Lens';sb.addEventListener('click',function(){navigator.share({files:[fl]}).catch(function(){});});L.appendChild(sb);}}catch(e){}
-    if(hq){lk('Google Images','https://www.google.com/search?tbm=isch&q='+encodeURIComponent(hq));lk('eBay sold prices \u2197',window.prowlEpn('https://www.ebay.com/sch/i.html?_nkw='+encodeURIComponent(hq)+'&LH_Sold=1&LH_Complete=1','prowl-photo'));}
+    if(hq){lk('Google Images','https://www.google.com/search?tbm=isch&q='+encodeURIComponent(hq));lk('eBay sold prices \u2197',window.prowlAff('https://www.ebay.com/sch/i.html?_nkw='+encodeURIComponent(hq)+'&LH_Sold=1&LH_Complete=1','prowl-photo'));}
     if(r.basis!=='pending'&&r.fair){var shb=document.createElement('button');shb.type='button';shb.className='b';shb.textContent='Share this find';shb.addEventListener('click',function(){shareCard(r,src);});L.insertBefore(shb,L.children[1]||null);var svb=document.createElement('button');svb.type='button';svb.className='b';svb.textContent='Save picture';svb.addEventListener('click',function(){shareCard(r,src,true);});L.insertBefore(svb,shb.nextSibling);}
     if(r.basis!=='pending'){var rpb=document.createElement('button');rpb.type='button';rpb.className='b';rpb.textContent='Wrong item? Re-price';rpb.addEventListener('click',function(){var nm=H?String(H.value).replace(/^\s+|\s+$/g,''):'';if(!nm){if(H){H.placeholder='type what it really is';try{H.focus();}catch(e){}}return;}var nj={item:nm+' (your ID)',search:nm,condition:r.condition,flaws:r.flaws,basis:'pending',fair:'Checking sold prices\u2026'};show(nj,src);priceIt(nj,src);});L.appendChild(rpb);}
     if(RESEARCH_ON&&r.basis!=='pending'&&hq){var rsb=document.createElement('button');rsb.type='button';rsb.className='b';rsb.textContent='Research this piece';rsb.addEventListener('click',function(){researchIt(hq,rsb,r,src);});L.appendChild(rsb);}
@@ -1740,7 +1765,7 @@ window.prowlEpn=function(u,cid){
       var shh=document.createElement('p');shh.className='apr-lkh';shh.textContent=SD.length?'Sold before':'Sold before: the research found no past sales to link';sw.appendChild(shh);
       if(SD.length){var sg=document.createElement('div');sg.className='apr-lkg';
         for(var sj=0;sj<SD.length;sj++){var a2=document.createElement('a');a2.className='apr-lk';
-          a2.href=/^https:\/\/(www\.)?ebay\.com\//i.test(SD[sj].url)?window.prowlEpn(SD[sj].url,'prowl-sold'):SD[sj].url;a2.target='_blank';a2.rel='noopener noreferrer';
+          a2.href=/^https:\/\/(www\.)?ebay\.com\//i.test(SD[sj].url)?window.prowlAff(SD[sj].url,'prowl-sold'):SD[sj].url;a2.target='_blank';a2.rel='noopener noreferrer';
           var t2=document.createElement('span');t2.className='apr-lkt';t2.textContent=String(SD[sj].title).slice(0,80);a2.appendChild(t2);
           var p2=document.createElement('span');p2.className='apr-lkp';p2.textContent=String(SD[sj].price).slice(0,20)+' sold';a2.appendChild(p2);
           var dw=[SD[sj].date,SD[sj].where].filter(function(v){return !!v}).join(' \u00b7 ');
@@ -1748,7 +1773,7 @@ window.prowlEpn=function(u,cid){
           sg.appendChild(a2);}
         sw.appendChild(sg);
         var sn=document.createElement('p');sn.className='apr-note';sn.textContent='Past sales the research found on the web. Open each one to check it.';sw.appendChild(sn);}
-      var sl=document.createElement('a');sl.className='apr-solda';sl.href=window.prowlEpn('https://www.ebay.com/sch/i.html?_nkw='+encodeURIComponent(String(name).slice(0,80))+'&LH_Sold=1&LH_Complete=1','prowl-sold');sl.target='_blank';sl.rel='noopener noreferrer';sl.textContent='See sold prices on eBay (opens eBay)';sw.appendChild(sl);
+      var sl=document.createElement('a');sl.className='apr-solda';sl.href=window.prowlAff('https://www.ebay.com/sch/i.html?_nkw='+encodeURIComponent(String(name).slice(0,80))+'&LH_Sold=1&LH_Complete=1','prowl-sold');sl.target='_blank';sl.rel='noopener noreferrer';sl.textContent='See sold prices on eBay (opens eBay)';sw.appendChild(sl);
       var shr=document.createElement('button');shr.type='button';shr.className='b p apr-shr';shr.textContent='Share this research';
       /* v6.07: draw the photo card now, so the tap can share it at once */
       var cardF=null;
@@ -2241,7 +2266,7 @@ window.prowlEpn=function(u,cid){
     <div class="mi">
 <u>7</u><div>
 <h3>Make it yours</h3>
-<p><b style="color:var(--ink)">Aa</b> makes the text bigger. The icon top-right cycles light, dark and <b style="color:var(--ink)">uranium</b>, a retro blacklight mode. Some eBay links earn Owl &amp; Twig a small commission, at no cost to you.</p>
+<p><b style="color:var(--ink)">Aa</b> makes the text bigger. The icon top-right cycles light, dark and <b style="color:var(--ink)">uranium</b>, a retro blacklight mode. Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</p>
 </div>
 </div>
     <div class="ma"><button class="b p" id="otp-mok">Got it</button></div>
@@ -2263,12 +2288,12 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.39';
+var PROWL_VERSION='v6.40';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-function mk(id,n,t,b,s){return{id:id,n:n,t:t,u:function(q){var x=b+E(q)+(s||'');return id.indexOf('ebay')===0?window.prowlEpn(x,'prowl-'+id):x}}}
+function mk(id,n,t,b,s){return{id:id,n:n,t:t,u:function(q){var x=b+E(q)+(s||''),y=window.prowlAff(x,'prowl-'+id);return y==='#'?x:y}}}   /* v6.40 */
 
 /* ---------- THEME (3-way cycle) ---------- */
 var TK='prowl.theme';
@@ -3320,7 +3345,7 @@ function rRes(){
      3-year sold data — better comps than the restricted eBay APIs. */
   var c90=$('#otp-comps90');
   if(c90)c90.addEventListener('click',function(){
-    window.open(window.prowlEpn('https://www.ebay.com/sch/i.html?_nkw='+E(r.terms[0])+'&LH_Sold=1&LH_Complete=1','prowl-comps'),'_blank','noopener');
+    window.open(window.prowlAff('https://www.ebay.com/sch/i.html?_nkw='+E(r.terms[0])+'&LH_Sold=1&LH_Complete=1','prowl-comps'),'_blank','noopener');
   });
   var c3y=$('#otp-comps3y');
   if(c3y)c3y.addEventListener('click',function(){
@@ -3626,7 +3651,7 @@ function sgwCard(it,hunt){
   if(it.time_left)m+=' · '+esc(it.time_left)+' left';
   /* v5.63: worker v21 Jev tags likely reproductions; turning JEV_RESULTS off removes the tag */
   if(it.repro)m+='<br><span class="sgw-repro" title="The title reads like a reproduction, reissue or a lookalike from another maker">Possible reproduction</span>';
-  var a='<a class="sgw-card" href="'+esc(window.prowlEpn(it.url,'prowl-live'))+'" target="_blank" rel="noopener noreferrer">'+
+  var a='<a class="sgw-card" href="'+esc(window.prowlAff(it.url,'prowl-live'))+'" target="_blank" rel="noopener noreferrer">'+
     img+
     '<div class="sgw-t">'+esc(it.title)+'</div>'+
     '<div class="sgw-p">'+esc(it.price)+'</div>'+
@@ -5603,6 +5628,8 @@ try{if(/[?&]photo=1(&|$)/.test(location.search)){
   try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])photo=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
   setTimeout(openPhoto,400);
 } }catch(e){}
+/* v6.40: the affiliate disclosure lists the merchants that are tagged right now */
+try{(function(){var n=window.prowlAffNames(),t=n.length<2?n[0]:n.slice(0,-1).join(', ')+' and '+n[n.length-1];$$('.aff-list').forEach(function(el){el.textContent=t})})()}catch(e){}
 /* v6.38: ?flock=1 opens the Flock tab */
 try{if(/[?&]flock=1(&|$)/.test(location.search)){
   try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])flock=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
