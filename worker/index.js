@@ -1643,7 +1643,7 @@ function statTerm(raw) {
 async function statTick(request, env, kind, rawTerm) {
   try {
     const term = statTerm(rawTerm);
-    if (!term) return;
+    if (!term || looksPersonal(term)) return;   /* v78: a phone number split by dashes or dots passes statTerm; never store it */
     const day = new Date().toISOString().slice(0, 10);
     const ip = ipKey(request.headers.get("CF-Connecting-IP"));
     const h = ip ? await sha16(ip + "|" + day + "|" + String((env && env.DEBUG_KEY) || "")) : "";

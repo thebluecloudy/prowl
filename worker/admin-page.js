@@ -730,17 +730,20 @@ function spark(values, keys, kind, unit, title) {
   function show(i) {
     cur = Math.max(0, Math.min(n - 1, i));
     const x = X(cur);
-    hair.style.left = x + "%"; dot.style.left = x + "%"; dot.style.top = (Y(v[cur]) / H * 100) + "%"; tip.style.left = x + "%";
-    tip.className = "tip" + (x < 18 ? " l" : x > 82 ? " r" : "");
+    hair.style.left = x + "%"; dot.style.left = x + "%"; dot.style.top = (Y(v[cur]) / H * 100) + "%";
     fill(tip, [h("b", { text: num(v[cur]) }), h("span", { text: unit }), h("span", { class: "tl2", text: keys[cur] ? " \u00b7 " + hourSpan(keys[cur]) : "" })]);
     hair.hidden = dot.hidden = tip.hidden = false; end.hidden = true;
+    /* centred on the hour but kept on screen: on a phone a tile is narrower than its tooltip */
+    const r = area.getBoundingClientRect(), vw = D.documentElement.clientWidth, tw = tip.offsetWidth;
+    tip.className = "tip l";
+    tip.style.left = Math.max(8 - r.left, Math.min(x / 100 * r.width - tw / 2, vw - 8 - r.left - tw)) + "px";
   }
   function hide() { cur = -1; hair.hidden = dot.hidden = tip.hidden = true; end.hidden = false; }
   const at = e => { const r = area.getBoundingClientRect(); return Math.round((e.clientX - r.left) / Math.max(1, r.width) * (n - 1)); };
   area.addEventListener("pointermove", e => show(at(e)));
   area.addEventListener("pointerdown", e => show(at(e)));
   area.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hide(); });
-  area.addEventListener("focus", () => show(n - 1));
+  area.addEventListener("focus", () => { if (cur < 0) show(n - 1); });   /* keyboard focus; a tap or click focuses too, after its pointerdown chose the hour */
   area.addEventListener("blur", hide);
   area.addEventListener("keydown", e => {
     if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); show((cur < 0 ? n - 1 : cur) + (e.key === "ArrowLeft" ? -1 : 1)); }
@@ -1356,7 +1359,8 @@ function itemRow(it) {
       h("div", { class: "ip", text: [it.price, srcName(it.src)].filter(Boolean).join(" \u00b7 ") }),
       h("div", { class: "badges" }, [aiBadge(it), it.aiDrop ? h("span", { class: "bdg b-pro", text: "AI hides" }) : it.aiWould ? h("span", { class: "bdg b-out", text: "AI would hide (not on)" }) : null,
         it.memberDrop ? h("span", { class: "bdg b-trial", text: "Their filter: " + it.memberDrop }) : null,
-        it.alreadySent ? h("span", { class: "bdg b-out", text: "Already emailed" }) : null]),
+        it.alreadySent ? h("span", { class: "bdg b-out", text: "Already emailed" }) : null,
+        it.waiting ? h("span", { class: "bdg b-out", text: "Waiting for their next email" }) : null]),
       h("div", { class: "io" }, out ? st("serious", "Left out") : st("good", "Kept"))])]);
 }
 function legend() {
@@ -1366,9 +1370,10 @@ function legend() {
     ["AI hides", "Part or wrong item, 70% sure or more: left out of emails and live results while AI sorting is switched on."],
     ["AI would hide (not on)", "The AI flags it, but AI sorting is not switched on where these results go, so it is still shown and emailed."],
     ["Their filter", "The member's own settings leave it out (their sites, max price or skip words)."],
-    ["Already emailed", "They were sent this listing before, so it is not sent again."]];
+    ["Already emailed", "They were sent this listing before, so it is not sent again."],
+    ["Waiting for their next email", "An earlier check already found it, so it goes out in their next email."]];
   const d = h("details", { class: "legend card", open: S.legendOpen !== false }, [h("summary", { text: "What the badges mean" }),
-    h("dl", rows.map(r => [h("dt", null, h("span", { class: "bdg" + (r[0] === "AI hides" ? " b-pro" : r[0] === "Their filter" ? " b-trial" : r[0] === "Already emailed" || r[0] === "AI would hide (not on)" ? " b-out" : ""), text: r[0] })), h("dd", { text: r[1] })]))]);
+    h("dl", rows.map(r => [h("dt", null, h("span", { class: "bdg" + (r[0] === "AI hides" ? " b-pro" : r[0] === "Their filter" ? " b-trial" : r[0] === "Already emailed" || r[0] === "AI would hide (not on)" || r[0] === "Waiting for their next email" ? " b-out" : ""), text: r[0] })), h("dd", { text: r[1] })]))]);
   d.addEventListener("toggle", () => { S.legendOpen = d.open; });
   return d;
 }
@@ -1404,7 +1409,7 @@ function sourceCard(r) {
   const ok = r.status === 200 && !r.err;
   const items = Array.isArray(r.items) ? r.items : [];
   const shown = items.filter(it => S.diagShow === "all" || (S.diagShow === "out" ? leftOut(it) : !leftOut(it)));
-  const live = aiLive(S.diagRes), ai = items.filter(it => live ? it.aiDrop : it.aiWould).length, mine = items.filter(it => it.memberDrop).length, sent = items.filter(it => it.alreadySent).length;
+  const live = aiLive(S.diagRes), ai = items.filter(it => live ? it.aiDrop : it.aiWould).length, mine = items.filter(it => it.memberDrop).length, sent = items.filter(it => it.alreadySent).length, wait = items.filter(it => it.waiting).length;
   const list = h("ul", { class: "items" });
   const LIMIT = 12;
   put(list, shown.slice(0, LIMIT).map(itemRow));
@@ -1412,8 +1417,8 @@ function sourceCard(r) {
   if (more) more.addEventListener("click", () => { put(list, shown.slice(LIMIT).map(itemRow)); more.remove(); });
   return h("section", { class: "card" }, [
     h("div", { class: "srch" }, [h("h3", { text: srcName(r.source) }), ok ? st("good", "Answered") : st("critical", "Failed"), h("span", { class: "muted small", text: r.ms != null ? "in " + secs(r.ms) : "" })]),
-    h("p", { class: "cnt", text: [num(r.count != null ? r.count : items.length) + " found", ai + (live ? " AI hides" : " AI would hide (not on)"), mine + " their filters hide", sent + " already emailed",
-      num(r.kept != null ? r.kept : items.length - items.filter(leftOut).length) + " kept"].join(" \u00b7 ") }),
+    h("p", { class: "cnt", text: [num(r.count != null ? r.count : items.length) + " found", ai + (live ? " AI hides" : " AI would hide (not on)"), mine + " their filters hide", sent + " already emailed"].concat(wait ? [wait + " waiting for their next email"] : [],
+      [num(r.kept != null ? r.kept : items.length - items.filter(leftOut).length) + " kept"]).join(" \u00b7 ") }),
     !ok ? note("bad", r.err || ("Answered " + (r.status || "nothing"))) : null,
     r.ai && !AI_FINE.test(r.ai) && items.length ? note("warn", AI_STATUS[r.ai] || "AI: " + r.ai) : null,
     r.aiAllFlagged ? note("info", "The AI flagged every listing here, so it hides none of them (it never empties a list).") : null,

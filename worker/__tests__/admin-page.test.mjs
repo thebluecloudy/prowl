@@ -307,3 +307,18 @@ test("the server's 'Has issues' filter and the page's warning chips use the same
   assert.deepEqual(server.slice().sort(), pageFlags.slice().sort());
   assert.ok(!server.includes("sign-in link waiting"), "a waiting sign-in link is routine, not an issue");
 });
+
+test("sparklines: a tap shows the hour tapped (focus only picks the latest hour when nothing is shown), and the tooltip is kept on screen", () => {
+  /* a tap focuses the sparkline right after its pointerdown chose the hour; the focus handler used to jump to "now" */
+  assert.ok(SCRIPT.includes('area.addEventListener("focus", () => { if (cur < 0) show(n - 1); });'));
+  assert.ok(!SCRIPT.includes('area.addEventListener("focus", () => show(n - 1));'));
+  /* on a phone a tile is narrower than its tooltip, so the box is clamped to the screen, not centred past its edge */
+  assert.ok(SCRIPT.includes("tip.style.left = Math.max(8 - r.left, Math.min(x / 100 * r.width - tw / 2, vw - 8 - r.left - tw)) + \"px\";"));
+});
+
+test("Diagnose: a listing waiting for the member's next email is labelled so, not 'already emailed'", () => {
+  assert.ok(SCRIPT.includes('it.waiting ? h("span", { class: "bdg b-out", text: "Waiting for their next email" }) : null'));
+  assert.ok(SCRIPT.includes('["Waiting for their next email", "An earlier check already found it, so it goes out in their next email."]'));
+  const leftOut = pickFn("leftOut");
+  assert.equal(leftOut({ waiting: true }), false, "it goes out in their next email, so it is kept");
+});

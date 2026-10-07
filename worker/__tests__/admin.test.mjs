@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { adminFetch, signSession, verifySession, memberId, scrubHunt, memberSummary, memberDetail, giftActive, giftPro } from "../admin.js";
+import { adminFetch, signSession, verifySession, memberId, scrubHunt, memberSummary, memberDetail, giftActive, giftPro, looksPersonal } from "../admin.js";
 
 const KEY = "test-admin-key-0123456789";
 const ORIGIN = "https://prowl.example.workers.dev";
@@ -722,7 +722,7 @@ test("diagnose a typed term: every live source, AI tags, https-only links, failu
   assert.equal(ebay.kept, 2);
   assert.equal(etsy.status, 0); assert.equal(etsy.count, 0); assert.ok(etsy.err.includes("[email]"), "error text scrubbed");
   for (const r of j.results) for (const it of r.items) { assert.equal(it.memberDrop, null); assert.equal(it.alreadySent, false); }
-  assert.deepEqual(j.summary, { sources: 3, ok: 2, failed: 1, items: 5, aiDropped: 1, aiWould: 1, memberDropped: 0, alreadySent: 0 });
+  assert.deepEqual(j.summary, { sources: 3, ok: 2, failed: 1, items: 5, aiDropped: 1, aiWould: 1, memberDropped: 0, alreadySent: 0, waiting: 0 });
   assert.deepEqual(j.ai, { mode: "on", alerts: true, live: true });
   assert.equal(H.calls.jev.length, 2, "AI only for sources that returned listings");
   assert.ok(H.calls.jev.every(c => c[2] === "shadow"));
@@ -1456,10 +1456,16 @@ test("Diagnose follows what really happens: AI hiding only when switched on, loc
   assert.deepEqual(j.results.map(r => r.source), ["ebay"]);
   assert.deepEqual(H.calls.live, [["ebay-local", "pyrex"]]);
   noPII(JSON.stringify(j), "local diagnose");
-  // already sent by title key (a relisted piece), and the hunt's state
+  // a listing a check already found is waiting for their next email (it is in the "already sent" memory too, but not emailed yet)
+  env.PROWL_ALERTS.set("seen:" + EMAIL, ["https://sgw.example/item/1", "t:shopgoodwill|roseville vase blue"]);
+  j = await (await apiPost(env, H, "/admin/api/diagnose", { id, hunt: 0, sources: ["shopgoodwill"] })).json();
+  assert.equal(j.results[0].items[0].waiting, true); assert.equal(j.results[0].items[0].alreadySent, false, "waiting, not already emailed");
+  assert.equal(j.summary.waiting, 1); assert.equal(j.summary.alreadySent, 0); assert.equal(j.results[0].kept, 1);
+  // once that email has gone (nothing waiting), it is already sent, also by title key (a relisted piece); and the hunt's state
+  env.PROWL_ALERTS.set("pend:" + EMAIL, {});
   env.PROWL_ALERTS.set("seen:" + EMAIL, ["t:shopgoodwill|roseville vase blue"]);
   j = await (await apiPost(env, H, "/admin/api/diagnose", { id, hunt: 0, sources: ["shopgoodwill"] })).json();
-  assert.equal(j.results[0].items[0].alreadySent, true); assert.equal(j.hunt, "active");
+  assert.equal(j.results[0].items[0].alreadySent, true); assert.equal(j.results[0].items[0].waiting, false); assert.equal(j.hunt, "active");
   j = await (await apiPost(env, H, "/admin/api/diagnose", { id, hunt: 3, sources: ["shopgoodwill"] })).json();
   assert.equal(j.hunt, "muted");
   j = await (await apiPost(env, H, "/admin/api/diagnose", { term: "pyrex" })).json();
@@ -1549,6 +1555,14 @@ test("index.js alCheck: after the 'already sent' memory is cleared, a re-check d
   assert.equal(kv.json("seen:" + E).length, 6, "all three are remembered again (url and title)");
 });
 
+test("index.js statTick: a search that is a phone number split by dashes or dots is never stored in the search counts", async () => {
+  const ticks = [];
+  const X = fromIndex(["statTerm", "statTick"], { looksPersonal, ipKey: x => x, sha16: async () => "h", capsCall: async (n, op, q) => { ticks.push(q.term); } });
+  const req = { headers: { get: () => "203.0.113.5" } };
+  for (const t of ["call 555-201-7788", "248.555.0199 clock", "(248) 555 0199", "jane@example.com", "pyrex 1950-1960", "Fire-King jadeite"]) await X.statTick(req, {}, "t", t);
+  assert.deepEqual(ticks, ["pyrex 1950 1960", "fire king jadeite"]);
+});
+
 test("index.js: hourly probes have their own cron trigger, and search terms in error records go through the phone-number rule", () => {
   const toml = readFileSync(new URL("../wrangler.toml", import.meta.url), "utf8");
   const crons = JSON.parse(/^crons = (\[.*\])$/m.exec(toml)[1]);
@@ -1571,4 +1585,24 @@ test("overview: when only the minute-by-minute read fails, uptime still shows an
   assert.equal(j.uptime.length, 2, "the 7-day checks come from their own read");
   assert.equal(j.alerts.lastCron, null); assert.equal(j.alerts.cronRuns24h, null, "unknown, not zero");
   assert.ok(j.issues.includes("Speed, error and uptime numbers are not available."));
+});
+
+test("member page and Diagnose list only the sites their emails search: a site switched off for everyone (Depop) is left out", async () => {
+  const H = makeH(undefined, { alPrefs: sub => Object.assign(prefsOf(sub), { sources: ["shopgoodwill", "depop", "ebay"] }) }), env = makeEnv();
+  const id = await idOf(env, EMAIL);
+  const d = await (await call(env, H, "GET", "/admin/api/member?id=" + id)).json();
+  assert.deepEqual(d.prefs.sources, ["shopgoodwill", "ebay"]);
+  const j = await (await apiPost(env, H, "/admin/api/diagnose", { id, hunt: 0, sources: ["ebay"] })).json();
+  assert.deepEqual(j.member.filters.sources, ["shopgoodwill", "ebay"]);
+  H.liveSources = () => { throw new Error("no list"); };   // without the live list, their saved sites show as they are
+  const d2 = await (await call(env, H, "GET", "/admin/api/member?id=" + id)).json();
+  assert.deepEqual(d2.prefs.sources, ["shopgoodwill", "depop", "ebay"]);
+});
+
+test("member page: 'Listings already emailed' leaves out the ones still waiting for the next email", async () => {
+  const H = makeH(), env = makeEnv(), id = await idOf(env, EMAIL);
+  env.PROWL_ALERTS.set("seen:" + EMAIL, ["https://sgw.example/item/1", "t:shopgoodwill|roseville vase blue", "https://x.example/2", "https://old.example/1"]);
+  const d = await (await call(env, H, "GET", "/admin/api/member?id=" + id)).json();
+  assert.equal(d.seenCount, 1, "two of the three remembered listings are waiting in pend:");
+  assert.equal(d.pending.total, 3);
 });

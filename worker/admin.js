@@ -252,6 +252,21 @@ function skipView(sub, words, zip) {
     return scrubHunt(w, zip).hidden || (t && bad.some(b => b.indexOf(t) === 0)) ? HIDDEN : String(w).slice(0, 40);
   });
 }
+/* The sites their emails search: their chosen ones that are still live search sources (Depop is off for everyone since
+   v76, but alPrefs still lists it, and index.js alHunt skips it). */
+function emailSources(H, p) {
+  let live = null;
+  try { live = arr(H.liveSources()).map(String); } catch (e) { live = null; }
+  const s = arr(p.sources).map(x => word(x, 20));
+  return live && live.length ? s.filter(x => live.indexOf(x) !== -1) : s;
+}
+/* The listings waiting for the member's next email (pend:<email>), by URL. A check remembers what it finds in the
+   "already sent" memory (seen:) straight away, so these are in it too, but they have not been emailed yet. */
+function waitingUrls(pend) {
+  const s = new Set();
+  if (pend && typeof pend === "object" && !Array.isArray(pend)) for (const k of Object.keys(pend).slice(0, 60)) for (const x of arr(pend[k])) if (x && typeof x.url === "string" && x.url) s.add(x.url);
+  return s;
+}
 function listing(x) {
   x = x || {};
   return { title: String(x.title || "").slice(0, 160), price: String(x.price || "").slice(0, 40), src: word(x.src, 20), url: https(x.url) };
@@ -337,7 +352,7 @@ export async function memberDetail(env, sub, H, now) {
     const v = scrubHunt(h, zip), l = h.toLowerCase();
     return { text: v.text, hidden: v.hidden, active: act.indexOf(l) !== -1, muted: mute.indexOf(l) !== -1, local: !!H.alNear(s, h), checkedToday: st.done.indexOf(l) !== -1 };
   });
-  d.prefs = { freq: d.freq, slotHour: d.slotHour, tz: d.tz, sources: arr(p.sources).map(x => word(x, 20)), maxPrice: num(p.max),
+  d.prefs = { freq: d.freq, slotHour: d.slotHour, tz: d.tz, sources: emailSources(H, p), maxPrice: num(p.max),
     skipWords: skipView(s, p.skip, zip), filtersApply: !!s.pro, pauseUntil: day10(p.pause), aiOff: !!p.noai,
     zipSet: !!p.zip, radius: num(p.radius), localHunts: arr(p.local).length };
   d.plan = { name: d.planName, via: d.via, trial: !!pl.trial, paidDay: day10(pl.paid), renewsDay: day10(pl.renews), amount: word(pl.amount, 12),
@@ -348,7 +363,8 @@ export async function memberDetail(env, sub, H, now) {
     ph.push({ text: scrubHunt(k, zip).text, n: items.length, sample: items.slice(0, 3).map(listing) });
   }
   d.pending = { total: total, hunts: ph };
-  d.seenCount = arr(seen).filter(u => !/^t:/.test(String(u))).length;   // listings remembered (each also has a title key)
+  const queued = waitingUrls(pend);
+  d.seenCount = arr(seen).filter(u => !/^t:/.test(String(u)) && !queued.has(String(u))).length;   // listings emailed (each also has a title key); not the ones still waiting
   d.signinWaiting = signin; d.confirmWaiting = conf; d.moveWaiting = mvf;
   d.previousAddresses = arr(s.prev).length; d.movedAt = day10(s.movedAt); d.mailOffDay = day10(s.mailOffAt);
   d.plan.until = day10(pl.until);
@@ -831,8 +847,11 @@ async function apiDiagnose(c) {
   /* a local hunt's emails search eBay only, near their ZIP code (alHunt), so that is what runs here */
   const localOnly = local && typeof H.liveFetchLocal === "function";
   if (localOnly) srcs = live.indexOf("ebay") !== -1 ? ["ebay"] : [];
-  let seen = new Set();
-  if (sub) { const sl = await H.kvGet(env, "seen:" + m.email, []); seen = new Set(arr(sl).map(String)); }
+  let seen = new Set(), queued = new Set();
+  if (sub) {
+    const [sl, pd] = await Promise.all([H.kvGet(env, "seen:" + m.email, []), H.kvGet(env, "pend:" + m.email, {})]);
+    seen = new Set(arr(sl).map(String)); queued = waitingUrls(pd);
+  }
   const titleKey = typeof H.alTitleKey === "function" ? H.alTitleKey : null;   // a relisted piece is remembered by its title too
   /* memberDropReason says "not in their sites", "over their max price $N" or 'has skip word "w"'; only the word can be personal */
   const why = r => {
@@ -854,10 +873,12 @@ async function apiDiagnose(c) {
     const out = items.slice(0, 40).map(x => {
       x = x || {};
       const tag = typeof x.jev === "string" && x.jev && !aiOff ? word(x.jev, 20) : null, would = !aiOff && !!H.jevWouldDrop(x);
-      const sent = !!x.url && (seen.has(String(x.url)) || (!!titleKey && seen.has(String(titleKey(Object.assign({ src: src }, x))))));
+      /* already found by a check and queued for their next email: it goes out with it, so it is not "already emailed" */
+      const waiting = !!x.url && queued.has(String(x.url));
+      const sent = !waiting && !!x.url && (seen.has(String(x.url)) || (!!titleKey && seen.has(String(titleKey(Object.assign({ src: src }, x))))));
       return { title: String(x.title || "").slice(0, 160), price: String(x.price || "").slice(0, 40), url: https(x.url), image: https(x.image),
         src: word(x.src || src, 20), ai: tag, aiP: tag && typeof x.jevp === "number" && isFinite(x.jevp) ? x.jevp : null,
-        aiWould: would, aiDrop: aiLive && would, memberDrop: sub ? why(H.memberDropReason(sub, x, local)) : null, alreadySent: sent };
+        aiWould: would, aiDrop: aiLive && would, memberDrop: sub ? why(H.memberDropReason(sub, x, local)) : null, alreadySent: sent, waiting: waiting };
     });
     return { source: src, status: num(r.status), ms: num(r.ms), err: clean(r.err, 160), count: out.length, ai: ai, aiAllFlagged: false, items: out };
   }));
@@ -874,11 +895,11 @@ async function apiDiagnose(c) {
   await audit(c, { action: "diagnose", id: m ? m.id : "", ok: true, note: srcs.length + " sites" });
   return jres({
     term: shown.hidden ? "(hidden)" : shown.text,
-    member: m ? { id: m.id, pro: !!sub.pro, aiOff: aiOff, filters: { sources: arr(p.sources).map(x => word(x, 20)), maxPrice: sub.pro ? num(p.max) : 0,
+    member: m ? { id: m.id, pro: !!sub.pro, aiOff: aiOff, filters: { sources: emailSources(H, p), maxPrice: sub.pro ? num(p.max) : 0,
       skipWords: sub.pro ? skipView(sub, p.skip, zip) : [] } } : null,
     local: local, localOnly: localOnly, hunt: hunt, ai: { mode: word(mode, 10), alerts: alertsAi, live: aiLive }, results: results,
     summary: { sources: results.length, ok: okN, failed: results.length - okN, items: sum(() => true), aiDropped: sum(x => x.aiDrop), aiWould: sum(x => x.aiWould),
-      memberDropped: sum(x => !!x.memberDrop), alreadySent: sum(x => x.alreadySent) }
+      memberDropped: sum(x => !!x.memberDrop), alreadySent: sum(x => x.alreadySent), waiting: sum(x => x.waiting) }
   });
 }
 
