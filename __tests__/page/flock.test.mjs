@@ -104,7 +104,7 @@ test('fewer than 2 hunts: a friendly full-screen card with a way back', async ()
 });
 
 test('✕ discards for good, unstars, and Undo brings it back', async () => {
-  const p = await openFeed();
+  const p = await openFeed({ storage: { 'prowl.alertTok': 'tok', 'prowl.alertEmail': 'a@b.co' } });
   await waitFor(() => cards(p).length >= 2);
   const c = cards(p)[0];
   const u = c.getAttribute('data-u');

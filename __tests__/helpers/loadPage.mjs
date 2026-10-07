@@ -6,7 +6,7 @@ import { JSDOM, VirtualConsole } from 'jsdom';
 
 const PAGE = fileURLToPath(new URL('../../page/prowl.html', import.meta.url));
 
-export function loadPage({ url = 'https://www.owlandtwigvintage.com/pages/prowl', storage = {}, fetchImpl, reducedMotion = false } = {}) {
+export function loadPage({ url = 'https://www.owlandtwigvintage.com/pages/prowl', storage = {}, fetchImpl, reducedMotion = false, beforeLoad } = {}) {
   const body = readFileSync(PAGE, 'utf8');
   const errors = [];
   const vc = new VirtualConsole();
@@ -35,6 +35,7 @@ export function loadPage({ url = 'https://www.owlandtwigvintage.com/pages/prowl'
       win.Element.prototype.setPointerCapture = function () {};
       win.Element.prototype.releasePointerCapture = function () {};
       Object.defineProperty(win.navigator, 'clipboard', { value: { writeText: () => Promise.resolve() }, configurable: true });
+      if (beforeLoad) beforeLoad(win);
     },
   });
   const win = dom.window;

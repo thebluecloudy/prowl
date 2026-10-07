@@ -1334,6 +1334,47 @@ window.prowlEpn=function(u,cid){
   .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .fl-x,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .fl-x,
   .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .sgw-sv,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .sgw-sv{opacity:1}
 }
+/* ---- v6.39: Flock next steps. Bottom sheet (centered on desktop), margin math, share, new since last visit ---- */
+.scout-app-wrapper .otp-sheet{top:auto;left:0;right:0;bottom:0;width:100%;max-width:560px;margin:0 auto;max-height:88vh;border-left:0;border-top:1px solid var(--ln);border-radius:18px 18px 0 0;transform:translateY(101%);box-shadow:0 -18px 50px -20px var(--shadow-lg)}
+.scout-app-wrapper .otp-sheet.on{transform:none}
+.scout-app-wrapper .otp-sheet.sh-drag{transition:none}
+.scout-app-wrapper .otp-sheet .dh{border-radius:18px 18px 0 0;touch-action:none}
+.scout-app-wrapper .otp-sheet .sh-b{overflow-y:auto;overscroll-behavior:contain;padding:16px 18px calc(20px + env(safe-area-inset-bottom))}
+@media(min-width:700px){
+  .scout-app-wrapper .otp-sheet{top:50%;left:50%;right:auto;bottom:auto;width:min(460px,92vw);margin:0;border:1px solid var(--ln);border-radius:16px;transform:translate(-50%,-46%);opacity:0;transition:transform .25s ease,opacity .2s ease}
+  .scout-app-wrapper .otp-sheet.on{transform:translate(-50%,-50%);opacity:1}
+  .scout-app-wrapper .otp-sheet .dh{border-radius:16px 16px 0 0}
+}
+.scout-app-wrapper .mg-sub{margin:0 0 12px;font-size:14px;color:var(--mu)}
+.scout-app-wrapper .mg-rows{margin:0;padding:0}
+.scout-app-wrapper .mg-rows div{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--ln);font-size:15px}
+.scout-app-wrapper .mg-rows dt{color:var(--i2)}
+.scout-app-wrapper .mg-rows dt small{color:var(--mu);font-size:12.5px}
+.scout-app-wrapper .mg-rows dd{margin:0;font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink);white-space:nowrap}
+.scout-app-wrapper .mg-clear{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:16px 0 18px}
+.scout-app-wrapper .mg-clear span{font-size:16px;font-weight:700;color:var(--ink)}
+.scout-app-wrapper .mg-clear b{font-size:34px;font-weight:800;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+.scout-app-wrapper .mg-watch{width:100%;min-height:48px;border-radius:99px}
+.scout-app-wrapper .mg-watch[aria-pressed=true]{background:var(--cd3);color:var(--ink);border-color:var(--l2)}
+.scout-app-wrapper .fl-sh{display:none}
+.scout-app-wrapper #otp-flock.as-feed .fl-sh{-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;position:absolute;z-index:3;right:76px;bottom:76px;width:40px;height:40px;min-width:40px;padding:0;border:0;border-radius:99px;background:#fff;color:#111;box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
+.scout-app-wrapper #otp-flock.as-feed .fl-sh svg{width:19px;height:19px}
+.scout-app-wrapper #otp-flock.as-feed .fl-sh:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.scout-app-wrapper .fl-newb{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:99px;background:var(--ac);color:var(--onink);font-size:11px;font-weight:800;letter-spacing:.04em;line-height:18px;vertical-align:2px}
+.scout-app-wrapper #otp-flock.as-feed .fl-new,.scout-app-wrapper #otp-flock.as-feed .fl-group{max-width:520px;margin:0 auto;padding:12px 18px 4px;font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--mu)}
+.scout-app-wrapper #otp-flock.as-feed .fl-card .fl-new{flex:0 0 auto;margin:0;padding:0 2px 8px;line-height:20px;color:var(--ac)}
+.scout-app-wrapper #otp-flock.as-feed .fl-first-new .sgw-p,.scout-app-wrapper #otp-flock.as-feed .fl-first-new .fl-x{top:52px}
+@media(min-width:1024px){
+  .scout-app-wrapper #otp-flock.as-feed .fl-sh{right:60px;bottom:62px}
+  .scout-app-wrapper #otp-flock.as-feed .fl-group{grid-column:1/-1;max-width:none;padding:8px 0 0}
+  .scout-app-wrapper #otp-flock.as-feed .fl-card .fl-new{position:absolute;left:0;right:0;bottom:100%;padding:0 0 4px;white-space:nowrap}
+  .scout-app-wrapper #otp-flock.as-feed .fl-first-new .sgw-p{top:12px}.scout-app-wrapper #otp-flock.as-feed .fl-first-new .fl-x{top:12px}
+}
+@media(min-width:1024px) and (hover:hover){
+  .scout-app-wrapper #otp-flock.as-feed .fl-sh{opacity:0}
+  .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .fl-sh,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .fl-sh{opacity:1}
+}
+@media(prefers-reduced-motion:reduce){.scout-app-wrapper .otp-sheet{transition:none}}
 </style>
 
 <div class="scout-app-wrapper ot-r k2">
@@ -1856,6 +1897,10 @@ window.prowlEpn=function(u,cid){
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is Prowl?","acceptedAnswer":{"@type":"Answer","text":"Prowl by Owl & Twig is a free search tool for vintage collectors. Type a piece once and it builds that search for 27 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist, which a regular Google search rarely reaches. It is built by Matt at Owl & Twig Vintage, a family vintage shop in Michigan."} },{"@type":"Question","name":"Which marketplaces does Prowl search?","acceptedAnswer":{"@type":"Answer","text":"eBay, Etsy, Mercari, Mercari Japan, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, EstateSales.net, HiBid, LiveAuctioneers, Heritage Auctions, Invaluable and Craigslist, plus eBay sold listings for pricing. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted and Grailed results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search."} },{"@type":"Question","name":"How do I find antique shops and estate sales near me?","acceptedAnswer":{"@type":"Answer","text":"Open the Den and tap Local. Tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area."} },{"@type":"Question","name":"Is Prowl free?","acceptedAnswer":{"@type":"Answer","text":"Yes. No account. Your search list stays on your device."} },{"@type":"Question","name":"Does it work on my phone?","acceptedAnswer":{"@type":"Answer","text":"Yes. Built mobile-first. Add it to your home screen, and allow pop-ups if you use Open all. On a phone, Facebook opens in your browser so the search sticks, so log in to Facebook there once."} },{"@type":"Question","name":"How does Price Check work?","acceptedAnswer":{"@type":"Answer","text":"One tap opens eBay's sold listings for your term — actual sale prices from the last 90 days, the most accurate read on what a piece is worth right now. Asking prices lie; sold prices don't."} },{"@type":"Question","name":"What if nothing sold in 90 days?","acceptedAnswer":{"@type":"Answer","text":"That happens with genuinely rare pieces. Price Check has a second button for three years of deep comps via eBay's Terapeak research — free with any eBay account. Open it in your browser rather than the eBay app, or the date range gets dropped."} }]}</script>
 
 
+<aside class="drawer otp-sheet" id="otp-sheet" role="dialog" aria-modal="true" aria-labelledby="otp-sheetT" hidden>
+  <div class="dh"><h2 id="otp-sheetT"></h2><button class="ic" id="otp-sheetClose" aria-label="Close">✕</button></div>
+  <div class="sh-b" id="otp-sheetB"></div>
+</aside>
 <!-- v6.38: the swallow sprite sits outside the hidden Flock section, so the dock icon draws before Flock opens -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="otp-swallow" viewbox="0 0 24 24"><path fill="currentColor" d="M22.2 8.8 20.4 7.6 18.3 8C17.7 8.1 17.1 8.1 16.5 8.2 14 4.4 9.8 2.8 5.6 1.4 9.2 4.4 11.2 7.6 11.8 10.4 10.2 11.4 6.8 13.2 2.2 16.2L5.6 17.2 3.2 20.4 9.3 15.8C12 15.2 15.8 14.4 18.2 12.4 19.6 11.3 20.4 10.4 20.8 9.9Z"></path></symbol></svg>
 <nav id="otp-dock" aria-label="Prowl modes">
@@ -2218,7 +2263,7 @@ window.prowlEpn=function(u,cid){
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.38';
+var PROWL_VERSION='v6.39';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -2809,7 +2854,7 @@ $('#otp-mktBtn').addEventListener('click',function(){
   closeDen();
   setTimeout(function(){dwLf=document.activeElement;dw.hidden=false;rDrawer();requestAnimationFrame(function(){sc.classList.add('on');dw.classList.add('on')});$('#otp-cd').focus();},260);
 });
-sc.addEventListener('click',function(){if(dw.classList.contains('on'))closeDw();if(den.classList.contains('on'))closeDen();if(pho&&pho.classList.contains('on'))closePhoto();});
+sc.addEventListener('click',function(){if(sheetOpen()){closeSheet();return}if(dw.classList.contains('on'))closeDw();if(den.classList.contains('on'))closeDen();if(pho&&pho.classList.contains('on'))closePhoto();});
 
 /* ---------- SEARCH / LAUNCH ---------- */
 /* Every row below is a live marketplace search URL. Nothing is simulated:
@@ -3368,8 +3413,9 @@ $('#otp-sa').addEventListener('click',function(){
      v4  v3 + runs, finds, mktStats (v6.02, each optional on import)
      v5  v4 + research (v6.08, optional on import)
      v6  v5 + discarded (v6.38, optional on import)
+     v7  v6 + watchlist (v6.39, optional on import)
    plus any of the above base64-encoded. */
-var BACKUP_V=6,IMPORT_MAX=200;
+var BACKUP_V=7,IMPORT_MAX=200;
 
 function exportData(){
   var payload={
@@ -3385,6 +3431,7 @@ function exportData(){
     runs:runsGet(),finds:findsGet(),mktStats:statsGet(),   /* v6.02 */
     research:resGet(),   /* v6.08 */
     discarded:disGet().slice(),   /* v6.38 */
+    watchlist:watchGet(),   /* v6.39 */
     list:st.hunts.slice()
   };
   var name='prowl-backup-'+new Date().toISOString().slice(0,10)+'.json';
@@ -3512,7 +3559,7 @@ $('#otp-clearBtn').addEventListener('click',function(){
      the last-synced list, and pull the list back from the Worker afterwards. */
   var member=!!(mGet('alertTok')&&mGet('alertEmail'));
   if(member){clearTimeout(MAIL.timer);MAIL.ready=false;mSet('alertSig','')}
-  try{localStorage.removeItem(LS);localStorage.removeItem(SGW_KEY);localStorage.removeItem('prowl.lastHunt');localStorage.removeItem(SEEN_KEY);localStorage.removeItem(RUNS_KEY);localStorage.removeItem(FINDS_KEY);localStorage.removeItem(STATS_KEY);localStorage.removeItem(RES_KEY);localStorage.removeItem(DIS_KEY)}catch(e){}FC=null;RC=null;DIS=null;FLOCK.picks=Object.create(null);rDenX();
+  try{localStorage.removeItem(LS);localStorage.removeItem(SGW_KEY);localStorage.removeItem('prowl.lastHunt');localStorage.removeItem(SEEN_KEY);localStorage.removeItem(RUNS_KEY);localStorage.removeItem(FINDS_KEY);localStorage.removeItem(STATS_KEY);localStorage.removeItem(RES_KEY);localStorage.removeItem(DIS_KEY);localStorage.removeItem(WATCH_KEY);localStorage.removeItem(SEEN_FL_KEY)}catch(e){}FC=null;RC=null;DIS=null;FLOCK.picks=Object.create(null);rDenX();
   st.hunts=DEF.slice();st.sel=new Set();st.lock=new Set();st.mkt=new Set(ALL);st.city='';st.fbHub='local';st.one=ONE_DEFAULT;
   /* v5.87 (B1): save the cleared state, or the next load re-imports the old
      owlTwigSearches list through legacySeed(). */
@@ -3533,6 +3580,7 @@ ms.addEventListener('click',function(e){if(e.target===ms)closeM();});
 
 document.addEventListener('keydown',function(e){
   if(e.key!=='Escape')return;
+  if(sheetOpen()){closeSheet();return;}   /* v6.39 */
   if(ms.classList.contains('on')){closeM();return;}
   if(dw.classList.contains('on')){closeDw();return;}
   if(den.classList.contains('on')){closeDen();return;}
@@ -4748,19 +4796,25 @@ function flockCardHtml(c){
   h=h.replace('<button type="button" class="sgw-fp">Fair price?</button>','');   /* comps would come from other hunts */
   if(FP&&FP[u])h=h.replace(fpHtml(FP[u]),'');   /* v6.38: a verdict already in hand stays out too */
   h=h.replace('<div class="sgw-cell"','<div class="sgw-cell fl-card" role="article" aria-label="'+esc(it.title)+'"'+(h.indexOf(' data-u="')<0?' data-u="'+esc(u)+'"':''));
-  h=h.replace('<div class="sgw-p">','<div class="sgw-p" data-act="margin">');
+  h=h.replace('<div class="sgw-p">','<div class="sgw-p" data-act="margin" role="button" aria-label="What you would clear reselling at '+esc(it.price||'')+'">');
+  if(c.isNew)h=h.replace('<div class="sgw-t">','<div class="sgw-t"><span class="fl-newb">New</span>');   /* v6.39 */
   if(it.time_left)auc.push(esc(it.time_left));
   if(typeof it.bids==='number')auc.push(esc(String(it.bids))+' bid'+(it.bids===1?'':'s'));
   return h.replace('</a>',(c.t?'<div class="fl-for">for '+esc(c.t)+'</div>':'')+'</a>'+
     (auc.length?'<span class="fl-auc">'+auc.join(' · ')+'</span>':'')+
-    '<button type="button" class="fl-x" aria-label="Not for me: hide this find" title="Not for me">✕</button>');
+    '<button type="button" class="fl-x" aria-label="Not for me: hide this find" title="Not for me">✕</button>'+
+    '<button type="button" class="fl-sh" aria-label="Share this find" title="Share"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"></path><path d="M7 8l5-5 5 5"></path><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg></button>');
 }
 function flNote(cls,html){return '<div class="fl-note '+cls+'">'+html+'</div>'}
 function flSavedHtml(dm){
-  var a=findsGet().filter(function(f){return !dm[f.url]}),h='',i,f;
+  var a=findsGet().filter(function(f){return !dm[f.url]}),w=watchGet().filter(function(x){return !dm[x.u]}),h='',i,f;
   a.sort(function(x,y){return (y.at||0)-(x.at||0)});
-  if(!a.length)return flNote('fl-empty','<p>Nothing saved yet. Tap the star on any find to keep it here.</p>');
+  if(!a.length&&!w.length)return flNote('fl-empty','<p>Nothing saved yet. Tap the star on any find to keep it here.</p>');
   for(i=0;i<a.length;i++){f=a[i];h+=flockCardHtml({t:f.hunt,it:{title:f.title,price:f.price,url:f.url,image:f.image,src:f.src}})}
+  if(w.length){   /* v6.39: price-drop watches sit under their own heading */
+    h+='<div class="fl-group" role="heading" aria-level="3">Watching</div>';
+    for(i=0;i<w.length;i++){f=w[i];h+=flockCardHtml({t:f.h,it:{title:f.t,price:f.p,url:f.u,image:f.i,src:f.s}})}
+  }
   return h+flNote('fl-end','<p>That’s everything you’ve saved.</p><button type="button" class="gh" data-csv="1">Download as a spreadsheet</button>');
 }
 function flockOpen(){var s=$('#otp-flock');return !!(s&&s.classList.contains('as-feed'))}
@@ -4782,7 +4836,15 @@ function flockRender(top){
     cards=flockCards(dm);
     if(!cards.length)h=FLOCK.pend>0?flNote('fl-empty','<p>Looking across your hunts…</p>'):flNote('fl-empty','<p>Nothing in the flock right now.</p><button type="button" class="gh" data-fl="shuffle">Look again</button>');
     else{
-      for(i=0;i<cards.length;i++)h+=flockCardHtml(cards[i]);
+      /* v6.39: finds you have not seen get a NEW badge and a divider above the first one; on a first visit everything is new, so neither shows */
+      var sm=flSeenMap(),div=false;
+      for(i=0;i<cards.length;i++){
+        cards[i].isNew=!!sm&&!sm[cards[i].it.url];
+        /* the divider rides at the top of the first new card: a separate row between snap cards would never be seen */
+        if(cards[i].isNew&&!div){div=true;h+=flockCardHtml(cards[i]).replace(/^<div class="sgw-cell fl-card/,'<div class="sgw-cell fl-card fl-first-new').replace(/(<div class="sgw-cell fl-card[^>]*>)/,'$1<div class="fl-new" role="separator">New since your last visit</div>');continue}
+        h+=flockCardHtml(cards[i]);
+      }
+      FLOCK.shown=cards.map(function(c){return c.it.url});
       h+=flNote('fl-end','<p>That’s the flock.</p><button type="button" class="gh" data-fl="shuffle">Fresh look</button>');
     }
   }
@@ -4792,7 +4854,7 @@ function flockRender(top){
   else{
     row.scrollTop=y;
     if(anchor){var cs=row.querySelectorAll('.fl-card');for(i=0;i<cs.length;i++)if(cs[i].getAttribute('data-u')===anchor){row.scrollTop=cs[i].offsetTop;break}}
-    FLOCK.at=row.clientHeight?Math.round(row.scrollTop/row.clientHeight):0;
+    FLOCK.at=flIdxOf(row);
   }
   flBadge();
 }
@@ -4858,6 +4920,8 @@ function openFlock(){
 }
 function closeFlock(){
   if(!flockOpen())return;
+  flSeenWrite();   /* v6.39 */
+  if(sheetOpen())closeSheet();
   var sec=$('#otp-flock'),w=sec.closest('.scout-app-wrapper');
   sec.classList.remove('as-feed');sec.hidden=true;sec.style.bottom='';if(w)w.classList.remove('flock-mode');
   if(st.mode==='flock')st.mode=(FLOCK.prev&&FLOCK.prev!=='flock')?FLOCK.prev:'prowl';
@@ -4869,7 +4933,7 @@ function flDiscard(card){
   var u=card&&card.getAttribute('data-u');if(!u)return;
   var i=findIdx(u),was=null,a;
   if(i>-1){a=findsGet();was=a[i];a.splice(i,1);findsPut(a);svPaint(u)}
-  disAdd(u);FLOCK.last={u:u,f:was};
+  disAdd(u);FLOCK.last={u:u,f:was,w:watchDrop(u)};
   if(card.parentNode)card.parentNode.removeChild(card);
   var row=$('#otp-flockRow');if(row&&!row.querySelector('.fl-card'))flockRender();
   flBadge();
@@ -4879,11 +4943,108 @@ function flUndo(){
   var L=FLOCK.last,a;if(!L)return;
   FLOCK.last=null;disDrop(L.u);
   if(L.f&&findIdx(L.u)<0){a=findsGet();a.unshift(L.f);findsPut(a)}
+  if(L.w&&watchIdx(L.u)<0)watchAdd(L.w);
   svPaint(L.u);
   var e=$('#otp-toast');if(e){e.classList.remove('on');e.classList.remove('act')}
   if(flockOpen())flockRender();else flBadge();
 }
 function flSavedChanged(){flBadge();if(flockOpen()&&FLOCK.view==='saved')flockRender()}
+/* the snap card nearest the top of the feed (cards and notes snap; dividers do not) */
+function flIdxOf(row){var cs=row.querySelectorAll('.fl-card,.fl-note'),i,b=0,bd=1e9,d;for(i=0;i<cs.length;i++){d=Math.abs(cs[i].offsetTop-row.scrollTop);if(d<bd){bd=d;b=i}}return b}
+
+/* v6.39 new since last visit: prowl.flockSeen keeps the last 1000 finds the feed showed, written when Flock closes.
+   null (never written) means a first visit. Kept out of the backup: it is only this device's memory. */
+var SEEN_FL_KEY='prowl.flockSeen',SEEN_FL_MAX=1000;
+function flSeenGet(){var a=xGet(SEEN_FL_KEY,null);return Array.isArray(a)?a.filter(function(u){return typeof u==='string'}):null}
+function flSeenMap(){var a=flSeenGet(),m,i;if(!a)return null;m=Object.create(null);for(i=0;i<a.length;i++)m[a[i]]=1;return m}
+function flSeenWrite(){
+  if(!FLOCK.shown||!FLOCK.shown.length)return;
+  var a=(flSeenGet()||[]).filter(function(u){return FLOCK.shown.indexOf(u)<0}).concat(FLOCK.shown);
+  xSet(SEEN_FL_KEY,a.slice(-SEEN_FL_MAX));
+}
+
+/* v6.39 watchlist: "Watch for price drop" keeps the listing in prowl.watchlist. Alerts come later (they need the
+   worker to poll prices), so nothing here promises one. */
+var WATCH_KEY='prowl.watchlist',WATCH_MAX=200;
+function watchClean(w){
+  if(!w||typeof w!=='object'||typeof w.u!=='string'||!/^https:\/\//i.test(w.u)||!w.t)return null;
+  return {u:w.u.slice(0,800),t:String(w.t).replace(/\s+/g,' ').slice(0,140).trim(),p:w.p?String(w.p).slice(0,24):'',s:typeof w.s==='string'?w.s.slice(0,24):'',
+    i:(typeof w.i==='string'&&/^https:\/\//i.test(w.i))?w.i.slice(0,800):'',h:w.h?String(w.h).replace(/\s+/g,' ').slice(0,80):'',watchedAt:Number(w.watchedAt)||0};
+}
+function watchGet(){var a=xGet(WATCH_KEY,[]),out=[],seen=Object.create(null),i,w;if(Array.isArray(a))for(i=0;i<a.length&&out.length<WATCH_MAX;i++){w=watchClean(a[i]);if(w&&!seen[w.u]){seen[w.u]=1;out.push(w)} }return out}
+function watchPut(a){xSet(WATCH_KEY,a.slice(0,WATCH_MAX))}
+function watchIdx(u){var a=watchGet();for(var i=0;i<a.length;i++)if(a[i].u===u)return i;return -1}
+function watchAdd(w){var c=watchClean(w);if(!c)return;var a=watchGet().filter(function(x){return x.u!==c.u});a.unshift(c);watchPut(a)}
+function watchDrop(u){var a=watchGet(),i=watchIdx(u),was=i>-1?a[i]:null;if(was){a.splice(i,1);watchPut(a)}return was}
+
+/* v6.39 margin math: eBay's fee stack as checked 2026-10-06. Final value ~13.6%, payment processing 2.7% + $0.25,
+   Promoted Listings General 2% baseline. Every source uses the eBay stack for now, and the sheet says so. */
+var FEES={fvf:0.136,proc:0.027,procFix:0.25,promo:0.02};
+function priceNum(p){var m=String(p==null?'':p).replace(/,/g,'').match(/(\d+(?:\.\d+)?)/);return m?parseFloat(m[1]):NaN}
+function cents(x){return Math.round(x*100+1e-9)/100}
+function marginCalc(price){
+  var p=typeof price==='number'?price:priceNum(price);if(!(p>0))return null;
+  var f=cents(p*FEES.fvf),pr=cents(p*FEES.proc+FEES.procFix),pm=cents(p*FEES.promo);
+  return {price:cents(p),fvf:f,proc:pr,promo:pm,clear:cents(p-f-pr-pm)};
+}
+function money(x){var neg=x<0;x=Math.abs(x);var s=x.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');return (neg?'\u2212$':'$')+s}
+
+/* the sheet: a bottom sheet on phones, a centered card on desktop. Same open/close rhythm as the drawers. */
+var sh=null,shLf=null;
+function sheetOpen(){return !!(sh&&sh.classList.contains('on'))}
+function openSheet(title,html){
+  sh=sh||$('#otp-sheet');if(!sh)return;
+  $('#otp-sheetT').textContent=title;$('#otp-sheetB').innerHTML=html;
+  if(!sheetOpen())shLf=document.activeElement;
+  sh.hidden=false;sh.style.transform='';
+  requestAnimationFrame(function(){sc.classList.add('on');sh.classList.add('on')});
+  var c=$('#otp-sheetClose');if(c)c.focus();
+}
+function closeSheet(){
+  if(!sheetOpen())return;
+  sc.classList.remove('on');sh.classList.remove('on');sh.style.transform='';
+  setTimeout(function(){if(!sh.classList.contains('on'))sh.hidden=true},300);
+  if(shLf&&shLf.focus){try{shLf.focus({preventScroll:true})}catch(e){shLf.focus()}}
+}
+function flMargin(card){
+  if(!card)return;
+  var u=card.getAttribute('data-u')||'',m=marginCalc(card.getAttribute('data-p')),src=card.getAttribute('data-s')||'shopgoodwill';
+  if(!m)return;
+  var on=watchIdx(u)>-1;
+  FLOCK.mcard={u:u,t:card.getAttribute('data-t')||card.getAttribute('aria-label')||'',p:card.getAttribute('data-p')||'',s:src,
+    i:((card.querySelector('.sgw-card img')||{}).getAttribute||function(){return ''}).call(card.querySelector('.sgw-card img'),'src')||'',
+    h:((card.querySelector('.fl-for')||{}).textContent||'').replace(/^for /,'')};
+  openSheet('What you\u2019d clear',
+    '<p class="mg-sub">Assuming you resell on eBay. Listed at '+esc(money(m.price))+' on '+esc(mktName(src)||'ShopGoodwill')+'.</p>'+
+    '<dl class="mg-rows">'+
+      '<div><dt>List price</dt><dd>'+money(m.price)+'</dd></div>'+
+      '<div><dt>Final value fee <small>13.6%</small></dt><dd>'+money(-m.fvf)+'</dd></div>'+
+      '<div><dt>Payment processing <small>2.7% + $0.25</small></dt><dd>'+money(-m.proc)+'</dd></div>'+
+      '<div><dt>Promoted listing <small>2%</small></dt><dd>'+money(-m.promo)+'</dd></div>'+
+    '</dl>'+
+    '<div class="mg-clear"><span>You\u2019d clear</span><b>'+money(m.clear)+'</b></div>'+
+    '<button type="button" class="b p mg-watch" data-watch="1" aria-pressed="'+on+'">'+(on?'Watching \u2713':'Watch for price drop')+'</button>');
+}
+function flWatchTap(btn){
+  var M=FLOCK.mcard;if(!M||!M.u)return;
+  if(watchIdx(M.u)>-1){watchDrop(M.u);btn.setAttribute('aria-pressed','false');btn.textContent='Watch for price drop'}
+  else{
+    watchAdd({u:M.u,t:M.t,p:M.p,s:M.s,i:M.i,h:M.h,watchedAt:Date.now()});
+    btn.setAttribute('aria-pressed','true');btn.textContent='Watching \u2713';
+    setTimeout(closeSheet,flReduced()?0:450);
+  }
+  if(flockOpen()&&FLOCK.view==='saved')flockRender();
+}
+/* share: the system share sheet where there is one, else the link goes on the clipboard */
+function flShare(card){
+  if(!card)return;
+  var u=card.getAttribute('data-u')||'',t=card.getAttribute('data-t')||card.getAttribute('aria-label')||'Vintage find',p=card.getAttribute('data-p')||'';
+  if(!u)return;
+  if(navigator.share){
+    try{navigator.share({title:t,text:(p?p+' ':'')+'via Prowl',url:u})['catch'](function(){});return}catch(e){}
+  }
+  if(copyTerm(u))toast('Link copied.',2200);else toast('Could not copy the link here.',2600);
+}
 
 /* ---------- FIELD GUIDE ON ANYTHING (v6.19) ----------
    POST /guide on the Worker (Muse with web search) writes a collector's field guide for any subject.
@@ -5499,6 +5660,8 @@ var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function()
   row.addEventListener('click',function(e){
     var t=e.target,x;if(!t||!t.closest)return;
     if((x=t.closest('.fl-x'))){e.preventDefault();flDiscard(x.closest('.fl-card'));return}
+    if((x=t.closest('[data-act="margin"]'))){e.preventDefault();e.stopPropagation();flMargin(x.closest('.fl-card'));return}   /* v6.39 */
+    if((x=t.closest('.fl-sh'))){e.preventDefault();flShare(x.closest('.fl-card'));return}
     if((x=t.closest('[data-fl]'))){
       if(x.getAttribute('data-fl')==='home'){closeFlock();clearRun();return}
       flShuffle();return;
@@ -5517,7 +5680,7 @@ var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function()
      back it up: one wheel or trackpad gesture moves exactly one card, and a flick that settles more than one
      card away from where it started eases back to the next card. */
   var wl=false,wt=null,stT=null;
-  function flIdx(){return row.clientHeight?Math.round(row.scrollTop/row.clientHeight):0}
+  function flIdx(){return flIdxOf(row)}
   function flGoIdx(i){var cs=row.querySelectorAll('.fl-card,.fl-note'),n=cs[Math.max(0,Math.min(cs.length-1,i))];if(!n)return;FLOCK.at=Math.max(0,Math.min(cs.length-1,i));try{row.scrollTo({top:n.offsetTop,behavior:flReduced()?'auto':'smooth'})}catch(er){row.scrollTop=n.offsetTop}}
   row.addEventListener('wheel',function(e){
     if(!flockOpen()||flWide()||e.ctrlKey||Math.abs(e.deltaY)<Math.abs(e.deltaX))return;
@@ -5567,6 +5730,16 @@ var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function()
   row.addEventListener('pointerup',function(e){end(e,false)});
   row.addEventListener('pointercancel',function(e){end(e,true)});
   if(tst)tst.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('#otp-undis'))flUndo()});
+  /* v6.39: the sheet. Close with ✕, the scrim, Escape, or a swipe down from its header. */
+  var sb=$('#otp-sheet');if(!sb)return;sh=sb;
+  $('#otp-sheetClose').addEventListener('click',closeSheet);
+  sb.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('[data-watch]');if(b)flWatchTap(b)});
+  var sg=null;
+  sb.addEventListener('pointerdown',function(e){if(!e.target.closest('.dh')||e.target.closest('button'))return;sg={id:e.pointerId,y:e.clientY,dy:0}});
+  sb.addEventListener('pointermove',function(e){if(!sg||e.pointerId!==sg.id)return;sg.dy=Math.max(0,e.clientY-sg.y);if(sg.dy>4&&!flReduced()&&!flWide()){sb.classList.add('sh-drag');sb.style.transform='translateY('+sg.dy+'px)'}});
+  function sEnd(e){if(!sg||e.pointerId!==sg.id)return;var dy=sg.dy;sg=null;sb.classList.remove('sh-drag');if(dy>80)closeSheet();else sb.style.transform=''}
+  sb.addEventListener('pointerup',sEnd);sb.addEventListener('pointercancel',function(e){if(sg&&e.pointerId===sg.id){sg=null;sb.classList.remove('sh-drag');sb.style.transform=''}});
+  try{window.addEventListener('pagehide',function(){if(flockOpen())flSeenWrite()})}catch(e){}
 })();
 
 /* ---------- DEEP LINK ---------- */
@@ -5860,6 +6033,35 @@ function rDenStats(){
   h+='</ul><button type="button" class="sgw-ml dx-clear" data-stc="1">Reset these numbers</button></div>';
   box.innerHTML=h;
 }
+/* v6.39: saving a find needs the store sign-in (login gates saved finds); removing one never does. Logged out, the
+   star sends you to Shopify's sign-in with the find held in sessionStorage, and the save goes through when you
+   come back signed in. FLIN: the store says this visitor is signed in (asked once on load). */
+var FLIN=false,PEND_KEY='prowl.pendStar';
+function flSignedIn(){return !!mGet('alertTok')||FLIN}
+function svTap(u){
+  if(findIdx(u)>-1||flSignedIn()){svToggle(u);return}
+  var it=SVI[u];if(!it)return;
+  try{sessionStorage.setItem(PEND_KEY,JSON.stringify({title:it.title,price:it.price,url:it.url,image:it.image,src:it.src,hunt:it.hunt}))}catch(e){}
+  var back=location.pathname+(flockOpen()?'?flock=1':'');
+  flGoTo('/customer_authentication/login?return_to='+encodeURIComponent(back)+(mGet('alertEmail')?'&login_hint='+encodeURIComponent(mGet('alertEmail')):''));
+}
+function flGoTo(url){location.href=url}
+function flPendStar(){
+  var raw=null,f=null;
+  try{raw=sessionStorage.getItem(PEND_KEY)}catch(e){}
+  if(!raw)return;
+  try{f=findClean(JSON.parse(raw))}catch(e){}
+  function done(){try{sessionStorage.removeItem(PEND_KEY)}catch(e){} }
+  function save(){
+    done();if(!f)return;
+    if(findIdx(f.url)<0){var a=findsGet();f.at=Date.now();a.unshift(f);findsPut(a);mstat(f.src,'f')}
+    svPaint(f.url);flSavedChanged();rDenStats();
+    toast('\u2605 Saved. It is in <b>Flock \u203a Saved</b>.',3200);
+  }
+  if(!f){done();return}
+  if(flSignedIn()){save();return}
+  pxMe(function(me){if(me&&me.in){FLIN=true;save()}else done()});
+}
 function rDenX(){rDenResearch();rDenRuns();rDenStats();flSavedChanged()}
 
 /* backup v4: replace a list only when the backup carries it */
@@ -5870,12 +6072,13 @@ function xImport(o){
   if(o.mktStats&&typeof o.mktStats==='object'&&!Array.isArray(o.mktStats)){xSet(STATS_KEY,o.mktStats);xSet(STATS_KEY,statsGet())}
   if(Array.isArray(o.research)){out=[];for(i=0;i<o.research.length&&out.length<RES_MAX;i++){c=resClean(o.research[i]);if(c)out.push(c)}resPut(out)}   /* v6.08 */
   if(Array.isArray(o.discarded)){DIS=null;xSet(DIS_KEY,o.discarded);DIS=null;disPut(disGet().slice())}   /* v6.38: cleaned on read */
+  if(Array.isArray(o.watchlist)){xSet(WATCH_KEY,o.watchlist);watchPut(watchGet())}   /* v6.39 */
   FC=null;rDenX();
 }
 
 document.addEventListener('click',function(e){
   var t=e.target,b=t&&t.closest&&t.closest('.scout-app-wrapper .sgw-sv');
-  if(b){e.preventDefault();e.stopPropagation();svToggle(b.getAttribute('data-sv'));return}
+  if(b){e.preventDefault();e.stopPropagation();svTap(b.getAttribute('data-sv'));return}
   if(!den||!t||!t.closest||!den.contains(t))return;
   var x;
   if((x=t.closest('[data-rp]'))){runReplay(+x.getAttribute('data-rp'));return}
@@ -5886,6 +6089,10 @@ document.addEventListener('click',function(e){
   if(t.closest('[data-csv]')){exportFinds();return}
   if(t.closest('[data-stc]')){xSet(STATS_KEY,{});rDenStats();toast('Marketplace numbers reset.',1800);return}
 });
+try{
+  if(!mGet('alertTok'))pxMe(function(me){if(me&&me.in)FLIN=true});
+  setTimeout(flPendStar,0);
+}catch(e){}
 if(den)den.addEventListener('toggle',function(e){var d=e.target,k=d&&d.getAttribute&&d.getAttribute('data-dx');if(k)xOpen[k]=!!d.open},true);
 
 /* phone Den: swipe right to close. Starts on a text field or inside a strip
