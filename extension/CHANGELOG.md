@@ -2,6 +2,9 @@
 
 Versions follow `extension/manifest.json`. Bump `version` there in the same change as any edit under `extension/`; the workflow builds the zip and publishes a GitHub release named `ext-vX.Y.Z` when it lands on main.
 
+## 1.6.1
+- "Open on every marketplace" now includes Salvation Army and Mercari Japan, matching the Prowl page.
+
 ## 1.6.0
 - Groundwork for a "Search Amazon" right-click item for supplies and reference books. It ships switched off: the item does not appear and no Amazon link is built until the Associates tag is set.
 
