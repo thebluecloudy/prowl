@@ -298,3 +298,12 @@ test("Members: the find box's 'earlier address' note is a toast, and Refresh rea
   assert.ok(SCRIPT.includes('(fresh === true ? "&fresh=1" : "")'));
   assert.ok(SCRIPT.includes('"None recorded"'), "no email recorded is not the same as never");
 });
+
+test("the server's 'Has issues' filter and the page's warning chips use the same flags", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../admin.js", import.meta.url), "utf8");
+  const server = JSON.parse(/^const ISSUE_FLAGS = (\[[^\]]*\]);/m.exec(src)[1]);
+  const pageFlags = pick("ISSUE_FLAGS", "const");
+  assert.deepEqual(server.slice().sort(), pageFlags.slice().sort());
+  assert.ok(!server.includes("sign-in link waiting"), "a waiting sign-in link is routine, not an issue");
+});

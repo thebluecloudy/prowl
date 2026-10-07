@@ -1534,6 +1534,21 @@ test("index.js alCheck: a reset or a cleared 'already sent' memory made while th
     b: [{ url: "https://new/b", title: "new b", src: "ebay" }] }, "listings put back meanwhile are kept");
 });
 
+test("index.js alCheck: after the 'already sent' memory is cleared, a re-check does not add listings that are already waiting", async () => {
+  const kv = new FakeKV(), env = { PROWL_ALERTS: kv }, E = "m@example.com", now = { day: TODAY, hour: 9, wday: 1 };
+  kv.set("sub:" + E, { email: E, hunts: ["a"], day: "", done: [], prefs: {} });   // the owner pressed "Re-check hunts today"
+  kv.set("pend:" + E, { a: [{ url: "https://x/1", title: "one", src: "ebay" }, { url: "https://x/2", title: "two", src: "ebay" }] });   // and "Clear already sent" (no seen:)
+  const kvGet = async (e, k, d) => { const v = await e.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; };
+  const kvPut = async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v));
+  const deps = { kvGet, kvPut, alActive: (e, s) => s.hunts, alPrefs: () => ({ freq: "daily" }), AL_PEND_CAP: 30, AL_SEEN_CAP: 6000,
+    alTitleKey: x => "t:" + x.src + "|" + x.title,
+    alHunt: async () => [{ url: "https://x/1", title: "one", src: "ebay" }, { url: "https://x/2", title: "two", src: "ebay" }, { url: "https://x/3", title: "three", src: "ebay" }] };
+  const X = fromIndex(["alMerge", "alCheck"], deps);
+  assert.equal(await X.alCheck(env, kv.json("sub:" + E), 5, now), 1);
+  assert.deepEqual(kv.json("pend:" + E).a.map(x => x.url), ["https://x/1", "https://x/2", "https://x/3"], "each listing once in the next email");
+  assert.equal(kv.json("seen:" + E).length, 6, "all three are remembered again (url and title)");
+});
+
 test("index.js: hourly probes have their own cron trigger, and search terms in error records go through the phone-number rule", () => {
   const toml = readFileSync(new URL("../wrangler.toml", import.meta.url), "utf8");
   const crons = JSON.parse(/^crons = (\[.*\])$/m.exec(toml)[1]);
@@ -1544,4 +1559,16 @@ test("index.js: hourly probes have their own cron trigger, and search terms in e
   assert.doesNotMatch(sched, /getUTCMinutes/, "the alert clock's run no longer starts the probes");
   assert.match(INDEX, /ev\.q = q && !looksPersonal\(q\) \? q : "";/);
   assert.match(INDEX, /const MBUF = new MetricsBuffer\(\{ maxAgeMs: 120000 \}\);/);
+});
+
+test("overview: when only the minute-by-minute read fails, uptime still shows and no 'no alert run yet' is claimed", async () => {
+  const H = makeH(), env = makeEnv();
+  metricsData(H, Date.now());
+  const data = H.capsData["metrics mget"];
+  H.capsData["metrics mget"] = q => q.crons === 1 ? null : data;   // a missing answer for the fresh read only
+  const j = await (await call(env, H, "GET", "/admin/api/overview")).json();
+  assert.equal(j.traffic, null); assert.equal(j.errors, null);
+  assert.equal(j.uptime.length, 2, "the 7-day checks come from their own read");
+  assert.equal(j.alerts.lastCron, null); assert.equal(j.alerts.cronRuns24h, null, "unknown, not zero");
+  assert.ok(j.issues.includes("Speed, error and uptime numbers are not available."));
 });

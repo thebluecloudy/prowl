@@ -427,14 +427,13 @@ const pickNums = (o, keys) => { const r = {}; for (const k of keys) r[k] = num(o
    thousands of Durable Object rows, and the free plan allows 5 million row reads a day for the whole site. */
 let SLOW = null;
 async function slowParts(c, grab) {
-  if (SLOW && SLOW.h === c.H && c.nowMs >= SLOW.at && c.nowMs - SLOW.at < SLOW_TTL) return SLOW;
+  const kept = SLOW && SLOW.h === c.H && c.nowMs >= SLOW.at && c.nowMs - SLOW.at < SLOW_TTL ? SLOW : null;
   const today = utcDay(c.nowMs);
-  const [M2, topW] = await Promise.all([
-    grab(MSG_METRICS, () => capsJson(c, "metrics", "mget", { hours: 0, errors: 0, crons: 300, probeDays: 7, audit: 0 })),
-    grab(MSG_SEARCH, () => capsJson(c, "stats", "top", { kind: "t", from: utcDay(c.nowMs - 6 * 86400000), to: today, limit: 15 }))]);
-  const out = { h: c.H, at: c.nowMs, M2: M2, topW: topW };
-  if (M2 && topW) SLOW = out;
-  return out;
+  const [M2, topW] = await Promise.all([   // a part that failed is asked again on the next refresh
+    kept && kept.M2 ? kept.M2 : grab(MSG_METRICS, () => capsJson(c, "metrics", "mget", { hours: 0, errors: 0, crons: 300, probeDays: 7, audit: 0 })),
+    kept && kept.topW ? kept.topW : grab(MSG_SEARCH, () => capsJson(c, "stats", "top", { kind: "t", from: utcDay(c.nowMs - 6 * 86400000), to: today, limit: 15 }))]);
+  if (kept) { kept.M2 = M2; kept.topW = topW; return kept; }
+  return (SLOW = { h: c.H, at: c.nowMs, M2: M2, topW: topW });
 }
 const COUNTS_FRESH_MS = 30 * 60000;   // a newer alert run carries newer counts; older than this, the members are read here
 async function apiOverview(c) {
@@ -467,7 +466,7 @@ async function apiOverview(c) {
     }
   }
   let traffic = null, uptime = null, errors = null, auditList = null;
-  if (M || M2) {
+  if (M) {   // the newest run comes from the fresh read; the day's run counts from the slow one (null when it failed)
     const crons = M2 ? arr(M2.crons).filter(x => x && typeof x === "object") : [], day = nowMs - 86400000;
     const recent = crons.filter(x => num(x.t) >= day);
     const cron = {
@@ -475,10 +474,11 @@ async function apiOverview(c) {
         members: num(c0.members), checked: num(c0.checked), sent: num(c0.sent), failed: num(c0.failed), errors: arr(c0.errors).slice(0, 5).map(e => clean(e, 160)) } : null,
       cronRuns24h: M2 ? recent.length : null, cronFails24h: M2 ? recent.filter(x => num(x.failed) > 0 || arr(x.errors).length > 0).length : null };
     alerts = Object.assign(alerts || { dueToday: null, sentToday: null, late: null, checkedToday: null, huntsLeftToday: null }, cron);
-    if (lib && M) traffic = await grab("Speed numbers could not be worked out.", async () => lib.summarize(arr(M.buckets), nowMs, 24));
-    if (lib && M2) uptime = await grab("Uptime numbers could not be worked out.", async () => arr(lib.uptimeFrom(arr(M2.probes), nowMs)).map(upView));
-    if (M) { errors = arr(M.errors).slice(0, 20).map(e => errView(c, e)); auditList = arr(M.audit).slice(0, 15).map(auditView); }
+    if (lib) traffic = await grab("Speed numbers could not be worked out.", async () => lib.summarize(arr(M.buckets), nowMs, 24));
+    errors = arr(M.errors).slice(0, 20).map(e => errView(c, e));
+    auditList = arr(M.audit).slice(0, 15).map(auditView);
   } else if (alerts) Object.assign(alerts, { lastCron: null, cronRuns24h: null, cronFails24h: null });
+  if (lib && M2) uptime = await grab("Uptime numbers could not be worked out.", async () => arr(lib.uptimeFrom(arr(M2.probes), nowMs)).map(upView));
   const values = (peek && peek.values) || {};
   const ai = peek ? { pools: pools.map(p => { const used = num(values[p.key]), limit = num(p.limit); return { name: String(p.name || p.key), used: used, limit: limit, pct: limit ? Math.round(used * 100 / limit) : 0 }; }) } : null;
   let live = [];

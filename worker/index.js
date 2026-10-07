@@ -3118,7 +3118,12 @@ async function alCheck(env, sub, limit, now) {
      (admin area) while this run searched. What this run found is added to what is stored now, so none of that is undone. */
   const [seenNow, pend] = await Promise.all([kvGet(env, "seen:" + sub.email, []), kvGet(env, "pend:" + sub.email, {})]);
   const cap = alPrefs(sub).freq === "daily" ? AL_PEND_CAP : AL_PEND_CAP * 2;
-  Object.keys(found).forEach(h => { pend[h] = (Array.isArray(pend[h]) ? pend[h] : []).concat(found[h]).slice(0, cap); });
+  /* v78: a listing already waiting is not added again: after the owner clears the "already sent" memory and re-checks
+     today, the check finds the waiting listings once more, and the next email carried each of them twice */
+  Object.keys(found).forEach(h => {
+    const was = Array.isArray(pend[h]) ? pend[h] : [], have = new Set(was.map(x => x && x.url));
+    pend[h] = was.concat(found[h].filter(x => !have.has(x.url))).slice(0, cap);
+  });
   await kvPut(env, "seen:" + sub.email, (Array.isArray(seenNow) ? seenNow : []).concat(newKeys).slice(-AL_SEEN_CAP));
   await kvPut(env, "pend:" + sub.email, pend);
   if (String(cur.day || "") !== String(readDay || "")) { sub.day = now.day; sub.done = checked; }   /* reset meanwhile: only what this call checked counts as done */
