@@ -1,0 +1,32 @@
+name: tmp shopdiff (read-only, removed after use)
+on:
+  push:
+    branches: [claude/trusting-lovelace-0d3cnd-shopdiff]
+permissions:
+  contents: read
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Read the live page and diff it against page/prowl.html
+        env:
+          SHOPIFY_CLIENT_ID: ${{ secrets.SHOPIFY_CLIENT_ID }}
+          SHOPIFY_CLIENT_SECRET: ${{ secrets.SHOPIFY_CLIENT_SECRET }}
+        run: |
+          cat > /tmp/read.mjs <<'JS'
+          import { writeFileSync } from "node:fs";
+          import { getToken, gql, PAGE_ID } from "./scripts/deploy-page.mjs";
+          const t = await getToken(fetch, process.env.SHOPIFY_CLIENT_ID, process.env.SHOPIFY_CLIENT_SECRET);
+          const p = (await gql(fetch, t, "query P($id: ID!) { page(id: $id) { updatedAt body } }", { id: PAGE_ID })).page;
+          console.log("live updatedAt", p.updatedAt, "chars", p.body.length);
+          writeFileSync("/tmp/live.html", p.body);
+          JS
+          cp /tmp/read.mjs ./read-tmp.mjs && node ./read-tmp.mjs
+          sed 's/</\n</g' page/prowl.html > /tmp/a.txt
+          sed 's/</\n</g' /tmp/live.html > /tmp/b.txt
+          diff -u /tmp/a.txt /tmp/b.txt | head -150 || true
