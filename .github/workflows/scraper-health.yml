@@ -44,4 +44,5 @@ jobs:
           check "Poshmark"     "/poshmark?q=vintage+pyrex&ai=0"
           check "Vinted"       "/vinted?q=vintage+pyrex&ai=0"
           check "Grailed"      "/grailed?q=vintage+levis&ai=0"
+          check "Salvation Army" "/salvation?q=vintage+lamp&ai=0"
           exit $fail
