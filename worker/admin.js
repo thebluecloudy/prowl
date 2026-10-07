@@ -870,8 +870,7 @@ async function apiAction(c) {
     }
     if (nothing) note = "nothing to turn off";
   } else if (action === "delete") {
-    for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "pro:", "last:"]) await kv.delete(p + email);
-    if (sub.cid) { const cc = await H.kvGet(env, "cid:" + sub.cid, null); if (cc && cc.email === email) await kv.delete("cid:" + sub.cid); }
+    await H.alPurge(env, email, sub);   // index.js alPurge: the one list Delete in Prowl uses too (gifts stay)
     ROSTER = null;
     await audit(c, { action: action, id: id, ok: true });
     return jres({ ok: true, message: "Deleted. Their hunts, settings and saved listings are gone. A Prowl Pro subscription is billed by the store, so cancel it there if needed.", member: null });

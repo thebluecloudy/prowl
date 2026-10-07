@@ -19,6 +19,11 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v83: 2026-10-07. Privacy. One purge list, alPurge (sub: pend: seen: mvf: in: pro: last:, the member's own cid: link
+ *        and its pro:cid: cache), used by Delete in Prowl (/alerts/delete) and the admin's delete, so they cannot drift.
+ *        Gifts (gift:, giftoff:, giftnomail:) are owner-granted or an opt-out and stay. Key names are logged, never the
+ *        email. Unsubscribe (all emails) still only turns emails off, and now also clears held (pend:) and seen (seen:)
+ *        listings. List-Unsubscribe carries a mailto: next to the one-click link, and footers say a reply works too.
  *   v82: 2026-10-07. Store sessions. A verified store sign-in (/proxy/login) now also returns a 30-day session token
  *        (secret PROWL_SESSION_SECRET, 32+ characters; without it nothing changes). The page sends it as
  *        Authorization: Bearer, and proMember (Fair price, research, guides, photo checks) and /alerts/status accept
@@ -249,7 +254,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
-const WORKER_VERSION = "v82";
+const WORKER_VERSION = "v83";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -3297,11 +3302,12 @@ function alUnsubUrl(sub, hunt) {
   return WORKER_BASE + "/alerts/unsub?e=" + encodeURIComponent(sub.email) + "&t=" + (sub.utok || sub.tok) + (hunt ? "&h=" + encodeURIComponent(hunt) : "");
 }
 
+const AL_UNSUB_MAIL = "hello@owlandtwigvintage.com";   /* v83: a reply or a mailto unsubscribe lands here */
 async function alSend(env, to, subject, html, text, unsub) {
   if (!env.RESEND_API_KEY) return { ok: false, error: "RESEND_API_KEY not set" };
   const body = { from: env.ALERT_FROM || "Prowl by Owl & Twig <onboarding@resend.dev>", to: [to], subject: subject, html: html, text: text };
   if (env.ALERT_REPLY_TO) body.reply_to = env.ALERT_REPLY_TO;
-  if (unsub) body.headers = { "List-Unsubscribe": "<" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" };
+  if (unsub) body.headers = { "List-Unsubscribe": "<mailto:" + AL_UNSUB_MAIL + "?subject=unsubscribe>, <" + unsub + ">", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" };   /* v83: + mailto */
   const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 15000);   /* v51 */
   try {
     const r = await fetch("https://api.resend.com/emails", { method: "POST", signal: ctl.signal,
@@ -3448,13 +3454,13 @@ function alShell(env, inner, why, links) {
     '<a href="' + PROWL_PAGE + '" style="color:#8a4b1f;text-decoration:none">Prowl Alerts</a> <span style="color:#9a8b7a;font-weight:normal;letter-spacing:0;text-transform:none">by <a href="https://www.owlandtwigvintage.com" style="color:#9a8b7a">Owl &amp; Twig Vintage</a></span></td></tr>' +
     inner +
     '<tr><td style="padding:26px 12px 22px;font:12px/1.6 Arial,sans-serif;color:#9a8b7a;border-top:1px solid #efe8dc">' +
-    why + '<br>' + (links ? links + '<br>' : '') + alCopy() + '<br>' + alEsc(alAddr(env)) + ' · <a href="https://www.owlandtwigvintage.com" style="color:#9a8b7a">owlandtwigvintage.com</a>' +
+    why + '<br>' + (links ? links + '<br>Or just reply &quot;unsubscribe&quot; to this email.<br>' : '') + alCopy() + '<br>' + alEsc(alAddr(env)) + ' · <a href="https://www.owlandtwigvintage.com" style="color:#9a8b7a">owlandtwigvintage.com</a>' +
     '</td></tr></table></td></tr></table></body></html>';
 }
 function alWhy(sub) { return 'You are getting this because you turned on Prowl Alerts at owlandtwigvintage.com/prowl. One email ' + (sub ? alFreqName(G_ENV, sub) : 'a day') + ' for every hunt, from ShopGoodwill, eBay, Etsy and Chairish. Change how often, what time, or which hunts, or turn emails off, in Prowl under Den, then Settings.'; }
 /* v41: copyright line in every footer, above the mailing address. */
 function alCopy() { return 'Copyright \u00a9 ' + new Date().getUTCFullYear() + ' Owl &amp; Twig Vintage. All rights reserved.'; }
-function alFootText(env, sub) { return ["", "--", "Prowl Alerts by Owl & Twig Vintage. You turned on Prowl Alerts at owlandtwigvintage.com/prowl.", sub ? "Open Prowl signed in: " + alHomeUrl(sub) : "", sub ? "Unsubscribe: " + alUnsubUrl(sub) : "", "Copyright \u00a9 " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(Boolean).join("\n"); }
+function alFootText(env, sub) { return ["", "--", "Prowl Alerts by Owl & Twig Vintage. You turned on Prowl Alerts at owlandtwigvintage.com/prowl.", sub ? "Open Prowl signed in: " + alHomeUrl(sub) : "", sub ? "Unsubscribe: " + alUnsubUrl(sub) : "", sub ? 'Or just reply "unsubscribe" to this email.' : "", "Copyright \u00a9 " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(Boolean).join("\n"); }
 
 /* The email. Tables and inline styles only: that is what Gmail and Outlook render. */
 function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
@@ -3989,7 +3995,7 @@ async function alSendGift(env, email, until, sub, opts) {
     "Prowl searches " + sites + " at once for the things you collect, and emails you what is new.", "",
     sub ? "It is already on for your account: up to " + AL_MAX_HUNTS + " hunts, daily emails, and price and keyword filters." + (paid ? "\n\n" + shopNote + " " + PRO_MANAGE_URL : "")
       : "How to start:\n1. Open the Start Prowl link below. It signs you in with this email address. There is no password.\n2. Search for something you collect and save it as a hunt. Pro gives you up to " + AL_MAX_HUNTS + ".\n3. Each morning, Prowl emails you anything new for your hunts.",
-    "", btn + ": " + link, "", after, "", "--", "Prowl Alerts by Owl & Twig Vintage. " + why, links ? "Stop gift emails to this address: " + links.stop : null,
+    "", btn + ": " + link, "", after, "", "--", "Prowl Alerts by Owl & Twig Vintage. " + why, links ? "Stop gift emails to this address: " + links.stop : null, links ? 'Or just reply "unsubscribe" to this email.' : null,
     "Copyright © " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(l => l !== null).join("\n");
   const r = await alSend(env, email, "A gift from Owl & Twig Vintage: free Prowl Pro", html, text, links ? links.stop : "");
   return r.ok ? { ok: true } : { ok: false, why: "send", error: scrubPII(String(r.error || "send failed")) };
@@ -4128,9 +4134,23 @@ async function alDelete(request, env, origin) {
   const email = alEmail(b.email);
   const sub = email ? await kvGet(env, "sub:" + email, null) : null;
   if (!sub || !alSame(String(b.tok || ""), sub.tok)) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
-  for (const k of ["sub:", "pend:", "seen:", "mvf:", "last:"]) await env.PROWL_ALERTS.delete(k + email);   /* v78: last: */
-  if (sub.cid) { const c = await kvGet(env, "cid:" + sub.cid, null); if (c && c.email === email) await env.PROWL_ALERTS.delete("cid:" + sub.cid); }
+  await alPurge(env, email, sub);   /* v83: the shared list */
   return json({ ok: true, on: false, wasPro: !!sub.pro }, 200, origin);
+}
+/* v83: everything Prowl keeps about one member, removed: Delete in Prowl and the admin's delete. The cid: link goes only
+   while it still points at this member; the pro:cid: cache goes with it. Gifts (gift:, giftoff:, giftnomail:) stay:
+   they are granted by the owner, or are a do-not-email list. Logs key names only, never the email. */
+async function alPurge(env, email, sub) {
+  const kv = env.PROWL_ALERTS, gone = [];
+  for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "pro:", "last:"]) { await kv.delete(p + email); gone.push(p); }
+  const cid = sub && sub.cid ? String(sub.cid) : "";
+  if (cid) {
+    const c = await kvGet(env, "cid:" + cid, null);
+    if (c && c.email === email) { await kv.delete("cid:" + cid); gone.push("cid:"); }
+    await kv.delete("pro:cid:" + cid); gone.push("pro:cid:");
+  }
+  console.log("purge " + gone.join(" "));
+  return gone;
 }
 
 async function alUnsub(request, env, url, origin) {
@@ -4156,10 +4176,10 @@ async function alUnsub(request, env, url, origin) {
     await kvPut(env, "sub:" + email, sub);
     return wantJson ? json({ ok: true, hunts: sub.hunts.length }, 200, origin) : alPage("Done", "No more emails for " + h + "." + (sub.hunts.length ? " Your other hunts keep coming." : " Add a hunt in Prowl any time to start again."));
   }
-  /* v55: emails off, not gone. Hunts, settings, sign-in and Pro stay. */
+  /* v55: emails off, not gone. Hunts, settings, sign-in and Pro stay. v83: held and seen listings go too. */
   sub.mail = "off"; sub.mailOffAt = new Date().toISOString();
   await alMerge(env, sub, ["mail", "mailOffAt"]);
-  await env.PROWL_ALERTS.delete("pend:" + email);
+  for (const k of ["pend:", "seen:"]) await env.PROWL_ALERTS.delete(k + email);
   return wantJson ? json({ ok: true, on: true, mail: "off", pro: !!sub.pro }, 200, origin) : alPage("Prowl emails are off", "You will not get any more Prowl Alerts emails." + (sub.pro ? " Prowl Pro is still on: 25 photo checks a day and unlimited Fair price checks in Prowl. To stop paying, cancel it in your Owl & Twig account under Subscriptions." : "") + " Turn emails back on any time in Prowl under Den, then Settings.");
 }
 
@@ -4339,7 +4359,7 @@ const ADMIN_H = {
   kvGet, kvPut, alNow, alLocal, alPrefs, alActive, alSlotHour, alSendDay, alPaused, alFree, alFreeWeekly, alLegacyFree, alUrgency,
   alProSet, alMerge, alSendSignin, alToken, liveSources, liveFetch, jevClean, jevWouldDrop, memberDropReason, alNear, runProbes,
   capsCall, capsDay, vCount, ipKey, ipNet, alSame, statTerm, scrubPII, summarize, uptimeFrom, pctFromHist,
-  giftHash, alEmail, proListHas, proListCount, alSendGift,
+  giftHash, alEmail, proListHas, proListCount, alSendGift, alPurge,   /* v83: alPurge */
   jevResultsMode, liveFetchLocal, alTitleKey,   /* v78: Diagnose follows what alerts really do */
   WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, AL_PEND_CAP, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE
 };
