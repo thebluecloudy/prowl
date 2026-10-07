@@ -1,8 +1,9 @@
 name: CI
 
-# Checks the worker on every pull request and push to main: every file parses,
-# and the unit tests in worker/__tests__ pass (Node's built-in test runner, no
-# packages to install).
+# Checks the worker, page and extension on every pull request and push to main:
+# every file parses, the page has no Liquid openers, and the unit tests in
+# worker/__tests__ and __tests__ pass (Node's built-in test runner). The page
+# tests load page/prowl.html in jsdom, the one dev-only package (package.json).
 on:
   push:
     branches: [ "main" ]
@@ -26,5 +27,11 @@ jobs:
         run: |
           mkdir -p /tmp/w && cp worker/*.js /tmp/w/ && echo '{"type":"module"}' > /tmp/w/package.json
           for f in /tmp/w/*.js; do node --check "$f"; done
-      - name: Unit tests
-        run: node --test "worker/__tests__/*.test.mjs"
+      - name: Page parses, no Liquid openers
+        run: node scripts/check-page.mjs page/prowl.html
+      - name: Extension files parse
+        run: for f in extension/*.js; do node --check "$f"; done
+      - name: Install test packages (jsdom, dev only)
+        run: npm ci --no-audit --no-fund
+      - name: Unit tests (worker, page, extension)
+        run: npm test
