@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { adminFetch, signSession, verifySession, memberId, scrubHunt, memberSummary, memberDetail, giftActive, giftPro, looksPersonal } from "../admin.js";
 
 const KEY = "test-admin-key-0123456789";
@@ -65,7 +65,7 @@ function prefsOf(sub) {
 const legacy = sub => !sub.created || String(sub.created) < "2026-10-04";
 
 function makeH(kvOf, over = {}) {
-  const calls = { caps: [], vCount: [], signin: [], proSet: [], live: [], jev: [] };
+  const calls = { caps: [], vCount: [], signin: [], proSet: [], live: [], jev: [], giftMail: [] };
   const H = {
     calls,
     deny: new Set(),          // vCount names that answer "over the limit"
@@ -103,6 +103,12 @@ function makeH(kvOf, over = {}) {
     alMerge: async (env, sub, fields) => { const cur = await H.kvGet(env, "sub:" + sub.email, null); if (!cur) return null; fields.forEach(f => { cur[f] = sub[f]; }); await H.kvPut(env, "sub:" + sub.email, cur); Object.keys(cur).forEach(k => { sub[k] = cur[k]; }); return cur; },
     alSendSignin: async (env, sub) => { calls.signin.push(sub.email); await env.PROWL_ALERTS.put("in:" + sub.email, JSON.stringify({ code: "SIGNIN-CODE-SECRET" })); return H.signinResult || { ok: true }; },
     alToken: () => "fresh-token-" + Math.random().toString(16).slice(2),
+    /* index.js alSendGift: the gift's how-to email (H.giftMailResult / H.giftMailThrow steer it) */
+    alSendGift: async (env, email, until, sub, opts) => {
+      calls.giftMail.push([email, until, sub ? sub.email : null, sub ? !!sub.pro : null, !!(opts && opts.paid)]);
+      if (H.giftMailThrow) throw new Error("send failed for " + email);
+      return H.giftMailResult || { ok: true };
+    },
     liveSources: () => ["shopgoodwill", "ebay", "etsy"],
     jevMode: "on",
     jevResultsMode: () => H.jevMode,
@@ -1042,7 +1048,8 @@ test("gift for someone not signed up yet: stored by hash only, note masked, leng
   let text = await res.text(); noAddress(text, "gift add", []); noPII(text, "gift add");
   let j = JSON.parse(text);
   const gh = giftHashOf(FRIEND);
-  assert.deepEqual(j, { ok: true, message: j.message, gid: gh.slice(0, 10), memberId: null });
+  assert.deepEqual(j, { ok: true, message: j.message, gid: gh.slice(0, 10), memberId: null, emailed: false });
+  assert.doesNotMatch(j.message, /emailed them|email was sent|did not send/, "no email unless the box is ticked");
   assert.match(j.message, /until 2027-01-05/); assert.match(j.message, /sign up/);
   const g = env.PROWL_ALERTS.json("gift:" + gh);
   assert.deepEqual(Object.keys(g).sort(), ["added", "by", "note", "until"]);
@@ -1087,6 +1094,9 @@ test("gift for a member switches Pro on now; the gift list shows member, dates a
   assert.deepEqual(H.calls.proSet, [false], "a normal (cached) check: the gift comes before Shopify");
   let r = rec(env, L);
   assert.equal(r.pro, true); assert.deepEqual(r.plan, { via: "gift", until: "2026-11-05" }); assert.equal(r.hadPro, true); assert.equal(r.proCheck, "");
+  // a second earlier, so "newest first" does not hang on two gifts saved in the same millisecond
+  const gl = env.PROWL_ALERTS.json("gift:" + giftHashOf(L));
+  env.PROWL_ALERTS.set("gift:" + giftHashOf(L), Object.assign(gl, { added: new Date(Date.parse(gl.added) - 1000).toISOString() }));
   // jane pays in the shop: the owner is told a gift does not cancel that
   j = await (await apiPost(env, H, "/admin/api/gift", { email: EMAIL, months: 0 })).json();
   assert.match(j.message, /subscription in the shop/);
@@ -1625,4 +1635,347 @@ test("member page: 'Listings already emailed' leaves out the ones still waiting 
   const d = await (await call(env, H, "GET", "/admin/api/member?id=" + id)).json();
   assert.equal(d.seenCount, 1, "two of the three remembered listings are waiting in pend:");
   assert.equal(d.pending.total, 3);
+});
+
+
+/* ---------- v78c: Gift Pro can email the person how to start ---------- */
+const auditOf = (H, action) => H.calls.caps.filter(x => x.op === "mrec" && x.body.a).map(x => x.body.a[0]).filter(x => x.action === action).pop();
+const capsOps = (H, op) => H.calls.caps.filter(x => x.op === op);
+
+test("gift with 'Email them': someone not signed up gets the start email, a member the Pro-is-on email; only a ticked box (true) sends; only sent emails are counted", async () => {
+  const H = makeH(), env = makeEnv();
+  let res = await apiPost(env, H, "/admin/api/gift", { email: " Gift.Friend@Example.com ", months: 3, tell: true });
+  let text = await res.text(); noAddress(text, "gift + email", []); noPII(text, "gift + email");
+  let j = JSON.parse(text);
+  assert.equal(res.status, 200); assert.equal(j.emailed, true); assert.equal(j.memberId, null);
+  assert.match(j.message, /until 2027-01-05.*We emailed them how to start, with a one-tap link that signs them up \(it works for 14 days\)\.$/);
+  assert.deepEqual(H.calls.giftMail, [[FRIEND, "2027-01-05", null, null, false]], "sent to the cleaned address, with the gift's end, as someone not signed up");
+  assert.equal(auditOf(H, "gift-add").note, "3 months, emailed"); noAddress(JSON.stringify(auditOf(H, "gift-add")), "audit", []);
+  const gid = giftHashOf(FRIEND).slice(0, 10);
+  assert.deepEqual(capsOps(H, "peek").map(x => x.body.keys[0]).sort(), ["admgiftmail", "admgiftmail:" + gid], "both caps are looked at first");
+  assert.deepEqual(capsOps(H, "take").filter(x => /^admgiftmail/.test(x.body.k)).map(x => [x.body.k, x.body.lim]).sort(), [["admgiftmail", 30], ["admgiftmail:" + gid, 2]], "and counted once it went out");
+  assert.ok(!H.calls.caps.some(x => JSON.stringify(x.body).includes("@")), "no address in a counter");
+  assert.equal([...env.PROWL_ALERTS.m.keys()].filter(k => k.includes("gift.friend")).length, 0, "nothing keyed by their address is stored");
+
+  for (const tell of [false, "true", 1, "1", undefined]) {
+    H.calls.giftMail.length = 0;
+    j = await (await apiPost(env, H, "/admin/api/gift", { email: FRIEND, months: 1, tell })).json();
+    assert.equal(j.emailed, false, String(tell)); assert.equal(H.calls.giftMail.length, 0, String(tell));
+    assert.doesNotMatch(j.message, /emailed them|email was sent|did not send/);
+  }
+
+  H.calls.giftMail.length = 0;
+  const F = "free.person@example.com";
+  H.nextPro = { pro: false, plan: null };
+  res = await apiPost(env, H, "/admin/api/gift", { email: F, months: 0, tell: true });
+  text = await res.text(); noAddress(text, "member gift + email", [F]); noPII(text, "member gift + email");
+  j = JSON.parse(text);
+  assert.match(j.message, /^Prowl Pro is now free for M-[0-9a-f]{8} with no end date\..* We emailed them that Pro is on, with a link that opens Prowl signed in\.$/);
+  assert.doesNotMatch(j.message, /shop subscription/);
+  assert.deepEqual(H.calls.giftMail, [[F, "", F, true, false]]);
+  assert.equal(j.emailed, true); assert.equal(auditOf(H, "gift-add").note, "no end, emailed");
+});
+
+test("gift email to someone who pays in the shop says the gift does not cancel it: from the form, their member page, and on a later gift", async () => {
+  const H = makeH(), env = makeEnv();
+  let j = await (await apiPost(env, H, "/admin/api/gift", { email: EMAIL, months: 1, tell: true })).json();
+  assert.match(j.message, /the gift does not cancel it, so cancel it there.*We emailed them that Pro is on, with a link that opens Prowl signed in\. The email also says a shop subscription keeps going until it is cancelled\./);
+  assert.deepEqual(H.calls.giftMail.pop(), [EMAIL, "2026-11-05", EMAIL, true, true], "paid is worked out before the gift replaces their plan");
+  assert.equal(env.PROWL_ALERTS.json("gift:" + giftHashOf(EMAIL)).paid, true, "kept on the gift (no address, just that they paid)");
+  assert.equal(rec(env, EMAIL).plan.via, "gift", "their record no longer shows the shop plan");
+  // a later gift (a retry after a failed email, or a new length) still knows
+  j = await (await apiPost(env, H, "/admin/api/gift", { email: EMAIL, months: 3, tell: true })).json();
+  assert.deepEqual(H.calls.giftMail.pop(), [EMAIL, "2027-01-05", EMAIL, true, true]);
+  assert.match(j.message, /The email also says a shop subscription keeps going until it is cancelled\./);
+  ({ j } = await act2(env, H, EMAIL, "gift-on", { months: 6, tell: true }));
+  assert.deepEqual(H.calls.giftMail.pop(), [EMAIL, "2027-04-05", EMAIL, true, true], "from the member page too");
+  const H2 = makeH(), env2 = makeEnv();
+  ({ j } = await act2(env2, H2, EMAIL, "gift-on", { months: 3, tell: true }));
+  assert.deepEqual(H2.calls.giftMail.pop(), [EMAIL, "2027-01-05", EMAIL, true, true]);
+  assert.match(j.message, /The email also says a shop subscription keeps going until it is cancelled\./);
+  // someone who never paid: no paid mark on the gift, no note
+  const H3 = makeH(), env3 = makeEnv(), F = "free.person@example.com";
+  H3.nextPro = { pro: false, plan: null };
+  await apiPost(env3, H3, "/admin/api/gift", { email: F, tell: true });
+  assert.equal(H3.calls.giftMail.pop()[4], false);
+  assert.deepEqual(Object.keys(env3.PROWL_ALERTS.json("gift:" + giftHashOf(F))).sort(), ["added", "by", "note", "until"]);
+});
+
+test("gift to an address a member moved away from (up to three moves) is kept on the member's own address and emailed there as the Pro-is-on email", async () => {
+  const H = makeH(), env = makeEnv(), OLD = "old.address@example.org";
+  env.PROWL_ALERTS.set("moved:" + OLD, { to: EMAIL, tok: "TOKEN-SECRET-abc123def456", at: 1 });
+  const res = await apiPost(env, H, "/admin/api/gift", { email: OLD, months: 6, tell: true });
+  const text = await res.text(); noAddress(text, "moved", [OLD, EMAIL]); noPII(text, "moved");
+  const j = JSON.parse(text);
+  assert.equal(j.memberId, await idOf(env, EMAIL));
+  assert.equal(j.gid, giftHashOf(EMAIL).slice(0, 10));
+  assert.match(j.message, /That address moved to M-[0-9a-f]{8}, so the gift follows them there\./);
+  assert.deepEqual(H.calls.giftMail, [[EMAIL, "2027-04-05", EMAIL, true, true]], "the member version, to their current address");
+  assert.ok(env.PROWL_ALERTS.json("gift:" + giftHashOf(EMAIL)), "the gift is on the member's own address, so the gift list and Turn off find them");
+  assert.equal(env.PROWL_ALERTS.json("gift:" + giftHashOf(OLD)), null);
+  assert.equal(rec(env, OLD), null, "no second account");
+  // two moves: a@ -> b@ (b@ moved on) -> the member
+  const H2 = makeH(), env2 = makeEnv();
+  env2.PROWL_ALERTS.set("moved:a@example.com", { to: "b@example.com" });
+  env2.PROWL_ALERTS.set("moved:b@example.com", { to: EMAIL });
+  const j2 = await (await apiPost(env2, H2, "/admin/api/gift", { email: "a@example.com", tell: true })).json();
+  assert.equal(j2.memberId, await idOf(env2, EMAIL)); assert.equal(H2.calls.giftMail[0][0], EMAIL);
+  // a forwarding record whose member is gone, or a loop: they count as not signed up
+  for (const [k, v] of [["moved:gone@example.com", { to: "nobody@example.com" }], ["moved:loop@example.com", { to: "loop@example.com" }]]) {
+    const H3 = makeH(), env3 = makeEnv(); env3.PROWL_ALERTS.set(k, v);
+    const who = k.slice(6);
+    const j3 = await (await apiPost(env3, H3, "/admin/api/gift", { email: who, tell: true })).json();
+    assert.equal(j3.memberId, null); assert.deepEqual(H3.calls.giftMail, [[who, "", null, null, false]]);
+  }
+});
+
+test("gift email is skipped, with plain words for the owner: emails off, Pro not on, caps, a counter that does not answer, and every kind of failed send", async () => {
+  const F = "free.person@example.com";
+  const run = async (prep, body = { email: FRIEND, months: 1, tell: true }) => {
+    const H = makeH(), env = makeEnv(); H.nextPro = { pro: false, plan: null };
+    await prep(H, env);
+    const res = await apiPost(env, H, "/admin/api/gift", body);
+    const text = await res.text(); noAddress(text, "skip", [F]); noPII(text, "skip");
+    const j = JSON.parse(text);
+    assert.equal(res.status, 200); assert.equal(j.ok, true, "the gift itself always saves");
+    return { H, env, j };
+  };
+  let { H, j, env } = await run(async (H, env) => env.PROWL_ALERTS.set("sub:" + F, Object.assign(rec(env, F), { mail: "off" })), { email: F, months: 1, tell: true });
+  assert.match(j.message, / No email was sent: they have turned Prowl emails off\.$/); assert.equal(H.calls.giftMail.length, 0);
+  assert.equal(rec(env, F).plan.via, "gift"); assert.equal(auditOf(H, "gift-add").note, "1 month");
+  ({ H, j } = await run(async H => { H.alProSet = async (e, sub) => { sub.pro = false; sub.plan = null; return false; }; }, { email: F, months: 1, tell: true }));
+  assert.match(j.message, /Pro did not switch on yet.* No email was sent, because Pro is not on for them yet\.$/); assert.equal(H.calls.giftMail.length, 0);
+
+  const gid = giftHashOf(FRIEND).slice(0, 10);
+  const peekAs = (all, one) => H => { H.capsData["caps:" + TODAY + " peek"] = q => ({ values: { [q.keys[0]]: q.keys[0] === "admgiftmail" ? all : one } }); };
+  ({ H, j } = await run(peekAs(30, 0)));
+  assert.match(j.message, / No email was sent: that is 30 gift emails today\. Try again tomorrow\.$/); assert.equal(H.calls.giftMail.length, 0);
+  ({ H, j } = await run(peekAs(3, 2)));
+  assert.match(j.message, / No email was sent: they already got 2 gift emails today\.$/); assert.equal(H.calls.giftMail.length, 0);
+  ({ H, j } = await run(peekAs(29, 1)));
+  assert.equal(j.emailed, true, "under both caps it sends");
+  ({ H, j } = await run(async H => { H.capsFail.add("caps:" + TODAY + " peek"); }));
+  assert.match(j.message, / No email was sent: the daily email count did not answer\. Try again in a minute\.$/); assert.equal(H.calls.giftMail.length, 0);
+
+  const said = {
+    stopped: / No email was sent: this address used the link in an earlier gift email to stop gift emails\.$/,
+    off: / No email was sent: Prowl Alerts is switched off \(ALERTS in Cloudflare\)\.$/,
+    nomail: / No email was sent: Prowl email is not set up \(RESEND_API_KEY in Cloudflare\)\.$/,
+    nokey: / No email was sent: the start link could not be made \(ADMIN_KEY\)\.$/,
+    send: / The email to them did not send, but the gift still counts\. To try again, gift them again with the same length\.$/
+  };
+  for (const why of Object.keys(said)) {
+    ({ H, j } = await run(async H => { H.giftMailResult = { ok: false, why, error: "resend 422 Invalid `to` field: " + FRIEND }; }));
+    assert.match(j.message, said[why], why); assert.equal(j.emailed, false);
+    assert.doesNotMatch(j.message, /resend 422|Invalid/);
+    assert.equal(capsOps(H, "take").filter(x => /^admgiftmail/.test(x.body.k)).length, 0, why + ": a send that did not go out is not counted");
+  }
+  ({ H, j } = await run(async H => { H.giftMailThrow = true; }));
+  assert.match(j.message, said.send); assert.equal(capsOps(H, "take").filter(x => /^admgiftmail/.test(x.body.k)).length, 0);
+  ({ j } = await run(async H => { delete H.alSendGift; }));
+  assert.match(j.message, / No email was sent: this worker cannot send gift emails\.$/);
+});
+
+test("member action gift-on: 'Email them that Pro is on' sends only when ticked and Pro is on; the audit says emailed", async () => {
+  const H = makeH(), env = makeEnv(), F = "free.person@example.com";
+  H.nextPro = { pro: false, plan: null };
+  let { res, j } = await act2(env, H, F, "gift-on", { months: 3, tell: true });
+  assert.equal(res.status, 200);
+  assert.match(j.message, /^Prowl Pro is now free for this member until 2027-01-05\. .*We emailed them that Pro is on, with a link that opens Prowl signed in\.$/);
+  assert.deepEqual(H.calls.giftMail, [[F, "2027-01-05", F, true, false]]);
+  assert.equal(auditOf(H, "gift-on").note, "3 months, emailed");
+  ({ j } = await act2(env, H, F, "gift-on", { months: 3 }));
+  assert.equal(H.calls.giftMail.length, 1, "no box, no email");
+  assert.doesNotMatch(j.message, /emailed them|email was sent/);
+  assert.equal(auditOf(H, "gift-on").note, "3 months");
+  env.PROWL_ALERTS.set("sub:" + F, Object.assign(rec(env, F), { mail: "off" }));
+  ({ j } = await act2(env, H, F, "gift-on", { months: 1, tell: true }));
+  assert.match(j.message, / No email was sent: they have turned Prowl emails off\.$/); assert.equal(H.calls.giftMail.length, 1);
+});
+
+/* index.js alSendGift, alGiftStart and alGiftStop, lifted out with the real email shell and signing, and stubs for KV and mail */
+const hmacHex = (k, m) => createHmac("sha256", k).update(m).digest("hex");
+const giftSigOf = (kv, what) => hmacHex(kv.json("giftkey:v1"), what);
+function giftIndexFns(over = {}) {
+  const sent = [], free = { v: { pro: true, via: "gift", plan: { via: "gift", until: "" } } };
+  const deps = Object.assign({
+    kvGet: async (e, k, d) => { try { const v = await e.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; } catch (x) { return d; } },
+    kvPut: async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v)), alToken: () => "NEW-TOK",
+    WORKER_BASE: "https://prowl.example.workers.dev", PROWL_PAGE: "https://shop.example/pages/prowl", PRO_MANAGE_URL: "https://www.owlandtwigvintage.com/account",
+    GIFT_LINK_DAYS: 14, AL_MAX_HUNTS: 25, AL_SRC_NAME: { shopgoodwill: "ShopGoodwill", ebay: "eBay", etsy: "Etsy", vinted: "Vinted" }, GIFT_KEY_RE: /^[0-9a-f]{64}$/,
+    AL_MONTH_NAMES: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    liveSources: () => ["shopgoodwill", "ebay", "etsy", "vinted"], alHomeUrl: sub => "https://shop.example/pages/prowl-app?alerts=in#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok,
+    scrubPII: v => String(v).replace(/[^\s@:]+@[^\s@]+/g, "[email]"), alEmail: IX.alEmail,
+    alSend: async (e, to, subject, html, text, unsub) => { sent.push({ to, subject, html, text, unsub }); return over.sendResult || { ok: true }; },
+    alFreePro: async () => free.v, alProSet: async (e, sub) => { sub.pro = !!free.v; sub.plan = free.v ? free.v.plan : null; return sub.pro; },
+    alPage: (t, m) => new Response("PAGE|" + t + "|" + m, { status: 200 }), alGate: (t, m, b) => new Response("GATE|" + t + "|" + m + "|" + b, { status: 200 })
+  }, over.deps || {});
+  const X = fromIndex(["alSendGift", "alGiftStart", "alGiftStop", "alBadLink", "alMovedTo", "giftKey", "giftSig", "giftLinks", "pxHmac", "giftHash", "alLongDay", "alAndList",
+    "alReady", "alMode", "alShell", "alCopy", "alAddr", "alEsc", "alSame"], deps);
+  return Object.assign(X, { sent, free });
+}
+const giftEnv = (kv, extra = {}) => Object.assign({ PROWL_ALERTS: kv, ALERTS: "public", RESEND_API_KEY: "re_test", ADMIN_KEY: "an-admin-key-of-24-chars" }, extra);
+const linkIn = (text, path) => { const m = new RegExp("https://prowl\\.example\\.workers\\.dev" + path + "\\?[^\\s\"<]+").exec(text); return m ? new URL(m[0].replace(/&amp;/g, "&")) : null; };
+
+test("index.js alSendGift: signed start and stop links for someone new (only the link key is stored); a signed-in link for a member, with the shop note when they pay", async () => {
+  const kv = new FakeKV(), env = giftEnv(kv), X = giftIndexFns();
+  const writes = []; const put = kv.put.bind(kv); kv.put = async (k, v, o) => { writes.push(k); return put(k, v, o); };
+  const t0 = Date.now();
+  assert.deepEqual(await X.alSendGift(env, FRIEND, "2027-01-05", null), { ok: true });
+  assert.deepEqual(writes, ["giftkey:v1"], "the first gift email makes the link key; nothing holding their address is stored");
+  assert.match(kv.json("giftkey:v1"), /^[0-9a-f]{64}$/);
+  let m = X.sent[0];
+  assert.equal(m.to, FRIEND); assert.equal(m.subject, "A gift from Owl & Twig Vintage: free Prowl Pro");
+  const start = linkIn(m.text, "/alerts/gift"), stop = linkIn(m.text, "/alerts/giftstop");
+  assert.equal(start.searchParams.get("e"), FRIEND);
+  const x = Number(start.searchParams.get("x"));
+  assert.ok(x >= t0 + 14 * 86400000 && x <= Date.now() + 14 * 86400000, "good for 14 days");
+  assert.equal(start.searchParams.get("s"), giftSigOf(kv, "start|" + FRIEND + "|" + x), "signed with the kept key");
+  assert.equal(stop.searchParams.get("s"), giftSigOf(kv, "stop|" + FRIEND));
+  assert.equal(m.unsub, stop.href, "List-Unsubscribe is the stop link");
+  assert.ok(m.html.includes('href="' + start.href.replace(/&/g, "&amp;") + '"')); assert.ok(m.html.includes('href="' + stop.href.replace(/&/g, "&amp;") + '"'));
+  assert.ok(m.text.includes("Start Prowl: " + start.href)); assert.ok(m.text.includes("Stop gift emails to this address: " + stop.href));
+  assert.match(m.html, /Owl &amp; Twig Vintage has given you Prowl Pro, free until January 5, 2027\./);
+  assert.match(m.html, /Prowl searches ShopGoodwill, eBay, Etsy and Vinted at once/);
+  assert.match(m.html, /<b>How to start<\/b>/); assert.match(m.html, />Start Prowl<\/a>/);
+  assert.match(m.html, /The button works for 14 days\. Already started on another phone or computer\? Open Prowl there and use Sign in with this address\./);
+  assert.match(m.html, /gave this address free Prowl Pro\. You are not on a mailing list\./);
+  assert.doesNotMatch(m.html + m.text, /Nothing else will be sent|You turned on Prowl Alerts|shop subscription|still pay|undefined|null|NaN/);
+  assert.doesNotMatch(m.text, /\n\n\n/);
+  // the next one reuses the key, and a new ADMIN_KEY (or none) changes nothing
+  writes.length = 0; X.sent.length = 0;
+  await X.alSendGift(giftEnv(kv, { ADMIN_KEY: undefined }), FRIEND, "", null);
+  assert.deepEqual(writes, []);
+  assert.equal(linkIn(X.sent[0].text, "/alerts/giftstop").href, stop.href, "the same stop link every time");
+
+  X.sent.length = 0;
+  assert.deepEqual(await X.alSendGift(env, EMAIL, "2026-12-31", { email: EMAIL, tok: "TOKEN-SECRET-abc123def456", pro: true, plan: { via: "gift", until: "2026-12-31" } }), { ok: true });
+  m = X.sent[0];
+  assert.ok(m.html.includes(">Open Prowl</a>")); assert.ok(m.text.includes("Open Prowl: https://shop.example/pages/prowl-app?alerts=in#e="));
+  assert.equal(m.unsub, ""); assert.doesNotMatch(m.html + m.text, /giftstop|How to start|Start Prowl|works for 14 days|still pay/);
+  assert.match(m.html, /free until December 31, 2026\./); assert.match(m.html, /already on for your account: up to 25 hunts/);
+  for (const [sub, opts] of [[{ email: EMAIL, tok: "T", pro: true, plan: { via: "gift" } }, { paid: true }], [{ email: EMAIL, tok: "T", pro: true, plan: { via: "gift", shop: { trial: true, order: "#77" } } }, {}]]) {
+    X.sent.length = 0;
+    await X.alSendGift(env, EMAIL, "", sub, opts);
+    assert.match(X.sent[0].html, /If you still pay for Prowl Pro in the Owl &amp; Twig shop, that subscription is separate: this gift does not cancel it\. To stop being charged, cancel it in your Owl &amp; Twig account under Subscriptions: <a href="https:\/\/www\.owlandtwigvintage\.com\/account"/);
+    assert.match(X.sent[0].text, /this gift does not cancel it\. .* https:\/\/www\.owlandtwigvintage\.com\/account/);
+  }
+
+  X.sent.length = 0;
+  assert.equal((await X.alSendGift(giftEnv(kv, { ALERTS: "off" }), FRIEND, "", null)).why, "off");
+  assert.equal((await X.alSendGift(giftEnv(kv, { RESEND_API_KEY: "" }), FRIEND, "", null)).why, "nomail");
+  const broken = new FakeKV(); broken.get = async () => { throw new Error("kv down"); }; broken.put = async () => { throw new Error("kv down"); };
+  await assert.rejects(X.alSendGift(giftEnv(broken), FRIEND, "", null), /kv down/, "KV down: nothing can be signed, so nothing is sent (admin reports it as not sent)");
+  assert.equal(X.sent.length, 0);
+  const Y = giftIndexFns({ sendResult: { ok: false, error: "resend 422 bad to: x@example.com" } });
+  assert.deepEqual(await Y.alSendGift(env, "x@example.com", "", null), { ok: false, why: "send", error: "resend 422 bad to: [email]" });
+  assert.equal(X.alLongDay("2027-02-03"), "February 3, 2027"); assert.equal(X.alLongDay("2027-13-01"), ""); assert.equal(X.alLongDay(""), "");
+  assert.equal(X.alAndList(["A"]), "A"); assert.equal(X.alAndList(["A", "B"]), "A and B"); assert.equal(X.alAndList(["A", "B", "C"]), "A, B and C");
+});
+
+test("index.js alGiftStart: one tap starts a member with Pro and signs in; never twice, never for a moved address, an ended gift, an old or forged link", async () => {
+  const kv = new FakeKV(), env = giftEnv(kv), X = giftIndexFns();
+  await X.alSendGift(env, FRIEND, "", null);
+  const start = linkIn(X.sent[0].text, "/alerts/gift");
+  const tap = async (u, method = "GET", e = env) => { const r = await X.alGiftStart(new Request(u.href, { method }), e, u); return { r, t: await r.clone().text().catch(() => "") }; };
+  let { r, t } = await tap(start);
+  assert.equal(t, "GATE|Start Prowl|One tap signs you in to Prowl as " + FRIEND + ", with free Prowl Pro. Prowl only emails you once you save a hunt, and you can turn emails off any time.|Start Prowl");
+  assert.equal(kv.json("sub:" + FRIEND), null, "opening the link (or a mail scanner fetching it) changes nothing");
+  ({ t } = await tap(start, "GET", giftEnv(kv, { ADMIN_KEY: "a-brand-new-admin-key-123" })));
+  assert.match(t, /^GATE\|Start Prowl\|/, "a new ADMIN_KEY does not break links already emailed");
+  ({ r } = await tap(start, "POST"));
+  assert.equal(r.status, 302);
+  assert.equal(r.headers.get("Location"), "https://shop.example/pages/prowl?alerts=in#e=" + encodeURIComponent(FRIEND) + "&t=NEW-TOK");
+  const sub = kv.json("sub:" + FRIEND);
+  assert.deepEqual([sub.email, sub.hunts, sub.pro, sub.tok, typeof sub.utok], [FRIEND, [], true, "NEW-TOK", "string"]);
+  // a second tap (another device, the same email again): no token, no rebuilt record
+  kv.set("sub:" + FRIEND, Object.assign(sub, { mail: "off", prev: ["older@example.com"], hunts: ["pyrex"] }));
+  for (const method of ["GET", "POST"]) {
+    ({ r, t } = await tap(start, method));
+    assert.equal(r.status, 200); assert.equal(r.headers.get("Location"), null);
+    assert.equal(t, "PAGE|You already have Prowl|This address already has Prowl, with your free Pro. On another phone or computer, open Prowl and use Sign in with this email address.");
+    assert.ok(!t.includes("NEW-TOK"));
+  }
+  assert.deepEqual(kv.json("sub:" + FRIEND).prev, ["older@example.com"]); assert.equal(kv.json("sub:" + FRIEND).mail, "off");
+  kv.delete("sub:" + FRIEND);
+  // the address moved to a membership that still exists, after one move or three
+  kv.set("moved:" + FRIEND, { to: "new@example.com" }); kv.set("sub:new@example.com", { email: "new@example.com", hunts: [] });
+  ({ t } = await tap(start, "POST"));
+  assert.match(t, /^PAGE\|This address moved\|.*your free Pro is there too\.$/); assert.equal(kv.json("sub:" + FRIEND), null);
+  kv.delete("sub:new@example.com"); kv.set("moved:new@example.com", { to: "newer@example.com" }); kv.set("moved:newer@example.com", { to: "newest@example.com" }); kv.set("sub:newest@example.com", { email: "newest@example.com", hunts: [] });
+  ({ t } = await tap(start, "POST"));
+  assert.match(t, /^PAGE\|This address moved\|/, "followed through three moves"); assert.equal(kv.json("sub:" + FRIEND), null);
+  // a forwarding record that leads nowhere does not block them: the link starts a membership as promised
+  kv.delete("sub:newest@example.com");
+  ({ r } = await tap(start, "POST"));
+  assert.equal(r.status, 302); assert.equal(kv.json("sub:" + FRIEND).email, FRIEND);
+  kv.delete("sub:" + FRIEND); kv.delete("moved:" + FRIEND);
+  // the owner turned the gift off
+  X.free.v = null;
+  ({ t } = await tap(start, "POST"));
+  assert.match(t, /^PAGE\|This gift has ended\|/); assert.equal(kv.json("sub:" + FRIEND), null);
+  X.free.v = { pro: true, via: "gift", plan: { via: "gift", until: "" } };
+  // past its 14 days, signed by us: the gift is still waiting
+  const old = new URL(start.href); const x = String(Date.now() - 1000);
+  old.searchParams.set("x", x); old.searchParams.set("s", giftSigOf(kv, "start|" + FRIEND + "|" + x));
+  ({ t } = await tap(old, "POST"));
+  assert.match(t, /^PAGE\|This link has ended\|Your free Prowl Pro is still waiting\./); assert.equal(kv.json("sub:" + FRIEND), null);
+  // forged, cut short, for another address, or after the link key was deleted: 400, and nothing is said about any gift
+  const forged = [];
+  for (const [k, v] of [["s", "0".repeat(64)], ["e", "someone.else@example.com"], ["x", String(Number(start.searchParams.get("x")) + 1)], ["s", ""], ["x", "soon"]]) {
+    const u = new URL(start.href); u.searchParams.set(k, v); forged.push(u);
+  }
+  const cut = new URL(start.href); cut.searchParams.delete("s"); forged.push(cut);
+  for (const u of forged) {
+    ({ r, t } = await tap(u, "POST"));
+    assert.equal(r.status, 400, u.search);
+    assert.equal(t, "PAGE|This link does not work|It may be cut short, or out of date. Open Prowl and sign up for Prowl Alerts with your email address.", u.search);
+  }
+  const kv2 = new FakeKV();
+  ({ r, t } = await tap(start, "POST", giftEnv(kv2)));
+  assert.equal(r.status, 400); assert.equal(kv2.json("giftkey:v1"), null, "checking a link never makes a key");
+  assert.equal([...kv.m.keys()].filter(k => k.startsWith("sub:") && k !== "sub:new@example.com").length, 0, "none of these started a membership");
+});
+
+test("index.js alGiftStop: the stop link (and one-click List-Unsubscribe) keeps a hash only, works after ADMIN_KEY changes, and later gift emails to that address are refused", async () => {
+  const kv = new FakeKV(), env = giftEnv(kv), X = giftIndexFns();
+  await X.alSendGift(env, FRIEND, "", null);
+  const stop = linkIn(X.sent[0].text, "/alerts/giftstop");
+  let r = await X.alGiftStop(new Request(stop.href), env, stop);
+  assert.equal(await r.text(), "GATE|Stop gift emails|One tap and no more Prowl gift emails come to " + FRIEND + ".|Stop them");
+  assert.equal(kv.json("giftnomail:" + giftHashOf(FRIEND)), null, "a GET (a mail scanner) does not stop anything");
+  const rotated = giftEnv(kv, { ADMIN_KEY: "a-brand-new-admin-key-123" });
+  r = await X.alGiftStop(new Request(stop.href, { method: "POST", body: "List-Unsubscribe=One-Click" }), rotated, stop);
+  assert.equal(r.status, 200);
+  assert.match(await r.text(), /^PAGE\|Done\|No more Prowl gift emails will come to this address\./);
+  const rec = kv.json("giftnomail:" + giftHashOf(FRIEND));
+  assert.deepEqual(Object.keys(rec), ["at"]);
+  assert.ok([...kv.m.keys()].every(k => !k.includes("gift.friend")), "kept by hash, not by address");
+  X.sent.length = 0;
+  assert.deepEqual(await X.alSendGift(env, FRIEND, "", null), { ok: false, why: "stopped", error: "they stopped gift emails" });
+  assert.equal(X.sent.length, 0);
+  assert.deepEqual(await X.alSendGift(env, FRIEND, "", { email: FRIEND, tok: "T", pro: true }), { ok: true }, "once they are a member, their own email settings decide");
+  const bad = new URL(stop.href); bad.searchParams.set("e", "other@example.com");
+  r = await X.alGiftStop(new Request(bad.href, { method: "POST" }), env, bad);
+  assert.equal(r.status, 400, "a one-click unsubscribe that could not be done is not answered as done");
+  assert.match(await r.text(), /^PAGE\|This link does not work\|/);
+  assert.equal(kv.json("giftnomail:" + giftHashOf("other@example.com")), null);
+});
+
+test("index.js routes /alerts/gift and /alerts/giftstop; metrics counts them as their own alert routes", () => {
+  assert.match(INDEX, /if \(url\.pathname === "\/alerts\/gift"\) return alGiftStart\(request, env, url\);/);
+  assert.match(INDEX, /if \(url\.pathname === "\/alerts\/giftstop"\) return alGiftStop\(request, env, url\);/);
+  assert.match(INDEX, /alProSet, alMerge, alSendSignin[\s\S]*?giftHash, alEmail, proListHas, proListCount, alSendGift,/);
+  assert.doesNotMatch(INDEX.slice(INDEX.indexOf("async function alSendGift"), INDEX.indexOf("async function alGiftStart")), /conf:/, "the gift email writes no confirm record");
+});
+
+test("gift remove: someone who joined after the member list was cached is still found, so their Pro is switched off now", async () => {
+  const H = makeH(), env = makeEnv(), N = "new.joiner@example.com";
+  H.nextPro = { pro: false, plan: null };
+  await apiPost(env, H, "/admin/api/gift", { email: N, months: 1 });
+  await call(env, H, "GET", "/admin/api/members");   // the member list is cached now, without them
+  env.PROWL_ALERTS.set("sub:" + N, { email: N, tok: "T-NEW", hunts: [], pro: true, plan: { via: "gift", until: "2026-11-05" }, created: "2026-10-05T09:00:00.000Z" });
+  const j = await (await apiPost(env, H, "/admin/api/gift/remove", { gid: giftHashOf(N).slice(0, 10) })).json();
+  assert.match(j.message, /^Gift turned off\. M-[0-9a-f]{8} is on the free plan now unless they pay\./);
+  assert.equal(rec(env, N).pro, false);
 });

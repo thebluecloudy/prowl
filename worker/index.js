@@ -223,7 +223,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
-const WORKER_VERSION = "v78b";
+const WORKER_VERSION = "v78c";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -3597,6 +3597,114 @@ async function alSendSignin(env, sub) {
     "Sign in to Prowl: " + link + "\n\nThe link works once, for 24 hours. Did not ask for this? Ignore this email." + alFootText(env, null), "");
   return r.ok ? { ok: true } : { ok: false, error: scrubPII(String(r.error || "send failed")) };
 }
+/* v78c: Gift Pro can email the person how to start. A member gets a signed-in "Open Prowl" link. Anyone else gets a
+   signed "Start Prowl" link (/alerts/gift): nothing is stored for it, it lasts GIFT_LINK_DAYS, and a tap only starts a
+   new membership while the gift is still on and the address has no membership yet. The email's stop link (also its
+   List-Unsubscribe) ends gift emails to that address (giftnomail:<giftHash>). The links are signed with a random key
+   made once and kept in KV (giftkey:v1), so a link keeps working for its whole life, whatever happens to ADMIN_KEY. */
+const GIFT_LINK_DAYS = 14;
+const AL_MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function alLongDay(d) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d || "")); return m && Number(m[2]) >= 1 && Number(m[2]) <= 12 ? AL_MONTH_NAMES[Number(m[2]) - 1] + " " + Number(m[3]) + ", " + m[1] : ""; }
+function alAndList(a) { return a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1]; }
+const GIFT_KEY_RE = /^[0-9a-f]{64}$/;
+async function giftKey(env, make) {
+  if (!env || !env.PROWL_ALERTS) return "";
+  const k = await kvGet(env, "giftkey:v1", null);
+  if (typeof k === "string" && GIFT_KEY_RE.test(k)) return k;
+  if (!make) return "";
+  const b = new Uint8Array(32); crypto.getRandomValues(b);
+  await kvPut(env, "giftkey:v1", Array.from(b, x => ("0" + x.toString(16)).slice(-2)).join(""));
+  const kept = await kvGet(env, "giftkey:v1", null);   /* two first sends at once: both sign with the one that was kept */
+  return typeof kept === "string" && GIFT_KEY_RE.test(kept) ? kept : "";
+}
+async function giftSig(env, what, make) { const k = await giftKey(env, make); return k ? pxHmac(k, what) : ""; }
+async function giftLinks(env, email, exp) {
+  const e = encodeURIComponent(email);
+  const s1 = await giftSig(env, "start|" + email + "|" + exp, true), s2 = s1 ? await giftSig(env, "stop|" + email, false) : "";
+  return s1 && s2 ? { start: WORKER_BASE + "/alerts/gift?e=" + e + "&x=" + exp + "&s=" + s1, stop: WORKER_BASE + "/alerts/giftstop?e=" + e + "&s=" + s2 } : null;
+}
+/* sub: the member's record, or null for someone not signed up. opts.paid: they also pay for Pro in the shop. */
+async function alSendGift(env, email, until, sub, opts) {
+  if (!alReady(env)) return { ok: false, why: "off", error: "Prowl Alerts is switched off" };
+  if (!env.RESEND_API_KEY) return { ok: false, why: "nomail", error: "RESEND_API_KEY not set" };
+  let links = null;
+  if (!sub) {
+    if (await kvGet(env, "giftnomail:" + await giftHash(email), null)) return { ok: false, why: "stopped", error: "they stopped gift emails" };
+    links = await giftLinks(env, email, Date.now() + GIFT_LINK_DAYS * 86400000);
+    if (!links) return { ok: false, why: "nokey", error: "no link key" };
+  }
+  const paid = !!sub && (!!(opts && opts.paid) || !!(sub.plan && typeof sub.plan === "object" && sub.plan.shop));
+  const day = alLongDay(until), ends = day ? "until " + day : "with no end date";
+  const sites = alAndList(liveSources().map(s => AL_SRC_NAME[s] || s));
+  const link = sub ? alHomeUrl(sub) : links.start, btn = sub ? "Open Prowl" : "Start Prowl";
+  const P = 'style="margin:0 0 12px"', small = 'style="margin:0 0 4px;font:13px/1.5 Arial,sans-serif;color:#6b5b4a"';
+  const shopNote = "If you still pay for Prowl Pro in the Owl & Twig shop, that subscription is separate: this gift does not cancel it. To stop being charged, cancel it in your Owl & Twig account under Subscriptions:";
+  const steps = sub ? '<p ' + P + '>It is already on for your account: up to ' + AL_MAX_HUNTS + ' hunts, daily emails, and price and keyword filters. Your hunts and settings have not changed.</p>' +
+      (paid ? '<p ' + P + '>' + alEsc(shopNote) + ' <a href="' + PRO_MANAGE_URL + '" style="color:#8a4b1f">' + alEsc(PRO_MANAGE_URL.replace(/^https:\/\/(www\.)?/, "")) + '</a>.</p>' : '')
+    : '<p style="margin:0 0 6px"><b>How to start</b></p><ol style="margin:0 0 12px;padding-left:22px">' +
+      '<li style="margin:0 0 6px">Tap <b>Start Prowl</b> below. It signs you in with this email address. There is no password.</li>' +
+      '<li style="margin:0 0 6px">Search for something you collect and save it as a hunt. Pro gives you up to ' + AL_MAX_HUNTS + '.</li>' +
+      '<li style="margin:0 0 6px">Each morning, Prowl emails you anything new for your hunts.</li></ol>';
+  const after = sub ? "Already signed in on your phone or computer? Just open Prowl as usual."
+    : "The button works for " + GIFT_LINK_DAYS + " days. Already started on another phone or computer? Open Prowl there and use Sign in with this address. After " + GIFT_LINK_DAYS + " days, sign up for Prowl Alerts at owlandtwigvintage.com/pages/prowl with this address, and your Pro switches on by itself.";
+  const why = sub ? "You are getting this because Owl & Twig Vintage gave your Prowl account free Prowl Pro. Nothing else about your account changed."
+    : "You are getting this because Owl & Twig Vintage gave this address free Prowl Pro. You are not on a mailing list.";
+  const html = alShell(env, '<tr><td style="padding:12px 12px 4px;font:16px/1.5 Georgia,serif;color:#2b2118">' +
+    '<h2 style="font-size:22px;margin:0 0 8px">Prowl Pro is yours, free</h2>' +
+    '<p ' + P + '>Owl &amp; Twig Vintage has given you Prowl Pro, free ' + alEsc(ends) + '.</p>' +
+    '<p ' + P + '>Prowl searches ' + alEsc(sites) + ' at once for the things you collect, and emails you what is new.</p>' + steps +
+    '<p ' + P + '><a href="' + alEsc(link) + '" style="display:inline-block;background:#8a4b1f;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font:bold 15px Arial,sans-serif">' + btn + '</a></p>' +
+    '<p ' + small + '>' + alEsc(after) + '</p></td></tr>', alEsc(why),
+    links ? '<a href="' + alEsc(links.stop) + '" style="color:#9a8b7a">Stop gift emails to this address</a>' : '');
+  const text = ["Owl & Twig Vintage has given you Prowl Pro, free " + ends + ".", "",
+    "Prowl searches " + sites + " at once for the things you collect, and emails you what is new.", "",
+    sub ? "It is already on for your account: up to " + AL_MAX_HUNTS + " hunts, daily emails, and price and keyword filters." + (paid ? "\n\n" + shopNote + " " + PRO_MANAGE_URL : "")
+      : "How to start:\n1. Open the Start Prowl link below. It signs you in with this email address. There is no password.\n2. Search for something you collect and save it as a hunt. Pro gives you up to " + AL_MAX_HUNTS + ".\n3. Each morning, Prowl emails you anything new for your hunts.",
+    "", btn + ": " + link, "", after, "", "--", "Prowl Alerts by Owl & Twig Vintage. " + why, links ? "Stop gift emails to this address: " + links.stop : null,
+    "Copyright © " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(l => l !== null).join("\n");
+  const r = await alSend(env, email, "A gift from Owl & Twig Vintage: free Prowl Pro", html, text, links ? links.stop : "");
+  return r.ok ? { ok: true } : { ok: false, why: "send", error: scrubPII(String(r.error || "send failed")) };
+}
+/* A link that is cut short or was never ours: 400, so a one-click unsubscribe does not read it as done. */
+function alBadLink(msg) { const r = alPage("This link does not work", msg); return new Response(r.body, { status: 400, headers: r.headers }); }
+/* Where an address's Prowl Alerts went, following up to three moves to a member who still exists ("" if none). */
+async function alMovedTo(env, email) {
+  let a = email;
+  for (let i = 0; i < 3; i++) {
+    const mv = await kvGet(env, "moved:" + a, null), to = mv && typeof mv.to === "string" ? alEmail(mv.to) : "";
+    if (!to || to === email || to === a) return "";
+    if (await kvGet(env, "sub:" + to, null)) return to;
+    a = to;
+  }
+  return "";
+}
+/* The Start Prowl link from a gift email. The signature proves the link was sent by alSendGift, so the address in it
+   is the inbox that got the email; whether a gift exists is only said to a signed link. */
+async function alGiftStart(request, env, url) {
+  if (!alReady(env)) return alPage("Not on yet", "Prowl Alerts is switched off right now.");
+  const email = alEmail(url.searchParams.get("e")), x = String(url.searchParams.get("x") || ""), exp = /^\d{10,16}$/.test(x) ? Number(x) : 0;
+  const want = email && exp ? await giftSig(env, "start|" + email + "|" + x, false) : "";
+  if (!want || !alSame(String(url.searchParams.get("s") || ""), want)) return alBadLink("It may be cut short, or out of date. Open Prowl and sign up for Prowl Alerts with your email address.");
+  const [free, sub] = await Promise.all([alFreePro(env, email), kvGet(env, "sub:" + email, null)]);
+  if (sub) return alPage("You already have Prowl", "This address already has Prowl" + (free ? ", with your free Pro" : "") + ". On another phone or computer, open Prowl and use Sign in with this email address.");
+  if (await alMovedTo(env, email)) return alPage("This address moved", "Prowl Alerts for this address moved to a newer address. Open Prowl and sign in with that one" + (free ? "; your free Pro is there too." : "."));
+  if (!free) return alPage("This gift has ended", "The free Prowl Pro this link was for is no longer on. You can still use Prowl, and sign up for Prowl Alerts, at owlandtwigvintage.com/pages/prowl.");
+  if (Date.now() > exp) return alPage("This link has ended", "Your free Prowl Pro is still waiting. Open Prowl, sign up for Prowl Alerts with this email address, and Pro switches on by itself.");
+  if (request.method !== "POST") return alGate("Start Prowl", "One tap signs you in to Prowl as " + email + ", with free Prowl Pro. Prowl only emails you once you save a hunt, and you can turn emails off any time.", "Start Prowl", url);
+  const s = { email: email, tok: alToken(), utok: alToken(), hunts: [], day: "", done: [], sent: "", created: new Date().toISOString() };
+  await alProSet(env, s, true);
+  await kvPut(env, "sub:" + email, s);
+  return Response.redirect(PROWL_PAGE + "?alerts=in#e=" + encodeURIComponent(email) + "&t=" + s.tok, 302);
+}
+/* The stop link in a gift email (and its one-click List-Unsubscribe): no more gift emails to that address. */
+async function alGiftStop(request, env, url) {
+  const email = alEmail(url.searchParams.get("e"));
+  const want = email ? await giftSig(env, "stop|" + email, false) : "";
+  if (!want || !alSame(String(url.searchParams.get("s") || ""), want)) return alBadLink("It may be cut short, or out of date.");
+  if (request.method !== "POST") return alGate("Stop gift emails", "One tap and no more Prowl gift emails come to " + email + ".", "Stop them", url);
+  await kvPut(env, "giftnomail:" + await giftHash(email), { at: new Date().toISOString() });
+  return alPage("Done", "No more Prowl gift emails will come to this address. Any free Pro you were given still works if you sign up for Prowl.");
+}
 async function alIn(request, env, url) {
   if (!alReady(env)) return alPage("Not on yet", "Prowl Alerts is switched off right now.");
   const email = alEmail(url.searchParams.get("e"));
@@ -3894,7 +4002,7 @@ const ADMIN_H = {
   kvGet, kvPut, alNow, alLocal, alPrefs, alActive, alSlotHour, alSendDay, alPaused, alFree, alFreeWeekly, alLegacyFree, alUrgency,
   alProSet, alMerge, alSendSignin, alToken, liveSources, liveFetch, jevClean, jevWouldDrop, memberDropReason, alNear, runProbes,
   capsCall, capsDay, vCount, ipKey, ipNet, alSame, statTerm, scrubPII, summarize, uptimeFrom, pctFromHist,
-  giftHash, alEmail, proListHas, proListCount,
+  giftHash, alEmail, proListHas, proListCount, alSendGift,
   jevResultsMode, liveFetchLocal, alTitleKey,   /* v78: Diagnose follows what alerts really do */
   WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, AL_PEND_CAP, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE
 };
@@ -3970,6 +4078,8 @@ async function handleFetch(request, env, ctx) {
     /* v28: unsubscribe links work from any mail app, including one-click POSTs */
     if (url.pathname === "/alerts/unsub") return alUnsub(request, env, url, origin);
     if (url.pathname === "/alerts/confirm") return alConfirm(request, env, url);
+    if (url.pathname === "/alerts/gift") return alGiftStart(request, env, url);   /* v78c */
+    if (url.pathname === "/alerts/giftstop") return alGiftStop(request, env, url);   /* v78c */
     if (url.pathname === "/alerts/in") return alIn(request, env, url);
     if (url.pathname === "/alerts/move-confirm") return alMoveConfirm(request, env, url);   /* v54 */
     if (url.pathname === "/alerts/move" && request.method === "POST") return alMove(request, env, origin);   /* v54 */
