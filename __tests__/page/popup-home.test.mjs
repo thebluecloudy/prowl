@@ -13,7 +13,7 @@ const ITEM = { src: 'ebay', id: '1234567890', title: 'Haeger Black Panther TV La
   description: '<p>Glossy glaze</p>', url: 'https://www.ebay.com/itm/1234567890' };
 
 // live results: eBay listings with real-looking ids, Etsy listings (no popup), nothing else
-function setup() {
+function setup(extra = {}) {
   const items = [];
   const fetchImpl = (url) => {
     const u = new URL(String(url), 'https://www.owlandtwigvintage.com/');
@@ -25,7 +25,7 @@ function setup() {
     if (u.pathname === '/') list = [{ title: q + ' sgw', price: '$9.00', url: 'https://shopgoodwill.com/item/27898707', image: 'https://img.example/g.jpg', src: '', bids: 3, time_left: '2d 4h' }];
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ items: list }), text: () => Promise.resolve('') });
   };
-  const p = loadPage({ fetchImpl, storage: { owlTwigSgwTerms: ['panther', 'hull pottery'] } });
+  const p = loadPage({ fetchImpl, storage: { owlTwigSgwTerms: ['panther', 'hull pottery'], ...extra } });
   p.items = items;
   return p;
 }
@@ -83,10 +83,11 @@ test('the star and Fair price? under a card keep their own jobs', async () => {
 });
 
 test('a Flock card still opens the popup exactly once', async () => {
-  const p = setup();
-  await waitFor(() => homeCell(p, 'ebay.com/itm/'));
-  await tick(30);
+  // a saved eBay find, so the card is always there (the Feed picks a random mix)
+  const p = setup({ 'prowl.finds': [{ title: 'Haeger panther', price: '$45.00', url: 'https://www.ebay.com/itm/1234567890', image: 'https://i.ebayimg.com/a.jpg', src: 'ebay', hunt: 'panther', at: 3 }] });
+  await tick(40);
   p.$('#otp-dock .db[data-m="flock"]').click();
+  p.$('#otp-flock .fl-seg [data-fv="saved"]').click();
   const fc = await waitFor(() => p.$$('#otp-flockRow .fl-card').find((c) => /ebay\.com\/itm\//.test(c.getAttribute('data-u') || '')));
   tap(p, fc);
   await waitFor(() => p.$$('#otp-sheetB .pp-gal img').length === 4);
