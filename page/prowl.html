@@ -182,7 +182,9 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 .scout-app-wrapper.theme-menu-open .bar,.scout-app-wrapper.theme-menu-open #otp-dock,.scout-app-wrapper.theme-menu-open .oabar{visibility:hidden}
 .scout-app-wrapper .bar .hi:not([hidden]){display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mu);white-space:nowrap}
 .scout-app-wrapper .bar .hi b{font-weight:600;max-width:9em;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom}
-@media (max-width:420px){.scout-app-wrapper .bar .hi .hi-n{display:none}}
+@media (max-width:639px){.scout-app-wrapper .bar .hi:not([hidden]){display:none}}   /* v6.45: no room on phones; Den > Settings has it */
+.scout-app-wrapper .bar .brand{flex-shrink:0}
+.scout-app-wrapper .bar .hi .gh{white-space:nowrap}
 .scout-app-wrapper .bar{position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 18px;background:var(--bar-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--ln)}
 .scout-app-wrapper .brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.02em}
 .scout-app-wrapper .brand i{color:var(--ac);font-style:normal}
@@ -2196,6 +2198,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 <p class="byline">Made by Matt at <a href="https://www.owlandtwigvintage.com/">owlandtwigvintage.com</a> <span class="prowl-version"></span></p>
     </div>
     <div class="denPane" id="otp-denSettings" hidden>
+      <div class="setrow" id="otp-hiDen" hidden></div>
       <div class="otp-mail sgw-mail mail-card" data-mode="card" hidden></div>
       <div class="gapp otp-getapp" data-mode="settings" hidden></div>
       <div class="setrow">
@@ -2344,7 +2347,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.44';
+var PROWL_VERSION='v6.45';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3783,7 +3786,13 @@ function fpAsk(btn){
 }
 document.addEventListener('click',function(e){
   var t=e.target;
-  if(t&&t.classList&&t.classList.contains('sgw-fp')){e.preventDefault();fpAsk(t);}
+  if(t&&t.classList&&t.classList.contains('sgw-fp')){e.preventDefault();fpAsk(t);return}
+  /* v6.45: a plain tap on any eBay, ShopGoodwill or Salvation Army result card (home, hunts, Daily) opens the
+     listing popup with all its photos, as Flock does; Flock cards keep their own handler, other sites link out */
+  var c=t&&t.closest?t.closest('.sgw-cell .sgw-card'):null,cell;
+  if(!c||e.defaultPrevented||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button===1)return;
+  cell=c.closest('.sgw-cell');if(!cell||cell.closest('.fl-card'))return;
+  if(popOpen(cell))e.preventDefault();
 });
 
 /* ---------- YOUR HUNTS, LIVE ON GOODWILL (v5.10) ----------
@@ -4592,12 +4601,15 @@ function hiRender(){
   var on=!!(MAIL.first&&(window.prowlSess()||mGet('alertTok')));
   el.hidden=!on;
   el.innerHTML=on?'<span class="hi-n">Hi, <b>'+esc(MAIL.first)+'</b></span><button class="gh hi-out" type="button" data-hi="out">Log out</button>':'';
+  /* v6.45: the same, as an Account row in Den > Settings (the only place phones show it) */
+  var dn=document.getElementById('otp-hiDen');
+  if(dn){dn.hidden=!on;dn.innerHTML=on?'<div><h3>Account</h3><p>Signed in to Owl &amp; Twig as <b>'+esc(MAIL.first)+'</b>.</p></div><button class="gh" type="button" data-hi="out">Log out</button>':''}
 }
 function hiLogout(){
   sessSet('');mSet('alertTok','');mSet('alertSig','');mSet('alertPro','');mSet('alertNoAuto','1');MAIL.first='';hiRender();
   location.href='/customer_authentication/logout?return_to='+encodeURIComponent('/pages/prowl');
 }
-(function(){var el=document.getElementById('otp-hi');if(el)el.addEventListener('click',function(e){var b=e.target&&e.target.closest?e.target.closest('[data-hi="out"]'):null;if(b)hiLogout()})})();
+(function(){['otp-hi','otp-hiDen'].forEach(function(id){var el=document.getElementById(id);if(el)el.addEventListener('click',function(e){var b=e.target&&e.target.closest?e.target.closest('[data-hi="out"]'):null;if(b)hiLogout()})})})();
 /* v5.90: in the installed app, the store sign-in opens in a browser panel and
    the app itself never reloads, so it would not notice the sign-in. When the
    app comes back to the front within 20 minutes of tapping Sign in, check the
@@ -5097,11 +5109,13 @@ function popDesc(html){
 }
 /* the sheet is open or opening (it gets .on a frame after it is unhidden) */
 function popShown(){return !!(sh&&!sh.hidden&&sh.classList.contains('pop'))}
+/* v6.45: a result card outside Flock has no auction pill; its meta line carries bids and time left */
+function popAuc(card){var m=card.querySelector('.sgw-m'),t=m?String(m.textContent||''):'';return /\bbids?\b|\bleft\b/.test(t)?t.replace(/\s+/g,' ').trim():''}
 function popOpen(card){
   var u=card.getAttribute('data-u')||'',src=popSrc(u);if(!src)return false;
   var img=card.querySelector('.sgw-card img');
   POP={u:u,src:src,t:card.getAttribute('data-t')||card.getAttribute('aria-label')||'',p:card.getAttribute('data-p')||'',
-    s:card.getAttribute('data-s')||src,img:img?img.getAttribute('src')||'':'',auc:((card.querySelector('.fl-auc')||{}).textContent)||''};
+    s:card.getAttribute('data-s')||src,img:img?img.getAttribute('src')||'':'',auc:((card.querySelector('.fl-auc')||{}).textContent)||popAuc(card)};
   openSheet(POP_NAME[src],'');
   if(sh)sh.classList.add('pop');
   popPaint(ITEMC[u]||null);
