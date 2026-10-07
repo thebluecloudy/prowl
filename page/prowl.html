@@ -53,8 +53,19 @@ window.prowlAff=function(u,cid,affUrl){
   }
   return u;
 };
+/* v6.41 Amazon Associates, kill-switched OFF until the traffic is there (Amazon drops associates under 3 sales in
+   180 days). Only for supplies and reference books a Field Guide names, never vintage pieces. While off, no Amazon
+   URL is built anywhere. */
+window.AMAZON_TAG='YOUR_AMAZON_TAG';
+window.AMAZON_ON=false;
+window.prowlAmzOn=function(){return window.AMAZON_ON===true&&typeof window.AMAZON_TAG==='string'&&/^[A-Za-z0-9_-]{3,40}$/.test(window.AMAZON_TAG)&&window.AMAZON_TAG.indexOf('YOUR_')!==0};
+window.amzSearch=function(keywords){
+  if(!window.prowlAmzOn())return null;
+  var k=String(keywords==null?'':keywords).replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'').slice(0,80);if(!k)return null;
+  return 'https://www.amazon.com/s?k='+encodeURIComponent(k)+'&tag='+encodeURIComponent(window.AMAZON_TAG);
+};
 /* the disclosure names exactly the merchants whose links are tagged today */
-window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Object.prototype.hasOwnProperty.call(window.PROWL_AFF,d)&&window.prowlAffLive(d))a.push(window.PROWL_AFF[d].n);return a};
+window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Object.prototype.hasOwnProperty.call(window.PROWL_AFF,d)&&window.prowlAffLive(d))a.push(window.PROWL_AFF[d].n);if(window.prowlAmzOn())a.push('Amazon');return a};
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Space+Grotesk:wght@400;500;600;700&family=Alfa+Slab+One&display=swap');
@@ -2288,7 +2299,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.40';
+var PROWL_VERSION='v6.41';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -5112,6 +5123,18 @@ function gdRender(g){
     row=gdEl('div','gd-rel');
     for(i=0;i<g.related.length;i++){b=gdEl('button','gh',g.related[i]);b.type='button';b.setAttribute('data-gdh',g.related[i]);row.appendChild(b)}
     card.appendChild(row);
+  }
+  /* v6.41: supplies and reference books the guide names (cleaning, display, price guides). Rendered only while
+     Amazon is on; otherwise nothing, never an untagged Amazon link. */
+  if(Array.isArray(g.supplies)&&g.supplies.length){
+    var sup=[],su;
+    for(i=0;i<g.supplies.length&&sup.length<4;i++){x=String(g.supplies[i]||'').slice(0,60);su=window.amzSearch(x);if(su)sup.push([x,su])}
+    if(sup.length){
+      card.appendChild(gdEl('p','gd-rl','Supplies and books'));
+      row=gdEl('div','gd-rel');
+      for(i=0;i<sup.length;i++){b=gdEl('a','gh',sup[i][0]);b.href=sup[i][1];b.target='_blank';b.rel='noopener noreferrer sponsored';row.appendChild(b)}
+      card.appendChild(row);
+    }
   }
   if(g.sources.length){
     var sp=gdEl('p','gd-src','Sources: '),n=0;

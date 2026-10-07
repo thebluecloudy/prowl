@@ -69,6 +69,18 @@ export function soldUrl(q) {
   return SITES.find((s) => s.id === 'ebaysold').url(q);
 }
 
+// Amazon Associates. Off until Matthew has the tracking ID and the traffic to keep it (Amazon drops
+// associates with fewer than 3 sales in 180 days). While off, the menu item does not exist and no
+// Amazon URL is ever built. Amazon is new goods: menu only, never a marketplace.
+export const AFF = { amz: 'YOUR_AMAZON_TAG', amzEnabled: false };
+export function amazonOn() {
+  return AFF.amzEnabled === true && typeof AFF.amz === 'string' && /^[A-Za-z0-9_-]{3,40}$/.test(AFF.amz) && AFF.amz.indexOf('YOUR_') !== 0;
+}
+export function amazonUrl(q) {
+  if (!amazonOn()) return null;
+  return `https://www.amazon.com/s?k=${E(q)}&tag=${encodeURIComponent(AFF.amz)}`;
+}
+
 export function imagesUrl(q) {
   return `https://www.google.com/search?tbm=isch&q=${E(q)}`;
 }
