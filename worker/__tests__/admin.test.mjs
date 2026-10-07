@@ -25,6 +25,8 @@ function fromIndex(names, deps = {}) {
   return new Function(...keys, names.map(indexFn).join("\n") + "\nreturn { " + names.join(", ") + " };")(...keys.map(k => deps[k]));
 }
 const IX = fromIndex(["giftHash", "proList", "proListHas", "proListCount", "alEmail"]);
+/* v83: the shared purge, as index.js has it */
+const PURGE = fromIndex(["alPurge"], { kvGet: async (env, k, d) => { const v = await env.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; }, console: { log() {} } });
 const giftHashOf = email => createHash("sha256").update("prowl-gift|" + email).digest("hex");
 
 /* ---------- fakes ---------- */
@@ -100,6 +102,7 @@ function makeH(kvOf, over = {}) {
       sub.proCheck = p.pro === null ? String(p.via || "check failed") : "";
       if (sub.pro) sub.hadPro = true; sub.proDay = TODAY; return sub.pro;
     },
+    alPurge: (env, email, sub) => PURGE.alPurge(env, email, sub),
     alMerge: async (env, sub, fields) => { const cur = await H.kvGet(env, "sub:" + sub.email, null); if (!cur) return null; fields.forEach(f => { cur[f] = sub[f]; }); await H.kvPut(env, "sub:" + sub.email, cur); Object.keys(cur).forEach(k => { sub[k] = cur[k]; }); return cur; },
     alSendSignin: async (env, sub) => { calls.signin.push(sub.email); await env.PROWL_ALERTS.put("in:" + sub.email, JSON.stringify({ code: "SIGNIN-CODE-SECRET" })); return H.signinResult || { ok: true }; },
     alToken: () => "fresh-token-" + Math.random().toString(16).slice(2),
