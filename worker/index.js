@@ -33,6 +33,11 @@
  *        were off come back on from their next email day, and the confirm page says so. conf: goes with the purge
  *        (Delete in Prowl, admin delete), the admin's Sign out everywhere and an address move. The unsubscribe page
  *        for an address that moved no longer shows the new address (masked, and only to a device with the token).
+ *   v90: 2026-10-08. Affiliate IDs in the admin area. Each program in AFF_PROGRAMS lists its ID fields with a format;
+ *        the owner edits them under Affiliates (KV aff:ids). Only IDs change: the link templates stay in code, and a
+ *        value that does not match its format is refused, ignored when read, and checked again on the page. A program
+ *        is on only while its IDs are complete. New programs with no IDs yet: Etsy and Reverb (Awin), 1stDibs
+ *        (Partnerize), Amazon (Associates). GET /aff answers { on, ids }.
  *   v89: 2026-10-08. Affiliate switches. The owner turns each affiliate program on or off in the admin area
  *        (Affiliates); the choice is KV aff:on and the defaults are in AFF_PROGRAMS (eBay on, Depop off: Rakuten
  *        declined Depop on 2026-10-08). GET /aff tells the Prowl page and the extension; the alert emails read it
@@ -279,7 +284,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
-const WORKER_VERSION = "v89";
+const WORKER_VERSION = "v90";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -304,33 +309,69 @@ const POSH_URL = "https://poshmark.com/search?type=listings&query=";   /* v58 */
 const POSH_LIMIT = 12, POSH_SOLD_LIMIT = 6, POSH_CACHE_SECONDS = 1800;
 const DEPOP_URL = "https://www.depop.com/search/?q=";   /* v59 */
 /* v84: Depop through Rakuten. The id is the public publisher id that is in every Rakuten link; the page
-   (PROWL_AFF) and the extension (AFF.depop) carry the same link. v89: only while the admin switch is on. */
-const DEPOP_AFF = "https://click.linksynergy.com/deeplink?id=jh1j/r7*wkQ&mid=53555&murl=";
-function depopAff(u) { return AFF_ON.depop === true && /^https:\/\/(www\.)?depop\.com\//.test(String(u || "")) ? DEPOP_AFF + encodeURIComponent(u) : u; }
-/* v89: affiliate switches, set in the admin area (Affiliates) and kept in KV aff:on as { id: true|false }. A program
-   the owner has not touched keeps its default here. To add a program: give it a line here, then gate its links on
-   AFF_ON[id] in the worker, the page (PROWL_AFF_ON) and the extension (AFF.on). */
+   (PROWL_AFF) and the extension (AFF.depop) carry the same link. v89: only while the admin switch is on. v90: the
+   publisher id comes from the admin area (affId). */
+const DEPOP_AFF_T = "https://click.linksynergy.com/deeplink?id={pub}&mid=53555&murl=";
+function depopAff(u) { return AFF_ON.depop === true && /^https:\/\/(www\.)?depop\.com\//.test(String(u || "")) ? DEPOP_AFF_T.replace("{pub}", affId("depop", "pub")) + encodeURIComponent(u) : u; }
+/* v89: affiliate switches, set in the admin area (Affiliates) and kept in KV aff:on as { id: true|false }; a program
+   the owner has not touched keeps its default here. v90: each program's IDs too (KV aff:ids as { id: { field: value } }),
+   each checked against its format, so a stored value can only ever fill its slot in a fixed link template. A program
+   is on only while every one of its fields is filled and valid. To add a program: give it a line here, then build
+   its links from affId() in the worker, and from PROWL_AFF / PROWL_AFF_FMT in the page. */
+const AFF_RE = { epn: /^\d{10}$/, ran: /^[A-Za-z0-9*\/._~-]{6,40}$/, awinMid: /^\d{3,8}$/, awinAff: /^\d{4,10}$/, camref: /^[A-Za-z0-9]{4,24}$/, amz: /^[A-Za-z0-9-]{1,40}-2\d$/ };
 const AFF_PROGRAMS = [
-  { id: "ebay", name: "eBay", net: "eBay Partner Network", def: true },
-  { id: "depop", name: "Depop", net: "Rakuten, merchant 53555", def: false },   // Rakuten declined Depop on 2026-10-08
+  { id: "ebay", name: "eBay", net: "eBay Partner Network", def: true, mail: true,
+    fields: [{ k: "camp", label: "Campaign ID", hint: "10 digits", re: AFF_RE.epn, def: "5339216838" }] },
+  { id: "depop", name: "Depop", net: "Rakuten, merchant 53555", def: false, mail: true,   // Rakuten declined Depop on 2026-10-08
+    fields: [{ k: "pub", label: "Rakuten publisher ID", hint: "like jh1j/r7*wkQ", re: AFF_RE.ran, def: "jh1j/r7*wkQ" }] },
+  { id: "etsy", name: "Etsy", net: "Awin", def: false,
+    fields: [{ k: "mid", label: "Etsy advertiser ID (awinmid)", hint: "3 to 8 digits", re: AFF_RE.awinMid, def: "" },
+      { k: "aff", label: "Your Awin publisher ID", hint: "4 to 10 digits", re: AFF_RE.awinAff, def: "" }] },
+  { id: "reverb", name: "Reverb", net: "Awin", def: false,
+    fields: [{ k: "mid", label: "Reverb advertiser ID (awinmid)", hint: "3 to 8 digits", re: AFF_RE.awinMid, def: "" },
+      { k: "aff", label: "Your Awin publisher ID", hint: "4 to 10 digits", re: AFF_RE.awinAff, def: "" }] },
+  { id: "1stdibs", name: "1stDibs", net: "Partnerize", def: false,
+    fields: [{ k: "camref", label: "Camref", hint: "4 to 24 letters and digits", re: AFF_RE.camref, def: "" }] },
+  { id: "amazon", name: "Amazon", net: "Amazon Associates", def: false,
+    fields: [{ k: "tag", label: "Tracking ID", hint: "ends in -20, like owltwig-20", re: AFF_RE.amz, def: "" }] },
 ];
-const AFF_KEY = "aff:on", AFF_TTL_MS = 60000;
-function affClean(v) {
+const AFF_KEY = "aff:on", AFF_IDS_KEY = "aff:ids", AFF_TTL_MS = 60000;
+const affObj = v => v && typeof v === "object" && !Array.isArray(v);
+/* Stored IDs over the defaults (for eBay, the EPN_CAMPAIGN_ID variable before the default); anything off-format is dropped. */
+function affIdsClean(v, env) {
   const o = {};
-  for (const p of AFF_PROGRAMS) o[p.id] = v && typeof v === "object" && !Array.isArray(v) && typeof v[p.id] === "boolean" ? v[p.id] : p.def;
+  for (const p of AFF_PROGRAMS) {
+    const got = affObj(v) && affObj(v[p.id]) ? v[p.id] : null, f = {};
+    for (const x of p.fields) {
+      const s = got && typeof got[x.k] === "string" ? got[x.k].trim() : null;
+      const envDef = p.id === "ebay" && x.k === "camp" ? String((env && env.EPN_CAMPAIGN_ID) || "").trim() : "";
+      f[x.k] = s !== null ? (x.re.test(s) ? s : "") : x.re.test(envDef) ? envDef : x.def;
+    }
+    o[p.id] = f;
+  }
   return o;
 }
-let AFF_ON = affClean(null), AFF_AT = 0;
+function affReady(ids, p) { return p.fields.every(x => x.re.test(String((ids[p.id] || {})[x.k] || ""))); }
+function affClean(v, ids) {
+  const o = {};
+  for (const p of AFF_PROGRAMS) o[p.id] = (affObj(v) && typeof v[p.id] === "boolean" ? v[p.id] : p.def) && (!ids || affReady(ids, p));
+  return o;
+}
+let AFF_IDS = affIdsClean(null, null), AFF_ON = affClean(null, AFF_IDS), AFF_AT = 0;
+function affId(id, k) { return String((AFF_IDS[id] || {})[k] || ""); }
 /* Read once a minute per isolate, at the start of every request and cron run, so link builders can stay synchronous. */
 async function affLoad(env, force) {
   if (!force && AFF_AT && Date.now() - AFF_AT < AFF_TTL_MS) return AFF_ON;
   AFF_AT = Date.now();
-  AFF_ON = affClean(env && env.PROWL_ALERTS ? await kvGet(env, AFF_KEY, null) : null);
+  const kv = !!(env && env.PROWL_ALERTS);
+  const [on, ids] = kv ? await Promise.all([kvGet(env, AFF_KEY, null), kvGet(env, AFF_IDS_KEY, null)]) : [null, null];
+  AFF_IDS = affIdsClean(ids, env);
+  AFF_ON = affClean(on, AFF_IDS);
   return AFF_ON;
 }
-/* The email footer names exactly the programs that are on ("" when none is). */
+/* The email footer names exactly the programs that are on and tag email links (mail: eBay, Depop), "" when none is. */
 function affNote() {
-  const n = AFF_PROGRAMS.filter(p => AFF_ON[p.id] === true).map(p => p.name);
+  const n = AFF_PROGRAMS.filter(p => p.mail === true && AFF_ON[p.id] === true).map(p => p.name);
   return n.length ? "Some links (" + n.join(", ") + ") earn Owl & Twig a small commission, at no cost to you." : "";
 }
 const DEPOP_LIMIT = 12, DEPOP_CACHE_SECONDS = 1800;
@@ -1375,7 +1416,7 @@ async function itemEbay(id, env) {
   const tok = await ebayToken(env);
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), UPSTREAM_TIMEOUT_MS);
   try {
-    const camp = String((env && env.EPN_CAMPAIGN_ID) || "").replace(/[^0-9]/g, "");
+    const camp = affId("ebay", "camp");   /* v90: from the admin area (or EPN_CAMPAIGN_ID) */
     const h = { "Authorization": "Bearer " + tok, "X-EBAY-C-MARKETPLACE-ID": "EBAY_US", "Accept": "application/json" };
     if (camp && AFF_ON.ebay === true) h["X-EBAY-C-ENDUSERCTX"] = "affiliateCampaignId=" + camp;   /* v89: the admin switch */
     const r = await fetch(EBAY_GETITEM_URL + "?legacy_item_id=" + encodeURIComponent(id), { signal: ctl.signal, headers: h });
@@ -3461,7 +3502,7 @@ function alNear(sub, term) {
    eBay item links in Prowl Alerts emails. The page tags its own links. */
 function epnUrl(env, u, cid) {
   if (AFF_ON.ebay !== true) return u;   /* v89: the admin switch */
-  const c = String((env && env.EPN_CAMPAIGN_ID) || "").trim();
+  const c = affId("ebay", "camp");   /* v90: from the admin area (or EPN_CAMPAIGN_ID) */
   if (!/^\d{10}$/.test(c) || !/^https:\/\/(www\.)?ebay\.com\/(sch|itm)\//.test(u) || /[?&]campid=/.test(u)) return u;
   return u + (u.indexOf("?") > -1 ? "&" : "?") + "mkcid=1&mkrid=711-53200-19255-0&siteid=0&campid=" + c + "&customid=" + encodeURIComponent(cid || "prowl") + "&toolid=10001&mkevt=1";
 }
@@ -4542,7 +4583,7 @@ const ADMIN_H = {
   capsCall, capsDay, vCount, ipKey, ipNet, alSame, statTerm, scrubPII, summarize, uptimeFrom, pctFromHist,
   giftHash, alEmail, proListHas, proListCount, alSendGift, alPurge,   /* v83: alPurge */
   jevResultsMode, liveFetchLocal, alTitleKey,   /* v78: Diagnose follows what alerts really do */
-  affLoad, AFF_PROGRAMS, AFF_KEY,   /* v89: affiliate switches */
+  affLoad, AFF_PROGRAMS, AFF_KEY, AFF_IDS_KEY, affIdsClean, affReady,   /* v89: affiliate switches; v90: their IDs */
   WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, AL_PEND_CAP, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE
 };
 
@@ -4619,7 +4660,7 @@ async function handleFetch(request, env, ctx) {
     /* v28: unsubscribe links work from any mail app, including one-click POSTs */
     if (url.pathname === "/alerts/unsub") return alUnsub(request, env, url, origin);
     if (url.pathname === "/alerts/confirm") return alConfirm(request, env, url);
-    if (url.pathname === "/aff" && request.method === "GET") return json({ on: AFF_ON }, 200, origin, { "Cache-Control": "public, max-age=300" });   /* v89 */
+    if (url.pathname === "/aff" && request.method === "GET") return json({ on: AFF_ON, ids: AFF_IDS }, 200, origin, { "Cache-Control": "public, max-age=300" });   /* v89; v90: ids */
     if (url.pathname === "/alerts/gift") return alGiftStart(request, env, url);   /* v78c */
     if (url.pathname === "/alerts/giftstop") return alGiftStop(request, env, url);   /* v78c */
     if (url.pathname === "/alerts/in") return alIn(request, env, url);

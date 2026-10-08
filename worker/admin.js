@@ -1008,8 +1008,9 @@ async function apiSearches(c) {
    One switch per affiliate program. index.js keeps the list (AFF_PROGRAMS) and reads KV aff:on before building any
    link; GET /aff tells the Prowl page and the extension within about 5 minutes. */
 async function affView(c) {
-  const H = c.H, on = await H.affLoad(c.env, true);
-  return H.AFF_PROGRAMS.map(p => ({ id: p.id, name: p.name, net: p.net, on: on[p.id] === true, def: p.def === true }));
+  const H = c.H, on = await H.affLoad(c.env, true), ids = H.affIdsClean(await H.kvGet(c.env, H.AFF_IDS_KEY, null), c.env);
+  return H.AFF_PROGRAMS.map(p => ({ id: p.id, name: p.name, net: p.net, on: on[p.id] === true, def: p.def === true, ready: H.affReady(ids, p),
+    fields: p.fields.map(x => ({ k: x.k, label: x.label, hint: x.hint, value: ids[p.id][x.k] || "" })) }));
 }
 async function apiAffiliates(c) { return jres({ programs: await affView(c) }); }
 async function apiAffiliateSet(c) {
@@ -1018,18 +1019,49 @@ async function apiAffiliateSet(c) {
   if (!prog) return jerr(400, "That affiliate is not on the list. Reload the page and try again.");
   if (typeof want !== "boolean") return jerr(400, "Say on or off.");
   if (!(await H.vCount("admaff", 100))) return jerr(429, "That is a lot of affiliate changes today. Try again tomorrow.");
+  if (want && !H.affReady(H.affIdsClean(await H.kvGet(env, H.AFF_IDS_KEY, null), env), prog)) return jerr(400, "Fill in and save " + prog.name + "'s IDs first.");
   const cur = await H.kvGet(env, H.AFF_KEY, null), next = {};
   for (const p of H.AFF_PROGRAMS) if (cur && typeof cur === "object" && typeof cur[p.id] === "boolean") next[p.id] = cur[p.id];
   next[id] = want;
   await H.kvPut(env, H.AFF_KEY, next);
   await audit(c, { action: want ? "aff-on" : "aff-off", id: id, ok: true });
-  const msg = prog.name + " links are " + (want ? "tagged again (" + prog.net + ")" : "plain now, with no affiliate tag") +
+  const msg = prog.name + " links are " + (want ? "tagged now (" + prog.net + ")" : "plain now, with no affiliate tag") +
     ". The Prowl page and the extension pick this up within about 5 minutes; alert emails from the next one on.";
   return jres({ ok: true, message: msg, programs: await affView(c) });
 }
 
+/* v90: a program's IDs. Each value must match its field's format (or be empty, which clears it); a program whose
+   IDs are no longer complete is switched off in the same step. */
+async function apiAffiliateIds(c) {
+  const H = c.H, env = c.env, id = String(c.body.id == null ? "" : c.body.id), vals = c.body.values;
+  const prog = H.AFF_PROGRAMS.find(p => p.id === id);
+  if (!prog) return jerr(400, "That affiliate is not on the list. Reload the page and try again.");
+  if (!vals || typeof vals !== "object" || Array.isArray(vals)) return jerr(400, "Nothing to save.");
+  const save = {};
+  for (const x of prog.fields) {
+    const v = typeof vals[x.k] === "string" ? vals[x.k].trim() : "";
+    if (v && !x.re.test(v)) return jerr(400, x.label + " is not in the right form (" + x.hint + "). Nothing was saved.");
+    save[x.k] = v;
+  }
+  if (!(await H.vCount("admaff", 100))) return jerr(429, "That is a lot of affiliate changes today. Try again tomorrow.");
+  const cur = await H.kvGet(env, H.AFF_IDS_KEY, null), next = {};
+  for (const p of H.AFF_PROGRAMS) if (cur && typeof cur === "object" && !Array.isArray(cur) && cur[p.id] && typeof cur[p.id] === "object") next[p.id] = cur[p.id];
+  next[id] = save;
+  await H.kvPut(env, H.AFF_IDS_KEY, next);
+  const ready = H.affReady(H.affIdsClean(next, env), prog);
+  if (!ready) {   /* incomplete IDs: the switch goes off too, so it stays off once the IDs are filled in again */
+    const on = await H.kvGet(env, H.AFF_KEY, null);
+    if (!on || on[id] !== false) { const o = on && typeof on === "object" && !Array.isArray(on) ? Object.assign({}, on) : {}; o[id] = false; await H.kvPut(env, H.AFF_KEY, o); }
+  }
+  await audit(c, { action: "aff-ids", id: id, ok: true });
+  const isOn = (await H.affLoad(env, true))[id] === true;
+  const msg = prog.name + " IDs saved. " + (!ready ? "They are not complete, so " + prog.name + " is off."
+    : isOn ? "Links use them within about 5 minutes." : "Press Turn on when you want " + prog.name + " links tagged.");
+  return jres({ ok: true, message: msg, programs: await affView(c) });
+}
+
 const GETS = { overview: apiOverview, members: apiMembers, member: apiMember, errors: apiErrors, searches: apiSearches, gifts: apiGifts, affiliates: apiAffiliates };
-const POSTS = { find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, gift: apiGiftAdd, "gift/remove": apiGiftRemove, affiliate: apiAffiliateSet };
+const POSTS = { find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, gift: apiGiftAdd, "gift/remove": apiGiftRemove, affiliate: apiAffiliateSet, "affiliate/ids": apiAffiliateIds };
 
 /* ---------- sign in / out ---------- */
 const capsDayOf = c => typeof c.H.capsDay === "function" ? c.H.capsDay() : "caps:" + utcDay(c.nowMs);
