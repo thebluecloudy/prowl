@@ -6,7 +6,8 @@ import { waitFor } from '../helpers/flockFixture.mjs';
 const finds = [
   { title: 'Haeger panther', price: '$45.00', url: 'https://www.ebay.com/itm/123456789012', image: 'https://i.ebayimg.com/a.jpg', src: 'ebay', hunt: 'panther', at: 3 },
   { title: 'Madballs lot', price: '$12.50', url: 'https://shopgoodwill.com/item/278987071', image: 'https://img.example/b.jpg', src: '', hunt: 'madballs', at: 2 },
-  { title: 'Etsy hen', price: '$30.00', url: 'https://www.etsy.com/listing/99/hen', image: 'https://img.example/c.jpg', src: 'etsy', hunt: 'hen', at: 1 },
+  { title: 'Etsy hen', price: '$30.00', url: 'https://www.etsy.com/listing/1234567890/hen', image: 'https://img.example/c.jpg', src: 'etsy', hunt: 'hen', at: 1 },
+  { title: 'Chairish lamp', price: '$80.00', url: 'https://www.chairish.com/product/123456/lamp', image: 'https://img.example/d.jpg', src: 'chairish', hunt: 'lamp', at: 0 },
 ];
 const EBAY_ITEM = { src: 'ebay', id: '123456789012', title: 'Haeger Black Panther TV Lamp', price: '$45.00', images: ['https://i.ebayimg.com/1.jpg', 'https://i.ebayimg.com/2.jpg', 'https://i.ebayimg.com/3.jpg'],
   description: '<p>Glossy <b>black</b> glaze</p><script>window.__pwned=1</script><img src=x onerror="window.__pwned=2"><p>No chips</p>',
@@ -114,10 +115,24 @@ test('if the details cannot load, the card photo and the way out stay', async ()
   await p.close();
 });
 
+test('v6.53: an Etsy card opens the popup with every photo and View on Etsy', async () => {
+  const ETSY = { src: 'etsy', id: '1234567890', title: 'Etsy hen, chalkware', price: '$30.00', images: ['https://i.etsystatic.com/1.jpg', 'https://i.etsystatic.com/2.jpg'],
+    description: 'Hand painted.<br>No chips.', condition: '', aspects: [{ n: 'Shop', v: 'OwlFinds' }, { n: 'Made', v: '1950s' }], url: 'https://www.etsy.com/listing/1234567890' };
+  const p = setup({ item: ETSY });
+  await openSaved(p);
+  assert.equal(tapBody(p, card(p, 'etsy.com')).defaultPrevented, true, 'the listing does not open');
+  assert.equal(p.$('#otp-sheetT').textContent, 'Etsy');
+  await waitFor(() => p.$$('#otp-sheetB .pp-gal img').length === 2);
+  assert.equal(p.$('#otp-sheetB .pp-asp dd').textContent, 'OwlFinds');
+  assert.match(p.$('#otp-sheetB .pp-go').textContent, /View on Etsy/);
+  assert.deepEqual(p.calls, ['https://www.etsy.com/listing/1234567890/hen']);
+  await p.close();
+});
+
 test('other marketplaces and modified clicks open the listing as before', async () => {
   const p = setup();
   await openSaved(p);
-  assert.equal(tapBody(p, card(p, 'etsy.com')).defaultPrevented, false);
+  assert.equal(tapBody(p, card(p, 'chairish.com')).defaultPrevented, false);
   assert.equal(tapBody(p, card(p, 'ebay.com'), { metaKey: true }).defaultPrevented, false);
   assert.equal(p.calls.length, 0);
   await p.close();

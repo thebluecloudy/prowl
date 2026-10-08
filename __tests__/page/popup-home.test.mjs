@@ -21,7 +21,8 @@ function setup(extra = {}) {
     const q = u.searchParams.get('q') || 'x';
     let list = [];
     if (u.pathname === '/ebay') list = [0, 1, 2].map((i) => ({ title: q + ' ebay ' + i, price: '$4' + i + '.00', url: 'https://www.ebay.com/itm/123456789' + i, image: 'https://i.ebayimg.com/t' + i + '.jpg', src: 'ebay' }));
-    if (u.pathname === '/etsy') list = [0, 1].map((i) => ({ title: q + ' etsy ' + i, price: '$2' + i + '.00', url: 'https://www.etsy.com/listing/55' + i + '/x', image: 'https://img.example/e' + i + '.jpg', src: 'etsy' }));
+    if (u.pathname === '/etsy') list = [0, 1].map((i) => ({ title: q + ' etsy ' + i, price: '$2' + i + '.00', url: 'https://www.etsy.com/listing/155000000' + i + '/x', image: 'https://img.example/e' + i + '.jpg', src: 'etsy' }));
+    if (u.pathname === '/chairish') list = [{ title: q + ' chairish', price: '$80.00', url: 'https://www.chairish.com/product/123456/x', image: 'https://img.example/c.jpg', src: 'chairish' }];
     if (u.pathname === '/') list = [{ title: q + ' sgw', price: '$9.00', url: 'https://shopgoodwill.com/item/27898707', image: 'https://img.example/g.jpg', src: '', bids: 3, time_left: '2d 4h' }];
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ items: list }), text: () => Promise.resolve('') });
   };
@@ -59,10 +60,20 @@ test('a ShopGoodwill result opens the popup and shows bids and time left before 
   await p.close();
 });
 
+test('v6.53: an Etsy result opens the popup too', async () => {
+  const p = setup();
+  const cell = await waitFor(() => homeCell(p, 'etsy.com'));
+  assert.equal(tap(p, cell).defaultPrevented, true);
+  assert.equal(p.$('#otp-sheetT').textContent, 'Etsy');
+  await waitFor(() => p.items.length);
+  assert.match(p.items[0], /^https:\/\/www\.etsy\.com\/listing\/155000000\d\/x$/);
+  await p.close();
+});
+
 test('other marketplaces and modifier clicks still go straight to the listing', async () => {
   const p = setup();
-  const etsy = await waitFor(() => homeCell(p, 'etsy.com'));
-  assert.equal(tap(p, etsy).defaultPrevented, false, 'Etsy has no popup');
+  const ch = await waitFor(() => homeCell(p, 'chairish.com'));
+  assert.equal(tap(p, ch).defaultPrevented, false, 'Chairish has no popup');
   assert.ok(!sheetOpen(p));
   const eb = homeCell(p, 'ebay.com/itm/');
   assert.equal(tap(p, eb, { ctrlKey: true }).defaultPrevented, false, 'ctrl-click opens a new tab as usual');
