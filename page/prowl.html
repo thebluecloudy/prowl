@@ -788,8 +788,8 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 .scout-app-wrapper .sgw-go{height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--ac);background:var(--ac);color:var(--onink);font-size:14px;font-weight:800}
 .scout-app-wrapper .sgw-go:hover{filter:brightness(.94)}
 .scout-app-wrapper .sgw-chip{min-height:40px;font-size:14px}
-.scout-app-wrapper .sgw-lk{color:var(--go);font-size:10px;line-height:1}
-.scout-app-wrapper .sgw-chip.on .sgw-lk{color:inherit}
+.scout-app-wrapper .sgw-lock{color:var(--go);font-size:10px;line-height:1}
+.scout-app-wrapper .sgw-chip.on .sgw-lock{color:inherit}
 .scout-app-wrapper .sgw-chip .sgw-x{width:22px;height:22px;font-size:15px}
 .scout-app-wrapper .sgw-x:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
 .scout-app-wrapper .sgw-sub{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:4px 15px 8px}
@@ -2388,7 +2388,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.57';
+var PROWL_VERSION='v6.58';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4856,7 +4856,7 @@ function rSGW(){
     if(few&&shown>=CHIP_FEW&&!on&&!NEWN[i]){hid++;continue}
     shown++;
     html+='<span class="sgw-chip'+(on?' on':'')+'" role="button" tabindex="0" aria-pressed="'+on+'" data-sgw="pick" data-i="'+i+'">'+
-      (x.hunt>-1?'<s class="sgw-lk" aria-hidden="true">◉</s>':'')+esc(x.t)+
+      (x.hunt>-1?'<s class="sgw-lock" aria-hidden="true">◉</s>':'')   /* v6.58: own class; .sgw-lk is the result-card heart since v6.54 */+esc(x.t)+
       (NEWN[i]?'<em class="sgw-new" aria-label="'+NEWN[i]+' new">'+(NEWN[i]>9?'9+':NEWN[i])+' new</em>':'')+
       '<span class="sgw-x" data-sgw="del" data-i="'+i+'" role="button" tabindex="0" aria-label="'+(x.hunt>-1?'Unlock ':'Remove ')+esc(x.t)+'">×</span></span>';
   }
