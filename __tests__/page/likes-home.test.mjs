@@ -8,7 +8,7 @@ const ls = (p, k) => JSON.parse(p.win.localStorage.getItem(k) || 'null');
 const homeCells = (p) => p.$$('.sgw-cell').filter((c) => !c.closest('#otp-flock') && !c.closest('#otp-sheet') && c.getAttribute('data-u'));
 async function home() {
   const f = liveFetch();
-  const p = loadPage({ fetchImpl: f.impl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'] }, beforeLoad: (w) => { w.Math.random = () => 0.5; } });
+  const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.v36': { hunts: [] }, owlTwigSgwTerms: ['panther', 'pyrex'] }, beforeLoad: (w) => { w.Math.random = () => 0.5; } });
   await waitFor(() => homeCells(p).length >= 3);
   return p;
 }
@@ -55,7 +55,7 @@ test('a like on a result shows on the same find in Flock, which keeps its one he
 test('a find liked earlier shows a filled heart in the results', async () => {
   const f = liveFetch();
   const like = { u: 'https://www.ebay.com/itm/panther-0', t: 'panther find ebay 0', p: '$10.00', s: 'ebay', i: '', h: 'panther', at: 1 };
-  const p = loadPage({ fetchImpl: f.impl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'], 'prowl.likes': [like] } });
+  const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.v36': { hunts: [] }, owlTwigSgwTerms: ['panther', 'pyrex'], 'prowl.likes': [like] } });
   await tick(50);
   const c = await waitFor(() => homeCells(p).find((x) => x.getAttribute('data-u') === like.u), { timeout: 6000 });
   assert.equal(c.querySelector('.sgw-lk').textContent, '♥');

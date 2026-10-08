@@ -1438,6 +1438,13 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
   .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .fl-x,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .fl-x,
   .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .sgw-sv,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .sgw-sv{opacity:1}
 }
+/* ---- v6.60: + Add to hunts, on a Flock card whose search is not in the Den ---- */
+.scout-app-wrapper #otp-flock .fl-addrow{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin:0 0 6px;min-height:30px}
+.scout-app-wrapper #otp-flock .fl-addrow .fl-near,.scout-app-wrapper #otp-flock .fl-addrow .fl-nd{flex:1 1 auto;min-width:0;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scout-app-wrapper #otp-flock .fl-nd{display:block;font-size:12.5px;font-weight:700;line-height:18px;color:var(--mu)}
+.scout-app-wrapper #otp-flock .fl-add{-webkit-appearance:none;appearance:none;flex:0 0 auto;min-height:30px;padding:4px 12px;border:1.5px solid var(--ac);border-radius:99px;background:transparent;color:var(--ac);font:inherit;font-size:13px;font-weight:800;line-height:1.2;white-space:nowrap;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.scout-app-wrapper #otp-flock .fl-add.on{border-color:var(--ln);color:var(--mu);cursor:default}
+.scout-app-wrapper #otp-flock .fl-add:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
 /* ---- v6.39: Flock next steps. Bottom sheet (centered on desktop), margin math, share, new since last visit ---- */
 .scout-app-wrapper .otp-sheet{top:auto;left:0;right:0;bottom:0;width:100%;max-width:560px;margin:0 auto;max-height:88vh;border-left:0;border-top:1px solid var(--ln);border-radius:18px 18px 0 0;transform:translateY(101%);box-shadow:0 -18px 50px -20px var(--shadow-lg)}
 .scout-app-wrapper .otp-sheet.on{transform:none}
@@ -2769,6 +2776,7 @@ function rQuick(){
 
 /* ---------- DEN: HUNTS ---------- */
 function rDenHunts(){
+  setTimeout(function(){try{flockHunts()}catch(e){}},0);   /* v6.60: Flock follows the whole Den */
   $('#otp-denList').innerHTML=st.hunts.map(function(x,i){
     var s=st.sel.has(i),f=st.lock.has(i);
     return '<li class="term'+(s?' on':'')+'">'+
@@ -4982,9 +4990,21 @@ function liveFetch(t){if(!t)return;sgwFetch(t);for(var i=0;i<LIVE_SRC.length;i++
    shows starred finds, and a swipe right (or the ✕) discards a find for good: its URL goes into
    prowl.discarded (500 kept, oldest dropped) and every later render skips it. Picks stay put until
    Shuffle, so finds arriving in the background never move the card you are looking at. */
-var FLOCK={order:[],started:false,pend:0,tm:null,asked:Object.create(null),view:'feed',picks:Object.create(null),sup:false,last:null,prev:'prowl'};
+var FLOCK={order:[],started:false,pend:0,tm:null,asked:Object.create(null),view:'feed',picks:Object.create(null),sup:false,last:null,prev:'prowl',nearDis:Object.create(null),nearNo:Object.create(null)};
 /* v6.52: an endless feed. FLOCK_CARDS is the batch size; FLOCK_SRCS marketplaces per hunt are fetched at a time */
 var FLOCK_SRCS=3,FLOCK_CARDS=10,FLOCK_ALL=1000,FLOCK_NEAR_EVERY=4;
+/* v6.60: Flock follows the whole Den (every hunt, locked or not), so a round of fetching is capped and goes breadth-first:
+   one marketplace for every hunt and near search before a second for any. Near searches: at most FLOCK_NEAR_MAX. */
+var FLOCK_WARM_MAX=24,FLOCK_TERMS_MAX=40,FLOCK_NEAR_MAX=4;
+/* every hunt in the Den, locked or not, then the panel's extra terms; what Flock takes turns across */
+function flockTerms(){
+  var out=[],seen=Object.create(null),i;
+  function add(v){var t=sgwClean(v),k=t.toLowerCase();if(t&&!seen[k]&&out.length<FLOCK_TERMS_MAX){seen[k]=1;out.push(t)}}
+  for(i=0;i<st.hunts.length;i++)add(st.hunts[i]);
+  for(i=0;i<sgw.terms.length;i++)add(sgw.terms[i].t);
+  return out;
+}
+function flInDen(t){return !!t&&huntIndex(t)>-1}
 var DIS_KEY='prowl.discarded',DIS_MAX=500,DIS=null;
 function disGet(){
   if(DIS)return DIS;
@@ -5039,15 +5059,25 @@ function flockPick(t,n,dm){
 function flUnseen(p){return FLOCK.sm&&!FLOCK.sm[p.it.url]?1:0}
 /* v6.52: searches "near" your likes: the words you liked most (two likes at least), a pair when two of them keep turning
    up together. likeLearned already leaves out muted words and your hunts' own words. They are only searched for the
-   feed: they are never hunts and never reach Prowl Alerts. */
+   feed: they are never hunts and never reach Prowl Alerts (v6.60: unless you press + Add to hunts on one of its cards).
+   v6.60: a like searches straight away: the two strongest words of each of your two newest likes lead. Words you keep
+   swiping away (twice or more, more often than liked) never start a search, and a near search whose finds you swipe
+   away twice, with none liked, is dropped for this visit. */
 function flNearTerms(){
-  var M=likeModel();if(M.n<2)return [];
-  var top=likeLearned(M).filter(function(w){return w[1]>=2}).map(function(w){return w[0]}).slice(0,3),out=[],used=Object.create(null),L=likesGet(),i,j;
-  function both(a,b){var n=0,k,ws;for(k=0;k<L.length;k++){ws=likeWords(L[k].t);if(ws.indexOf(a)>-1&&ws.indexOf(b)>-1)n++}return n}
-  for(i=0;i<top.length;i++){
-    if(used[i])continue;used[i]=1;
-    for(j=i+1;j<top.length;j++)if(!used[j]&&both(top[i],top[j])>=2){used[j]=1;break}
-    out.push(j<top.length?top[i]+' '+top[j]:top[i]);
+  var M=likeModel();if(!M.n)return [];
+  var L=likesGet(),out=[],have=Object.create(null),hunts=Object.create(null),i,j,ws;
+  flockTerms().forEach(function(t){hunts[t.toLowerCase()]=1});
+  function bad(w){var d=M.d[w]||0;return d>=2&&d>(M.w[w]||0)}
+  function add(t){var k=t.toLowerCase();if(!t||have[k]||hunts[k]||FLOCK.nearNo[k]||out.length>=FLOCK_NEAR_MAX)return;have[k]=1;out.push(t)}
+  for(i=0;i<L.length&&i<2;i++){ws=likeWords(L[i].t).filter(function(w){return M.w[w]&&!bad(w)});if(ws.length)add(ws.slice(0,2).join(' '))}
+  if(M.n>=2){
+    var top=likeLearned(M).filter(function(w){return w[1]>=2&&!bad(w[0])}).map(function(w){return w[0]}).slice(0,3),used=Object.create(null);
+    var both=function(a,b){var n=0,k,x;for(k=0;k<L.length;k++){x=likeWords(L[k].t);if(x.indexOf(a)>-1&&x.indexOf(b)>-1)n++}return n};
+    for(i=0;i<top.length;i++){
+      if(used[i])continue;used[i]=1;
+      for(j=i+1;j<top.length;j++)if(!used[j]&&both(top[i],top[j])>=2){used[j]=1;break}
+      add(j<top.length?top[i]+' '+top[j]:top[i]);
+    }
   }
   return out;
 }
@@ -5139,7 +5169,11 @@ function flockCardHtml(c){
   h=h.replace(/<button type="button" class="sgw-lk[^"]*"[^>]*>[^<]*<\/button>/,'');   /* v6.54: Flock has its own heart */
   if(FP&&FP[u])h=h.replace(fpHtml(FP[u]),'');   /* v6.38: a verdict already in hand stays out too */
   h=h.replace('<div class="sgw-cell"','<div class="sgw-cell fl-card" role="article" aria-label="'+esc(it.title)+'"'+(h.indexOf(' data-h="')<0?' data-h="'+esc(c.t||'')+'"':'')+(h.indexOf(' data-u="')<0?' data-u="'+esc(u)+'"':''));
-  if(c.near)h=h.replace('<a class="sgw-card"','<span class="fl-near">Because you liked '+esc(c.t)+'</span><a class="sgw-card"');   /* v6.52 */
+  /* v6.52 near cards; v6.60: a card whose search is not in the Den gets + Add to hunts */
+  var lab=c.near?'<span class="fl-near">Because you liked '+esc(c.t)+'</span>':'',add=c.t&&!flInDen(c.t)?flAddBtn(c.t):'';
+  if(add)h=h.replace('<a class="sgw-card"','<div class="fl-addrow">'+(lab||'<span class="fl-nd">Not in your hunts yet</span>')+add+'</div><a class="sgw-card"');
+  else if(lab)h=h.replace('<a class="sgw-card"',lab+'<a class="sgw-card"');
+  if(c.near)h=h.replace('<div class="sgw-cell fl-card"','<div class="sgw-cell fl-card" data-near="1"');
   var lk=likeHas(u);   /* v6.47 */
   h=h.replace('<div class="sgw-p">','<div class="sgw-p" data-act="margin" role="button" aria-label="What you would clear reselling at '+esc(it.price||'')+'">');
   if(c.isNew)h=h.replace('<div class="sgw-t">','<div class="sgw-t"><span class="fl-newb">New</span>');   /* v6.39 */
@@ -5152,6 +5186,35 @@ function flockCardHtml(c){
     '<button type="button" class="fl-sh" aria-label="Share this find" title="Share"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"></path><path d="M7 8l5-5 5 5"></path><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg></button>');
 }
 function flNote(cls,html){return '<div class="fl-note '+cls+'">'+html+'</div>'}
+/* v6.60: + Add to hunts puts a card's search in the Den (not locked), and Flock keeps going without starting over */
+function flAddBtn(t){return '<button type="button" class="fl-add" data-t="'+esc(t)+'" aria-label="Add '+esc(t)+' to your hunts">+ Add to hunts</button>'}
+function flAddHunt(b){
+  var t=sgwClean(b&&b.getAttribute('data-t')),k=t.toLowerCase(),i,had=flInDen(t);if(!t)return;
+  if(!had)st.hunts.push(t);
+  for(i=0;i<FLOCK.order.length;i++)if(FLOCK.order[i].toLowerCase()===k)break;
+  if(i>=FLOCK.order.length)FLOCK.order.push(t);
+  FLOCK.key=flTermsKey();FLOCK.near=null;LMODEL=null;   /* first, so the Den's redraw does not start the feed over */
+  if(!had){save();rDenHunts();try{rQuick()}catch(e){}}
+  $$('#otp-flockRow .fl-add').forEach(function(x){
+    if((x.getAttribute('data-t')||'').toLowerCase()!==k)return;
+    x.classList.add('on');x.disabled=true;x.textContent='\u2713 In your hunts';x.setAttribute('aria-label',t+' is in your hunts');
+  });
+  toast(had?'<b>'+esc(t)+'</b> is already in your hunts.':'Added <b>'+esc(t)+'</b> to your hunts in the Den. Lock it there (\u25c9) to get it in your daily email too.',had?2400:4600);
+}
+/* v6.60: a like goes looking for more like it now; a swipe-away steers off and looks elsewhere */
+function flAfterLike(card){
+  var u=card&&card.getAttribute('data-u');if(!u||!likeHas(u)||!FLOCK.started)return;
+  FLOCK.near=null;flockWarm();flockRenderSoon();
+}
+function flAfterDiscard(card){
+  if(!card||!FLOCK.started)return;
+  var t=card.getAttribute('data-h')||'',k=t.toLowerCase();
+  if(card.getAttribute('data-near')==='1'&&k){
+    FLOCK.nearDis[k]=(FLOCK.nearDis[k]||0)+1;
+    if(FLOCK.nearDis[k]>=2&&!likesGet().some(function(l){return (l.h||'').toLowerCase()===k}))FLOCK.nearNo[k]=1;
+  }
+  FLOCK.near=null;flockWarm();
+}
 function flSavedHtml(dm){
   var a=findsGet().filter(function(f){return !dm[f.url]}),w=watchGet().filter(function(x){return !dm[x.u]}),h='',i,f;
   a.sort(function(x,y){return (y.at||0)-(x.at||0)});
@@ -5177,7 +5240,7 @@ function flockRender(top){
   var sec=$('#otp-flock'),row=$('#otp-flockRow');if(!sec||!row)return;
   var dm=disMap(),h='',i,cards,y=row.scrollTop,anchor=top?'':flAnchor(row);
   if(FLOCK.view==='saved')h=flSavedHtml(dm);
-  else if(sgw.terms.length<2)h=flNote('fl-empty','<p>Add two hunts and the flock takes flight.</p><button type="button" class="gh" data-fl="home">Back to Prowl</button>');
+  else if(!flockTerms().length)h=flNote('fl-empty','<p>Add a hunt in the Den and the flock takes flight.</p><button type="button" class="gh" data-fl="home">Back to Prowl</button>');   /* v6.60 */
   else{
     cards=flockList(dm);
     if(!cards.length)h=(FLOCK.pend>0||!flAllAsked())?flNote('fl-empty','<p>Looking across your hunts…</p>'):flNote('fl-empty','<p>Nothing in the flock right now.</p><button type="button" class="gh" data-fl="shuffle">Look again</button>');
@@ -5209,13 +5272,22 @@ function flockRenderSoon(){clearTimeout(FLOCK.tm);FLOCK.tm=setTimeout(function()
 function flTop(now){var row=$('#otp-flockRow');if(!row)return;try{row.scrollTo({top:0,behavior:(now||flReduced())?'auto':'smooth'})}catch(e){row.scrollTop=0}}
 /* fetch a few random hunt+source pairs we have nothing for yet, 250ms apart */
 function flockWarm(){
-  /* v6.52: every hunt and every near search, FLOCK_SRCS more marketplaces each time it is called */
-  var hunts=FLOCK.order.concat(FLOCK.near||flNearTerms()),S=flockSrcs(),i,j,t,k,srcs,n,jobs=[];
-  for(i=0;i<hunts.length;i++){
-    t=hunts[i];k=t.toLowerCase();srcs=flockMix(S);n=0;
-    for(j=0;j<srcs.length&&n<FLOCK_SRCS;j++){
-      if(flockCache(srcs[j],k)||FLOCK.asked[srcs[j]+'|'+k])continue;
-      FLOCK.asked[srcs[j]+'|'+k]=1;jobs.push([srcs[j],t]);n++;
+  /* v6.52: every hunt and every near search, FLOCK_SRCS more marketplaces each time it is called.
+     v6.60: near searches first (a like asks for one now), then hunts nothing has been fetched for yet, then the rest;
+     breadth-first (one marketplace each before a second) and at most FLOCK_WARM_MAX searches a round */
+  var near=FLOCK.near||flNearTerms(),S=flockSrcs(),fresh=[],rest=[],T,i,j,p,t,k,srcs,took=Object.create(null),jobs=[];
+  function some(k){for(var x=0;x<S.length;x++)if(flockCache(S[x],k)||FLOCK.asked[S[x]+'|'+k])return true;return false}
+  for(i=0;i<FLOCK.order.length;i++)(some(FLOCK.order[i].toLowerCase())?rest:fresh).push(FLOCK.order[i]);
+  T=near.concat(fresh,rest);
+  for(i=0;i<T.length;i++)took[i]=0;
+  for(p=0;p<FLOCK_SRCS&&jobs.length<FLOCK_WARM_MAX;p++){
+    for(i=0;i<T.length&&jobs.length<FLOCK_WARM_MAX;i++){
+      if(took[i]>p)continue;
+      t=T[i];k=t.toLowerCase();srcs=flockMix(S);
+      for(j=0;j<srcs.length;j++){
+        if(flockCache(srcs[j],k)||FLOCK.asked[srcs[j]+'|'+k])continue;
+        FLOCK.asked[srcs[j]+'|'+k]=1;jobs.push([srcs[j],t]);took[i]++;break;
+      }
     }
   }
   for(i=0;i<jobs.length;i++){
@@ -5228,20 +5300,21 @@ function flockWarm(){
     })(jobs[i],i*250);
   }
 }
-function flTermsKey(){return sgw.terms.map(function(x){return x.t.toLowerCase()}).sort().join('\n')}
+function flTermsKey(){return flockTerms().map(function(t){return t.toLowerCase()}).sort().join('\n')}   /* v6.60: the whole Den */
 /* shuffle the hunts into a fresh order and start over from the top */
 function flockStart(){
   FLOCK.picks=Object.create(null);FLOCK.shown=[];FLOCK.limit=FLOCK_CARDS;FLOCK.reach=0;FLOCK.at=0;FLOCK.near=null;   /* v6.52 */
-  if(sgw.terms.length<2){FLOCK.started=false;FLOCK.order=[];flockRender(true);return}
+  var T=flockTerms();   /* v6.60: every Den hunt, locked or not; one is enough */
+  if(!T.length){FLOCK.started=false;FLOCK.order=[];flockRender(true);return}
   FLOCK.started=true;FLOCK.key=flTermsKey();FLOCK.lv=LIKE_VER;   /* v6.47: picks made with these likes */
-  FLOCK.order=flockMix(sgw.terms.map(function(x){return x.t}));
+  FLOCK.order=flockMix(T);
   flockRender(true);
   flockWarm();
 }
 /* the hunts changed while Flock is open (or since it was last open): start over only then */
 function flockHunts(){
   if(!flockOpen())return;
-  if(!FLOCK.started||FLOCK.key!==flTermsKey()){if(FLOCK.view==='feed')flockStart();else{FLOCK.started=false;flockRender()}}
+  if(!FLOCK.started||FLOCK.key!==flTermsKey()){LMODEL=null;if(FLOCK.view==='feed')flockStart();else{FLOCK.started=false;flockRender()}}
 }
 function flSeg(){
   if(FLOCK.view!=='feed'&&typeof flyStop==='function')flyStop();   /* v6.56: Fly is for the feed */
@@ -5285,6 +5358,7 @@ function flDiscard(card){
   var i=findIdx(u),was=null,a;
   if(i>-1){a=findsGet();was=a[i];a.splice(i,1);findsPut(a);svPaint(u)}
   disAdd(u);disTAdd(u,card.getAttribute('data-t')||card.getAttribute('aria-label')||'');   /* v6.47: swipe-aways teach Flock too */
+  flAfterDiscard(card);   /* v6.60 */
   FLOCK.last={u:u,f:was,w:watchDrop(u),l:likeDrop(u)};
   if(card.parentNode)card.parentNode.removeChild(card);
   var row=$('#otp-flockRow');if(row&&!row.querySelector('.fl-card'))flockRender();
@@ -5495,7 +5569,7 @@ function likeModel(){
   if(LMODEL)return LMODEL;
   var L=likesGet(),mute=muteGet(),M={n:L.length,w:Object.create(null),d:Object.create(null),nd:0,src:Object.create(null),hunt:Object.create(null),lo:0,hi:0},ps=[],D,i,j,ws,pp,med;
   /* a hunt's own words are in every find for it, so they teach nothing: leave them out */
-  var hw=Object.create(null);(sgw&&sgw.terms||[]).forEach(function(x){likeWords(x.t).forEach(function(w){hw[w]=1})});
+  var hw=Object.create(null);flockTerms().forEach(function(t){likeWords(t).forEach(function(w){hw[w]=1})});   /* v6.60: the whole Den */
   for(i=0;i<L.length;i++){
     ws=likeWords(L[i].t);for(j=0;j<ws.length;j++)if(mute.indexOf(ws[j])<0&&!hw[ws[j]])M.w[ws[j]]=(M.w[ws[j]]||0)+1;
     if(L[i].s)M.src[L[i].s]=(M.src[L[i].s]||0)+1;
@@ -6268,7 +6342,7 @@ var aiB=$('#otp-aiBtn');if(aiB)aiB.addEventListener('click',aiToggle);
 rAiRow();
 var gF=$('#otp-guideF');if(gF)gF.addEventListener('submit',function(e){e.preventDefault();gdMake(($('#otp-guideQ')||{}).value)});   /* v6.19 */
 var gS=$('#otp-guide');if(gS){gS.addEventListener('click',gdClick);gdMineRender()}
-var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function(){flyStop();if(sgw.terms.length>=2)flShuffle()});   /* v6.18, v6.38 */
+var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function(){flyStop();if(flockTerms().length)flShuffle()});   /* v6.18, v6.38; v6.60: any Den hunt */
 /* v6.56: Fly. The feed moves on to the next find every 4 seconds until you stop it: Fly again (now Stop), any touch,
    wheel or key on the feed, opening a listing, leaving Flock or Feed, a hidden tab, or the end of the feed. */
 var FLY={t:0,btn:null,sp:null},FLY_SPEEDS=[2,3,4,6,8,10];
@@ -6328,7 +6402,8 @@ function flyStep(){
     if((x=t.closest('.fl-x'))){e.preventDefault();flDiscard(x.closest('.fl-card'));return}
     if((x=t.closest('[data-act="margin"]'))){e.preventDefault();e.stopPropagation();flMargin(x.closest('.fl-card'));return}   /* v6.39 */
     if((x=t.closest('.fl-sh'))){e.preventDefault();flShare(x.closest('.fl-card'));return}
-    if((x=t.closest('.fl-lk'))){e.preventDefault();likeToggle(x.closest('.fl-card'));return}   /* v6.47 */
+    if((x=t.closest('.fl-lk'))){e.preventDefault();likeToggle(x.closest('.fl-card'));flAfterLike(x.closest('.fl-card'));return}   /* v6.47; v6.60 */
+    if((x=t.closest('.fl-add'))){e.preventDefault();if(!x.disabled)flAddHunt(x);return}   /* v6.60 */
     /* v6.43: a plain tap on the photo or title opens the popup for eBay, ShopGoodwill and Salvation Army */
     if(!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey&&e.button!==1&&(x=t.closest('.fl-card .sgw-card'))&&popOpen(x.closest('.fl-card'))){e.preventDefault();return}
     if((x=t.closest('[data-fl]'))){

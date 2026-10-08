@@ -7,7 +7,7 @@ import { liveFetch, waitFor } from '../helpers/flockFixture.mjs';
 
 async function flock(storage = {}) {
   const f = liveFetch(), asked = [];
-  const p = loadPage({ fetchImpl: f.impl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'], 'prowl.v36': { seen: true }, ...storage }, beforeLoad: (w) => {
+  const p = loadPage({ fetchImpl: f.impl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'], 'prowl.v36': { seen: true, hunts: [] }, ...storage }, beforeLoad: (w) => {
     w.Math.random = () => 0.5;
     const si = w.setInterval.bind(w);
     // Fly's step runs every 60ms here; the interval it asked for is recorded

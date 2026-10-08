@@ -26,7 +26,7 @@ function setup(extra = {}) {
     if (u.pathname === '/') list = [{ title: q + ' sgw', price: '$9.00', url: 'https://shopgoodwill.com/item/27898707', image: 'https://img.example/g.jpg', src: '', bids: 3, time_left: '2d 4h' }];
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ items: list }), text: () => Promise.resolve('') });
   };
-  const p = loadPage({ fetchImpl, storage: { owlTwigSgwTerms: ['panther', 'hull pottery'], ...extra } });
+  const p = loadPage({ fetchImpl, storage: { 'prowl.v36': { hunts: [] }, owlTwigSgwTerms: ['panther', 'hull pottery'], ...extra } });
   p.items = items;
   return p;
 }

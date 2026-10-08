@@ -13,7 +13,7 @@ function setup() {
     if (u.pathname === '/item') return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(ITEM) });
     return base.impl(url, o);
   };
-  return loadPage({ fetchImpl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'], 'prowl.finds': finds, 'prowl.v36': { seen: true } } });
+  return loadPage({ fetchImpl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'], 'prowl.finds': finds, 'prowl.v36': { seen: true, hunts: [] } } });
 }
 const sheetOn = (p) => p.$('#otp-sheet').classList.contains('on');
 const flockOn = (p) => p.$('#otp-flock').classList.contains('as-feed');

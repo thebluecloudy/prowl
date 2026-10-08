@@ -8,7 +8,7 @@ import { liveFetch, waitFor } from '../helpers/flockFixture.mjs';
 const NAMES = { 'shopgoodwill.com': 'ShopGoodwill', 'www.ebay.com': 'eBay', 'www.etsy.com': 'Etsy', 'www.chairish.com': 'Chairish', 'www.poshmark.com': 'Poshmark' };
 async function flock(opts) {
   const f = liveFetch(opts);
-  const p = loadPage({ fetchImpl: f.impl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'] }, beforeLoad: (w) => { w.Math.random = () => 0.5; } });
+  const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.v36': { hunts: [] }, owlTwigSgwTerms: ['panther', 'pyrex'] }, beforeLoad: (w) => { w.Math.random = () => 0.5; } });
   await tick(60);
   p.$('#otp-dock .db[data-m="flock"]').click();
   await waitFor(() => p.$$('#otp-flockRow .fl-card').length >= 4);

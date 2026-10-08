@@ -7,7 +7,7 @@ import { liveFetch, waitFor } from '../helpers/flockFixture.mjs';
 // the 4-second step runs every 60ms here
 async function flock(opts) {
   const f = liveFetch(opts);
-  const p = loadPage({ fetchImpl: f.impl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'], 'prowl.v36': { seen: true } }, beforeLoad: (w) => {
+  const p = loadPage({ fetchImpl: f.impl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'], 'prowl.v36': { seen: true, hunts: [] } }, beforeLoad: (w) => {
     w.Math.random = () => 0.5;
     const si = w.setInterval.bind(w);
     w.setInterval = (fn, ms, ...a) => si(fn, ms === 4000 ? 60 : ms, ...a);
