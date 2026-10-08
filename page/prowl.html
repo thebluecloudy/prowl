@@ -1415,6 +1415,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 .scout-app-wrapper .fl-newb{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:99px;background:var(--ac);color:var(--onink);font-size:11px;font-weight:800;letter-spacing:.04em;line-height:18px;vertical-align:2px}
 .scout-app-wrapper #otp-flock.as-feed .fl-new,.scout-app-wrapper #otp-flock.as-feed .fl-group{max-width:520px;margin:0 auto;padding:12px 18px 4px;font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--mu)}
 .scout-app-wrapper #otp-flock.as-feed .fl-card .fl-new{flex:0 0 auto;margin:0;padding:0 2px 8px;line-height:20px;color:var(--ac)}
+.scout-app-wrapper #otp-flock .fl-near{display:block;flex:0 0 auto;margin:0 0 6px;font-size:12.5px;font-weight:700;line-height:18px;color:var(--ac)}
 .scout-app-wrapper #otp-flock.as-feed .fl-first-new .sgw-p,.scout-app-wrapper #otp-flock.as-feed .fl-first-new .fl-x{top:52px}
 @media(min-width:1024px){
   .scout-app-wrapper #otp-flock.as-feed .fl-sh{right:60px;bottom:62px}
@@ -2367,7 +2368,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.51';
+var PROWL_VERSION='v6.52';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4897,7 +4898,8 @@ function liveFetch(t){if(!t)return;sgwFetch(t);for(var i=0;i<LIVE_SRC.length;i++
    prowl.discarded (500 kept, oldest dropped) and every later render skips it. Picks stay put until
    Shuffle, so finds arriving in the background never move the card you are looking at. */
 var FLOCK={order:[],started:false,pend:0,tm:null,asked:Object.create(null),view:'feed',picks:Object.create(null),sup:false,last:null,prev:'prowl'};
-var FLOCK_HUNTS=5,FLOCK_SRCS=3,FLOCK_CARDS=10;
+/* v6.52: an endless feed. FLOCK_CARDS is the batch size; FLOCK_SRCS marketplaces per hunt are fetched at a time */
+var FLOCK_SRCS=3,FLOCK_CARDS=10,FLOCK_ALL=1000,FLOCK_NEAR_EVERY=4;
 var DIS_KEY='prowl.discarded',DIS_MAX=500,DIS=null;
 function disGet(){
   if(DIS)return DIS;
@@ -4932,7 +4934,7 @@ function flockPick(t,n,dm){
       /* v6.47: with likes, the finds that look most like them come first (photos still before none); about 1 slot in 4
          takes a random find instead, so the feed keeps surprising you */
       for(i=0;i<pool.length;i++)pool[i].sc=likeScore(pool[i].it,M);
-      pool.sort(function(a,b){return ((b.it.image?1:0)-(a.it.image?1:0))||(b.sc-a.sc)});
+      pool.sort(function(a,b){return (flUnseen(b)-flUnseen(a))||((b.it.image?1:0)-(a.it.image?1:0))||(b.sc-a.sc)});
       var rest=pool.filter(function(x){return !have[x.it.url]}),imgs,k;
       while(out.length<n&&rest.length){
         imgs=0;for(i=0;i<rest.length;i++)if(rest[i].it.image)imgs++;
@@ -4940,7 +4942,7 @@ function flockPick(t,n,dm){
         p=rest.splice(k,1)[0];have[p.it.url]=1;out.push(p);
       }
     }else{
-      pool.sort(function(a,b){return (b.it.image?1:0)-(a.it.image?1:0)});
+      pool.sort(function(a,b){return (flUnseen(b)-flUnseen(a))||((b.it.image?1:0)-(a.it.image?1:0))});
       for(i=0;i<pool.length&&out.length<n;i++){p=pool[i];if(!have[p.it.url]&&!used[p.src]){used[p.src]=1;have[p.it.url]=1;out.push(p)} }
       for(i=0;i<pool.length&&out.length<n;i++){p=pool[i];if(!have[p.it.url]){have[p.it.url]=1;out.push(p)} }
     }
@@ -4948,25 +4950,110 @@ function flockPick(t,n,dm){
   FLOCK.picks[k]=out;
   return out.map(function(x){return x.it});
 }
-function flockCards(dm){
-  var rounds=[[],[],[]],i,h,got,cards=[],M=likeModel(),hot=Object.create(null),hs;
-  /* v6.47: the two hunts with the most likes get a third card, and their extra finds come before other hunts' second */
-  if(M.n){hs=FLOCK.order.filter(function(x){return M.hunt[x.toLowerCase()]}).sort(function(a,b){return M.hunt[b.toLowerCase()]-M.hunt[a.toLowerCase()]});for(i=0;i<hs.length&&i<2;i++)hot[hs[i]]=1}
-  for(i=0;i<FLOCK.order.length;i++){
-    h=FLOCK.order[i];got=flockPick(h,hot[h]?3:2,dm);if(got[0])rounds[0].push({t:h,it:got[0]});
-    if(hot[h]){if(got[1])rounds[1].push({t:h,it:got[1]});if(got[2])rounds[1].push({t:h,it:got[2]})}
-    else if(got[1])rounds[2].push({t:h,it:got[1]});
+/* v6.52: finds you have not seen come first (FLOCK.sm is set for each pass of flockCards) */
+function flUnseen(p){return FLOCK.sm&&!FLOCK.sm[p.it.url]?1:0}
+/* v6.52: searches "near" your likes: the words you liked most (two likes at least), a pair when two of them keep turning
+   up together. likeLearned already leaves out muted words and your hunts' own words. They are only searched for the
+   feed: they are never hunts and never reach Prowl Alerts. */
+function flNearTerms(){
+  var M=likeModel();if(M.n<2)return [];
+  var top=likeLearned(M).filter(function(w){return w[1]>=2}).map(function(w){return w[0]}).slice(0,3),out=[],used=Object.create(null),L=likesGet(),i,j;
+  function both(a,b){var n=0,k,ws;for(k=0;k<L.length;k++){ws=likeWords(L[k].t);if(ws.indexOf(a)>-1&&ws.indexOf(b)>-1)n++}return n}
+  for(i=0;i<top.length;i++){
+    if(used[i])continue;used[i]=1;
+    for(j=i+1;j<top.length;j++)if(!used[j]&&both(top[i],top[j])>=2){used[j]=1;break}
+    out.push(j<top.length?top[i]+' '+top[j]:top[i]);
   }
-  /* one from every hunt first, then second finds, so the feed covers the Den before it repeats a hunt */
-  var all=rounds[0].concat(rounds[1],rounds[2]);
-  for(i=0;i<all.length&&cards.length<FLOCK_CARDS;i++)cards.push(all[i]);
+  return out;
+}
+/* every find the feed could show, in order: one from every hunt per round (two from the two most-liked hunts), and a
+   find near your likes as every 4th card. Each hunt's picks are made once and kept until Shuffle, so finds that arrive
+   later go to the back instead of moving what you have seen. */
+function flockCards(dm){
+  var M=likeModel(),hot=Object.create(null),hs,i,j,r,h,it,per,more,L=Object.create(null),near=flNearTerms(),NL,main=[],nq=[],cards=[],seen=Object.create(null);
+  FLOCK.sm=flSeenMap();FLOCK.near=near;
+  if(M.n){hs=FLOCK.order.filter(function(x){return M.hunt[x.toLowerCase()]}).sort(function(a,b){return M.hunt[b.toLowerCase()]-M.hunt[a.toLowerCase()]});for(i=0;i<hs.length&&i<2;i++)hot[hs[i]]=1}
+  for(i=0;i<FLOCK.order.length;i++){h=FLOCK.order[i];L[h]=flockPick(h,FLOCK_ALL,dm)}
+  for(r=0;;r++){
+    more=false;
+    for(i=0;i<FLOCK.order.length;i++){
+      h=FLOCK.order[i];per=hot[h]?2:1;
+      for(j=0;j<per;j++){it=L[h][r*per+j];if(it){more=true;if(!seen[it.url]){seen[it.url]=1;main.push({t:h,it:it})}}}
+    }
+    if(!more)break;
+  }
+  NL=near.map(function(t){return flockPick(t,FLOCK_ALL,dm)});
+  for(r=0;;r++){
+    more=false;
+    for(i=0;i<near.length;i++){it=NL[i][r];if(it){more=true;if(!seen[it.url]){seen[it.url]=1;nq.push({t:near[i],it:it,near:true})}}}
+    if(!more)break;
+  }
+  i=0;j=0;
+  while(i<main.length||j<nq.length){
+    if(j<nq.length&&(i>=main.length||(cards.length+1)%FLOCK_NEAR_EVERY===0))cards.push(nq[j++]);
+    else cards.push(main[i++]);
+  }
   return cards;
+}
+/* the same, with the cards you have reached (and the next one) kept where they are; the batch below them may still
+   reorder as other hunts' finds arrive, so a slow marketplace still gets mixed in */
+function flPinned(){return (FLOCK.shown||[]).slice(0,(FLOCK.reach||0)+2)}
+function flockList(dm){
+  var all=flockCards(dm),by=Object.create(null),out=[],sh=flPinned(),i,u;
+  for(i=0;i<all.length;i++)by[all[i].it.url]=all[i];
+  for(i=0;i<sh.length;i++){u=sh[i];if(by[u]){out.push(by[u]);by[u]=null}}
+  for(i=0;i<all.length;i++){u=all[i].it.url;if(by[u]){out.push(by[u]);by[u]=null}}
+  return out;
+}
+/* every hunt and near search has been asked of every marketplace */
+function flAllAsked(){
+  var T=FLOCK.order.concat(FLOCK.near||[]),S=flockSrcs(),i,j,k;
+  for(i=0;i<T.length;i++){k=T[i].toLowerCase();for(j=0;j<S.length;j++)if(!flockCache(S[j],k)&&!FLOCK.asked[S[j]+'|'+k])return false}
+  return true;
+}
+/* cards, with the "New since your last visit" divider at the first new one unless the feed has it already */
+function flCardsHtml(cards,div){
+  var sm=flSeenMap(),h='',i;
+  for(i=0;i<cards.length;i++){
+    cards[i].isNew=!!sm&&!sm[cards[i].it.url];
+    /* the divider rides at the top of the first new card: a separate row between snap cards would never be seen */
+    if(cards[i].isNew&&!div){div=true;h+=flockCardHtml(cards[i]).replace(/^<div class="sgw-cell fl-card/,'<div class="sgw-cell fl-card fl-first-new').replace(/(<div class="sgw-cell fl-card[^>]*>)/,'$1<div class="fl-new" role="separator">New since your last visit</div>');continue}
+    h+=flockCardHtml(cards[i]);
+  }
+  return h;
+}
+function flEndHtml(more){
+  if(more||FLOCK.pend>0||!flAllAsked())return flNote('fl-end fl-more','<p>Looking for more…</p>');
+  return flNote('fl-end','<p>That’s the flock.</p><button type="button" class="gh" data-fl="shuffle">Fresh look</button>');
+}
+/* near the end of what is on screen: add the next cards below (nothing above moves, so it is safe mid-scroll), and
+   ask more marketplaces when the finds in hand are running out */
+function flFeed(){
+  if(FLOCK.view!=='feed'||!flockOpen()||!FLOCK.started)return;
+  var row=$('#otp-flockRow'),grid=row&&row.querySelector('.sgw-grid'),n=(FLOCK.shown||[]).length,at=flWide()?n:(FLOCK.at||0);
+  if(!grid||!n)return;
+  var dm=disMap(),inS=Object.create(null),i,add,end,tmp,rest;
+  for(i=0;i<FLOCK.shown.length;i++)inS[FLOCK.shown[i]]=1;
+  rest=flockList(dm).filter(function(c){return !inS[c.it.url]});
+  if(n-at<=3){
+    end=grid.querySelector('.fl-end');
+    add=rest.slice(0,FLOCK_CARDS);
+    if(add.length){
+      tmp=document.createElement('div');tmp.innerHTML=flCardsHtml(add,!!grid.querySelector('.fl-new'));
+      while(tmp.firstChild)grid.insertBefore(tmp.firstChild,end||null);
+      FLOCK.shown=FLOCK.shown.concat(add.map(function(c){return c.it.url}));FLOCK.limit=FLOCK.shown.length;
+    }
+    if(end){tmp=document.createElement('div');tmp.innerHTML=flEndHtml(rest.length>add.length);grid.replaceChild(tmp.firstChild,end)}
+  }
+  /* fewer than a batch of finds left below you: ask the next marketplaces */
+  if(n+rest.length-at<=FLOCK_CARDS&&FLOCK.pend<=0&&!flAllAsked())flockWarm();
 }
 function flockCardHtml(c){
   var it=c.it,u=it.url,h=sgwCard(it,c.t),auc=[];
   h=h.replace('<button type="button" class="sgw-fp">Fair price?</button>','');   /* comps would come from other hunts */
   if(FP&&FP[u])h=h.replace(fpHtml(FP[u]),'');   /* v6.38: a verdict already in hand stays out too */
   h=h.replace('<div class="sgw-cell"','<div class="sgw-cell fl-card" role="article" aria-label="'+esc(it.title)+'" data-h="'+esc(c.t||'')+'"'+(h.indexOf(' data-u="')<0?' data-u="'+esc(u)+'"':''));
+  if(c.near)h=h.replace('<a class="sgw-card"','<span class="fl-near">Because you liked '+esc(c.t)+'</span><a class="sgw-card"');   /* v6.52 */
   var lk=likeHas(u);   /* v6.47 */
   h=h.replace('<div class="sgw-p">','<div class="sgw-p" data-act="margin" role="button" aria-label="What you would clear reselling at '+esc(it.price||'')+'">');
   if(c.isNew)h=h.replace('<div class="sgw-t">','<div class="sgw-t"><span class="fl-newb">New</span>');   /* v6.39 */
@@ -5006,19 +5093,15 @@ function flockRender(top){
   if(FLOCK.view==='saved')h=flSavedHtml(dm);
   else if(sgw.terms.length<2)h=flNote('fl-empty','<p>Add two hunts and the flock takes flight.</p><button type="button" class="gh" data-fl="home">Back to Prowl</button>');
   else{
-    cards=flockCards(dm);
-    if(!cards.length)h=FLOCK.pend>0?flNote('fl-empty','<p>Looking across your hunts…</p>'):flNote('fl-empty','<p>Nothing in the flock right now.</p><button type="button" class="gh" data-fl="shuffle">Look again</button>');
+    cards=flockList(dm);
+    if(!cards.length)h=(FLOCK.pend>0||!flAllAsked())?flNote('fl-empty','<p>Looking across your hunts…</p>'):flNote('fl-empty','<p>Nothing in the flock right now.</p><button type="button" class="gh" data-fl="shuffle">Look again</button>');
     else{
-      /* v6.39: finds you have not seen get a NEW badge and a divider above the first one; on a first visit everything is new, so neither shows */
-      var sm=flSeenMap(),div=false;
-      for(i=0;i<cards.length;i++){
-        cards[i].isNew=!!sm&&!sm[cards[i].it.url];
-        /* the divider rides at the top of the first new card: a separate row between snap cards would never be seen */
-        if(cards[i].isNew&&!div){div=true;h+=flockCardHtml(cards[i]).replace(/^<div class="sgw-cell fl-card/,'<div class="sgw-cell fl-card fl-first-new').replace(/(<div class="sgw-cell fl-card[^>]*>)/,'$1<div class="fl-new" role="separator">New since your last visit</div>');continue}
-        h+=flockCardHtml(cards[i]);
-      }
-      FLOCK.shown=cards.map(function(c){return c.it.url});
-      h+=flNote('fl-end','<p>That’s the flock.</p><button type="button" class="gh" data-fl="shuffle">Fresh look</button>');
+      /* v6.39: finds you have not seen get a NEW badge and a divider above the first one; on a first visit everything is new, so neither shows.
+         v6.52: the feed shows what is already on screen plus the next batch, and grows as you scroll (flFeed) */
+      var show=flWide()?cards:cards.slice(0,Math.max(FLOCK.limit||FLOCK_CARDS,flPinned().length));   /* a desktop grid shows them all */
+      h+=flCardsHtml(show,false);
+      FLOCK.shown=show.map(function(c){return c.it.url});
+      h+=flEndHtml(cards.length>show.length);
     }
   }
   row.innerHTML='<div class="sgw-grid">'+h+'</div>';
@@ -5029,7 +5112,9 @@ function flockRender(top){
     if(anchor){var cs=row.querySelectorAll('.fl-card');for(i=0;i<cs.length;i++)if(cs[i].getAttribute('data-u')===anchor){row.scrollTop=cs[i].offsetTop;break}}
     FLOCK.at=flIdxOf(row);
   }
+  FLOCK.reach=Math.max(FLOCK.reach||0,FLOCK.at||0);
   flBadge();
+  if(FLOCK.view==='feed')setTimeout(flFeed,0);   /* v6.52: top up, or fetch more, once this render is on screen */
 }
 /* v6.51: finds that arrive while you are scrolling wait until you stop: a redraw mid-swipe moved the feed under your finger */
 var FL_IDLE_MS=900;
@@ -5038,7 +5123,8 @@ function flockRenderSoon(){clearTimeout(FLOCK.tm);FLOCK.tm=setTimeout(function()
 function flTop(now){var row=$('#otp-flockRow');if(!row)return;try{row.scrollTo({top:0,behavior:(now||flReduced())?'auto':'smooth'})}catch(e){row.scrollTop=0}}
 /* fetch a few random hunt+source pairs we have nothing for yet, 250ms apart */
 function flockWarm(){
-  var hunts=FLOCK.order.slice(0,FLOCK_HUNTS),S=flockSrcs(),i,j,t,k,srcs,n,jobs=[];
+  /* v6.52: every hunt and every near search, FLOCK_SRCS more marketplaces each time it is called */
+  var hunts=FLOCK.order.concat(FLOCK.near||flNearTerms()),S=flockSrcs(),i,j,t,k,srcs,n,jobs=[];
   for(i=0;i<hunts.length;i++){
     t=hunts[i];k=t.toLowerCase();srcs=flockMix(S);n=0;
     for(j=0;j<srcs.length&&n<FLOCK_SRCS;j++){
@@ -5059,7 +5145,7 @@ function flockWarm(){
 function flTermsKey(){return sgw.terms.map(function(x){return x.t.toLowerCase()}).sort().join('\n')}
 /* shuffle the hunts into a fresh order and start over from the top */
 function flockStart(){
-  FLOCK.picks=Object.create(null);
+  FLOCK.picks=Object.create(null);FLOCK.shown=[];FLOCK.limit=FLOCK_CARDS;FLOCK.reach=0;FLOCK.at=0;FLOCK.near=null;   /* v6.52 */
   if(sgw.terms.length<2){FLOCK.started=false;FLOCK.order=[];flockRender(true);return}
   FLOCK.started=true;FLOCK.key=flTermsKey();FLOCK.lv=LIKE_VER;   /* v6.47: picks made with these likes */
   FLOCK.order=flockMix(sgw.terms.map(function(x){return x.t}));
@@ -5226,7 +5312,9 @@ function flSeenGet(){var a=xGet(SEEN_FL_KEY,null);return Array.isArray(a)?a.filt
 function flSeenMap(){var a=flSeenGet(),m,i;if(!a)return null;m=Object.create(null);for(i=0;i<a.length;i++)m[a[i]]=1;return m}
 function flSeenWrite(){
   if(!FLOCK.shown||!FLOCK.shown.length)return;
-  var a=(flSeenGet()||[]).filter(function(u){return FLOCK.shown.indexOf(u)<0}).concat(FLOCK.shown);
+  /* v6.52: only the cards you scrolled to count as seen; the batch below them stays new */
+  var sh=flWide()?FLOCK.shown:FLOCK.shown.slice(0,(FLOCK.reach||0)+1);
+  var a=(flSeenGet()||[]).filter(function(u){return sh.indexOf(u)<0}).concat(sh);
   xSet(SEEN_FL_KEY,a.slice(-SEEN_FL_MAX));
 }
 
@@ -6126,7 +6214,7 @@ var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function()
   row.addEventListener('scroll',function(){
     FLOCK.touchAt=Date.now();
     if(!flockOpen()||flWide())return;
-    clearTimeout(stT);stT=setTimeout(function(){FLOCK.at=flIdx()},140);
+    clearTimeout(stT);stT=setTimeout(function(){FLOCK.at=flIdx();FLOCK.reach=Math.max(FLOCK.reach||0,FLOCK.at);flFeed()},140);
   },{passive:true});
   function flHold(on){return function(){FLOCK.held=on;FLOCK.touchAt=Date.now()} }
   row.addEventListener('touchstart',flHold(true),{passive:true});

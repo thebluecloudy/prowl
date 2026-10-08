@@ -35,7 +35,8 @@ test('finds that arrive while your finger is on the feed wait until you let go',
   assert.equal(row(p).firstChild, grid, 'no redraw while touching');
   row(p).dispatchEvent(new p.win.Event('touchend'));
   await waitFor(() => row(p).firstChild !== grid, { timeout: 3000 });
-  assert.ok(p.$$('#otp-flockRow .fl-card').length > n, 'the new finds show once you stop');
+  assert.ok(p.$$('#otp-flockRow .fl-card').length >= n, 'nothing is lost');
+  assert.ok(p.$$('#otp-flockRow .fl-card[data-h="pyrex"]').length, 'the new finds show once you stop');
   await p.close();
 });
 
