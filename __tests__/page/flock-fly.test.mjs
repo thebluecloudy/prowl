@@ -34,7 +34,7 @@ test('Fly sits next to Shuffle and moves to the next card on its own until Stop'
   const p = await flock();
   const b = fly(p);
   assert.ok(b, 'a Fly button');
-  assert.equal(b.nextElementSibling, p.$('#otp-flockShuf'), 'just before Shuffle');
+  assert.equal(b.nextElementSibling.nextElementSibling, p.$('#otp-flockShuf'), 'just before Shuffle, with the speed chip between');
   assert.equal(b.textContent, 'Fly'); assert.equal(b.getAttribute('aria-pressed'), 'false');
   b.click();
   assert.equal(b.textContent, 'Stop'); assert.equal(b.getAttribute('aria-pressed'), 'true');
