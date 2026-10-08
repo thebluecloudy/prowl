@@ -2367,7 +2367,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.50';
+var PROWL_VERSION='v6.51';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -5031,7 +5031,10 @@ function flockRender(top){
   }
   flBadge();
 }
-function flockRenderSoon(){clearTimeout(FLOCK.tm);FLOCK.tm=setTimeout(function(){if(flockOpen())flockRender()},180)}
+/* v6.51: finds that arrive while you are scrolling wait until you stop: a redraw mid-swipe moved the feed under your finger */
+var FL_IDLE_MS=900;
+function flBusy(){var t=Date.now()-(FLOCK.touchAt||0);return (!!FLOCK.held&&t<10000)||t<FL_IDLE_MS}   /* a lost touchend never holds it for long */
+function flockRenderSoon(){clearTimeout(FLOCK.tm);FLOCK.tm=setTimeout(function(){if(!flockOpen())return;if(flBusy()){flockRenderSoon();return}flockRender()},180)}
 function flTop(now){var row=$('#otp-flockRow');if(!row)return;try{row.scrollTo({top:0,behavior:(now||flReduced())?'auto':'smooth'})}catch(e){row.scrollTop=0}}
 /* fetch a few random hunt+source pairs we have nothing for yet, 250ms apart */
 function flockWarm(){
@@ -6107,9 +6110,8 @@ var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function()
     for(i=0;i<cs.length;i++)if(cs[i].offsetTop<=row.scrollTop+4)cur=i;
     e.preventDefault();flGoIdx(cur+d);
   });
-  /* never fly past a card. scroll-snap-stop:always does this for touch where the browser honors it; these two
-     back it up: one wheel or trackpad gesture moves exactly one card, and a flick that settles more than one
-     card away from where it started eases back to the next card. */
+  /* never fly past a card. scroll-snap-stop:always does this for touch; for a wheel or trackpad, one gesture moves
+     exactly one card. */
   var wl=false,wt=null,stT=null;
   function flIdx(){return flIdxOf(row)}
   function flGoIdx(i){var cs=row.querySelectorAll('.fl-card,.fl-note'),n=cs[Math.max(0,Math.min(cs.length-1,i))];if(!n)return;FLOCK.at=Math.max(0,Math.min(cs.length-1,i));try{row.scrollTo({top:n.offsetTop,behavior:flReduced()?'auto':'smooth'})}catch(er){row.scrollTop=n.offsetTop}}
@@ -6119,13 +6121,17 @@ var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function()
     if(!wl&&Math.abs(e.deltaY)>=4){wl=true;flGoIdx(flIdx()+(e.deltaY>0?1:-1))}
     clearTimeout(wt);wt=setTimeout(function(){wl=false},220);
   },{passive:false});
+  /* v6.51: the feed no longer pulls you back when a scroll lands more than one card away. It fired while a slow drag
+     paused, and yanked the feed back down while you were scrolling up. scroll-snap-stop:always stops on each card. */
   row.addEventListener('scroll',function(){
+    FLOCK.touchAt=Date.now();
     if(!flockOpen()||flWide())return;
-    clearTimeout(stT);stT=setTimeout(function(){
-      var i=flIdx(),a=typeof FLOCK.at==='number'?FLOCK.at:i;
-      if(Math.abs(i-a)>1)flGoIdx(a+(i>a?1:-1));else FLOCK.at=i;
-    },140);
+    clearTimeout(stT);stT=setTimeout(function(){FLOCK.at=flIdx()},140);
   },{passive:true});
+  function flHold(on){return function(){FLOCK.held=on;FLOCK.touchAt=Date.now()} }
+  row.addEventListener('touchstart',flHold(true),{passive:true});
+  row.addEventListener('touchend',flHold(false),{passive:true});
+  row.addEventListener('touchcancel',flHold(false),{passive:true});
   /* swipe right to discard: the card follows the finger, then flies off past 35% of its width or a fast flick */
   var g=null;
   row.addEventListener('pointerdown',function(e){
