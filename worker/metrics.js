@@ -14,7 +14,7 @@ const LIVE = table({ "/": "shopgoodwill", "/ebay": "ebay", "/etsy": "etsy", "/ch
   "/salvation": "salvation" });   /* v80 */
 const NAMED = table({ "/verdict": "ai:fairprice", "/appraise": "ai:photo", "/research": "ai:research", "/guide": "ai:guide",
   "/where": "ai:where", "/hunt-check": "ai:huntcheck", "/shop-picks": "shop:picks", "/item": "item:popup" });   /* v81: item */
-const ALERTS = new Set(["subscribe", "confirm", "signin", "in", "status", "prefs", "mail", "delete", "move", "move-confirm", "unsub", "test", "gift", "giftstop"]);
+const ALERTS = new Set(["subscribe", "confirm", "signin", "in", "status", "prefs", "mail", "delete", "move", "move-confirm", "unsub", "test", "gift", "giftstop", "likes"]);   /* v85: likes */
 
 export function routeKey(pathname) {
   const p = String(pathname == null ? "" : pathname) || "/";

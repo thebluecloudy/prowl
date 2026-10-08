@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v85: 2026-10-08. Likes follow a signed-in member. POST /alerts/likes (email + token, or the v82 session) sends this
+ *        device's likes, unlikes and ignored words; the worker merges them into likes:<email> (per link the newest of
+ *        liked or unliked wins) and answers with the merged lists. Delete in Prowl purges likes:, a change of email
+ *        moves it.
  *   v84: 2026-10-07. Depop commission (Rakuten, merchant 53555, approved 2026-10-07). Depop is link-only, so it joins
  *        the "Also search" links in every alert email, through the Rakuten deep link (DEPOP_AFF, depopAff). Footers with
  *        links now say some links (eBay, Depop) earn Owl & Twig a commission.
@@ -257,7 +261,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
-const WORKER_VERSION = "v84";
+const WORKER_VERSION = "v85";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4107,10 +4111,10 @@ async function alMoveConfirm(request, env, url) {
   const moved = Object.assign({}, sub, { email: to, prev: [from].concat(Array.isArray(sub.prev) ? sub.prev : []).filter((x, i, a) => x && x !== to && a.indexOf(x) === i).slice(0, 3), movedAt: new Date().toISOString() });
   await alProSet(env, moved, true);
   await kvPut(env, "sub:" + to, moved);
-  for (const k of ["pend:", "seen:"]) { const v = await kvGet(env, k + from, null); if (v != null) await kvPut(env, k + to, v); }
+  for (const k of ["pend:", "seen:", "likes:"]) { const v = await kvGet(env, k + from, null); if (v != null) await kvPut(env, k + to, v); }   /* v85: likes: */
   if (moved.cid) await kvPut(env, "cid:" + moved.cid, { email: to });
   await env.PROWL_ALERTS.put("moved:" + from, JSON.stringify({ to: to, tok: sub.tok, at: Date.now() }), { expirationTtl: 90 * 86400 });
-  for (const k of ["sub:", "pend:", "seen:", "mvf:"]) await env.PROWL_ALERTS.delete(k + from);
+  for (const k of ["sub:", "pend:", "seen:", "mvf:", "likes:"]) await env.PROWL_ALERTS.delete(k + from);
   await env.PROWL_ALERTS.delete("mv:" + to);
   /* one notice to the old address, so a change is never silent */
   const note = alShell(env, '<tr><td style="padding:12px 12px 4px;font:16px/1.5 Georgia,serif;color:#2b2118">' +
@@ -4151,7 +4155,7 @@ async function alDelete(request, env, origin) {
    they are granted by the owner, or are a do-not-email list. Logs key names only, never the email. */
 async function alPurge(env, email, sub) {
   const kv = env.PROWL_ALERTS, gone = [];
-  for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "pro:", "last:"]) { await kv.delete(p + email); gone.push(p); }
+  for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "pro:", "last:", "likes:"]) { await kv.delete(p + email); gone.push(p); }   /* v85: likes: */
   const cid = sub && sub.cid ? String(sub.cid) : "";
   if (cid) {
     const c = await kvGet(env, "cid:" + cid, null);
@@ -4160,6 +4164,64 @@ async function alPurge(env, email, sub) {
   }
   console.log("purge " + gone.join(" "));
   return gone;
+}
+
+/* v85: likes follow a signed-in member across devices. One KV value per member, likes:<email> =
+   { likes: [{u,t,p,s,i,h,at}], gone: [{u,at}], mute: [word], muteAt }. Each sync sends the device's whole list and
+   gets the merged one back. Per link the newest of liked (like.at) or unliked (gone.at) wins, so an unlike on the
+   phone is not undone by an older copy on the computer; a tie counts as unliked. Times are clamped to now, so a
+   device with a fast clock cannot make a like stick. The ignored words go as one list, the newest muteAt wins. */
+const LIKES_MAX = 300, LIKES_GONE_MAX = 300, LIKES_MUTE_MAX = 100, LIKES_SYNCS_PER_DAY = 300, LIKES_BODY_MAX = 1 << 20;
+function likeItem(l, now) {
+  if (!l || typeof l !== "object" || typeof l.u !== "string" || !/^https:\/\//i.test(l.u)) return null;
+  const s = (v, n) => String(v == null ? "" : v).replace(/\s+/g, " ").trim().slice(0, n);
+  const t = s(l.t, 140);
+  if (!t) return null;
+  return { u: l.u.slice(0, 800), t: t, p: s(l.p, 24), s: typeof l.s === "string" ? s(l.s, 24) : "",
+    i: typeof l.i === "string" && /^https:\/\//i.test(l.i) ? l.i.slice(0, 800) : "", h: s(l.h, 80), at: likeAt(l.at, now) };
+}
+function likeAt(v, now) { const t = Math.floor(Number(v) || 0); return t > 0 ? Math.min(t, now) : 0; }
+function likesMerge(a, b, now) {
+  const lists = [a, b].map(o => (o && typeof o === "object" && !Array.isArray(o) ? o : {}));
+  const like = new Map(), gone = new Map();
+  for (const o of lists) {
+    for (const x of Array.isArray(o.likes) ? o.likes.slice(0, 1000) : []) {
+      const l = likeItem(x, now);
+      if (l && (!like.has(l.u) || l.at > like.get(l.u).at)) like.set(l.u, l);
+    }
+    for (const x of Array.isArray(o.gone) ? o.gone.slice(0, 1000) : []) {
+      if (!x || typeof x.u !== "string" || !/^https:\/\//i.test(x.u)) continue;
+      const u = x.u.slice(0, 800), at = likeAt(x.at, now);
+      if (at > (gone.get(u) || 0)) gone.set(u, at);
+    }
+  }
+  const likes = [], left = [];
+  for (const l of like.values()) if (l.at > (gone.get(l.u) || 0)) likes.push(l);
+  for (const [u, at] of gone) if (!(like.has(u) && like.get(u).at > at)) left.push({ u: u, at: at });
+  likes.sort((x, y) => y.at - x.at); left.sort((x, y) => y.at - x.at);
+  /* the newer word list wins; the stored one keeps a tie */
+  const ma = likeAt(lists[0].muteAt, now), mb = likeAt(lists[1].muteAt, now);
+  const pick = mb > ma ? lists[1] : lists[0], mute = [];
+  for (const w of Array.isArray(pick.mute) ? pick.mute.slice(0, 1000) : []) if (typeof w === "string" && /^[a-z0-9]{2,30}$/.test(w) && mute.indexOf(w) === -1 && mute.length < LIKES_MUTE_MAX) mute.push(w);
+  return { likes: likes.slice(0, LIKES_MAX), gone: left.slice(0, LIKES_GONE_MAX), mute: mute, muteAt: Math.max(ma, mb) };
+}
+async function alLikes(request, env, origin) {
+  if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
+  const b = await readJson(request, LIKES_BODY_MAX);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  let email = alEmail(b.email);
+  let sub = email ? await kvGet(env, "sub:" + email, null) : null;
+  if (!sub || !alSame(String(b.tok || ""), sub.tok)) {
+    /* a store session stands in for the token, for the member it is linked to (v82) */
+    const ss = await sessMember(request, env);
+    if (!ss || (email && ss.email !== email)) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
+    sub = ss; email = ss.email;
+  }
+  if (!(await vCount("lksync:" + email, LIKES_SYNCS_PER_DAY))) return json({ error: "That is a lot of likes for one day. They will sync tomorrow." }, 429, origin);
+  const key = "likes:" + email, had = await kvGet(env, key, null);
+  const m = likesMerge(had, b, Date.now());
+  if (JSON.stringify(m) !== JSON.stringify(had)) await kvPut(env, key, m);   /* no write when nothing changed */
+  return json(Object.assign({ ok: true }, m), 200, origin);
 }
 
 async function alUnsub(request, env, url, origin) {
@@ -4464,6 +4526,7 @@ async function handleFetch(request, env, ctx) {
     }
     if (url.pathname === "/alerts/mail" && request.method === "POST") return alMailSet(request, env, origin);   /* v55 */
     if (url.pathname === "/alerts/delete" && request.method === "POST") return alDelete(request, env, origin);   /* v55 */
+    if (url.pathname === "/alerts/likes" && request.method === "POST") return alLikes(request, env, origin);   /* v85 */
     if (url.pathname === "/alerts/prefs" && request.method === "POST") {   /* v50 */
       return alPrefsSave(request, env, origin);
     }
