@@ -108,8 +108,12 @@ test('a swipe-away drops the like and is remembered against its words; Undo brin
   c.querySelector('.fl-x').click();
   assert.deepEqual(ls(p, LIKES), []);
   assert.equal(ls(p, 'prowl.disTitles').at(-1).u, u);
+  const gone = ls(p, 'prowl.likesGone');
+  assert.equal(gone[0].u, u, 'v6.48: remembered as unliked, with its time');
   p.$('#otp-undis').click();
   assert.equal(ls(p, LIKES)[0].u, u);
+  assert.ok(ls(p, LIKES)[0].at >= gone[0].at, 'the like brought back is newer than the unlike, so a sync keeps it');
+  assert.deepEqual(ls(p, 'prowl.likesGone'), [], 'a like again clears the unlike');
   assert.equal((ls(p, 'prowl.disTitles') || []).filter((x) => x.u === u).length, 0);
   await p.close();
 });

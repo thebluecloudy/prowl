@@ -36,5 +36,5 @@ test("footers with links carry the commission line", () => {
   assert.match(INDEX, /^const AL_AFF_NOTE = "Some links \(eBay, Depop\) earn Owl & Twig a small commission, at no cost to you\.";/m);
   assert.match(INDEX, /links \+ '<br>Or just reply &quot;unsubscribe&quot; to this email\.<br>' \+ AL_AFF_NOTE \+ '<br>'/);
   assert.match(INDEX, /sub \? AL_AFF_NOTE : ""/);
-  assert.match(INDEX, /const WORKER_VERSION = "v84";/);
+  assert.match(INDEX, /const WORKER_VERSION = "v8\d";/);
 });

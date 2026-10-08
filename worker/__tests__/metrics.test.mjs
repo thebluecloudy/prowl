@@ -63,7 +63,7 @@ test("routeKey maps every documented path", () => {
     "/alerts/nope": "alerts:other", "/alerts": "alerts:other", "/alerts/": "alerts:other", "/alerts/in/extra": "alerts:other",
     "/nothing-here": "other", "/ebay/": "other", "/proxyx": "other", "/me": "other",
   };
-  for (const n of ["subscribe", "confirm", "signin", "in", "status", "prefs", "mail", "delete", "move", "move-confirm", "unsub", "test", "gift", "giftstop"]) table["/alerts/" + n] = "alerts:" + n;
+  for (const n of ["subscribe", "confirm", "signin", "in", "status", "prefs", "mail", "delete", "move", "move-confirm", "unsub", "test", "gift", "giftstop", "likes"]) table["/alerts/" + n] = "alerts:" + n;
   for (const [p, want] of Object.entries(table)) assert.equal(routeKey(p), want, p);
 });
 
