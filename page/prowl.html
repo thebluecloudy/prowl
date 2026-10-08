@@ -1342,6 +1342,13 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 .scout-app-wrapper #otp-flock.as-feed .flock-head b{font-size:28px;line-height:1.1;font-weight:800;color:var(--ink);text-transform:none;letter-spacing:0}
 .scout-app-wrapper #otp-flock.as-feed .flock-head .gh{margin-left:auto;border-radius:99px;background:var(--ink);color:var(--bg);border:0;padding:6px 16px;font-size:15px}
 .scout-app-wrapper #otp-flock.as-feed.fl-saved .flock-head .gh{visibility:hidden}
+/* v6.56: Fly sits before Shuffle in the feed; it turns orange while flying */
+.scout-app-wrapper .flock-head .fl-fly{display:none}
+.scout-app-wrapper #otp-flock.as-feed .flock-head .fl-fly{display:inline-flex;align-items:center}
+.scout-app-wrapper #otp-flock.as-feed:not(.fl-saved) .flock-head .fl-fly+.gh{margin-left:0}
+.scout-app-wrapper #otp-flock.as-feed .flock-head .fl-fly.on{background:#D9541E;color:#fff;border-color:#D9541E}
+.scout-app-wrapper #otp-flock.as-feed.fl-saved .flock-head .fl-fly{display:none}
+@media(min-width:1024px){.scout-app-wrapper #otp-flock.as-feed .flock-head .fl-fly{display:none}.scout-app-wrapper #otp-flock.as-feed:not(.fl-saved) .flock-head .fl-fly+.gh{margin-left:auto}}
 .scout-app-wrapper #otp-flock.as-feed .flock-sub{display:none}
 .scout-app-wrapper #otp-flock.as-feed .fl-seg{display:flex;order:3;flex:1 1 100%;gap:3px;padding:3px;border-radius:99px;background:var(--cd3)}
 .scout-app-wrapper .fl-seg button{-webkit-appearance:none;appearance:none;text-transform:none;white-space:nowrap;flex:1 1 0;min-height:38px;padding:6px 14px;border:0;border-radius:99px;background:none;color:var(--mu);font:700 15px/1 var(--sans);cursor:pointer}
@@ -2377,7 +2384,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.55';
+var PROWL_VERSION='v6.56';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -5201,6 +5208,7 @@ function flockHunts(){
   if(!FLOCK.started||FLOCK.key!==flTermsKey()){if(FLOCK.view==='feed')flockStart();else{FLOCK.started=false;flockRender()}}
 }
 function flSeg(){
+  if(FLOCK.view!=='feed'&&typeof flyStop==='function')flyStop();   /* v6.56: Fly is for the feed */
   var sec=$('#otp-flock');if(!sec)return;
   sec.classList.toggle('fl-saved',FLOCK.view==='saved');
   $$('#otp-flock .fl-seg [data-fv]').forEach(function(b){b.setAttribute('aria-selected',String(b.getAttribute('data-fv')===FLOCK.view))});
@@ -5225,6 +5233,7 @@ function openFlock(){
   var row=$('#otp-flockRow');try{row.focus({preventScroll:true})}catch(e){}
 }
 function closeFlock(){
+  if(typeof flyStop==='function')flyStop();   /* v6.56 */
   if(!flockOpen())return;
   flSeenWrite();   /* v6.39 */
   if(sheetOpen())closeSheet();
@@ -6208,7 +6217,38 @@ var aiB=$('#otp-aiBtn');if(aiB)aiB.addEventListener('click',aiToggle);
 rAiRow();
 var gF=$('#otp-guideF');if(gF)gF.addEventListener('submit',function(e){e.preventDefault();gdMake(($('#otp-guideQ')||{}).value)});   /* v6.19 */
 var gS=$('#otp-guide');if(gS){gS.addEventListener('click',gdClick);gdMineRender()}
-var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function(){if(sgw.terms.length>=2)flShuffle()});   /* v6.18, v6.38 */
+var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function(){flyStop();if(sgw.terms.length>=2)flShuffle()});   /* v6.18, v6.38 */
+/* v6.56: Fly. The feed moves on to the next find every 4 seconds until you stop it: Fly again (now Stop), any touch,
+   wheel or key on the feed, opening a listing, leaving Flock or Feed, a hidden tab, or the end of the feed. */
+var FLY={t:0,btn:null},FLY_MS=4000;
+function flyOn(){return !!FLY.t}
+function flyPaint(){var b=FLY.btn;if(!b)return;var on=flyOn();b.textContent=on?'Stop':'Fly';b.setAttribute('aria-pressed',String(on));b.classList.toggle('on',on)}
+function flyStop(){if(!FLY||!FLY.t)return;clearInterval(FLY.t);FLY.t=0;flyPaint()}
+function flyStart(){
+  if(FLY.t||!flockOpen()||FLOCK.view!=='feed'||flWide())return;
+  if(!$('#otp-flockRow .fl-card'))return;
+  FLY.t=setInterval(flyStep,FLY_MS);flyPaint();
+  toast('Flying: the next find every 4 seconds. Touch the feed to stop.',2600);
+}
+function flyStep(){
+  var row=$('#otp-flockRow');
+  if(!row||!flockOpen()||FLOCK.view!=='feed'||sheetOpen()||document.hidden){flyStop();return}
+  var cs=row.querySelectorAll('.fl-card'),at=flIdxOf(row);
+  if(at>=cs.length-1){flFeed();cs=row.querySelectorAll('.fl-card');if(at>=cs.length-1){flyStop();return}}
+  var n=cs[at+1];
+  try{row.scrollTo({top:n.offsetTop,behavior:flReduced()?'auto':'smooth'})}catch(e){row.scrollTop=n.offsetTop}
+  FLOCK.at=at+1;FLOCK.reach=Math.max(FLOCK.reach||0,FLOCK.at);
+}
+(function(){
+  if(!fShuf||!fShuf.parentNode)return;
+  var b=document.createElement('button');b.type='button';b.className='gh fl-fly';b.id='otp-flockFly';b.setAttribute('aria-pressed','false');
+  b.title='Move to the next find every 4 seconds';b.textContent='Fly';
+  fShuf.parentNode.insertBefore(b,fShuf);FLY.btn=b;
+  b.addEventListener('click',function(){if(flyOn())flyStop();else flyStart()});
+  var row=$('#otp-flockRow');
+  if(row)['touchstart','pointerdown','wheel','keydown'].forEach(function(ev){row.addEventListener(ev,flyStop,{passive:true})});
+  document.addEventListener('visibilitychange',function(){if(document.hidden)flyStop()});
+})();
 /* v6.38: Flock tab wiring. Taps on the row are delegated; a swipe that moved more than 10px swallows the click
    that follows it, so a discard never opens the listing. */
 (function(){
