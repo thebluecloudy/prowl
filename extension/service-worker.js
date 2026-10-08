@@ -1,5 +1,5 @@
 // Prowl by Owl & Twig. (c) 2026 Owl & Twig Vintage. All rights reserved.
-import { SITES, cleanTerm, prowlUrl, soldUrl, imagesUrl, lensUrl, guideUrl, amazonOn, amazonUrl } from './sites.js';
+import { SITES, cleanTerm, prowlUrl, soldUrl, imagesUrl, lensUrl, guideUrl, amazonOn, amazonUrl, affSync } from './sites.js';
 import { isPro, saveMember, PRO_PAGE } from './member.js';
 const PRO_PAGE_URL = PRO_PAGE;
 
@@ -101,6 +101,7 @@ async function openAll(term, windowId) {
     const win = await chrome.windows.getLastFocused();
     windowId = win.id;
   }
+  await affSync();   // 1.6.3: affiliate switches before any marketplace link is built
   const tabIds = [];
   for (let i = 0; i < SITES.length; i++) {
     const t = await chrome.tabs.create({ url: SITES[i].url(term), active: i === 0, windowId });

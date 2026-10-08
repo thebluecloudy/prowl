@@ -105,8 +105,8 @@ test("sparklines share one document listener, so the minute-by-minute refresh do
   assert.match(SCRIPT, /if \(!el\.isConnected\) SPARKS\.delete\(el\)/);
 });
 
-test("dashboard has the five tabs, their panels and the member detail view", () => {
-  for (const t of ["overview", "members", "diagnose", "errors", "searches"]) {
+test("dashboard has the six tabs, their panels and the member detail view", () => {
+  for (const t of ["overview", "members", "diagnose", "errors", "searches", "affiliates"]) {
     assert.match(page, new RegExp('role="tab"[^>]*data-tab="' + t + '"'));
     assert.match(page, new RegExp('id="v-' + t + '" role="tabpanel"'));
   }
@@ -134,7 +134,7 @@ test("sign out is a plain form post; searches offer 1/7/30 days", () => {
 test("script calls every admin API route, same-origin, with the admin header on POSTs", () => {
   for (const r of ['"/admin/api/overview"', '"/admin/api/members?filter="', '"/admin/api/member?id="', '"/admin/api/member/action"',
     '"/admin/api/find"', '"/admin/api/diagnose"', '"/admin/api/healthcheck"', '"/admin/api/errors?limit=100"', '"/admin/api/searches?days="',
-    '"/admin/api/gifts"', '"/admin/api/gift"', '"/admin/api/gift/remove"']) {
+    '"/admin/api/gifts"', '"/admin/api/gift"', '"/admin/api/gift/remove"', '"/admin/api/affiliates"', '"/admin/api/affiliate"']) {
     assert.ok(SCRIPT.includes(r), r);
   }
   assert.match(SCRIPT, /credentials: "same-origin"/);
@@ -339,4 +339,17 @@ test("member page Gift Pro: the length picked for a member stays when their card
   assert.match(SCRIPT, /if \(S\.glen && S\.glen\.id === m\.id\) sel\.value = S\.glen\.v;/);
   assert.match(SCRIPT, /sel\.addEventListener\("change", \(\) => \{ S\.glen = \{ id: m\.id, v: sel\.value \}; \}\);/);
   assert.match(SCRIPT, /giftsAll: false, glen: null \}/);
+});
+
+test("Affiliates (v89): one Turn on / Turn off switch per program, confirmed first, sending its id and the new state", () => {
+  assert.match(page, /<h2>Affiliates<\/h2>/);
+  assert.match(page, /Off means links to that site go out plain and no disclosure names it/);
+  assert.match(page, /id="affbox"/);
+  assert.match(page, /id="aff-msg" aria-live="polite"/);
+  assert.match(SCRIPT, /const TABS = \[[^\]]*"affiliates"\]/);
+  assert.match(SCRIPT, /if \(tab === "affiliates"\) loadAff\(\);/);
+  assert.match(SCRIPT, /text: p\.on \? "Turn off" : "Turn on"/);
+  assert.match(SCRIPT, /if \(!window\.confirm\(\(p\.on \? "Turn off " : "Turn on "\)/);
+  assert.match(SCRIPT, /api\("\/admin\/api\/affiliate", \{ id: p\.id, on: !p\.on \}\)/);
+  assert.match(SCRIPT, /"aff-on": "Turned an affiliate on", "aff-off": "Turned an affiliate off"/);
 });

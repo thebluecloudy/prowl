@@ -21,10 +21,22 @@
    item links (ebay.com/sch and /itm only), so a purchase after a Prowl click can
    earn a commission. Same page for the visitor. customid says where the click
    came from. Empty campaign = links untouched. */
+/* v6.59 affiliate switches. The owner turns each program on or off in the Prowl admin area (Affiliates); the worker
+   says which are on at /aff. Until it answers, the last answer this browser saw is used (prowl.affOn), else these
+   defaults. A program that is off sends plain links and is left out of the disclosure. */
+window.PROWL_AFF_ON={ebay:true,depop:false};
+window.prowlAffSet=function(o){
+  if(!o||typeof o!=='object')return false;
+  var k,ch=false;
+  for(k in window.PROWL_AFF_ON)if(Object.prototype.hasOwnProperty.call(window.PROWL_AFF_ON,k)&&typeof o[k]==='boolean'&&o[k]!==window.PROWL_AFF_ON[k]){window.PROWL_AFF_ON[k]=o[k];ch=true}
+  return ch;
+};
+try{window.prowlAffSet(JSON.parse(localStorage.getItem('prowl.affOn')||'null'))}catch(e){}
 window.prowlEpn=function(u,cid){
   var c='5339216838';
   /* v5.94 red-team: every listing link from the Worker goes through here; only https links are ever used */
   if(typeof u!=='string'||!/^https:\/\//i.test(u))return '#';
+  if(window.PROWL_AFF_ON.ebay!==true)return u;   /* v6.59: the admin switch */
   try{
     if(!/^\d{10}$/.test(c)||typeof u!=='string'||!/^https:\/\/(www\.)?ebay\.com\/(sch|itm)\//.test(u)||/[?&]campid=/.test(u))return u;
     return u+(u.indexOf('?')>-1?'&':'?')+'mkcid=1&mkrid=711-53200-19255-0&siteid=0&campid='+c+'&customid='+encodeURIComponent(cid||'prowl')+'&toolid=10001&mkevt=1';
@@ -38,12 +50,12 @@ window.PROWL_AFF={
   'etsy.com':{n:'Etsy',t:'https://www.awin1.com/cread.php?awinmid=YOUR_ETSY_MID&awinaffid=YOUR_AWIN_ID&ued={url}'},
   'reverb.com':{n:'Reverb',t:'https://www.awin1.com/cread.php?awinmid=YOUR_REVERB_MID&awinaffid=YOUR_AWIN_ID&ued={url}'},
   '1stdibs.com':{n:'1stDibs',t:'https://prf.hn/click/camref:YOUR_1STDIBS_CAMREF/destination:{url}'},
-  'depop.com':{n:'Depop',t:'https://click.linksynergy.com/deeplink?id=jh1j/r7*wkQ&mid=53555&murl={url}'}   /* v6.46: live, Rakuten (Depop approved 2026-10-07) */
+  'depop.com':{n:'Depop',id:'depop',t:'https://click.linksynergy.com/deeplink?id=jh1j/r7*wkQ&mid=53555&murl={url}'}   /* v6.46 Rakuten; v6.59: only while the admin switch (id) is on */
 };
-window.prowlAffLive=function(d){var a=window.PROWL_AFF[d];return !!(a&&typeof a.t==='string'&&a.t.indexOf('YOUR_')<0&&a.t.indexOf('{url}')>-1&&/^https:\/\//.test(a.t))};
+window.prowlAffLive=function(d){var a=window.PROWL_AFF[d];if(a&&a.id&&window.PROWL_AFF_ON[a.id]!==true)return false;return !!(a&&typeof a.t==='string'&&a.t.indexOf('YOUR_')<0&&a.t.indexOf('{url}')>-1&&/^https:\/\//.test(a.t))};
 window.prowlAff=function(u,cid,affUrl){
   /* the listing popup hands over eBay's own itemAffiliateWebUrl; eBay pays only on that exact URL */
-  if(typeof affUrl==='string'&&/^https:\/\/([a-z0-9-]+\.)*ebay\.com\//i.test(affUrl))return affUrl;
+  if(window.PROWL_AFF_ON.ebay===true&&typeof affUrl==='string'&&/^https:\/\/([a-z0-9-]+\.)*ebay\.com\//i.test(affUrl))return affUrl;
   u=window.prowlEpn(u,cid);if(u==='#')return u;
   var m=/^https:\/\/([^\/?#:]+)/i.exec(u),h,d;if(!m)return u;
   h=m[1].toLowerCase().replace(/^www\./,'');
@@ -76,7 +88,7 @@ window.prowlSess=function(){
   return t;
 };
 window.prowlAuth=function(h){h=h||{};var t=window.prowlSess();if(t)h.Authorization='Bearer '+t;return h};
-window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Object.prototype.hasOwnProperty.call(window.PROWL_AFF,d)&&window.prowlAffLive(d))a.push(window.PROWL_AFF[d].n);if(window.prowlAmzOn())a.push('Amazon');return a};
+window.prowlAffNames=function(){var a=window.PROWL_AFF_ON.ebay===true?['eBay']:[],d;for(d in window.PROWL_AFF)if(Object.prototype.hasOwnProperty.call(window.PROWL_AFF,d)&&window.prowlAffLive(d))a.push(window.PROWL_AFF[d].n);if(window.prowlAmzOn())a.push('Amazon');return a};
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Space+Grotesk:wght@400;500;600;700&family=Alfa+Slab+One&display=swap');
@@ -1612,7 +1624,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
     <p class="appnote" id="otp-appnote" hidden></p>
   </div>
 
-  <p class="copyr">Prowl © 2026 Owl &amp; Twig Vintage. All rights reserved. Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</p>
+  <p class="copyr">Prowl © 2026 Owl &amp; Twig Vintage. All rights reserved. <span class="aff-say">Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</span></p>
 
 </main>
 <aside class="drawer" id="otp-photo" role="dialog" aria-modal="true" aria-labelledby="otp-photoT" hidden>
@@ -2366,7 +2378,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
     <div class="mi">
 <u>7</u><div>
 <h3>Make it yours</h3>
-<p><b style="color:var(--ink)">Aa</b> makes the text bigger. The icon top-right cycles light, dark and <b style="color:var(--ink)">uranium</b>, a retro blacklight mode. Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</p>
+<p><b style="color:var(--ink)">Aa</b> makes the text bigger. The icon top-right cycles light, dark and <b style="color:var(--ink)">uranium</b>, a retro blacklight mode. <span class="aff-say">Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</span></p>
 </div>
 </div>
     <div class="ma"><button class="b p" id="otp-mok">Got it</button></div>
@@ -2388,7 +2400,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.58';
+var PROWL_VERSION='v6.59';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -6177,8 +6189,21 @@ try{if(/[?&]photo=1(&|$)/.test(location.search)){
   try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])photo=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
   setTimeout(openPhoto,400);
 } }catch(e){}
-/* v6.40: the affiliate disclosure lists the merchants that are tagged right now */
-try{(function(){var n=window.prowlAffNames(),t=n.length<2?n[0]:n.slice(0,-1).join(', ')+' and '+n[n.length-1];$$('.aff-list').forEach(function(el){el.textContent=t})})()}catch(e){}
+/* v6.40: the affiliate disclosure lists the merchants that are tagged right now. v6.59: none tagged, no sentence. */
+function affPaint(){
+  var n=window.prowlAffNames(),t=n.length<2?(n[0]||''):n.slice(0,-1).join(', ')+' and '+n[n.length-1];
+  $$('.aff-list').forEach(function(el){el.textContent=t});
+  $$('.aff-say').forEach(function(el){el.hidden=!t});
+}
+try{affPaint()}catch(e){}
+/* v6.59: ask the worker which affiliate programs are on; keep the answer for the next visit */
+var AFF_API='https://prowl.thebluecloud.workers.dev/aff';
+try{fetch(AFF_API).then(function(r){return r.ok?r.json():null}).then(function(j){
+  if(!j||!j.on||typeof j.on!=='object')return;
+  var keep={},k;for(k in window.PROWL_AFF_ON)if(Object.prototype.hasOwnProperty.call(window.PROWL_AFF_ON,k)&&typeof j.on[k]==='boolean')keep[k]=j.on[k];
+  try{localStorage.setItem('prowl.affOn',JSON.stringify(keep))}catch(e){}
+  if(window.prowlAffSet(keep))affPaint();
+})['catch'](function(){})}catch(e){}
 /* v6.38: ?flock=1 opens the Flock tab */
 try{if(/[?&]flock=1(&|$)/.test(location.search)){
   try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])flock=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
