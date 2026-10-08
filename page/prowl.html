@@ -1427,6 +1427,33 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
   .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .fl-sh,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .fl-sh{opacity:1}
 }
 @media(prefers-reduced-motion:reduce){.scout-app-wrapper .otp-sheet{transition:none}}
+/* ---- v6.47: likes. The heart on a Flock card, and the Den's LIKES tab ---- */
+.scout-app-wrapper .fl-lk{display:none}
+.scout-app-wrapper #otp-flock.as-feed .fl-lk{-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;position:absolute;z-index:3;right:124px;bottom:76px;width:40px;height:40px;min-width:40px;padding:0;border:0;border-radius:99px;background:#fff;color:#111;font-size:21px;line-height:1;box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
+.scout-app-wrapper #otp-flock.as-feed .fl-lk.on{color:#E0245E}
+.scout-app-wrapper #otp-flock.as-feed .fl-lk.pop{animation:otpLkPop .35s ease-out}
+.scout-app-wrapper #otp-flock.as-feed .fl-lk:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+@keyframes otpLkPop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+@media(min-width:1024px){.scout-app-wrapper #otp-flock.as-feed .fl-lk{right:108px;bottom:62px}}
+@media(min-width:1024px) and (hover:hover){
+  .scout-app-wrapper #otp-flock.as-feed .fl-lk:not(.on){opacity:0}
+  .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .fl-lk,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .fl-lk{opacity:1}
+}
+@media(prefers-reduced-motion:reduce){.scout-app-wrapper #otp-flock.as-feed .fl-lk.pop{animation:none}}
+.scout-app-wrapper .lk-h{margin:4px 0 8px;font-size:14px;font-weight:700;color:var(--ink)}
+.scout-app-wrapper .lk-sub,.scout-app-wrapper .lk-empty{margin:0;font-size:13px;line-height:1.5;color:var(--mu)}
+.scout-app-wrapper .lk-chips{display:flex;flex-wrap:wrap;gap:6px}
+.scout-app-wrapper .lk-chip{display:inline-flex;align-items:center;gap:2px;padding:3px 3px 3px 11px;border:1px solid var(--ln);border-radius:99px;font-size:13px;color:var(--ink)}
+.scout-app-wrapper .lk-chip button{-webkit-appearance:none;appearance:none;border:0;background:none;color:var(--mu);font-size:15px;line-height:1;width:26px;height:26px;padding:0;border-radius:99px;cursor:pointer}
+.scout-app-wrapper .lk-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(min-width:560px){.scout-app-wrapper .lk-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.scout-app-wrapper .lk-cell{position:relative;min-width:0}
+.scout-app-wrapper .lk-cell .sgw-card{display:block;color:inherit;text-decoration:none}
+.scout-app-wrapper .lk-cell .sgw-card img{display:block;width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:10px;background:var(--cd3)}
+.scout-app-wrapper .lk-cell .sgw-t{margin-top:6px;font-size:13px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.scout-app-wrapper .lk-cell .sgw-p{font-size:13px;font-weight:700}
+.scout-app-wrapper .lk-x{-webkit-appearance:none;appearance:none;position:absolute;top:6px;right:6px;width:32px;height:32px;padding:0;border:0;border-radius:99px;background:#fff;color:#111;font-size:17px;line-height:1;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:pointer}
+@media(max-width:440px){.scout-app-wrapper.k2 .tab{font-size:10px;letter-spacing:.02em}}
 /* ---- v6.43: listing popup (photos, details, description), in the bottom sheet ---- */
 .scout-app-wrapper .otp-sheet.pop{max-height:94vh}
 @media(min-width:700px){.scout-app-wrapper .otp-sheet.pop{width:min(640px,94vw)}}
@@ -2023,6 +2050,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 </div>
   <div class="tabs" role="tablist">
     <button class="tab on" id="otp-denT1" role="tab">ALL HUNTS</button>
+    <button class="tab" id="otp-denT5" role="tab">LIKES</button>
     <button class="tab" id="otp-denT2" role="tab">LOCAL</button>
     <button class="tab" id="otp-denT4" role="tab">ABOUT</button>
     <button class="tab" id="otp-denT3" role="tab">SETTINGS</button>
@@ -2038,6 +2066,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
       <div class="dx-wrap" id="otp-denRes"></div>
       <div class="dx-wrap" id="otp-denRuns"></div>
     </div>
+    <div class="denPane" id="otp-denLikes" hidden></div>
     <div class="denPane" id="otp-denLocal" hidden>
       <details class="lochelp" id="otp-locHelp">
         <summary>How Local works</summary>
@@ -2347,7 +2376,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.46';
+var PROWL_VERSION='v6.47';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -2869,6 +2898,8 @@ function setDenTab(t){
   $('#otp-denT2').classList.toggle('on',t==='local');
   $('#otp-denT4').classList.toggle('on',t==='about');
   $('#otp-denT3').classList.toggle('on',t==='settings');
+  $('#otp-denT5').classList.toggle('on',t==='likes');   /* v6.47 */
+  $('#otp-denLikes').hidden=t!=='likes';
   $('#otp-denTerms').hidden=t!=='hunts';
   $('#otp-denLocal').hidden=t!=='local';
   $('#otp-denAbout').hidden=t!=='about';
@@ -2877,11 +2908,13 @@ function setDenTab(t){
   /* the marquee only animates once it has been laid out, so kick it here */
   if(t==='about')loadFoundStrip();
   if(t==='settings'){rMail();rGetApp();}
+  if(t==='likes')rDenLikes();
 }
 $('#otp-denT1').addEventListener('click',function(){setDenTab('hunts')});
 $('#otp-denT2').addEventListener('click',function(){setDenTab('local')});
 $('#otp-denT4').addEventListener('click',function(){setDenTab('about')});
 $('#otp-denT3').addEventListener('click',function(){setDenTab('settings')});
+$('#otp-denT5').addEventListener('click',function(){setDenTab('likes')});   /* v6.47 */
 
 var lf=null;
 function openDen(){lf=document.activeElement;den.hidden=false;rDenHunts();rDenLocal();rDenX();setDenTab(denTab);requestAnimationFrame(function(){sc.classList.add('on');den.classList.add('on')});$('#otp-denClose').focus();}
@@ -3500,7 +3533,7 @@ $('#otp-sa').addEventListener('click',function(){
      v6  v5 + discarded (v6.38, optional on import)
      v7  v6 + watchlist (v6.39, optional on import)
    plus any of the above base64-encoded. */
-var BACKUP_V=7,IMPORT_MAX=200;
+var BACKUP_V=8,IMPORT_MAX=200;
 
 function exportData(){
   var payload={
@@ -3517,6 +3550,7 @@ function exportData(){
     research:resGet(),   /* v6.08 */
     discarded:disGet().slice(),   /* v6.38 */
     watchlist:watchGet(),   /* v6.39 */
+    likes:likesGet(),likeMute:muteGet(),   /* v6.47 */
     list:st.hunts.slice()
   };
   var name='prowl-backup-'+new Date().toISOString().slice(0,10)+'.json';
@@ -3644,7 +3678,7 @@ $('#otp-clearBtn').addEventListener('click',function(){
      the last-synced list, and pull the list back from the Worker afterwards. */
   var member=!!(mGet('alertTok')&&mGet('alertEmail'));
   if(member){clearTimeout(MAIL.timer);MAIL.ready=false;mSet('alertSig','')}
-  try{localStorage.removeItem(LS);localStorage.removeItem(SGW_KEY);localStorage.removeItem('prowl.lastHunt');localStorage.removeItem(SEEN_KEY);localStorage.removeItem(RUNS_KEY);localStorage.removeItem(FINDS_KEY);localStorage.removeItem(STATS_KEY);localStorage.removeItem(RES_KEY);localStorage.removeItem(DIS_KEY);localStorage.removeItem(WATCH_KEY);localStorage.removeItem(SEEN_FL_KEY)}catch(e){}FC=null;RC=null;DIS=null;FLOCK.picks=Object.create(null);rDenX();
+  try{localStorage.removeItem(LS);localStorage.removeItem(SGW_KEY);localStorage.removeItem('prowl.lastHunt');localStorage.removeItem(SEEN_KEY);localStorage.removeItem(RUNS_KEY);localStorage.removeItem(FINDS_KEY);localStorage.removeItem(STATS_KEY);localStorage.removeItem(RES_KEY);localStorage.removeItem(DIS_KEY);localStorage.removeItem(WATCH_KEY);localStorage.removeItem(SEEN_FL_KEY);localStorage.removeItem(LIKE_KEY);localStorage.removeItem(LMUTE_KEY);localStorage.removeItem(DIST_KEY)}catch(e){}LMODEL=null;LMAP=null;FC=null;RC=null;DIS=null;FLOCK.picks=Object.create(null);rDenX();
   st.hunts=DEF.slice();st.sel=new Set();st.lock=new Set();st.mkt=new Set(ALL);st.city='';st.fbHub='local';st.one=ONE_DEFAULT;
   /* v5.87 (B1): save the cleared state, or the next load re-imports the old
      owlTwigSearches list through legacySeed(). */
@@ -4902,18 +4936,38 @@ function flockPick(t,n,dm){
   for(i=0;i<prev.length&&out.length<n;i++){p=prev[i];if(!(dm&&dm[p.it.url])){out.push(p);have[p.it.url]=1;used[p.src]=1}}
   if(out.length<n){
     pool=flockMix(flockPool(t,dm));
-    pool.sort(function(a,b){return (b.it.image?1:0)-(a.it.image?1:0)});
-    for(i=0;i<pool.length&&out.length<n;i++){p=pool[i];if(!have[p.it.url]&&!used[p.src]){used[p.src]=1;have[p.it.url]=1;out.push(p)} }
-    for(i=0;i<pool.length&&out.length<n;i++){p=pool[i];if(!have[p.it.url]){have[p.it.url]=1;out.push(p)} }
+    var M=likeModel();
+    if(M.n){
+      /* v6.47: with likes, the finds that look most like them come first (photos still before none); about 1 slot in 4
+         takes a random find instead, so the feed keeps surprising you */
+      for(i=0;i<pool.length;i++)pool[i].sc=likeScore(pool[i].it,M);
+      pool.sort(function(a,b){return ((b.it.image?1:0)-(a.it.image?1:0))||(b.sc-a.sc)});
+      var rest=pool.filter(function(x){return !have[x.it.url]}),imgs,k;
+      while(out.length<n&&rest.length){
+        imgs=0;for(i=0;i<rest.length;i++)if(rest[i].it.image)imgs++;
+        k=Math.random()<LIKE_EXPLORE?Math.floor(Math.random()*(imgs||rest.length)):0;
+        p=rest.splice(k,1)[0];have[p.it.url]=1;out.push(p);
+      }
+    }else{
+      pool.sort(function(a,b){return (b.it.image?1:0)-(a.it.image?1:0)});
+      for(i=0;i<pool.length&&out.length<n;i++){p=pool[i];if(!have[p.it.url]&&!used[p.src]){used[p.src]=1;have[p.it.url]=1;out.push(p)} }
+      for(i=0;i<pool.length&&out.length<n;i++){p=pool[i];if(!have[p.it.url]){have[p.it.url]=1;out.push(p)} }
+    }
   }
   FLOCK.picks[k]=out;
   return out.map(function(x){return x.it});
 }
 function flockCards(dm){
-  var rounds=[[],[]],i,h,got,cards=[];
-  for(i=0;i<FLOCK.order.length;i++){h=FLOCK.order[i];got=flockPick(h,2,dm);if(got[0])rounds[0].push({t:h,it:got[0]});if(got[1])rounds[1].push({t:h,it:got[1]})}
+  var rounds=[[],[],[]],i,h,got,cards=[],M=likeModel(),hot=Object.create(null),hs;
+  /* v6.47: the two hunts with the most likes get a third card, and their extra finds come before other hunts' second */
+  if(M.n){hs=FLOCK.order.filter(function(x){return M.hunt[x.toLowerCase()]}).sort(function(a,b){return M.hunt[b.toLowerCase()]-M.hunt[a.toLowerCase()]});for(i=0;i<hs.length&&i<2;i++)hot[hs[i]]=1}
+  for(i=0;i<FLOCK.order.length;i++){
+    h=FLOCK.order[i];got=flockPick(h,hot[h]?3:2,dm);if(got[0])rounds[0].push({t:h,it:got[0]});
+    if(hot[h]){if(got[1])rounds[1].push({t:h,it:got[1]});if(got[2])rounds[1].push({t:h,it:got[2]})}
+    else if(got[1])rounds[2].push({t:h,it:got[1]});
+  }
   /* one from every hunt first, then second finds, so the feed covers the Den before it repeats a hunt */
-  var all=rounds[0].concat(rounds[1]);
+  var all=rounds[0].concat(rounds[1],rounds[2]);
   for(i=0;i<all.length&&cards.length<FLOCK_CARDS;i++)cards.push(all[i]);
   return cards;
 }
@@ -4921,7 +4975,8 @@ function flockCardHtml(c){
   var it=c.it,u=it.url,h=sgwCard(it,c.t),auc=[];
   h=h.replace('<button type="button" class="sgw-fp">Fair price?</button>','');   /* comps would come from other hunts */
   if(FP&&FP[u])h=h.replace(fpHtml(FP[u]),'');   /* v6.38: a verdict already in hand stays out too */
-  h=h.replace('<div class="sgw-cell"','<div class="sgw-cell fl-card" role="article" aria-label="'+esc(it.title)+'"'+(h.indexOf(' data-u="')<0?' data-u="'+esc(u)+'"':''));
+  h=h.replace('<div class="sgw-cell"','<div class="sgw-cell fl-card" role="article" aria-label="'+esc(it.title)+'" data-h="'+esc(c.t||'')+'"'+(h.indexOf(' data-u="')<0?' data-u="'+esc(u)+'"':''));
+  var lk=likeHas(u);   /* v6.47 */
   h=h.replace('<div class="sgw-p">','<div class="sgw-p" data-act="margin" role="button" aria-label="What you would clear reselling at '+esc(it.price||'')+'">');
   if(c.isNew)h=h.replace('<div class="sgw-t">','<div class="sgw-t"><span class="fl-newb">New</span>');   /* v6.39 */
   if(it.time_left)auc.push(esc(it.time_left));
@@ -4929,6 +4984,7 @@ function flockCardHtml(c){
   return h.replace('</a>',(c.t?'<div class="fl-for">for '+esc(c.t)+'</div>':'')+'</a>'+
     (auc.length?'<span class="fl-auc">'+auc.join(' · ')+'</span>':'')+
     '<button type="button" class="fl-x" aria-label="Not for me: hide this find" title="Not for me">✕</button>'+
+    '<button type="button" class="fl-lk'+(lk?' on':'')+'" aria-pressed="'+lk+'" aria-label="Like: show me more like this" title="Like">'+(lk?'\u2665':'\u2661')+'</button>'+
     '<button type="button" class="fl-sh" aria-label="Share this find" title="Share"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"></path><path d="M7 8l5-5 5 5"></path><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg></button>');
 }
 function flNote(cls,html){return '<div class="fl-note '+cls+'">'+html+'</div>'}
@@ -5011,7 +5067,7 @@ function flTermsKey(){return sgw.terms.map(function(x){return x.t.toLowerCase()}
 function flockStart(){
   FLOCK.picks=Object.create(null);
   if(sgw.terms.length<2){FLOCK.started=false;FLOCK.order=[];flockRender(true);return}
-  FLOCK.started=true;FLOCK.key=flTermsKey();
+  FLOCK.started=true;FLOCK.key=flTermsKey();FLOCK.lv=LIKE_VER;   /* v6.47: picks made with these likes */
   FLOCK.order=flockMix(sgw.terms.map(function(x){return x.t}));
   flockRender(true);
   flockWarm();
@@ -5040,7 +5096,8 @@ function openFlock(){
   sec.hidden=false;sec.classList.add('as-feed');if(w)w.classList.add('flock-mode');
   try{var dh=dock&&dock.offsetHeight;if(dh)sec.style.bottom=dh+'px'}catch(e){}
   st.mode='flock';rDock();flSeg();
-  if(FLOCK.view==='feed'&&(!FLOCK.started||FLOCK.key!==flTermsKey()))flockStart();
+  /* v6.47: likes changed since the last pick: pick again on the way in, so they show at once */
+  if(FLOCK.view==='feed'&&(!FLOCK.started||FLOCK.key!==flTermsKey()||FLOCK.lv!==LIKE_VER))flockStart();
   else{flockRender();if(FLOCK.view==='feed')flockWarm()}
   var row=$('#otp-flockRow');try{row.focus({preventScroll:true})}catch(e){}
 }
@@ -5059,7 +5116,8 @@ function flDiscard(card){
   var u=card&&card.getAttribute('data-u');if(!u)return;
   var i=findIdx(u),was=null,a;
   if(i>-1){a=findsGet();was=a[i];a.splice(i,1);findsPut(a);svPaint(u)}
-  disAdd(u);FLOCK.last={u:u,f:was,w:watchDrop(u)};
+  disAdd(u);disTAdd(u,card.getAttribute('data-t')||card.getAttribute('aria-label')||'');   /* v6.47: swipe-aways teach Flock too */
+  FLOCK.last={u:u,f:was,w:watchDrop(u),l:likeDrop(u)};
   if(card.parentNode)card.parentNode.removeChild(card);
   var row=$('#otp-flockRow');if(row&&!row.querySelector('.fl-card'))flockRender();
   flBadge();
@@ -5067,7 +5125,8 @@ function flDiscard(card){
 }
 function flUndo(){
   var L=FLOCK.last,a;if(!L)return;
-  FLOCK.last=null;disDrop(L.u);
+  FLOCK.last=null;disDrop(L.u);disTDrop(L.u);
+  if(L.l&&!likeHas(L.u)){var la=likesGet();la.unshift(L.l);likesPut(la)}
   if(L.f&&findIdx(L.u)<0){a=findsGet();a.unshift(L.f);findsPut(a)}
   if(L.w&&watchIdx(L.u)<0)watchAdd(L.w);
   svPaint(L.u);
@@ -5181,6 +5240,112 @@ function watchGet(){var a=xGet(WATCH_KEY,[]),out=[],seen=Object.create(null),i,w
 function watchPut(a){xSet(WATCH_KEY,a.slice(0,WATCH_MAX))}
 function watchIdx(u){var a=watchGet();for(var i=0;i<a.length;i++)if(a[i].u===u)return i;return -1}
 function watchAdd(w){var c=watchClean(w);if(!c)return;var a=watchGet().filter(function(x){return x.u!==c.u});a.unshift(c);watchPut(a)}
+/* ---- v6.47 likes: the heart on a Flock card says "more like this". Flock ranks finds that share words, site and
+   price range with your likes first, keeps about 1 pick in 4 random so new things still turn up, and gives the hunts
+   you like most a third card. Swipe-aways count a little against their words. prowl.likes (backup v8) holds the
+   likes, prowl.likeMute the words you told Prowl to ignore, prowl.disTitles the titles of recent swipe-aways. ---- */
+var LIKE_KEY='prowl.likes',LIKE_MAX=300,LMUTE_KEY='prowl.likeMute',DIST_KEY='prowl.disTitles',DIST_MAX=100,LIKE_EXPLORE=0.25,LMODEL=null,LMAP=null,LIKE_VER=0;
+var LIKE_STOP=Object.create(null);
+('the and for with from this that are was you your our all new used old lot lots set sets item items vintage antique retro size free ship '+
+ 'shipping see photo photos pics great good nice rare one two three pair piece pieces each very large small medium inch inches tall wide '+
+ 'long plus box boxes only not has have just more look like made condition works working').split(' ').forEach(function(w){LIKE_STOP[w]=1});
+function likeClean(l){
+  if(!l||typeof l!=='object'||typeof l.u!=='string'||!/^https:\/\//i.test(l.u)||!l.t)return null;
+  return {u:l.u.slice(0,800),t:String(l.t).replace(/\s+/g,' ').slice(0,140).trim(),p:l.p?String(l.p).slice(0,24):'',s:typeof l.s==='string'?l.s.slice(0,24):'',
+    i:(typeof l.i==='string'&&/^https:\/\//i.test(l.i))?l.i.slice(0,800):'',h:l.h?String(l.h).replace(/\s+/g,' ').slice(0,80):'',at:Number(l.at)||0};
+}
+function likesGet(){var a=xGet(LIKE_KEY,[]),out=[],seen=Object.create(null),i,l;if(Array.isArray(a))for(i=0;i<a.length&&out.length<LIKE_MAX;i++){l=likeClean(a[i]);if(l&&!seen[l.u]){seen[l.u]=1;out.push(l)} }return out}
+function likesPut(a){xSet(LIKE_KEY,a.slice(0,LIKE_MAX));LMODEL=null;LMAP=null;LIKE_VER++}
+function likeHas(u){if(!LMAP){LMAP=Object.create(null);likesGet().forEach(function(l){LMAP[l.u]=1})}return !!LMAP[u]}
+function muteGet(){var a=xGet(LMUTE_KEY,[]),out=[],i;if(Array.isArray(a))for(i=0;i<a.length&&out.length<100;i++)if(typeof a[i]==='string'&&/^[a-z0-9]{2,30}$/.test(a[i])&&out.indexOf(a[i])<0)out.push(a[i]);return out}
+function mutePut(a){xSet(LMUTE_KEY,a.slice(0,100));LMODEL=null;LIKE_VER++}
+function disTGet(){var a=xGet(DIST_KEY,[]),out=[],i;if(Array.isArray(a))for(i=0;i<a.length;i++)if(a[i]&&typeof a[i].u==='string'&&typeof a[i].t==='string')out.push({u:a[i].u.slice(0,800),t:a[i].t.slice(0,140)});return out.slice(-DIST_MAX)}
+function disTAdd(u,t){if(!u||!t)return;var a=disTGet().filter(function(x){return x.u!==u});a.push({u:u,t:String(t)});xSet(DIST_KEY,a.slice(-DIST_MAX));LMODEL=null}
+function disTDrop(u){xSet(DIST_KEY,disTGet().filter(function(x){return x.u!==u}));LMODEL=null}
+/* the words of a title that say something: makers, materials, decades. Plain numbers, short words and filler go. */
+function likeWords(t){
+  var w=String(t||'').toLowerCase().replace(/['\u2019]s\b/g,'s').split(/[^a-z0-9]+/),out=[],seen=Object.create(null),i,x;
+  for(i=0;i<w.length;i++){x=w[i];if(x.length<3||LIKE_STOP[x]||seen[x]||(/^\d+$/.test(x)&&!/^(1[89]|20)\d0$/.test(x)))continue;seen[x]=1;out.push(x)}
+  return out;
+}
+function likePrice(p){var m=/\d[\d,]*(?:\.\d+)?/.exec(String(p||''));return m?parseFloat(m[0].replace(/,/g,'')):0}
+function likeModel(){
+  if(LMODEL)return LMODEL;
+  var L=likesGet(),mute=muteGet(),M={n:L.length,w:Object.create(null),d:Object.create(null),nd:0,src:Object.create(null),hunt:Object.create(null),lo:0,hi:0},ps=[],D,i,j,ws,pp,med;
+  /* a hunt's own words are in every find for it, so they teach nothing: leave them out */
+  var hw=Object.create(null);(sgw&&sgw.terms||[]).forEach(function(x){likeWords(x.t).forEach(function(w){hw[w]=1})});
+  for(i=0;i<L.length;i++){
+    ws=likeWords(L[i].t);for(j=0;j<ws.length;j++)if(mute.indexOf(ws[j])<0&&!hw[ws[j]])M.w[ws[j]]=(M.w[ws[j]]||0)+1;
+    if(L[i].s)M.src[L[i].s]=(M.src[L[i].s]||0)+1;
+    if(L[i].h)M.hunt[L[i].h.toLowerCase()]=(M.hunt[L[i].h.toLowerCase()]||0)+1;
+    pp=likePrice(L[i].p);if(pp>0)ps.push(pp);
+  }
+  if(ps.length){ps.sort(function(a,b){return a-b});med=ps[Math.floor(ps.length/2)];M.lo=med/2;M.hi=med*2}
+  D=disTGet();M.nd=D.length;
+  for(i=0;i<D.length;i++){ws=likeWords(D[i].t);for(j=0;j<ws.length;j++)M.d[ws[j]]=(M.d[ws[j]]||0)+1}
+  LMODEL=M;return M;
+}
+/* how much a find looks like your likes: shared words, then the same site, then a price near what you like */
+function likeScore(it,M){
+  M=M||likeModel();if(!M.n||!it)return 0;
+  var ws=likeWords(it.title),s=0,i,p=likePrice(it.price),src=it.src||'shopgoodwill';
+  for(i=0;i<ws.length;i++){s+=(M.w[ws[i]]||0)/M.n;if(M.nd)s-=0.5*(M.d[ws[i]]||0)/M.nd}
+  if(M.src[src])s+=0.3*M.src[src]/M.n;
+  if(p>0&&M.lo&&p>=M.lo&&p<=M.hi)s+=0.2;
+  return s;
+}
+function likePaint(u){
+  var on=likeHas(u);
+  $$('.fl-lk').forEach(function(b){
+    var c=b.closest('.fl-card');if(!c||c.getAttribute('data-u')!==u)return;
+    b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));b.textContent=on?'\u2665':'\u2661';
+    if(on&&!flReduced()){b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop')}
+  });
+}
+function likeToggle(card){
+  var u=card&&card.getAttribute('data-u');if(!u)return;
+  var a=likesGet(),i,first=!a.length,img=card.querySelector('.sgw-card img'),l;
+  for(i=0;i<a.length;i++)if(a[i].u===u)break;
+  if(i<a.length){a.splice(i,1);likesPut(a)}
+  else{
+    l=likeClean({u:u,t:card.getAttribute('data-t')||card.getAttribute('aria-label')||'',p:card.getAttribute('data-p')||'',s:card.getAttribute('data-s')||'',
+      i:img?img.getAttribute('src')||'':'',h:card.getAttribute('data-h')||'',at:Date.now()});
+    if(!l)return;a.unshift(l);likesPut(a);
+    if(first)toast('Liked. Flock will show you more like this. Your likes are in the Den.',4200);
+  }
+  likePaint(u);rDenLikes();
+}
+function likeDrop(u){var a=likesGet(),i;for(i=0;i<a.length;i++)if(a[i].u===u){var was=a.splice(i,1)[0];likesPut(a);return was}return null}
+function likeLearned(M){var ws=[],w;for(w in M.w)ws.push([w,M.w[w]]);ws.sort(function(a,b){return b[1]-a[1]||(a[0]<b[0]?-1:1)});return ws.slice(0,8)}
+function rDenLikes(){
+  var el=$('#otp-denLikes'),tab=$('#otp-denT5');if(!el)return;
+  var L=likesGet(),M=likeModel(),mute=muteGet(),top=likeLearned(M),h='',i,l;
+  if(tab)tab.textContent=L.length?'LIKES '+L.length:'LIKES';
+  if(!L.length){el.innerHTML='<p class="lk-empty">Tap \u2661 on a Flock card to like it. Prowl learns from your likes and shows you more finds like them.</p>';return}
+  h+='<h3 class="lk-h">What Prowl learned</h3>';
+  if(top.length){h+='<div class="lk-chips">';for(i=0;i<top.length;i++)h+='<span class="lk-chip">'+esc(top[i][0])+'<button type="button" data-lkmute="'+esc(top[i][0])+'" aria-label="Stop boosting '+esc(top[i][0])+'" title="Stop boosting this">\u00d7</button></span>';h+='</div>'}
+  else h+='<p class="lk-sub">Nothing yet. Like a few more finds.</p>';
+  if(mute.length)h+='<p class="lk-sub">Ignoring: '+mute.map(esc).join(', ')+' <button type="button" class="sgw-ml" data-lkunmute="1">Stop ignoring</button></p>';
+  h+='<h3 class="lk-h">Your likes</h3><div class="lk-grid">';
+  for(i=0;i<L.length;i++){l=L[i];
+    h+='<div class="sgw-cell lk-cell" data-t="'+esc(l.t)+'" data-p="'+esc(l.p)+'" data-s="'+esc(l.s||'shopgoodwill')+'" data-u="'+esc(l.u)+'">'+
+      '<a class="sgw-card" href="'+esc(window.prowlAff(l.u,'prowl-likes'))+'" target="_blank" rel="noopener noreferrer">'+(l.i?'<img src="'+esc(l.i)+'" alt="" decoding="async">':'<img alt="">')+
+      '<div class="sgw-t">'+esc(l.t)+'</div><div class="sgw-p">'+esc(l.p)+'</div></a>'+
+      '<button type="button" class="lk-x" data-unlike="'+esc(l.u)+'" aria-label="Unlike '+esc(l.t)+'" title="Unlike">\u00d7</button></div>';
+  }
+  h+='</div><p class="lk-sub"><button type="button" class="sgw-ml" data-lkclear="1">Forget all likes</button></p>';
+  el.innerHTML=h;
+}
+(function(){
+  var el=$('#otp-denLikes');if(!el)return;
+  el.addEventListener('click',function(e){
+    var t=e.target,b;if(!t||!t.closest)return;
+    if((b=t.closest('[data-unlike]'))){e.preventDefault();var u=b.getAttribute('data-unlike');likeDrop(u);likePaint(u);rDenLikes();return}
+    if((b=t.closest('[data-lkmute]'))){var w=b.getAttribute('data-lkmute'),m=muteGet();if(m.indexOf(w)<0){m.push(w);mutePut(m)}rDenLikes();toast('Prowl will stop boosting \u201c'+esc(w)+'\u201d.',3000);return}
+    if(t.closest('[data-lkunmute]')){mutePut([]);rDenLikes();return}
+    if(t.closest('[data-lkclear]')){if(!confirm('Forget all '+likesGet().length+' likes? Flock goes back to picking at random.'))return;likesPut([]);mutePut([]);$$('.fl-lk.on').forEach(function(x){var c=x.closest('.fl-card');if(c)likePaint(c.getAttribute('data-u'))});rDenLikes();return}
+  });
+})();
 function watchDrop(u){var a=watchGet(),i=watchIdx(u),was=i>-1?a[i]:null;if(was){a.splice(i,1);watchPut(a)}return was}
 
 /* v6.39 margin math: eBay's fee stack as checked 2026-10-06. Final value ~13.6%, payment processing 2.7% + $0.25,
@@ -5883,6 +6048,7 @@ var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function()
     if((x=t.closest('.fl-x'))){e.preventDefault();flDiscard(x.closest('.fl-card'));return}
     if((x=t.closest('[data-act="margin"]'))){e.preventDefault();e.stopPropagation();flMargin(x.closest('.fl-card'));return}   /* v6.39 */
     if((x=t.closest('.fl-sh'))){e.preventDefault();flShare(x.closest('.fl-card'));return}
+    if((x=t.closest('.fl-lk'))){e.preventDefault();likeToggle(x.closest('.fl-card'));return}   /* v6.47 */
     /* v6.43: a plain tap on the photo or title opens the popup for eBay, ShopGoodwill and Salvation Army */
     if(!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey&&e.button!==1&&(x=t.closest('.fl-card .sgw-card'))&&popOpen(x.closest('.fl-card'))){e.preventDefault();return}
     if((x=t.closest('[data-fl]'))){
@@ -6294,7 +6460,7 @@ function flPendStar(){
   if(flSignedIn()){save();return}
   pxMe(function(me){if(me&&me.in){FLIN=true;save()}else done()});
 }
-function rDenX(){rDenResearch();rDenRuns();rDenStats();flSavedChanged()}
+function rDenX(){rDenResearch();rDenRuns();rDenStats();flSavedChanged();rDenLikes()}
 
 /* backup v4: replace a list only when the backup carries it */
 function xImport(o){
@@ -6305,6 +6471,8 @@ function xImport(o){
   if(Array.isArray(o.research)){out=[];for(i=0;i<o.research.length&&out.length<RES_MAX;i++){c=resClean(o.research[i]);if(c)out.push(c)}resPut(out)}   /* v6.08 */
   if(Array.isArray(o.discarded)){DIS=null;xSet(DIS_KEY,o.discarded);DIS=null;disPut(disGet().slice())}   /* v6.38: cleaned on read */
   if(Array.isArray(o.watchlist)){xSet(WATCH_KEY,o.watchlist);watchPut(watchGet())}   /* v6.39 */
+  if(Array.isArray(o.likes)){xSet(LIKE_KEY,o.likes);likesPut(likesGet())}   /* v6.47 */
+  if(Array.isArray(o.likeMute)){xSet(LMUTE_KEY,o.likeMute);mutePut(muteGet())}
   FC=null;rDenX();
 }
 
