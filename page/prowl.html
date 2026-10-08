@@ -1038,6 +1038,11 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 .scout-app-wrapper .sgw-sv{-webkit-appearance:none;appearance:none;text-transform:none;position:absolute;top:6px;right:6px;z-index:2;width:40px;height:40px;min-width:40px;padding:0;border-radius:999px;border:1px solid var(--ln);background:var(--cd);color:var(--mu);font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px var(--shadow);cursor:pointer;-webkit-tap-highlight-color:transparent }
 .scout-app-wrapper .sgw-sv.on{color:var(--go);border-color:var(--go);background:var(--go-soft) }
 .scout-app-wrapper .sgw-sv:focus-visible{outline:2px solid var(--ac);outline-offset:2px }
+/* v6.54: the like heart, under the star on every result card */
+.scout-app-wrapper .sgw-lk{-webkit-appearance:none;appearance:none;text-transform:none;position:absolute;top:52px;right:6px;z-index:2;width:40px;height:40px;min-width:40px;padding:0;border-radius:999px;border:1px solid var(--ln);background:var(--cd);color:var(--mu);font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px var(--shadow);cursor:pointer;-webkit-tap-highlight-color:transparent }
+.scout-app-wrapper .sgw-lk.on{color:#E0245E;border-color:#E0245E }
+.scout-app-wrapper .sgw-lk.pop{animation:otpLkPop .35s ease-out }
+.scout-app-wrapper .sgw-lk:focus-visible{outline:2px solid var(--ac);outline-offset:2px }
 .scout-app-wrapper .dx-wrap:empty{display:none }
 .scout-app-wrapper .dx{border:1px solid var(--ln);border-radius:14px;background:var(--cd2);overflow:hidden }
 .scout-app-wrapper .dx summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:50px;padding:0 16px;cursor:pointer;font-size:14px;-webkit-tap-highlight-color:transparent }
@@ -2372,7 +2377,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.53';
+var PROWL_VERSION='v6.54';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3751,9 +3756,11 @@ function sgwCard(it,hunt){
      the listing. Cells carry title/price/source so comps can be read back
      from whatever block the card is in. */
   var sv=svBtn(it,hunt);   /* v6.02: save this find */
-  if(!it.price)return '<div class="sgw-cell">'+a+sv+'</div>';
+  /* v6.54: a heart on every result, as in Flock; the cell carries what a like keeps (title, price, site, link, hunt) */
+  var lk=lkBtn(it),dh=' data-h="'+esc(hunt||'')+'"';
+  if(!it.price)return '<div class="sgw-cell" data-t="'+esc(it.title)+'" data-s="'+esc(it.src||'shopgoodwill')+'" data-u="'+esc(it.url)+'"'+dh+'>'+a+sv+lk+'</div>';
   var done=FP&&FP[it.url];
-  return '<div class="sgw-cell" data-t="'+esc(it.title)+'" data-p="'+esc(it.price)+'" data-s="'+esc(it.src||'shopgoodwill')+'" data-u="'+esc(it.url)+'">'+a+sv+
+  return '<div class="sgw-cell" data-t="'+esc(it.title)+'" data-p="'+esc(it.price)+'" data-s="'+esc(it.src||'shopgoodwill')+'" data-u="'+esc(it.url)+'"'+dh+'>'+a+sv+lk+
     (done?fpHtml(done):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
 }
 
@@ -5055,8 +5062,9 @@ function flFeed(){
 function flockCardHtml(c){
   var it=c.it,u=it.url,h=sgwCard(it,c.t),auc=[];
   h=h.replace('<button type="button" class="sgw-fp">Fair price?</button>','');   /* comps would come from other hunts */
+  h=h.replace(/<button type="button" class="sgw-lk[^"]*"[^>]*>[^<]*<\/button>/,'');   /* v6.54: Flock has its own heart */
   if(FP&&FP[u])h=h.replace(fpHtml(FP[u]),'');   /* v6.38: a verdict already in hand stays out too */
-  h=h.replace('<div class="sgw-cell"','<div class="sgw-cell fl-card" role="article" aria-label="'+esc(it.title)+'" data-h="'+esc(c.t||'')+'"'+(h.indexOf(' data-u="')<0?' data-u="'+esc(u)+'"':''));
+  h=h.replace('<div class="sgw-cell"','<div class="sgw-cell fl-card" role="article" aria-label="'+esc(it.title)+'"'+(h.indexOf(' data-h="')<0?' data-h="'+esc(c.t||'')+'"':'')+(h.indexOf(' data-u="')<0?' data-u="'+esc(u)+'"':''));
   if(c.near)h=h.replace('<a class="sgw-card"','<span class="fl-near">Because you liked '+esc(c.t)+'</span><a class="sgw-card"');   /* v6.52 */
   var lk=likeHas(u);   /* v6.47 */
   h=h.replace('<div class="sgw-p">','<div class="sgw-p" data-act="margin" role="button" aria-label="What you would clear reselling at '+esc(it.price||'')+'">');
@@ -5434,8 +5442,8 @@ function likeScore(it,M){
 }
 function likePaint(u,quiet){
   var on=likeHas(u);
-  $$('.fl-lk').forEach(function(b){
-    var c=b.closest('.fl-card');if(!c||c.getAttribute('data-u')!==u)return;
+  $$('.fl-lk,.sgw-lk').forEach(function(b){   /* v6.54: the result-card heart too */
+    var c=b.closest('.sgw-cell');if(!c||c.getAttribute('data-u')!==u)return;
     b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));b.textContent=on?'\u2665':'\u2661';
     if(on&&!quiet&&!flReduced()){b.classList.remove('pop');void b.offsetWidth;b.classList.add('pop')}
   });
@@ -6413,6 +6421,12 @@ function findsGet(){
 }
 function findsPut(a){FC=a.slice(0,FINDS_MAX);xSet(FINDS_KEY,FC)}
 function findIdx(u){var a=findsGet();for(var i=0;i<a.length;i++)if(a[i].url===u)return i;return -1}
+/* v6.54: the like heart for result cards. Before the likes store is set up (first paint) it draws as not liked. */
+function lkBtn(it){
+  if(!it||typeof it.url!=='string'||!/^https:\/\//i.test(it.url)||!it.title)return '';
+  var on=typeof LIKE_KEY==='string'&&likeHas(it.url);
+  return '<button type="button" class="sgw-lk'+(on?' on':'')+'" aria-pressed="'+on+'" aria-label="Like: show me more like this in Flock" title="Like">'+(on?'\u2665':'\u2661')+'</button>';
+}
 function svBtn(it,hunt){
   if(!it||typeof it.url!=='string'||!/^https:\/\//i.test(it.url)||!it.title)return '';
   if(SVN>400){SVI={};SVN=0}
@@ -6620,6 +6634,7 @@ function xImport(o){
 document.addEventListener('click',function(e){
   var t=e.target,b=t&&t.closest&&t.closest('.scout-app-wrapper .sgw-sv');
   if(b){e.preventDefault();e.stopPropagation();svTap(b.getAttribute('data-sv'));return}
+  if((b=t&&t.closest&&t.closest('.scout-app-wrapper .sgw-lk'))){e.preventDefault();e.stopPropagation();likeToggle(b.closest('.sgw-cell'));return}   /* v6.54 */
   if(!den||!t||!t.closest||!den.contains(t))return;
   var x;
   if((x=t.closest('[data-rp]'))){runReplay(+x.getAttribute('data-rp'));return}
