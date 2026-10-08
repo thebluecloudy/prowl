@@ -2377,7 +2377,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.54';
+var PROWL_VERSION='v6.55';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3707,6 +3707,37 @@ document.addEventListener('keydown',function(e){
   if(pho&&pho.classList.contains('on')){closePhoto();return;}
   if(flockOpen()){closeFlock();return;}   /* v6.38 */
 });
+
+/* v6.55: the phone's back button closes what is open (the popup, then Den, Flock, Photo check, the marketplace list,
+   the intro) one layer at a time, instead of leaving Prowl. While anything is open there is one extra history entry;
+   Back pops it and closes the top layer, and a layer closed with its own button gives the entry back. */
+var OV={guard:false,skip:0};
+function ovAny(){return sheetOpen()||ms.classList.contains('on')||dw.classList.contains('on')||den.classList.contains('on')||!!(pho&&pho.classList.contains('on'))||flockOpen()}
+function ovCloseTop(){
+  if(sheetOpen()){closeSheet();return}
+  if(ms.classList.contains('on')){closeM();return}
+  if(dw.classList.contains('on')){closeDw();return}
+  if(den.classList.contains('on')){closeDen();return}
+  if(pho&&pho.classList.contains('on')){closePhoto();return}
+  if(flockOpen())closeFlock();
+}
+function ovSync(){
+  if(!window.history||typeof history.pushState!=='function')return;
+  var any=ovAny();
+  if(any&&!OV.guard){try{history.pushState({prowlOv:1},'',location.href);OV.guard=true}catch(e){} }
+  else if(!any&&OV.guard){OV.guard=false;OV.skip++;try{history.back()}catch(e){OV.skip--} }
+}
+window.addEventListener('popstate',function(){
+  if(OV.skip){OV.skip--;return}
+  if(!OV.guard)return;
+  OV.guard=false;ovCloseTop();
+  setTimeout(ovSync,0);   /* something still open (Flock under the popup): keep Back working for it */
+});
+(function(){
+  if(typeof MutationObserver!=='function')return;
+  var mo=new MutationObserver(function(){setTimeout(ovSync,0)});
+  [$('#otp-sheet'),ms,dw,den,pho,$('#otp-flock')].forEach(function(el){if(el)mo.observe(el,{attributes:true,attributeFilter:['class']})});
+})();
 
 /* ---------- FOUND STRIP (ported from live v3.0) ----------
    Pulls the shop's own newest in-stock vintage from /products.json and marquees
