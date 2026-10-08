@@ -656,6 +656,7 @@ test("action signout-all needs the id typed, then rotates the token and drops th
   assert.notEqual(r.tok, "TOKEN-SECRET-abc123def456"); assert.match(r.tok, /^fresh-token-/);
   assert.equal(r.utok, "UTOK-SECRET-987zyx", "unsubscribe token kept");
   assert.equal(env.PROWL_ALERTS.m.has("in:" + EMAIL), false);
+  assert.equal(env.PROWL_ALERTS.m.has("conf:" + EMAIL), false, "a waiting confirm link signs in as the member too (v85)");
   noPII(JSON.stringify(j));
   assert.ok(!JSON.stringify(j).includes(r.tok), "new token never returned");
 });
