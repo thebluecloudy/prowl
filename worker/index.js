@@ -19,6 +19,12 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v87: 2026-10-08. Fair price on auctions and exact matches. A listing whose details say "9 bids" is priced as an
+ *        auction: the prompt calls the price the current bid after N bids (ending in ...), not an asking price, and a
+ *        verdict judges the bid. The sold search must match the exact item (same maker, line, variant, size, era;
+ *        originals are not reissues) and re-check when its sales sit far below what bidders already offered. A
+ *        Super Madballs Touchdown Terror (1986) at a $142 bid after 9 bids had come back "Priced high, fair $16-35"
+ *        from sales of other Madballs. Cache key v7, so old answers are not reused.
  *   v86: 2026-10-08. Re-confirming keeps the member whole: tapping a Prowl Alerts confirm link as an existing member
  *        merges hunts and keeps every other field (earlier addresses, hadPro, the shop link, settings); emails that
  *        were off come back on from their next email day, and the confirm page says so. conf: goes with the purge
@@ -266,7 +272,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
-const WORKER_VERSION = "v86";
+const WORKER_VERSION = "v87";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -2070,6 +2076,16 @@ function scrubListingText(s, n) {
     .replace(/\s+/g, " ").trim().slice(0, n || 160);
 }
 
+/* v87: "21h 1m left · 9 bids" in the card or popup details means an auction with bids. */
+function verdictAuction(details) {
+  /* only the meta line counts (it comes first, before ". " and any seller text), so a description cannot fake bids */
+  details = String(details || "").split(/\.\s|Description:/)[0];
+  const m = /(\d{1,4})\s+bids?\b/i.exec(details);
+  const n = m ? Number(m[1]) : 0;
+  if (!(n > 0)) return null;
+  const l = /((?:\d+\s?[dhm]\s?){1,3})\s*left\b/i.exec(details);
+  return { bids: n, left: l ? l[1].replace(/\s+/g, " ").trim() : "" };
+}
 async function verdict(request, env, origin) {
   if (!origin || ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);
   const b = await readJson(request, 16384);
@@ -2086,7 +2102,7 @@ async function verdict(request, env, origin) {
   /* v51: the comps and details go into the prompt, so they go into the key too;
      a seller cannot post fake comps and have every visitor read the cached DEAL. */
   const sig = await sha16(comps.map(c => c.t + "|" + c.p).join("\n") + "\n" + details);
-  const ckey = new Request("https://prowl-verdicts.invalid/v6/" + encodeURIComponent((iurl || title) + "|" + price) + "/" + sig);
+  const ckey = new Request("https://prowl-verdicts.invalid/v7/" + encodeURIComponent((iurl || title) + "|" + price) + "/" + sig);
   const hit = await cache.match(ckey);
   if (hit) { try { return json(JSON.parse(await hit.text()), 200, origin, { "X-Prowl-Cache": "hit" }); } catch (e) {} }
 
@@ -2108,12 +2124,20 @@ async function verdict(request, env, origin) {
   if (left !== null) { const pool = await poolOk(request, env, "all", VERDICT_PER_DAY); if (!pool.ok) return busyNow(origin, pool); }
 
   const lines = comps.length ? comps.map(c => "- " + c.t + " | " + c.p + (c.s ? " (" + c.s + ")" : "")).join("\n") : "- none found";
+  /* v87: an auction's price is the bid so far, not an asking price: bidders have already said it is worth at least that */
+  const auc = verdictAuction(details);
+  const priceLine = auc
+    ? title + " | current auction bid " + price + " after " + auc.bids + " bid" + (auc.bids === 1 ? "" : "s") + (auc.left ? ", ending in " + auc.left : "") + ". The final price will likely be higher."
+    : title + " | asking " + price;
   const head =
-    "A collector is looking at this listing:\n" + title + " | asking " + price + "\n" + (details ? "Listing details: " + details + "\n" : "") + "\n" +
+    "A collector is looking at this listing:\n" + priceLine + "\n" + (details ? "Listing details: " + details + "\n" : "") + "\n" +
     "Other listings live right now for the same search (these are asking prices, not sales):\n" + lines + "\n\n" +
     "First identify the item: maker (from signed or marked mentions), model line, era, form. Use the other listing titles to triangulate when this title is vague. ";
+  const judge = auc
+    ? "Judge the current bid for a collector buying to keep: DEAL if winning near this bid would be a good buy, FAIR if it is near what this exact item sells for, HIGH only if the bid is already above that. "
+    : "Judge the asking price for a collector buying to keep. ";
   const tail =
-    "Judge the asking price for a collector buying to keep. Write brand names correctly (eBay, not Ebay). " +
+    judge + "Write brand names correctly (eBay, not Ebay). " +
     "Reply with exactly four lines and nothing else:\n" +
     "ITEM: maker, model line, era, form (for example: Howard Kron Sportsman black panther TV lamp, 1955)\n" +
     "VERDICT: DEAL or FAIR or HIGH\n" +
@@ -2121,9 +2145,12 @@ async function verdict(request, env, origin) {
     "WHY: one plain sentence under 22 words";
   const promptSold = head +
     "Then search the web for recent SOLD prices for that exact item (eBay sold listings, auction results, WorthPoint, Ruby Lane sold) and weight real sold prices over asking prices. " +
+    "Only count sales of the same item: same maker, same line and variant, same size, same era. Originals are not reissues or reproductions; a related smaller, plainer or later version is a different item; skip parts, lots and damaged pieces unless this one is too. " +
+    (auc ? "This auction already has " + auc.bids + " bid" + (auc.bids === 1 ? "" : "s") + " at " + price + ". If the sales you found are far below that, you are probably pricing a different version: search again for the exact item before answering. " : "") +
     "In WHY, only mention sold prices you actually found in search results; if you found none, say the range is based on current listings. " + tail;
   const promptListed = head +
     "You cannot look up sold prices right now. Base the fair range on the other listings above and what you know of this maker. " +
+    (auc ? "Bidders have already taken this auction to " + price + "; do not call that bid high unless you are sure this exact item sells for less. " : "") +
     "WHY must say the range comes from similar pieces listed now (for example: similar pieces listed now at $30-45), never claim sold prices. " + tail;
 
   let a = null, basis = "sold";
