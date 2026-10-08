@@ -1345,10 +1345,14 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v6.56: Fly sits before Shuffle in the feed; it turns orange while flying */
 .scout-app-wrapper .flock-head .fl-fly{display:none}
 .scout-app-wrapper #otp-flock.as-feed .flock-head .fl-fly{display:inline-flex;align-items:center}
-.scout-app-wrapper #otp-flock.as-feed:not(.fl-saved) .flock-head .fl-fly+.gh{margin-left:0}
+.scout-app-wrapper #otp-flock.as-feed:not(.fl-saved) .flock-head .fl-fly+.gh,.scout-app-wrapper #otp-flock.as-feed:not(.fl-saved) .flock-head .fl-fly-sp+.gh{margin-left:0}
 .scout-app-wrapper #otp-flock.as-feed .flock-head .fl-fly.on{background:#D9541E;color:#fff;border-color:#D9541E}
+/* v6.57: while flying, the speed chip takes Shuffle's place */
+.scout-app-wrapper .flock-head .fl-fly-sp{display:none}
+.scout-app-wrapper #otp-flock.as-feed.flying .flock-head .fl-fly-sp{display:inline-flex;align-items:center;margin-left:0;min-width:52px;justify-content:center;font-variant-numeric:tabular-nums}
+.scout-app-wrapper #otp-flock.as-feed.flying #otp-flockShuf{display:none}
 .scout-app-wrapper #otp-flock.as-feed.fl-saved .flock-head .fl-fly{display:none}
-@media(min-width:1024px){.scout-app-wrapper #otp-flock.as-feed .flock-head .fl-fly{display:none}.scout-app-wrapper #otp-flock.as-feed:not(.fl-saved) .flock-head .fl-fly+.gh{margin-left:auto}}
+@media(min-width:1024px){.scout-app-wrapper #otp-flock.as-feed .flock-head .fl-fly{display:none}.scout-app-wrapper #otp-flock.as-feed:not(.fl-saved) .flock-head .fl-fly-sp+.gh{margin-left:auto}}
 .scout-app-wrapper #otp-flock.as-feed .flock-sub{display:none}
 .scout-app-wrapper #otp-flock.as-feed .fl-seg{display:flex;order:3;flex:1 1 100%;gap:3px;padding:3px;border-radius:99px;background:var(--cd3)}
 .scout-app-wrapper .fl-seg button{-webkit-appearance:none;appearance:none;text-transform:none;white-space:nowrap;flex:1 1 0;min-height:38px;padding:6px 14px;border:0;border-radius:99px;background:none;color:var(--mu);font:700 15px/1 var(--sans);cursor:pointer}
@@ -2384,7 +2388,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.56';
+var PROWL_VERSION='v6.57';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -6220,15 +6224,24 @@ var gS=$('#otp-guide');if(gS){gS.addEventListener('click',gdClick);gdMineRender(
 var fShuf=$('#otp-flockShuf');if(fShuf)fShuf.addEventListener('click',function(){flyStop();if(sgw.terms.length>=2)flShuffle()});   /* v6.18, v6.38 */
 /* v6.56: Fly. The feed moves on to the next find every 4 seconds until you stop it: Fly again (now Stop), any touch,
    wheel or key on the feed, opening a listing, leaving Flock or Feed, a hidden tab, or the end of the feed. */
-var FLY={t:0,btn:null},FLY_MS=4000;
+var FLY={t:0,btn:null,sp:null},FLY_SPEEDS=[2,3,4,6,8,10];
+/* v6.57: how many seconds per find, remembered on this device (prowl.flySpeed); 4 until you pick */
+function flySec(){var n=0;try{n=parseInt(localStorage.getItem('prowl.flySpeed'),10)}catch(e){}return FLY_SPEEDS.indexOf(n)>-1?n:4}
+function flySpPaint(){var c=FLY.sp;if(!c)return;var n=flySec();c.textContent=n+'s';c.setAttribute('aria-label','Speed: a new find every '+n+' seconds. Tap to change.');c.title='A new find every '+n+' seconds'}
+function flySpeedNext(){
+  var n=flySec(),i=FLY_SPEEDS.indexOf(n),nx=FLY_SPEEDS[(i+1)%FLY_SPEEDS.length];
+  try{localStorage.setItem('prowl.flySpeed',String(nx))}catch(e){}
+  flySpPaint();
+  if(FLY.t){clearInterval(FLY.t);FLY.t=setInterval(flyStep,nx*1000)}   /* keep flying at the new speed */
+}
 function flyOn(){return !!FLY.t}
-function flyPaint(){var b=FLY.btn;if(!b)return;var on=flyOn();b.textContent=on?'Stop':'Fly';b.setAttribute('aria-pressed',String(on));b.classList.toggle('on',on)}
+function flyPaint(){var b=FLY.btn;if(!b)return;var on=flyOn();b.textContent=on?'Stop':'Fly';b.setAttribute('aria-pressed',String(on));b.classList.toggle('on',on);var sec=$('#otp-flock');if(sec)sec.classList.toggle('flying',on);flySpPaint()}
 function flyStop(){if(!FLY||!FLY.t)return;clearInterval(FLY.t);FLY.t=0;flyPaint()}
 function flyStart(){
   if(FLY.t||!flockOpen()||FLOCK.view!=='feed'||flWide())return;
   if(!$('#otp-flockRow .fl-card'))return;
-  FLY.t=setInterval(flyStep,FLY_MS);flyPaint();
-  toast('Flying: the next find every 4 seconds. Touch the feed to stop.',2600);
+  FLY.t=setInterval(flyStep,flySec()*1000);flyPaint();
+  toast('Flying: the next find every '+flySec()+' seconds. Touch the feed to stop. Tap '+flySec()+'s to change the speed.',3000);
 }
 function flyStep(){
   var row=$('#otp-flockRow');
@@ -6242,9 +6255,12 @@ function flyStep(){
 (function(){
   if(!fShuf||!fShuf.parentNode)return;
   var b=document.createElement('button');b.type='button';b.className='gh fl-fly';b.id='otp-flockFly';b.setAttribute('aria-pressed','false');
-  b.title='Move to the next find every 4 seconds';b.textContent='Fly';
+  b.title='Move to the next find on its own';b.textContent='Fly';
   fShuf.parentNode.insertBefore(b,fShuf);FLY.btn=b;
   b.addEventListener('click',function(){if(flyOn())flyStop();else flyStart()});
+  var c=document.createElement('button');c.type='button';c.className='gh fl-fly-sp';c.id='otp-flockFlySp';
+  fShuf.parentNode.insertBefore(c,fShuf);FLY.sp=c;flySpPaint();   /* v6.57: the speed, shown while flying in Shuffle's place */
+  c.addEventListener('click',flySpeedNext);
   var row=$('#otp-flockRow');
   if(row)['touchstart','pointerdown','wheel','keydown'].forEach(function(ev){row.addEventListener(ev,flyStop,{passive:true})});
   document.addEventListener('visibilitychange',function(){if(document.hidden)flyStop()});
