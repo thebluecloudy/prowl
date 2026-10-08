@@ -19,6 +19,11 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v86: 2026-10-08. Re-confirming keeps the member whole: tapping a Prowl Alerts confirm link as an existing member
+ *        merges hunts and keeps every other field (earlier addresses, hadPro, the shop link, settings); emails that
+ *        were off come back on from their next email day, and the confirm page says so. conf: goes with the purge
+ *        (Delete in Prowl, admin delete), the admin's Sign out everywhere and an address move. The unsubscribe page
+ *        for an address that moved no longer shows the new address (masked, and only to a device with the token).
  *   v85: 2026-10-08. Likes follow a signed-in member. POST /alerts/likes (email + token, or the v82 session) sends this
  *        device's likes, unlikes and ignored words; the worker merges them into likes:<email> (per link the newest of
  *        liked or unliked wins) and answers with the merged lists. Delete in Prowl purges likes:, a change of email
@@ -261,7 +266,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
-const WORKER_VERSION = "v85";
+const WORKER_VERSION = "v86";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -3783,13 +3788,17 @@ async function alConfirm(request, env, url) {
   const email = alEmail(url.searchParams.get("e"));
   const c = await kvGet(env, "conf:" + email, null);
   if (!email || !c || !alSame(url.searchParams.get("c"), c.code)) return alPage("Link expired", "Open Prowl and tap Email me daily again for a fresh link.");
-  if (request.method !== "POST") return alGate("Turn on Prowl Alerts", "One tap and your morning email starts for " + email + ".", "Yes, email me", url);   /* v51 */
-  const old = await kvGet(env, "sub:" + email, null);
+  const found = await kvGet(env, "sub:" + email, null), old = found && typeof found === "object" && !Array.isArray(found) ? found : null;
+  if (request.method !== "POST") return alGate("Turn on Prowl Alerts", old && old.mail === "off" ? "Your Prowl emails are off. One tap turns them back on for " + email + "." : "One tap and your morning email starts for " + email + ".", "Yes, email me", url);   /* v51 */
   /* v37: a second phone or computer confirming the same email adds its hunts to
-     the member's list; it never wipes the hunts they already have. */
+     the member's list; it never wipes the hunts they already have.
+     v86: the rest of their record is kept whole (earlier addresses, hadPro, the shop link, every setting); it used to
+     be rebuilt from a short list, which dropped them. "Yes, email me" is their own yes, so emails that were off come
+     back on the way Settings turns them on: from their next email day. */
   const hunts = old ? alHunts((old.hunts || []).concat(c.hunts)) : c.hunts;
-  const sub = { email: email, tok: old ? old.tok : alToken(), utok: old && old.utok ? old.utok : alToken(), hunts: hunts, day: old ? old.day || "" : "", done: old ? old.done || [] : [], sent: old ? old.sent || "" : "", created: old ? old.created : new Date().toISOString() };
-  if (old) for (const k of ["prefs", "pro", "plan", "proDay", "cid", "via"]) if (old[k] !== undefined && sub[k] === undefined) sub[k] = old[k];   /* v51: re-confirming keeps settings */
+  const sub = old ? Object.assign({}, old, { email: email, tok: old.tok || alToken(), utok: old.utok || alToken(), hunts: hunts, day: old.day || "", done: old.done || [], sent: old.sent || "" })
+    : { email: email, tok: alToken(), utok: alToken(), hunts: hunts, day: "", done: [], sent: "", created: new Date().toISOString() };
+  if (old && old.mail === "off") { sub.mail = "on"; sub.mailOffAt = ""; sub.sent = alLocal(sub, alNow(env)).day; }
   await alProSet(env, sub, true);
   await kvPut(env, "sub:" + email, sub);
   await env.PROWL_ALERTS.delete("conf:" + email);
@@ -4114,7 +4123,7 @@ async function alMoveConfirm(request, env, url) {
   for (const k of ["pend:", "seen:", "likes:"]) { const v = await kvGet(env, k + from, null); if (v != null) await kvPut(env, k + to, v); }   /* v85: likes: */
   if (moved.cid) await kvPut(env, "cid:" + moved.cid, { email: to });
   await env.PROWL_ALERTS.put("moved:" + from, JSON.stringify({ to: to, tok: sub.tok, at: Date.now() }), { expirationTtl: 90 * 86400 });
-  for (const k of ["sub:", "pend:", "seen:", "mvf:", "likes:"]) await env.PROWL_ALERTS.delete(k + from);
+  for (const k of ["sub:", "pend:", "seen:", "mvf:", "likes:", "conf:"]) await env.PROWL_ALERTS.delete(k + from);   /* v86: conf: too, or a waiting confirm link makes a second, empty member on the old address */
   await env.PROWL_ALERTS.delete("mv:" + to);
   /* one notice to the old address, so a change is never silent */
   const note = alShell(env, '<tr><td style="padding:12px 12px 4px;font:16px/1.5 Georgia,serif;color:#2b2118">' +
@@ -4155,7 +4164,7 @@ async function alDelete(request, env, origin) {
    they are granted by the owner, or are a do-not-email list. Logs key names only, never the email. */
 async function alPurge(env, email, sub) {
   const kv = env.PROWL_ALERTS, gone = [];
-  for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "pro:", "last:", "likes:"]) { await kv.delete(p + email); gone.push(p); }   /* v85: likes: */
+  for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:"]) { await kv.delete(p + email); gone.push(p); }   /* v85: likes:, v86: conf: */
   const cid = sub && sub.cid ? String(sub.cid) : "";
   if (cid) {
     const c = await kvGet(env, "cid:" + cid, null);
@@ -4236,7 +4245,9 @@ async function alUnsub(request, env, url, origin) {
   if (sub && !alSame(p.t, sub.tok) && !(sub.utok && alSame(p.t, sub.utok))) return wantJson ? json({ error: "old link" }, 404, origin) : alPage("This link is out of date", "It is from an older Prowl Alerts email, so it cannot change anything. Prowl Alerts is still on for this address. To stop it, tap Unsubscribe in your newest Prowl email, or open Prowl and go to Den, then Settings.");
   if (!sub) {
     const mv = email ? await kvGet(env, "moved:" + email, null) : null;   /* v54 */
-    if (mv && mv.to && !wantJson) return alPage("This address changed", "Prowl Alerts for this account now go to " + mv.to + ". To stop them, use Unsubscribe in your newest Prowl email, or open Prowl and go to Den, then Settings.");
+    /* v86: the new address is never shown to whoever has the old one; a device still holding the member's token sees it masked */
+    if (mv && mv.to && !wantJson) return alPage("This address changed", (alSame(p.t, mv.tok) ? "Prowl Alerts for this account now go to " + alMask(String(mv.to)) + "." : "Prowl Alerts for this account moved to a newer address.") +
+      " To stop them, use Unsubscribe in your newest Prowl email, or open Prowl and go to Den, then Settings.");
     return wantJson ? json({ error: "not found" }, 404, origin) : alPage("Already off", "There are no Prowl Alerts on for this link.");
   }
   const h = vClean(p.h, 60).toLowerCase();
