@@ -2367,7 +2367,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.49';
+var PROWL_VERSION='v6.50';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3791,7 +3791,7 @@ function fpAsk(btn){
   /* v5.34: send whatever else the card shows (source, bids, time left) as
      details; the Worker names the piece first, then prices it. */
   var mEl=cell.querySelector('.sgw-m');
-  var body={title:cell.getAttribute('data-t'),price:cell.getAttribute('data-p'),url:u,details:mEl?mEl.textContent:'',comps:fpComps(cell)};
+  var body={title:cell.getAttribute('data-t'),price:cell.getAttribute('data-p'),url:u,details:mEl?mEl.textContent:(cell.getAttribute('data-d')||''),comps:fpComps(cell)};   /* v6.50: the popup's details */
   /* v5.92: Prowl Pro members get unlimited checks; the Worker checks the token */
   if(mGet('alertTok')&&mGet('alertEmail')){body.e=mGet('alertEmail');body.t=mGet('alertTok')}
   function show(r){
@@ -5177,6 +5177,14 @@ function popOpen(card){
   }
   return true;
 }
+/* v6.50: what the popup knows goes to Fair price too: bids and time left (so an auction is priced as one), the item
+   details and the start of the description (the worker strips $ amounts and instructions from it) */
+function popDetails(meta,d){
+  var t=meta.join(' · '),i;
+  if(d.aspects&&d.aspects.length){var a=[];for(i=0;i<d.aspects.length&&i<6;i++)a.push(d.aspects[i].n+': '+d.aspects[i].v);t+=(t?'. ':'')+a.join('; ')}
+  if(d.description)t+=(t?'. ':'')+'Description: '+String(d.description).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+  return t.slice(0,600);
+}
 function popPaint(d){
   var P=POP,b=$('#otp-sheetB');if(!P||!b)return;
   d=d||{};
@@ -5198,7 +5206,7 @@ function popPaint(d){
   if(d.gone)h+='<p class="pp-end">This listing ended.</p>';
   if(d.aspects&&d.aspects.length){h+='<dl class="pp-asp">';for(i=0;i<d.aspects.length&&i<6;i++)h+='<dt>'+esc(d.aspects[i].n)+'</dt><dd>'+esc(d.aspects[i].v)+'</dd>';h+='</dl>'}
   if(d.description)h+='<div class="pp-d clip" id="otp-ppd"></div><button type="button" class="pp-more" data-ppmore="1" aria-controls="otp-ppd" aria-expanded="false">Read more</button>';
-  if(price&&!d.gone&&!aiOff())h+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
+  if(price&&!d.gone&&!aiOff())h+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'" data-d="'+esc(popDetails(meta,d))+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
   var go=window.prowlAff(d.url||P.u,'prowl-popup',d.affUrl);
   if(go!=='#')h+='<a class="b p pp-go" href="'+esc(go)+'" target="_blank" rel="noopener noreferrer">View on '+esc(POP_NAME[P.src])+' ↗</a>';
   b.innerHTML=h;
