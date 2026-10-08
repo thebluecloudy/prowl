@@ -18,13 +18,14 @@ test('placeholders mean clean links: nothing is tagged until the real IDs are in
 const RAN = 'https://click.linksynergy.com/deeplink?id=jh1j/r7*wkQ&mid=53555&murl=';
 const DEPOP = ['https://www.depop.com/products/abc-vintage-tee/', 'https://www.depop.com/search/?q=ceramic%20panther', 'https://depop.com/products/x/'];
 function affFetch(on) {
-  const asked = [];
+  const asked = [], out = { asked, ids: null };
   const impl = (url) => {
     const u = String(url);
-    if (/workers\.dev\/aff$/.test(u)) { asked.push(u); return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ on }) }); }
+    if (/workers\.dev\/aff$/.test(u)) { asked.push(u); return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(out.ids ? { on, ids: out.ids } : { on }) }); }
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ items: [] }), text: () => Promise.resolve('') });
   };
-  return { impl, asked };
+  out.impl = impl;
+  return out;
 }
 
 test('Depop is off by default: its links go out plain and no disclosure names it', async () => {
@@ -64,9 +65,10 @@ test('eBay switched off: plain eBay links, the popup affiliate URL is ignored, a
 
 test('a bad or missing /aff answer changes nothing', async () => {
   const f = affFetch({ ebay: 'no', depop: 1 });
-  const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.affOn': 'junk' } });
+  const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.affOn': 'junk', 'prowl.affIds': 'junk' } });
   await tick(40);
-  assert.deepEqual({ ...p.win.PROWL_AFF_ON }, { ebay: true, depop: false });
+  assert.deepEqual({ ...p.win.PROWL_AFF_ON }, { ebay: true, depop: false, etsy: false, reverb: false, '1stdibs': false, amazon: false });
+  assert.equal(p.win.prowlAffId('ebay', 'camp'), '5339216838');
   await p.close();
 });
 
@@ -78,17 +80,16 @@ test('eBay keeps its EPN tag and non-https links are blocked', async () => {
   await p.close();
 });
 
-test('live tags build each network\'s click URL', async () => {
-  const p = await page();
-  const A = p.win.PROWL_AFF;
-  A['etsy.com'].t = 'https://www.awin1.com/cread.php?awinmid=111&awinaffid=222&ued={url}';
-  A['depop.com'].t = 'https://click.linksynergy.com/deeplink?id=RAN&mid=53555&murl={url}';
-  A['1stdibs.com'].t = 'https://prf.hn/click/camref:CAM/destination:{url}';
-  p.win.PROWL_AFF_ON.depop = true;
+test("v6.60: IDs from the admin area build each network's click URL, only while the program is on", async () => {
+  const f = affFetch({ ebay: true, depop: true, etsy: true, reverb: false, '1stdibs': true, amazon: false });
+  f.ids = { ebay: { camp: '2222222222' }, depop: { pub: 'Abc123/x*Y' }, etsy: { mid: '6220', aff: '1234567' }, reverb: { mid: '7777', aff: '1234567' }, '1stdibs': { camref: '1l3vabc' } };
+  const p = loadPage({ fetchImpl: f.impl });
+  await tick(40);
   const etsy = 'https://www.etsy.com/listing/1/pyrex?ref=x';
-  assert.equal(p.win.prowlAff(etsy), 'https://www.awin1.com/cread.php?awinmid=111&awinaffid=222&ued=' + encodeURIComponent(etsy));
-  assert.equal(p.win.prowlAff('https://www.depop.com/products/a/'), 'https://click.linksynergy.com/deeplink?id=RAN&mid=53555&murl=' + encodeURIComponent('https://www.depop.com/products/a/'));
-  assert.equal(p.win.prowlAff('https://www.1stdibs.com/x/'), 'https://prf.hn/click/camref:CAM/destination:' + encodeURIComponent('https://www.1stdibs.com/x/'));
+  assert.equal(p.win.prowlAff(etsy), 'https://www.awin1.com/cread.php?awinmid=6220&awinaffid=1234567&ued=' + encodeURIComponent(etsy));
+  assert.equal(p.win.prowlAff('https://www.depop.com/products/a/'), 'https://click.linksynergy.com/deeplink?id=Abc123/x*Y&mid=53555&murl=' + encodeURIComponent('https://www.depop.com/products/a/'));
+  assert.equal(p.win.prowlAff('https://www.1stdibs.com/x/'), 'https://prf.hn/click/camref:1l3vabc/destination:' + encodeURIComponent('https://www.1stdibs.com/x/'));
+  assert.match(p.win.prowlAff('https://www.ebay.com/itm/1', 'prowl-live'), /campid=2222222222&customid=prowl-live/, 'the eBay campaign comes from the IDs');
   // subdomains count; lookalike hosts do not
   assert.match(p.win.prowlAff('https://uk.etsy.com/listing/9'), /^https:\/\/www\.awin1\.com\//);
   assert.equal(p.win.prowlAff('https://notetsy.com/listing/9'), 'https://notetsy.com/listing/9');
@@ -96,9 +97,22 @@ test('live tags build each network\'s click URL', async () => {
   // a click URL is never wrapped twice
   const wrapped = p.win.prowlAff(etsy);
   assert.equal(p.win.prowlAff(wrapped), wrapped);
-  // reverb still a placeholder: untouched
+  // Reverb has IDs but is switched off: untouched
   assert.equal(p.win.prowlAff('https://reverb.com/item/2'), 'https://reverb.com/item/2');
   assert.deepEqual([...p.win.prowlAffNames()], ['eBay', 'Etsy', '1stDibs', 'Depop']);
+  assert.deepEqual(JSON.parse(p.win.localStorage.getItem('prowl.affIds')).etsy, { mid: '6220', aff: '1234567' }, 'kept for the next visit');
+  await p.close();
+});
+
+test('v6.60: IDs in the wrong form are ignored, so a program with them stays plain', async () => {
+  const f = affFetch({ ebay: true, depop: true, etsy: true });
+  f.ids = { depop: { pub: 'x&evil=1' }, etsy: { mid: '6220"><b>', aff: '1234567' }, ebay: { camp: 'javascript:1' } };
+  const p = loadPage({ fetchImpl: f.impl });
+  await tick(40);
+  assert.equal(p.win.prowlAff('https://www.depop.com/x'), 'https://www.depop.com/x');
+  assert.equal(p.win.prowlAff('https://www.etsy.com/listing/1'), 'https://www.etsy.com/listing/1');
+  assert.equal(p.win.prowlAff('https://www.ebay.com/itm/1', 'prowl-live'), 'https://www.ebay.com/itm/1');
+  assert.deepEqual([...p.win.prowlAffNames()], []);
   await p.close();
 });
 

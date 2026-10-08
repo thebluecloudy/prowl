@@ -287,6 +287,10 @@ th:last-child,td:last-child{padding-right:0}
 @media (min-width:760px){.ggrid{grid-template-columns:minmax(0,3fr) minmax(0,3fr) minmax(0,2fr)}}
 .ggrid label{display:block;margin-bottom:6px}
 .gform .btn{align-self:flex-start}
+.affp{border-top:1px solid var(--hair);padding:16px 0 4px}
+.affp:first-child{border-top:0;padding-top:4px}
+.affp .ggrid{margin:4px 0 2px}
+.affrow{display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap}
 .gform .ck,.gbox .ck{align-self:flex-start}
 .gl-h{margin:18px 0 6px;padding-top:14px;border-top:1.5px solid var(--hair2)}
 .gbox{display:flex;flex-direction:column;gap:8px;margin-top:14px;padding-top:12px;border-top:1.5px solid var(--hair2)}
@@ -516,7 +520,7 @@ const AUDIT = { login: "Admin sign-in", logout: "Admin sign-out", "signin-link":
   "recheck-today": "Re-check hunts today", "resend-today": "Send today's email again", "mail-on": "Turned emails on", "mail-off": "Turned emails off",
   unpause: "Unpaused", "signout-all": "Signed out all devices", "clear-seen": "Cleared already-sent memory", delete: "Deleted a member",
   find: "Looked up a member", diagnose: "Ran Diagnose", healthcheck: "Ran a health check",
-  "aff-on": "Turned an affiliate on", "aff-off": "Turned an affiliate off", "gift-add": "Gifted Pro", "gift-remove": "Turned off a gift", "gift-on": "Gifted Pro to a member", "gift-off": "Turned off free Pro" };
+  "aff-on": "Turned an affiliate on", "aff-off": "Turned an affiliate off", "aff-ids": "Saved affiliate IDs", "gift-add": "Gifted Pro", "gift-remove": "Turned off a gift", "gift-on": "Gifted Pro to a member", "gift-off": "Turned off free Pro" };
 const ISSUES = { members: "member counts", alerts: "alert emails", metrics: "speed, errors and uptime", traffic: "speed and errors", uptime: "uptime",
   ai: "AI usage", pools: "AI usage", searches: "top searches", audit: "admin activity", errors: "recent errors" };
 
@@ -962,15 +966,40 @@ async function loadAff() {
   try { const j = await api("/admin/api/affiliates"); S.aData = j; renderAff(j); stamp(); }
   catch (e) { if (e.status === 401) return; fill(box, note("bad", "Could not load the affiliates. " + e.message, loadAff)); }
 }
-const AFF_COLS = [{ t: "Affiliate" }, { t: "Network" }, { t: "Status", bare: 1 }, { t: "", bare: 1 }];
 function renderAff(j) {
   const P = Array.isArray(j.programs) ? j.programs : [];
-  fill($("#affbox"), P.length ? tableOf(AFF_COLS, P.map(affRow), "Affiliates", true) : h("p", { class: "empty", text: "No affiliate programs are set up." }));
+  fill($("#affbox"), P.length ? P.map(affBlock) : h("p", { class: "empty", text: "No affiliate programs are set up." }));
 }
-function affRow(p) {
+/* v90: one block per program: its IDs (Save IDs), its state, and Turn on / Turn off (only once the IDs are complete) */
+function affBlock(p) {
+  const F = Array.isArray(p.fields) ? p.fields : [];
+  const ins = F.map(f => h("input", { id: "aff-" + p.id + "-" + f.k, type: "text", autocomplete: "off", spellcheck: "false", maxlength: "48",
+    value: f.value || "", placeholder: f.hint || "", "aria-describedby": "aff-" + p.id + "-" + f.k + "-hint" }));
+  const save = h("button", { class: "btn btn-s", type: "submit", text: "Save IDs", "aria-label": "Save " + p.name + " IDs" });
+  const form = h("form", { class: "gform", autocomplete: "off" }, [
+    h("div", { class: "ggrid" }, F.map((f, i) => h("div", null, [h("label", { for: ins[i].id, text: f.label }), ins[i],
+      h("p", { class: "hint", id: ins[i].id + "-hint", text: f.hint || "" })]))), save]);
+  form.addEventListener("submit", e => { e.preventDefault(); saveAffIds(p, F, ins, save); });
   const b = h("button", { class: "btn btn-s" + (p.on ? "" : " btn-p"), type: "button", text: p.on ? "Turn off" : "Turn on", "aria-label": (p.on ? "Turn off " : "Turn on ") + p.name + " affiliate links" });
+  if (!p.on && !p.ready) { b.disabled = true; b.title = "Save complete IDs first"; }
   b.addEventListener("click", () => setAff(p, b));
-  return [h("span", { class: "term", text: p.name }), h("span", { class: "muted", text: p.net }), p.on ? st("good", "On: links are tagged") : st("info", "Off: plain links"), b];
+  return h("div", { class: "affp" }, [h("div", { class: "ch" }, [h("h3", { text: p.name }), h("span", { class: "muted small", text: p.net })]), form,
+    h("div", { class: "affrow" }, [p.on ? st("good", "On: links are tagged") : p.ready ? st("info", "Off: plain links") : st("warning", "Off: needs its IDs"), b])]);
+}
+async function saveAffIds(p, F, ins, btn) {
+  const values = {};
+  F.forEach((f, i) => { values[f.k] = ins[i].value.trim(); });
+  const was = btn.textContent;
+  btn.disabled = true; btn.textContent = "Saving\u2026";
+  try {
+    const j = await api("/admin/api/affiliate/ids", { id: p.id, values: values });
+    const text = j.message || "Saved.";
+    $("#aff-msg").textContent = text; toast(text, j.ok === false);
+    S.aData = j; renderAff(j);
+  } catch (e) {
+    if (e.status === 401) return;
+    toast(e.message, true); $("#aff-msg").textContent = e.message; btn.disabled = false; btn.textContent = was;
+  }
 }
 async function setAff(p, btn) {
   if (!window.confirm((p.on ? "Turn off " : "Turn on ") + p.name + " affiliate links?" + (p.on ? " Links to " + p.name + " go out plain, and no disclosure names it." : " Links to " + p.name + " go out through " + p.net + ", and the disclosures name it."))) return;
@@ -1566,7 +1595,7 @@ function appBody() {
       '<p class="sub">What people search for on Prowl. Visitors count each person once a day. Searches that look personal are never recorded.</p><div id="sbox"></div></section>') +
     panel("affiliates",
       '<section class="card"><div class="ch"><h2>Affiliates</h2></div>' +
-      '<p class="sub">Turn each affiliate program on or off. Off means links to that site go out plain and no disclosure names it. The Prowl page, the browser extension and the alert emails all follow this within about 5 minutes. Nothing else needs changing.</p>' +
+      '<p class="sub">Each affiliate program has its IDs and an on/off switch. Paste the IDs from the network, press Save IDs, then Turn on. Off means links to that site go out plain and no disclosure names it. The Prowl page, the browser extension and the alert emails follow within about 5 minutes. IDs are public (they are in every affiliate link), so nothing secret goes here.</p>' +
       '<div id="affbox"></div><p class="msg" id="aff-msg" aria-live="polite"></p></section>') +
     "</main>" +
     '<div class="toast" id="toast" role="status" aria-live="polite"></div>' +

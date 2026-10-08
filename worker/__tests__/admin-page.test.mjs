@@ -134,7 +134,7 @@ test("sign out is a plain form post; searches offer 1/7/30 days", () => {
 test("script calls every admin API route, same-origin, with the admin header on POSTs", () => {
   for (const r of ['"/admin/api/overview"', '"/admin/api/members?filter="', '"/admin/api/member?id="', '"/admin/api/member/action"',
     '"/admin/api/find"', '"/admin/api/diagnose"', '"/admin/api/healthcheck"', '"/admin/api/errors?limit=100"', '"/admin/api/searches?days="',
-    '"/admin/api/gifts"', '"/admin/api/gift"', '"/admin/api/gift/remove"', '"/admin/api/affiliates"', '"/admin/api/affiliate"']) {
+    '"/admin/api/gifts"', '"/admin/api/gift"', '"/admin/api/gift/remove"', '"/admin/api/affiliates"', '"/admin/api/affiliate"', '"/admin/api/affiliate/ids"']) {
     assert.ok(SCRIPT.includes(r), r);
   }
   assert.match(SCRIPT, /credentials: "same-origin"/);
@@ -352,4 +352,16 @@ test("Affiliates (v89): one Turn on / Turn off switch per program, confirmed fir
   assert.match(SCRIPT, /if \(!window\.confirm\(\(p\.on \? "Turn off " : "Turn on "\)/);
   assert.match(SCRIPT, /api\("\/admin\/api\/affiliate", \{ id: p\.id, on: !p\.on \}\)/);
   assert.match(SCRIPT, /"aff-on": "Turned an affiliate on", "aff-off": "Turned an affiliate off"/);
+});
+
+test("Affiliates (v90): each program has labelled ID fields and Save IDs; Turn on stays disabled until its IDs are complete", () => {
+  assert.match(page, /Paste the IDs from the network, press Save IDs, then Turn on/);
+  assert.match(page, /IDs are public \(they are in every affiliate link\), so nothing secret goes here/);
+  assert.match(SCRIPT, /h\("input", \{ id: "aff-" \+ p\.id \+ "-" \+ f\.k, type: "text", autocomplete: "off", spellcheck: "false", maxlength: "48",/);
+  assert.match(SCRIPT, /h\("label", \{ for: ins\[i\]\.id, text: f\.label \}\)/);
+  assert.match(SCRIPT, /text: "Save IDs"/);
+  assert.match(SCRIPT, /api\("\/admin\/api\/affiliate\/ids", \{ id: p\.id, values: values \}\)/);
+  assert.match(SCRIPT, /if \(!p\.on && !p\.ready\) \{ b\.disabled = true; b\.title = "Save complete IDs first"; \}/);
+  assert.match(SCRIPT, /st\("warning", "Off: needs its IDs"\)/);
+  assert.match(SCRIPT, /"aff-ids": "Saved affiliate IDs"/);
 });

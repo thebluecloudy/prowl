@@ -27,9 +27,9 @@ function load(deps = {}, nowIso = "2026-10-07T19:36:00Z") {
     "const ITEM_CACHE_SECONDS = 86400, ITEM_PER_IP = 300, ITEM_IMAGES = 24, ITEM_DESC_MAX = 20000;",
     "const UPSTREAM_TIMEOUT_MS = 5000;",
   ].concat(names.map(indexFn)).join("\n");
-  const keys = ["Date", "fetch", "ebayToken", "PCACHE", "vCount", "ipKey", "json", "console", "itemSalvation", "AFF_ON"];
+  const keys = ["Date", "fetch", "ebayToken", "PCACHE", "vCount", "ipKey", "json", "console", "itemSalvation", "AFF_ON", "affId"];
   const vals = [FakeDate, deps.fetch || (async () => { throw new Error("no fetch"); }), async () => "TOKEN", deps.PCACHE, deps.vCount || (async () => true), (x) => String(x || "ip"),
-    (body, status, origin, extra) => ({ body, status: status || 200, extra: extra || {} }), { error() {} }, deps.itemSalvation || (async () => ({ error: "x" })), deps.AFF_ON || { ebay: true, depop: false }];
+    (body, status, origin, extra) => ({ body, status: status || 200, extra: extra || {} }), { error() {} }, deps.itemSalvation || (async () => ({ error: "x" })), deps.AFF_ON || { ebay: true, depop: false }, deps.affId || ((p, k) => (p === "ebay" && k === "camp" ? "5339216838" : ""))];
   return new Function(...keys, src + "\nreturn { " + names.join(", ") + " };")(...vals);
 }
 const resp = (status, body) => ({ status, text: async () => (typeof body === "string" ? body : JSON.stringify(body)) });

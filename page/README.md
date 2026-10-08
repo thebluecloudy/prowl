@@ -2,27 +2,35 @@ prowl.html is the Prowl page body. A push that changes it deploys it to Shopify 
 
 ## Affiliate tags
 
-Outbound listing and search links go through `prowlAff()` in the first `<script>` of `prowl.html`. eBay keeps its EPN tag. The other programs live in `window.PROWL_AFF`, one click-URL template per merchant with `{url}` where the listing URL goes:
+Outbound listing and search links go through `prowlAff()` in the first `<script>` of `prowl.html`: eBay gets its EPN tag (`prowlEpn`), and Etsy, Reverb, 1stDibs and Depop get their network's click URL from `window.PROWL_AFF`. Which programs are on, and their IDs, come from the admin area (below). The footer and Help disclosure list exactly the programs that are on.
 
-| Merchant | Network | Fill in |
-|---|---|---|
-| Etsy | Awin (or Rakuten, check at signup) | `YOUR_ETSY_MID`, `YOUR_AWIN_ID` |
-| Reverb | Awin | `YOUR_REVERB_MID`, `YOUR_AWIN_ID` |
-| 1stDibs | Partnerize | `YOUR_1STDIBS_CAMREF` |
-| Depop | Rakuten (merchant 53555) | Publisher id `jh1j/r7*wkQ` in all three places (`PROWL_AFF` here, `DEPOP_AFF` in `worker/index.js`, `AFF.depop` in `extension/sites.js`). **Off since 2026-10-08** (Rakuten declined): see the switches below. |
+### Affiliates in the admin area (worker v90 / page v6.60)
 
-A template that still contains `YOUR_` is off, and that merchant's links go out clean. The footer and Help disclosure list exactly the merchants that are on.
+Every affiliate program is set up in the Prowl admin area, under **Affiliates**: its IDs (paste them, press **Save IDs**)
+and its on/off switch (**Turn on** works only once the IDs are complete). Off means plain links and no disclosure
+naming that site, on the Prowl page, in the alert emails and (for Depop) in the browser extension. Changes reach the
+page and the extension within about 5 minutes. Nothing here needs a code change.
 
-### Affiliate switches (admin area, worker v89 / page v6.59 / extension 1.6.3)
+| Program | Network | IDs to paste | Where its links are tagged |
+|---|---|---|---|
+| eBay | eBay Partner Network | Campaign ID (10 digits) | page, alert emails, listing popup |
+| Depop | Rakuten, merchant 53555 | Rakuten publisher ID | page, alert emails, extension |
+| Etsy | Awin | Etsy advertiser ID (awinmid), your Awin publisher ID | page |
+| Reverb | Awin | Reverb advertiser ID (awinmid), your Awin publisher ID | page |
+| 1stDibs | Partnerize | camref | page |
+| Amazon | Amazon Associates | Tracking ID (ends in -20) | page (Field Guide supplies) |
 
-eBay and Depop each have an on/off switch in the Prowl admin area, under **Affiliates**. Off means plain links and no
-disclosure naming that site, on the Prowl page, in the browser extension and in the alert emails. The worker keeps the
-choice in KV `aff:on`, the defaults are `AFF_PROGRAMS` in `worker/index.js` (eBay on, Depop off), and `GET /aff`
-tells the page and the extension (they pick a change up within about 5 minutes).
+How it is safe: only the IDs are editable. The link templates stay in code (`AFF_PROGRAMS` and `DEPOP_AFF_T` in
+`worker/index.js`, `PROWL_AFF` in `page/prowl.html`), and each ID must match its format when it is saved, when the
+worker reads it, and again on the page, so a pasted value can only ever fill its own slot. KV keeps `aff:on` (the
+switches) and `aff:ids` (the IDs); `GET /aff` answers both. IDs are public, since they are in every affiliate link.
 
-**Turning Depop back on:** open the admin area, Affiliates, and press **Turn on** next to Depop. Nothing else is
-needed for the page, the extension or the emails. Also put the Depop line back in `docs/chrome-store-listing.md`
-(it is kept there in a comment) and in the Chrome Web Store listing.
+**Turning Depop back on:** press **Turn on** next to Depop. Also put the Depop line back in
+`docs/chrome-store-listing.md` (kept there in a comment) and in the Chrome Web Store listing.
 
-**Adding a program to the switches:** add it to `AFF_PROGRAMS` in `worker/index.js`, to `PROWL_AFF_ON` (and an `id`
-on its `PROWL_AFF` entry) in `page/prowl.html`, and to `AFF.on` in `extension/sites.js`, then gate its links on it.
+**The extension** (1.6.3) follows the Depop switch but keeps its own copy of the Depop publisher ID, and has no Amazon
+yet: Amazon in the extension waits until the Associates rules on browser extensions are checked.
+
+**Adding a program:** one entry in `AFF_PROGRAMS` (its fields and formats) in `worker/index.js`, and in
+`page/prowl.html` its `PROWL_AFF` template (with `{field}` slots and an `id`), its formats in `PROWL_AFF_FMT`, and a
+key in `PROWL_AFF_ON`.

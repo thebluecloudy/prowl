@@ -24,19 +24,39 @@
 /* v6.59 affiliate switches. The owner turns each program on or off in the Prowl admin area (Affiliates); the worker
    says which are on at /aff. Until it answers, the last answer this browser saw is used (prowl.affOn), else these
    defaults. A program that is off sends plain links and is left out of the disclosure. */
-window.PROWL_AFF_ON={ebay:true,depop:false};
+window.PROWL_AFF_ON={ebay:true,depop:false,etsy:false,reverb:false,'1stdibs':false,amazon:false};
 window.prowlAffSet=function(o){
   if(!o||typeof o!=='object')return false;
   var k,ch=false;
   for(k in window.PROWL_AFF_ON)if(Object.prototype.hasOwnProperty.call(window.PROWL_AFF_ON,k)&&typeof o[k]==='boolean'&&o[k]!==window.PROWL_AFF_ON[k]){window.PROWL_AFF_ON[k]=o[k];ch=true}
   return ch;
 };
+/* v6.60: each program's IDs, edited in the admin area and sent with /aff (kept in prowl.affIds). Only values in the
+   right form are used; each fills its own slot in a fixed template below, so an ID can never point a link elsewhere. */
+window.PROWL_AFF_FMT={ebay:{camp:/^\d{10}$/},depop:{pub:/^[A-Za-z0-9*\/._~-]{6,40}$/},etsy:{mid:/^\d{3,8}$/,aff:/^\d{4,10}$/},
+  reverb:{mid:/^\d{3,8}$/,aff:/^\d{4,10}$/},'1stdibs':{camref:/^[A-Za-z0-9]{4,24}$/},amazon:{tag:/^[A-Za-z0-9-]{1,40}-2\d$/}};
+window.PROWL_AFF_IDS={ebay:{camp:'5339216838'},depop:{pub:'jh1j/r7*wkQ'}};
+window.prowlAffIdsSet=function(o){
+  if(!o||typeof o!=='object')return false;
+  var p,k,F,v,next,ch=false;
+  for(p in window.PROWL_AFF_FMT){
+    if(!Object.prototype.hasOwnProperty.call(window.PROWL_AFF_FMT,p)||!o[p]||typeof o[p]!=='object')continue;
+    F=window.PROWL_AFF_FMT[p];next={};
+    for(k in F)if(Object.prototype.hasOwnProperty.call(F,k)){v=o[p][k];next[k]=typeof v==='string'&&F[k].test(v)?v:''}
+    if(JSON.stringify(next)!==JSON.stringify(window.PROWL_AFF_IDS[p]||null)){window.PROWL_AFF_IDS[p]=next;ch=true}
+  }
+  return ch;
+};
+window.prowlAffId=function(p,k){var o=window.PROWL_AFF_IDS[p],F=window.PROWL_AFF_FMT[p],v=o?o[k]:'';return F&&F[k]&&typeof v==='string'&&F[k].test(v)?v:''};
+window.prowlAffReady=function(p){var F=window.PROWL_AFF_FMT[p],k;if(!F)return false;for(k in F)if(Object.prototype.hasOwnProperty.call(F,k)&&!window.prowlAffId(p,k))return false;return true};
+window.prowlAffUse=function(p){return window.PROWL_AFF_ON[p]===true&&window.prowlAffReady(p)};
 try{window.prowlAffSet(JSON.parse(localStorage.getItem('prowl.affOn')||'null'))}catch(e){}
+try{window.prowlAffIdsSet(JSON.parse(localStorage.getItem('prowl.affIds')||'null'))}catch(e){}
 window.prowlEpn=function(u,cid){
-  var c='5339216838';
+  var c=window.prowlAffId('ebay','camp');   /* v6.60: from the admin area */
   /* v5.94 red-team: every listing link from the Worker goes through here; only https links are ever used */
   if(typeof u!=='string'||!/^https:\/\//i.test(u))return '#';
-  if(window.PROWL_AFF_ON.ebay!==true)return u;   /* v6.59: the admin switch */
+  if(!window.prowlAffUse('ebay'))return u;   /* v6.59: the admin switch; v6.60: and its campaign ID */
   try{
     if(!/^\d{10}$/.test(c)||typeof u!=='string'||!/^https:\/\/(www\.)?ebay\.com\/(sch|itm)\//.test(u)||/[?&]campid=/.test(u))return u;
     return u+(u.indexOf('?')>-1?'&':'?')+'mkcid=1&mkrid=711-53200-19255-0&siteid=0&campid='+c+'&customid='+encodeURIComponent(cid||'prowl')+'&toolid=10001&mkevt=1';
@@ -47,34 +67,34 @@ window.prowlEpn=function(u,cid){
    live yet, so that merchant's links go out clean. Mercari, Poshmark, ShopGoodwill and the rest have no program
    and are never touched. A tagged link behaves exactly like a clean one: same tab, no markers. */
 window.PROWL_AFF={
-  'etsy.com':{n:'Etsy',t:'https://www.awin1.com/cread.php?awinmid=YOUR_ETSY_MID&awinaffid=YOUR_AWIN_ID&ued={url}'},
-  'reverb.com':{n:'Reverb',t:'https://www.awin1.com/cread.php?awinmid=YOUR_REVERB_MID&awinaffid=YOUR_AWIN_ID&ued={url}'},
-  '1stdibs.com':{n:'1stDibs',t:'https://prf.hn/click/camref:YOUR_1STDIBS_CAMREF/destination:{url}'},
-  'depop.com':{n:'Depop',id:'depop',t:'https://click.linksynergy.com/deeplink?id=jh1j/r7*wkQ&mid=53555&murl={url}'}   /* v6.46 Rakuten; v6.59: only while the admin switch (id) is on */
+  'etsy.com':{n:'Etsy',id:'etsy',t:'https://www.awin1.com/cread.php?awinmid={mid}&awinaffid={aff}&ued={url}'},
+  'reverb.com':{n:'Reverb',id:'reverb',t:'https://www.awin1.com/cread.php?awinmid={mid}&awinaffid={aff}&ued={url}'},
+  '1stdibs.com':{n:'1stDibs',id:'1stdibs',t:'https://prf.hn/click/camref:{camref}/destination:{url}'},
+  'depop.com':{n:'Depop',id:'depop',t:'https://click.linksynergy.com/deeplink?id={pub}&mid=53555&murl={url}'}   /* v6.46 Rakuten; v6.59 switch; v6.60 IDs from the admin area */
 };
-window.prowlAffLive=function(d){var a=window.PROWL_AFF[d];if(a&&a.id&&window.PROWL_AFF_ON[a.id]!==true)return false;return !!(a&&typeof a.t==='string'&&a.t.indexOf('YOUR_')<0&&a.t.indexOf('{url}')>-1&&/^https:\/\//.test(a.t))};
+window.prowlAffLive=function(d){var a=window.PROWL_AFF[d];return !!(a&&a.id&&window.prowlAffUse(a.id)&&typeof a.t==='string'&&a.t.indexOf('{url}')>-1&&/^https:\/\//.test(a.t))};
+/* the template with its IDs filled in: IDs as they are (their formats allow nothing that could break out of the slot) */
+window.prowlAffFill=function(d,u){var a=window.PROWL_AFF[d];return a.t.replace(/\{([a-z]+)\}/g,function(m,k){return k==='url'?encodeURIComponent(u):window.prowlAffId(a.id,k)})};
 window.prowlAff=function(u,cid,affUrl){
   /* the listing popup hands over eBay's own itemAffiliateWebUrl; eBay pays only on that exact URL */
-  if(window.PROWL_AFF_ON.ebay===true&&typeof affUrl==='string'&&/^https:\/\/([a-z0-9-]+\.)*ebay\.com\//i.test(affUrl))return affUrl;
+  if(window.prowlAffUse('ebay')&&typeof affUrl==='string'&&/^https:\/\/([a-z0-9-]+\.)*ebay\.com\//i.test(affUrl))return affUrl;
   u=window.prowlEpn(u,cid);if(u==='#')return u;
   var m=/^https:\/\/([^\/?#:]+)/i.exec(u),h,d;if(!m)return u;
   h=m[1].toLowerCase().replace(/^www\./,'');
   for(d in window.PROWL_AFF){
     if(!Object.prototype.hasOwnProperty.call(window.PROWL_AFF,d))continue;
-    if(h===d||(h.length>d.length&&h.slice(-(d.length+1))==='.'+d))return window.prowlAffLive(d)?window.PROWL_AFF[d].t.replace('{url}',encodeURIComponent(u)):u;
+    if(h===d||(h.length>d.length&&h.slice(-(d.length+1))==='.'+d))return window.prowlAffLive(d)?window.prowlAffFill(d,u):u;
   }
   return u;
 };
-/* v6.41 Amazon Associates, kill-switched OFF until the traffic is there (Amazon drops associates under 3 sales in
-   180 days). Only for supplies and reference books a Field Guide names, never vintage pieces. While off, no Amazon
-   URL is built anywhere. */
-window.AMAZON_TAG='YOUR_AMAZON_TAG';
-window.AMAZON_ON=false;
-window.prowlAmzOn=function(){return window.AMAZON_ON===true&&typeof window.AMAZON_TAG==='string'&&/^[A-Za-z0-9_-]{3,40}$/.test(window.AMAZON_TAG)&&window.AMAZON_TAG.indexOf('YOUR_')!==0};
+/* v6.41 Amazon Associates, off until the traffic is there (Amazon drops associates under 3 sales in 180 days). Only
+   for supplies and reference books a Field Guide names, never vintage pieces. While off, no Amazon URL is built
+   anywhere. v6.60: on and off, and the tracking ID, in the admin area (Affiliates). */
+window.prowlAmzOn=function(){return window.prowlAffUse('amazon')};
 window.amzSearch=function(keywords){
   if(!window.prowlAmzOn())return null;
   var k=String(keywords==null?'':keywords).replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'').slice(0,80);if(!k)return null;
-  return 'https://www.amazon.com/s?k='+encodeURIComponent(k)+'&tag='+encodeURIComponent(window.AMAZON_TAG);
+  return 'https://www.amazon.com/s?k='+encodeURIComponent(k)+'&tag='+encodeURIComponent(window.prowlAffId('amazon','tag'));
 };
 /* the disclosure names exactly the merchants whose links are tagged today */
 /* v6.44 store session: /apps/prowl/login hands back a 30-day token (prowl.session, outside the backup). It is sent as
@@ -88,7 +108,7 @@ window.prowlSess=function(){
   return t;
 };
 window.prowlAuth=function(h){h=h||{};var t=window.prowlSess();if(t)h.Authorization='Bearer '+t;return h};
-window.prowlAffNames=function(){var a=window.PROWL_AFF_ON.ebay===true?['eBay']:[],d;for(d in window.PROWL_AFF)if(Object.prototype.hasOwnProperty.call(window.PROWL_AFF,d)&&window.prowlAffLive(d))a.push(window.PROWL_AFF[d].n);if(window.prowlAmzOn())a.push('Amazon');return a};
+window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;for(d in window.PROWL_AFF)if(Object.prototype.hasOwnProperty.call(window.PROWL_AFF,d)&&window.prowlAffLive(d))a.push(window.PROWL_AFF[d].n);if(window.prowlAmzOn())a.push('Amazon');return a};
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Space+Grotesk:wght@400;500;600;700&family=Alfa+Slab+One&display=swap');
@@ -2400,7 +2420,7 @@ window.prowlAffNames=function(){var a=window.PROWL_AFF_ON.ebay===true?['eBay']:[
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.59';
+var PROWL_VERSION='v6.60';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -6200,9 +6220,11 @@ try{affPaint()}catch(e){}
 var AFF_API='https://prowl.thebluecloud.workers.dev/aff';
 try{fetch(AFF_API).then(function(r){return r.ok?r.json():null}).then(function(j){
   if(!j||!j.on||typeof j.on!=='object')return;
-  var keep={},k;for(k in window.PROWL_AFF_ON)if(Object.prototype.hasOwnProperty.call(window.PROWL_AFF_ON,k)&&typeof j.on[k]==='boolean')keep[k]=j.on[k];
+  var keep={},k,ch;for(k in window.PROWL_AFF_ON)if(Object.prototype.hasOwnProperty.call(window.PROWL_AFF_ON,k)&&typeof j.on[k]==='boolean')keep[k]=j.on[k];
   try{localStorage.setItem('prowl.affOn',JSON.stringify(keep))}catch(e){}
-  if(window.prowlAffSet(keep))affPaint();
+  ch=window.prowlAffSet(keep);
+  if(j.ids&&typeof j.ids==='object'){ch=window.prowlAffIdsSet(j.ids)||ch;try{localStorage.setItem('prowl.affIds',JSON.stringify(window.PROWL_AFF_IDS))}catch(e){}}   /* v6.60 */
+  if(ch)affPaint();
 })['catch'](function(){})}catch(e){}
 /* v6.38: ?flock=1 opens the Flock tab */
 try{if(/[?&]flock=1(&|$)/.test(location.search)){

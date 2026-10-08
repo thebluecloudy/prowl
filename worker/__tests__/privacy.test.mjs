@@ -146,5 +146,6 @@ test("wired in: Delete in Prowl and the admin delete share alPurge", () => {
   assert.match(INDEX, /alSendGift, alPurge,/, "handed to the admin");
   assert.match(ADMIN, /await H\.alPurge\(env, email, sub\);/);
   assert.doesNotMatch(ADMIN, /\["sub:", "pend:"/, "no second copy of the list");
-  assert.match(INDEX, /const WORKER_VERSION = "v8\d";/);
+  const v = /const WORKER_VERSION = "v(\d+)[a-z]?";/.exec(INDEX);
+  assert.ok(v && Number(v[1]) >= 83, "v83 or later");
 });
