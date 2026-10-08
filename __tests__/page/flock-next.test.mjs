@@ -113,7 +113,7 @@ test('new since last visit: nothing on a first visit, then a divider and badges 
   const shown = cards(p).map((c) => c.getAttribute('data-u'));
   p.$('#otp-dock .db[data-m="prowl"]').click();
   const seen = ls(p, 'prowl.flockSeen');
-  assert.deepEqual([...seen].sort(), [...shown].sort());
+  assert.deepEqual(seen, shown.slice(0, 1), 'v6.52: only the cards you scrolled to count as seen');
   await p.close();
 
   // next visit: half of those were seen before
@@ -140,11 +140,12 @@ test('seen list keeps the newest 1000', async () => {
   const old = Array.from({ length: 1000 }, (_, i) => `https://shopgoodwill.com/item/old${i}`);
   const p = await open({ storage: { 'prowl.flockSeen': old } });
   await waitFor(() => p.$('#otp-flockRow .fl-end') && cards(p).length >= 2);
-  const n = cards(p).length;
+  const first = cards(p)[0].getAttribute('data-u');
   p.$('#otp-dock .db[data-m="prowl"]').click();
   const seen = ls(p, 'prowl.flockSeen');
   assert.equal(seen.length, 1000);
-  assert.equal(seen[0], `https://shopgoodwill.com/item/old${n}`);
+  assert.equal(seen[0], 'https://shopgoodwill.com/item/old1', 'the oldest one drops for the one card you reached');
+  assert.equal(seen[999], first);
   await p.close();
 });
 

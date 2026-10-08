@@ -69,8 +69,8 @@ test('Escape closes Flock', async () => {
 });
 
 test('cards: class hook, roles, Gem-clean face, end card', async () => {
-  const p = await openFeed();
-  await waitFor(() => cards(p).length >= 3 && p.$('#otp-flockRow .fl-end'));
+  const p = await openFeed({}, { only: 'shopgoodwill' });   // v6.52: a feed small enough to reach its end
+  await waitFor(() => cards(p).length >= 3 && /That.s the flock/.test((p.$('#otp-flockRow .fl-end') || {}).textContent || ''), { timeout: 8000 });
   assert.equal(p.$('#otp-flockRow').getAttribute('role'), 'feed');
   for (const c of cards(p)) {
     assert.equal(c.getAttribute('role'), 'article');

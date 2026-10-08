@@ -35,7 +35,10 @@ async function flock(storage = {}, rand = 0.5) {
   p.win.confirm = () => true;
   await tick(60);
   p.$('#otp-dock .db[data-m="flock"]').click();
-  await waitFor(() => p.$$('#otp-flockRow .fl-card').length >= 4);
+  // v6.52: wait until both hunts are in and the background fetching has settled
+  await waitFor(() => p.$('#otp-flockRow .fl-card[data-h="panther"]') && p.$('#otp-flockRow .fl-card[data-h="pyrex"]'));
+  await waitFor(() => p.$('#otp-flockRow').getAttribute('aria-busy') === 'false', { timeout: 8000 });
+  await tick(300);
   return p;
 }
 const cards = (p) => p.$$('#otp-flockRow .fl-card');
@@ -84,19 +87,19 @@ test('about 1 pick in 4 stays random, so the feed still surprises', async () => 
   assert.doesNotMatch(explored, /jadeite/, 'under it: a random find');
 });
 
-test('the hunt you like most gets a third card', async () => {
+// v6.52: the feed is endless; per round the most-liked hunt gives two cards, the others one. Count the first batch.
+const win = (p, h) => cards(p).slice(0, 10).filter((c) => c.getAttribute('data-h') === h).length;
+test('the hunt you like most gets twice the cards', async () => {
   const p = await flock({ [LIKES]: [like('panther lamp', 'panther'), like('panther planter', 'panther')] }, 0.99);
-  const n = (h) => cards(p).filter((c) => c.getAttribute('data-h') === h).length;
-  assert.equal(n('panther'), 3);
-  assert.equal(n('pyrex'), 2);
+  assert.ok(cards(p).length >= 10);
+  assert.ok(win(p, 'panther') >= win(p, 'pyrex') + 3, win(p, 'panther') + ' vs ' + win(p, 'pyrex'));
   await p.close();
 });
 
-test('with no likes the feed works as before', async () => {
+test('with no likes the hunts take turns', async () => {
   const p = await flock({}, 0.99);
-  const n = (h) => cards(p).filter((c) => c.getAttribute('data-h') === h).length;
-  assert.equal(n('panther'), 2);
-  assert.equal(n('pyrex'), 2);
+  assert.ok(cards(p).length >= 10, 'more than the old 2 per hunt');
+  assert.ok(Math.abs(win(p, 'panther') - win(p, 'pyrex')) <= 1, win(p, 'panther') + ' vs ' + win(p, 'pyrex'));
   await p.close();
 });
 
