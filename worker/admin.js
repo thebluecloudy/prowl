@@ -1004,8 +1004,32 @@ async function apiSearches(c) {
   return jres({ top: topView(c, j), days: days });
 }
 
-const GETS = { overview: apiOverview, members: apiMembers, member: apiMember, errors: apiErrors, searches: apiSearches, gifts: apiGifts };
-const POSTS = { find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, gift: apiGiftAdd, "gift/remove": apiGiftRemove };
+/* ---------- affiliates (v89) ----------
+   One switch per affiliate program. index.js keeps the list (AFF_PROGRAMS) and reads KV aff:on before building any
+   link; GET /aff tells the Prowl page and the extension within about 5 minutes. */
+async function affView(c) {
+  const H = c.H, on = await H.affLoad(c.env, true);
+  return H.AFF_PROGRAMS.map(p => ({ id: p.id, name: p.name, net: p.net, on: on[p.id] === true, def: p.def === true }));
+}
+async function apiAffiliates(c) { return jres({ programs: await affView(c) }); }
+async function apiAffiliateSet(c) {
+  const H = c.H, env = c.env, id = String(c.body.id == null ? "" : c.body.id), want = c.body.on;
+  const prog = H.AFF_PROGRAMS.find(p => p.id === id);
+  if (!prog) return jerr(400, "That affiliate is not on the list. Reload the page and try again.");
+  if (typeof want !== "boolean") return jerr(400, "Say on or off.");
+  if (!(await H.vCount("admaff", 100))) return jerr(429, "That is a lot of affiliate changes today. Try again tomorrow.");
+  const cur = await H.kvGet(env, H.AFF_KEY, null), next = {};
+  for (const p of H.AFF_PROGRAMS) if (cur && typeof cur === "object" && typeof cur[p.id] === "boolean") next[p.id] = cur[p.id];
+  next[id] = want;
+  await H.kvPut(env, H.AFF_KEY, next);
+  await audit(c, { action: want ? "aff-on" : "aff-off", id: id, ok: true });
+  const msg = prog.name + " links are " + (want ? "tagged again (" + prog.net + ")" : "plain now, with no affiliate tag") +
+    ". The Prowl page and the extension pick this up within about 5 minutes; alert emails from the next one on.";
+  return jres({ ok: true, message: msg, programs: await affView(c) });
+}
+
+const GETS = { overview: apiOverview, members: apiMembers, member: apiMember, errors: apiErrors, searches: apiSearches, gifts: apiGifts, affiliates: apiAffiliates };
+const POSTS = { find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, gift: apiGiftAdd, "gift/remove": apiGiftRemove, affiliate: apiAffiliateSet };
 
 /* ---------- sign in / out ---------- */
 const capsDayOf = c => typeof c.H.capsDay === "function" ? c.H.capsDay() : "caps:" + utcDay(c.nowMs);

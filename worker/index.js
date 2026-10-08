@@ -33,6 +33,10 @@
  *        were off come back on from their next email day, and the confirm page says so. conf: goes with the purge
  *        (Delete in Prowl, admin delete), the admin's Sign out everywhere and an address move. The unsubscribe page
  *        for an address that moved no longer shows the new address (masked, and only to a device with the token).
+ *   v89: 2026-10-08. Affiliate switches. The owner turns each affiliate program on or off in the admin area
+ *        (Affiliates); the choice is KV aff:on and the defaults are in AFF_PROGRAMS (eBay on, Depop off: Rakuten
+ *        declined Depop on 2026-10-08). GET /aff tells the Prowl page and the extension; the alert emails read it
+ *        directly (epnUrl, depopAff, affNote). Nothing about an affiliate changes without the switch.
  *   v85: 2026-10-08. Likes follow a signed-in member. POST /alerts/likes (email + token, or the v82 session) sends this
  *        device's likes, unlikes and ignored words; the worker merges them into likes:<email> (per link the newest of
  *        liked or unliked wins) and answers with the merged lists. Delete in Prowl purges likes:, a change of email
@@ -275,7 +279,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
-const WORKER_VERSION = "v88";
+const WORKER_VERSION = "v89";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -299,10 +303,36 @@ const CHAIRISH_CACHE_SECONDS = 600;
 const POSH_URL = "https://poshmark.com/search?type=listings&query=";   /* v58 */
 const POSH_LIMIT = 12, POSH_SOLD_LIMIT = 6, POSH_CACHE_SECONDS = 1800;
 const DEPOP_URL = "https://www.depop.com/search/?q=";   /* v59 */
-/* v84: Depop pays through Rakuten. The id is the public publisher id that is in every Rakuten link; the page
-   (PROWL_AFF) and the extension (AFF.depop) carry the same link. */
+/* v84: Depop through Rakuten. The id is the public publisher id that is in every Rakuten link; the page
+   (PROWL_AFF) and the extension (AFF.depop) carry the same link. v89: only while the admin switch is on. */
 const DEPOP_AFF = "https://click.linksynergy.com/deeplink?id=jh1j/r7*wkQ&mid=53555&murl=";
-function depopAff(u) { return /^https:\/\/(www\.)?depop\.com\//.test(String(u || "")) ? DEPOP_AFF + encodeURIComponent(u) : u; }
+function depopAff(u) { return AFF_ON.depop === true && /^https:\/\/(www\.)?depop\.com\//.test(String(u || "")) ? DEPOP_AFF + encodeURIComponent(u) : u; }
+/* v89: affiliate switches, set in the admin area (Affiliates) and kept in KV aff:on as { id: true|false }. A program
+   the owner has not touched keeps its default here. To add a program: give it a line here, then gate its links on
+   AFF_ON[id] in the worker, the page (PROWL_AFF_ON) and the extension (AFF.on). */
+const AFF_PROGRAMS = [
+  { id: "ebay", name: "eBay", net: "eBay Partner Network", def: true },
+  { id: "depop", name: "Depop", net: "Rakuten, merchant 53555", def: false },   // Rakuten declined Depop on 2026-10-08
+];
+const AFF_KEY = "aff:on", AFF_TTL_MS = 60000;
+function affClean(v) {
+  const o = {};
+  for (const p of AFF_PROGRAMS) o[p.id] = v && typeof v === "object" && !Array.isArray(v) && typeof v[p.id] === "boolean" ? v[p.id] : p.def;
+  return o;
+}
+let AFF_ON = affClean(null), AFF_AT = 0;
+/* Read once a minute per isolate, at the start of every request and cron run, so link builders can stay synchronous. */
+async function affLoad(env, force) {
+  if (!force && AFF_AT && Date.now() - AFF_AT < AFF_TTL_MS) return AFF_ON;
+  AFF_AT = Date.now();
+  AFF_ON = affClean(env && env.PROWL_ALERTS ? await kvGet(env, AFF_KEY, null) : null);
+  return AFF_ON;
+}
+/* The email footer names exactly the programs that are on ("" when none is). */
+function affNote() {
+  const n = AFF_PROGRAMS.filter(p => AFF_ON[p.id] === true).map(p => p.name);
+  return n.length ? "Some links (" + n.join(", ") + ") earn Owl & Twig a small commission, at no cost to you." : "";
+}
 const DEPOP_LIMIT = 12, DEPOP_CACHE_SECONDS = 1800;
 /* v76: Depop's firewall refuses every Worker request (search page, home page and web API, 2026-10-05,
    see /__depopprobe). Off: /depop answers an empty list and alerts skip Depop. Set true to try again. */
@@ -1347,7 +1377,7 @@ async function itemEbay(id, env) {
   try {
     const camp = String((env && env.EPN_CAMPAIGN_ID) || "").replace(/[^0-9]/g, "");
     const h = { "Authorization": "Bearer " + tok, "X-EBAY-C-MARKETPLACE-ID": "EBAY_US", "Accept": "application/json" };
-    if (camp) h["X-EBAY-C-ENDUSERCTX"] = "affiliateCampaignId=" + camp;
+    if (camp && AFF_ON.ebay === true) h["X-EBAY-C-ENDUSERCTX"] = "affiliateCampaignId=" + camp;   /* v89: the admin switch */
     const r = await fetch(EBAY_GETITEM_URL + "?legacy_item_id=" + encodeURIComponent(id), { signal: ctl.signal, headers: h });
     const text = await r.text();
     let j = null; try { j = JSON.parse(text); } catch (e) {}
@@ -3321,7 +3351,7 @@ const AL_ALSO = [
   ["Facebook", q => "https://www.facebook.com/marketplace/search/?query=" + encodeURIComponent(q)],
   ["Mercari", q => "https://www.mercari.com/search/?keyword=" + encodeURIComponent(q)],
   ["Mercari Japan", q => "https://jp.mercari.com/search?keyword=" + encodeURIComponent(q)],   // v77
-  ["Depop", q => depopAff(DEPOP_URL + encodeURIComponent(q))],   // v84: link-only, and it pays (Rakuten)
+  ["Depop", q => depopAff(DEPOP_URL + encodeURIComponent(q))],   // v84: link-only; tagged only while its switch is on (v89)
   ["Ruby Lane", q => "https://www.rubylane.com/search?q=" + encodeURIComponent(q)],
   ["LiveAuctioneers", q => "https://www.liveauctioneers.com/search/?keyword=" + encodeURIComponent(q)],
   ["Invaluable", q => "https://www.invaluable.com/search?keyword=" + encodeURIComponent(q).replace(/%20/g, "+")],
@@ -3388,7 +3418,7 @@ function alUnsubUrl(sub, hunt) {
 }
 
 const AL_UNSUB_MAIL = "hello@owlandtwigvintage.com";
-const AL_AFF_NOTE = "Some links (eBay, Depop) earn Owl & Twig a small commission, at no cost to you.";   /* v84 */   /* v83: a reply or a mailto unsubscribe lands here */
+/* v83: a reply or a mailto unsubscribe lands here. v89: the commission line is affNote(), built from the switches. */
 async function alSend(env, to, subject, html, text, unsub) {
   if (!env.RESEND_API_KEY) return { ok: false, error: "RESEND_API_KEY not set" };
   const body = { from: env.ALERT_FROM || "Prowl by Owl & Twig <onboarding@resend.dev>", to: [to], subject: subject, html: html, text: text };
@@ -3430,6 +3460,7 @@ function alNear(sub, term) {
 /* v34: eBay Partner Network. EPN_CAMPAIGN_ID (text var, 10 digits) is added to
    eBay item links in Prowl Alerts emails. The page tags its own links. */
 function epnUrl(env, u, cid) {
+  if (AFF_ON.ebay !== true) return u;   /* v89: the admin switch */
   const c = String((env && env.EPN_CAMPAIGN_ID) || "").trim();
   if (!/^\d{10}$/.test(c) || !/^https:\/\/(www\.)?ebay\.com\/(sch|itm)\//.test(u) || /[?&]campid=/.test(u)) return u;
   return u + (u.indexOf("?") > -1 ? "&" : "?") + "mkcid=1&mkrid=711-53200-19255-0&siteid=0&campid=" + c + "&customid=" + encodeURIComponent(cid || "prowl") + "&toolid=10001&mkevt=1";
@@ -3540,13 +3571,13 @@ function alShell(env, inner, why, links) {
     '<a href="' + PROWL_PAGE + '" style="color:#8a4b1f;text-decoration:none">Prowl Alerts</a> <span style="color:#9a8b7a;font-weight:normal;letter-spacing:0;text-transform:none">by <a href="https://www.owlandtwigvintage.com" style="color:#9a8b7a">Owl &amp; Twig Vintage</a></span></td></tr>' +
     inner +
     '<tr><td style="padding:26px 12px 22px;font:12px/1.6 Arial,sans-serif;color:#9a8b7a;border-top:1px solid #efe8dc">' +
-    why + '<br>' + (links ? links + '<br>Or just reply &quot;unsubscribe&quot; to this email.<br>' + AL_AFF_NOTE + '<br>' : '') + alCopy() + '<br>' + alEsc(alAddr(env)) + ' · <a href="https://www.owlandtwigvintage.com" style="color:#9a8b7a">owlandtwigvintage.com</a>' +
+    why + '<br>' + (links ? links + '<br>Or just reply &quot;unsubscribe&quot; to this email.<br>' + (affNote() ? alEsc(affNote()) + '<br>' : '') : '') + alCopy() + '<br>' + alEsc(alAddr(env)) + ' · <a href="https://www.owlandtwigvintage.com" style="color:#9a8b7a">owlandtwigvintage.com</a>' +
     '</td></tr></table></td></tr></table></body></html>';
 }
 function alWhy(sub) { return 'You are getting this because you turned on Prowl Alerts at owlandtwigvintage.com/prowl. One email ' + (sub ? alFreqName(G_ENV, sub) : 'a day') + ' for every hunt, from ShopGoodwill, eBay, Etsy and Chairish. Change how often, what time, or which hunts, or turn emails off, in Prowl under Den, then Settings.'; }
 /* v41: copyright line in every footer, above the mailing address. */
 function alCopy() { return 'Copyright \u00a9 ' + new Date().getUTCFullYear() + ' Owl &amp; Twig Vintage. All rights reserved.'; }
-function alFootText(env, sub) { return ["", "--", "Prowl Alerts by Owl & Twig Vintage. You turned on Prowl Alerts at owlandtwigvintage.com/prowl.", sub ? "Open Prowl signed in: " + alHomeUrl(sub) : "", sub ? "Unsubscribe: " + alUnsubUrl(sub) : "", sub ? 'Or just reply "unsubscribe" to this email.' : "", sub ? AL_AFF_NOTE : "", "Copyright \u00a9 " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(Boolean).join("\n"); }
+function alFootText(env, sub) { return ["", "--", "Prowl Alerts by Owl & Twig Vintage. You turned on Prowl Alerts at owlandtwigvintage.com/prowl.", sub ? "Open Prowl signed in: " + alHomeUrl(sub) : "", sub ? "Unsubscribe: " + alUnsubUrl(sub) : "", sub ? 'Or just reply "unsubscribe" to this email.' : "", sub ? affNote() : "", "Copyright \u00a9 " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(Boolean).join("\n"); }
 
 /* The email. Tables and inline styles only: that is what Gmail and Outlook render. */
 function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
@@ -4511,6 +4542,7 @@ const ADMIN_H = {
   capsCall, capsDay, vCount, ipKey, ipNet, alSame, statTerm, scrubPII, summarize, uptimeFrom, pctFromHist,
   giftHash, alEmail, proListHas, proListCount, alSendGift, alPurge,   /* v83: alPurge */
   jevResultsMode, liveFetchLocal, alTitleKey,   /* v78: Diagnose follows what alerts really do */
+  affLoad, AFF_PROGRAMS, AFF_KEY,   /* v89: affiliate switches */
   WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, AL_PEND_CAP, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE
 };
 
@@ -4550,6 +4582,7 @@ export default {
   /* v28: the daily-email clock. Cloudflare runs this on the Cron Trigger. */
   async scheduled(event, env, ctx) {
     G_ENV = env;
+    try { await affLoad(env); } catch (e) {}   /* v89 */
     /* v78: one test search per live marketplace each hour, for the uptime numbers */
     if (event && event.cron === PROBE_CRON) { ctx.waitUntil(runProbes(env).then(p => capsCall("metrics", "mrec", { p: p })).catch(e => console.error("probes", String(e && e.message || e)))); return; }
     ctx.waitUntil(cronRun(env));
@@ -4567,6 +4600,7 @@ export default {
 
 async function handleFetch(request, env, ctx) {
     G_ENV = env;
+    try { await affLoad(env); } catch (e) {}   /* v89: affiliate switches for every link built below */
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") || "";
 
@@ -4585,6 +4619,7 @@ async function handleFetch(request, env, ctx) {
     /* v28: unsubscribe links work from any mail app, including one-click POSTs */
     if (url.pathname === "/alerts/unsub") return alUnsub(request, env, url, origin);
     if (url.pathname === "/alerts/confirm") return alConfirm(request, env, url);
+    if (url.pathname === "/aff" && request.method === "GET") return json({ on: AFF_ON }, 200, origin, { "Cache-Control": "public, max-age=300" });   /* v89 */
     if (url.pathname === "/alerts/gift") return alGiftStart(request, env, url);   /* v78c */
     if (url.pathname === "/alerts/giftstop") return alGiftStop(request, env, url);   /* v78c */
     if (url.pathname === "/alerts/in") return alIn(request, env, url);

@@ -27,9 +27,9 @@ function load(deps = {}, nowIso = "2026-10-07T19:36:00Z") {
     "const ITEM_CACHE_SECONDS = 86400, ITEM_PER_IP = 300, ITEM_IMAGES = 24, ITEM_DESC_MAX = 20000;",
     "const UPSTREAM_TIMEOUT_MS = 5000;",
   ].concat(names.map(indexFn)).join("\n");
-  const keys = ["Date", "fetch", "ebayToken", "PCACHE", "vCount", "ipKey", "json", "console", "itemSalvation"];
+  const keys = ["Date", "fetch", "ebayToken", "PCACHE", "vCount", "ipKey", "json", "console", "itemSalvation", "AFF_ON"];
   const vals = [FakeDate, deps.fetch || (async () => { throw new Error("no fetch"); }), async () => "TOKEN", deps.PCACHE, deps.vCount || (async () => true), (x) => String(x || "ip"),
-    (body, status, origin, extra) => ({ body, status: status || 200, extra: extra || {} }), { error() {} }, deps.itemSalvation || (async () => ({ error: "x" }))];
+    (body, status, origin, extra) => ({ body, status: status || 200, extra: extra || {} }), { error() {} }, deps.itemSalvation || (async () => ({ error: "x" })), deps.AFF_ON || { ebay: true, depop: false }];
   return new Function(...keys, src + "\nreturn { " + names.join(", ") + " };")(...vals);
 }
 const resp = (status, body) => ({ status, text: async () => (typeof body === "string" ? body : JSON.stringify(body)) });
@@ -74,6 +74,13 @@ test("eBay: getItemByLegacyId with the EPN header; photos, aspects, affiliate UR
   assert.deepEqual(r.aspects, [{ n: "Brand", v: "Haeger" }]);
   assert.equal(r.affUrl, "https://www.ebay.com/itm/123456789012?mkcid=1&campid=5339216838");
   assert.equal(r.price, "$45.00");
+});
+
+test("eBay: with the eBay affiliate switch off (v89), no EPN header is sent", async () => {
+  const seen = [];
+  const { itemEbay } = load({ AFF_ON: { ebay: false, depop: false }, fetch: async (u, o) => { seen.push(o.headers); return resp(200, { title: "x", itemWebUrl: "https://www.ebay.com/itm/1" }); } });
+  await itemEbay("123456789012", { EPN_CAMPAIGN_ID: "5339216838" });
+  assert.equal(seen[0]["X-EBAY-C-ENDUSERCTX"], undefined);
 });
 
 test("eBay: an ended or removed listing is gone, not an error", async () => {

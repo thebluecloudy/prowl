@@ -357,8 +357,8 @@ const SS = {
   get: k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
   set: (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) { /* private mode: just don't remember */ } }
 };
-const TABS = ["overview", "members", "diagnose", "errors", "searches"];
-const S = { tab: "", ov: null, ovAt: 0, ovSeq: 0, out: false, health: null, routesAll: false, top: "today",
+const TABS = ["overview", "members", "diagnose", "errors", "searches", "affiliates"];
+const S = { tab: "", aData: null, ov: null, ovAt: 0, ovSeq: 0, out: false, health: null, routesAll: false, top: "today",
   mFilter: "all", mSort: "created", mData: null, mAt: 0, mSeq: 0, member: null, memberId: "", pushed: false, lastMsg: null,
   late: null, diag: null, dSel: null, diagRes: null, diagShow: "all", diagSeq: 0, errSeq: 0, sDays: 7, sSeq: 0, toastT: 0,
   gData: null, gAt: 0, gSeq: 0, giftsAll: false, glen: null };
@@ -516,7 +516,7 @@ const AUDIT = { login: "Admin sign-in", logout: "Admin sign-out", "signin-link":
   "recheck-today": "Re-check hunts today", "resend-today": "Send today's email again", "mail-on": "Turned emails on", "mail-off": "Turned emails off",
   unpause: "Unpaused", "signout-all": "Signed out all devices", "clear-seen": "Cleared already-sent memory", delete: "Deleted a member",
   find: "Looked up a member", diagnose: "Ran Diagnose", healthcheck: "Ran a health check",
-  "gift-add": "Gifted Pro", "gift-remove": "Turned off a gift", "gift-on": "Gifted Pro to a member", "gift-off": "Turned off free Pro" };
+  "aff-on": "Turned an affiliate on", "aff-off": "Turned an affiliate off", "gift-add": "Gifted Pro", "gift-remove": "Turned off a gift", "gift-on": "Gifted Pro to a member", "gift-off": "Turned off free Pro" };
 const ISSUES = { members: "member counts", alerts: "alert emails", metrics: "speed, errors and uptime", traffic: "speed and errors", uptime: "uptime",
   ai: "AI usage", pools: "AI usage", searches: "top searches", audit: "admin activity", errors: "recent errors" };
 
@@ -570,6 +570,7 @@ function selectTab(tab, detail) {
   if (tab === "diagnose") prepDiag();
   if (tab === "errors") loadErrors();
   if (tab === "searches") loadSearches();
+  if (tab === "affiliates") loadAff();
 }
 function go(tab) { history.replaceState(null, "", "#" + tab); selectTab(tab); }
 /* Member ids are lower-case hex on the server; accept any case typed or pasted. */
@@ -598,6 +599,7 @@ $("#refresh").addEventListener("click", () => {
   else if (S.tab === "errors") loadErrors();
   else if (S.tab === "searches") loadSearches();
   else if (S.tab === "diagnose") { if (!S.ov) loadOverview(); stamp(); }
+  else if (S.tab === "affiliates") loadAff();
 });
 /* Every 60 s while this browser tab is in view and the overview is open; catch up when it comes back into view. */
 setInterval(() => { if (!S.out && D.visibilityState === "visible" && S.tab === "overview") loadOverview(); }, 60000);
@@ -953,6 +955,38 @@ $("#findf").addEventListener("submit", async e => {
     if (j.id) openMember(j.id);
   } catch (err) { if (err.status !== 401) msg.textContent = err.message; }
 });
+/* ---------- Affiliates (v89): one switch per program ---------- */
+async function loadAff() {
+  const box = $("#affbox");
+  if (!S.aData) fill(box, loading("Loading affiliates\u2026"));
+  try { const j = await api("/admin/api/affiliates"); S.aData = j; renderAff(j); stamp(); }
+  catch (e) { if (e.status === 401) return; fill(box, note("bad", "Could not load the affiliates. " + e.message, loadAff)); }
+}
+const AFF_COLS = [{ t: "Affiliate" }, { t: "Network" }, { t: "Status", bare: 1 }, { t: "", bare: 1 }];
+function renderAff(j) {
+  const P = Array.isArray(j.programs) ? j.programs : [];
+  fill($("#affbox"), P.length ? tableOf(AFF_COLS, P.map(affRow), "Affiliates", true) : h("p", { class: "empty", text: "No affiliate programs are set up." }));
+}
+function affRow(p) {
+  const b = h("button", { class: "btn btn-s" + (p.on ? "" : " btn-p"), type: "button", text: p.on ? "Turn off" : "Turn on", "aria-label": (p.on ? "Turn off " : "Turn on ") + p.name + " affiliate links" });
+  b.addEventListener("click", () => setAff(p, b));
+  return [h("span", { class: "term", text: p.name }), h("span", { class: "muted", text: p.net }), p.on ? st("good", "On: links are tagged") : st("info", "Off: plain links"), b];
+}
+async function setAff(p, btn) {
+  if (!window.confirm((p.on ? "Turn off " : "Turn on ") + p.name + " affiliate links?" + (p.on ? " Links to " + p.name + " go out plain, and no disclosure names it." : " Links to " + p.name + " go out through " + p.net + ", and the disclosures name it."))) return;
+  const was = btn.textContent;
+  btn.disabled = true; btn.textContent = "Working\u2026";
+  try {
+    const j = await api("/admin/api/affiliate", { id: p.id, on: !p.on });
+    const text = j.message || "Saved.";
+    $("#aff-msg").textContent = text; toast(text, j.ok === false);
+    S.aData = j; renderAff(j);
+  } catch (e) {
+    if (e.status === 401) return;
+    toast(e.message, true); btn.disabled = false; btn.textContent = was;
+  }
+}
+
 /* ---------- Gift Pro (free service) ---------- */
 const GIFT_LEN = [[0, "Forever"], [1, "1 month"], [3, "3 months"], [6, "6 months"], [12, "12 months"]];
 $("#giftf").addEventListener("submit", async e => {
@@ -1486,7 +1520,7 @@ function appBody() {
     '<form method="post" action="/admin/logout"><button class="btn btn-s" type="submit">Sign out</button></form></div></div></header>' +
     /* outside the header: a sticky element only sticks within its parent, and the header is just as tall as itself */
     '<div class="tabbar"><div class="wrap"><nav class="tabs" role="tablist" aria-label="Admin sections">' +
-    tab("overview", "Overview") + tab("members", "Members") + tab("diagnose", "Diagnose") + tab("errors", "Errors") + tab("searches", "Searches") +
+    tab("overview", "Overview") + tab("members", "Members") + tab("diagnose", "Diagnose") + tab("errors", "Errors") + tab("searches", "Searches") + tab("affiliates", "Affiliates") +
     "</nav></div></div>" +
     '<main id="main" class="wrap">' +
     panel("overview", '<div class="view" id="ov"></div>') +
@@ -1530,6 +1564,10 @@ function appBody() {
     panel("searches",
       '<section class="card"><div class="ch"><h2>Top searches</h2><div class="seg" role="group" aria-label="Period">' + day(1, "Today") + day(7, "7 days") + day(30, "30 days") + "</div></div>" +
       '<p class="sub">What people search for on Prowl. Visitors count each person once a day. Searches that look personal are never recorded.</p><div id="sbox"></div></section>') +
+    panel("affiliates",
+      '<section class="card"><div class="ch"><h2>Affiliates</h2></div>' +
+      '<p class="sub">Turn each affiliate program on or off. Off means links to that site go out plain and no disclosure names it. The Prowl page, the browser extension and the alert emails all follow this within about 5 minutes. Nothing else needs changing.</p>' +
+      '<div id="affbox"></div><p class="msg" id="aff-msg" aria-live="polite"></p></section>') +
     "</main>" +
     '<div class="toast" id="toast" role="status" aria-live="polite"></div>' +
     '<div class="out-ov" id="out" hidden><div class="card" role="alertdialog" aria-modal="true" aria-labelledby="out-h"><h2 id="out-h">You are signed out</h2>' +

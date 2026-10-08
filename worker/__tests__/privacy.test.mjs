@@ -132,7 +132,7 @@ test("every email with an unsubscribe link carries both List-Unsubscribe entries
 test("footers say a reply works too", () => {
   const F = fromIndex(["alShell", "alCopy", "alAddr", "alEsc", "alFootText"], {
     PROWL_PAGE: "https://p", alHomeUrl: () => "https://home", alUnsubUrl: () => "https://unsub",
-    AL_AFF_NOTE: "Some links (eBay, Depop) earn Owl & Twig a small commission, at no cost to you.",
+    affNote: () => "Some links (eBay) earn Owl & Twig a small commission, at no cost to you.",
   });
   assert.match(F.alShell({}, "", "why", '<a href="u">Unsubscribe</a>'), /Or just reply &quot;unsubscribe&quot; to this email\./);
   assert.doesNotMatch(F.alShell({}, "", "why", ""), /reply/, "notices without an unsubscribe link do not say it");
