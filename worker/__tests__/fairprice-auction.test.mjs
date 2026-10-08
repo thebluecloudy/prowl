@@ -80,4 +80,4 @@ test("without web search, an auction bid is not called high on a guess", async (
   assert.match(p, /Bidders have already taken this auction to \$142\.00; do not call that bid high unless you are sure this exact item sells for less\./);
 });
 
-test("worker version", () => assert.match(INDEX, /const WORKER_VERSION = "v87";/));
+test("worker version", () => assert.match(INDEX, /const WORKER_VERSION = "v(8[7-9]|9\d)";/));

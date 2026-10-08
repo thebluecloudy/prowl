@@ -1331,7 +1331,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 [data-theme=uranium] .scout-app-wrapper.k2{--ac:#39ff14;--ac-ring:rgba(57,255,20,.35)}
 /* ---- v6.38: Flock tab. A full-screen feed that stops on every card; Saved view; swipe right to discard ---- */
 .scout-app-wrapper.flock-mode #otp-sf,.scout-app-wrapper.flock-mode #otp-sgw,.scout-app-wrapper.flock-mode #otp-picks,.scout-app-wrapper.flock-mode #otp-quick,.scout-app-wrapper.flock-mode #otp-res,.scout-app-wrapper.flock-mode #otp-guide{display:none!important}
-.scout-app-wrapper .fl-seg,.scout-app-wrapper .fl-x,.scout-app-wrapper .fl-auc{display:none}
+.scout-app-wrapper .fl-seg,.scout-app-wrapper .fl-x,.scout-app-wrapper .fl-auc,.scout-app-wrapper .fl-tags{display:none}
 .scout-app-wrapper #otp-flock.as-feed{display:flex!important;flex-direction:column;position:fixed;left:0;right:0;top:0;bottom:calc(70px + env(safe-area-inset-bottom));z-index:39;margin:0;padding:0;max-width:none;border:0;border-radius:0;box-shadow:none;background:var(--bg);overflow:hidden}
 .scout-app-wrapper #otp-flock.as-feed .flock-head{flex:0 0 auto;flex-wrap:wrap;gap:10px 12px;margin:0;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;background:var(--bg);border:0;border-bottom:1px solid var(--ln);border-radius:0;box-shadow:none}
 .scout-app-wrapper #otp-flock.as-feed .flock-head b{font-size:28px;line-height:1.1;font-weight:800;color:var(--ink);text-transform:none;letter-spacing:0}
@@ -1356,7 +1356,11 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-m{display:none}
 .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-p{position:absolute;top:24px;right:28px;z-index:2;margin:0;padding:7px 14px;border-radius:99px;background:#fff;color:#111;font-size:17px;font-weight:800;line-height:1.2;box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer}
 .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-p:empty{display:none}
-.scout-app-wrapper #otp-flock.as-feed .fl-auc{display:block;position:absolute;left:28px;bottom:78px;z-index:2;padding:6px 12px;border-radius:99px;background:#D9541E;color:#fff;font-size:14px;font-weight:800;line-height:1.2;pointer-events:none}
+/* v6.53: where it is sold, and an auction's time and bids, stacked bottom-left on the photo */
+.scout-app-wrapper #otp-flock.as-feed .fl-tags{display:flex;flex-direction:column;align-items:flex-start;gap:6px;position:absolute;left:28px;bottom:78px;z-index:2;pointer-events:none}
+.scout-app-wrapper #otp-flock.as-feed .fl-auc,.scout-app-wrapper #otp-flock.as-feed .fl-site{display:block;padding:6px 12px;border-radius:99px;font-size:14px;font-weight:800;line-height:1.2}
+.scout-app-wrapper #otp-flock.as-feed .fl-auc{background:#D9541E;color:#fff}
+.scout-app-wrapper #otp-flock.as-feed .fl-site{background:#fff;color:#111;box-shadow:0 2px 10px rgba(0,0,0,.18)}
 .scout-app-wrapper #otp-flock.as-feed .fl-x,.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv{-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;position:absolute;z-index:3;width:40px;height:40px;min-width:40px;padding:0;border:0;border-radius:99px;background:#fff;color:#111;font-size:18px;line-height:1;box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
 .scout-app-wrapper #otp-flock.as-feed .fl-x{top:24px;left:28px}
 .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv{top:auto;right:28px;bottom:76px;font-size:20px}
@@ -1378,7 +1382,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
   .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-p{top:12px;right:12px}
   .scout-app-wrapper #otp-flock.as-feed .fl-x{top:12px;left:12px}
   .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv{right:12px;bottom:62px}
-  .scout-app-wrapper #otp-flock.as-feed .fl-auc{left:12px;bottom:64px}
+  .scout-app-wrapper #otp-flock.as-feed .fl-tags{left:12px;bottom:64px}
   .scout-app-wrapper #otp-flock.as-feed .fl-note{grid-column:1/-1;height:auto;max-width:none;padding:48px 0}
 }
 @media(min-width:1024px) and (hover:hover){
@@ -2368,7 +2372,7 @@ window.prowlAffNames=function(){var a=['eBay'],d;for(d in window.PROWL_AFF)if(Ob
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.52';
+var PROWL_VERSION='v6.53';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -5060,7 +5064,7 @@ function flockCardHtml(c){
   if(it.time_left)auc.push(esc(it.time_left));
   if(typeof it.bids==='number')auc.push(esc(String(it.bids))+' bid'+(it.bids===1?'':'s'));
   return h.replace('</a>',(c.t?'<div class="fl-for">for '+esc(c.t)+'</div>':'')+'</a>'+
-    (auc.length?'<span class="fl-auc">'+auc.join(' · ')+'</span>':'')+
+    '<div class="fl-tags"><span class="fl-site">'+esc(LIVE_NAME[it.src]||'ShopGoodwill')+'</span>'+(auc.length?'<span class="fl-auc">'+auc.join(' · ')+'</span>':'')+'</div>'+   /* v6.53: where it is sold */
     '<button type="button" class="fl-x" aria-label="Not for me: hide this find" title="Not for me">✕</button>'+
     '<button type="button" class="fl-lk'+(lk?' on':'')+'" aria-pressed="'+lk+'" aria-label="Like: show me more like this" title="Like">'+(lk?'\u2665':'\u2661')+'</button>'+
     '<button type="button" class="fl-sh" aria-label="Share this find" title="Share"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"></path><path d="M7 8l5-5 5 5"></path><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg></button>');
@@ -5225,9 +5229,10 @@ function popSrc(u){
   if(h==='ebay.com'&&/\/itm\/(?:[^/]+\/)?\d{6,20}(?:[/?#]|$)/.test(u))return 'ebay';
   if(h==='shopgoodwill.com'&&/\/item\/\d{3,15}(?:[/?#]|$)/.test(u))return 'shopgoodwill';
   if(h==='shopthesalvationarmy.com'&&/\/Listing\/Details\/\d{3,15}/.test(u))return 'salvation';
+  if(h==='etsy.com'&&/\/listing\/\d{6,15}(?:[/?#]|$)/.test(u))return 'etsy';   /* v6.53, worker v88 */
   return '';
 }
-var POP_NAME={ebay:'eBay',shopgoodwill:'ShopGoodwill',salvation:'Salvation Army'};
+var POP_NAME={ebay:'eBay',shopgoodwill:'ShopGoodwill',salvation:'Salvation Army',etsy:'Etsy'};
 /* the worker already strips seller HTML down to a few tags; this walks it again and copies only those tags and text,
    so nothing in a description can run here whatever the worker sends */
 var POP_TAGS={P:1,BR:1,B:1,STRONG:1,I:1,EM:1,U:1,UL:1,OL:1,LI:1,H3:1,H4:1};

@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v88: 2026-10-08. Etsy in the listing popup. /item opens etsy.com/listing/<id> through the Etsy Open API
+ *        (listings/<id>?includes=Images,Shop): every photo in rank order, price, the description (plain text, escaped,
+ *        new lines kept), the shop, when it was made and materials. A sold-out or expired listing reads as gone.
  *   v87: 2026-10-08. Fair price on auctions and exact matches. A listing whose details say "9 bids" is priced as an
  *        auction: the prompt calls the price the current bid after N bids (ending in ...), not an asking price, and a
  *        verdict judges the bid. The sold search must match the exact item (same maker, line, variant, size, era;
@@ -272,7 +275,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
-const WORKER_VERSION = "v87";
+const WORKER_VERSION = "v88";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -1311,6 +1314,7 @@ function itemRef(raw) {
   let m;
   if (h === "ebay.com" && (m = /^\/itm\/(?:[^/]+\/)?(\d{6,20})(?:\/|$)/.exec(p))) return { src: "ebay", id: m[1] };
   if (h === "shopgoodwill.com" && (m = /^\/item\/(\d{3,15})(?:\/|$)/.exec(p))) return { src: "shopgoodwill", id: m[1] };
+  if (h === "etsy.com" && (m = /^\/listing\/(\d{6,15})(?:\/[A-Za-z0-9%_-]{0,200})?\/?$/.exec(p))) return { src: "etsy", id: m[1] };   /* v88 */
   if (h === "shopthesalvationarmy.com" && (m = /^\/Listing\/Details\/(\d{3,15})(?:\/([A-Za-z0-9-]{0,200}))?\/?$/.exec(p))) return { src: "salvation", id: m[1], slug: m[2] || "" };
   return null;
 }
@@ -1364,6 +1368,43 @@ async function itemEbay(id, env) {
     if (auction) { out.bids = Number(j.bidCount) || 0; const tl = timeLeft(j.itemEndDate); if (tl) out.time_left = tl; }
     return out;
   } finally { clearTimeout(timer); }
+}
+/* v88: Etsy, through the same official API the search uses. Descriptions are plain text, so they are escaped and
+   their new lines kept before the shared sanitizer sees them. */
+function etsyMade(w) {
+  w = String(w || "");
+  if (!w) return "";
+  if (w === "made_to_order") return "made to order";
+  return w.replace(/^before_/, "before ").replace(/_/g, "\u2013");
+}
+async function itemEtsy(id, env) {
+  const s = await etsyGet("listings/" + encodeURIComponent(id) + "?includes=Images,Shop", env);
+  if (s.status === 404) return { gone: true };
+  if (s.status !== 200) return { error: "etsy " + s.status };
+  let j; try { j = JSON.parse(s.text); } catch (e) { return { error: "etsy unreadable" }; }
+  if (!j || !j.listing_id) return { gone: true };
+  const p = j.price || {}, n = p.divisor ? Number(p.amount) / Number(p.divisor) : NaN;
+  const imgs = (Array.isArray(j.images) ? j.images.slice() : []).filter(Boolean)
+    .sort((a, b) => (Number(a.rank) || 0) - (Number(b.rank) || 0)).map(x => x.url_fullxfull || x.url_570xN);
+  const text = String(j.description || "").slice(0, 40000).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\r?\n/g, "<br>");
+  const aspects = [];
+  const shop = j.shop && j.shop.shop_name ? String(j.shop.shop_name) : "";
+  if (shop) aspects.push({ n: "Shop", v: shop.slice(0, 120) });
+  const made = etsyMade(j.when_made);
+  if (made) aspects.push({ n: "Made", v: made.slice(0, 120) });
+  const mats = (Array.isArray(j.materials) ? j.materials : []).filter(x => typeof x === "string" && x.trim()).slice(0, 4);
+  if (mats.length) aspects.push({ n: "Materials", v: mats.join(", ").slice(0, 120) });
+  const out = {
+    title: hibidText(String(j.title || "")).slice(0, 200),
+    price: isFinite(n) && n > 0 ? (p.currency_code && p.currency_code !== "USD" ? n.toFixed(2) + " " + p.currency_code : money(n)) : "",
+    images: itemImages(imgs),
+    description: itemDesc(text),
+    condition: "",
+    aspects: aspects,
+    url: "https://www.etsy.com/listing/" + id,
+  };
+  if (j.state && j.state !== "active") out.gone = true;
+  return out;
 }
 async function itemSgw(id) {
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), UPSTREAM_TIMEOUT_MS);
@@ -1443,7 +1484,7 @@ async function itemRoute(env, url, origin, request) {
   try { const hit = await PCACHE.match(ck); if (hit) return json(await hit.json(), 200, origin, { "X-Prowl-Cache": "hit" }); } catch (e) {}
   if (!(await vCount("it:" + ipKey(request.headers.get("CF-Connecting-IP")), ITEM_PER_IP))) return json({ error: "slow down" }, 429, origin);
   let out;
-  try { out = ref.src === "ebay" ? await itemEbay(ref.id, env) : ref.src === "shopgoodwill" ? await itemSgw(ref.id) : await itemSalvation(ref); }
+  try { out = ref.src === "ebay" ? await itemEbay(ref.id, env) : ref.src === "shopgoodwill" ? await itemSgw(ref.id) : ref.src === "etsy" ? await itemEtsy(ref.id, env) : await itemSalvation(ref); }
   catch (e) { out = { error: "upstream unreachable" }; }
   if (out.error) { console.error("item", ref.src, out.error); return json({ error: out.error, src: ref.src }, 502, origin); }
   out = Object.assign({ src: ref.src, id: ref.id }, out);
