@@ -1349,7 +1349,8 @@ test("phone numbers in search terms never reach the Errors and Top searches view
   const s = await (await call(env, H, "GET", "/admin/api/searches?days=7")).json();
   assert.deepEqual(s.top.map(x => x.term), ["lego 10179", "roseville"]);
   const ov = await (await call(env, H, "GET", "/admin/api/overview")).text();
-  assert.ok(!ov.includes("555"), "overview errors and searches too");
+  /* the phone numbers themselves, not any "555": the overview carries the current time, whose digits can read 555 */
+  assert.doesNotMatch(ov, /555-123-4567|555-0199|\(313\)/, "overview errors and searches too");
 });
 
 test("Re-check Pro says when the shop could not be asked, and that free Pro needs no shop check", async () => {
