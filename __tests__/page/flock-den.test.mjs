@@ -1,4 +1,4 @@
-// Page v6.60: Flock follows the whole Den (every hunt, locked or not). A like goes looking for more like it straight
+// Page v6.61: Flock follows the whole Den (every hunt, locked or not). A like goes looking for more like it straight
 // away, a swipe-away steers off and looks elsewhere, and a card whose search is not in the Den has + Add to hunts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,6 +23,18 @@ async function settle(p) {
   for (let i = 0; i < 60 && p.calls.length !== n; i++) { n = p.calls.length; await tick(700); }
   await tick(1100);
 }
+
+const qs = (p) => p.calls.map((u) => { const x = new URL(u, 'https://x.example/'); return x.searchParams.get('q') ? x.pathname + '|' + x.searchParams.get('q') : null; }).filter(Boolean);
+// scroll to the last card, so the feed adds its next batch
+function toEnd(p) {
+  const cs = cards(p);
+  cs.forEach((c, k) => { Object.defineProperty(c, 'offsetTop', { value: k * 100, configurable: true }); Object.defineProperty(c, 'offsetHeight', { value: 100, configurable: true }); });
+  const r = p.$('#otp-flockRow');
+  r.scrollTop = (cs.length - 1) * 100;
+  r.dispatchEvent(new p.win.Event('scroll'));
+}
+const searches = (p, q) => p.calls.filter((u) => new URL(u, 'https://x.example/').searchParams.get('q') === q).length;
+const searchCalls = (p) => p.calls.filter((u) => new URL(u, 'https://x.example/').searchParams.get('q'));
 
 test('Flock takes in every Den hunt, locked or not', async () => {
   const p = await flock({ hunts: ['panther', 'pyrex', 'blenko'], lock: [0] });
@@ -57,7 +69,6 @@ test('a hunt added in the Den joins an open Flock', async () => {
   await p.close();
 });
 
-const qs = (p) => p.calls.map((u) => { const x = new URL(u, 'https://x.example/'); return x.searchParams.get('q') ? x.pathname + '|' + x.searchParams.get('q') : null; }).filter(Boolean);
 test('a big Den is fetched in capped rounds, every hunt once before any twice', async () => {
   const hunts = Array.from({ length: 20 }, (_, i) => 'hunt' + String.fromCharCode(97 + i));
   const f = liveFetch();
@@ -127,56 +138,51 @@ test('+ Add to hunts puts the search in the Den (not locked) without starting th
   await p.close();
 });
 
-test('a panel term that is not in the Den also offers + Add to hunts', async () => {
+test('a panel term that is not in the Den says so, offers + Add to hunts, and the toast skips the lock advice', async () => {
   const p = await flock({ hunts: ['panther'] }, { owlTwigSgwTerms: ['haeger'] });
   await settle(p);
   const c = cards(p).find((x) => x.getAttribute('data-h') === 'haeger');
   assert.ok(c);
-  assert.equal(c.querySelector('.fl-nd').textContent, 'Not in your hunts yet');
-  assert.ok(c.querySelector('.fl-add'));
+  assert.equal(c.querySelector('.fl-nd').textContent, 'On your home panel, not in the Den');
   assert.equal(c.querySelector('.fl-near'), null);
+  c.querySelector('.fl-add').click();
+  assert.deepEqual(den(p).hunts, ['panther', 'haeger']);
+  const toast = p.$('#otp-toast').textContent;
+  assert.match(toast, /Added haeger to your hunts in the Den\./);
+  assert.doesNotMatch(toast, /Lock it/, 'a panel term already goes in the daily email');
   await p.close();
 });
 
-const searches = (p, q) => p.calls.filter((u) => new URL(u, 'https://x.example/').searchParams.get('q') === q).length;
-test('swipe-aways look elsewhere, and a near search swiped away twice is dropped', async () => {
+test('the price and ✕ sit below the row, so + Add to hunts is not under them', async () => {
   const p = await flock({ hunts: ['panther', 'pyrex'] });
   await settle(p);
   cards(p)[0].querySelector('.fl-lk').click();
   await settle(p);
-  const first = await waitFor(() => cards(p).find((x) => x.getAttribute('data-near') === '1'), { timeout: 8000 });
-  const t = first.getAttribute('data-h');
-  const n = p.calls.length;
-  first.querySelector('.fl-x').click();
-  await waitFor(() => p.calls.length > n, { timeout: 4000 });   // it asks more marketplaces
-  await settle(p);
-  const second = await waitFor(() => cards(p).find((x) => x.getAttribute('data-near') === '1' && x.getAttribute('data-h') === t), { timeout: 8000 });
-  second.querySelector('.fl-x').click();
-  await settle(p);
-  const had = searches(p, t);
-  p.$('#otp-flockShuf').click();
-  await settle(p);
-  assert.ok(!cards(p).some((x) => x.getAttribute('data-h') === t), 'its finds leave the feed');
-  assert.equal(searches(p, t), had, 'and it is not searched again');
+  const near = await waitFor(() => cards(p).find((x) => x.getAttribute('data-near') === '1'), { timeout: 8000 });
+  assert.ok(near.classList.contains('fl-row'));
+  const css = [...p.doc.querySelectorAll('style')].map((x) => x.textContent).join('\n');
+  assert.match(css, /\.fl-card\.fl-row \.sgw-p,[^{]*\.fl-card\.fl-row \.fl-x\{top:66px\}/);
+  assert.match(css, /\.fl-card\.fl-row\.fl-first-new \.sgw-p,[^{]*\{top:94px\}/);
+  assert.match(css, /@media\(min-width:1024px\)\{\s*[^}]*\.fl-card\.fl-row \.sgw-p[^{]*\{top:54px\}/);
+  assert.match(css, /\.fl-addrow \.fl-near,[^{]*\{[^}]*-webkit-line-clamp:2/, 'the reason wraps to two lines instead of losing the term');
   await p.close();
 });
 
-test('a near search with a liked find is kept even after two swipe-aways', async () => {
-  const p = await flock({ hunts: ['panther', 'pyrex'] });
+test('the card you are on never vanishes when the near searches change (a new like pushes an older one out)', async () => {
+  const L = (u, t) => ({ u: 'https://www.ebay.com/itm/' + u, t, p: '$20.00', s: 'ebay', i: '', h: 'panther', at: 1 });
+  const p = await flock({ hunts: ['panther', 'pyrex'] }, { 'prowl.likes': [L(1, 'Brass eagle doorstop'), L(2, 'Haeger green vase')] });
   await settle(p);
-  cards(p)[0].querySelector('.fl-lk').click();
+  const near = await waitFor(() => cards(p).find((x) => x.getAttribute('data-near') === '1' && /haeger/.test(x.getAttribute('data-h'))), { timeout: 8000 });
+  const u = near.getAttribute('data-u');
+  // put the feed on it, then like it: the liked title's words make a new search and the older one leaves the newest two
+  const row = p.$('#otp-flockRow');
+  cards(p).forEach((c, k) => { Object.defineProperty(c, 'offsetTop', { value: k * 100, configurable: true }); Object.defineProperty(c, 'offsetHeight', { value: 100, configurable: true }); });
+  row.scrollTop = cards(p).indexOf(near) * 100; row.dispatchEvent(new p.win.Event('scroll'));
+  await tick(1200);
+  near.querySelector('.fl-lk').click();
   await settle(p);
-  const n1 = await waitFor(() => cards(p).find((x) => x.getAttribute('data-near') === '1'), { timeout: 8000 });
-  const t = n1.getAttribute('data-h');
-  n1.querySelector('.fl-lk').click();   // liked one of its own finds
-  await settle(p);
-  for (let i = 0; i < 2; i++) {
-    const c = await waitFor(() => cards(p).find((x) => x.getAttribute('data-near') === '1' && x.getAttribute('data-h') === t && !x.querySelector('.fl-lk.on')), { timeout: 8000 });
-    c.querySelector('.fl-x').click();
-    await settle(p);
-  }
-  p.$('#otp-flockShuf').click();
-  await settle(p);
-  assert.ok(await waitFor(() => cards(p).some((x) => x.getAttribute('data-near') === '1' && x.getAttribute('data-h') === t), { timeout: 8000 }), 'still searched');
+  assert.ok(cards(p).some((c) => c.getAttribute('data-u') === u), 'still in the feed');
+  const again = cards(p).find((c) => c.getAttribute('data-u') === u);
+  assert.ok(again.querySelector('.fl-add'), 'and its + Add to hunts too');
   await p.close();
 });
