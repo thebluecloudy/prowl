@@ -838,12 +838,12 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .dg-blk .sgw-sub{margin:4px 18px 8px}
 /* v5.17: each live source gets a clear, big section label */
 .scout-app-wrapper .sgw-sub{border-top:1px solid var(--ln);padding-top:14px;margin-top:16px}
-.scout-app-wrapper .sgw-sub .sgw-live{font-family:var(--display);font-size:20px;font-weight:800;letter-spacing:.01em;color:var(--ink);text-transform:none}
+.scout-app-wrapper .sgw-sub .sgw-live,.scout-app-wrapper .sgw-sub .sgw-fbh{font-family:var(--display);font-size:20px;font-weight:800;letter-spacing:.01em;color:var(--ink);text-transform:none}
 .scout-app-wrapper .sgw-sub .sgw-live:before{width:10px;height:10px}
 .scout-app-wrapper .sgw-sub .sgw-upd{font-size:13px}
 .scout-app-wrapper .rlive .sgw-head{border-top:1px solid var(--ln);padding-top:14px}
 .scout-app-wrapper .rlive .sgw-head b{font-size:21px}
-@media(max-width:480px){.scout-app-wrapper .sgw-sub .sgw-live{font-size:18px}.scout-app-wrapper .rlive .sgw-head b{font-size:19px} }
+@media(max-width:480px){.scout-app-wrapper .sgw-sub .sgw-live,.scout-app-wrapper .sgw-sub .sgw-fbh{font-size:18px}.scout-app-wrapper .rlive .sgw-head b{font-size:19px} }
 .scout-app-wrapper .dg-blk .sgw-grid{padding:0 18px 12px}
 .scout-app-wrapper .dg-blk .sgw-note{padding:0 18px 10px}
 .scout-app-wrapper .dg-tip{margin:12px 18px 0;font-size:13.5px;color:var(--mu);line-height:1.5}
@@ -4121,10 +4121,10 @@ function liveErrNote(name,c){
 /* v6.33: every live source answered and none had anything. One card instead of eight "nothing" lines:
    keep watching by email, or try the sites Prowl can only link to. */
 var EMPTY_LINKS=['facebook','heritage','liveauction','hibid','mercari','mercarijp','rubylane','ebaysold'];
-function liveEmptyCard(t){
+function liveEmptyCard(t,fb){
   var links='',i,m,u;
-  for(i=0;i<EMPTY_LINKS.length;i++){m=mb(EMPTY_LINKS[i]);if(!m)continue;try{u=m.u(t)}catch(e){u=''}if(!/^https:\/\//.test(u)&&u.charAt(0)!=='/')continue;links+=(links?' · ':'')+'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(m.n)+'</a>'}
-  return '<div class="sgw-empty"><p class="sgw-empty-h">Nothing live yet for <b>“'+esc(t)+'”</b>.</p>'+
+  for(i=0;i<EMPTY_LINKS.length;i++){if(fb&&EMPTY_LINKS[i]==='facebook')continue;m=mb(EMPTY_LINKS[i]);if(!m)continue;   /* v6.65: fb, the Facebook strip is above */try{u=m.u(t)}catch(e){u=''}if(!/^https:\/\//.test(u)&&u.charAt(0)!=='/')continue;links+=(links?' · ':'')+'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(m.n)+'</a>'}
+  return '<div class="sgw-empty"><p class="sgw-empty-h">'+(fb?'Nothing on Goodwill or the other live sites yet for':'Nothing live yet for')+' <b>“'+esc(t)+'”</b>.</p>'+
     '<p>Rare pieces come and go. Prowl can keep watching and email you when one is listed.</p>'+
     '<button type="button" class="b p" data-empty="watch" data-t="'+esc(t)+'">Email me when it shows up</button>'+
     (links?'<p class="sgw-empty-l">Also try the sites Prowl can only link to: '+links+'</p>':'')+'</div>';
@@ -4164,7 +4164,8 @@ function fbClean(a){
     x=a[i];if(!x||typeof x.title!=='string'||!x.title)continue;
     id=/^https:\/\/www\.facebook\.com\/marketplace\/item\/(\d{5,20})\/?$/.exec(String(x.url||''));if(!id)continue;
     out.push({title:x.title.slice(0,160),price:typeof x.price==='string'?x.price.slice(0,24):'',url:'https://www.facebook.com/marketplace/item/'+id[1]+'/',
-      image:typeof x.image==='string'&&/^https:\/\/([a-z0-9-]+\.)*fbcdn\.net\//i.test(x.image)?x.image:'',src:'facebook',location:typeof x.location==='string'?x.location.slice(0,60):''});
+      image:typeof x.image==='string'&&/^https:\/\/([a-z0-9-]+\.)*fbcdn\.net\//i.test(x.image)?x.image:'',src:'facebook',location:typeof x.location==='string'?x.location.slice(0,60):'',
+      found:/^\d{4}-\d{2}-\d{2}$/.test(String(x.found||''))?String(x.found):''});
   }
   return out;
 }
@@ -4179,33 +4180,47 @@ function fbFetch(t){
     return r.ok?r.json().then(function(j){return {swept:true,items:fbClean(j&&j.items),updated:j&&typeof j.updated==='string'?j.updated:''}}):null;
   }).then(function(v){
     FB.busy[k]=0;
-    if(!v)v={swept:false,retry:1};   /* a failed check: quiet, and asked again in 5 minutes rather than on every draw */
-    v.at=v.retry?Date.now()-FB_FRESH+5*60000:Date.now();FB.cache[k]=v;
+    if(!v){fbKeep(k);return}
+    v.at=Date.now();FB.cache[k]=v;
     if(v.swept&&fbKey(sgwCurTerm())===k)rSGW();
-  },function(){FB.busy[k]=0;FB.cache[k]={swept:false,at:Date.now()-FB_FRESH+5*60000}});
+  },function(){FB.busy[k]=0;fbKeep(k)});
 }
+/* a failed check is quiet: what was shown stays, and it is asked again in 5 minutes rather than on every draw. Only a
+   real "not swept" (404) clears it. */
+function fbKeep(k){var o=FB.cache[k];if(!o||!o.swept)o=FB.cache[k]={swept:false};o.at=Date.now()-FB_FRESH+5*60000}
 /* "Updated this morning", "yesterday", "3 days ago": never a raw time */
-function fbWhen(iso){
-  var t=Date.parse(iso||'');if(!(t>0))return '';
-  var d=new Date(t),n=new Date(),day=function(x){return new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime()},
-    diff=Math.round((day(n)-day(d))/86400000),hr=d.getHours();
-  if(diff<=0)return 'Updated '+(hr<12?'this morning':hr<17?'this afternoon':'this evening');
-  return diff===1?'Updated yesterday':'Updated '+diff+' days ago';
+/* whole days from the sweep to today, on this device's calendar (0 = today; a time a little ahead counts as today);
+   -1 when there is no usable time */
+function fbDays(iso){
+  var t=Date.parse(iso||'');if(!(t>0))return -1;
+  var d=new Date(t),n=new Date(),day=function(x){return new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime()};
+  return Math.max(0,Math.round((day(n)-day(d))/86400000));
 }
+function fbWhen(iso){
+  var dd=fbDays(iso);if(dd<0)return '';
+  if(dd===0){var hr=new Date(Date.parse(iso)).getHours();return 'Updated '+(hr<12?'this morning':hr<17?'this afternoon':'this evening')}
+  return dd===1?'Updated yesterday':'Updated '+dd+' days ago';
+}
+/* The worker keeps each hunt's finds for the week (worker v94): this morning's first. The note speaks only of the
+   last sweep, on the right day: before this morning's sweep has run it does not say "today" about yesterday's. A
+   sweep that stopped more than 2 days ago is not shown at all. */
+function fbHas(t){var c=FB.cache[fbKey(t)];return !!(c&&c.swept&&c.items.length&&fbDays(c.updated)<=2)}
 function fbBlock(t){
   var c=FB.cache[fbKey(t)];
   if(!c||!c.swept)return '';
+  var dd=fbDays(c.updated);if(dd<0||dd>2)return '';
   var w=fbWhen(c.updated),head='<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span>'+(w?'<span class="sgw-upd">'+esc(w)+'</span>':'')+'</div>';
-  if(!c.items.length)return head+'<p class="sgw-note">Nothing new on Facebook for this hunt today.</p>';
-  var rows='',i;for(i=0;i<c.items.length;i++)rows+=sgwCard(c.items[i],t);
-  return head+'<div class="sgw-grid">'+rows+'</div>';
+  var sday=String(c.updated||'').slice(0,10),fresh=0,rows='',i;
+  for(i=0;i<c.items.length;i++){if(c.items[i].found===sday)fresh++;rows+=sgwCard(c.items[i],t)}
+  var note=fresh?'':'<p class="sgw-note">Nothing new on Facebook for this hunt '+(dd===0?'today':dd===1?'yesterday':'lately')+(rows?'. Earlier this week:':'.')+'</p>';
+  return head+note+(rows?'<div class="sgw-grid">'+rows+'</div>':'');
 }
 function sgwBody(){
   var t=sgwCurTerm();
   if(t)fbFetch(t);   /* v6.65 */
   if(!sgw.terms.length)return '<p class="sgw-note">Type something you hunt into the box above. It is saved to your hunts, locked for Daily, and checked on ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Vinted and Grailed right away.</p>';
   var sm=liveSummary(t);
-  if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return liveEmptyCard(t)+fbBlock(t);   /* v6.33; v6.65: Facebook finds still show */
+  if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return fbHas(t)?fbBlock(t)+liveEmptyCard(t,1):liveEmptyCard(t)+fbBlock(t);   /* v6.33; v6.65: Facebook finds first when there are some */
   if(sm.done&&!sm.n&&sm.err1===sm.count)return '<div class="sgw-empty"><p class="sgw-empty-h">Prowl\u2019s live results are not reaching you.</p><p>Check your connection. If you use a content or ad blocker, allow <b>prowl.thebluecloud.workers.dev</b>. The rows below still search every site directly.</p></div>';
   var k=t.toLowerCase(),html=liveBlock('ShopGoodwill',t,sgw.cache[k],sgw.busy===t)+fbBlock(t),i,s;   /* v6.65: Facebook under Goodwill */
   for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];html+=liveBlock(s.name,t,lv[s.id].cache[k],lvBusy(s.id,t))}

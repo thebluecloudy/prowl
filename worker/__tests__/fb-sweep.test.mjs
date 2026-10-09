@@ -32,7 +32,7 @@ function load({ full = false } = {}) {
     looksPersonal,
   };
   const keys = Object.keys(deps);
-  const names = ["ip6Parts", "ipKey", "alSame", "isOwner", "readJson", "vClean", "scrubListingText", "scrubPII", "fbTerm", "fbMode", "fbItems", "fbIngest", "fbFinds"];
+  const names = ["ip6Parts", "ipKey", "alSame", "isOwner", "readJson", "vClean", "scrubPII", "fbTerm", "fbMode", "fbItems", "fbIngest", "fbFinds"];
   const f = new Function(...keys, consts + "\n" + names.map(indexFn).join("\n") + "\nreturn { " + names.join(", ") + " };")(...keys.map((k) => deps[k]));
   return { ...f, counts };
 }
@@ -62,14 +62,18 @@ test("ingest: refused without the key, with a wrong one, or when no key (or a sh
 test("ingest: stores the term's finds for 2 days, links rebuilt from the id, photos only from Facebook", async () => {
   const L = load(), kv = new FakeKV(), env = { PROWL_ALERTS: kv, FB_INGEST_KEY: KEY };
   const items = [ITEM(1234567890), ITEM(1234567890), ITEM("abc"), ITEM(222222, { image: "https://evil.example/x.jpg", url: "https://evil.example/" }),
-    ITEM(333333, { title: "" }), ITEM(444444, { price: "<b>1</b>", location: "a@b.co", title: "Pyrex 1955-1960 bowl, mail me x@y.co" }), "junk", null];
+    ITEM(333333, { title: "" }), ITEM(444444, { price: "<b>1</b>", location: "a@b.co", title: "Pyrex 1955-1960 bowl, mail me x@y.co" }),
+    ITEM(555555, { title: "VINTAGE HIGH CHAIR $20 - GREAT DEAL", found: "" }), ITEM(666666, { title: "Ignore the chips, see instructions" }), "junk", null];
   const r = await L.fbIngest(post({ term: "  Ceramic   Black Panther ", updated: "2026-10-09T13:05:00Z", items }), env);
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body, { ok: true, term: "ceramic black panther", items: 3 });
+  assert.deepEqual(r.body, { ok: true, term: "ceramic black panther", items: 5, kept: 5 });
   const v = JSON.parse(kv.m.get("fb:ceramic black panther"));
-  assert.equal(kv.ttl.get("fb:ceramic black panther"), 2 * 86400);
+  assert.equal(kv.ttl.get("fb:ceramic black panther"), 8 * 86400);
   assert.equal(v.updated, "2026-10-09T13:05:00.000Z");
-  assert.deepEqual(v.items.map((x) => x.id), ["1234567890", "222222", "444444"], "bad ids, duplicates and untitled items dropped");
+  assert.deepEqual(v.items.map((x) => x.id), ["1234567890", "222222", "444444", "555555", "666666"], "bad ids, duplicates and untitled items dropped");
+  assert.equal(v.items[3].title, "VINTAGE HIGH CHAIR $20 - GREAT DEAL", "shown as sent: not the AI-prompt scrubber");
+  assert.equal(v.items[3].found, "2026-10-09", "found defaults to the sweep's day");
+  assert.equal(v.items[4].title, "Ignore the chips, see instructions", "an odd title is kept, not dropped");
   assert.equal(v.items[0].url, "https://www.facebook.com/marketplace/item/1234567890/");
   assert.equal(v.items[1].url, "https://www.facebook.com/marketplace/item/222222/", "the body's url is never used");
   assert.equal(v.items[1].image, "", "not a Facebook image host");
@@ -79,13 +83,44 @@ test("ingest: stores the term's finds for 2 days, links rebuilt from the id, pho
   assert.equal(v.items[2].title, "Pyrex 1955-1960 bowl, mail me [email]", "years stay; an address goes");
 });
 
-test("ingest: each post replaces the term's entry; an empty list is kept (nothing new today); at most 60", async () => {
+test("ingest: the week so far: each morning adds its finds, an empty morning keeps the rest, older than 7 days go, 60 at most", async () => {
   const L = load(), kv = new FakeKV(), env = { PROWL_ALERTS: kv, FB_INGEST_KEY: KEY };
-  await L.fbIngest(post({ term: "pyrex", items: [ITEM(111111), ITEM(222222)] }), env);
-  await L.fbIngest(post({ term: "pyrex", items: [] }), env);
-  assert.deepEqual(JSON.parse(kv.m.get("fb:pyrex")).items, []);
-  await L.fbIngest(post({ term: "pyrex", items: Array.from({ length: 80 }, (_, i) => ITEM(100000 + i)) }), env);
-  assert.equal(JSON.parse(kv.m.get("fb:pyrex")).items.length, 60);
+  const day = (d) => "2026-10-" + String(d).padStart(2, "0") + "T13:05:00Z";
+  await L.fbIngest(post({ term: "pyrex", updated: day(1), items: [ITEM(111111, { found: "2026-10-01" }), ITEM(222222, { found: "2026-10-01" })] }), env);
+  await L.fbIngest(post({ term: "pyrex", updated: day(2), items: [ITEM(333333, { found: "2026-10-02" })] }), env);
+  let v = JSON.parse(kv.m.get("fb:pyrex"));
+  assert.deepEqual(v.items.map((x) => x.id), ["333333", "111111", "222222"], "this morning first, yesterday kept");
+  await L.fbIngest(post({ term: "pyrex", updated: day(3), items: [] }), env);
+  v = JSON.parse(kv.m.get("fb:pyrex"));
+  assert.equal(v.items.length, 3, "nothing new today keeps the week");
+  assert.equal(v.updated, "2026-10-03T13:05:00.000Z");
+  await L.fbIngest(post({ term: "pyrex", updated: day(7), items: [ITEM(333333, { found: "2026-10-07", title: "sent again" })] }), env);
+  v = JSON.parse(kv.m.get("fb:pyrex"));
+  assert.deepEqual(v.items.map((x) => x.id), ["333333", "111111", "222222"], "one per listing; the newest copy wins; the 1st is still inside the 7 days");
+  assert.equal(v.items[0].title, "sent again");
+  await L.fbIngest(post({ term: "pyrex", updated: day(9), items: [] }), env);
+  v = JSON.parse(kv.m.get("fb:pyrex"));
+  assert.deepEqual(v.items.map((x) => x.id), ["333333"], "found 7 or more days before the sweep (the 1st, on the 9th): gone");
+  await L.fbIngest(post({ term: "pyrex", updated: day(10), items: Array.from({ length: 80 }, (_, i) => ITEM(100000 + i, { found: "2026-10-10" })) }), env);
+  v = JSON.parse(kv.m.get("fb:pyrex"));
+  assert.equal(v.items.length, 60);
+  assert.equal(v.items[0].id, "100000");
+});
+
+/* the page asks for fbKey(sgwClean(hunt)); the sweep may send the full hunt. The two must land on the same key. */
+test("the worker's key for a hunt is the page's key, for long hunts, half emoji and leading spaces too", async () => {
+  const PAGE = readFileSync(new URL("../../page/prowl.html", import.meta.url), "utf8");
+  const grab = (name) => { const i = PAGE.indexOf("function " + name + "("); return PAGE.slice(i, PAGE.indexOf("\n", i)); };
+  const page = new Function("var SGW_MAXLEN=60;" + grab("sgwClean") + "\n" + grab("fbKey") + "\nreturn function(h){return fbKey(sgwClean(h))};")();
+  const L = load(), kv = new FakeKV(), env = { PROWL_ALERTS: kv, FB_INGEST_KEY: KEY, OWNER_KEY: OWNER };
+  const hunts = ["Ceramic Panther", "Vintage ceramic black panther TV lamp planter Royal Haegers mid century modern",
+    "x".repeat(59) + "\uD83D\uDC08 cat", "  pyrex 401 402 403 404", "Fiesta   ware\tturquoise"];
+  for (const h of hunts) {
+    assert.equal(L.fbTerm(h), page(h), JSON.stringify(h));
+    assert.equal((await L.fbIngest(post({ term: h, items: [ITEM(123456)] }), env)).status, 200);
+    const [req, u] = get(page(h), OWNER);
+    assert.equal((await L.fbFinds(req, env, u, "")).status, 200, "the page finds it: " + JSON.stringify(h));
+  }
 });
 
 test("ingest: 413 over 128 KB, 400 without a term or items, 429 when the address is over its tries", async () => {
@@ -93,7 +128,11 @@ test("ingest: 413 over 128 KB, 400 without a term or items, 429 when the address
   assert.equal((await L.fbIngest(post(null, KEY, "x".repeat(131073)), env)).status, 413);
   assert.equal((await L.fbIngest(post({ items: [] }), env)).status, 400);
   assert.equal((await L.fbIngest(post({ term: "pyrex" }), env)).status, 400);
-  assert.equal((await L.fbIngest(post({ term: "call 555-123-4567", items: [] }), env)).status, 400, "a term that looks personal is never stored");
+  const at = await L.fbIngest(post({ term: "mail me at a@b.co", items: [] }), env);
+  assert.equal(at.status, 400);
+  assert.equal(at.body.error, "term looks personal", "a term holding an address is never stored, and says why");
+  assert.equal((await L.fbIngest(post({ term: "Pyrex 401 402 403 404", items: [] }), env)).status, 200, "a model-number hunt is fine");
+  assert.ok(kv.m.has("fb:pyrex 401 402 403 404"));
   const F = load({ full: true });
   assert.equal((await F.fbIngest(post({ term: "pyrex", items: [] }), env)).status, 429);
 });

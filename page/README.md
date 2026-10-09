@@ -51,5 +51,6 @@ key in `PROWL_AFF_ON`.
 Facebook Marketplace finds from Prowl-the-agent's morning sweep of the locked hunts show under the Goodwill block
 (`fbBlock`, `fbFetch`; worker `GET /fb-finds`). The strip shows only on devices with the owner key (`?owner=`) unless
 `PROWL_FB_PUBLIC` is true here and `FB_FINDS` is "public" in `worker/wrangler.toml`. Facebook is never a live source
-(`LIVE_SRC`): the worker cannot search it. Links are plain listing links, rebuilt from the listing id.
+(`LIVE_SRC`): the worker cannot search it. Links are plain listing links, rebuilt from the listing id. The worker keeps
+each hunt's last 7 days; the page hides a sweep more than 2 days old, and keeps what it showed when a refresh fails.
 

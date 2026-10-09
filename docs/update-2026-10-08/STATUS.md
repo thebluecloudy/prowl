@@ -7,10 +7,12 @@ briefing are in this folder; the unchanged ones (design rules, login, privacy pa
 
 ## 1. Facebook sweep (new): built in worker v94 / page v6.65
 
-- **Worker routes:** `POST /fb-ingest` and `GET /fb-finds?term=`, keeping each term's finds in the `PROWL_ALERTS` KV
-  as `fb:<term>` for 2 days. The contract with the sweep is in the comment above `handleFetch` in `worker/index.js`.
-- **Page strip:** a "Facebook Marketplace" strip under the Goodwill block. It says "Nothing new on Facebook for this
-  hunt today." when a swept hunt has nothing new, and shows nothing for a hunt that was not swept.
+- **Worker routes:** `POST /fb-ingest` and `GET /fb-finds?term=`, keeping each term's last 7 days of finds in the
+  `PROWL_ALERTS` KV as `fb:<term>` (merged by listing id, so a find stays for the week even if that hunt is not
+  opened the morning it came). The contract with the sweep is in the comment above `handleFetch` in `worker/index.js`.
+- **Page strip:** a "Facebook Marketplace" section under the Goodwill block, newest first. When the last sweep found
+  nothing new it says so for the right day ("today", "yesterday"), above the week's earlier finds. A sweep that
+  stopped more than 2 days ago is hidden, and a hunt that was not swept shows nothing.
 - **Who sees it:** only Matthew's devices (the `?owner=` key) by default, because the sweep runs through his own
   Facebook account. To show it to everyone, set `FB_FINDS = "public"` in `worker/wrangler.toml` and
   `PROWL_FB_PUBLIC=true` in the page.
