@@ -1,7 +1,10 @@
 > **Repo note (2026-10-09), read first.** Three things changed after Matthew wrote this:
-> - **Depop / Rakuten is closed.** Rakuten terminated the Owl & Twig publisher account on 2026-10-09. Worker v92, page
->   v6.62 and extension 1.6.4 removed the Rakuten link and ID, and `__tests__/page/no-rakuten.test.mjs` keeps them out.
->   Do not build the Depop deeplink below unless Rakuten reinstates the account and Depop approves in writing; ask first.
+> - **Depop through Rakuten, approved again.** Rakuten closed the earlier Owl & Twig publisher account on 2026-10-09
+>   (worker v92 / page v6.62 / extension 1.6.4 removed that link and ID). Matthew was approved for Depop through Rakuten
+>   Advertising the same day, so worker v95 / page v6.67 build the deeplink below as a switched-off slot (key `depop_rak`)
+>   in Admin > Affiliates: the advertiser ID 53555 is filled in, the publisher ID is pasted there, page links only (the
+>   alert emails and the extension stay plain). `__tests__/page/depop-rakuten.test.mjs` keeps the old ID and any Rakuten
+>   link out of the worker and the extension.
 > - **Keep every affiliate slot (Matthew, 2026-10-09):** "I want affiliates, just keep them there as I apply for them."
 >   So 1stDibs and Etsy stay in the router and the admin Affiliates tab, switched off with empty IDs, overriding the
 >   "1stDibs out of the router" line below. Links stay plain and the disclosure leaves them out until he turns one on.
@@ -58,7 +61,7 @@ function prowlAff(url){
 
 - `tagAff` builds the network click URL per merchant (each network has its own format — Awin, Rakuten, Partnerize all use redirect-style click URLs, not query params; store the full click-URL template per merchant).
 - Route every listing-link renderer through `prowlAff`: SGW cards, appraiser links, eBay comp links, flock cards, saved list, guide "Hunt it" links — everywhere `prowlEpn` is called today.
-- (Closed 2026-10-09, do not implement.) Depop links: build the Rakuten LinkShare deeplink the way Gem does — `https://click.linksynergy.com/deeplink?id=<YOUR_RAN_ID>&mid=53555&murl=<encoded-depop-url>`. Depop's Rakuten merchant ID is 53555 (verified from Gem's live redirect chain, 2026-10-06).
+- (Built in worker v95 / page v6.67, page only, IDs from the admin area.) Depop links: build the Rakuten LinkShare deeplink the way Gem does — `https://click.linksynergy.com/deeplink?id=<YOUR_RAN_ID>&mid=53555&murl=<encoded-depop-url>`. Depop's Rakuten merchant ID is 53555 (verified from Gem's live redirect chain, 2026-10-06).
 - Matthew fills in the real tags/IDs — placeholders only, never invent them.
 
 ## 2. Disclosure

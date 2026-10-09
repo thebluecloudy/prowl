@@ -50,7 +50,7 @@ New Shopify customer accounts + app proxy. Still blocked on his two setup steps 
 ### 5. Flock next steps — `prowl-flock-next-steps-spec.md` (unchanged)
 Margin sheet, price-drop watchlist, NEW badges, share, logged-out star → Shopify login. Already specced; build after item 2.
 
-### 6. Affiliate router — `prowl-affiliate-links-spec.md` (status: PAUSED for Depop; repo note: Rakuten closed 2026-10-09, see the spec's note)
+### 6. Affiliate router — `prowl-affiliate-links-spec.md` (repo note: Depop approved through Rakuten again on 2026-10-09 and built as an admin slot in worker v95 / page v6.67, see the spec's note)
 - **Depop is on ice.** Rakuten terminated Matthew's whole publisher network account today (boilerplate, no specific violation). Appeal sent to ra-compliance@rakuten.com with Depop's Louis Spencer's approval attached; Louis nudged too (he's in London — reads it Friday morning UK time). **Scheduled recheck: Oct 14, 9 AM ET.**
 - In the code: mark the Depop Rakuten deeplink (mid=53555) path PAUSED. Clean-URL fallback is the current live behavior — keep it until reinstatement is confirmed, and ask before re-tagging.
 - Etsy/Reverb tagging: unchanged, still waiting on his network setups (see tasks).

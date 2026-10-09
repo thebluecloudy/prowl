@@ -14,8 +14,9 @@ test('placeholders mean clean links: nothing is tagged until the real IDs are in
   await p.close();
 });
 
-/* v6.59: each program follows its switch in the admin area (worker /aff). v6.62: Depop has no affiliate program at all
-   (Rakuten closed the publisher account), so no answer, kept answer or ID can tag a Depop link. */
+/* v6.59: each program follows its switch in the admin area (worker /aff). v6.62: Depop had no affiliate program (Rakuten
+   closed the publisher account). v6.67: Depop is back through Rakuten Advertising, off until the owner turns it on with
+   both IDs; the publisher ID field is new (ranid), so an ID kept from v6.60 (pub) tags nothing. */
 const DEPOP = ['https://www.depop.com/products/abc-vintage-tee/', 'https://www.depop.com/search/?q=ceramic%20panther', 'https://depop.com/products/x/'];
 function affFetch(on) {
   const asked = [], out = { asked, ids: null };
@@ -28,23 +29,53 @@ function affFetch(on) {
   return out;
 }
 
-test('v6.62: Depop links always go out plain and no disclosure names Depop, even if an answer or a kept value says on', async () => {
+test('v6.67: Depop is off by default: plain links, no disclosure, and an old kept answer (v6.60 pub) changes nothing', async () => {
   const p = await page();
   for (const u of DEPOP) assert.equal(p.win.prowlAff(u, 'prowl-live'), u);
   assert.equal(p.win.prowlAffLive('depop.com'), false);
+  assert.equal(p.win.PROWL_AFF_ON.depop_rak, false);
+  assert.equal('depop' in p.win.PROWL_AFF_ON, false, 'the old key is not read: old pages and extension 1.6.3 act on it');
   assert.ok(p.$$('.aff-say').every((el) => !el.hidden && !/Depop/.test(el.textContent)));
-  assert.equal('depop' in p.win.PROWL_AFF_ON, false);
-  assert.equal('depop' in p.win.PROWL_AFF_IDS, false);
-  assert.doesNotMatch(p.doc.documentElement.innerHTML, /linksynergy|jh1j|mid=53555/);
+  /* the rendered page links no Rakuten URL: only the template in the script knows the host */
+  assert.ok(p.$$('a[href]').every((a) => !/linksynergy/.test(a.getAttribute('href'))));
   await p.close();
-  /* an old answer from the worker, or one kept in this browser, with Depop on and a publisher ID */
+  /* a browser that kept v6.46-v6.61's answer (Depop on, the old publisher ID), and a worker answer under the old key */
   const f = affFetch({ ebay: true, depop: true });
-  f.ids = { depop: { pub: 'Abc123/x*Y' } };
+  f.ids = { depop: { pub: 'Abc123/x*Y', mid: '53555', ranid: 'Abc123/x*Y' } };
   const q = loadPage({ fetchImpl: f.impl, storage: { 'prowl.affOn': { ebay: true, depop: true }, 'prowl.affIds': { depop: { pub: 'Abc123/x*Y' } } } });
   await tick(40);
-  for (const u of DEPOP) assert.equal(q.win.prowlAff(u, 'prowl-live'), u);
+  for (const u of DEPOP) assert.equal(q.win.prowlAff(u, 'prowl-live'), u, 'no ranid, no tag');
   assert.equal(q.$('.copyr .aff-list').textContent, 'eBay');
   await q.close();
+});
+
+test('v6.67: Depop on with both IDs: its links go through the Rakuten deep link, and the disclosure names Depop', async () => {
+  const f = affFetch({ ebay: true, depop_rak: true });
+  f.ids = { depop_rak: { mid: '53555', ranid: 'Abc123/x*Y' } };
+  const p = loadPage({ fetchImpl: f.impl });
+  await tick(40);
+  for (const u of DEPOP) assert.equal(p.win.prowlAff(u, 'prowl-live'), 'https://click.linksynergy.com/deeplink?id=Abc123/x*Y&mid=53555&murl=' + encodeURIComponent(u));
+  assert.deepEqual([...p.win.prowlAffNames()], ['eBay', 'Depop']);
+  assert.equal(p.$('.copyr .aff-list').textContent, 'eBay and Depop');
+  /* lookalike hosts are not Depop, and a click URL is never wrapped twice */
+  assert.equal(p.win.prowlAff('https://depop.com.evil.example/x'), 'https://depop.com.evil.example/x');
+  const w = p.win.prowlAff(DEPOP[0]);
+  assert.equal(p.win.prowlAff(w), w);
+  await p.close();
+});
+
+test('v6.67: Depop on but an ID missing or in the wrong form: plain links', async () => {
+  for (const ids of [{ mid: '53555', ranid: '' }, { mid: '', ranid: 'Abc123/x*Y' }, { mid: '53555', ranid: 'a&murl=https://evil.example' },
+    { mid: '53555', ranid: 'Abc"><b>' }, { mid: '5a555', ranid: 'Abc123/x*Y' }, { mid: '53555', ranid: 'Abc 123' },
+    { mid: '53555', ranid: '3912345' }]) {   /* all digits: Rakuten's Site ID, not the id= of its links */
+    const f = affFetch({ ebay: true, depop_rak: true });
+    f.ids = { depop_rak: ids };
+    const p = loadPage({ fetchImpl: f.impl });
+    await tick(40);
+    for (const u of DEPOP) assert.equal(p.win.prowlAff(u, 'prowl-live'), u, JSON.stringify(ids));
+    assert.deepEqual([...p.win.prowlAffNames()], ['eBay']);
+    await p.close();
+  }
 });
 
 test('eBay switched off: plain eBay links, the popup affiliate URL is ignored, and with nothing on the disclosure goes', async () => {
@@ -62,7 +93,7 @@ test('a bad or missing /aff answer changes nothing', async () => {
   const f = affFetch({ ebay: 'no', etsy: 1 });
   const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.affOn': 'junk', 'prowl.affIds': 'junk' } });
   await tick(40);
-  assert.deepEqual({ ...p.win.PROWL_AFF_ON }, { ebay: true, etsy: false, reverb: false, '1stdibs': false, amazon: false });
+  assert.deepEqual({ ...p.win.PROWL_AFF_ON }, { ebay: true, depop_rak: false, etsy: false, reverb: false, '1stdibs': false, amazon: false });
   assert.equal(p.win.prowlAffId('ebay', 'camp'), '5339216838');
   await p.close();
 });

@@ -33,6 +33,16 @@
  *        were off come back on from their next email day, and the confirm page says so. conf: goes with the purge
  *        (Delete in Prowl, admin delete), the admin's Sign out everywhere and an address move. The unsubscribe page
  *        for an address that moved no longer shows the new address (masked, and only to a device with the token).
+ *   v95: 2026-10-09. Depop is back in the admin area's Affiliates (Matthew: approved for Depop through Rakuten Advertising
+ *        on 2026-10-09; Depop's Rakuten advertiser id is 53555). A switched-off slot like the others: its IDs are the
+ *        advertiser id (filled in: 53555) and the publisher id from Matthew's own Rakuten links, pasted in the admin area.
+ *        Only the Prowl page tags Depop links (PROWL_AFF), and only once Matthew turns it on; the alert emails and the
+ *        extension keep plain Depop links (Rakuten bars links in email without its written permission). The publisher
+ *        id field has a new name (ranid), so a v84-v91 value still in KV aff:ids (pub) is not reused, and saving a
+ *        program's IDs complete for the first time leaves it off even if an old KV aff:on value says on. Its switch key
+ *        is depop_rak, not depop: extension 1.6.3 and pages v6.59-v6.61 read on.depop from /aff and would tag Depop with
+ *        the closed account's publisher id written into them; /aff never answers on.depop again. The publisher id must
+ *        not be all digits (that is Rakuten's Site ID, not the id= of its links).
  *   v94: 2026-10-09. Facebook Marketplace sweep (Oct 8 briefing). POST /fb-ingest takes each morning's new Facebook finds
  *        for one locked hunt from Prowl-the-agent (X-Prowl-Ingest must match the FB_INGEST_KEY secret; 403 without it,
  *        413 over 128 KB, 300 tries a day per address) and keeps the last 7 days' finds in KV as fb:<term>, merged by
@@ -318,7 +328,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
-const WORKER_VERSION = "v94";
+const WORKER_VERSION = "v95";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -347,10 +357,15 @@ const DEPOP_URL = "https://www.depop.com/search/?q=";   /* v59 */
    each checked against its format, so a stored value can only ever fill its slot in a fixed link template. A program
    is on only while every one of its fields is filled and valid. To add a program: give it a line here, then build
    its links from affId() in the worker, and from PROWL_AFF / PROWL_AFF_FMT in the page. */
-const AFF_RE = { epn: /^\d{10}$/, awinMid: /^\d{3,8}$/, awinAff: /^\d{4,10}$/, camref: /^[A-Za-z0-9]{4,24}$/, amz: /^[A-Za-z0-9-]{1,40}-2\d$/ };
+const AFF_RE = { epn: /^\d{10}$/, ranMid: /^\d{3,8}$/, ranId: /^(?!\d+$)[A-Za-z0-9*\/._~-]{6,40}$/, awinMid: /^\d{3,8}$/, awinAff: /^\d{4,10}$/, camref: /^[A-Za-z0-9]{4,24}$/, amz: /^[A-Za-z0-9-]{1,40}-2\d$/ };
 const AFF_PROGRAMS = [
   { id: "ebay", name: "eBay", net: "eBay Partner Network", def: true, mail: true,
     fields: [{ k: "camp", label: "Campaign ID", hint: "10 digits", re: AFF_RE.epn, def: "5339216838" }] },
+  /* v95: page only (no mail): Rakuten bars its links in email without written permission. The key is depop_rak, never
+     depop: old clients (extension 1.6.3, pages v6.59-v6.61) turn their own hardcoded closed-account link on with on.depop */
+  { id: "depop_rak", name: "Depop", net: "Rakuten Advertising", def: false,
+    fields: [{ k: "mid", label: "Depop advertiser ID (mid)", hint: "digits; Depop's is 53555", re: AFF_RE.ranMid, def: "53555" },
+      { k: "ranid", label: "Your Rakuten publisher ID", hint: "the 11 characters after id= in a Rakuten link (Links > Get Link), not the Site ID", re: AFF_RE.ranId, def: "" }] },
   { id: "etsy", name: "Etsy", net: "Awin", def: false,
     fields: [{ k: "mid", label: "Etsy advertiser ID (awinmid)", hint: "3 to 8 digits", re: AFF_RE.awinMid, def: "" },
       { k: "aff", label: "Your Awin publisher ID", hint: "4 to 10 digits", re: AFF_RE.awinAff, def: "" }] },
@@ -396,7 +411,7 @@ async function affLoad(env, force) {
   AFF_ON = affClean(on, AFF_IDS);
   return AFF_ON;
 }
-/* The email footer names exactly the programs that are on and tag email links (mail: eBay, Depop), "" when none is. */
+/* The email footer names exactly the programs that are on and tag email links (mail: eBay), "" when none is. */
 function affNote() {
   const n = AFF_PROGRAMS.filter(p => p.mail === true && AFF_ON[p.id] === true).map(p => p.name);
   return n.length ? "Some links (" + n.join(", ") + ") earn Owl & Twig a small commission, at no cost to you." : "";
@@ -3497,7 +3512,7 @@ const AL_ALSO = [
   ["Facebook", q => "https://www.facebook.com/marketplace/search/?query=" + encodeURIComponent(q)],
   ["Mercari", q => "https://www.mercari.com/search/?keyword=" + encodeURIComponent(q)],
   ["Mercari Japan", q => "https://jp.mercari.com/search?keyword=" + encodeURIComponent(q)],   // v77
-  ["Depop", q => DEPOP_URL + encodeURIComponent(q)],   // v84: link-only; v92: always a plain link (no affiliate program)
+  ["Depop", q => DEPOP_URL + encodeURIComponent(q)],   // v84: link-only; v95: always plain in email, even with Depop on (Rakuten bars its links in email; page only)
   ["Ruby Lane", q => "https://www.rubylane.com/search?q=" + encodeURIComponent(q)],
   ["LiveAuctioneers", q => "https://www.liveauctioneers.com/search/?keyword=" + encodeURIComponent(q)],
   ["Invaluable", q => "https://www.invaluable.com/search?keyword=" + encodeURIComponent(q).replace(/%20/g, "+")],
