@@ -17,7 +17,8 @@ function setup() {
 }
 const sheetOn = (p) => p.$('#otp-sheet').classList.contains('on');
 const flockOn = (p) => p.$('#otp-flock').classList.contains('as-feed');
-const back = async (p) => { p.win.history.back(); await tick(80); };
+// waits for the Back itself (popstate), not a fixed time, so a busy machine cannot outrun it
+const back = (p) => new Promise((r) => { p.win.addEventListener('popstate', () => setTimeout(r, 30), { once: true }); p.win.history.back(); });
 async function openPopupInFlock(p) {
   await tick(60);
   p.$('#otp-dock .db[data-m="flock"]').click();

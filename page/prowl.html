@@ -3960,7 +3960,7 @@ var LIVE_SRC=[
 ];
 var LIVE_NAME={shopgoodwill:'ShopGoodwill',ebay:'eBay',chairish:'Chairish',etsy:'Etsy',poshmark:'Poshmark',depop:'Depop',vinted:'Vinted',grailed:'Grailed',salvation:'Salvation Army'};
 var lv={};
-(function(){for(var i=0;i<LIVE_SRC.length;i++)lv[LIVE_SRC[i].id]={cache:Object.create(null),busy:'',waiters:Object.create(null)} })();
+(function(){for(var i=0;i<LIVE_SRC.length;i++)lv[LIVE_SRC[i].id]={cache:Object.create(null),busy:'',waiters:Object.create(null),going:Object.create(null),q:[],run:0} })();
 
 /* v5.50: listing data comes from scraped pages via the Worker. Only let a
    card link to https on the live marketplaces; drop anything else. */
@@ -4091,7 +4091,7 @@ function liveCount(c){
 }
 /* v6.33: why a live block failed, in words a visitor can act on. */
 function liveErrNote(name,c){
-  if(c.err===2)return 'Live results are busy on your connection right now. Try again in a little while. The rows below still search every site directly.';
+  if(c.err===2)return name+' is busy right now, so Prowl is giving it a rest. Look again in a couple of minutes. The rows below still search every site directly.';   /* v6.61: a 429 is usually the marketplace asking Prowl to slow down */
   try{if(navigator.onLine===false)return 'You look offline. Live results come back when you reconnect.'}catch(e){}
   return 'Could not reach '+name+' just now. Try again in a minute. The rows below still search every site directly.';
 }
@@ -4109,7 +4109,7 @@ function liveEmptyCard(t){
 /* v6.33: one look across ShopGoodwill and every live source for a term. */
 function liveSummary(t){
   var k=t.toLowerCase(),list=[{c:sgw.cache[k],b:sgw.busy===t}],i,s,r={done:true,n:0,err1:0,err2:0,count:0};
-  for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];list.push({c:lv[s.id].cache[k],b:lv[s.id].busy===t})}
+  for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];list.push({c:lv[s.id].cache[k],b:lvBusy(s.id,t)})}
   for(i=0;i<list.length;i++){var x=list[i];r.count++;if(x.b||!x.c){r.done=false;continue}if(x.c.err===2)r.err2++;else if(x.c.err)r.err1++;else r.n+=liveCount(x.c)}
   return r;
 }
@@ -4132,7 +4132,7 @@ function sgwBody(){
   if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return liveEmptyCard(t);   /* v6.33 */
   if(sm.done&&!sm.n&&sm.err1===sm.count)return '<div class="sgw-empty"><p class="sgw-empty-h">Prowl\u2019s live results are not reaching you.</p><p>Check your connection. If you use a content or ad blocker, allow <b>prowl.thebluecloud.workers.dev</b>. The rows below still search every site directly.</p></div>';
   var k=t.toLowerCase(),html=liveBlock('ShopGoodwill',t,sgw.cache[k],sgw.busy===t),i,s;
-  for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];html+=liveBlock(s.name,t,lv[s.id].cache[k],lv[s.id].busy===t)}
+  for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];html+=liveBlock(s.name,t,lv[s.id].cache[k],lvBusy(s.id,t))}
   return html;
 }
 
@@ -4966,27 +4966,40 @@ function sgwFetch(term,cb){
   });
 }
 
+/* v6.61: Vinted answers a burst of searches with "slow down", so this page sends it one at a time (LV_ONE); one you
+   asked for goes ahead of the Flock's and Daily's. A search that failed is asked again after LV_RETRY_MS, not never. */
+var LV_ONE={vinted:1},LV_RETRY_MS=2*60*1000;
+function lvBusy(id,t){var S=lv[id];return !!(S&&t&&S.going[t.toLowerCase()])}
 function lvFetch(id,term,cb){
   var S=lv[id];if(!S)return;
-  var k=term.toLowerCase();
-  if(S.cache[k]){if(cb)cb(S.cache[k]);return}
+  var k=term.toLowerCase(),c=S.cache[k];
+  if(c&&c.err&&!S.going[k]&&Date.now()-(c.at||0)>LV_RETRY_MS){delete S.cache[k];c=null}
+  if(c){if(cb)cb(c);return}
   if(cb)(S.waiters[k]=S.waiters[k]||[]).push(cb);
-  if(S.busy===term)return;
+  if(S.going[k])return;
   if(typeof fetch!=='function')return;
-  S.busy=term;rSGW();
+  S.going[k]=1;
+  if(LV_ONE[id]&&S.run){if(cb)S.q.push(term);else S.q.unshift(term);rSGW();return}
+  lvGo(id,term);
+}
+function lvGo(id,term){
+  var S=lv[id],k=term.toLowerCase();
+  S.run++;S.busy=term;rSGW();
   fetch(SGW_API+id+'?q='+encodeURIComponent(term)+(aiOff()?'&ai=0':'')).then(function(r){
     if(!r.ok)throw new Error('http '+r.status);
     return r.json();
   }).then(function(d){
     S.cache[k]={items:cleanItems(d&&d.items)};
   })['catch'](function(e){
-    S.cache[k]={items:[],err:/http 429/.test(String(e&&e.message))?2:1};   /* v6.33 */
+    S.cache[k]={items:[],err:/http 429/.test(String(e&&e.message))?2:1,at:Date.now()};   /* v6.33 */
   }).then(function(){
+    S.run--;delete S.going[k];
     if(S.busy===term)S.busy='';
     rSGW();
     var w=S.waiters[k]||[];
     delete S.waiters[k];
     for(var wi=0;wi<w.length;wi++){try{w[wi](S.cache[k])}catch(e){} }
+    if(S.q.length&&!(LV_ONE[id]&&S.run))lvGo(id,S.q.shift());
   });
 }
 /* every source for one term; each fails on its own */
@@ -5001,7 +5014,7 @@ function liveFetch(t){if(!t)return;sgwFetch(t);for(var i=0;i<LIVE_SRC.length;i++
    shows starred finds, and a swipe right (or the ✕) discards a find for good: its URL goes into
    prowl.discarded (500 kept, oldest dropped) and every later render skips it. Picks stay put until
    Shuffle, so finds arriving in the background never move the card you are looking at. */
-var FLOCK={order:[],started:false,pend:0,tm:null,asked:Object.create(null),view:'feed',picks:Object.create(null),sup:false,last:null,prev:'prowl',nearDis:Object.create(null),nearNo:Object.create(null),nearKeep:[],cardBy:Object.create(null),spent:Object.create(null)};
+var FLOCK={order:[],started:false,pend:0,tm:null,asked:Object.create(null),view:'feed',picks:Object.create(null),sup:false,last:null,prev:'prowl',nearDis:Object.create(null),nearNo:Object.create(null),nearKeep:[],cardBy:Object.create(null),spent:Object.create(null),sparkOf:Object.create(null)};
 /* v6.52: an endless feed. FLOCK_CARDS is the batch size; FLOCK_SRCS marketplaces per hunt are fetched at a time */
 var FLOCK_SRCS=3,FLOCK_CARDS=10,FLOCK_ALL=1000,FLOCK_NEAR_EVERY=4;
 /* v6.61: Flock follows the whole Den (every hunt, locked or not), so a round of fetching is capped and goes breadth-first:
@@ -5080,14 +5093,30 @@ function flUnseen(p){return FLOCK.sm&&!FLOCK.sm[p.it.url]?1:0}
    v6.61: a like searches straight away: the two strongest words of each of your two newest likes lead. Words you keep
    swiping away (twice or more, more often than liked) never start a search, and a near search whose finds you swipe
    away twice, with none liked, is dropped for this visit. */
+/* a like whose spark became a Den hunt: some hunt, made only of the like's words, is what ranked() gives it without every
+   other hunt's words (the way flNearTerms made the spark) */
+function flSpentBy(l,FT,hw,ranked){
+  var lw=likeWords(l.t),i,w,tw,sk;
+  for(i=0;i<FT.length;i++){
+    tw=likeWords(FT[i]);if(!tw.length||tw.some(function(x){return lw.indexOf(x)<0}))continue;
+    sk=Object.create(null);for(w in hw)if(tw.indexOf(w)<0)sk[w]=1;
+    if(flNKey(ranked(l,sk).slice(0,2).join(' '))===flNKey(FT[i]))return true;
+  }
+  return false;
+}
 function flNearTerms(){
-  var M=likeModel(),L=likesGet(),out=[],have=Object.create(null),hunts=Object.create(null),hk=Object.create(null),i,j,ws,w0,sp;
-  flockTerms().forEach(function(t){hunts[t.toLowerCase()]=1;hk[flNKey(t)]=1});
+  var M=likeModel(),L=likesGet(),out=[],have=Object.create(null),hunts=Object.create(null),hk=Object.create(null),i,j,ws,w0,sp,FT=flockTerms();
+  FT.forEach(function(t){hunts[t.toLowerCase()]=1;hk[flNKey(t)]=1});
   var cnt=Object.create(null),hw=Object.create(null),mute=muteGet();
   L.forEach(function(l){likeWords(l.t).forEach(function(w){cnt[w]=(cnt[w]||0)+1})});
-  flockTerms().forEach(function(t){likeWords(t).forEach(function(w){hw[w]=1})});
+  FT.forEach(function(t){likeWords(t).forEach(function(w){hw[w]=1})});
   function bad(w){var d=M.d[w]||0;return d>=2&&d>(cnt[w]||0)}
-  function add(t){var k=flNKey(t);if(!t||have[k]||hk[k]||hunts[t.toLowerCase()]||FLOCK.nearNo[k]||out.length>=FLOCK_NEAR_KEEP)return;have[k]=1;out.push(t)}
+  /* one spelling for the same words: a near search already drawn or asked keeps its spelling (and so its finds and its
+     cache) when the word order of its spark shifts with a new like */
+  var keptBy=Object.create(null),ak,at;
+  for(i=FLOCK.nearKeep.length-1;i>=0;i--){at=FLOCK.nearKeep[i];if(!keptBy[flNKey(at)])keptBy[flNKey(at)]=at}
+  for(ak in FLOCK.asked){at=ak.slice(ak.indexOf('|')+1);if(at&&!keptBy[flNKey(at)])keptBy[flNKey(at)]=at}
+  function add(t){var k=flNKey(t);if(!t||have[k]||hk[k]||hunts[t.toLowerCase()]||FLOCK.nearNo[k]||out.length>=FLOCK_NEAR_KEEP)return;have[k]=1;out.push(keptBy[k]||t)}
   /* a like's words, strongest first: in the most of your likes, then where they sit in the title. Counted over all your
      likes, hunts or not, so the order does not shift when a search becomes a hunt. */
   function ranked(l,skip){
@@ -5097,12 +5126,12 @@ function flNearTerms(){
   if(M.n){
     for(i=0;i<L.length&&i<2;i++){
       if(FLOCK.spent[L[i].u])continue;
-      /* its search already became a hunt (+ Add to hunts): its leftover words do not start another */
-      var own=Object.create(null);likeWords(L[i].h||'').forEach(function(w){own[w]=1});
-      w0=ranked(L[i],own).slice(0,2).join(' ');
-      if(w0&&hk[flNKey(w0)]){FLOCK.spent[L[i].u]=1;continue}
+      /* its search already became a hunt (+ Add to hunts): its leftover words do not start another. flAddHunt marks it
+         from sparkOf; after a reload, a hunt made only of this like's words is checked the way its spark was made
+         (without every other hunt's words) */
+      if(flSpentBy(L[i],FT,hw,ranked)){FLOCK.spent[L[i].u]=1;continue}
       ws=ranked(L[i],hw);   /* without any hunt's own words */
-      if(ws.length)add(ws.slice(0,2).join(' '));
+      if(ws.length){w0=ws.slice(0,2).join(' ');FLOCK.sparkOf[flNKey(w0)]=L[i].u;add(w0)}
     }
     if(M.n>=2){
       var top=likeLearned(M).filter(function(w){return w[1]>=2&&!bad(w[0])&&!LIKE_FILL[w[0]]}).map(function(w){return w[0]}).slice(0,3),used=Object.create(null);
@@ -5117,7 +5146,7 @@ function flNearTerms(){
   out=out.slice(0,FLOCK_NEAR_MAX);
   /* near searches already in the feed stay for the visit (until Shuffle), so a like or a swipe-away never pulls the cards
      you are looking at out from under you; only two swipe-aways (nearNo) or becoming a hunt ends one */
-  for(i=0;i<FLOCK.nearKeep.length;i++){sp=FLOCK.nearKeep[i];if(!have[flNKey(sp)]&&!hk[flNKey(sp)]&&!FLOCK.nearNo[flNKey(sp)]&&out.length<FLOCK_NEAR_KEEP){have[flNKey(sp)]=1;out.push(sp)}}
+  for(i=FLOCK.nearKeep.length-1;i>=0;i--){sp=FLOCK.nearKeep[i];if(!have[flNKey(sp)]&&!hk[flNKey(sp)]&&!FLOCK.nearNo[flNKey(sp)]&&out.length<FLOCK_NEAR_KEEP){have[flNKey(sp)]=1;out.push(sp)}}   /* the most recently drawn first */
   return out;
 }
 /* every find the feed could show, in order: one from every hunt per round (two from the two most-liked hunts), and a
@@ -5170,6 +5199,7 @@ function flAllAsked(){
 /* v6.61: what the feed has drawn: the card objects (so a reached card can stay) and the near searches in it */
 function flDrawn(cards){
   for(var i=0;i<cards.length;i++){var c=cards[i];FLOCK.cardBy[c.it.url]=c;if(c.near&&FLOCK.nearKeep.map(flNKey).indexOf(flNKey(c.t))<0)FLOCK.nearKeep.push(c.t)}
+  if(FLOCK.nearKeep.length>FLOCK_NEAR_KEEP)FLOCK.nearKeep=FLOCK.nearKeep.slice(-FLOCK_NEAR_KEEP);   /* the newest few */
 }
 function flCardsHtml(cards,div){
   flDrawn(cards);
@@ -5237,6 +5267,7 @@ function flAddBtn(t){return '<button type="button" class="fl-add" data-t="'+esc(
 function flAddHunt(b){
   var t=sgwClean(b&&b.getAttribute('data-t')),k=t.toLowerCase(),i,had=flInDen(t);if(!t)return;
   if(!had)st.hunts.push(t);
+  if(FLOCK.sparkOf[flNKey(t)])FLOCK.spent[FLOCK.sparkOf[flNKey(t)]]=1;   /* the like it came from has had its search */
   for(i=0;i<FLOCK.order.length;i++)if(FLOCK.order[i].toLowerCase()===k)break;
   if(i>=FLOCK.order.length)FLOCK.order.push(t);
   FLOCK.key=flTermsKey();FLOCK.near=null;LMODEL=null;   /* first, so the Den's redraw does not start the feed over */
