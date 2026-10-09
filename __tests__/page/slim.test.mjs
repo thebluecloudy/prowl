@@ -121,3 +121,14 @@ test('deploy sends the slim page, verifies it, and refuses one over 512 KB befor
   await assert.rejects(deploy({ fetchFn, file, id: 'id', secret: 'secret', force: false, backupDir: join(dir, 'backup'), log() {} }), /over Shopify's 524288 \(512 KB\)/);
   assert.equal(calls.length, 0);
 });
+
+/* Shopify rewrites a list item whose content starts or ends with a tag: <li><b>x</b> y</li> comes back as
+   <li>\n<b>x</b> y</li>, and <li>x <span>28</span></li> as <li>x <span>28</span>\n</li>. The deploy then fails its
+   live check (page v6.64: the page went out, but did not match the file). So list items in the page body either begin
+   with that line break already or with text, and end with text. */
+test('no list item that Shopify would rewrite (a tag right after <li> or right before </li>)', () => {
+  const shell = SLIM.replace(/<script(\s[^>]*)?>[\s\S]*?<\/script>/gi, '').replace(/<style(\s[^>]*)?>[\s\S]*?<\/style>/gi, '');
+  assert.deepEqual(shell.match(/<\/[a-z][a-z0-9]*><\/li>/gi) || [], [], 'a list item ends with a closing tag');
+  assert.deepEqual(shell.match(/<li(\s[^>]*)?><[a-z]/gi) || [], [], 'a list item starts with a tag');
+});
+

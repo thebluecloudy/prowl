@@ -42,5 +42,5 @@ test('every count written into the HTML is the real number of marketplaces', asy
 test('no "N more" sum that goes stale when a marketplace is added', () => {
   assert.doesNotMatch(TEXT, /\b\d+ more\b/, 'say it with the live count (<span data-t>) or without a number');
   assert.match(SHELL, /All <span data-t>\d+<\/span>, from ShopGoodwill auctions to Facebook Marketplace, searched directly\./);
-  assert.match(SHELL, /<li>Plus eBay, Etsy and the rest of the <span data-t>\d+<\/span><\/li>/);
+  assert.match(SHELL, /<li>Plus eBay, Etsy and the rest, <span data-t>\d+<\/span> in all<\/li>/);
 });
