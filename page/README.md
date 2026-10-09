@@ -19,6 +19,11 @@ here needs a code change.
 | 1stDibs | Partnerize | camref | page |
 | Amazon | Amazon Associates | Tracking ID (ends in -20) | page (Field Guide supplies) |
 
+Every slot stays while Matthew applies (2026-10-09): off with empty IDs means plain links, and nothing changes until he
+turns one on. Etsy's slot is built for Awin; if his Etsy approval comes through another network (Impact, Rakuten),
+change Etsy's template and ID formats first. Amazon also needs the Field Guide to return `supplies`, and its own
+footer sentence, before it is turned on (see `docs/update-2026-10-08/STATUS.md`).
+
 How it is safe: only the IDs are editable. The link templates stay in code (`AFF_PROGRAMS` in `worker/index.js`,
 `PROWL_AFF` in `page/prowl.html`), and each ID must match its format when it is saved, when the
 worker reads it, and again on the page, so a pasted value can only ever fill its own slot. KV keeps `aff:on` (the

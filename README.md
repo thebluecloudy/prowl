@@ -1,54 +1,31 @@
 # Prowl
 
-Free vintage sourcing dashboard for [Owl & Twig Vintage](https://owlandtwigvintage.com/pages/prowl) — searches 24 marketplaces from one screen, including the ones Google doesn't index.
+Free vintage sourcing tool for [Owl & Twig Vintage](https://owlandtwigvintage.com/pages/prowl): one search runs
+across every vintage marketplace Prowl covers, from one screen.
 
 ## What this repo is
 
-A backup and version history of the Prowl source. The live app is a single self-contained HTML block pasted into a Shopify Custom Liquid section — there is no build step, no backend, no dependencies. All user data lives in `localStorage`.
-
-- `src/prowl_body.html` — the complete page body, exactly as it sits in Shopify
-- `docs/project-instructions.md` — architecture guardrails, data contract, verification checklist
-
-## Current state
-
-| | |
+| Path | What it is |
 |---|---|
-| Version | v5.2 |
-| Source pulled from live | 2026-09-20T21:22:28Z |
-| Size | 116,040 bytes |
-| md5 | `465737d88d5af5265c1ba7ca3c876e81` |
-| Marketplaces | 24 |
-| Shopify page ID | 137091285246 |
-| Page editor | https://admin.shopify.com/store/owlandtwigvintage/pages/137091285246 |
+| `page/prowl.html` | The live Prowl page body (`PROWL_VERSION` in it). See `page/README.md`. |
+| `worker/` | The Cloudflare Worker: live search, AI checks, Prowl Alerts, the store sign-in, the admin area. |
+| `extension/` | The Chrome extension. See `extension/README.md`. |
+| `docs/` | Project instructions, the store listing, the privacy section, and each briefing with its status (`docs/update-*`). |
+| `src/prowl_body.html` | An archive of page v5.2 (September 2026). Not live; do not edit it. |
 
-`src/prowl_body.html` is a byte-for-byte copy of the live page body at the time
-above. Verify drift by refetching `page.body` and comparing the md5.
-
-## Known gap in v5.2
-
-The Field Guide posts link into Prowl with the search term already chosen —
-`/pages/prowl?q=hen%20on%20nest` — and 64 of the 92 published guides do this,
-26 prefilled links in total. **v5.2 reads nothing off the query string.** There
-is no `URLSearchParams`, no `location.search`, no term parser anywhere in the
-body, so every one of those links lands on an empty Prowl.
-
-`docs/project-instructions.md` states the intended behaviour under *Behavior*
-("URL prefill populates the input; the user must tap Search") and the
-verification checklist tests for it, but the code has never implemented it.
+`npm test` runs the page, worker and extension tests; `npm run lint` checks the scripts.
 
 ## Deploying a change
 
-1. Edit `src/prowl_body.html`
-2. Run the verification checklist in `docs/project-instructions.md`
-3. Paste the whole file into the Custom Liquid section of the Prowl page
-4. Save, then refetch the live body and diff against this file
-
-Now the page deploys itself. Every push to `main` that touches `page/*.html` runs
+The page deploys itself. Every push to `main` that touches `page/*.html` runs
 `.github/workflows/deploy-page.yml` (`scripts/deploy-page.mjs`), which sends the page
 through `pageUpdate` and checks it landed. Shopify refuses a page body over 512 KB, so
 what is sent is the page without its comments (`scripts/slim-page.mjs`); the copy in
 the repo keeps them. `node scripts/slim-page.mjs` prints both sizes and the room left,
 and `npm test` fails if the page without comments is over the limit.
+
+The worker deploys through Cloudflare Workers Builds on every push to `main` (`worker/wrangler.toml`). Merging a PR is
+therefore a live release of both.
 
 ## Stack
 
