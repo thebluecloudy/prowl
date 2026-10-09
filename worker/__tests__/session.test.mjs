@@ -82,7 +82,7 @@ test("proMember: the email token as before, or a session linked to a Pro member"
 
 test("wired in: login answers carry the session, status and AI routes accept it, CORS allows it", () => {
   assert.equal((INDEX.match(/session: await sessMint\(env, id\)/g) || []).length, 2, "member and non-member sign-in answers");
-  assert.equal((INDEX.match(/await proMember\(env, b, request\)/g) || []).length, 3);
+  assert.equal((INDEX.match(/await proMember\(env, b, request\)/g) || []).length, 4, "Fair price, photo check, guide, and the photo price step (v93)");
   assert.match(INDEX, /const ss = await sessMember\(request, env\);/);
   assert.match(INDEX, /"Access-Control-Allow-Headers": "Content-Type, X-Prowl-Owner, Authorization"/);
 });

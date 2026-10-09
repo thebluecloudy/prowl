@@ -1772,7 +1772,9 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     return w.slice(0,4).join(' ');
   }
   function priceIt(fj,data){
-    return fetch(API,{method:'POST',headers:OH(),body:JSON.stringify({mode:'price',item:fj.item,search:fj.search||'',looks:(fj.looks||[]).slice(0,3),price:P.value||''})}).then(function(res){return res.ok?res.json():null;}).then(function(pj){
+    var pb={mode:'price',item:fj.item,search:fj.search||'',looks:(fj.looks||[]).slice(0,3),price:P.value||''};
+    if(lsG('alertTok')&&lsG('alertEmail')){pb.e=lsG('alertEmail');pb.t=lsG('alertTok');}   /* v6.64: Pro members get their own count on the price step (worker v93), as on the photo check */
+    return fetch(API,{method:'POST',headers:OH(),body:JSON.stringify(pb)}).then(function(res){return res.ok?res.json():null;}).then(function(pj){
       if(pj&&pj.fair){if(pj.name&&typeof pj.name==='string'&&!/\(maker you entered\)|\(your ID\)/.test(fj.item||''))fj.item=String(pj.name).slice(0,120);fj.fair=pj.fair;fj.verdict=pj.verdict||fj.verdict;fj.why=pj.why||fj.why;fj.basis=pj.basis||'sold';}else{fj.basis='estimate';}
       show(fj,data);
     }).catch(function(){fj.basis='estimate';show(fj,data);});

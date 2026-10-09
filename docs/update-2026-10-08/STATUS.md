@@ -44,6 +44,10 @@ Worker v93 closed the remaining gaps:
   extension opens 27 sites (no Craigslist), so "28" would be wrong there. Remove any affiliate line, since 1.6.4 tags
   nothing.
 
+Still open, for Matthew to confirm first: if `JEV_RESULTS` (AI sorting of live search results) is on, each live
+search cache miss makes a paid sorting call from a 3,000-a-day pool. That pool has no hourly share and no per-visitor
+count beyond the 2,500-a-day search cap. The cost stays bounded either way, and results show unsorted once it runs out.
+
 ## 4. Privacy pack: built before this briefing (v28 to v83)
 
 Already in place:
@@ -61,7 +65,8 @@ Worker v93 fixed:
 Still Matthew's:
 - **Unsubscribe behaviour.** Unsubscribing turns emails off and keeps the account (Pro and sign-in survive); Delete in
   Den > Settings removes everything. So paste `docs/privacy-policy-prowl-section.html` into the privacy policy, not the
-  pack's paragraph, which says unsubscribing deletes the record.
+  pack's paragraph, which says unsubscribing deletes the record. That file was brought up to date for v93 / v6.64 (store
+  sign-in, synced likes, earlier addresses, network limits, the analytics beacon).
 - **Cloudflare Web Analytics beacon.** It is cookieless, but the policy should mention it.
 
 ## 5. Login: live since Oct 1

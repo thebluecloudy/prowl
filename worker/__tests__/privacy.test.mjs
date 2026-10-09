@@ -33,7 +33,7 @@ const P = fromIndex(["alPurge", "alMerge", "alEmail", "alSame", "vClean", "alPar
   kvGet, kvPut, console: quiet, json, ALLOW_ORIGINS: ["https://www.owlandtwigvintage.com"],
   alReady: (env) => !!env.PROWL_ALERTS,
   readJson: async (r) => r.body || {},
-  alPage: (title, msg) => ({ page: title, msg }),
+  alPage: (title, msg, status) => ({ page: title, msg, status: status || 200 }),
   alGate: (title) => ({ gate: title }),
 });
 
@@ -114,6 +114,46 @@ test("a GET unsubscribe link only asks; it changes nothing", async () => {
   assert.ok(kv.m.has("seen:" + EMAIL));
 });
 
+/* v93: what a mail client's one-click button really sends (RFC 8058): a form POST, List-Unsubscribe=One-Click in the body,
+   e and t in the link itself. Any 2xx reads as done, so an old token must not answer 200. */
+const oneClick = (t) => {
+  const u = new URL(UNSUB); u.searchParams.set("e", EMAIL); u.searchParams.set("t", t);
+  return [{ method: "POST", body: "List-Unsubscribe=One-Click", headers: { get: (h) => (h.toLowerCase() === "content-type" ? "application/x-www-form-urlencoded" : null) } }, u];
+};
+test("v93: a one-click unsubscribe turns emails off; one with an old token answers 400 and changes nothing", async () => {
+  let { env, kv } = seeded();
+  const [req, u] = oneClick("U".repeat(24));
+  const r = await P.alUnsub(req, env, u, "");
+  assert.equal(r.page, "Prowl emails are off");
+  assert.equal(r.status, 200);
+  assert.equal(JSON.parse(kv.m.get("sub:" + EMAIL)).mail, "off");
+  ({ env, kv } = seeded());
+  const [req2, u2] = oneClick("an-old-token-from-before");
+  const bad = await P.alUnsub(req2, env, u2, "");
+  assert.equal(bad.page, "This link is out of date");
+  assert.equal(bad.status, 400, "a one-click client reads 2xx as done");
+  assert.equal(JSON.parse(kv.m.get("sub:" + EMAIL)).mail, "on");
+  /* the same old link opened in a browser (GET) still answers 200 with the page */
+  const g = new URL(u2);
+  const page = await P.alUnsub({ method: "GET", headers: { get: () => null } }, env, g, "");
+  assert.equal(page.status, 200);
+});
+
+test("v93: a purge also removes a pending address change and earlier addresses' forwarding records", async () => {
+  const { env, kv, sub } = seeded();
+  sub.prev = ["old@example.com", "older@example.com"];
+  kv.set("sub:" + EMAIL, sub);
+  kv.set("mvf:" + EMAIL, { to: "new@example.com" });
+  kv.set("mv:new@example.com", { code: "123456", from: EMAIL });
+  kv.set("moved:old@example.com", { to: EMAIL, tok: "T".repeat(24), at: 1 });
+  kv.set("moved:older@example.com", { to: "someone-else@example.com", tok: "x", at: 1 });   /* moved on to another member since */
+  kv.set("mv:pending@example.com", { code: "1", from: "other@example.com" });
+  await P.alPurge(env, EMAIL, sub);
+  for (const [k, v] of kv.m) assert.ok(!k.includes(EMAIL) && !String(v).includes(EMAIL), "left behind: " + k + " = " + v);
+  assert.ok(kv.m.has("moved:older@example.com"), "a record that now points at someone else stays");
+  assert.ok(kv.m.has("mv:pending@example.com"), "another member's pending change stays");
+});
+
 test("every email with an unsubscribe link carries both List-Unsubscribe entries", async () => {
   const sent = [];
   const S = fromIndex(["alSend"], {
@@ -122,7 +162,9 @@ test("every email with an unsubscribe link carries both List-Unsubscribe entries
   }, 'const AL_UNSUB_MAIL = "hello@owlandtwigvintage.com";');
   const env = { RESEND_API_KEY: "k" };
   await S.alSend(env, EMAIL, "s", "<p>h</p>", "t", "https://prowl.example/alerts/unsub?e=x&t=y");
-  assert.equal(sent[0].headers["List-Unsubscribe"], "<mailto:hello@owlandtwigvintage.com?subject=unsubscribe>, <https://prowl.example/alerts/unsub?e=x&t=y>");
+  /* v93: the one-click link first: clients use the leftmost entry they support */
+  assert.equal(sent[0].headers["List-Unsubscribe"], "<https://prowl.example/alerts/unsub?e=x&t=y>, <mailto:hello@owlandtwigvintage.com?subject=unsubscribe>");
+  assert.equal(sent[0].reply_to, "hello@owlandtwigvintage.com", "v93: a reply reaches hello@ even with no ALERT_REPLY_TO");
   assert.equal(sent[0].headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
   await S.alSend(env, EMAIL, "s", "<p>h</p>", "t", "");
   assert.equal(sent[1].headers, undefined, "no unsubscribe link, no header");
