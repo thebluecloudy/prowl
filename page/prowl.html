@@ -1075,6 +1075,11 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-lk.on{color:#E0245E;border-color:#E0245E }
 .scout-app-wrapper .sgw-lk.pop{animation:otpLkPop .35s ease-out }
 .scout-app-wrapper .sgw-lk:focus-visible{outline:2px solid var(--ac);outline-offset:2px }
+/* v6.63: on result cards the star and heart leave the photo for one row under the card, with Fair price? */
+.scout-app-wrapper .sgw-cbar{display:flex;align-items:stretch;gap:4px;min-width:0}
+.scout-app-wrapper .sgw-cbar .sgw-sv,.scout-app-wrapper .sgw-cbar .sgw-lk{position:static;top:auto;right:auto;flex:0 0 auto;align-self:center;width:34px;height:34px;min-width:34px;box-shadow:none;font-size:17px}
+/* in a narrow phone column Fair price? takes two lines rather than being cut short */
+.scout-app-wrapper .sgw-cbar .sgw-fp{flex:1 1 auto;width:auto;min-width:0;min-height:36px;padding:3px 4px;font-size:13px;line-height:1.15;white-space:normal;overflow-wrap:normal}
 .scout-app-wrapper .dx-wrap:empty{display:none }
 .scout-app-wrapper .dx{border:1px solid var(--ln);border-radius:14px;background:var(--cd2);overflow:hidden }
 .scout-app-wrapper .dx summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:50px;padding:0 16px;cursor:pointer;font-size:14px;-webkit-tap-highlight-color:transparent }
@@ -2438,7 +2443,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.62';
+var PROWL_VERSION='v6.63';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3830,7 +3835,7 @@ var foundLoaded=false;
    daily-digest file address: nothing has read it since the panel moved to
    the Worker in v5.4. */
 
-function sgwCard(it,hunt){
+function sgwCard(it,hunt,bare){
   /* no loading="lazy" here: on the live page it left some cards with an empty
      box even once scrolled into view. A handful of thumbnails is cheap. */
   var img=it.image?'<img src="'+esc(it.image)+'" alt="" decoding="async">':'<img alt="">';
@@ -3851,10 +3856,13 @@ function sgwCard(it,hunt){
   var sv=svBtn(it,hunt);   /* v6.02: save this find */
   /* v6.54: a heart on every result, as in Flock; the cell carries what a like keeps (title, price, site, link, hunt) */
   var lk=lkBtn(it),dh=' data-h="'+esc(hunt||'')+'"';
-  if(!it.price)return '<div class="sgw-cell" data-t="'+esc(it.title)+'" data-s="'+esc(it.src||'shopgoodwill')+'" data-u="'+esc(it.url)+'"'+dh+'>'+a+sv+lk+'</div>';
+  /* v6.63: the star, the heart and Fair price? share one row under the card, so the photo is clear (bare: as before,
+     for Flock, which places its own buttons) */
+  var row=function(x){return bare?sv+lk+x:'<div class="sgw-cbar">'+sv+lk+x+'</div>'};
+  if(!it.price)return '<div class="sgw-cell" data-t="'+esc(it.title)+'" data-s="'+esc(it.src||'shopgoodwill')+'" data-u="'+esc(it.url)+'"'+dh+'>'+a+row('')+'</div>';
   var done=FP&&FP[it.url];
-  return '<div class="sgw-cell" data-t="'+esc(it.title)+'" data-p="'+esc(it.price)+'" data-s="'+esc(it.src||'shopgoodwill')+'" data-u="'+esc(it.url)+'"'+dh+'>'+a+sv+lk+
-    (done?fpHtml(done):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
+  return '<div class="sgw-cell" data-t="'+esc(it.title)+'" data-p="'+esc(it.price)+'" data-s="'+esc(it.src||'shopgoodwill')+'" data-u="'+esc(it.url)+'"'+dh+'>'+a+
+    (done?(bare?sv+lk+fpHtml(done):row('')+fpHtml(done)):row('<button type="button" class="sgw-fp">Fair price?</button>'))+'</div>';
 }
 
 /* ---------- FAIR PRICE? (v5.33) ----------
@@ -3890,7 +3898,7 @@ function fpComps(cell){
 }
 function fpAsk(btn){
   if(aiOff())return;   /* v6.33 */
-  var cell=btn.parentNode,u=cell.getAttribute('data-u');
+  var cell=(btn.closest&&btn.closest('.sgw-cell'))||btn.parentNode,u=cell.getAttribute('data-u');   /* v6.63: the button may sit in the card's row */
   if(!u||btn.disabled)return;
   btn.disabled=true;btn.textContent='Checking…';
   /* v5.34: send whatever else the card shows (source, bids, time left) as
@@ -3902,7 +3910,10 @@ function fpAsk(btn){
   function show(r){
     if(!r.err)FP[u]=r;
     var tmp=document.createElement('div');tmp.innerHTML=fpHtml(r);
-    if(btn.parentNode)btn.parentNode.replaceChild(tmp.firstChild,btn);
+    var row=btn.parentNode;
+    /* v6.63: in the card's row, the answer goes under the row (the star and heart stay put) */
+    if(row&&row.classList&&row.classList.contains('sgw-cbar')){row.removeChild(btn);if(row.parentNode)row.parentNode.insertBefore(tmp.firstChild,row.nextSibling)}
+    else if(row)row.replaceChild(tmp.firstChild,btn);
   }
   fetch(FP_API,{method:'POST',headers:(function(){var h={'Content-Type':'application/json'};try{var k=localStorage.getItem('prowl.owner');if(k&&/^[A-Za-z0-9_-]{12,80}$/.test(k))h['X-Prowl-Owner']=k;}catch(e){}return window.prowlAuth(h);})(),body:JSON.stringify(body)}).then(function(res){
     return res.json().then(function(j){return {ok:res.ok,status:res.status,j:j} });
@@ -5252,7 +5263,7 @@ function flFeed(){
   else if(add&&add.length&&FLOCK.pend<=0)flockWarm({fresh:true,max:8});   /* v6.61: each new batch gives hunts not yet searched their turn */
 }
 function flockCardHtml(c){
-  var it=c.it,u=it.url,h=sgwCard(it,c.t),auc=[];
+  var it=c.it,u=it.url,h=sgwCard(it,c.t,true),auc=[];   /* v6.63: bare, Flock places its own buttons */
   h=h.replace('<button type="button" class="sgw-fp">Fair price?</button>','');   /* comps would come from other hunts */
   h=h.replace(/<button type="button" class="sgw-lk[^"]*"[^>]*>[^<]*<\/button>/,'');   /* v6.54: Flock has its own heart */
   if(FP&&FP[u])h=h.replace(fpHtml(FP[u]),'');   /* v6.38: a verdict already in hand stays out too */
