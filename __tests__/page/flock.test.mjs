@@ -7,8 +7,10 @@ const DIS = 'prowl.discarded';
 const FINDS = 'prowl.finds';
 const ls = (p, k) => JSON.parse(p.win.localStorage.getItem(k) || 'null');
 
-// v6.60: Flock reads the whole Den, so each test says what is in it (first-visit samples by default would be 12 hunts)
-const DEN = { hunts: ['Roseville jardiniere', 'Pyrex Butterprint', 'Fire-King jadeite'] };
+// v6.60: Flock reads the whole Den, so each test says what is in it (first-visit samples by default would be 12 hunts).
+// seen: the first-visit welcome opens 420ms after load and Escape closes it before Flock, so on a busy runner a test
+// that pressed Escape could close the welcome instead; these tests are about Flock, not the welcome
+const DEN = { seen: true, hunts: ['Roseville jardiniere', 'Pyrex Butterprint', 'Fire-King jadeite'] };
 async function openFeed(opts = {}, fx = {}) {
   const f = liveFetch(fx);
   const p = loadPage({ fetchImpl: f.impl, ...opts, storage: { 'prowl.v36': DEN, ...(opts.storage || {}) } });
@@ -100,7 +102,7 @@ test('auction cards carry the time-left and bids pill', async () => {
 });
 
 test('no hunts at all: a friendly full-screen card with a way back', async () => {
-  const p = await openFeed({ storage: { 'prowl.v36': { hunts: [] }, owlTwigSgwTerms: [] } });
+  const p = await openFeed({ storage: { 'prowl.v36': { seen: true, hunts: [] }, owlTwigSgwTerms: [] } });
   const empty = await waitFor(() => p.$('#otp-flockRow .fl-empty'));
   assert.match(empty.textContent, /Add a hunt in the Den and the flock takes flight/);
   assert.equal(p.errors.length, 0);

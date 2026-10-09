@@ -35,8 +35,9 @@ async function flock(storage = {}, rand = 0.5) {
   p.win.confirm = () => true;
   await tick(60);
   p.$('#otp-dock .db[data-m="flock"]').click();
-  // v6.52: wait until both hunts are in and the background fetching has settled
-  await waitFor(() => p.$('#otp-flockRow .fl-card[data-h="panther"]') && p.$('#otp-flockRow .fl-card[data-h="pyrex"]'));
+  // v6.52: wait until both hunts are in and the background fetching has settled (as long as the settling: CI runs four
+  // test files at once, and this test loads the page twice)
+  await waitFor(() => p.$('#otp-flockRow .fl-card[data-h="panther"]') && p.$('#otp-flockRow .fl-card[data-h="pyrex"]'), { timeout: 8000 });
   await waitFor(() => p.$('#otp-flockRow').getAttribute('aria-busy') === 'false', { timeout: 8000 });
   await tick(300);
   return p;
