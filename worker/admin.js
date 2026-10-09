@@ -1009,7 +1009,7 @@ async function apiSearches(c) {
    link; GET /aff tells the Prowl page within about 5 minutes. */
 async function affView(c) {
   const H = c.H, on = await H.affLoad(c.env, true), ids = H.affIdsClean(await H.kvGet(c.env, H.AFF_IDS_KEY, null), c.env);
-  return H.AFF_PROGRAMS.map(p => ({ id: p.id, name: p.name, net: p.net, on: on[p.id] === true, def: p.def === true, ready: H.affReady(ids, p),
+  return H.AFF_PROGRAMS.map(p => ({ id: p.id, name: p.name, net: p.net, mail: p.mail === true, on: on[p.id] === true, def: p.def === true, ready: H.affReady(ids, p),
     fields: p.fields.map(x => ({ k: x.k, label: x.label, hint: x.hint, value: ids[p.id][x.k] || "" })) }));
 }
 async function apiAffiliates(c) { return jres({ programs: await affView(c) }); }
@@ -1026,7 +1026,7 @@ async function apiAffiliateSet(c) {
   await H.kvPut(env, H.AFF_KEY, next);
   await audit(c, { action: want ? "aff-on" : "aff-off", id: id, ok: true });
   const msg = prog.name + " links are " + (want ? "tagged now (" + prog.net + ")" : "plain now, with no affiliate tag") +
-    ". The Prowl page picks this up within about 5 minutes; alert emails from the next one on.";
+    ". The Prowl page picks this up within about 5 minutes" + (prog.mail === true ? "; alert emails from the next one on." : ". Alert emails keep plain " + prog.name + " links.");
   return jres({ ok: true, message: msg, programs: await affView(c) });
 }
 
@@ -1048,15 +1048,15 @@ async function apiAffiliateIds(c) {
   for (const p of H.AFF_PROGRAMS) if (cur && typeof cur === "object" && !Array.isArray(cur) && cur[p.id] && typeof cur[p.id] === "object") next[p.id] = cur[p.id];
   const was = H.affReady(H.affIdsClean(next, env), prog);
   next[id] = save;
-  await H.kvPut(env, H.AFF_IDS_KEY, next);
   const ready = H.affReady(H.affIdsClean(next, env), prog);
   /* incomplete IDs: the switch goes off too, so it stays off once the IDs are filled in again. v95: and IDs complete for
-     the first time never switch a program on by themselves (an old KV aff:on value, like Depop's from v84-v91, says
-     nothing about today): it is on only once the owner presses Turn on */
+     the first time never switch a program on by themselves (a switch left in KV says nothing about today): it is on only
+     once the owner presses Turn on. The switch is written first, so no reader ever sees complete IDs with an old "on". */
   if (!ready || !was) {
     const on = await H.kvGet(env, H.AFF_KEY, null);
     if (!on || on[id] !== false) { const o = on && typeof on === "object" && !Array.isArray(on) ? Object.assign({}, on) : {}; o[id] = false; await H.kvPut(env, H.AFF_KEY, o); }
   }
+  await H.kvPut(env, H.AFF_IDS_KEY, next);
   await audit(c, { action: "aff-ids", id: id, ok: true });
   const isOn = (await H.affLoad(env, true))[id] === true;
   const msg = prog.name + " IDs saved. " + (!ready ? "They are not complete, so " + prog.name + " is off."

@@ -35,7 +35,9 @@ test("the page has one Rakuten URL: Depop's template, with both IDs as slots", (
   const page = read('page/prowl.html');
   const all = page.match(/linksynergy/gi) || [];
   assert.equal(all.length, 1, 'one template');
-  assert.match(page, /'depop\.com':\{n:'Depop',id:'depop',t:'https:\/\/click\.linksynergy\.com\/deeplink\?id=\{ranid\}&mid=\{mid\}&murl=\{url\}'\}/);
+  assert.match(page, /'depop\.com':\{n:'Depop',id:'depop_rak',t:'https:\/\/click\.linksynergy\.com\/deeplink\?id=\{ranid\}&mid=\{mid\}&murl=\{url\}'\}/);
   assert.doesNotMatch(page, /mid=53555/, 'the advertiser ID comes from the admin area, like the publisher ID');
-  assert.match(page, /window\.PROWL_AFF_ON=\{[^}]*depop:false/, 'off until the owner turns it on');
+  assert.match(page, /window\.PROWL_AFF_ON=\{[^}]*depop_rak:false/, 'off until the owner turns it on');
+  assert.doesNotMatch(page, /window\.PROWL_AFF_ON=\{[^}]*\bdepop:/, 'never the old key, which old pages and extension 1.6.3 act on');
+  assert.doesNotMatch(/window\.PROWL_AFF_IDS=[^;]*;/.exec(page)[0], /depop/, 'no Depop ID written into the page: both come from the admin area');
 });

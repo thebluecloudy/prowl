@@ -983,7 +983,7 @@ function affBlock(p) {
   const b = h("button", { class: "btn btn-s" + (p.on ? "" : " btn-p"), type: "button", text: p.on ? "Turn off" : "Turn on", "aria-label": (p.on ? "Turn off " : "Turn on ") + p.name + " affiliate links" });
   if (!p.on && !p.ready) { b.disabled = true; b.title = "Save complete IDs first"; }
   b.addEventListener("click", () => setAff(p, b));
-  return h("div", { class: "affp" }, [h("div", { class: "ch" }, [h("h3", { text: p.name }), h("span", { class: "muted small", text: p.net })]), form,
+  return h("div", { class: "affp" }, [h("div", { class: "ch" }, [h("h3", { text: p.name }), h("span", { class: "muted small", text: p.net + (p.mail ? " \u00b7 Prowl page and alert emails" : " \u00b7 Prowl page only") })]), form,
     h("div", { class: "affrow" }, [p.on ? st("good", "On: links are tagged") : p.ready ? st("info", "Off: plain links") : st("warning", "Off: needs its IDs"), b])]);
 }
 async function saveAffIds(p, F, ins, btn) {
@@ -1002,7 +1002,7 @@ async function saveAffIds(p, F, ins, btn) {
   }
 }
 async function setAff(p, btn) {
-  if (!window.confirm((p.on ? "Turn off " : "Turn on ") + p.name + " affiliate links?" + (p.on ? " Links to " + p.name + " go out plain, and no disclosure names it." : " Links to " + p.name + " go out through " + p.net + ", and the disclosures name it."))) return;
+  if (!window.confirm((p.on ? "Turn off " : "Turn on ") + p.name + " affiliate links?" + (p.on ? " Links to " + p.name + " go out plain, and no disclosure names it." : " Links to " + p.name + (p.mail ? "" : " on the Prowl page") + " go out through " + p.net + ", and " + (p.mail ? "the disclosures name it." : "the page's disclosure names it; alert emails keep plain links.")))) return;
   const was = btn.textContent;
   btn.disabled = true; btn.textContent = "Working\u2026";
   try {
@@ -1595,7 +1595,7 @@ function appBody() {
       '<p class="sub">What people search for on Prowl. Visitors count each person once a day. Searches that look personal are never recorded.</p><div id="sbox"></div></section>') +
     panel("affiliates",
       '<section class="card"><div class="ch"><h2>Affiliates</h2></div>' +
-      '<p class="sub">Each affiliate program has its IDs and an on/off switch. Paste the IDs from the network, press Save IDs, then Turn on. Off means links to that site go out plain and no disclosure names it. The Prowl page and the alert emails follow within about 5 minutes. IDs are public (they are in every affiliate link), so nothing secret goes here.</p>' +
+      '<p class="sub">Each affiliate program has its IDs and an on/off switch. Paste the IDs from the network, press Save IDs, then Turn on. Off means links to that site go out plain and no disclosure names it. The Prowl page follows within about 5 minutes, and the alert emails too for the programs marked so (the others keep plain links in email). IDs are public (they are in every affiliate link), so nothing secret goes here.</p>' +
       '<div id="affbox"></div><p class="msg" id="aff-msg" aria-live="polite"></p></section>') +
     "</main>" +
     '<div class="toast" id="toast" role="status" aria-live="polite"></div>' +

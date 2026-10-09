@@ -37,7 +37,9 @@ Depop links (`https://click.linksynergy.com/deeplink?id={ranid}&mid={mid}&murl=.
 keep plain Depop links, since Rakuten bars its links in email without its written permission. Rakuten closed the earlier
 publisher account on 2026-10-09 (worker v92 / page v6.62 removed that link and its ID), so the old ID is never filled in
 for you, and `__tests__/page/depop-rakuten.test.mjs` fails if it comes back, or if a Rakuten link reaches the worker or
-the extension.
+the extension. The program's key is `depop_rak`, never `depop`: extension 1.6.3 and pages v6.59-v6.61 turn on their own
+hardcoded link with the old ID whenever `/aff` answers `on.depop`, so the worker never does. The publisher ID is the 11
+characters after `id=` in a Rakuten link (Links > Get Link), not the numeric Site ID, which the admin area refuses.
 
 **Before any program goes on:** keep proof that the advertiser approved the partnership (a dated email or dashboard
 screenshot). The alert emails and the extension each need the network's or advertiser's written permission first:
