@@ -83,14 +83,14 @@ test('a Fair price answer goes under the row; the star and heart stay in it', as
   await p.close();
 });
 
-test('Flock cards keep their own buttons: no row, the star placed by Flock, no Fair price', async () => {
+test('Flock cards keep their own buttons: no result-card row, the star in Flock\'s own row, no Fair price', async () => {
   const f = liveFetch();
   const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.v36': { seen: true, hunts: ['ceramic panther'] }, owlTwigSgwTerms: [] } });
   await tick(50);
   p.$('#otp-dock .db[data-m="flock"]').click();
   const card = await waitFor(() => p.$('#otp-flockRow .fl-card'), { timeout: 8000 });
   assert.equal(card.querySelector('.sgw-cbar'), null);
-  assert.ok(card.querySelector(':scope > .sgw-sv'), 'the star, placed by Flock');
+  assert.ok(card.querySelector(':scope > .fl-bar .sgw-sv'), 'the star, in Flock\'s row under the title (v6.66)');
   assert.equal(card.querySelector('.sgw-lk'), null, 'Flock has its own heart');
   assert.ok(card.querySelector('.fl-lk'));
   assert.equal(card.querySelector('.sgw-fp'), null);
