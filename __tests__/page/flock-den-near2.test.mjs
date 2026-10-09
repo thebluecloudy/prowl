@@ -60,7 +60,7 @@ test('a new like that reorders a near search\'s words keeps its spelling: the sa
 
 test('a like whose near search became a hunt starts no leftover search, even with another hunt\'s word in its title', async () => {
   const f = liveFetch();
-  const like = { u: 'https://www.ebay.com/itm/1', t: 'Pyrex Butterprint Rose Mixing Bowl', p: '$20.00', s: 'ebay', i: '', h: 'pyrex', at: 1 };
+  const like = { u: 'https://www.ebay.com/itm/1', t: 'Pyrex Butterprint Rose Mixing Bowl Lid', p: '$20.00', s: 'ebay', i: '', h: 'pyrex', at: 1 };
   const p = await flock(f, { 'prowl.v36': { seen: true, hunts: ['pyrex', 'rose'] }, 'prowl.likes': [like] });
   const near = await waitFor(() => cards(p).find((x) => x.getAttribute('data-near') === '1'), { timeout: 8000 });
   assert.equal(near.getAttribute('data-h'), 'butterprint mixing', 'the spark leaves out both hunts\' words');
@@ -69,16 +69,36 @@ test('a like whose near search became a hunt starts no leftover search, even wit
   p.$('#otp-flockShuf').click();
   await settle(p);
   const after = terms(p.calls.slice(n));
-  assert.ok(!after.some((q) => /^(bowl|bowl rose|rose bowl|bowl mixing|bowl butterprint)$/.test(q)), 'no leftover search: ' + after.join(' | '));
+  assert.ok(!after.some((q) => /\blid\b/.test(q)), 'no leftover search ("bowl lid"): ' + after.join(' | '));
   assert.ok(after.includes('butterprint mixing'), 'it is searched as a hunt now');
+  const kept = {};
+  for (let i = 0; i < p.win.localStorage.length; i++) { const k = p.win.localStorage.key(i); kept[k] = p.win.localStorage.getItem(k); }
   await p.close();
 
-  /* after a reload (nothing remembered from the add), the like is still seen as spent */
+  /* after a reload, with a newer like that shares a word (the word ranking shifts), it is still spent */
+  const newer = { u: 'https://www.ebay.com/itm/9', t: 'Blue Mixing Bowl', p: '$9.00', s: 'ebay', i: '', h: 'pyrex', at: 2 };
   const f2 = liveFetch();
-  const p2 = await flock(f2, { 'prowl.v36': { seen: true, hunts: ['pyrex', 'rose', 'butterprint mixing'] }, 'prowl.likes': [like] });
+  const p2 = await flock(f2, { ...kept, 'prowl.likes': [newer, like] });
   const t2 = terms(p2.calls);
-  assert.ok(!t2.includes('bowl'), 'no leftover search after a reload: ' + t2.join(' | '));
+  assert.ok(!t2.some((q) => /\blid\b/.test(q)), 'no leftover search after a reload: ' + t2.join(' | '));
   await p2.close();
+
+  /* take that hunt out of the Den and the like searches again */
+  const den = JSON.parse(kept['prowl.v36']);
+  den.hunts = den.hunts.filter((h) => h.toLowerCase() !== 'butterprint mixing');
+  den.lock = [];
+  const f3 = liveFetch();
+  const p3 = await flock(f3, { ...kept, 'prowl.v36': JSON.stringify(den), 'prowl.likes': [like] });
+  assert.ok(terms(p3.calls).includes('butterprint mixing'), 'searched near the like again: ' + terms(p3.calls).join(' | '));
+  await p3.close();
+});
+
+test('another two-word hunt at the start of a liked title does not stop that like\'s near search', async () => {
+  const f = liveFetch();
+  const like = { u: 'https://www.ebay.com/itm/3', t: 'Fire King Jadeite Restaurant Mug Lamp', p: '$30.00', s: 'ebay', i: '', h: 'lamp', at: 1 };
+  const p = await flock(f, { 'prowl.v36': { seen: true, hunts: ['lamp', 'fire king'] }, 'prowl.likes': [like] });
+  assert.ok(terms(p.calls).includes('jadeite restaurant'), 'its near search runs: ' + terms(p.calls).join(' | '));
+  await p.close();
 });
 
 test('a like of a many-word hunt whose title starts with that hunt still starts its near search', async () => {

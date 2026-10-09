@@ -3306,7 +3306,7 @@ function liveRunStrip(name,t,c){
   for(i=0;i<c.items.length;i++){if(c.items[i]&&c.items[i].url&&c.items[i].title)items.push(c.items[i])}
   if(!items.length)return '<div class="rlive">'+head+'</div><p class="sgw-note">Nothing live for <b>'+esc(t)+'</b> on '+name+' right now. The rows below still search it everywhere else.</p></div>';
   var rows='';for(i=0;i<items.length;i++)rows+=sgwCard(items[i],t);
-  return '<div class="rlive">'+head+'<span class="sgw-upd">'+items.length+' live now</span></div><div class="sgw-grid">'+rows+'</div></div>';
+  return '<div class="rlive">'+head+'<span class="sgw-upd">'+items.length+(c.stale?' from earlier today':' live now')+'</span></div><div class="sgw-grid">'+rows+'</div></div>';
 }
 function sgwRunStrip(r){
   var t=sgwTermOf(r);
@@ -3393,7 +3393,7 @@ function sgwForRun(r){
   var t=sgwTermOf(r),i,s,e;
   function again(){if(st.run===r&&r.phase!=='launching')rRes()}
   if(t)sgwFetch(t,again);
-  for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];e=liveTermOf(r,s.mkt);if(e)lvFetch(s.id,e,again)}
+  for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];e=liveTermOf(r,s.mkt);if(e)lvFetch(s.id,e,again,true)}   /* v6.61: the visitor's own run goes first */
 }
 
 function rRes(){
@@ -3741,7 +3741,7 @@ $('#otp-clearBtn').addEventListener('click',function(){
      the last-synced list, and pull the list back from the Worker afterwards. */
   var member=!!(mGet('alertTok')&&mGet('alertEmail'));
   if(member){clearTimeout(MAIL.timer);MAIL.ready=false;mSet('alertSig','')}
-  try{localStorage.removeItem(LS);localStorage.removeItem(SGW_KEY);localStorage.removeItem('prowl.lastHunt');localStorage.removeItem(SEEN_KEY);localStorage.removeItem(RUNS_KEY);localStorage.removeItem(FINDS_KEY);localStorage.removeItem(STATS_KEY);localStorage.removeItem(RES_KEY);localStorage.removeItem(DIS_KEY);localStorage.removeItem(WATCH_KEY);localStorage.removeItem(SEEN_FL_KEY);localStorage.removeItem(LIKE_KEY);localStorage.removeItem(LMUTE_KEY);localStorage.removeItem(DIST_KEY);localStorage.removeItem(LGONE_KEY);localStorage.removeItem('prowl.likeMuteAt')}catch(e){}LMODEL=null;LMAP=null;FC=null;RC=null;DIS=null;FLOCK.picks=Object.create(null);rDenX();
+  try{localStorage.removeItem(LS);localStorage.removeItem(SGW_KEY);localStorage.removeItem('prowl.lastHunt');localStorage.removeItem(SEEN_KEY);localStorage.removeItem(RUNS_KEY);localStorage.removeItem(FINDS_KEY);localStorage.removeItem(STATS_KEY);localStorage.removeItem(RES_KEY);localStorage.removeItem(DIS_KEY);localStorage.removeItem(WATCH_KEY);localStorage.removeItem(SEEN_FL_KEY);localStorage.removeItem(LIKE_KEY);localStorage.removeItem(LMUTE_KEY);localStorage.removeItem(DIST_KEY);localStorage.removeItem(LGONE_KEY);localStorage.removeItem('prowl.likeMuteAt');localStorage.removeItem(SPK_KEY)}catch(e){}SPK=null;LMODEL=null;LMAP=null;FC=null;RC=null;DIS=null;FLOCK.picks=Object.create(null);rDenX();
   st.hunts=DEF.slice();st.sel=new Set();st.lock=new Set();st.mkt=new Set(ALL);st.city='';st.fbHub='local';st.one=ONE_DEFAULT;
   /* v5.87 (B1): save the cleared state, or the next load re-imports the old
      owlTwigSearches list through legacySeed(). */
@@ -3979,7 +3979,7 @@ function cleanItems(a){
   }
   return out;
 }
-function sgwClean(v){return String(v||'').replace(/\s+/g,' ').slice(0,SGW_MAXLEN).trim()}
+function sgwClean(v){return String(v||'').replace(/\s+/g,' ').slice(0,SGW_MAXLEN).replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g,'$1').trim()}   /* v6.61: never half an emoji (it cannot go in a URL) */
 function huntIndex(t){
   var k=sgwClean(t).toLowerCase(),i;
   for(i=0;i<st.hunts.length;i++)if(sgwClean(st.hunts[i]).toLowerCase()===k)return i;
@@ -4091,9 +4091,10 @@ function liveCount(c){
 }
 /* v6.33: why a live block failed, in words a visitor can act on. */
 function liveErrNote(name,c){
-  if(c.err===2)return name+' is busy right now, so Prowl is giving it a rest. Look again in a couple of minutes. The rows below still search every site directly.';   /* v6.61: a 429 is usually the marketplace asking Prowl to slow down */
+  if(c.err===2&&c.cap)return 'Live results are busy on your connection right now. Try again in a little while. The rows below still search every site directly.';
+  if(c.err===2)return name+' is busy right now, so Prowl is giving it a rest. Look again in a couple of minutes. The rows below still search every site directly.';   /* v6.61: worker v91 says the marketplace asked Prowl to slow down */
   try{if(navigator.onLine===false)return 'You look offline. Live results come back when you reconnect.'}catch(e){}
-  return 'Could not reach '+name+' just now. Try again in a minute. The rows below still search every site directly.';
+  return 'Could not reach '+name+' just now. Try again in a couple of minutes. The rows below still search every site directly.';
 }
 /* v6.33: every live source answered and none had anything. One card instead of eight "nothing" lines:
    keep watching by email, or try the sites Prowl can only link to. */
@@ -4123,7 +4124,7 @@ function liveBlock(name,t,c,busy){
     if(c.items[i]&&c.items[i].url&&c.items[i].title){rows+=sgwCard(c.items[i],t);n++}
   }
   if(!n)return head+'</div><p class="sgw-note">Nothing live for <b>'+esc(t)+'</b> on '+name+' right now. The full hunt below still searches everywhere else.</p>';
-  return head+'<span class="sgw-upd">'+n+' live now</span></div><div class="sgw-grid">'+rows+'</div>';
+  return head+'<span class="sgw-upd">'+n+(c.stale?' from earlier today':' live now')+'</span></div><div class="sgw-grid">'+rows+'</div>';   /* v6.61: worker v91's spare answer */
 }
 function sgwBody(){
   var t=sgwCurTerm();
@@ -4945,18 +4946,16 @@ function sgwWhere(mount){
 
 function sgwFetch(term,cb){
   var k=term.toLowerCase();
+  if(lvOld(sgw.cache[k])&&sgw.busy!==term)delete sgw.cache[k];   /* v6.61: a failed or stale answer is asked again later */
   if(sgw.cache[k]){if(cb)cb(sgw.cache[k]);return}
   if(cb){sgw.waiters=sgw.waiters||Object.create(null);(sgw.waiters[k]=sgw.waiters[k]||[]).push(cb)}
   if(sgw.busy===term)return;
   if(typeof fetch!=='function')return;
   sgw.busy=term;rSGW();
-  fetch(SGW_API+'?q='+encodeURIComponent(term)+(aiOff()?'&ai=0':'')).then(function(r){
-    if(!r.ok)throw new Error('http '+r.status);
-    return r.json();
-  }).then(function(d){
-    sgw.cache[k]={items:cleanItems(d&&d.items)};
-  })['catch'](function(e){
-    sgw.cache[k]={items:[],err:/http 429/.test(String(e&&e.message))?2:1};   /* v6.33: 2 = the visitor's daily lookup limit */
+  new Promise(function(res){res(fetch(SGW_API+'?q='+encodeURIComponent(term)+(aiOff()?'&ai=0':'')))}).then(lvAnswer).then(function(c){
+    sgw.cache[k]=c;
+  },function(){
+    sgw.cache[k]=lvFailed();
   }).then(function(){
     if(sgw.busy===term)sgw.busy='';
     rSGW();
@@ -4965,33 +4964,45 @@ function sgwFetch(term,cb){
     for(var wi=0;wi<w.length;wi++){try{w[wi](sgw.cache[k])}catch(e){}}
   });
 }
+/* v6.61: what a live answer becomes in the page's cache. A 429 is either "busy" (worker v91: the marketplace asked Prowl
+   to slow down) or this visitor's daily lookups running out (cap, until the UTC day turns). stale: the worker's last
+   good answer, sent while the marketplace rests. Failed and stale answers carry when they came (at), to be asked again. */
+var LV_RETRY_MS=2*60*1000,LV_CAP_RETRY_MS=30*60*1000;
+function lvFailed(){return {items:[],err:1,at:Date.now()}}
+function lvAnswer(r){
+  if(r&&r.ok)return r.json().then(function(d){var c={items:cleanItems(d&&d.items)};if(d&&d.stale){c.stale=true;c.at=Date.now()}return c});
+  if(r&&r.status===429)return Promise.resolve().then(function(){return r.json()}).then(function(b){return !!(b&&b.error==='busy')},function(){return false}).then(function(busy){return {items:[],err:2,cap:!busy,at:Date.now()}});
+  return lvFailed();
+}
+function lvOld(c){return !!c&&!!(c.err||c.stale)&&Date.now()-(c.at||0)>(c.cap?LV_CAP_RETRY_MS:LV_RETRY_MS)}
 
-/* v6.61: Vinted answers a burst of searches with "slow down", so this page sends it one at a time (LV_ONE); one you
-   asked for goes ahead of the Flock's and Daily's. A search that failed is asked again after LV_RETRY_MS, not never. */
-var LV_ONE={vinted:1},LV_RETRY_MS=2*60*1000;
+/* v6.61: Vinted answers a burst of searches with "slow down", so this page sends it one at a time (LV_ONE). first: the
+   visitor asked for this one (a hunt chip, a run), so it goes ahead of the Flock's and Daily's, even if already waiting. */
+var LV_ONE={vinted:1};
 function lvBusy(id,t){var S=lv[id];return !!(S&&t&&S.going[t.toLowerCase()])}
-function lvFetch(id,term,cb){
+function lvFetch(id,term,cb,first){
   var S=lv[id];if(!S)return;
-  var k=term.toLowerCase(),c=S.cache[k];
-  if(c&&c.err&&!S.going[k]&&Date.now()-(c.at||0)>LV_RETRY_MS){delete S.cache[k];c=null}
+  var k=term.toLowerCase(),c=S.cache[k],i;
+  if(lvOld(c)&&!S.going[k]){delete S.cache[k];c=null}
   if(c){if(cb)cb(c);return}
   if(cb)(S.waiters[k]=S.waiters[k]||[]).push(cb);
-  if(S.going[k])return;
+  if(S.going[k]){
+    if(first)for(i=0;i<S.q.length;i++)if(S.q[i].toLowerCase()===k){S.q.unshift(S.q.splice(i,1)[0]);break}
+    return;
+  }
   if(typeof fetch!=='function')return;
   S.going[k]=1;
-  if(LV_ONE[id]&&S.run){if(cb)S.q.push(term);else S.q.unshift(term);rSGW();return}
+  if(LV_ONE[id]&&S.run){if(first)S.q.unshift(term);else S.q.push(term);rSGW();return}
   lvGo(id,term);
 }
 function lvGo(id,term){
   var S=lv[id],k=term.toLowerCase();
-  S.run++;S.busy=term;rSGW();
-  fetch(SGW_API+id+'?q='+encodeURIComponent(term)+(aiOff()?'&ai=0':'')).then(function(r){
-    if(!r.ok)throw new Error('http '+r.status);
-    return r.json();
-  }).then(function(d){
-    S.cache[k]={items:cleanItems(d&&d.items)};
-  })['catch'](function(e){
-    S.cache[k]={items:[],err:/http 429/.test(String(e&&e.message))?2:1,at:Date.now()};   /* v6.33 */
+  S.busy=term;rSGW();S.run++;
+  /* inside the promise, so even a term that cannot be put in a URL fails like any other and the queue moves on */
+  new Promise(function(res){res(fetch(SGW_API+id+'?q='+encodeURIComponent(term)+(aiOff()?'&ai=0':'')))}).then(lvAnswer).then(function(c){
+    S.cache[k]=c;
+  },function(){
+    S.cache[k]=lvFailed();
   }).then(function(){
     S.run--;delete S.going[k];
     if(S.busy===term)S.busy='';
@@ -5003,7 +5014,7 @@ function lvGo(id,term){
   });
 }
 /* every source for one term; each fails on its own */
-function liveFetch(t){if(!t)return;sgwFetch(t);for(var i=0;i<LIVE_SRC.length;i++)lvFetch(LIVE_SRC[i].id,t)}
+function liveFetch(t){if(!t)return;sgwFetch(t);for(var i=0;i<LIVE_SRC.length;i++)lvFetch(LIVE_SRC[i].id,t,null,true)}
 
 /* ---------- FLOCK (v6.18) ----------
    A mixed look across the Den: one or two finds from each hunt, from whatever source has something,
@@ -5019,7 +5030,7 @@ var FLOCK={order:[],started:false,pend:0,tm:null,asked:Object.create(null),view:
 var FLOCK_SRCS=3,FLOCK_CARDS=10,FLOCK_ALL=1000,FLOCK_NEAR_EVERY=4;
 /* v6.61: Flock follows the whole Den (every hunt, locked or not), so a round of fetching is capped and goes breadth-first:
    one marketplace for every hunt and near search before a second for any. Near searches: at most FLOCK_NEAR_MAX. */
-var FLOCK_WARM_MAX=24,FLOCK_TERMS_MAX=40,FLOCK_NEAR_MAX=4,FLOCK_NEAR_KEEP=8;
+var FLOCK_WARM_MAX=24,FLOCK_TERMS_MAX=40,FLOCK_NEAR_MAX=4,FLOCK_NEAR_KEEP=8,FLOCK_ONE_MAX=2;
 /* listing filler that says nothing about the piece; never a near search (LIKE_STOP covers plain English) */
 var LIKE_FILL=Object.create(null);'vtg vntg vgc euc nwt nwot nib nos htf ooak signed marked stamped estate decor collectible collectable'.split(' ').forEach(function(w){LIKE_FILL[w]=1});
 /* every hunt in the Den, locked or not, and the panel's extra terms; what Flock takes turns across. The locked hunts and
@@ -5093,20 +5104,24 @@ function flUnseen(p){return FLOCK.sm&&!FLOCK.sm[p.it.url]?1:0}
    v6.61: a like searches straight away: the two strongest words of each of your two newest likes lead. Words you keep
    swiping away (twice or more, more often than liked) never start a search, and a near search whose finds you swipe
    away twice, with none liked, is dropped for this visit. */
-/* a like whose spark became a Den hunt: some hunt, made only of the like's words and none of its own hunt's (a spark
-   never has those), is what ranked() gives it without every other hunt's words (the way flNearTerms made the spark) */
-function flSpentBy(l,FT,hw,ranked){
-  var lw=likeWords(l.t),own=likeWords(l.h||''),i,w,tw,sk;
-  for(i=0;i<FT.length;i++){
-    tw=likeWords(FT[i]);if(!tw.length||tw.some(function(x){return lw.indexOf(x)<0||own.indexOf(x)>-1}))continue;
-    sk=Object.create(null);for(w in hw)if(tw.indexOf(w)<0)sk[w]=1;
-    if(flNKey(ranked(l,sk).slice(0,2).join(' '))===flNKey(FT[i]))return true;
-  }
-  return false;
+/* v6.61: which like each + Add to hunts came from (the near search's words -> the like's URL). A like whose search is now a
+   hunt starts no leftover search, after a reload too; removing that hunt from the Den lets it search again. */
+var SPK_KEY='prowl.sparks',SPK_MAX=200,SPK=null;
+function spkGet(){
+  if(SPK)return SPK;
+  var o=xGet(SPK_KEY,{}),out=Object.create(null),k;
+  if(o&&typeof o==='object'&&!Array.isArray(o))for(k in o)if(typeof o[k]==='string'&&/^https:\/\//i.test(o[k])&&o[k].length<=800&&k.length<=120)out[k]=o[k];
+  SPK=out;return SPK;
+}
+function spkAdd(k,u){
+  var o=spkGet(),keys;delete o[k];o[k]=u;
+  keys=Object.keys(o);if(keys.length>SPK_MAX)keys.slice(0,keys.length-SPK_MAX).forEach(function(x){delete o[x]});
+  xSet(SPK_KEY,o);
 }
 function flNearTerms(){
   var M=likeModel(),L=likesGet(),out=[],have=Object.create(null),hunts=Object.create(null),hk=Object.create(null),i,j,ws,w0,sp,FT=flockTerms();
   FT.forEach(function(t){hunts[t.toLowerCase()]=1;hk[flNKey(t)]=1});
+  var spentU=Object.create(null),spk=spkGet(),sk;for(sk in spk)if(hk[sk])spentU[spk[sk]]=1;
   var cnt=Object.create(null),hw=Object.create(null),mute=muteGet();
   L.forEach(function(l){likeWords(l.t).forEach(function(w){cnt[w]=(cnt[w]||0)+1})});
   FT.forEach(function(t){likeWords(t).forEach(function(w){hw[w]=1})});
@@ -5125,11 +5140,8 @@ function flNearTerms(){
   }
   if(M.n){
     for(i=0;i<L.length&&i<2;i++){
-      if(FLOCK.spent[L[i].u])continue;
-      /* its search already became a hunt (+ Add to hunts): its leftover words do not start another. flAddHunt marks it
-         from sparkOf; after a reload, a hunt made only of this like's words is checked the way its spark was made
-         (without every other hunt's words) */
-      if(flSpentBy(L[i],FT,hw,ranked)){FLOCK.spent[L[i].u]=1;continue}
+      /* its search already became a hunt (+ Add to hunts): its leftover words do not start another */
+      if(FLOCK.spent[L[i].u]||spentU[L[i].u])continue;
       ws=ranked(L[i],hw);   /* without any hunt's own words */
       if(ws.length){w0=ws.slice(0,2).join(' ');FLOCK.sparkOf[flNKey(w0)]=L[i].u;add(w0)}
     }
@@ -5267,7 +5279,7 @@ function flAddBtn(t){return '<button type="button" class="fl-add" data-t="'+esc(
 function flAddHunt(b){
   var t=sgwClean(b&&b.getAttribute('data-t')),k=t.toLowerCase(),i,had=flInDen(t);if(!t)return;
   if(!had)st.hunts.push(t);
-  if(FLOCK.sparkOf[flNKey(t)])FLOCK.spent[FLOCK.sparkOf[flNKey(t)]]=1;   /* the like it came from has had its search */
+  var su=FLOCK.sparkOf[flNKey(t)];if(su){FLOCK.spent[su]=1;spkAdd(flNKey(t),su)}   /* the like it came from has had its search */
   for(i=0;i<FLOCK.order.length;i++)if(FLOCK.order[i].toLowerCase()===k)break;
   if(i>=FLOCK.order.length)FLOCK.order.push(t);
   FLOCK.key=flTermsKey();FLOCK.near=null;LMODEL=null;   /* first, so the Den's redraw does not start the feed over */
@@ -5371,12 +5383,15 @@ function flockWarm(o){
   else if(o.fresh)T=near.filter(function(t){return !some(t.toLowerCase())}).concat(fresh);
   else T=near.concat(fresh,rest);
   for(i=0;i<T.length;i++)took[i]=0;
+  /* v6.61: a one-at-a-time marketplace (Vinted) takes only what fits behind its queue, so a round is not held up for it */
+  var room=Object.create(null);for(j=0;j<S.length;j++)if(LV_ONE[S[j]]&&lv[S[j]])room[S[j]]=Math.max(0,FLOCK_ONE_MAX-lv[S[j]].q.length-lv[S[j]].run);
   for(p=0;p<FLOCK_SRCS&&jobs.length<max;p++){
     for(i=0;i<T.length&&jobs.length<max;i++){
       if(took[i]>p)continue;
       t=T[i];k=t.toLowerCase();srcs=flockMix(S);
       for(j=0;j<srcs.length;j++){
-        if(flockCache(srcs[j],k)||FLOCK.asked[srcs[j]+'|'+k])continue;
+        if(flockCache(srcs[j],k)||FLOCK.asked[srcs[j]+'|'+k]||room[srcs[j]]===0)continue;
+        if(srcs[j] in room)room[srcs[j]]--;
         FLOCK.asked[srcs[j]+'|'+k]=1;jobs.push([srcs[j],t]);took[i]++;break;
       }
     }

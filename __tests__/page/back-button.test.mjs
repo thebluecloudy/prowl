@@ -17,8 +17,12 @@ function setup() {
 }
 const sheetOn = (p) => p.$('#otp-sheet').classList.contains('on');
 const flockOn = (p) => p.$('#otp-flock').classList.contains('as-feed');
-// waits for the Back itself (popstate), not a fixed time, so a busy machine cannot outrun it
-const back = (p) => new Promise((r) => { p.win.addEventListener('popstate', () => setTimeout(r, 30), { once: true }); p.win.history.back(); });
+// waits for the Back itself (popstate), not a fixed time, so a busy machine cannot outrun it; gives up after 3s so a
+// Back that never comes fails the test instead of hanging it
+const back = (p) => Promise.race([
+  new Promise((r) => { p.win.addEventListener('popstate', () => setTimeout(r, 30), { once: true }); p.win.history.back(); }),
+  tick(3000),
+]);
 async function openPopupInFlock(p) {
   await tick(60);
   p.$('#otp-dock .db[data-m="flock"]').click();

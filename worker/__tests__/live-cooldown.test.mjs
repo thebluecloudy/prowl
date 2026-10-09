@@ -55,13 +55,13 @@ function fakeCaps() {
 }
 const quiet = { log() {}, error() {} };
 
-function lift({ t = Date.parse("2026-10-09T19:30:10Z"), caps = fakeCaps(), extra = [], deps = {} } = {}) {
+function lift({ t = Date.parse("2026-10-09T19:30:10Z"), caps = fakeCaps(), extra = [], deps = {}, onWait = null } = {}) {
   const { clock, FakeDate } = clockAt(t), cache = fakeCache(clock), waits = [];
-  const fakeTimeout = (fn, ms) => { waits.push(ms); clock.t += ms; fn(); return 0; };
+  const fakeTimeout = (fn, ms) => { waits.push(ms); clock.t += ms; if (onWait) onWait(); fn(); return 0; };
   const src = [
     lineOf(/^const ALLOW_ORIGINS = \[[\s\S]*?\];/m),
     lineOf(/^const VINTED_JAR_MS = [^\n]*;/m), lineOf(/^let vintedJar = [^\n]*;/m), lineOf(/^const VINTED_JAR_KEY = [^\n]*;/m),
-    lineOf(/^const LIVE_COOL = [^\n]*;/m), lineOf(/^const LIVE_COOL_URL = [^\n]*;/m),
+    lineOf(/^const LIVE_COOL = [^\n]*;/m), lineOf(/^const LIVE_COOL_URL = [^\n]*;/m), lineOf(/^const LIVE_COOL_SEEN_MS = [^\n]*;/m),
     lineOf(/^const VINTED_GAP_MS = [^\n]*;/m), lineOf(/^let vintedNext = [^\n]*;/m),
     ...["cors", "json", "capsDay", "vintedJarLoad", "vintedJarSave", "coolCode", "coolUntil", "coolStart", "vintedTurn",
       "liveFresh", "liveServe", "liveKeep", "liveSpare", ...extra].map(indexFn)
@@ -69,7 +69,7 @@ function lift({ t = Date.parse("2026-10-09T19:30:10Z"), caps = fakeCaps(), extra
   const names = ["coolCode", "coolUntil", "coolStart", "vintedTurn", "vintedJarLoad", "vintedJarSave", "liveFresh", "liveServe", "liveKeep", "liveSpare", ...extra];
   const X = new Function("PCACHE", "capsCall", "Date", "setTimeout", "console", "DEPS",
     "const { liveSources, liveFetch, PROBE_TERMS, vintedCall, vintedNormalize, AL_PER_SITE } = DEPS || {};\n" + src +
-    "\nreturn { " + names.join(", ") + ", LIVE_COOL, LIVE_COOL_MAX, LIVE_STALE_SECONDS, VINTED_PER_MIN, VINTED_GAP_MS, VINTED_WAIT_MAX, jar: () => vintedJar, setJar: (j) => { vintedJar = j; } };");
+    "\nreturn { " + names.join(", ") + ", LIVE_COOL, LIVE_COOL_MAX, LIVE_STALE_SECONDS, VINTED_PER_MIN, VINTED_GAP_MS, VINTED_WAIT_MAX, jar: () => vintedJar, setJar: (j) => { vintedJar = j; }, cool: (s, t) => { liveCooling[s] = t; } };");
   const api = X(cache, caps.capsCall, FakeDate, fakeTimeout, quiet, deps);
   return Object.assign(api, { clock, cache, caps, waits });
 }
@@ -106,14 +106,40 @@ test("a cool-down lasts 90s after a 429 and 10 minutes after Vinted's 403, is sh
   assert.equal(await X.coolStart("vinted", 403, ""), X.clock.t + 10 * 60 * 1000);
 });
 
-test("Retry-After stretches a cool-down, never past the cap, and never shortens it", async () => {
+test("Retry-After stretches a cool-down, never past the cap; a short or odd one keeps the 90s", async () => {
+  const at = (ra) => { const X = lift(); return X.coolStart("ebay", 429, ra).then(u => u - X.clock.t); };
+  assert.equal(await at("300"), 300 * 1000);
+  assert.equal(await at("99999"), 15 * 60 * 1000);
+  assert.equal(await at("5"), 90 * 1000);
+  assert.equal(await at("Wed, 21 Oct 2026 07:28:00 GMT"), 90 * 1000, "a date is ignored");
   const X = lift(), t0 = X.clock.t;
-  assert.equal(await X.coolStart("ebay", 429, "300"), t0 + 300 * 1000);
-  assert.equal(await X.coolStart("ebay", 429, "99999"), t0 + X.LIVE_COOL_MAX);
-  assert.equal(await X.coolStart("ebay", 429, "5"), t0 + 90 * 1000, "a short Retry-After keeps the 90s");
-  assert.equal(await X.coolStart("ebay", 429, "Wed, 21 Oct 2026 07:28:00 GMT"), t0 + 90 * 1000, "a date is ignored");
-  const stored = X.cache.m.get("https://prowl-internal.invalid/cool/ebay");
-  assert.equal(stored.until, t0 + 90 * 1000, "Caps keeps it only as long as it lasts");
+  await X.coolStart("ebay", 429, "");
+  assert.equal(X.cache.m.get("https://prowl-internal.invalid/cool/ebay").until, t0 + 90 * 1000, "Caps keeps it only as long as it lasts");
+});
+
+test("a later 429 never shortens the longer cool-down a block started, in this isolate or another", async () => {
+  const X = lift(), t0 = X.clock.t;
+  assert.equal(await X.coolStart("vinted", 403, ""), t0 + 10 * 60 * 1000);
+  X.clock.t = t0 + 2000;
+  assert.equal(await X.coolStart("vinted", 429, ""), t0 + 10 * 60 * 1000, "still the block's 10 minutes");
+  const Y = lift({ t: t0 + 3000 });
+  for (const [k, e] of X.cache.m) Y.cache.m.set(k, e);
+  assert.equal(await Y.coolStart("vinted", 429, ""), t0 + 10 * 60 * 1000);
+  const Z = lift({ t: t0 + 100 * 1000 });
+  for (const [k, e] of Y.cache.m) Z.cache.m.set(k, e);
+  assert.equal(await Z.coolUntil("vinted"), t0 + 10 * 60 * 1000, "Caps still holds the block");
+});
+
+test("a 'not cooling' answer is trusted for a few seconds, so most searches skip the Caps lookup", async () => {
+  const X = lift();
+  assert.equal(await X.coolUntil("etsy"), 0);
+  const n = X.cache.m.size;
+  /* another isolate starts a cool-down: seen here within LIVE_COOL_SEEN_MS */
+  X.cache.m.set("https://prowl-internal.invalid/cool/etsy", { b: String(X.clock.t + 90000), s: 200, h: {}, until: X.clock.t + 90000 });
+  assert.equal(await X.coolUntil("etsy"), 0, "remembered as not cooling");
+  X.clock.t += 5001;
+  assert.ok(await X.coolUntil("etsy"), "then asked again");
+  assert.equal(n, 0);
 });
 
 test("Vinted searches wait their turn: 1s apart in an isolate, give up past 6s, at most VINTED_PER_MIN a minute in all", async () => {
@@ -145,6 +171,13 @@ test("Vinted searches wait their turn: 1s apart in an isolate, give up past 6s, 
   /* a new minute, a new count */
   const W = lift({ t: at + 60 * 1000, caps });
   assert.equal(await W.vintedTurn(), true);
+});
+
+test("a Vinted search that waited its turn does not go out if Vinted said slow down meanwhile", async () => {
+  let X = null;
+  X = lift({ onWait: () => X.cool("vinted", X.clock.t + 90000) });
+  assert.equal(await X.vintedTurn(), true);
+  assert.equal(await X.vintedTurn(), false, "the one queued behind it stops");
 });
 
 test("a Caps hiccup does not stop Vinted searches", async () => {
@@ -238,7 +271,10 @@ test("the hourly test searches skip a marketplace cooling down and start one on 
   await X.coolStart("vinted", 403, "");
   const out = await X.runProbes({});
   assert.deepEqual(asked.sort(), ["grailed", "shopgoodwill"]);
-  assert.deepEqual(out.map(p => p.source).sort(), ["grailed", "shopgoodwill"], "no record for a skipped one: its last result stands");
+  const resting = out.find(p => p.source === "vinted");
+  assert.ok(resting, "the resting one still gets a record, so a long block shows in the admin area");
+  assert.equal(resting.ok, false);
+  assert.match(resting.err, /^resting: it asked Prowl to slow down \(until \d\d:\d\d UTC\)$/);
   assert.ok(await X.coolUntil("grailed"), "the probe's 429 starts a cool-down");
   assert.equal(await X.coolUntil("shopgoodwill"), 0);
 });
@@ -273,6 +309,8 @@ test("the live route checks the cool-down before it counts the visitor or calls 
   assert.match(body, /const until = await coolStart\(source, up\.status, up\.retryAfter\);[^\n]*\n\s*if \(until \|\| stale\) return spare\(/);
   assert.match(body, /if \(items === null\) \{\s*\n\s*if \(stale\) return spare\(/);
   assert.match(body, /cache\.put\(key, liveKeep\(res\.clone\(\), fresh, Date\.now\(\)\)\)/);
+  assert.match(body, /if \(isVinted && !\(await vintedTurn\(\)\)\) \{[\s\S]{0,80}await coolUntil\(source\)/, "a turn refused for a cool-down says so");
   const hitAt = INDEX.lastIndexOf("const hit = await cache.match(key);", start);
+  assert.match(INDEX.slice(hitAt - 400, hitAt), /\+ "&keep=1"/, "kept-a-day entries have their own key, so a rollback never serves them as fresh");
   assert.match(INDEX.slice(hitAt, start), /if \(liveFresh\(hit, Date\.now\(\)\)\) return liveServe\(hit, origin, Date\.now\(\)\);\s*\n\s*stale = hit;/);
 });
