@@ -5,11 +5,20 @@ worker v92 / extension 1.6.4. Each claim was then checked again by a second revi
 briefing are in this folder; the unchanged ones (design rules, login, privacy pack, Flock next steps, Amazon) are in
 `docs/update-2026-10-07/`.
 
-## 1. Facebook sweep (new): not built yet
+## 1. Facebook sweep (new): built in worker v94 / page v6.65
 
-Nothing exists yet. The plan: `POST /fb-ingest` (shared secret `FB_INGEST_KEY`) and `GET /fb-finds?term=`, both in
-the `PROWL_ALERTS` KV under `fb:`, plus a Facebook strip under the Goodwill block. Who sees the strip is Matthew's
-call; owner-only is the safe default (the sweep uses his own Facebook account).
+- **Worker routes:** `POST /fb-ingest` and `GET /fb-finds?term=`, keeping each term's last 7 days of finds in the
+  `PROWL_ALERTS` KV as `fb:<term>` (merged by listing id, so a find stays for the week even if that hunt is not
+  opened the morning it came). The contract with the sweep is in the comment above `handleFetch` in `worker/index.js`.
+- **Page strip:** a "Facebook Marketplace" section under the Goodwill block, newest first. When the last sweep found
+  nothing new it says so for the right day ("today", "yesterday"), above the week's earlier finds. A sweep that
+  stopped more than 2 days ago is hidden, and a hunt that was not swept shows nothing.
+- **Who sees it:** only Matthew's devices (the `?owner=` key) by default, because the sweep runs through his own
+  Facebook account. To show it to everyone, set `FB_FINDS = "public"` in `worker/wrangler.toml` and
+  `PROWL_FB_PUBLIC=true` in the page.
+
+Left for Matthew: set the `FB_INGEST_KEY` secret (24+ random characters) and give it to the sweep. Left for
+Prowl-the-agent: the morning cron, the sweep and the seen-ID dedupe.
 
 ## 2. AI burst throttle (new): the hole is closed; the binding is not needed
 
@@ -105,7 +114,7 @@ Before turning Amazon on:
 
 ## Matthew's task list, corrected
 
-1. `FB_INGEST_KEY`, once the routes ship, and who sees the Facebook strip.
+1. `FB_INGEST_KEY` (the routes are live with worker v94), and whether the Facebook strip stays owner-only.
 2. Chrome Web Store text (above), and confirm the store serves 1.6.4.
 3. The page title (and meta description).
 4. Postal address: done (`ALERT_ADDRESS`).

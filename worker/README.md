@@ -22,6 +22,11 @@ about a minute. No dashboard paste needed.
   (the public page keeps OWNER_KEY in the browser). The Start Prowl and stop links in Gift Pro
   emails are signed with a random key the worker makes once and keeps in KV (`giftkey:v1`);
   deleting that key retires every gift link already emailed.
+- `FB_INGEST_KEY` (v94) lets Prowl-the-agent post the morning Facebook sweep to `POST /fb-ingest`: at least 24
+  random characters, set with `wrangler secret put FB_INGEST_KEY`, given to the sweep and nowhere else (not the
+  page, not OWNER_KEY). Without it the route answers 403 to everyone. The contract (one POST per locked hunt per
+  morning, sent even when nothing is new; each adds its finds to the term's last 7 days; kept 8 days after the last
+  POST, hidden on the page after 2) is in the comment above `handleFetch`. `FB_FINDS` in `wrangler.toml` says who can read the finds: "owner" (default), "public" or "off".
 
 ## Rolling back
 
