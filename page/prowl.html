@@ -5243,7 +5243,7 @@ function flFeed(){
     if(add.length){
       tmp=document.createElement('div');tmp.innerHTML=flCardsHtml(add,!!grid.querySelector('.fl-new'));
       while(tmp.firstChild)grid.insertBefore(tmp.firstChild,end||null);
-      FLOCK.shown=FLOCK.shown.concat(add.map(function(c){return c.it.url}));FLOCK.limit=FLOCK.shown.length;
+      FLOCK.shown=FLOCK.shown.concat(add.map(function(c){return c.it.url}));FLOCK.limit=Math.max(FLOCK.limit||FLOCK_CARDS,FLOCK.shown.length);   /* v6.61: never below a batch, or finds that arrive later never fill it */
     }
     if(end){tmp=document.createElement('div');tmp.innerHTML=flEndHtml(rest.length>add.length);grid.replaceChild(tmp.firstChild,end)}
   }

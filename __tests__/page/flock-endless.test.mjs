@@ -88,3 +88,33 @@ test('a swiped-away find never comes back, even in later batches', async () => {
   assert.ok(cards(p).every((c) => c.getAttribute('data-u') !== gone));
   await p.close();
 });
+
+test('finds that arrive after the feed added cards still fill its first batch (and the end card shows)', async () => {
+  /* only ShopGoodwill has finds. The second and third hunts' answers are held: the second lands while a scroll check is
+     due (it adds its cards before the redraw), the third after. The feed then must still grow to all 9. */
+  const base = liveFetch({ only: 'shopgoodwill' });
+  const gates = {};
+  const gate = (t) => new Promise((r) => { gates[t] = r; });
+  const g2 = gate('Pyrex Butterprint'), g3 = gate('Fire-King jadeite');
+  const impl = (url) => {
+    const u = new URL(String(url), 'https://www.owlandtwigvintage.com/');
+    const q = u.searchParams.get('q');
+    if (u.pathname === '/' && q === 'Pyrex Butterprint') return g2.then(() => base.impl(url));
+    if (u.pathname === '/' && q === 'Fire-King jadeite') return g3.then(() => base.impl(url));
+    return base.impl(url);
+  };
+  const p = loadPage({ fetchImpl: impl, storage: { 'prowl.v36': { seen: true, hunts: ['Roseville jardiniere', 'Pyrex Butterprint', 'Fire-King jadeite'] }, owlTwigSgwTerms: [] }, beforeLoad: (w) => { w.Math.random = () => 0.5; } });
+  await tick(60);
+  p.$('#otp-dock .db[data-m="flock"]').click();
+  await waitFor(() => cards(p).length === 3, { timeout: 8000 });
+  await tick(1200);
+  gates['Pyrex Butterprint']();
+  await tick(20);
+  p.$('#otp-flockRow').dispatchEvent(new p.win.Event('scroll'));   /* its check runs before the redraw */
+  await waitFor(() => cards(p).length === 6, { timeout: 8000 });
+  await tick(1200);
+  gates['Fire-King jadeite']();
+  await waitFor(() => cards(p).length === 9, { timeout: 8000 });
+  await waitFor(() => /That.s the flock/.test((p.$('#otp-flockRow .fl-end') || {}).textContent || ''), { timeout: 15000 });
+  await p.close();
+});
