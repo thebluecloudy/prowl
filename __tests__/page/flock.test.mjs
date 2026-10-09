@@ -7,9 +7,11 @@ const DIS = 'prowl.discarded';
 const FINDS = 'prowl.finds';
 const ls = (p, k) => JSON.parse(p.win.localStorage.getItem(k) || 'null');
 
+// v6.60: Flock reads the whole Den, so each test says what is in it (first-visit samples by default would be 12 hunts)
+const DEN = { hunts: ['Roseville jardiniere', 'Pyrex Butterprint', 'Fire-King jadeite'] };
 async function openFeed(opts = {}, fx = {}) {
   const f = liveFetch(fx);
-  const p = loadPage({ fetchImpl: f.impl, ...opts });
+  const p = loadPage({ fetchImpl: f.impl, ...opts, storage: { 'prowl.v36': DEN, ...(opts.storage || {}) } });
   p.win.confirm = () => true;
   await tick(50);
   p.$('#otp-dock .db[data-m="flock"]').click();
@@ -70,7 +72,11 @@ test('Escape closes Flock', async () => {
 
 test('cards: class hook, roles, Gem-clean face, end card', async () => {
   const p = await openFeed({}, { only: 'shopgoodwill' });   // v6.52: a feed small enough to reach its end
-  await waitFor(() => cards(p).length >= 3 && /That.s the flock/.test((p.$('#otp-flockRow .fl-end') || {}).textContent || ''), { timeout: 8000 });
+  // the end card waits until every marketplace has been asked, a few rounds (Vinted takes at most two a round, v6.61);
+  // that is about 4s here, but CI runs four test files at once on two cores, so allow far longer
+  const t0 = Date.now();
+  await waitFor(() => cards(p).length >= 3 && /That.s the flock/.test((p.$('#otp-flockRow .fl-end') || {}).textContent || ''), { timeout: 45000 })
+    .catch((e) => { throw new Error(e.message + ' after ' + (Date.now() - t0) + 'ms: ' + cards(p).length + ' cards, end card "' + ((p.$('#otp-flockRow .fl-end') || {}).textContent || 'none') + '"'); });
   assert.equal(p.$('#otp-flockRow').getAttribute('role'), 'feed');
   for (const c of cards(p)) {
     assert.equal(c.getAttribute('role'), 'article');
@@ -93,10 +99,10 @@ test('auction cards carry the time-left and bids pill', async () => {
   await p.close();
 });
 
-test('fewer than 2 hunts: a friendly full-screen card with a way back', async () => {
-  const p = await openFeed({ storage: { owlTwigSgwTerms: ['panther'] } });
+test('no hunts at all: a friendly full-screen card with a way back', async () => {
+  const p = await openFeed({ storage: { 'prowl.v36': { hunts: [] }, owlTwigSgwTerms: [] } });
   const empty = await waitFor(() => p.$('#otp-flockRow .fl-empty'));
-  assert.match(empty.textContent, /Add two hunts and the flock takes flight/);
+  assert.match(empty.textContent, /Add a hunt in the Den and the flock takes flight/);
   assert.equal(p.errors.length, 0);
   empty.querySelector('[data-fl="home"]').click();
   assert.equal(p.$('#otp-flock').classList.contains('as-feed'), false);

@@ -31,7 +31,7 @@ function liveFetch() {
 const like = (t, h, extra = {}) => ({ u: 'https://www.ebay.com/itm/9' + Math.abs(t.length * 7919) + '1', t, p: '$25.00', s: 'ebay', i: 'https://i.ebayimg.com/l.jpg', h, at: 1, ...extra });
 async function flock(storage = {}, rand = 0.5) {
   const f = liveFetch();
-  const p = loadPage({ fetchImpl: f.impl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'], ...storage }, beforeLoad: (win) => { if (rand != null) win.Math.random = () => rand; } });
+  const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.v36': { hunts: [] }, owlTwigSgwTerms: ['panther', 'pyrex'], ...storage }, beforeLoad: (win) => { if (rand != null) win.Math.random = () => rand; } });
   p.win.confirm = () => true;
   await tick(60);
   p.$('#otp-dock .db[data-m="flock"]').click();

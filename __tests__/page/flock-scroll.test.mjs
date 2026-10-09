@@ -16,7 +16,7 @@ function heldFetch() {
   return { impl, release: () => held.splice(0).forEach((f) => f()), held };
 }
 async function flock(fetchImpl) {
-  const p = loadPage({ fetchImpl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'] }, beforeLoad: (w) => { w.Math.random = () => 0.5; } });
+  const p = loadPage({ fetchImpl, storage: { 'prowl.v36': { hunts: [] }, owlTwigSgwTerms: ['panther', 'pyrex'] }, beforeLoad: (w) => { w.Math.random = () => 0.5; } });
   await tick(60);
   p.$('#otp-dock .db[data-m="flock"]').click();
   await waitFor(() => p.$$('#otp-flockRow .fl-card').length >= 1);

@@ -13,11 +13,16 @@ function setup() {
     if (u.pathname === '/item') return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(ITEM) });
     return base.impl(url, o);
   };
-  return loadPage({ fetchImpl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'], 'prowl.finds': finds, 'prowl.v36': { seen: true } } });
+  return loadPage({ fetchImpl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'], 'prowl.finds': finds, 'prowl.v36': { seen: true, hunts: [] } } });
 }
 const sheetOn = (p) => p.$('#otp-sheet').classList.contains('on');
 const flockOn = (p) => p.$('#otp-flock').classList.contains('as-feed');
-const back = async (p) => { p.win.history.back(); await tick(80); };
+// waits for the Back itself (popstate), not a fixed time, so a busy machine cannot outrun it; gives up after 3s so a
+// Back that never comes fails the test instead of hanging it
+const back = (p) => Promise.race([
+  new Promise((r) => { p.win.addEventListener('popstate', () => setTimeout(r, 30), { once: true }); p.win.history.back(); }),
+  tick(3000),
+]);
 async function openPopupInFlock(p) {
   await tick(60);
   p.$('#otp-dock .db[data-m="flock"]').click();

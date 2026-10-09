@@ -8,7 +8,7 @@ import { liveFetch, waitFor } from '../helpers/flockFixture.mjs';
 const cards = (p) => p.$$('#otp-flockRow .fl-card');
 async function flock(storage = {}, opts = {}) {
   const f = liveFetch(opts);
-  const p = loadPage({ fetchImpl: f.impl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'], ...storage }, beforeLoad: (w) => { w.Math.random = () => 0.5; } });
+  const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.v36': { hunts: [] }, owlTwigSgwTerms: ['panther', 'pyrex'], ...storage }, beforeLoad: (w) => { w.Math.random = () => 0.5; } });
   p.calls = f.calls;
   await tick(60);
   p.$('#otp-dock .db[data-m="flock"]').click();
@@ -62,9 +62,11 @@ test('finds near your likes are mixed in, tagged "Because you liked"', async () 
   const p = await flock({ 'prowl.likes': [like('Haeger panther lamp'), like('Haeger planter vase')] });
   await waitFor(() => p.$('#otp-flockRow .fl-near'), { timeout: 8000 });
   const near = p.$$('#otp-flockRow .fl-card').filter((c) => c.querySelector('.fl-near'));
-  assert.equal(near[0].querySelector('.fl-near').textContent, 'Because you liked haeger');
-  assert.equal(near[0].getAttribute('data-h'), 'haeger');
+  // v6.60: the newest like searches straight away (its two strongest words), then the word liked twice
+  assert.equal(near[0].querySelector('.fl-near').textContent, 'Because you liked ' + near[0].getAttribute('data-h'));
+  assert.ok(['haeger lamp', 'haeger'].includes(near[0].getAttribute('data-h')), near[0].getAttribute('data-h'));
   assert.ok(p.calls.some((u) => /[?&]q=haeger(&|$)/.test(u)), 'it searched the liked word');
+  assert.ok(p.calls.some((u) => /[?&]q=haeger(\+|%20)lamp(&|$)/.test(u)), 'and the newest like');
   const idx = cards(p).findIndex((c) => c.querySelector('.fl-near'));
   assert.equal((idx + 1) % 4, 0, 'every 4th card');
   assert.ok(!JSON.parse(p.win.localStorage.getItem('owlTwigSgwTerms')).includes('haeger'), 'it never becomes a hunt');

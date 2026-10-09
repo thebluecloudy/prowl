@@ -33,6 +33,17 @@
  *        were off come back on from their next email day, and the confirm page says so. conf: goes with the purge
  *        (Delete in Prowl, admin delete), the admin's Sign out everywhere and an address move. The unsubscribe page
  *        for an address that moved no longer shows the new address (masked, and only to a device with the token).
+ *   v91: 2026-10-09. Marketplaces that say "slow down". A 429 from any marketplace, or Vinted's 403 (its block after
+ *        a burst), starts a cool-down for that marketplace (90s, 10 minutes after a block, or its Retry-After), shared
+ *        by every isolate through Caps. Meanwhile, and whenever a marketplace fails, a search gets the last good answer
+ *        for it (kept 24 hours as a spare) or, with none, a 429 "busy" the page already shows politely, not a 502.
+ *        Vinted searches wait their turn (one at a time per isolate, 1s apart, at most VINTED_PER_MIN a minute in
+ *        all) and its sign-in cookies are shared through Caps, so fewer calls reach its home page. The hourly test
+ *        searches and the alert emails skip a marketplace that is cooling down, and alert searches of Vinted wait
+ *        their turn too. A cached answer tells the browser only the fresh time it has left. Answers are cached under a
+ *        new key (&keep=1), so rolling back never serves a day-old entry as fresh. A later 429 never shortens a block's
+ *        cool-down, and a Vinted search that waited its turn checks again. The hourly test records a resting marketplace
+ *        as not ok ("resting"), so a long block shows in the admin area.
  *   v90: 2026-10-08. Affiliate IDs in the admin area. Each program in AFF_PROGRAMS lists its ID fields with a format;
  *        the owner edits them under Affiliates (KV aff:ids). Only IDs change: the link templates stay in code, and a
  *        value that does not match its format is refused, ignored when read, and checked again on the page. A program
@@ -284,7 +295,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
-const WORKER_VERSION = "v90";
+const WORKER_VERSION = "v91";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -1203,6 +1214,22 @@ const VINTED_COOKIES = /^(access_token_web|refresh_token_web|_vinted_fr_session|
    A search the cached cookies get refused on (401/403) drops them and goes round once more with fresh ones. */
 const VINTED_JAR_MS = 10 * 60 * 1000;
 let vintedJar = null;   // { jar, origin, homeStatus, at }
+/* v91: the cookies Vinted hands out are kept in Caps for VINTED_JAR_MS too, so a new isolate does not ask its home page again */
+const VINTED_JAR_KEY = "https://prowl-internal.invalid/vinted-jar";
+async function vintedJarLoad() {
+  if (vintedJar && Date.now() - vintedJar.at <= VINTED_JAR_MS) return vintedJar;
+  try {
+    const hit = await PCACHE.match(VINTED_JAR_KEY);
+    const j = hit ? await hit.json() : null;
+    if (j && Array.isArray(j.jar) && typeof j.origin === "string" && Date.now() - Number(j.at) <= VINTED_JAR_MS) vintedJar = j;
+  } catch (e) {}
+  return vintedJar;
+}
+function vintedJarSave(s) {
+  vintedJar = s;
+  const body = s ? JSON.stringify(s) : "null";
+  return PCACHE.put(VINTED_JAR_KEY, new Response(body, { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=" + Math.round(VINTED_JAR_MS / 1000) } })).catch(() => {});
+}
 async function vintedHome(signal, base) {
   const h = await fetch(VINTED_HOME, { signal: signal, headers: Object.assign({ "Accept": "text/html,application/xhtml+xml,*/*;q=0.8" }, base) });
   const set = typeof h.headers.getSetCookie === "function" ? h.headers.getSetCookie() : String(h.headers.get("set-cookie") || "").split(/,(?=\s*[A-Za-z0-9_-]+=)/);
@@ -1212,7 +1239,7 @@ async function vintedHome(signal, base) {
      and the cookies only work on that host, so the search goes to the same host. */
   let origin = VINTED_HOME.replace(/\/$/, "");
   try { const hu = new URL(h.url); if (/(^|\.)vinted\.[a-z.]+$/.test(hu.hostname)) origin = hu.origin; } catch (e) {}
-  return { jar: jar, origin: origin, homeStatus: h.status, at: Date.now() };
+  return { jar: jar, origin: origin, homeStatus: h.status, at: Date.now(), retryAfter: h.headers.get("Retry-After") || "" };
 }
 async function vintedCall(term, fresh) {
   const ctl = new AbortController();
@@ -1220,22 +1247,22 @@ async function vintedCall(term, fresh) {
   const base = { "User-Agent": PROBE_UA, "Accept-Language": "en-US,en;q=0.9" };
   try {
     for (let round = 0; round < 2; round++) {
-      let s = vintedJar, cached = true;
+      let s = fresh || round > 0 ? null : await vintedJarLoad(), cached = true;   /* v91: shared through Caps */
       if (fresh || round > 0 || !s || Date.now() - s.at > VINTED_JAR_MS) {
         s = await vintedHome(ctl.signal, base); cached = false;
         if (!s.jar.some(c => c.indexOf("access_token_web=") === 0)) {
-          vintedJar = null;
-          return { status: s.homeStatus === 200 ? 401 : s.homeStatus, text: "", homeStatus: s.homeStatus, homeHost: s.origin, cookies: s.jar.length, cached: false };
+          await vintedJarSave(null);
+          return { status: s.homeStatus === 200 ? 401 : s.homeStatus, text: "", homeStatus: s.homeStatus, homeHost: s.origin, cookies: s.jar.length, cached: false, retryAfter: s.retryAfter || "" };
         }
-        vintedJar = s;
+        await vintedJarSave(s);
       }
       const r = await fetch(s.origin + VINTED_PAGE + encodeURIComponent(term) + "&order=newest_first", {
         signal: ctl.signal,
         headers: Object.assign({ "Accept": "text/html,application/xhtml+xml,*/*;q=0.8", "Cookie": s.jar.join("; "), "Referer": s.origin + "/" }, base)
       });
-      if (cached && (r.status === 401 || r.status === 403)) { vintedJar = null; continue; }
+      if (cached && (r.status === 401 || r.status === 403)) { await vintedJarSave(null); continue; }
       const text = await r.text();
-      return { status: r.status, text: text, homeStatus: s.homeStatus, homeHost: s.origin, cookies: s.jar.length, jar: s.jar, origin: s.origin, cached: cached };
+      return { status: r.status, text: text, homeStatus: s.homeStatus, homeHost: s.origin, cookies: s.jar.length, jar: s.jar, origin: s.origin, cached: cached, retryAfter: r.headers.get("Retry-After") || "" };
     }
     return { status: 401, text: "", homeStatus: null, homeHost: null, cookies: 0, cached: false };
   } finally {
@@ -3512,9 +3539,12 @@ async function alSearch(env, source, term, filter) {
   let up;
   if (source === "etsy" && !(env && env.ETSY_API_KEY)) return [];
   if (source === "ebay" && !(env && env.EBAY_CLIENT_ID)) return [];
+  if (await coolUntil(source)) return [];   /* v91: a marketplace cooling down is not asked; Vinted waits its turn */
+  if (source === "vinted" && !(await vintedTurn())) return [];
   up = source === "ebay" ? await ebayLean(term, env, filter) : source === "etsy" ? await etsyCall(term, env)
      : source === "chairish" ? await chairishCall(term) : source === "poshmark" ? await poshmarkCall(term, false)
      : source === "depop" ? await depopCall(term) : source === "vinted" ? await vintedCall(term) : source === "grailed" ? await grailedCall(term, env) : await callUpstream(term);
+  if (up && up.status !== 200) await coolStart(source, up.status, up.retryAfter);
   if (!up || up.status !== 200) return [];
   let items = source === "ebay" ? ebayNormalize(up.text) : source === "etsy" ? etsyNormalize(up.text)
             : source === "chairish" ? chairishNormalize(up.text) : source === "poshmark" ? poshmarkNormalize(up.text, false, term)
@@ -4515,6 +4545,74 @@ const AI_POOLS = [
   { key: "wh:all", name: "Where to look", limit: SP_PER_DAY }
 ];
 function liveSources() { return ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark"].concat(DEPOP_LIVE ? ["depop"] : [], ["vinted", "grailed", "salvation"]); }
+/* v91: a marketplace that says "slow down" (429, or Vinted's 403 block) cools down: nothing goes out to it until the
+   time is up. Kept in Caps (global) and remembered in this isolate, so most checks cost nothing. */
+const LIVE_COOL = { 429: 90 * 1000, 403: 10 * 60 * 1000 }, LIVE_COOL_MAX = 15 * 60 * 1000, LIVE_STALE_SECONDS = 24 * 3600;
+const LIVE_COOL_URL = "https://prowl-internal.invalid/cool/", liveCooling = Object.create(null), liveCoolSeen = Object.create(null);
+const LIVE_COOL_SEEN_MS = 5000;   /* a "not cooling" answer from Caps is trusted this long in the isolate */
+function coolCode(source, status) { return status === 429 || (status === 403 && source === "vinted") ? status : 0; }
+async function coolUntil(source) {
+  const mine = liveCooling[source] || 0, now = Date.now();
+  if (mine > now) return mine;
+  if ((liveCoolSeen[source] || 0) > now) return 0;
+  try { const hit = await PCACHE.match(LIVE_COOL_URL + source); const t = hit ? Number(await hit.text()) || 0 : 0; if (t > Date.now()) { liveCooling[source] = t; return t; } } catch (e) {}
+  liveCoolSeen[source] = Date.now() + LIVE_COOL_SEEN_MS;
+  return 0;
+}
+async function coolStart(source, status, retryAfter) {
+  const code = coolCode(source, status);
+  if (!code) return 0;
+  const ra = parseInt(String(retryAfter || ""), 10);
+  const ms = Math.min(Math.max(LIVE_COOL[code], ra > 0 ? ra * 1000 : 0), LIVE_COOL_MAX), until = Date.now() + ms;
+  const prev = await coolUntil(source);
+  if (prev >= until) return prev;   /* a 429 never shortens the longer cool-down a block started */
+  liveCooling[source] = until;
+  try { await PCACHE.put(LIVE_COOL_URL + source, new Response(String(until), { headers: { "Cache-Control": "max-age=" + Math.ceil(ms / 1000) } })); } catch (e) {}
+  console.log("cool-down " + source + " " + code + " " + Math.round(ms / 1000) + "s");
+  return until;
+}
+/* Vinted answers a burst with 429, then blocks (403). Its searches wait their turn: one at a time in this isolate,
+   VINTED_GAP_MS apart, and at most VINTED_PER_MIN a minute across all of them (Caps). false = not now. */
+const VINTED_GAP_MS = 1000, VINTED_WAIT_MAX = 6000, VINTED_PER_MIN = 10;
+let vintedNext = 0;
+async function vintedTurn() {
+  const now = Date.now(), wait = Math.max(0, vintedNext - now);
+  if (wait > VINTED_WAIT_MAX) return false;
+  vintedNext = Math.max(now, vintedNext) + VINTED_GAP_MS;
+  try { const j = await capsCall(capsDay(), "take", { k: "vinted:" + new Date(now).toISOString().slice(0, 16), lim: VINTED_PER_MIN }); if (j && typeof j.left === "number" && j.left < 0) return false; } catch (e) {}
+  if (wait) await new Promise(r => setTimeout(r, wait));
+  return !((liveCooling.vinted || 0) > Date.now());   /* Vinted said slow down while this one waited */
+}
+/* v91: a live answer is cached LIVE_STALE_SECONDS but fresh only for the marketplace's own cache time, marked in
+   X-Prowl-Fresh-Until (ms). An entry from before v91 has no mark and is fresh for as long as it lasts. */
+function liveFresh(hit, now) { const fu = Number(hit.headers.get("X-Prowl-Fresh-Until") || 0); return !fu || fu > now; }
+/* a fresh cached answer, as the visitor gets it: their CORS, and the browser told only the time it has left */
+function liveServe(hit, origin, now) {
+  const h = new Headers(hit.headers), c = cors(origin), fu = Number(h.get("X-Prowl-Fresh-Until") || 0);
+  for (const k in c) h.set(k, c[k]);
+  h.set("X-Prowl-Cache", "hit");
+  if (fu) { h.set("Cache-Control", "public, max-age=" + Math.max(0, Math.floor((fu - now) / 1000))); h.delete("X-Prowl-Fresh-Until"); }
+  return new Response(hit.body, { status: hit.status, headers: h });
+}
+/* what goes in the cache: the answer, kept LIVE_STALE_SECONDS, fresh for `fresh` seconds */
+function liveKeep(res, fresh, now) {
+  const h = new Headers(res.headers);
+  h.set("Cache-Control", "public, max-age=" + Math.max(fresh, LIVE_STALE_SECONDS));
+  h.set("X-Prowl-Fresh-Until", String(now + fresh * 1000));
+  return new Response(res.body, { status: res.status, headers: h });
+}
+/* when the marketplace cannot be asked or fails: the last good answer marked stale, or a 429 "busy" that the page
+   shows as "live results are busy" (never a 502, which the admin counts as an error) */
+async function liveSpare(stale, source, why, retryMs, origin) {
+  if (stale) {
+    try {
+      const j = await stale.json();
+      if (j && Array.isArray(j.items)) { j.stale = true; j.staleWhy = why; return json(j, 200, origin, { "Cache-Control": "no-store", "X-Prowl-Cache": "stale" }); }
+    } catch (e) {}
+  }
+  const sec = Math.max(1, Math.ceil((retryMs || 60000) / 1000));
+  return json({ error: "busy", source: source, why: why, retryIn: sec }, 429, origin, { "Retry-After": String(sec), "Cache-Control": "no-store" });
+}
 const LIVE_CALLS = {
   shopgoodwill: [(t) => callUpstream(t), (x) => normalize(x)],
   ebay: [(t, env) => ebayCall(t, env), (x) => ebayNormalize(x)],
@@ -4571,11 +4669,15 @@ async function liveFetchLocal(env, sub, term) {
 const PROBE_TERMS = { chairish: "vintage lamp", grailed: "vintage levis" };
 /* v78: one small test search per live marketplace (hourly from the cron, or the admin's "Run health check now") */
 async function runProbes(env) {
-  return Promise.all(liveSources().map(async src => {
+  const srcs = [], resting = [];
+  /* v91: a marketplace cooling down is not asked; its record says so, so a long block does not look healthy */
+  for (const src of liveSources()) { const c = await coolUntil(src); if (c) resting.push({ t: Date.now(), source: src, ok: false, status: 0, n: 0, ms: 0, err: "resting: it asked Prowl to slow down (until " + new Date(c).toISOString().slice(11, 16) + " UTC)" }); else srcs.push(src); }
+  return resting.concat(await Promise.all(srcs.map(async src => {
     const r = await liveFetch(env, src, PROBE_TERMS[src] || "vintage pyrex");
+    if (r.status) await coolStart(src, r.status, "");
     const n = r.items ? r.items.length : 0;
     return { t: Date.now(), source: src, ok: r.status === 200 && n > 0, status: r.status, n: n, ms: r.ms, err: r.err || (r.status === 200 && !n ? "no listings" : "") };
-  }));
+  })));
 }
 const ADMIN_H = {
   kvGet, kvPut, alNow, alLocal, alPrefs, alActive, alSlotHour, alSendDay, alPaused, alFree, alFreeWeekly, alLegacyFree, alUrgency,
@@ -5301,21 +5403,28 @@ async function handleFetch(request, env, ctx) {
 
     const cache = PCACHE;
     const key = new Request(
-      url.origin + url.pathname + "?q=" + encodeURIComponent(term.toLowerCase()) + "&jev4=" + jevResultsMode(env) + (url.searchParams.get("ai") === "0" ? "&ai=0" : ""),
+      url.origin + url.pathname + "?q=" + encodeURIComponent(term.toLowerCase()) + "&jev4=" + jevResultsMode(env) + (url.searchParams.get("ai") === "0" ? "&ai=0" : "") + "&keep=1",   /* v91: kept-a-day entries have their own key, so an older worker never serves them as fresh */
       { method: "GET" }
     );
     const hit = await cache.match(key);
+    /* v91: an answer is kept 24 hours; it is served as fresh for the marketplace's own cache time (X-Prowl-Fresh-Until)
+       and after that only as a spare, when the marketplace refuses or fails. Entries from before v91 have no mark. */
+    let stale = null;
     if (hit) {
-      const h = new Headers(hit.headers);
-      const c = cors(origin);
-      for (const k in c) h.set(k, c[k]);
-      h.set("X-Prowl-Cache", "hit");
-      return new Response(hit.body, { status: hit.status, headers: h });
+      if (liveFresh(hit, Date.now())) return liveServe(hit, origin, Date.now());
+      stale = hit;
     }
+    const spare = (why, retryMs) => liveSpare(stale, source, why, retryMs, origin);
+    const coolTo = await coolUntil(source);
+    if (coolTo) return spare("cooling down", coolTo - Date.now());
     /* v12: per-visitor cap on lookups that reach the marketplaces (cache hits stay free). */
     const sip = ipKey(request.headers.get("CF-Connecting-IP"));
     if (!(await vCount("sr:" + sip, SEARCH_PER_IP))) return json({ error: "slow down" }, 429, origin);
 
+    if (isVinted && !(await vintedTurn())) {   /* v91 */
+      const c2 = await coolUntil(source);
+      return spare(c2 ? "cooling down" : "too many searches at once", c2 ? c2 - Date.now() : 20000);
+    }
     let up;
     try {
       up = isEbay ? await ebayCall(term, env)
@@ -5331,9 +5440,12 @@ async function handleFetch(request, env, ctx) {
     }
     catch (e) {
       console.error("upstream", source, String(e && e.message || e));
+      if (stale) return spare("unreachable");   /* v91 */
       return json({ error: "upstream unreachable" }, 502, origin);
     }
     if (up.status !== 200) {
+      const until = await coolStart(source, up.status, up.retryAfter);   /* v91 */
+      if (until || stale) return spare(until ? "asked to slow down" : "answered " + up.status, until ? until - Date.now() : 0);
       return json({ error: "upstream " + up.status }, 502, origin);
     }
     let items = isEbay ? ebayNormalize(up.text)
@@ -5353,6 +5465,7 @@ async function handleFetch(request, env, ctx) {
     if (isPosh && items) { const lim = poshSold ? POSH_SOLD_LIMIT : POSH_LIMIT; if (items.length > lim) items = items.slice(0, lim); }
     if (isChairish && items && items.length > CHAIRISH_LIMIT) items = items.slice(0, CHAIRISH_LIMIT);
     if (items === null) {
+      if (stale) return spare("could not read the page");   /* v91 */
       return json({ error: "could not parse upstream", bytes: up.text.length }, 502, origin);
     }
 
@@ -5366,10 +5479,11 @@ async function handleFetch(request, env, ctx) {
       updated: new Date().toISOString().slice(0, 10),
       items: items,
     };
+    const fresh = isEbay ? EBAY_CACHE_SECONDS : isHibid ? HIBID_CACHE_SECONDS : isChairish ? CHAIRISH_CACHE_SECONDS : isEtsy ? ETSY_CACHE_SECONDS : isPosh ? POSH_CACHE_SECONDS : isDepop ? DEPOP_CACHE_SECONDS : isVinted ? VINTED_CACHE_SECONDS : isGrailed ? GRAILED_CACHE_SECONDS : isSalvation ? SALVATION_CACHE_SECONDS : CACHE_SECONDS;
     const res = json(payload, 200, origin, {
-      "Cache-Control": "public, max-age=" + (isEbay ? EBAY_CACHE_SECONDS : isHibid ? HIBID_CACHE_SECONDS : isChairish ? CHAIRISH_CACHE_SECONDS : isEtsy ? ETSY_CACHE_SECONDS : isPosh ? POSH_CACHE_SECONDS : isDepop ? DEPOP_CACHE_SECONDS : isVinted ? VINTED_CACHE_SECONDS : isGrailed ? GRAILED_CACHE_SECONDS : isSalvation ? SALVATION_CACHE_SECONDS : CACHE_SECONDS),
+      "Cache-Control": "public, max-age=" + fresh,
       "X-Prowl-Cache": "miss",
     });
-    try { await cache.put(key, res.clone()); } catch (e) { /* cache is best effort */ }
+    try { await cache.put(key, liveKeep(res.clone(), fresh, Date.now())); } catch (e) { /* cache is best effort; v91: kept as a spare (liveKeep) */ }
     return res;
 }
