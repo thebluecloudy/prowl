@@ -211,3 +211,25 @@ test('ShopGoodwill is asked again after two minutes too', async () => {
   while (f.held.length) { f.held.shift().go(); await tick(30); }
   await p.close();
 });
+
+test('a Flock round with only Vinted left, while its queue is full, asks again once the queue drains', async () => {
+  /* only ShopGoodwill has finds, so the feed is small enough to reach its end card */
+  const f = heldVinted({ body: (q, st, src) => (st === 200 && src !== 'shopgoodwill' ? { items: [] } : null) });
+  const p = await open(f);
+  chip(p, 'fiesta').click();
+  chip(p, 'hull pottery').click();   /* pyrex out, two waiting: no room for the Flock's Vinted searches */
+  p.$('#otp-dock .db[data-m="flock"]').click();
+  await waitFor(() => p.$('#otp-flockRow .fl-end'), { timeout: 8000 });
+  await tick(4000);   /* every other marketplace asked; only Vinted is left */
+  assert.match(p.$('#otp-flockRow .fl-end').textContent, /Looking for more/);
+  while (f.held.length) { f.held.shift().go(); await tick(40); }
+  /* the retry asks Vinted for the hunts the Flock still needs; let those through as they come */
+  const t0 = Date.now();
+  while (!/That.s the flock/.test(p.$('#otp-flockRow .fl-end').textContent) && Date.now() - t0 < 20000) {
+    while (f.held.length) f.held.shift().go();
+    await tick(100);
+  }
+  assert.match(p.$('#otp-flockRow .fl-end').textContent, /That.s the flock/);
+  assert.equal(p.errors.length, 0, String(p.errors[0] || ''));
+  await p.close();
+});

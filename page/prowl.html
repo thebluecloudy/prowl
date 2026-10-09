@@ -5384,18 +5384,23 @@ function flockWarm(o){
   else T=near.concat(fresh,rest);
   for(i=0;i<T.length;i++)took[i]=0;
   /* v6.61: a one-at-a-time marketplace (Vinted) takes only what fits behind its queue, so a round is not held up for it */
-  var room=Object.create(null);for(j=0;j<S.length;j++)if(LV_ONE[S[j]]&&lv[S[j]])room[S[j]]=Math.max(0,FLOCK_ONE_MAX-lv[S[j]].q.length-lv[S[j]].run);
+  var room=Object.create(null),starved=false;for(j=0;j<S.length;j++)if(LV_ONE[S[j]]&&lv[S[j]])room[S[j]]=Math.max(0,FLOCK_ONE_MAX-lv[S[j]].q.length-lv[S[j]].run);
   for(p=0;p<FLOCK_SRCS&&jobs.length<max;p++){
     for(i=0;i<T.length&&jobs.length<max;i++){
       if(took[i]>p)continue;
       t=T[i];k=t.toLowerCase();srcs=flockMix(S);
       for(j=0;j<srcs.length;j++){
-        if(flockCache(srcs[j],k)||FLOCK.asked[srcs[j]+'|'+k]||room[srcs[j]]===0)continue;
+        if(flockCache(srcs[j],k)||FLOCK.asked[srcs[j]+'|'+k])continue;
+        if(room[srcs[j]]===0){starved=true;continue}
         if(srcs[j] in room)room[srcs[j]]--;
         FLOCK.asked[srcs[j]+'|'+k]=1;jobs.push([srcs[j],t]);took[i]++;break;
       }
     }
   }
+  /* nothing to ask but a marketplace whose queue is full: no answer of ours will start the next round, so look again soon;
+     the visitor's own searches may have answered it meanwhile, so redraw (the end card) when nothing went out */
+  clearTimeout(FLOCK.retry);
+  if(!jobs.length&&starved)FLOCK.retry=setTimeout(function(){if(FLOCK.started&&FLOCK.view==='feed'&&flockOpen()&&FLOCK.pend<=0){flockWarm(o);if(FLOCK.pend<=0)flockRenderSoon()}},1500);
   for(i=0;i<jobs.length;i++){
     FLOCK.pend++;
     (function(job,delay){
