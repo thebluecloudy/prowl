@@ -146,10 +146,15 @@ test("v93: a purge also removes a pending address change and earlier addresses' 
   kv.set("mvf:" + EMAIL, { to: "new@example.com" });
   kv.set("mv:new@example.com", { code: "123456", from: EMAIL });
   kv.set("moved:old@example.com", { to: EMAIL, tok: "T".repeat(24), at: 1 });
+  sub.prev.push("oldest@example.com");
+  kv.set("sub:" + EMAIL, sub);
+  kv.set("moved:oldest@example.com", { to: "old@example.com", tok: "S".repeat(24), at: 0 });   /* two changes ago: points at the next address, not the last */
   kv.set("moved:older@example.com", { to: "someone-else@example.com", tok: "x", at: 1 });   /* moved on to another member since */
   kv.set("mv:pending@example.com", { code: "1", from: "other@example.com" });
   await P.alPurge(env, EMAIL, sub);
   for (const [k, v] of kv.m) assert.ok(!k.includes(EMAIL) && !String(v).includes(EMAIL), "left behind: " + k + " = " + v);
+  assert.equal(kv.m.has("moved:oldest@example.com"), false, "the chain from two changes ago goes too");
+  for (const [, v] of kv.m) assert.ok(!String(v).includes("old@example.com\""), "no earlier address left in a value");
   assert.ok(kv.m.has("moved:older@example.com"), "a record that now points at someone else stays");
   assert.ok(kv.m.has("mv:pending@example.com"), "another member's pending change stays");
 });
