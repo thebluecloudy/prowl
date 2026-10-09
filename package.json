@@ -8,6 +8,7 @@
     "test": "node --test --test-concurrency=4 \"__tests__/**/*.test.mjs\" \"worker/__tests__/*.test.mjs\""
   },
   "devDependencies": {
+    "acorn": "8.18.0",
     "jsdom": "^25.0.1"
   }
 }

@@ -1,9 +1,11 @@
-// Prowl page deploy: sends page/prowl.html to the Shopify page body, then checks it landed.
+// Prowl page deploy: sends page/prowl.html to the Shopify page body, then checks it landed. What is sent is the page
+// without its comments (scripts/slim-page.mjs): Shopify caps a page body at 512 KB, and the repo copy keeps them.
 // Runs in GitHub Actions. Needs SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET (Dev Dashboard app,
 // scopes read_online_store_pages + write_online_store_pages, installed on the store).
 // Never prints the secret or the token.
 import { readFileSync, writeFileSync, mkdirSync, appendFileSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { slimPage, SHOPIFY_MAX_BYTES } from "./slim-page.mjs";
 
 export const SHOP = process.env.SHOPIFY_SHOP || "tz7xkc-du.myshopify.com";
 export const PAGE_ID = "gid://shopify/Page/137091285246";
@@ -55,11 +57,13 @@ const WRITE = "mutation U($id: ID!, $body: String!) { pageUpdate(id: $id, page: 
 
 export async function deploy({ fetchFn, file, id, secret, force, backupDir, log }) {
   const raw = readFileSync(file, "utf8");
-  const body = trimEnd(raw);
+  const body = trimEnd(slimPage(raw));
   const errs = checkBody(body);
+  const size = Buffer.byteLength(body, "utf8");
+  if (size > SHOPIFY_MAX_BYTES) errs.push("without its comments the page is " + size + " bytes, over Shopify's " + SHOPIFY_MAX_BYTES + " (512 KB); make it smaller");
   if (errs.length) throw new Error("Refusing to deploy:\n- " + errs.join("\n- "));
   const want = md5(body);
-  log("File: " + Buffer.byteLength(body, "utf8") + " bytes, md5 " + want);
+  log("File: " + Buffer.byteLength(trimEnd(raw), "utf8") + " bytes, " + size + " sent without comments (" + (SHOPIFY_MAX_BYTES - size) + " under Shopify's 512 KB), md5 " + want);
 
   const token = await getToken(fetchFn, id, secret);
   const before = (await gql(fetchFn, token, READ, { id: PAGE_ID })).page;

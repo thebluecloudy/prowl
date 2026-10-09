@@ -43,9 +43,12 @@ verification checklist tests for it, but the code has never implemented it.
 3. Paste the whole file into the Custom Liquid section of the Prowl page
 4. Save, then refetch the live body and diff against this file
 
-The `pageUpdate` GraphQL mutation fails on a body this size, so the paste is the
-deploy path. A carrier artifact with a copy-to-clipboard button is the usual way
-to move the bytes without retyping them.
+Now the page deploys itself. Every push to `main` that touches `page/*.html` runs
+`.github/workflows/deploy-page.yml` (`scripts/deploy-page.mjs`), which sends the page
+through `pageUpdate` and checks it landed. Shopify refuses a page body over 512 KB, so
+what is sent is the page without its comments (`scripts/slim-page.mjs`); the copy in
+the repo keeps them. `node scripts/slim-page.mjs` prints both sizes and the room left,
+and `npm test` fails if the page without comments is over the limit.
 
 ## Stack
 

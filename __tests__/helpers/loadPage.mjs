@@ -6,8 +6,8 @@ import { JSDOM, VirtualConsole } from 'jsdom';
 
 const PAGE = fileURLToPath(new URL('../../page/prowl.html', import.meta.url));
 
-export function loadPage({ url = 'https://www.owlandtwigvintage.com/pages/prowl', storage = {}, fetchImpl, reducedMotion = false, beforeLoad } = {}) {
-  const body = readFileSync(PAGE, 'utf8');
+export function loadPage({ url = 'https://www.owlandtwigvintage.com/pages/prowl', storage = {}, fetchImpl, reducedMotion = false, beforeLoad, html } = {}) {
+  const body = html == null ? readFileSync(PAGE, 'utf8') : html;   // html: another copy of the page, e.g. what the deploy sends
   const errors = [];
   const vc = new VirtualConsole();
   vc.on('jsdomError', (e) => errors.push(e));
