@@ -26,8 +26,8 @@ To use the Pro features, sign in once on the Prowl page (Den, Settings, Prowl Al
 
 Prowl is an independent tool. It is not affiliated with, endorsed by, or sponsored by the marketplaces it searches. All trademarks belong to their owners.
 
-<!-- Depop's affiliate link is switched off in the admin area (2026-10-08), so the listing makes no affiliate claim. When it is back on, add this line here again:
-Affiliate disclosure: Depop search links you open from Prowl go through Owl & Twig's affiliate link (Rakuten), so a purchase can earn Owl & Twig a small commission at no cost to you. Links are only tagged when you click them. -->
+<!-- No affiliate links in the extension since 1.6.4 (the Rakuten link for Depop is removed), so the listing makes no
+affiliate claim. -->
 
 ## Category
 Shopping

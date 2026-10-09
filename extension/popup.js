@@ -1,5 +1,5 @@
 // Prowl by Owl & Twig. (c) 2026 Owl & Twig Vintage. All rights reserved.
-import { SITES, LIVE, fetchLive, cleanTerm, prowlUrl, soldUrl, imagesUrl, guideUrl, photoUrl, dailyUrl, PROWL, affSync } from './sites.js';
+import { SITES, LIVE, fetchLive, cleanTerm, prowlUrl, soldUrl, imagesUrl, guideUrl, photoUrl, dailyUrl, PROWL } from './sites.js';
 import { isPro, PRO_PAGE } from './member.js';
 
 const $ = (s) => document.querySelector(s);
@@ -163,9 +163,6 @@ $('#recheck').addEventListener('click', async () => {
 // On open: a term handed over from the right-click menu wins; otherwise show
 // the last search from this session, if there is one.
 (async () => {
-  // 1.6.3: affiliate switches first, so links and the footer note follow them
-  const aff = await affSync();
-  $('#affnote').hidden = aff.depop !== true;
   applyPro(await isPro());
   try {
     const { pending, last } = await chrome.storage.session.get(['pending', 'last']);

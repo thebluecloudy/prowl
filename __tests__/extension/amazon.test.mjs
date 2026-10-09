@@ -48,43 +48,22 @@ test('service worker: no Amazon menu item while the switch is off', async () => 
   delete globalThis.chrome;
 });
 
-test('sites.js 1.6.3: Depop links are plain until its switch is on; then the Rakuten deep link, and only for Depop', async () => {
+test('sites.js 1.6.4: every marketplace link is the site\'s own plain link; no Rakuten link or switch is left', async () => {
   const s = await import('../../extension/sites.js');
-  const RAN = 'https://click.linksynergy.com/deeplink?id=jh1j/r7*wkQ&mid=53555&murl=';
   const dep = s.SITES.find((x) => x.id === 'depop');
-  assert.equal(s.AFF.on.depop, false, 'off by default (Rakuten declined)');
   assert.equal(dep.url('ceramic panther'), 'https://www.depop.com/search/?q=ceramic%20panther');
-  s.AFF.on.depop = true;
-  try {
-    assert.equal(dep.url('ceramic panther'), RAN + encodeURIComponent('https://www.depop.com/search/?q=ceramic%20panther'));
-    for (const x of s.SITES.filter((y) => y.id !== 'depop')) assert.equal(x.url('x').indexOf('linksynergy'), -1, x.id);
-    assert.equal(s.depopAff('https://www.etsy.com/x'), 'https://www.etsy.com/x');
-  } finally { s.AFF.on.depop = false; }
+  for (const x of s.SITES) assert.equal(/linksynergy|jh1j|mid=53555/.test(x.url('ceramic panther')), false, x.id);
+  assert.equal(s.depopAff, undefined);
+  assert.equal(s.affSync, undefined);
+  assert.deepEqual(Object.keys(s.AFF).sort(), ['amz', 'amzEnabled']);
 });
 
-test('sites.js 1.6.3 affSync: the worker answer is applied and kept; offline, the kept answer is used', async () => {
-  const s = await import('../../extension/sites.js');
-  const store = {};
-  globalThis.chrome = { storage: { local: { get: async (k) => ({ [k]: store[k] }), set: async (o) => Object.assign(store, o) } } };
-  const realFetch = globalThis.fetch;
-  try {
-    globalThis.fetch = async (u) => { assert.equal(u, 'https://prowl.thebluecloud.workers.dev/aff'); return { ok: true, json: async () => ({ on: { ebay: true, depop: true } }) }; };
-    assert.deepEqual(await s.affSync(), { depop: true });
-    assert.deepEqual(store.affOn, { depop: true });
-    s.AFF.on.depop = false;
-    globalThis.fetch = async () => { throw new Error('offline'); };
-    assert.deepEqual(await s.affSync(), { depop: true }, 'the kept answer');
-    globalThis.fetch = async () => ({ ok: true, json: async () => ({ on: { depop: 'yes' } }) });
-    store.affOn = undefined; s.AFF.on.depop = false;
-    assert.deepEqual(await s.affSync(), { depop: false }, 'junk changes nothing');
-  } finally { globalThis.fetch = realFetch; s.AFF.on.depop = false; delete globalThis.chrome; }
-});
-
-test('popup 1.6.3: the commission note is hidden unless a switch is on', () => {
+test('popup 1.6.4: no commission note, and nothing asks the worker for affiliate switches', () => {
   const html = readFileSync(new URL('../../extension/popup.html', import.meta.url), 'utf8');
-  assert.match(html, /<p class="foot">Prowl &copy; 2026 Owl &amp; Twig Vintage\.<span id="affnote" hidden> Depop links earn Owl &amp; Twig a small commission, at no cost to you\.<\/span><\/p>/);
-  const js = readFileSync(new URL('../../extension/popup.js', import.meta.url), 'utf8');
-  assert.match(js, /const aff = await affSync\(\);\n  \$\('#affnote'\)\.hidden = aff\.depop !== true;/);
-  const sw = readFileSync(new URL('../../extension/service-worker.js', import.meta.url), 'utf8');
-  assert.match(sw, /await affSync\(\);   \/\/ 1\.6\.3/);
+  assert.match(html, /<p class="foot">Prowl &copy; 2026 Owl &amp; Twig Vintage\.<\/p>/);
+  assert.doesNotMatch(html, /affnote|commission/);
+  for (const f of ['popup.js', 'service-worker.js']) {
+    const js = readFileSync(new URL('../../extension/' + f, import.meta.url), 'utf8');
+    assert.doesNotMatch(js, /affSync|affnote|\/aff'/, f);
+  }
 });

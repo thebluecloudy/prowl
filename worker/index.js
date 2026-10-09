@@ -33,6 +33,10 @@
  *        were off come back on from their next email day, and the confirm page says so. conf: goes with the purge
  *        (Delete in Prowl, admin delete), the admin's Sign out everywhere and an address move. The unsubscribe page
  *        for an address that moved no longer shows the new address (masked, and only to a device with the token).
+ *   v92: 2026-10-09. Depop has no affiliate link. Rakuten closed the publisher account, so the Rakuten deep link and its
+ *        publisher id are gone from the worker: Depop is out of AFF_PROGRAMS (so out of GET /aff, the admin Affiliates tab
+ *        and the email commission line), and the alert emails' Depop link is always plain. A depop value still in KV
+ *        aff:on or aff:ids is ignored. v84's "approved 2026-10-07" below was never confirmed.
  *   v91: 2026-10-09. Marketplaces that say "slow down". A 429 from any marketplace, or Vinted's 403 (its block after
  *        a burst), starts a cool-down for that marketplace (90s, 10 minutes after a block, or its Retry-After), shared
  *        by every isolate through Caps. Meanwhile, and whenever a marketplace fails, a search gets the last good answer
@@ -295,7 +299,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts } from "./admin.js";
-const WORKER_VERSION = "v91";
+const WORKER_VERSION = "v92";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -319,22 +323,15 @@ const CHAIRISH_CACHE_SECONDS = 600;
 const POSH_URL = "https://poshmark.com/search?type=listings&query=";   /* v58 */
 const POSH_LIMIT = 12, POSH_SOLD_LIMIT = 6, POSH_CACHE_SECONDS = 1800;
 const DEPOP_URL = "https://www.depop.com/search/?q=";   /* v59 */
-/* v84: Depop through Rakuten. The id is the public publisher id that is in every Rakuten link; the page
-   (PROWL_AFF) and the extension (AFF.depop) carry the same link. v89: only while the admin switch is on. v90: the
-   publisher id comes from the admin area (affId). */
-const DEPOP_AFF_T = "https://click.linksynergy.com/deeplink?id={pub}&mid=53555&murl=";
-function depopAff(u) { return AFF_ON.depop === true && /^https:\/\/(www\.)?depop\.com\//.test(String(u || "")) ? DEPOP_AFF_T.replace("{pub}", affId("depop", "pub")) + encodeURIComponent(u) : u; }
 /* v89: affiliate switches, set in the admin area (Affiliates) and kept in KV aff:on as { id: true|false }; a program
    the owner has not touched keeps its default here. v90: each program's IDs too (KV aff:ids as { id: { field: value } }),
    each checked against its format, so a stored value can only ever fill its slot in a fixed link template. A program
    is on only while every one of its fields is filled and valid. To add a program: give it a line here, then build
    its links from affId() in the worker, and from PROWL_AFF / PROWL_AFF_FMT in the page. */
-const AFF_RE = { epn: /^\d{10}$/, ran: /^[A-Za-z0-9*\/._~-]{6,40}$/, awinMid: /^\d{3,8}$/, awinAff: /^\d{4,10}$/, camref: /^[A-Za-z0-9]{4,24}$/, amz: /^[A-Za-z0-9-]{1,40}-2\d$/ };
+const AFF_RE = { epn: /^\d{10}$/, awinMid: /^\d{3,8}$/, awinAff: /^\d{4,10}$/, camref: /^[A-Za-z0-9]{4,24}$/, amz: /^[A-Za-z0-9-]{1,40}-2\d$/ };
 const AFF_PROGRAMS = [
   { id: "ebay", name: "eBay", net: "eBay Partner Network", def: true, mail: true,
     fields: [{ k: "camp", label: "Campaign ID", hint: "10 digits", re: AFF_RE.epn, def: "5339216838" }] },
-  { id: "depop", name: "Depop", net: "Rakuten, merchant 53555", def: false, mail: true,   // Rakuten declined Depop on 2026-10-08
-    fields: [{ k: "pub", label: "Rakuten publisher ID", hint: "like jh1j/r7*wkQ", re: AFF_RE.ran, def: "jh1j/r7*wkQ" }] },
   { id: "etsy", name: "Etsy", net: "Awin", def: false,
     fields: [{ k: "mid", label: "Etsy advertiser ID (awinmid)", hint: "3 to 8 digits", re: AFF_RE.awinMid, def: "" },
       { k: "aff", label: "Your Awin publisher ID", hint: "4 to 10 digits", re: AFF_RE.awinAff, def: "" }] },
@@ -3419,7 +3416,7 @@ const AL_ALSO = [
   ["Facebook", q => "https://www.facebook.com/marketplace/search/?query=" + encodeURIComponent(q)],
   ["Mercari", q => "https://www.mercari.com/search/?keyword=" + encodeURIComponent(q)],
   ["Mercari Japan", q => "https://jp.mercari.com/search?keyword=" + encodeURIComponent(q)],   // v77
-  ["Depop", q => depopAff(DEPOP_URL + encodeURIComponent(q))],   // v84: link-only; tagged only while its switch is on (v89)
+  ["Depop", q => DEPOP_URL + encodeURIComponent(q)],   // v84: link-only; v92: always a plain link (no affiliate program)
   ["Ruby Lane", q => "https://www.rubylane.com/search?q=" + encodeURIComponent(q)],
   ["LiveAuctioneers", q => "https://www.liveauctioneers.com/search/?keyword=" + encodeURIComponent(q)],
   ["Invaluable", q => "https://www.invaluable.com/search?keyword=" + encodeURIComponent(q).replace(/%20/g, "+")],

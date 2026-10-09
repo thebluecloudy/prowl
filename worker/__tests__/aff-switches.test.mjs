@@ -1,6 +1,7 @@
 /* v89: affiliate switches. The owner turns each program on or off in the admin area (Affiliates); KV aff:on keeps it,
-   AFF_PROGRAMS has the defaults (eBay on, Depop off since Rakuten declined), and every link builder follows it.
+   AFF_PROGRAMS has the defaults (eBay on, the rest off), and every link builder follows it.
    v90: each program's IDs too (KV aff:ids), checked against their formats; a program is on only with complete IDs.
+   v92: Depop has no affiliate program (Rakuten closed the publisher account); a stored Depop switch or ID does nothing.
    Run: node --test worker/__tests__/aff-switches.test.mjs */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -8,7 +9,6 @@ import { readFileSync } from "node:fs";
 import { adminFetch, signSession } from "../admin.js";
 
 const INDEX = readFileSync(new URL("../index.js", import.meta.url), "utf8");
-const RAN = "https://click.linksynergy.com/deeplink?id=jh1j/r7*wkQ&mid=53555&murl=";
 function indexFn(name) {
   const m = new RegExp("^(async )?function " + name + "\\(", "m").exec(INDEX);
   assert.ok(m, name + " is in index.js");
@@ -26,84 +26,71 @@ class FakeKV {
 const kvGet = async (env, k, d) => { try { const v = await env.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; } catch (e) { return d; } };
 const kvPut = async (env, k, v) => env.PROWL_ALERTS.put(k, JSON.stringify(v));
 function lift() {
-  const src = [lineOf(/^const DEPOP_URL = [^\n]*;/m), lineOf(/^const DEPOP_AFF_T = [^\n]*;/m), lineOf(/^const AFF_RE = [^\n]*;/m),
+  const src = [lineOf(/^const DEPOP_URL = [^\n]*;/m), lineOf(/^const AFF_RE = [^\n]*;/m),
     lineOf(/^const AFF_PROGRAMS = \[[\s\S]*?\n\];/m), lineOf(/^const AFF_KEY = [^\n]*;/m), lineOf(/^const affObj = [^\n]*;/m),
     ...["affIdsClean", "affReady", "affClean"].map(indexFn), lineOf(/^let AFF_IDS = [^\n]*;/m),
-    ...["affId", "affLoad", "affNote", "depopAff", "epnUrl"].map(indexFn), "const AL_ALSO = " + /const AL_ALSO = (\[[\s\S]*?\n\]);/.exec(INDEX)[1] + ";"].join("\n");
-  return new Function("kvGet", src + "\nreturn { AFF_PROGRAMS, AFF_KEY, AFF_IDS_KEY, affClean, affIdsClean, affReady, affLoad, affNote, depopAff, epnUrl, AL_ALSO, on: () => AFF_ON, ids: () => AFF_IDS };")(kvGet);
+    ...["affId", "affLoad", "affNote", "epnUrl"].map(indexFn), "const AL_ALSO = " + /const AL_ALSO = (\[[\s\S]*?\n\]);/.exec(INDEX)[1] + ";"].join("\n");
+  return new Function("kvGet", src + "\nreturn { AFF_PROGRAMS, AFF_KEY, AFF_IDS_KEY, affClean, affIdsClean, affReady, affLoad, affNote, epnUrl, AL_ALSO, on: () => AFF_ON, ids: () => AFF_IDS };")(kvGet);
 }
 const EPN = { EPN_CAMPAIGN_ID: "5339216838" };
 
 const OFF = { etsy: false, reverb: false, "1stdibs": false, amazon: false };
-test("defaults: eBay on, Depop off, the new programs off with no IDs; a stored choice wins, junk is ignored", async () => {
+test("defaults: eBay on, the new programs off with no IDs; a stored choice wins, junk is ignored; Depop is no program (v92)", async () => {
   const X = lift(), ids = X.affIdsClean(null, null);
-  assert.deepEqual(ids, { ebay: { camp: "5339216838" }, depop: { pub: "jh1j/r7*wkQ" }, etsy: { mid: "", aff: "" }, reverb: { mid: "", aff: "" }, "1stdibs": { camref: "" }, amazon: { tag: "" } });
-  assert.deepEqual(X.affClean(null, ids), { ebay: true, depop: false, ...OFF });
-  assert.deepEqual(X.affClean({ depop: true }, ids), { ebay: true, depop: true, ...OFF });
-  assert.deepEqual(X.affClean({ ebay: "no", depop: 1, etsy: true }, ids), { ebay: true, depop: false, ...OFF }, "only booleans; Etsy needs its IDs");
-  assert.deepEqual(X.AFF_PROGRAMS.map((p) => [p.id, p.def]), [["ebay", true], ["depop", false], ["etsy", false], ["reverb", false], ["1stdibs", false], ["amazon", false]]);
+  assert.deepEqual(ids, { ebay: { camp: "5339216838" }, etsy: { mid: "", aff: "" }, reverb: { mid: "", aff: "" }, "1stdibs": { camref: "" }, amazon: { tag: "" } });
+  assert.deepEqual(X.affClean(null, ids), { ebay: true, ...OFF });
+  assert.deepEqual(X.affClean({ ebay: false }, ids), { ebay: false, ...OFF });
+  assert.deepEqual(X.affClean({ ebay: "no", depop: true, etsy: true }, ids), { ebay: true, ...OFF }, "only booleans; Etsy needs its IDs; Depop is ignored");
+  assert.deepEqual(X.AFF_PROGRAMS.map((p) => [p.id, p.def]), [["ebay", true], ["etsy", false], ["reverb", false], ["1stdibs", false], ["amazon", false]]);
   const kv = new FakeKV();
-  assert.deepEqual(await X.affLoad({ PROWL_ALERTS: kv }, true), { ebay: true, depop: false, ...OFF }, "nothing stored: defaults");
+  assert.deepEqual(await X.affLoad({ PROWL_ALERTS: kv }, true), { ebay: true, ...OFF }, "nothing stored: defaults");
   await kv.put("aff:on", JSON.stringify({ ebay: false, depop: true }));
-  assert.deepEqual(await X.affLoad({ PROWL_ALERTS: kv }), { ebay: true, depop: false, ...OFF }, "read at most once a minute");
-  assert.deepEqual(await X.affLoad({ PROWL_ALERTS: kv }, true), { ebay: false, depop: true, ...OFF });
+  assert.deepEqual(await X.affLoad({ PROWL_ALERTS: kv }), { ebay: true, ...OFF }, "read at most once a minute");
+  assert.deepEqual(await X.affLoad({ PROWL_ALERTS: kv }, true), { ebay: false, ...OFF }, "a stored Depop switch is ignored");
 });
 
 test("v90 IDs: stored values over the defaults, off-format values dropped, eBay falls back to EPN_CAMPAIGN_ID", () => {
   const X = lift();
-  const ids = X.affIdsClean({ etsy: { mid: " 6220 ", aff: "1234567" }, amazon: { tag: "owltwig-20" }, depop: { pub: "bad id&x=1" }, "1stdibs": { camref: "1l3vabc" }, junk: { a: 1 } }, null);
+  const ids = X.affIdsClean({ etsy: { mid: " 6220 ", aff: "1234567" }, amazon: { tag: "owltwig-20" }, depop: { pub: "Abc123/x*Y" }, "1stdibs": { camref: "1l3vabc" }, junk: { a: 1 } }, null);
   assert.deepEqual(ids.etsy, { mid: "6220", aff: "1234567" });
   assert.equal(ids.amazon.tag, "owltwig-20");
-  assert.equal(ids.depop.pub, "", "a stored value in the wrong form is dropped, not replaced by the default");
+  assert.equal("depop" in ids, false, "a stored Depop ID is dropped (v92)");
   assert.equal(ids["1stdibs"].camref, "1l3vabc");
   assert.equal("junk" in ids, false);
   assert.equal(X.affIdsClean(null, { EPN_CAMPAIGN_ID: "1111111111" }).ebay.camp, "1111111111");
   assert.equal(X.affIdsClean({ ebay: { camp: "2222222222" } }, { EPN_CAMPAIGN_ID: "1111111111" }).ebay.camp, "2222222222", "the admin's value wins");
   assert.equal(X.affIdsClean(null, { EPN_CAMPAIGN_ID: "nope" }).ebay.camp, "5339216838");
-  for (const [p, f, bad] of [["ebay", "camp", "123"], ["etsy", "mid", "12a"], ["etsy", "aff", "1"], ["1stdibs", "camref", "a/b"], ["amazon", "tag", "owltwig"], ["amazon", "tag", "x\"><script>-20"], ["depop", "pub", "a?b=c&d"]]) {
+  assert.equal(X.affIdsClean({ ebay: { camp: "12" } }, null).ebay.camp, "", "a stored value in the wrong form is dropped, not replaced by the default");
+  for (const [p, f, bad] of [["ebay", "camp", "123"], ["etsy", "mid", "12a"], ["etsy", "aff", "1"], ["1stdibs", "camref", "a/b"], ["amazon", "tag", "owltwig"], ["amazon", "tag", "x\"><script>-20"]]) {
     assert.equal(X.affIdsClean({ [p]: { [f]: bad } }, null)[p][f], "", p + "." + f + " " + bad);
   }
 });
 
-test("v90: the Depop and eBay links use the stored IDs", async () => {
+test("v90: the eBay link uses the stored ID; v92: a stored Depop switch and ID tag nothing", async () => {
   const X = lift(), kv = new FakeKV();
   await kv.put("aff:on", JSON.stringify({ depop: true }));
   await kv.put("aff:ids", JSON.stringify({ depop: { pub: "Abc123/x*Y" }, ebay: { camp: "2222222222" } }));
   await X.affLoad({ PROWL_ALERTS: kv }, true);
-  assert.equal(X.depopAff("https://www.depop.com/x"), "https://click.linksynergy.com/deeplink?id=Abc123/x*Y&mid=53555&murl=" + encodeURIComponent("https://www.depop.com/x"));
   assert.match(X.epnUrl(EPN, "https://www.ebay.com/itm/1", "prowl-alerts"), /campid=2222222222/, "the admin's ID, not the variable");
-  await kv.put("aff:ids", JSON.stringify({ depop: { pub: "" } }));
-  await X.affLoad({ PROWL_ALERTS: kv }, true);
-  assert.equal(X.on().depop, false, "switched on but no ID: off");
+  assert.equal("depop" in X.on(), false);
+  assert.equal("depop" in X.ids(), false);
+  assert.equal(X.AL_ALSO.find((a) => a[0] === "Depop")[1]("hull pottery"), "https://www.depop.com/search/?q=hull%20pottery");
+  assert.equal(X.affNote(), "Some links (eBay) earn Owl & Twig a small commission, at no cost to you.");
   await kv.put("aff:on", JSON.stringify({ amazon: true, etsy: true }));
   await kv.put("aff:ids", JSON.stringify({ amazon: { tag: "owltwig-20" }, etsy: { mid: "6220", aff: "1234567" } }));
   await X.affLoad({ PROWL_ALERTS: kv }, true);
   assert.equal(X.on().amazon, true);
   assert.equal(X.affNote(), "Some links (eBay) earn Owl & Twig a small commission, at no cost to you.", "emails tag no Amazon or Etsy links, so the footer does not name them");
-  assert.equal(X.depopAff("https://www.depop.com/x"), "https://www.depop.com/x");
 });
 
-test("Depop off: plain links everywhere, the email footer names only eBay", async () => {
+test("v92: every alert email link is plain except eBay's; nothing in the worker builds a Rakuten link", async () => {
   const X = lift();
   await X.affLoad({ PROWL_ALERTS: new FakeKV() }, true);
-  const u = "https://www.depop.com/search/?q=ceramic%20panther";
-  assert.equal(X.depopAff(u), u);
   assert.equal(X.AL_ALSO.find((a) => a[0] === "Depop")[1]("hull pottery"), "https://www.depop.com/search/?q=hull%20pottery");
-  assert.ok(X.AL_ALSO.every((a) => a[1]("x").indexOf("linksynergy") === -1));
+  assert.ok(X.AL_ALSO.every((a) => !/linksynergy|jh1j|mid=53555/.test(a[1]("x"))));
   assert.equal(X.affNote(), "Some links (eBay) earn Owl & Twig a small commission, at no cost to you.");
   assert.match(X.epnUrl(EPN, "https://www.ebay.com/itm/1", "prowl-alerts"), /campid=5339216838/);
-});
-
-test("Depop on: the Rakuten deep link comes back exactly, only on depop.com", async () => {
-  const X = lift(), kv = new FakeKV();
-  await kv.put("aff:on", JSON.stringify({ depop: true }));
-  await X.affLoad({ PROWL_ALERTS: kv }, true);
-  const u = "https://www.depop.com/search/?q=ceramic%20panther";
-  assert.equal(X.depopAff(u), RAN + encodeURIComponent(u));
-  assert.equal(X.depopAff("https://depop.com/products/x/"), RAN + encodeURIComponent("https://depop.com/products/x/"));
-  for (const v of ["https://www.etsy.com/listing/1", "https://depop.com.evil.example/x", "http://www.depop.com/x", ""]) assert.equal(X.depopAff(v), v);
-  assert.equal(X.AL_ALSO.find((a) => a[0] === "Depop")[1]("hull pottery"), RAN + encodeURIComponent("https://www.depop.com/search/?q=hull%20pottery"));
-  assert.equal(X.affNote(), "Some links (eBay, Depop) earn Owl & Twig a small commission, at no cost to you.");
+  assert.doesNotMatch(INDEX, /DEPOP_AFF_T|function depopAff|linksynergy\.com|jh1j/);
 });
 
 test("eBay off: no campaign on eBay links; both off: no commission line at all", async () => {
@@ -150,29 +137,33 @@ test("admin: Affiliates lists each program with its state, and a switch turns it
   const A = admin();
   let r = await A.call("GET", "/admin/api/affiliates");
   assert.equal(r.status, 200);
-  assert.deepEqual(r.j.programs.map((p) => [p.id, p.name, p.on, p.ready]), [["ebay", "eBay", true, true], ["depop", "Depop", false, true], ["etsy", "Etsy", false, false],
+  assert.deepEqual(r.j.programs.map((p) => [p.id, p.name, p.on, p.ready]), [["ebay", "eBay", true, true], ["etsy", "Etsy", false, false],
     ["reverb", "Reverb", false, false], ["1stdibs", "1stDibs", false, false], ["amazon", "Amazon", false, false]]);
   assert.deepEqual(r.j.programs[0].fields, [{ k: "camp", label: "Campaign ID", hint: "10 digits", value: "5339216838" }]);
-  assert.match(r.j.programs[1].net, /Rakuten/);
-  r = await A.call("POST", "/admin/api/affiliate", { id: "depop", on: true });
-  assert.equal(r.status, 200); assert.equal(r.j.ok, true);
-  assert.match(r.j.message, /^Depop links are tagged now/);
-  assert.deepEqual(A.kv.json("aff:on"), { depop: true });
-  assert.equal(r.j.programs.find((p) => p.id === "depop").on, true);
-  assert.equal(A.X.depopAff("https://www.depop.com/x"), RAN + encodeURIComponent("https://www.depop.com/x"), "this isolate follows at once");
+  assert.ok(r.j.programs.every((p) => !/Rakuten|Depop/.test(p.net + p.name)), "no Depop or Rakuten row (v92)");
   r = await A.call("POST", "/admin/api/affiliate", { id: "ebay", on: false });
-  assert.deepEqual(A.kv.json("aff:on"), { depop: true, ebay: false }, "the other switch is kept");
+  assert.equal(r.status, 200); assert.equal(r.j.ok, true);
   assert.match(r.j.message, /^eBay links are plain now/);
-  assert.deepEqual(A.audits.map((a) => [a.action, a.id]), [["aff-on", "depop"], ["aff-off", "ebay"]]);
+  assert.deepEqual(A.kv.json("aff:on"), { ebay: false });
+  assert.equal(r.j.programs.find((p) => p.id === "ebay").on, false);
+  assert.equal(A.X.epnUrl(EPN, "https://www.ebay.com/itm/1", "prowl-alerts"), "https://www.ebay.com/itm/1", "this isolate follows at once");
+  r = await A.call("POST", "/admin/api/affiliate", { id: "ebay", on: true });
+  assert.match(r.j.message, /^eBay links are tagged now/);
+  assert.deepEqual(A.kv.json("aff:on"), { ebay: true });
+  assert.deepEqual(A.audits.map((a) => [a.action, a.id]), [["aff-off", "ebay"], ["aff-on", "ebay"]]);
 });
 
 test("admin: unknown programs, non-boolean values and requests from elsewhere change nothing", async () => {
   const A = admin();
   let r = await A.call("POST", "/admin/api/affiliate", { id: "etsy", on: true });
   assert.equal(r.status, 400);
-  r = await A.call("POST", "/admin/api/affiliate", { id: "depop", on: "yes" });
+  r = await A.call("POST", "/admin/api/affiliate", { id: "depop", on: true });
+  assert.equal(r.status, 400, "Depop is no program any more (v92)");
+  r = await A.call("POST", "/admin/api/affiliate/ids", { id: "depop", values: { pub: "Abc123/x*Y" } });
   assert.equal(r.status, 400);
-  r = await A.call("POST", "/admin/api/affiliate", { id: "depop", on: true }, { "X-Prowl-Admin": "0" });
+  r = await A.call("POST", "/admin/api/affiliate", { id: "ebay", on: "yes" });
+  assert.equal(r.status, 400);
+  r = await A.call("POST", "/admin/api/affiliate", { id: "ebay", on: false }, { "X-Prowl-Admin": "0" });
   assert.equal(r.status, 403);
   assert.equal(A.kv.json("aff:on"), null);
   const out = await adminFetch(new Request(ORIGIN + "/admin/api/affiliates"), A.env, {}, {});
