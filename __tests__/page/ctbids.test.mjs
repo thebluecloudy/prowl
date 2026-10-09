@@ -117,7 +117,7 @@ test('a saved marketplace set from before v6.68 gains CTBids once; turned off af
 test('CTBids is named with the other estate sales and auction houses, and in the not-affiliated line', () => {
   const text = PAGE.replace(/<[^>]+>/g, ' ');
   assert.match(text, /EstateSales\.net, HiBid, LiveAuctioneers, CTBids and Invaluable, one tap each/);
-  const lists = PAGE.match(/EstateSales\.net, HiBid, LiveAuctioneers, CTBids, Heritage Auctions, Invaluable and Craigslist/g) || [];
+  const lists = PAGE.match(/EstateSales\.net, HiBid, LiveAuctioneers, CTBids, Heritage Auctions, Invaluable, Craigslist and eBay Sold/g) || [];
   assert.equal(lists.length, 2, 'the FAQ answer and its JSON-LD say the same');
   assert.match(PAGE, /not affiliated with[^<]*\bCTBids, Caring Transitions\b/);
 });
