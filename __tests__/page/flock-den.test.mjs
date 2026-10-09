@@ -160,10 +160,12 @@ test('the price and ✕ sit below the row, so + Add to hunts is not under them',
   await settle(p);
   const near = await waitFor(() => cards(p).find((x) => x.getAttribute('data-near') === '1'), { timeout: 8000 });
   assert.ok(near.classList.contains('fl-row'));
+  /* v6.66: they are placed from the photo box, which starts after the row (no card-top offsets to keep in step) */
+  const media = near.querySelector(':scope > .fl-media');
+  assert.ok(media && near.querySelector(':scope > .fl-addrow').compareDocumentPosition(media) & p.win.Node.DOCUMENT_POSITION_FOLLOWING, 'the photo box comes after the row');
+  assert.ok(media.querySelector(':scope > .fl-x') && media.querySelector('.sgw-card .sgw-p'), 'the ✕ and the price are in the photo box');
   const css = [...p.doc.querySelectorAll('style')].map((x) => x.textContent).join('\n');
-  assert.match(css, /\.fl-card\.fl-row \.sgw-p,[^{]*\.fl-card\.fl-row \.fl-x\{top:66px\}/);
-  assert.match(css, /\.fl-card\.fl-row\.fl-first-new \.sgw-p,[^{]*\{top:94px\}/);
-  assert.match(css, /@media\(min-width:1024px\)\{\s*[^}]*\.fl-card\.fl-row \.sgw-p[^{]*\{top:54px\}/);
+  assert.match(css, /#otp-flock\.as-feed \.fl-media\{position:relative;/);
   assert.match(css, /\.fl-addrow \.fl-near,[^{]*\{[^}]*-webkit-line-clamp:2/, 'the reason wraps to two lines instead of losing the term');
   await p.close();
 });
