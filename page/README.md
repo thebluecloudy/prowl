@@ -61,3 +61,15 @@ Facebook Marketplace finds from Prowl-the-agent's morning sweep of the locked hu
 (`LIVE_SRC`): the worker cannot search it. Links are plain listing links, rebuilt from the listing id. The worker keeps
 each hunt's last 7 days; the page hides a sweep more than 2 days old, and keeps what it showed when a refresh fails.
 
+
+## CTBids (page v6.68, worker v96)
+
+CTBids (Caring Transitions' online estate sale auctions) is marketplace 29, in BOLO next to the other estate sales and
+auctions, and in "Local & auctions" on the results screen. It is a link-out only: its search API answers 403 without a
+signed-in session token. It has no `?q=` search; its results page is `https://ctbids.com/view-more-items/<words>`
+(`ctbUrl`, the same in `worker/index.js` for the alert emails' "Also search" links). The app decodes that path with
+`decodeURI`, so characters it leaves encoded (`/ ? # & + %` and the like) become spaces, and the four words that route
+also uses for CTBids' own lists (`trending-now`, `ending-soon`, `featured`, `cool-and-unique`) get a trailing space so
+they stay a search. A saved marketplace set from before v6.68 gains CTBids once (`h68`); unticking it afterwards sticks.
+The worker's "where to look" list (`WHERE_MKTS`) has it too; cached answers (30 days) keep their old list. The Chrome
+extension does not have it yet (it needs a store release).

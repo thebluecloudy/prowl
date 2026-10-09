@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
 import { waitFor } from '../helpers/flockFixture.mjs';
 
-test('Salvation Army is marketplace #28 and the counts follow', async () => {
+test('Salvation Army is a marketplace and the counts follow (29 since CTBids, page v6.68)', async () => {
   const p = loadPage();
   await tick(40);
   const all = p.$('#otp-dock .db[data-m="all"] [data-t]');
-  assert.equal(all.textContent, '28');
+  assert.equal(all.textContent, '29');
   assert.ok(p.doc.body.innerHTML.includes('https://shopthesalvationarmy.com/Browse?FullTextQuery='), 'link-out exists');
-  assert.ok(/search 28 marketplaces/.test(p.doc.body.innerHTML));
-  assert.ok(!/\b27 marketplaces\b/.test(p.doc.body.innerHTML));
+  assert.ok(/search 29 marketplaces/.test(p.doc.body.innerHTML));
+  assert.ok(!/\b2[78] marketplaces\b/.test(p.doc.body.innerHTML));
   await p.close();
 });
 
@@ -21,10 +21,10 @@ test('a saved marketplace set from before v6.42 gains Salvation Army once', asyn
   const p = loadPage({ storage: { 'prowl.v36': saved } });
   await tick(40);
   const after = saveNow(p);
-  assert.deepEqual(after.mkt.sort(), ['ebay', 'etsy', 'salvation']);
+  assert.deepEqual(after.mkt.sort(), ['ctbids', 'ebay', 'etsy', 'salvation'], 'a save from before v6.42 is also from before CTBids (v6.68)');
   assert.equal(after.h42, 1);
   await p.close();
-  const p2 = loadPage({ storage: { 'prowl.v36': { ...saved, mkt: ['ebay'], h42: 1 } } });
+  const p2 = loadPage({ storage: { 'prowl.v36': { ...saved, mkt: ['ebay'], h42: 1, h68: 1 } } });
   await tick(40);
   assert.deepEqual(saveNow(p2).mkt, ['ebay'], 'turned off stays off');
   await p2.close();

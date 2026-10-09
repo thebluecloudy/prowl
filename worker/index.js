@@ -43,6 +43,9 @@
  *        is depop_rak, not depop: extension 1.6.3 and pages v6.59-v6.61 read on.depop from /aff and would tag Depop with
  *        the closed account's publisher id written into them; /aff never answers on.depop again. The publisher id must
  *        not be all digits (that is Rakuten's Site ID, not the id= of its links).
+ *   v96: 2026-10-09. CTBids (Caring Transitions' online estate sale auctions) joins "where to look" (WHERE_MKTS) and the
+ *        alert emails' "Also search" links. Link-out only: its search API wants a session token. Its results page is
+ *        /view-more-items/<words> (ctbUrl, same as the page's). Cached /where answers (30 days) keep their old list.
  *   v94: 2026-10-09. Facebook Marketplace sweep (Oct 8 briefing). POST /fb-ingest takes each morning's new Facebook finds
  *        for one locked hunt from Prowl-the-agent (X-Prowl-Ingest must match the FB_INGEST_KEY secret; 403 without it,
  *        413 over 128 KB, 300 tries a day per address) and keeps the last 7 days' finds in KV as fb:<term>, merged by
@@ -328,7 +331,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
-const WORKER_VERSION = "v95";
+const WORKER_VERSION = "v96";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -352,6 +355,15 @@ const CHAIRISH_CACHE_SECONDS = 600;
 const POSH_URL = "https://poshmark.com/search?type=listings&query=";   /* v58 */
 const POSH_LIMIT = 12, POSH_SOLD_LIMIT = 6, POSH_CACHE_SECONDS = 1800;
 const DEPOP_URL = "https://www.depop.com/search/?q=";   /* v59 */
+/* v96: CTBids has no ?q= search. Its results page is /view-more-items/<words>, read with decodeURI, which leaves
+   / ? # & + and the like encoded, so those become spaces. The same route shows CTBids' own lists for four words;
+   a trailing space keeps those a search. The page's ctbUrl is the same. */
+function ctbUrl(q) {
+  let w = String(q == null ? "" : q).replace(/[\/\\?#&;:@=+$,%]+/g, " ").replace(/\s+/g, " ").trim();
+  if (!w) return "https://ctbids.com/";
+  if (/^(trending-now|ending-soon|featured|cool-and-unique)$/i.test(w)) w += " ";
+  return "https://ctbids.com/view-more-items/" + encodeURIComponent(w);
+}
 /* v89: affiliate switches, set in the admin area (Affiliates) and kept in KV aff:on as { id: true|false }; a program
    the owner has not touched keeps its default here. v90: each program's IDs too (KV aff:ids as { id: { field: value } }),
    each checked against its format, so a stored value can only ever fill its slot in a fixed link template. A program
@@ -3073,6 +3085,7 @@ const WHERE_MKTS = {
   estatesales: "EstateSales.net: local estate sales, whole households of older things",
   hibid: "HiBid: local auction houses, estate lots and antiques",
   liveauction: "LiveAuctioneers: auction houses, antiques, art, higher-end collectibles",
+  ctbids: "CTBids: online estate sale auctions by Caring Transitions; whole households of furniture, china, glass, decor and collectibles",   // v96
   craigslist: "Craigslist: local classifieds, furniture and bulky items"
 };
 async function whereToLook(env, url, origin, request) {
@@ -3515,6 +3528,7 @@ const AL_ALSO = [
   ["Depop", q => DEPOP_URL + encodeURIComponent(q)],   // v84: link-only; v95: always plain in email, even with Depop on (Rakuten bars its links in email; page only)
   ["Ruby Lane", q => "https://www.rubylane.com/search?q=" + encodeURIComponent(q)],
   ["LiveAuctioneers", q => "https://www.liveauctioneers.com/search/?keyword=" + encodeURIComponent(q)],
+  ["CTBids", q => ctbUrl(q)],   // v96
   ["Invaluable", q => "https://www.invaluable.com/search?keyword=" + encodeURIComponent(q).replace(/%20/g, "+")],
   ["HiBid", q => "https://hibid.com/lots?q=" + encodeURIComponent(q)]   // v47: HiBid ignores ?search=
 ];
