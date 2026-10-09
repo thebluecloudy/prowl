@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "lint": "node scripts/check-page.mjs && mkdir -p /tmp/prowl-w && cp worker/*.js /tmp/prowl-w/ && echo '{\"type\":\"module\"}' > /tmp/prowl-w/package.json && for f in /tmp/prowl-w/*.js extension/*.js; do node --check \"$f\" || exit 1; done",
-    "test": "node --test \"__tests__/**/*.test.mjs\" \"worker/__tests__/*.test.mjs\""
+    "test": "node --test --test-concurrency=4 \"__tests__/**/*.test.mjs\" \"worker/__tests__/*.test.mjs\""
   },
   "devDependencies": {
     "jsdom": "^25.0.1"
