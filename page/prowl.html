@@ -1434,6 +1434,11 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper #otp-flock.as-feed .fl-note .gh{border-radius:99px}
 .scout-app-wrapper #otp-toast.act{pointer-events:auto}
 .scout-app-wrapper #otp-toast .gh{margin-left:8px;min-height:34px;padding:4px 12px;border-color:currentColor;color:inherit;font-weight:800}
+/* v6.66: on a phone the card's row of buttons is at its foot, where the toast was (bottom:104px): an Undo toast took the
+   tap meant for the heart. In Flock the toast sits over the bottom of the photo instead, clear of the tallest row: the
+   dock 70, the card's padding 14, a two-line row 66 + 8, the hunt line 18 and the title 36, plus 10. (Text size is a
+   zoom on the wrapper, so all of these grow together.) */
+@media(max-width:1023px){.scout-app-wrapper.flock-mode #otp-toast{bottom:calc(222px + env(safe-area-inset-bottom))}}
 @media(prefers-reduced-motion:reduce){.scout-app-wrapper #otp-flock.as-feed #otp-flockRow{scroll-behavior:auto}.scout-app-wrapper #otp-flock.as-feed .fl-card{transition:none}}
 @media(min-width:1024px){
   .scout-app-wrapper #otp-flock.as-feed .flock-head{flex-wrap:nowrap;padding:16px 32px}

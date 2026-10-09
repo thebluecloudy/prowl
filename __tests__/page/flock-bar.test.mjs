@@ -197,3 +197,15 @@ test('a card taller than the feed: a wheel step or ↓ shows its row first, the 
   assert.equal(st, 400);
   await p.close();
 });
+
+test('in Flock on a phone the toast sits over the photo, clear of the tallest row, so Undo never takes a tap meant for the heart', () => {
+  const r = RULES.find((x) => /\.scout-app-wrapper\.flock-mode #otp-toast$/.test(x.sel));
+  assert.ok(r, 'a Flock toast rule');
+  const m = /bottom:calc\((\d+)px \+ env\(safe-area-inset-bottom\)\)/.exec(r.body);
+  assert.ok(m, r.body);
+  /* the dock 70, the card's padding 14, a two-line row (two 30px pills, 6 apart) and its 8px margin, the hunt line 18 */
+  assert.ok(Number(m[1]) >= 70 + 14 + 66 + 8 + 18, 'bottom ' + m[1]);
+  const base = RULES.find((x) => x.sel === '.scout-app-wrapper #otp-toast' && /bottom:/.test(x.body));
+  assert.match(base.body, /bottom:104px/, 'elsewhere it stays where it was');
+  assert.match(CSS, /@media\(max-width:1023px\)\{\.scout-app-wrapper\.flock-mode #otp-toast\{/, 'phones only: the desktop grid has no row at the foot');
+});
