@@ -484,7 +484,7 @@ const SRC = { shopgoodwill: "ShopGoodwill", ebay: "eBay", etsy: "Etsy", chairish
 const DEFAULT_SOURCES = ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark", "vinted", "grailed"];
 function srcName(s) { return SRC[s] || String(s || "?"); }
 const ROUTES = { "ai:fairprice": "Fair price check", "ai:photo": "Photo check", "ai:research": "Research", "ai:guide": "Field Guide",
-  "ai:where": "Where to look", "ai:huntcheck": "Hunt name check", "shop:picks": "Shop picks", "store:login": "Store sign-in (Shopify)", other: "Other pages",
+  "ai:where": "Where to look", "ai:huntcheck": "Hunt name check", "shop:picks": "Shop picks", "store:login": "Store sign-in (Shopify)", "fb:finds": "Facebook finds", "fb:ingest": "Facebook sweep (from Prowl)", other: "Other pages",
   "alerts:subscribe": "Alerts: sign up", "alerts:confirm": "Alerts: confirm address", "alerts:signin": "Alerts: send sign-in link", "alerts:in": "Alerts: open sign-in link",
   "alerts:status": "Alerts: member page", "alerts:prefs": "Alerts: save settings", "alerts:mail": "Alerts: emails on/off", "alerts:delete": "Alerts: delete account",
   "alerts:move": "Alerts: change address", "alerts:move-confirm": "Alerts: confirm new address", "alerts:unsub": "Alerts: unsubscribe", "alerts:test": "Alerts: test email",

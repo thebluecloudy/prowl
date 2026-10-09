@@ -780,6 +780,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-head b{font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.015em}
 .scout-app-wrapper .sgw-live{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--suc);text-transform:uppercase}
 .scout-app-wrapper .sgw-live:before{content:'';width:7px;height:7px;border-radius:50%;background:var(--suc);animation:otpPulse 1.6s ease-in-out infinite}
+/* v6.65: the Facebook strip's head: the morning sweep, not live, so no pulse */
+.scout-app-wrapper .sgw-fbh{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--i2);text-transform:uppercase}
 @keyframes otpPulse{50%{opacity:.35}}
 .scout-app-wrapper .sgw-upd{margin-left:auto}
 .scout-app-wrapper .sgw-card{border-radius:12px;transition:border-color .15s,transform .15s}
@@ -2451,7 +2453,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.64';
+var PROWL_VERSION='v6.65';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3850,6 +3852,7 @@ function sgwCard(it,hunt,bare){
   var m=LIVE_NAME[it.src]||'ShopGoodwill';
   if(typeof it.bids==='number')m+=' · '+esc(String(it.bids))+' bid'+(it.bids===1?'':'s');
   if(it.time_left)m+=' · '+esc(it.time_left)+' left';
+  if(it.location)m+=' · '+esc(it.location);   /* v6.65: Facebook finds say where */
   /* v5.63: worker v21 Jev tags likely reproductions; turning JEV_RESULTS off removes the tag */
   if(it.repro)m+='<br><span class="sgw-repro" title="The title reads like a reproduction, reissue or a lookalike from another maker">Possible reproduction</span>';
   var a='<a class="sgw-card" href="'+esc(window.prowlAff(it.url,'prowl-live'))+'" target="_blank" rel="noopener noreferrer">'+
@@ -3977,7 +3980,7 @@ var LIVE_SRC=[
   {id:'grailed',name:'Grailed',mkt:'grailed'},   /* v6.17 */
   {id:'salvation',name:'Salvation Army',mkt:'salvation'}   /* v6.42, worker v80 */
 ];
-var LIVE_NAME={shopgoodwill:'ShopGoodwill',ebay:'eBay',chairish:'Chairish',etsy:'Etsy',poshmark:'Poshmark',depop:'Depop',vinted:'Vinted',grailed:'Grailed',salvation:'Salvation Army'};
+var LIVE_NAME={shopgoodwill:'ShopGoodwill',ebay:'eBay',chairish:'Chairish',etsy:'Etsy',poshmark:'Poshmark',depop:'Depop',vinted:'Vinted',grailed:'Grailed',salvation:'Salvation Army',facebook:'Facebook'};   /* v6.65: facebook is a label only, never in LIVE_SRC */
 var lv={};
 (function(){for(var i=0;i<LIVE_SRC.length;i++)lv[LIVE_SRC[i].id]={cache:Object.create(null),busy:'',waiters:Object.create(null),going:Object.create(null),q:[],run:0} })();
 
@@ -4145,13 +4148,66 @@ function liveBlock(name,t,c,busy){
   if(!n)return head+'</div><p class="sgw-note">Nothing live for <b>'+esc(t)+'</b> on '+name+' right now. The full hunt below still searches everywhere else.</p>';
   return head+'<span class="sgw-upd">'+n+(c.stale?' from earlier today':' live now')+'</span></div><div class="sgw-grid">'+rows+'</div>';   /* v6.61: worker v91's spare answer */
 }
+/* v6.65: Facebook Marketplace finds from the morning sweep (worker v94, GET /fb-finds). Meta has no Marketplace API,
+   so Prowl-the-agent sweeps the locked hunts through Matthew's own Facebook account each morning and hands the new
+   finds to the worker. The strip shows only on his devices (the ?owner= key) unless PROWL_FB_PUBLIC is turned on here
+   and FB_FINDS is "public" in the worker. A hunt that was not swept shows nothing at all; one swept with nothing new
+   says so in plain words. Links are plain (Facebook has no affiliate program) and open the listing on Facebook. */
+var PROWL_FB_PUBLIC=false,FB={cache:Object.create(null),busy:Object.create(null)},FB_FRESH=30*60000;
+function fbKey(t){return String(t||'').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'').toLowerCase().slice(0,60)}
+function fbOwnerKey(){try{var k=localStorage.getItem('prowl.owner');return k&&/^[A-Za-z0-9_-]{12,80}$/.test(k)?k:''}catch(e){return ''}}
+function fbOn(){return PROWL_FB_PUBLIC||!!fbOwnerKey()}
+function fbClean(a){
+  var out=[],i,x,id;
+  if(!Array.isArray(a))return out;
+  for(i=0;i<a.length&&out.length<60;i++){
+    x=a[i];if(!x||typeof x.title!=='string'||!x.title)continue;
+    id=/^https:\/\/www\.facebook\.com\/marketplace\/item\/(\d{5,20})\/?$/.exec(String(x.url||''));if(!id)continue;
+    out.push({title:x.title.slice(0,160),price:typeof x.price==='string'?x.price.slice(0,24):'',url:'https://www.facebook.com/marketplace/item/'+id[1]+'/',
+      image:typeof x.image==='string'&&/^https:\/\/([a-z0-9-]+\.)*fbcdn\.net\//i.test(x.image)?x.image:'',src:'facebook',location:typeof x.location==='string'?x.location.slice(0,60):''});
+  }
+  return out;
+}
+function fbFetch(t){
+  var k=fbKey(t);
+  if(!k||!fbOn()||typeof fetch!=='function'||FB.busy[k])return;
+  var c=FB.cache[k];if(c&&Date.now()-c.at<FB_FRESH)return;
+  FB.busy[k]=1;
+  var h={},ok=fbOwnerKey();if(ok)h['X-Prowl-Owner']=ok;
+  fetch(SGW_API+'fb-finds?term='+encodeURIComponent(k),{headers:h,cache:'no-store'}).then(function(r){
+    if(r.status===404)return {swept:false};
+    return r.ok?r.json().then(function(j){return {swept:true,items:fbClean(j&&j.items),updated:j&&typeof j.updated==='string'?j.updated:''}}):null;
+  }).then(function(v){
+    FB.busy[k]=0;
+    if(!v)v={swept:false,retry:1};   /* a failed check: quiet, and asked again in 5 minutes rather than on every draw */
+    v.at=v.retry?Date.now()-FB_FRESH+5*60000:Date.now();FB.cache[k]=v;
+    if(v.swept&&fbKey(sgwCurTerm())===k)rSGW();
+  },function(){FB.busy[k]=0;FB.cache[k]={swept:false,at:Date.now()-FB_FRESH+5*60000}});
+}
+/* "Updated this morning", "yesterday", "3 days ago": never a raw time */
+function fbWhen(iso){
+  var t=Date.parse(iso||'');if(!(t>0))return '';
+  var d=new Date(t),n=new Date(),day=function(x){return new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime()},
+    diff=Math.round((day(n)-day(d))/86400000),hr=d.getHours();
+  if(diff<=0)return 'Updated '+(hr<12?'this morning':hr<17?'this afternoon':'this evening');
+  return diff===1?'Updated yesterday':'Updated '+diff+' days ago';
+}
+function fbBlock(t){
+  var c=FB.cache[fbKey(t)];
+  if(!c||!c.swept)return '';
+  var w=fbWhen(c.updated),head='<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span>'+(w?'<span class="sgw-upd">'+esc(w)+'</span>':'')+'</div>';
+  if(!c.items.length)return head+'<p class="sgw-note">Nothing new on Facebook for this hunt today.</p>';
+  var rows='',i;for(i=0;i<c.items.length;i++)rows+=sgwCard(c.items[i],t);
+  return head+'<div class="sgw-grid">'+rows+'</div>';
+}
 function sgwBody(){
   var t=sgwCurTerm();
+  if(t)fbFetch(t);   /* v6.65 */
   if(!sgw.terms.length)return '<p class="sgw-note">Type something you hunt into the box above. It is saved to your hunts, locked for Daily, and checked on ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Vinted and Grailed right away.</p>';
   var sm=liveSummary(t);
-  if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return liveEmptyCard(t);   /* v6.33 */
+  if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return liveEmptyCard(t)+fbBlock(t);   /* v6.33; v6.65: Facebook finds still show */
   if(sm.done&&!sm.n&&sm.err1===sm.count)return '<div class="sgw-empty"><p class="sgw-empty-h">Prowl\u2019s live results are not reaching you.</p><p>Check your connection. If you use a content or ad blocker, allow <b>prowl.thebluecloud.workers.dev</b>. The rows below still search every site directly.</p></div>';
-  var k=t.toLowerCase(),html=liveBlock('ShopGoodwill',t,sgw.cache[k],sgw.busy===t),i,s;
+  var k=t.toLowerCase(),html=liveBlock('ShopGoodwill',t,sgw.cache[k],sgw.busy===t)+fbBlock(t),i,s;   /* v6.65: Facebook under Goodwill */
   for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];html+=liveBlock(s.name,t,lv[s.id].cache[k],lvBusy(s.id,t))}
   return html;
 }

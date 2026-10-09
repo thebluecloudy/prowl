@@ -13,7 +13,8 @@ const LIVE = table({ "/": "shopgoodwill", "/ebay": "ebay", "/etsy": "etsy", "/ch
   "/poshsold": "poshsold", "/depop": "depop", "/vinted": "vinted", "/grailed": "grailed", "/hibid": "hibid",
   "/salvation": "salvation" });   /* v80 */
 const NAMED = table({ "/verdict": "ai:fairprice", "/appraise": "ai:photo", "/research": "ai:research", "/guide": "ai:guide",
-  "/where": "ai:where", "/hunt-check": "ai:huntcheck", "/shop-picks": "shop:picks", "/item": "item:popup" });   /* v81: item */
+  "/where": "ai:where", "/hunt-check": "ai:huntcheck", "/shop-picks": "shop:picks", "/item": "item:popup",   /* v81: item */
+  "/fb-finds": "fb:finds", "/fb-ingest": "fb:ingest" });   /* v94: the Facebook sweep */
 const ALERTS = new Set(["subscribe", "confirm", "signin", "in", "status", "prefs", "mail", "delete", "move", "move-confirm", "unsub", "test", "gift", "giftstop", "likes"]);   /* v85: likes */
 
 export function routeKey(pathname) {

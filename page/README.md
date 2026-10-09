@@ -45,3 +45,11 @@ Amazon in the extension waits until the Associates rules on browser extensions a
 **Adding a program:** one entry in `AFF_PROGRAMS` (its fields and formats) in `worker/index.js`, and in
 `page/prowl.html` its `PROWL_AFF` template (with `{field}` slots and an `id`), its formats in `PROWL_AFF_FMT`, and a
 key in `PROWL_AFF_ON`.
+
+## Facebook strip (page v6.65, worker v94)
+
+Facebook Marketplace finds from Prowl-the-agent's morning sweep of the locked hunts show under the Goodwill block
+(`fbBlock`, `fbFetch`; worker `GET /fb-finds`). The strip shows only on devices with the owner key (`?owner=`) unless
+`PROWL_FB_PUBLIC` is true here and `FB_FINDS` is "public" in `worker/wrangler.toml`. Facebook is never a live source
+(`LIVE_SRC`): the worker cannot search it. Links are plain listing links, rebuilt from the listing id.
+

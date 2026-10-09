@@ -33,6 +33,11 @@
  *        were off come back on from their next email day, and the confirm page says so. conf: goes with the purge
  *        (Delete in Prowl, admin delete), the admin's Sign out everywhere and an address move. The unsubscribe page
  *        for an address that moved no longer shows the new address (masked, and only to a device with the token).
+ *   v94: 2026-10-09. Facebook Marketplace sweep (Oct 8 briefing). POST /fb-ingest takes each morning's new Facebook finds
+ *        for one locked hunt from Prowl-the-agent (X-Prowl-Ingest must match the FB_INGEST_KEY secret; 403 without it,
+ *        413 over 128 KB, 300 tries a day per address) and keeps them 2 days in KV as fb:<term>, rebuilt from the
+ *        listing id with photos only from fbcdn.net. GET /fb-finds?term= answers them for the page's Facebook strip;
+ *        FB_FINDS says who may read them ("owner", the default, "public" or "off"). See the block above handleFetch.
  *   v93: 2026-10-09. Oct 8 briefing follow-ups. AI limits: a request refused before any paid call ("busy now", a full
  *        network) gives back the counts it took (Caps op "give"), so a burst that fills an hour's share no longer also
  *        costs the visitors it turned away their free check for the day; a failed AI call does not give it back (a
@@ -313,7 +318,7 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
-const WORKER_VERSION = "v93";
+const WORKER_VERSION = "v94";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4843,6 +4848,73 @@ export default {
   },
 };
 
+/* ---------- v94: Facebook Marketplace sweep ----------
+   Meta has no Marketplace API, so neither the page nor this worker can search Facebook. Prowl-the-agent sweeps
+   Matthew's locked hunts every morning through his own Facebook account and hands the new finds here; the page shows
+   them under the Goodwill block.
+     POST /fb-ingest   X-Prowl-Ingest: <FB_INGEST_KEY>   { term, updated, items: [{ id, title, price, image, location, found }] }
+       -> { ok, term, items }. 403 without the key (or when none is set), 413 over 128 KB, 400 for a bad body, 429 after
+       FB_INGEST_PER_DAY tries from one address (failed ones count).
+     The contract with the sweep: one POST per locked hunt per morning, sent even with items: [] (the page then says
+       nothing is new today). The term is the hunt as the page has it (lowercased, single spaces, 60 characters at
+       most). Each POST replaces that term's entry, which expires after FB_TTL (2 days), so a stalled sweep hides the
+       strip instead of showing old finds. At most FB_ITEMS_MAX items are kept, in the order sent (newest first). Only
+       the listing id is used for the link (https://www.facebook.com/marketplace/item/<id>/); photos only from
+       Facebook's image hosts (*.fbcdn.net). Links stay plain: Facebook has no affiliate program.
+     GET /fb-finds?term=<hunt>   -> { term, updated, items: [{ id, title, price, url, image, location, found }] }, or 404
+       when the term was not swept (or the reader may not see it). FB_FINDS ([vars] in wrangler.toml) says who may
+       read: "owner" (default; the owner key, the page's ?owner= devices, since the finds come through his own
+       account), "public", or "off". */
+const FB_KEY_MIN = 24, FB_BODY_MAX = 131072, FB_ITEMS_MAX = 60, FB_TTL = 2 * 86400, FB_INGEST_PER_DAY = 300, FB_FINDS_PER_IP = 1000;
+const FB_IMG = /^https:\/\/([a-z0-9-]+\.)*fbcdn\.net\//i;
+function fbTerm(s) { return String(s == null ? "" : s).replace(/\s+/g, " ").trim().toLowerCase().slice(0, 60); }
+function fbMode(env) { const m = String((env && env.FB_FINDS) || "owner").toLowerCase(); return m === "public" || m === "off" ? m : "owner"; }
+function fbItems(arr) {
+  const out = [], seen = Object.create(null);
+  for (const x of Array.isArray(arr) ? arr : []) {
+    if (out.length >= FB_ITEMS_MAX) break;
+    if (!x || typeof x !== "object") continue;
+    const id = String(x.id == null ? "" : x.id).trim(), title = scrubListingText(vClean(x.title, 160), 160).replace(/[^\s@<>"',;:]+@[^\s@<>"',;:]+/g, "[email]");   /* not scrubPII: "1955-1960" is no phone number */
+    if (!/^\d{5,20}$/.test(id) || seen[id] || !title) continue;
+    seen[id] = 1;
+    out.push({
+      id: id, title: title, price: /^\$?\s?\d[\d,]*(\.\d{1,2})?$|^free$/i.test(vClean(x.price, 24)) ? vClean(x.price, 24) : "",
+      url: "https://www.facebook.com/marketplace/item/" + id + "/",
+      image: typeof x.image === "string" && x.image.length < 2000 && FB_IMG.test(x.image) ? x.image : "",
+      location: scrubPII(scrubListingText(vClean(x.location, 60), 60)),
+      found: /^\d{4}-\d{2}-\d{2}$/.test(String(x.found || "")) ? String(x.found) : "",
+    });
+  }
+  return out;
+}
+async function fbIngest(request, env) {
+  const key = String((env && env.FB_INGEST_KEY) || "");
+  if (!(await vCount("fbi:" + ipKey(request.headers.get("CF-Connecting-IP")), FB_INGEST_PER_DAY))) return json({ error: "slow down" }, 429, "");
+  if (key.length < FB_KEY_MIN || !alSame(request.headers.get("X-Prowl-Ingest") || "", key)) return json({ error: "forbidden" }, 403, "");
+  if (!env.PROWL_ALERTS) return json({ error: "no store" }, 503, "");
+  const b = await readJson(request, FB_BODY_MAX);
+  if (b.big) return json({ error: "too large" }, 413, "");
+  const term = fbTerm(b.term);
+  if (!term || looksPersonal(term)) return json({ error: "need term" }, 400, "");
+  if (!Array.isArray(b.items)) return json({ error: "need items" }, 400, "");
+  const t = Date.parse(String(b.updated || "")), now = Date.now();
+  const updated = new Date(t > 0 && t <= now + 3600000 ? t : now).toISOString();
+  const items = fbItems(b.items);
+  await env.PROWL_ALERTS.put("fb:" + term, JSON.stringify({ term: term, updated: updated, items: items }), { expirationTtl: FB_TTL });
+  return json({ ok: true, term: term, items: items.length }, 200, "");
+}
+async function fbFinds(request, env, url, origin) {
+  const mode = fbMode(env), owner = isOwner(request, env);
+  const hdr = mode === "public" ? { "Cache-Control": "public, max-age=900" } : { "Cache-Control": "private, no-store", "Vary": "X-Prowl-Owner" };
+  if (mode === "off" || (mode === "owner" && !owner) || !env.PROWL_ALERTS) return json({ error: "not found" }, 404, origin, hdr);
+  const term = fbTerm(url.searchParams.get("term"));
+  if (!term) return json({ error: "need term" }, 400, origin, hdr);
+  if (!owner && !(await vCount("fbf:" + ipKey(request.headers.get("CF-Connecting-IP")), FB_FINDS_PER_IP))) return json({ error: "slow down" }, 429, origin, hdr);
+  const v = await kvGet(env, "fb:" + term, null);
+  if (!v || !Array.isArray(v.items)) return json({ error: "not swept" }, 404, origin, hdr);
+  return json({ term: v.term, updated: v.updated, items: v.items }, 200, origin, hdr);
+}
+
 async function handleFetch(request, env, ctx) {
     G_ENV = env;
     try { await affLoad(env); } catch (e) {}   /* v89: affiliate switches for every link built below */
@@ -4872,6 +4944,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/alerts/move" && request.method === "POST") return alMove(request, env, origin);   /* v54 */
     if (url.pathname === "/__alerts-preview" || url.pathname === "/__alerts-run") return alDebug(env, url);
     if (url.pathname === "/__alerts-why") return new Response(JSON.stringify(await alState(env), null, 1), { headers: { "Content-Type": "application/json" } });   /* v74 */
+    if (url.pathname === "/fb-ingest" && request.method === "POST") return fbIngest(request, env);   /* v94: server to server, no Origin, its own key */
     if (request.method === "POST" && ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);
 
     if (request.method === "OPTIONS") {
@@ -4946,6 +5019,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/item") {   /* v81: listing popup */
       return itemRoute(env, url, origin, request);
     }
+    if (url.pathname === "/fb-finds") return fbFinds(request, env, url, origin);   /* v94 */
     if (url.pathname === "/shop-picks") {
       return shopPicks(env, url, origin, request);
     }
