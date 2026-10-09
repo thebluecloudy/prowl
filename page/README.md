@@ -79,11 +79,18 @@ extension does not have it yet (it needs a store release).
 - **The curtain** (Matthew's Curtain Intro): when the app opens (the installed app, or `/pages/prowl-app`), PROWL forms
   out of a blur in the middle, a hairline fills as the app gets ready, then six columns lift away to show it and the word
   flies up into the header's Prowl (`.brand-wm`). Once a launch (sessionStorage `prowl.curtain`); a tap or any key skips
-  it; never under reduced motion; it always clears within 9 seconds. `?curtain=1` shows it on any page (to look at it),
+  it (Space, Page Down and the arrows do not scroll the app beneath), and it keeps every tap until it is gone, so a second
+  tap during the lift cannot press what is underneath; never under reduced motion; it always clears within 9 seconds.
+  It brings its own colours, picked the way the app picks its theme (saved theme, else the device's dark or light; New
+  look or Classic), so it is the app's colour from its first frame: keep its `PAL` table in step with the palettes (the
+  test reads them from the stylesheet). `?curtain=1` shows it on any page (to look at it),
   `?curtain=0` never. Its style and script sit right after the first script, so it covers the app before it paints, and
   it is on `body`, outside the text-size zoom. Timing constants are at the top of its script (`MIN_MS`, `MAX_MS`, ...).
 - **Prowl magic** (Hark's idea): result cards rise in the first time each listing appears (a card redrawn mid-rise carries
   on); listings new since your last look at a hunt glow (`data-fresh`, from `seenFresh`, measured against what was seen
   when the visit started), and the first of them after you start or pick a hunt gets a unicorn; starting a hunt sparkles
-  at the button and the panther pounces and walks across. Opacity and transform only, nothing under reduced motion, and
-  nothing touches saved data, links or timing. Tests: `__tests__/page/motion.test.mjs`.
+  at the button and the panther pounces and walks across. The glow and the unicorn wait until they can be seen (not under
+  the curtain, not on a hidden panel); a card drawn while the tab was hidden or under reduced motion does not rise later.
+  Opacity and transform only, apart from the hunt-chip sheen (a moving background, once per hover); nothing under reduced
+  motion, and nothing touches saved data, links or timing. The seen list (`seenMark`) now keeps every listing still on
+  screen, so one that stays up never glows as new again. Tests: `__tests__/page/motion.test.mjs`.

@@ -74,6 +74,103 @@ test('not on the shop page, not twice in a launch, not under reduced motion; ?cu
   await p.close();
 });
 
+test('keys skip the curtain without scrolling the app beneath; typing in a box is left alone', async () => {
+  const p = loadPage({ url: APP, storage: DEN });
+  await tick(50);
+  const key = (k, target = p.doc.body) => { const e = new p.win.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }); target.dispatchEvent(e); return e.defaultPrevented; };
+  assert.equal(key(' '), true, 'Space skips and does not scroll');
+  assert.match(curtain(p).className, /is-out/);
+  for (const k of ['PageDown', 'ArrowDown', 'End', 'Home', 'PageUp', ' ']) assert.equal(key(k), true, k + ' during the lift');
+  assert.equal(key(' ', p.$('#otp-q')), false, 'a space typed in the search box is a space');
+  assert.equal(key('a'), false, "other keys are the app's");
+  await waitFor(() => !curtain(p), { timeout: 8000 });
+  assert.equal(key(' '), false, "with the curtain gone, Space is the page's again");
+  await p.close();
+});
+
+test('the curtain keeps every tap until it is gone, so a second tap during the lift cannot press the app beneath', () => {
+  const css = /<style>\s*\/\* v6\.\d+ the curtain[\s\S]*?<\/style>/.exec(PAGE)[0];
+  assert.doesNotMatch(css, /\.pc-loader(\.is-out)?\{[^}]*pointer-events:\s*none/, 'the curtain itself never lets taps through');
+  assert.match(PAGE, /L\.addEventListener\('click',skipNow\)/);
+});
+
+/* the app's palettes, read from its own stylesheet (every rule for a selector, later ones winning, as the cascade does),
+   so the curtain cannot drift from them */
+function vars(sel) {
+  const o = {}, re = new RegExp('(?:^|\\n)' + sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}', 'g');
+  for (const r of PAGE.matchAll(re)) for (const m of r[1].matchAll(/(--[a-z0-9-]+):([^;}]+)/g)) o[m[1]] = m[2].trim();
+  return o;
+}
+const CSS = {
+  root: vars(':root'),
+  dark: vars('[data-theme=dark]'),
+  uranium: vars('[data-theme=uranium]'),
+  k2: vars('.scout-app-wrapper.k2'),
+  k2blue: vars('[data-theme=dark]:not([data-dark=midnight]) .scout-app-wrapper.k2'),
+  k2darkAc: vars('[data-theme=dark] .scout-app-wrapper.k2'),
+  k2uraAc: vars('[data-theme=uranium] .scout-app-wrapper.k2'),
+};
+/* what the app paints in each theme: the base palette, then the New look's (.k2) accents, and Blue hour's own colours */
+function expected(theme, k2) {
+  const base = theme === 'light' ? CSS.root : theme === 'uranium' ? CSS.uranium : CSS.dark;   /* midnight is data-theme=dark */
+  let v = { ...base };
+  if (k2) v = { ...v, ...(theme === 'light' ? CSS.k2 : theme === 'uranium' ? CSS.k2uraAc : CSS.k2darkAc) };
+  if (k2 && theme === 'dark') v = { ...v, ...CSS.k2blue };   /* Blue hour: not midnight */
+  return ['--bg', '--ink', '--ln', '--ac', '--ac-ring'].map((k) => v[k]);
+}
+
+test('the curtain wears the theme and look the app opens in, from its first frame', async () => {
+  const cases = [
+    { name: 'nothing saved, device light', theme: 'light', k2: true },
+    { name: 'nothing saved, device dark: Blue hour', theme: 'dark', k2: true, osDark: true },
+    { name: 'Blue hour', saved: 'dark', theme: 'dark', k2: true },
+    { name: 'Midnight', saved: 'midnight', theme: 'midnight', k2: true },
+    { name: 'Uranium', saved: 'uranium', theme: 'uranium', k2: true },
+    { name: 'Classic look, light', saved: 'light', theme: 'light', k2: false },
+    { name: 'Classic look, dark', saved: 'dark', theme: 'dark', k2: false },
+  ];
+  for (const c of cases) {
+    const storage = { ...DEN, ...(c.saved ? { 'prowl.theme': c.saved } : {}), ...(c.k2 ? {} : { 'prowl.look': '1' }) };
+    const p = loadPage({ url: APP, storage, beforeLoad: (w) => { if (c.osDark) { const m = w.matchMedia; w.matchMedia = (q) => ({ ...m(q), matches: /prefers-color-scheme: dark/.test(q) }); } } });
+    const L = curtain(p);
+    const style = L.getAttribute('style');
+    const got = ['--bg', '--ink', '--ln', '--ac', '--ac-ring'].map((k) => new RegExp(k + ':\\s*([^;]+)').exec(style)[1].trim());
+    assert.deepEqual(got, expected(c.theme, c.k2), c.name);
+    assert.ok(got.every(Boolean), c.name + ': every colour found in the stylesheet');
+    await p.close();
+  }
+});
+
+test('the curtain never lifts before MIN_MS, lifts by MAX_MS, and the 9-second net removes it whatever happens', async () => {
+  const frames = []; let net = null;
+  const p = loadPage({ url: APP, storage: DEN, beforeLoad: (w) => {
+    w.requestAnimationFrame = (f) => { frames.push(f); return frames.length; };
+    const st = w.setTimeout.bind(w);
+    w.setTimeout = (f, ms, ...a) => { if (ms === 9000 && !net) { net = f; return 0; } return st(f, ms, ...a); };
+  } });
+  const L = curtain(p);
+  assert.equal(typeof net, 'function', 'the 9-second net is set when the curtain goes up');
+  await waitFor(() => /is-ready/.test(L.className), { timeout: 5000 });
+  let now = 1000, out = null;
+  const run = (until) => { while (now < until && out === null) { now += 16; for (const f of frames.splice(0)) f(now); if (/is-out/.test(L.className)) out = now; } };
+  run(1000 + 1590);
+  assert.equal(out, null, 'not before MIN_MS, however ready the app is');
+  run(1000 + 7000);
+  assert.ok(out !== null && out - 1000 >= 1600 && out - 1000 <= 6500, 'lifted at ' + (out - 1000) + 'ms');
+  await p.close();
+  /* stuck: no frames at all (a background tab), so it never lifts by itself; the net takes it away */
+  let net2 = null;
+  const q = loadPage({ url: APP, storage: DEN, beforeLoad: (w) => {
+    w.requestAnimationFrame = () => 0;
+    const st = w.setTimeout.bind(w);
+    w.setTimeout = (f, ms, ...a) => { if (ms === 9000 && !net2) { net2 = f; return 0; } return st(f, ms, ...a); };
+  } });
+  assert.ok(curtain(q));
+  net2();
+  assert.equal(curtain(q), null, 'gone, and the app is there');
+  await q.close();
+});
+
 test("the header's Prowl is a span the curtain lands on", () => {
   assert.match(PAGE, /<span class="brand">[\s\S]*?<span class="brand-wm">Prowl<\/span><span class="probadge"/);
   assert.match(PAGE, /querySelector\('\.scout-app-wrapper \.bar \.brand-wm'\)/);
@@ -81,11 +178,17 @@ test("the header's Prowl is a span the curtain lands on", () => {
 
 /* ---------- Prowl magic ---------- */
 
+/* jsdom has no layout: a card counts as on screen unless it or a parent is hidden */
+function layout(w) {
+  w.Element.prototype.getClientRects = function () { for (let e = this; e; e = e.parentElement) if (e.hidden || (e.style && e.style.display === 'none')) return []; return [{ width: 1, height: 1 }]; };
+}
+
 /* results come back over the network, after the page (and the magic) has started: here 120ms later */
 async function results(opts = {}) {
   const f = liveFetch();
   const slow = (u) => new Promise((r) => setTimeout(() => r(f.impl(u)), 120));
-  const p = loadPage({ fetchImpl: slow, ...opts, storage: { ...DEN, owlTwigSgwTerms: ['pyrex'], 'prowl.lastHunt': 'pyrex', ...(opts.storage || {}) } });
+  const before = opts.beforeLoad;
+  const p = loadPage({ fetchImpl: slow, ...opts, beforeLoad: (w) => { layout(w); if (before) before(w); }, storage: { ...DEN, owlTwigSgwTerms: ['pyrex'], 'prowl.lastHunt': 'pyrex', ...(opts.storage || {}) } });
   await waitFor(() => p.$$('#otp-sgw .sgw-cell[data-u]').length >= 3, { timeout: 6000 });
   return p;
 }
@@ -126,7 +229,7 @@ function record(p) {
   const got = [];
   new p.win.MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1 && /^pm-(halo|uni)$/.test(n.className)) {
     const cell = n.closest('.sgw-cell');
-    got.push({ k: n.className, u: cell && cell.getAttribute('data-u'), fresh: !!(cell && cell.hasAttribute('data-fresh')), hidden: n.getAttribute('aria-hidden') });
+    got.push({ k: n.className, u: cell && cell.getAttribute('data-u'), fresh: !!(cell && cell.hasAttribute('data-fresh')), hidden: n.getAttribute('aria-hidden'), delay: n.style.animationDelay, flock: !!n.closest('#otp-flock') });
   } }).observe(p.doc.body, { childList: true, subtree: true });
   return got;
 }
@@ -134,7 +237,7 @@ function record(p) {
 test('listings new since the last look glow, and the first of them gets the unicorn', async () => {
   const f = liveFetch();
   const slow = (u) => new Promise((r) => setTimeout(() => r(f.impl(u)), 120));
-  const p = loadPage({ fetchImpl: slow, storage: { ...DEN, owlTwigSgwTerms: ['pyrex'], 'prowl.lastHunt': 'pyrex', 'prowl.seenUrls': { pyrex: ['https://shopgoodwill.com/item/pyrex-0'] } } });
+  const p = loadPage({ fetchImpl: slow, beforeLoad: layout, storage: { ...DEN, owlTwigSgwTerms: ['pyrex'], 'prowl.lastHunt': 'pyrex', 'prowl.seenUrls': { pyrex: ['https://shopgoodwill.com/item/pyrex-0'] } } });
   const got = record(p);
   await waitFor(() => got.some((x) => x.k === 'pm-uni') && got.filter((x) => x.k === 'pm-halo').length >= 2, { timeout: 15000 });
   assert.ok(got.every((x) => x.fresh), 'only on listings new since the last look');
@@ -153,6 +256,163 @@ test('a first look marks nothing new', async () => {
   assert.equal(p.$$('#otp-sgw .sgw-cell[data-fresh]').length, 0);
   assert.equal(got.length, 0);
   await p.close();
+});
+
+/* a redraw, done by hand: a copy of a result cell for listing u (fresh or not), put where the panel's cells are */
+function cells(p) {
+  const grid = () => p.$('#otp-sgw .sgw-cell[data-u]').parentNode;
+  const add = (u, fresh, into) => {
+    const c = p.$('#otp-sgw .sgw-cell[data-u]').cloneNode(true);
+    c.setAttribute('data-u', u);
+    if (fresh) c.setAttribute('data-fresh', '1'); else c.removeAttribute('data-fresh');
+    c.querySelectorAll('.pm-halo,.pm-uni').forEach((x) => x.remove());
+    const card = c.querySelector('.sgw-card'); card.className = 'sgw-card'; card.style.animationDelay = '';
+    (into || grid()).appendChild(c);
+    return card;
+  };
+  const redraw = (u, fresh) => { p.$$('#otp-sgw .sgw-cell').filter((c) => c.getAttribute('data-u') === u).forEach((c) => c.remove()); return add(u, fresh); };
+  return { add, redraw };
+}
+async function still(p) {   /* every marketplace has answered; then the page's clock is held still between steps */
+  await tick(900);
+  let clock = p.win.Date.now();
+  p.win.Date.now = () => clock;
+  return (ms) => { clock += ms; };
+}
+
+test('the glow and the unicorn carry on part-way across a redraw, do not start over, and are not redrawn once over', async () => {
+  const p = await results();
+  const later = await still(p);
+  const got = record(p), { add, redraw } = cells(p);
+  add('https://x.example/f-1', true); add('https://x.example/f-2', true);
+  await waitFor(() => got.filter((x) => x.k === 'pm-halo').length === 2 && got.some((x) => x.k === 'pm-uni'), { timeout: 3000 });
+  assert.deepEqual(got.map((x) => [x.k, x.u, x.delay]).sort(), [['pm-halo', 'https://x.example/f-1', '0ms'], ['pm-halo', 'https://x.example/f-2', '0ms'], ['pm-uni', 'https://x.example/f-1', '0ms']]);
+  later(1000);
+  got.length = 0;
+  redraw('https://x.example/f-1', true); redraw('https://x.example/f-2', true);
+  await waitFor(() => got.filter((x) => x.k === 'pm-halo').length === 2 && got.some((x) => x.k === 'pm-uni'), { timeout: 3000 });
+  assert.deepEqual(got.map((x) => [x.k, x.u, x.delay]).sort(), [['pm-halo', 'https://x.example/f-1', '-1000ms'], ['pm-halo', 'https://x.example/f-2', '-1000ms'], ['pm-uni', 'https://x.example/f-1', '-1000ms']],
+    'carried on from where they were, on the same listings');
+  later(4500);   /* the glow is over (5.2s), and the unicorn (2.2s) */
+  got.length = 0;
+  redraw('https://x.example/f-1', true); redraw('https://x.example/f-2', true);
+  await tick(400);
+  assert.deepEqual(got, [], 'over is over');
+  /* the unicorn is once a hunt: a new listing glows, without one; picking a hunt brings it back for the next */
+  add('https://x.example/f-3', true);
+  await waitFor(() => got.some((x) => x.u === 'https://x.example/f-3'), { timeout: 3000 });
+  await tick(100);
+  assert.deepEqual(got.map((x) => x.k), ['pm-halo']);
+  p.$('#otp-sgw [data-sgw="pick"]').click();
+  await tick(50);
+  got.length = 0;
+  add('https://x.example/f-4', true);
+  await waitFor(() => got.some((x) => x.k === 'pm-uni'), { timeout: 3000 });
+  assert.equal(got.find((x) => x.k === 'pm-uni').u, 'https://x.example/f-4');
+  await p.close();
+});
+
+test('nothing glows in Flock', async () => {
+  const p = await results();
+  await still(p);
+  const got = record(p), { add } = cells(p);
+  const flock = p.$('#otp-flock');
+  flock.hidden = false;   /* on screen, so only the rule keeps it from glowing */
+  add('https://x.example/fl-1', true, flock);
+  add('https://x.example/g-1', true);
+  await waitFor(() => got.some((x) => x.u === 'https://x.example/g-1'), { timeout: 3000 });
+  await tick(700);
+  assert.equal(got.filter((x) => x.flock).length, 0);
+  await p.close();
+});
+
+test('a card drawn while the tab is hidden, or under reduced motion, does not vanish and rise again on a later redraw', async () => {
+  const p = await results();
+  const later = await still(p);
+  const { add, redraw } = cells(p);
+  let hidden = true;
+  Object.defineProperty(p.doc, 'hidden', { configurable: true, get: () => hidden });
+  const a = add('https://x.example/h-1', false);
+  await tick(150);
+  assert.equal(a.classList.contains('pm-in'), false, 'nobody was watching');
+  hidden = false;
+  later(100);
+  const a2 = redraw('https://x.example/h-1', false);
+  await tick(150);
+  assert.equal(a2.classList.contains('pm-in'), false, 'on screen already: it does not vanish and rise');
+  const b = add('https://x.example/h-2', false);
+  await waitFor(() => b.classList.contains('pm-in'), { timeout: 1000 });
+  /* reduced motion switched on, a card drawn, switched off again */
+  const mm = p.win.matchMedia;
+  p.win.matchMedia = (q) => ({ ...mm(q), matches: /prefers-reduced-motion:\s*reduce/.test(q) });
+  const r = add('https://x.example/r-1', false);
+  await tick(150);
+  assert.equal(r.classList.contains('pm-in'), false);
+  p.win.matchMedia = mm;
+  later(100);
+  const r2 = redraw('https://x.example/r-1', false);
+  await tick(150);
+  assert.equal(r2.classList.contains('pm-in'), false, 'on screen already when motion came back');
+  await p.close();
+});
+
+test('the glow waits until it can be seen: not on a hidden panel, not under the curtain', async () => {
+  let p = await results();
+  await still(p);
+  let got = record(p);
+  const { add } = cells(p);
+  p.$('#otp-sgw').hidden = true;   /* Daily or Flock open over it */
+  add('https://x.example/w-1', true);
+  await tick(800);
+  assert.deepEqual(got, [], 'nothing plays where nobody can see it');
+  p.$('#otp-sgw').hidden = false;
+  await waitFor(() => got.some((x) => x.k === 'pm-halo' && x.u === 'https://x.example/w-1'), { timeout: 2000 });
+  assert.equal(got.find((x) => x.k === 'pm-halo').delay, '0ms', 'it starts when it is seen, from the beginning');
+  await p.close();
+  /* the app opening with the curtain up, and listings new since the last look */
+  const f = liveFetch();
+  p = loadPage({ url: APP, fetchImpl: (u) => Promise.resolve(f.impl(u)), beforeLoad: layout, storage: { ...DEN, owlTwigSgwTerms: ['pyrex'], 'prowl.lastHunt': 'pyrex', 'prowl.seenUrls': { pyrex: ['https://shopgoodwill.com/item/pyrex-0'] } } });
+  got = record(p);
+  await waitFor(() => p.$$('#otp-sgw .sgw-cell[data-fresh]').length >= 2, { timeout: 6000 });
+  await tick(300);
+  assert.ok(curtain(p), 'the curtain is still up');
+  assert.deepEqual(got, [], 'under the curtain: nothing yet');
+  curtain(p).click();
+  await waitFor(() => !curtain(p), { timeout: 5000 });
+  await waitFor(() => got.some((x) => x.k === 'pm-uni') && got.some((x) => x.k === 'pm-halo'), { timeout: 3000 });
+  await p.close();
+});
+
+test('Clear saved data forgets what was new', async () => {
+  const p = await results({ storage: { 'prowl.seenUrls': { pyrex: ['https://shopgoodwill.com/item/pyrex-0'] } } });
+  await waitFor(() => p.$$('#otp-sgw .sgw-cell[data-fresh]').length >= 2, { timeout: 6000 });
+  await tick(900);
+  p.win.confirm = () => true;
+  p.$('#otp-clearBtn').click();
+  /* the same hunt again: its listings are no longer "new since your last look" */
+  p.$('#otp-sgwIn').value = 'pyrex';
+  p.$('#otp-sgw [data-sgw="go"]').click();
+  await waitFor(() => p.$$('#otp-sgw .sgw-cell[data-u]').length >= 3, { timeout: 6000 });
+  await tick(900);
+  assert.equal(p.$$('#otp-sgw .sgw-cell[data-fresh]').length, 0);
+  await p.close();
+});
+
+test('a listing that stays up is never forgotten, so it never glows as new on a later look', async () => {
+  const gone = Array.from({ length: 149 }, (_, i) => 'https://gone.example/' + i);
+  const first = ['https://shopgoodwill.com/item/pyrex-0', ...gone];   /* the oldest entry is still listed */
+  const p = await results({ storage: { 'prowl.seenUrls': { pyrex: first } } });
+  await tick(900);
+  const shown = p.$$('#otp-sgw .sgw-cell[data-u]').map((c) => c.getAttribute('data-u'));
+  const saved = JSON.parse(p.win.localStorage.getItem('prowl.seenUrls')).pyrex;
+  assert.ok(saved.includes('https://shopgoodwill.com/item/pyrex-0'), 'kept: it is still listed');
+  for (const u of shown) assert.ok(saved.includes(u), u + ' is remembered');
+  assert.ok(saved.length <= Math.max(150, shown.length), 'capped');
+  await p.close();
+  const q = await results({ storage: { 'prowl.seenUrls': { pyrex: saved } } });
+  await tick(900);
+  assert.equal(q.$$('#otp-sgw .sgw-cell[data-fresh]').length, 0, 'next look: nothing new');
+  await q.close();
 });
 
 test('starting a hunt sparkles at the button, the panther pounces and walks across; all of it is cleared away', async () => {
@@ -182,17 +442,33 @@ test('reduced motion: no rising cards, no glow, no sparks, no panther walk', asy
 });
 
 test('every motion style is inside prefers-reduced-motion: no-preference, and cards rise with fill backwards', () => {
-  const block = /<!-- v6\.68 Prowl magic[\s\S]*?<style>([\s\S]*?)<\/style>/.exec(PAGE)[1].trim();
-  assert.match(block, /^@media \(prefers-reduced-motion:no-preference\)\{[\s\S]*\}$/);
+  const block = /<!-- v6\.\d+ Prowl magic[\s\S]*?<style>([\s\S]*?)<\/style>/.exec(PAGE)[1].replace(/\/\*[\s\S]*?\*\//g, '').trim();
+  const head = '@media (prefers-reduced-motion:no-preference){';
+  assert.ok(block.startsWith(head), 'one media block');
+  let depth = 0, end = -1;
+  for (let i = head.length - 1; i < block.length; i++) { if (block[i] === '{') depth++; else if (block[i] === '}' && --depth === 0) { end = i; break; } }
+  assert.equal(end, block.length - 1, 'nothing after the media block closes: every rule is inside it');
+  for (const m of block.matchAll(/@keyframes (\w+)/g)) assert.ok(block.indexOf(m[0]) < end);
   assert.match(block, /\.pm-in\{animation:pmIn [^}]*backwards\}/, 'not both: a card keeps its own hover lift afterwards');
 });
 
 /* ---------- copy ---------- */
 
-test("the photo check limits in the copy are the worker's", () => {
+test("the photo check limits in the copy are the worker's, everywhere they are quoted", () => {
   const free = Number(/const PHOTO_FREE_PER_DAY = (\d+);/.exec(WORKER)[1]), pro = Number(/const PHOTO_PRO_PER_DAY = (\d+);/.exec(WORKER)[1]);
-  const words = ['zero', 'One', 'Two', 'Three'];
-  assert.ok(PAGE.includes('Free: ' + free + ' photo check' + (free === 1 ? '' : 's') + ' a day. Prowl Pro: ' + pro + ' a day.'));
-  assert.ok(PAGE.includes(words[free] + ' free check' + (free === 1 ? '' : 's') + ' a day, ' + pro + ' with Prowl Pro.'));
-  assert.doesNotMatch(PAGE, /Two free checks a day|Free: 2 photo checks|15 with Prowl Pro/);
+  const words = ['zero', 'One', 'Two', 'Three'], s = (n) => (n === 1 ? '' : 's');
+  const quotes = [
+    'Free: ' + free + ' photo check' + s(free) + ' a day. Prowl Pro: ' + pro + ' a day.',
+    words[free] + ' free check' + s(free) + ' a day, ' + pro + ' with Prowl Pro.',
+    "'Prowl Pro: " + pro + " photo checks a day.'",
+    "'" + pro + " a day with Prowl Pro'",
+    'Pro members get ' + pro + ' a day',
+    "['Photo checks','" + free + " a day','" + pro + " a day']",
+    'plus ' + pro + ' photo checks a day',
+    free + ' photo check' + s(free) + ' and 1 Fair price check a day',
+  ];
+  for (const q of quotes) assert.ok(PAGE.includes(q), q);
+  /* and no other number next to a photo check */
+  for (const m of PAGE.matchAll(/(\d+) (?:free )?photo checks? a day/g)) assert.ok([free, pro].includes(Number(m[1])), m[0]);
+  assert.doesNotMatch(PAGE, /Two free checks a day|Free: 2 photo checks|2 photo checks a day|15 with Prowl Pro/);
 });

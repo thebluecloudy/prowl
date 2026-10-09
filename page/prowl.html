@@ -120,7 +120,6 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
    away to show it; the word flies up into the header's Prowl. Once a launch (sessionStorage), a tap or a key skips it,
    and never under reduced motion. ?curtain=1 shows it on any page, ?curtain=0 never. */
 .pc-loader{position:fixed;inset:0;z-index:2147483600;overflow:hidden;color:var(--ink,#1C1815);font-family:var(--display,'Bricolage Grotesque',system-ui,sans-serif);cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
-.pc-loader.is-out{pointer-events:none}
 .pc-panels{position:absolute;inset:0;display:flex}
 .pc-panels>i{flex:1 1 0;margin-right:-1px;background:var(--bg,#FAF6EE);transform:translate3d(0,0,0);will-change:transform;transition:transform 1s cubic-bezier(.76,0,.24,1);transition-delay:calc(var(--p) * 65ms)}
 .pc-loader.is-out .pc-panels>i{transform:translate3d(0,-101%,0)}
@@ -130,7 +129,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .pc-content{position:absolute;z-index:2;left:50%;top:50%;width:min(40vw,560px);transform:translate(-50%,-50%);perspective:900px;visibility:hidden}
 .pc-loader.is-ready .pc-content{visibility:visible}
 .pc-loader.is-out .pc-content{perspective:none}
-.pc-mark{display:block;font-weight:800;text-transform:uppercase;letter-spacing:.5em;line-height:.78;white-space:nowrap;font-size:8vw;transform-origin:0 0;will-change:transform}
+.pc-mark{display:block;font-optical-sizing:none;font-weight:800;text-transform:uppercase;letter-spacing:.5em;line-height:.78;white-space:nowrap;font-size:8vw;transform-origin:0 0;will-change:transform}
 .pc-loader.is-ready .pc-mark{animation:pcSpread 1.9s cubic-bezier(.2,.7,.2,1) both}
 .pc-mark span{display:inline-block;opacity:0}
 .pc-loader.is-ready .pc-mark span{animation:pcIn 1.15s cubic-bezier(.16,.84,.3,1) both;animation-delay:calc(120ms + var(--i) * 62ms)}
@@ -145,7 +144,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .pc-pct em{font-style:normal;opacity:.45;margin-left:.35em}
 @keyframes pcMeta{from{opacity:0;transform:translate3d(0,14px,0)}to{opacity:1;transform:none}}
 .pc-loader.is-out .pc-rule,.pc-loader.is-out .pc-meta{opacity:0;transform:translate3d(0,16px,0);transition:opacity .4s ease,transform .5s cubic-bezier(.76,0,.24,1);animation:none}
-.pc-measure{position:absolute;visibility:hidden;pointer-events:none;top:-9999px;left:-9999px;white-space:nowrap;font-weight:800;text-transform:uppercase;letter-spacing:.5em;font-size:200px}
+.pc-measure{position:absolute;visibility:hidden;pointer-events:none;top:-9999px;left:-9999px;white-space:nowrap;font-optical-sizing:none;font-weight:800;text-transform:uppercase;letter-spacing:.5em;font-size:200px}
 @media(max-width:760px){.pc-meta{gap:1.2em;font-size:9px}.pc-label{display:none}}
 @media(max-width:639px){.pc-content{width:70vw}}
 </style>
@@ -164,6 +163,23 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
   var MIN_MS=1600,MAX_MS=5000,EASE=4,FLIP_MS=1050,FLIP_DELAY=200,FLIP_EASE='cubic-bezier(.72,0,.16,1)',FINISH_AT=1290;
   var L=document.createElement('div'),h='<div class="pc-panels">',i,W='PROWL';
   L.className='pc-loader';L.setAttribute('aria-hidden','true');
+  /* The app's colours come later (its stylesheet, applyTheme, the New look's palette on the wrapper), so the curtain
+     brings its own, picked the way the app picks them: the saved theme, else the device's dark or light; the New
+     look unless Classic is chosen. Keep in step with :root, [data-theme=...] and the .k2 palettes below. */
+  var th='light',k2=true,PAL;
+  try{
+    th=localStorage.getItem('prowl.theme')||'';
+    if(!/^(light|dark|midnight|uranium)$/.test(th))th=mm('(prefers-color-scheme: dark)')?'dark':'light';
+    k2=!(/[?&]look=1(&|$)/.test(location.search)||(localStorage.getItem('prowl.look')==='1'&&!/[?&]look=2(&|$)/.test(location.search)));
+  }catch(e){}
+  PAL={   /* --bg, --ink, --ln, --ac, --ac-ring */
+    light:['#FAF6EE','#1C1815','#E7DED1',k2?'#C2491F':'#B0522B',k2?'rgba(194,73,31,.18)':'rgba(176,82,43,.14)'],
+    dark:k2?['#0B1430','#F1F4FB','#2C4478','#F2A743','rgba(242,167,67,.3)']:['#070706','#f5f3ee','#2a2a26','#ffb200','rgba(255,178,0,.24)'],
+    midnight:['#070706','#f5f3ee','#2a2a26',k2?'#F2A743':'#ffb200',k2?'rgba(242,167,67,.3)':'rgba(255,178,0,.24)'],
+    uranium:['#040414','#8affb8','rgba(57,255,20,.20)','#39ff14','rgba(57,255,20,.35)']
+  }[th];
+  L.setAttribute('data-pc',th+(k2?'':' classic'));
+  L.style.cssText='--bg:'+PAL[0]+';--ink:'+PAL[1]+';--ln:'+PAL[2]+';--ac:'+PAL[3]+';--ac-ring:'+PAL[4];
   for(i=0;i<6;i++)h+='<i style="--p:'+i+'"></i>';
   h+='<span class="pc-glow"></span></div><div class="pc-content"><div class="pc-mark">';
   for(i=0;i<W.length;i++)h+='<span style="--i:'+i+'">'+W.charAt(i)+'</span>';
@@ -197,7 +213,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
       if(tr&&tr.width&&tr.bottom>0&&tr.top<window.innerHeight&&mark.animate){
         /* scale by font size and land on the header word's middle (it is lower case and tight, the intro word wide),
            fading as it arrives, so the header's own Prowl takes over */
-        var sc=parseFloat(getComputedStyle(t).fontSize)/parseFloat(getComputedStyle(mark).fontSize),fr=textRect(mark),o=mark.getBoundingClientRect();
+        var wz=t.closest('.scout-app-wrapper'),z=(wz&&parseFloat(wz.style.zoom))||1;   /* text size Large/Extra large zoom the header */
+        var sc=z*parseFloat(getComputedStyle(t).fontSize)/parseFloat(getComputedStyle(mark).fontSize),fr=textRect(mark),o=mark.getBoundingClientRect();
         var dx=tr.left+tr.width/2-o.left-sc*(fr.left+fr.width/2-o.left),dy=tr.top+tr.height/2-o.top-sc*(fr.top+fr.height/2-o.top);
         mark.animate([{transform:'none',opacity:1},{opacity:1,offset:0.78},{transform:'translate3d('+dx.toFixed(2)+'px,'+dy.toFixed(2)+'px,0) scale('+sc.toFixed(4)+')',opacity:0}],
           {duration:FLIP_MS,delay:FLIP_DELAY,easing:FLIP_EASE,fill:'forwards'});
@@ -219,8 +236,13 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     requestAnimationFrame(tick);
   }
   function skipNow(){skip=true;go();shown=1;bar.style.transform='scaleX(1)';pct.textContent='100';reveal()}
-  function key(e){if(!done){skipNow();if(e.key==='Escape')e.preventDefault()}}
-  L.addEventListener('click',skipNow);   /* click, not pointerdown: the tap ends on the curtain, never on the app beneath */
+  function key(e){   /* until the curtain is gone, Space, Page Up/Down, arrows, Home and End must not scroll the app beneath */
+    var t=e.target,typing=t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName||''));
+    if(e.key==='Escape'||(!typing&&/^( |Spacebar|PageUp|PageDown|ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Home|End)$/.test(e.key)))e.preventDefault();
+    if(!done)skipNow();
+  }
+  L.addEventListener('click',skipNow);   /* click, not pointerdown: the tap ends on the curtain, never on the app beneath; and
+     the curtain keeps every tap until it is removed, so a second tap during the lift cannot press what is underneath */
   L.addEventListener('wheel',function(e){e.preventDefault()},{passive:false});
   document.addEventListener('keydown',key,true);
   requestAnimationFrame(tick);
@@ -1812,7 +1834,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
      skips the Worker's daily caps. Kept in prowl.owner, outside the backup. */
   try{var om=/[?&]owner=([A-Za-z0-9_-]{12,80})/.exec(location.search);if(om){localStorage.setItem('prowl.owner',om[1]);if(history.replaceState)history.replaceState(null,'',location.pathname);} }catch(e){}
   function OH(){var h={'Content-Type':'application/json'};try{var k=localStorage.getItem('prowl.owner');if(k&&/^[A-Za-z0-9_-]{12,80}$/.test(k))h['X-Prowl-Owner']=k;}catch(e){}return window.prowlAuth?window.prowlAuth(h):h;}   /* v6.44: + Bearer */
-  /* v5.93: free = 2 photo checks a day, Prowl Pro = 15. The Worker counts;
+  /* v5.93: free and Prowl Pro photo checks a day: the worker's PHOTO_FREE_PER_DAY and PHOTO_PRO_PER_DAY (1 and 25 in v6.69). The Worker counts;
      signed-in members send their Prowl Alerts email + token so Pro is seen. */
   var LF=document.getElementById('otp-aprLeft');
   function lsG(k){try{return localStorage.getItem('prowl.'+k)||'';}catch(e){return '';} }
@@ -4178,12 +4200,17 @@ function seenUrls(k){
   for(i=0;i<LIVE_SRC.length;i++){c=lv[LIVE_SRC[i].id]&&lv[LIVE_SRC[i].id].cache[k];if(c&&c.items&&!c.err)for(j=0;j<c.items.length;j++)out.push(c.items[j].url);}
   return out;
 }
+/* v6.69: the listings on screen move to the newest end and the cap never cuts them, so a listing that stays up is never
+   dropped and then called "new" (the glow) on a later look. Only listings that are gone fall off the old end. */
+var SEEN_CAP=150;
 function seenMark(k){
-  var S=seenLoad(),u=seenUrls(k),old=S[k]||[],set={},i,n=0;
+  var S=seenLoad(),u=seenUrls(k),old=S[k]||[],now={},out=[],i;
   if(!u.length)return;
-  for(i=0;i<old.length;i++)set[old[i]]=1;
-  for(i=0;i<u.length;i++)if(!set[u[i]]){set[u[i]]=1;old.push(u[i]);n++}
-  if(!S[k]||n){S[k]=old.slice(-150);seenSave()}
+  for(i=0;i<u.length;i++)now[u[i]]=1;
+  for(i=0;i<old.length;i++)if(!now[old[i]])out.push(old[i]);
+  for(i=0;i<u.length;i++)if(now[u[i]]===1){now[u[i]]=2;out.push(u[i])}
+  out=out.slice(-Math.max(SEEN_CAP,u.length));
+  if(!S[k]||out.join('\n')!==old.join('\n')){S[k]=out;seenSave()}
 }
 /* v6.69: listings of hunt k that were not seen before this visit (FRESH), measured against what was seen when the hunt
    was first shown this visit (FRESH_BASE): results come in one marketplace at a time and each is marked seen as it is
@@ -4199,7 +4226,7 @@ function freshPaint(el){var cs=el.querySelectorAll('.sgw-cell[data-u]'),i;for(i=
 function seenNew(k){
   var S=seenLoad(),u=seenUrls(k),i,set={},n=0;
   if(!u.length)return 0;
-  if(!S[k]){S[k]=u.slice(-150);seenSave();return 0}   /* first look: nothing is "new" yet */
+  if(!S[k]){S[k]=u.slice(-Math.max(SEEN_CAP,u.length));seenSave();return 0}   /* first look: nothing is "new" yet */
   for(i=0;i<S[k].length;i++)set[S[k][i]]=1;
   for(i=0;i<u.length;i++)if(!set[u[i]])n++;
   return n;
@@ -7413,15 +7440,16 @@ try{loadSGW()}catch(e){}
 </script>
 
 <!-- v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
-     shadow stalls phones), scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
+     shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
      under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing. -->
 <style>
 @media (prefers-reduced-motion:no-preference){
 /* backwards, not both: once a card has risen in, its own hover lift (a transform) works again */
 .scout-app-wrapper .pm-in{animation:pmIn .55s cubic-bezier(.2,.8,.2,1) backwards}
 @keyframes pmIn{0%{opacity:0;transform:translateY(10px) scale(.97)}60%{opacity:1}100%{opacity:1;transform:none}}
-.scout-app-wrapper .pm-rel{position:relative}
-.scout-app-wrapper .pm-halo{position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 1.5px var(--ac),0 0 18px var(--ac);opacity:0;animation:pmHalo 2.6s ease-in-out 2;z-index:2}
+.scout-app-wrapper .sgw-cell[data-fresh] .sgw-card{position:relative}
+/* the card clips its corners (overflow:hidden), so the glow is drawn inside its edge */
+.scout-app-wrapper .pm-halo{position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 1.5px var(--ac),inset 0 0 16px var(--ac);opacity:0;animation:pmHalo 2.6s ease-in-out 2;z-index:2}
 @keyframes pmHalo{0%{opacity:0}35%{opacity:.75}100%{opacity:0}}
 .scout-app-wrapper .pm-uni{position:absolute;top:4px;right:6px;font-size:18px;line-height:1;pointer-events:none;z-index:3;opacity:0;animation:pmUni 2.2s ease-out forwards}
 @keyframes pmUni{0%{opacity:0;transform:translateY(8px) rotate(-12deg) scale(.6)}25%{opacity:1;transform:translateY(-4px) rotate(6deg) scale(1.1)}70%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-14px)}}
@@ -7433,10 +7461,11 @@ try{loadSGW()}catch(e){}
 @keyframes pmWalk{0%{opacity:0;transform:translateX(-70px)}10%{opacity:.85}90%{opacity:.85}100%{opacity:0;transform:translateX(calc(100vw + 10px))}}
 .scout-app-wrapper #otp-pan.pm-pounce img{animation:pmPounce .7s cubic-bezier(.3,1.6,.5,1)}
 @keyframes pmPounce{0%{transform:none}30%{transform:translateY(4px) scale(.96,1.03)}60%{transform:translateY(-6px) scale(1.04,.98)}100%{transform:none}}
-/* a sheen across a hunt chip on hover (Hark drew it for the old quick-search chips); a moving background, so nothing is
-   clipped or moved */
-.scout-app-wrapper .sgw-chip:hover{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.4) 50%,transparent 70%);background-size:250% 100%;background-repeat:no-repeat;animation:pmSheen .8s ease-out}
-[data-theme=uranium] .scout-app-wrapper .sgw-chip:hover{background-image:linear-gradient(100deg,transparent 30%,rgba(57,255,20,.35) 50%,transparent 70%)}
+/* a sheen across a hunt chip as the pointer comes onto it (Hark drew it for the old quick-search chips); a moving
+   background, so nothing is clipped or moved. Played once per hover by the script, not on :hover, which would start it
+   again each time the panel redraws under a resting pointer */
+.scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.4) 50%,transparent 70%);background-size:250% 100%;background-repeat:no-repeat;animation:pmSheen .8s ease-out}
+[data-theme=uranium] .scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(57,255,20,.35) 50%,transparent 70%)}
 @keyframes pmSheen{0%{background-position:130% 0}100%{background-position:-30% 0}}
 }
 </style>
@@ -7450,7 +7479,7 @@ try{loadSGW()}catch(e){}
   var root=document.querySelector('.scout-app-wrapper');
   if(!root||!window.MutationObserver||!window.requestAnimationFrame)return;
   function lively(){try{return !window.matchMedia||!window.matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}}
-  var CARD='.sgw-card,.hit,.found-card',ROSE=Object.create(null),HALO=Object.create(null),UNI=null,unicorns=1,walking=false,queue=[],queued=false;
+  var CARD='.sgw-card,.hit,.found-card',ROSE=Object.create(null),HALO=Object.create(null),UNI=null,unicorns=1,walking=false,queue=[],queued=false,wait=[],tries=0,waitT=0;
   function gone(el,ms){setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el)},ms)}
   function accent(){var c='';try{c=getComputedStyle(root).getPropertyValue('--ac').trim()}catch(e){}return c||'#B0522B'}
   function key(el){var c=el.closest('[data-u]');return (c&&c.getAttribute('data-u'))||el.getAttribute('href')||(el.textContent||'').slice(0,80)}
@@ -7473,6 +7502,8 @@ try{loadSGW()}catch(e){}
   function walk(){
     var src=document.getElementById('otp-panImg');if(walking||!src||!src.getAttribute('src'))return;
     walking=true;var w=document.createElement('img');w.className='pm-walk';w.alt='';w.setAttribute('aria-hidden','true');w.src=src.getAttribute('src');
+    var d=document.getElementById('otp-dock'),r=d&&d.getBoundingClientRect();   /* just above the dock, at any text size */
+    if(r&&r.height&&r.top>0&&r.top<window.innerHeight)w.style.bottom=Math.round(window.innerHeight-r.top+8)+'px';
     document.body.appendChild(w);
     setTimeout(function(){if(w.parentNode)w.parentNode.removeChild(w);walking=false},3300);
   }
@@ -7486,39 +7517,69 @@ try{loadSGW()}catch(e){}
   if(sf)sf.addEventListener('submit',function(){startHunt(sf.querySelector('button[type=submit]'))});
   ['otp-sa','otp-fb'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(){startHunt(b)})});
   root.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('[data-sgw="pick"]')){unicorns=1;UNI=null}},true);   /* picking a hunt */
+  /* the chip sheen: once as the pointer comes onto a chip; the same chip redrawn under a resting pointer does not replay it */
+  var sheenK='',sheenT=0;
+  root.addEventListener('mouseover',function(e){
+    var c=e.target&&e.target.closest&&e.target.closest('.sgw-chip'),k,n;if(!c||!lively())return;
+    k=(c.getAttribute('data-t')||c.textContent||'').slice(0,80);n=Date.now();
+    if(k===sheenK&&n-sheenT<4000){sheenT=n;return}
+    sheenK=k;sheenT=n;c.classList.remove('pm-sheen');void c.offsetWidth;c.classList.add('pm-sheen');
+    setTimeout(function(){c.classList.remove('pm-sheen')},900);
+  });
+  root.addEventListener('mouseout',function(e){var c=e.target&&e.target.closest&&e.target.closest('.sgw-chip');if(c&&!c.contains(e.relatedTarget))sheenT=0});
   function decorate(){
     queued=false;
-    var list=queue.splice(0,queue.length),k=0,i,el,id,t=Date.now(),left,cell,h,u;
-    if(!lively())return;
+    var list=queue.splice(0,queue.length),live=lively(),k=0,i,el,id,t=Date.now(),left,cell,h,u,fresh=[];
     for(i=0;i<list.length;i++){   /* every card: a redraw of the panel adds 100 and more, the results after the links */
-      el=list[i];if(!el.isConnected)continue;
+      el=list[i].el;if(!el.isConnected)continue;
       id=key(el);
-      if(ROSE[id]===undefined){ROSE[id]=t+Math.min(k*45,600);k++}   /* when its rise begins */
-      left=ROSE[id]+550-t;
-      if(left>0){   /* a negative delay starts it part-way through */
-        el.style.animationDelay=(ROSE[id]-t)+'ms';el.classList.add('pm-in');
-        (function(x,ms){setTimeout(function(){x.classList.remove('pm-in');x.style.animationDelay=''},ms)})(el,left+150);
+      /* drawn while nobody could watch it rise (the tab hidden, or reduced motion on): shown as it is from now on, so a
+         later redraw does not make it vanish and rise again */
+      if(!live||list[i].h){if(ROSE[id]===undefined)ROSE[id]=0}
+      else{
+        if(ROSE[id]===undefined){ROSE[id]=t+Math.min(k*45,600);k++}   /* when its rise begins */
+        left=ROSE[id]+550-t;
+        if(left>0){   /* a negative delay starts it part-way through */
+          el.style.animationDelay=(ROSE[id]-t)+'ms';el.classList.add('pm-in');
+          (function(x,ms){setTimeout(function(){x.classList.remove('pm-in');x.style.animationDelay=''},ms)})(el,left+150);
+        }
       }
-      /* the glow (two 2.6s pulses) and the unicorn (2.2s), carried on part-way on a redrawn card, like the rise */
       cell=el.closest('.sgw-cell');
-      if(cell&&cell.getAttribute('data-fresh')&&!el.closest('#otp-flock')){
-        if(HALO[id]===undefined)HALO[id]=t;
-        if(!UNI&&unicorns>0){unicorns--;UNI={id:id,t:t}}
-        left=HALO[id]+5200-t;
-        if((left>0||(UNI&&UNI.id===id))&&window.getComputedStyle(el).position==='static')el.classList.add('pm-rel');
-        if(left>0){h=document.createElement('i');h.className='pm-halo';h.setAttribute('aria-hidden','true');h.style.animationDelay=(HALO[id]-t)+'ms';el.appendChild(h);gone(h,left+100)}
-        if(UNI&&UNI.id===id&&(left=UNI.t+2200-t)>0){u=document.createElement('i');u.className='pm-uni';u.setAttribute('aria-hidden','true');u.style.animationDelay=(UNI.t-t)+'ms';u.textContent='\uD83E\uDD84';el.appendChild(u);gone(u,left+100)}
-      }
+      if(live&&cell&&cell.getAttribute('data-fresh')&&!el.closest('#otp-flock'))fresh.push(el);
+    }
+    if(!fresh.length)return;
+    /* the glow and the unicorn start only where they can be seen: not under the curtain, not on a hidden panel (Daily or
+       Flock open over it); until then they wait, looked at again every half second for up to two minutes */
+    if(document.querySelector('.pc-loader')||!fresh[0].getClientRects().length){
+      if(tries>=240)return;   /* given up: nothing is kept */
+      for(i=0;i<wait.length;i++)if(wait[i].isConnected&&fresh.indexOf(wait[i])<0)fresh.push(wait[i]);
+      wait=fresh;   /* only cards still on the page */
+      if(!waitT)waitT=setTimeout(function(){
+        waitT=0;tries++;
+        for(var j=0;j<wait.length;j++)if(wait[j].isConnected)queue.push({el:wait[j],h:true});
+        wait=[];
+        if(queue.length&&!queued){queued=true;requestAnimationFrame(decorate)}
+      },500);
+      return;
+    }
+    tries=0;
+    for(i=0;i<fresh.length;i++){   /* the glow (two 2.6s pulses) and the unicorn (2.2s), carried on part-way on a redrawn card, like the rise */
+      el=fresh[i];id=key(el);
+      if(HALO[id]===undefined)HALO[id]=t;
+      if(!UNI&&unicorns>0){unicorns--;UNI={id:id,t:t}}
+      left=HALO[id]+5200-t;
+      if(left>0&&!el._pmHalo){el._pmHalo=1;h=document.createElement('i');h.className='pm-halo';h.setAttribute('aria-hidden','true');h.style.animationDelay=(HALO[id]-t)+'ms';el.appendChild(h);gone(h,left+100)}
+      if(UNI&&UNI.id===id&&!el._pmUni&&(left=UNI.t+2200-t)>0){el._pmUni=1;u=document.createElement('i');u.className='pm-uni';u.setAttribute('aria-hidden','true');u.style.animationDelay=(UNI.t-t)+'ms';u.textContent='\uD83E\uDD84';el.appendChild(u);gone(u,left+100)}
     }
   }
-  function collect(n){
+  function collect(n,h){
     if(n.nodeType!==1)return;
-    if(n.matches&&n.matches(CARD))queue.push(n);
-    else if(n.querySelectorAll){var c=n.querySelectorAll(CARD);for(var i=0;i<c.length;i++)queue.push(c[i])}
+    if(n.matches&&n.matches(CARD))queue.push({el:n,h:h});
+    else if(n.querySelectorAll){var c=n.querySelectorAll(CARD);for(var i=0;i<c.length;i++)queue.push({el:c[i],h:h})}
   }
   new MutationObserver(function(muts){
-    if(document.hidden)return;
-    for(var i=0;i<muts.length;i++){var a=muts[i].addedNodes;for(var j=0;j<a.length;j++)collect(a[j])}
+    var h=!!document.hidden;   /* noted, not skipped: see decorate */
+    for(var i=0;i<muts.length;i++){var a=muts[i].addedNodes;for(var j=0;j<a.length;j++)collect(a[j],h)}
     if(queue.length&&!queued){queued=true;requestAnimationFrame(decorate)}
   }).observe(root,{childList:true,subtree:true});
 })();
