@@ -63,20 +63,39 @@ test('installed app: the held star is saved when the app comes back signed in, w
     storage: { 'prowl.v36': { seen: true, hunts: [] } },
     beforeLoad: (win) => win.sessionStorage.setItem('prowl.pendStar', JSON.stringify({ ...HELD, at: Date.now() })),
   });
-  await waitFor(() => f.calls.filter((u) => /apps\/prowl\/me/.test(u)).length >= 2);
+  const nme = () => f.calls.filter((u) => /apps\/prowl\/me/.test(u)).length;
+  /* every load-time check has answered "signed out": the greeting's, the held star's, and shopCheck's at 900 ms */
+  await waitFor(() => nme() >= 3, { timeout: 4000 });
   await tick(60);
   assert.equal(ls(p, 'prowl.finds'), null, 'not signed in yet');
   assert.ok(p.win.sessionStorage.getItem('prowl.pendStar'), 'held, not dropped: the sign-in may still be going on');
-  /* the sign-in finishes in the browser panel; the app comes back to the front */
+  /* the sign-in finishes in the browser panel, and the app comes back to the front */
   Object.assign(me, { in: true, id: '1', e: 'a@b.co', first: 'Ann', ts: 1, sig: 'x' });
-  await tick(4100);   /* past the 4s guard against focus, pageshow and visibilitychange arriving together */
+  await tick(3300);   /* clears the 4 s guard set by the load-time try */
+  const n0 = nme();
   p.doc.dispatchEvent(new p.win.Event('visibilitychange'));
+  p.win.dispatchEvent(new p.win.Event('focus'));
+  p.win.dispatchEvent(new p.win.Event('pageshow'));
+  assert.equal(nme(), n0 + 1, 'one store check for the three wake events');
   await waitFor(() => ls(p, 'prowl.finds'));
   assert.equal(ls(p, 'prowl.finds')[0].url, HELD.url);
   assert.equal(p.win.sessionStorage.getItem('prowl.pendStar'), null);
   await waitFor(() => /Saved/.test(p.$('#otp-toast').textContent));
   assert.equal(p.$('#otp-den').hidden, true, 'no Prowl Alerts settings opened over the feed');
   assert.match(hi(p).textContent, /Hi, Ann/);
+  await p.close();
+});
+
+test('signing out of Prowl only says the store account stays signed in when it is', async () => {
+  const f = liveFetch({ me: { in: false } });
+  const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.v36': { seen: true, hunts: [] }, 'prowl.alertTok': 'T'.repeat(24), 'prowl.alertEmail': 'a@b.co' } });
+  await waitFor(() => f.calls.some((u) => /apps\/prowl\/me/.test(u)));
+  await tick(1200);
+  const out = p.$('.otp-mail [data-mail="signout"]');
+  assert.ok(out, 'the Prowl Alerts box offers Sign out');
+  out.click();
+  await tick(30);
+  assert.doesNotMatch(p.$('.otp-mail').textContent, /stays signed in/, 'an email-only member has no store sign-in to keep');
   await p.close();
 });
 

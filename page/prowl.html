@@ -1774,10 +1774,15 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
   function priceIt(fj,data){
     var pb={mode:'price',item:fj.item,search:fj.search||'',looks:(fj.looks||[]).slice(0,3),price:P.value||''};
     if(lsG('alertTok')&&lsG('alertEmail')){pb.e=lsG('alertEmail');pb.t=lsG('alertTok');}   /* v6.64: Pro members get their own count on the price step (worker v93), as on the photo check */
-    return fetch(API,{method:'POST',headers:OH(),body:JSON.stringify(pb)}).then(function(res){return res.ok?res.json():null;}).then(function(pj){
-      if(pj&&pj.fair){if(pj.name&&typeof pj.name==='string'&&!/\(maker you entered\)|\(your ID\)/.test(fj.item||''))fj.item=String(pj.name).slice(0,120);fj.fair=pj.fair;fj.verdict=pj.verdict||fj.verdict;fj.why=pj.why||fj.why;fj.basis=pj.basis||'sold';}else{fj.basis='estimate';}
+    var st=0;
+    /* v6.64: with no answer the "Checking sold prices" placeholder never stands in for a price (Share drew it on the card),
+       and a daily limit or a busy moment says so instead of "could not be checked" */
+    function noPrice(){if(/^Checking sold prices/.test(fj.fair||''))fj.fair='';}
+    return fetch(API,{method:'POST',headers:OH(),body:JSON.stringify(pb)}).then(function(res){st=res.status;return res.ok?res.json():res.json().then(function(j){return {_err:(j&&j.error)||''};},function(){return null;});}).then(function(pj){
+      if(pj&&pj.fair){if(pj.name&&typeof pj.name==='string'&&!/\(maker you entered\)|\(your ID\)/.test(fj.item||''))fj.item=String(pj.name).slice(0,120);fj.fair=pj.fair;fj.verdict=pj.verdict||fj.verdict;fj.why=pj.why||fj.why;fj.basis=pj.basis||'sold';}
+      else{noPrice();fj.basis=st===429?(/^busy/.test((pj&&pj._err)||'')?'busy':'limit'):'estimate';}
       show(fj,data);
-    }).catch(function(){fj.basis='estimate';show(fj,data);});
+    }).catch(function(){noPrice();fj.basis='estimate';show(fj,data);});
   }
   function warn(t){while(O.firstChild)O.removeChild(O.firstChild);var p=document.createElement('p');p.className='apr-warn';p.setAttribute('role','alert');p.textContent=t;O.appendChild(p);try{O.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}}
   function shrink(file,cb){
@@ -1884,7 +1889,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     if(RESEARCH_ON&&r.basis!=='pending'&&hq){var rsb=document.createElement('button');rsb.type='button';rsb.className='b';rsb.textContent='Research this piece';rsb.addEventListener('click',function(){researchIt(hq,rsb,r,src);});L.appendChild(rsb);}
     if(L.firstChild)O.appendChild(L);
     if(r.basis!=='pending'&&hq)guideLink(hq);
-    var n=document.createElement('p');n.className='apr-note';n.textContent=r.basis==='pending'?'Found it. Now checking recent sold prices\u2026':r.basis==='sold'?'A gut check from the photo, not an appraisal.':'Estimate only: sold prices could not be checked just now.';O.appendChild(n);
+    var n=document.createElement('p');n.className='apr-note';n.textContent=r.basis==='pending'?'Found it. Now checking recent sold prices\u2026':r.basis==='sold'?'A gut check from the photo, not an appraisal.':r.basis==='limit'?'You have used today\u2019s price lookups. They reset tomorrow.':r.basis==='busy'?'Prowl is busy right now. Try again in a little while.':r.fair?'Estimate only: sold prices could not be checked just now.':'Sold prices could not be checked just now.';   /* v6.64: limit, busy */O.appendChild(n);
   }
   /* v5.53 Research this piece: the Worker runs a web-search model (Meta Muse) and returns plain fields plus sources. */
   var RESEARCH_ON=true,RAPI='https://prowl.thebluecloud.workers.dev/research';
@@ -4799,7 +4804,7 @@ function mailSignout(){
   sessSet('');setTimeout(hiRender,0);   /* v6.44; v6.64: the store account stays signed in, so its greeting and Log out stay */
   mSet('alertTok','');mSet('alertSig','');mSet('alertWait','');mSet('alertPro','');mSet('alertNoAuto','1');
   MAIL.store=undefined;MAIL.storeAsk=0;MAIL.moving='';MAIL.chg=false;
-  MAIL.shop=null;MAIL.plan=null;MAIL.prefs=null;MAIL.msg='Signed out of Prowl on this device. Your alerts keep coming. (Your Owl & Twig account stays signed in; log out of it under Account.)';rMail();
+  MAIL.shop=null;MAIL.plan=null;MAIL.prefs=null;MAIL.msg='Signed out of Prowl on this device. Your alerts keep coming.'+(MAIL.storeIn===true?' (Your Owl & Twig account stays signed in; log out of it under Account.)':'');rMail();   /* v6.64: only when the store says so */
 }
 /* v5.81: one-time sign-in link for an existing member on a new device. */
 function mailSignin(v){

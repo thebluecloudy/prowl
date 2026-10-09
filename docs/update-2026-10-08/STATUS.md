@@ -26,7 +26,8 @@ Cloudflare rate-limit binding would only add per-minute pacing for Pro members a
 it.
 
 Worker v93 closed the remaining gaps:
-- A "busy now" answer, or a failed AI call, gives the visitor's free check back.
+- A request refused before any paid call ("busy now", or a full network) gives the visitor's check back. A failed AI
+  call does not, so a listing cannot be made to fail on purpose and retried for free.
 - Research and the photo price step have a per-network cap.
 - A test runs the real counters.
 
@@ -56,7 +57,10 @@ Already in place:
 - The mailbox address, in `ALERT_ADDRESS` in `wrangler.toml`.
 
 Worker v93 fixed:
-- The purge left `moved:` and `mv:` records pointing at the address.
+- The purge left `moved:` and `mv:` records pointing at the address, and earlier addresses' Pro cache (`pro:`, which
+  had no expiry; it now expires after 7 days). A newer change-of-address request retires the older link.
+- Counters named after an email address (Pro limits, sign-in, confirm, move, test email, likes sync) now use a salted
+  one-way code, per the no-addresses-in-counters rule.
 - The alert clock logged addresses.
 - A one-click unsubscribe with an old token answered 200.
 - The https link now comes first in List-Unsubscribe.

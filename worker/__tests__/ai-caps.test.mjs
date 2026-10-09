@@ -23,9 +23,10 @@ const Caps = new Function("metricsOp", "metricsPrune", capsSrc + "\nreturn Caps;
 function capsWorld() {
   const objs = new Map();
   const storage = () => { const m = new Map(); let alarm = null; return { get: async (k) => m.get(k), put: async (k, v) => { m.set(k, v); }, delete: async (k) => m.delete(k), getAlarm: async () => alarm, setAlarm: async (t) => { alarm = t; }, list: async () => new Map(m) }; };
-  const world = { broken: false, calls: [] };
+  const world = { broken: false, calls: [], keys: [] };
   world.capsCall = async (name, op, body) => {
     world.calls.push(op);
+    if (body && body.k) world.keys.push(String(body.k));
     if (world.broken) throw new Error("caps down");
     let o = objs.get(name);
     if (!o) objs.set(name, (o = new Caps({ storage: storage() })));
@@ -61,7 +62,7 @@ function load({ answer = "ITEM: Black panther TV lamp, 1955\nVERDICT: FAIR\nFAIR
     MUSE_RESPONSES_URL: "https://ai.invalid", MUSE_MODEL: "m", PCACHE_TTL: 1,
   };
   const keys = Object.keys(deps);
-  const names = ["ip6Parts", "ipKey", "ipNet", "isOwner", "capsDay", "vTake", "vCount", "poolOk", "busyNow", "giveBack",
+  const names = ["ip6Parts", "ipKey", "ipNet", "isOwner", "capsDay", "ctrName", "vTake", "vCount", "poolOk", "busyNow", "giveBack",
     "vClean", "scrubListingText", "sha16", "noCents", "soldCited", "verdictAuction", "verdict", "research"];
   const f = new Function(...keys, consts + "\n" + names.map(indexFn).join("\n") + "\nreturn { " + names.join(", ") + " };")(...keys.map((k) => deps[k]));
   return { ...f, world, time, paid };
@@ -151,11 +152,15 @@ test("counters that cannot be reached mean no, never free", async () => {
   assert.equal(L.paid.length, 0);
 });
 
-test("Pro members have their own ceiling and skip the free pool", async () => {
+test("Pro members have their own ceiling and skip the free pool; their counter never holds the address", async () => {
   const L = load({ pro: "member@example.com" });
   const out = [];
   for (let i = 0; i < 5; i++) out.push(await L.verdict(fp("203.0.113.70"), ENV, ORIGIN));
   assert.ok(out.every((r) => r.status === 200));
+  assert.ok(L.world.keys.length >= 5);
+  for (const k of L.world.keys) assert.doesNotMatch(k, /@|member/, "v93: no addresses in counters: " + k);
+  assert.ok(L.world.keys.every((k) => /^pro:h[0-9a-f]{16}$/.test(k)), "a salted one-way code: " + L.world.keys[0]);
+  assert.equal(new Set(L.world.keys).size, 1, "the same member, the same counter");
 });
 
 test("v93: research has a per-network cap (15 a day) as well as 5 per address", async () => {

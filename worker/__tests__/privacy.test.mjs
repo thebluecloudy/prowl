@@ -151,9 +151,11 @@ test("v93: a purge also removes a pending address change and earlier addresses' 
   kv.set("moved:oldest@example.com", { to: "old@example.com", tok: "S".repeat(24), at: 0 });   /* two changes ago: points at the next address, not the last */
   kv.set("moved:older@example.com", { to: "someone-else@example.com", tok: "x", at: 1 });   /* moved on to another member since */
   kv.set("mv:pending@example.com", { code: "1", from: "other@example.com" });
+  for (const old of sub.prev) kv.set("pro:" + old, { pro: true, at: 1, plan: { order: "#1042", receipt: "https://store.example/r/key" } });
   await P.alPurge(env, EMAIL, sub);
   for (const [k, v] of kv.m) assert.ok(!k.includes(EMAIL) && !String(v).includes(EMAIL), "left behind: " + k + " = " + v);
   assert.equal(kv.m.has("moved:oldest@example.com"), false, "the chain from two changes ago goes too");
+  for (const old of sub.prev) assert.equal(kv.m.has("pro:" + old), false, "the Pro cache of an earlier address: " + old);
   for (const [, v] of kv.m) assert.ok(!String(v).includes("old@example.com\""), "no earlier address left in a value");
   assert.ok(kv.m.has("moved:older@example.com"), "a record that now points at someone else stays");
   assert.ok(kv.m.has("mv:pending@example.com"), "another member's pending change stays");
@@ -196,3 +198,31 @@ test("wired in: Delete in Prowl and the admin delete share alPurge", () => {
   const v = /const WORKER_VERSION = "v(\d+)[a-z]?";/.exec(INDEX);
   assert.ok(v && Number(v[1]) >= 83, "v83 or later");
 });
+
+/* v93: one pending change of address per member. A second request (say, after a typo) retires the first link, so a
+   purge, which follows mvf:, leaves nothing; and a confirm link that is not the member's current one is turned away. */
+test("v93: a newer change-of-address request retires the older link; a purge then leaves no pending change", async () => {
+  let n = 0;
+  const M = fromIndex(["alEmail", "alSame", "alMask", "alMove", "alMoveConfirm", "alPurge"], {
+    kvGet, kvPut, console: quiet, json, ALLOW_ORIGINS: ["o"], alReady: () => true, AL_MOVE_PER_EMAIL: 3,
+    readJson: async (r) => r.body, alAllowed: () => true, vCount: async () => true, alToken: () => "code" + (++n),
+    WORKER_BASE: "https://w", alShell: () => "", alEsc: (x) => x, alSend: async () => ({ ok: true }), alFootText: () => "",
+    alPage: (title) => ({ page: title }), alGate: (title) => ({ gate: title }), alProSet: async () => {}, PROWL_PAGE: "https://p",
+    Response: { redirect: (u) => ({ redirect: u }) },
+  });
+  const kv = new FakeKV(), env = { PROWL_ALERTS: kv }, T = "T".repeat(24);
+  kv.set("sub:" + EMAIL, { email: EMAIL, tok: T, hunts: [] });
+  assert.equal((await M.alMove({ body: { email: EMAIL, to: "t1@example.com", tok: T } }, env, "o")).status, 200);
+  assert.equal((await M.alMove({ body: { email: EMAIL, to: "t2@example.com", tok: T } }, env, "o")).status, 200);
+  assert.equal(kv.m.has("mv:t1@example.com"), false, "the typo'd address's link is retired");
+  assert.ok(kv.m.has("mv:t2@example.com"));
+  /* a link that is not the current pending change is turned away, even with the right code */
+  kv.set("mv:t1@example.com", { code: "code1", from: EMAIL });
+  const stale = await M.alMoveConfirm({ method: "POST" }, env, new URL("https://w/alerts/move-confirm?e=t1%40example.com&c=code1"));
+  assert.equal(stale.page, "Link expired");
+  assert.ok(kv.m.has("sub:" + EMAIL), "nothing moved");
+  kv.m.delete("mv:t1@example.com");
+  await M.alPurge(env, EMAIL, JSON.parse(kv.m.get("sub:" + EMAIL)));
+  for (const [k, v] of kv.m) assert.ok(!k.includes(EMAIL) && !String(v).includes(EMAIL), "left behind: " + k);
+});
+

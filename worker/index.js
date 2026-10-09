@@ -43,7 +43,10 @@
  *        Privacy: the alert clock logs the admin's member id (M-xxxxxxxx), never an address; a purge also removes a
  *        pending address change (mv:) and earlier addresses' forwarding records (moved:) that point at the member;
  *        List-Unsubscribe puts the one-click link before the mailto; Reply-To defaults to hello@; a one-click POST
- *        with an old token answers 400, not 200.
+ *        with an old token answers 400, not 200. Counters named after an email address (Pro limits, sign-in, confirm,
+ *        move, test email, likes sync, Pro recheck) are kept under a salted one-way code (ctrName); counts reset once.
+ *        The Pro cache (pro:<address>) expires after 7 days and a purge removes earlier addresses' copies; a newer
+ *        change-of-address request retires the older link, and a confirm link must be the current one.
  *   v92: 2026-10-09. Depop has no affiliate link. Rakuten closed the publisher account, so the Rakuten deep link and its
  *        publisher id are gone from the worker: Depop is out of AFF_PROGRAMS (so out of GET /aff, the admin Affiliates tab
  *        and the email commission line), and the alert emails' Depop link is always plain. A depop value still in KV
@@ -2122,9 +2125,21 @@ async function statTick(request, env, kind, rawTerm) {
     await capsCall("stats", "tick", { kind: kind, day: day, term: term, h: h });
   } catch (e) { console.error("stat", String(e && e.message || e)); }
 }
+/* v93: no addresses in counters (the owner's rule). A counter named after an email address (the Pro limits, and the
+   sign-in, confirm, move, test-email, likes-sync and Pro-recheck limits) is kept under a salted one-way code of the
+   address instead, the same salt as the admin area's member ids. vTake, vCount and giveBack all go through here, so a
+   count given back lands on the count that was taken. */
+async function ctrName(name) {
+  name = String(name);
+  const i = name.indexOf(":");
+  if (name.indexOf("@", i + 1) === -1) return name;
+  const salt = String((G_ENV && (G_ENV.MEMBER_ID_SALT || G_ENV.ADMIN_KEY)) || "");
+  return name.slice(0, i + 1) + "h" + (await sha16(salt + "|" + name.slice(i + 1)));
+}
 async function vTake(name, limit) {
   /* v51: a counter that errors means "no", never "free". The Cache API path only
      runs when the CAPS binding is absent on purpose (a v47-style deploy). */
+  name = await ctrName(name);
   let j = null;
   try { j = await capsCall(capsDay(), "take", { k: name, lim: limit }); } catch (e) { console.error("caps", String(e && e.message || e)); return -1; }
   if (j) return j.left;
@@ -2142,7 +2157,7 @@ async function vTake(name, limit) {
    only logged: the count then stays taken, which is the safe side. */
 async function giveBack(names, res) {
   for (const k of names) {
-    try { await capsCall(capsDay(), "give", { k: k }); } catch (e) { console.error("caps", String(e && e.message || e)); }
+    try { await capsCall(capsDay(), "give", { k: await ctrName(k) }); } catch (e) { console.error("caps", String(e && e.message || e)); }
   }
   return res;
 }
@@ -2157,6 +2172,7 @@ async function proMember(env, b, request) {
   return s && s.pro ? s.email : null;
 }
 async function vCount(name, limit) {
+  name = await ctrName(name);   /* v93 */
   let j = null;
   try { j = await capsCall(capsDay(), "take", { k: name, lim: limit }); } catch (e) { console.error("caps", String(e && e.message || e)); return false; }   /* v51: fail closed */
   if (j) return j.left >= 0;
@@ -3432,7 +3448,9 @@ async function alProShop(env, email, c, cid) {
       const codes = Array.isArray(o.discountCodes) ? o.discountCodes.map(c => String(c).toUpperCase()) : [];
       if (Number(m.amount || 0) === 0 || codes.indexOf(PRO_TRIAL_CODE) !== -1) { plan.trial = true; plan.amount = "0.00"; plan.next = "7.00"; }
     }
-    await kvPut(env, ck, { pro: ok, at: Date.now(), plan: plan });
+    /* v93: a 6-hour cache, so it expires (7 days): it may hold an order and its receipt link, and records for addresses
+       a member has moved away from, or a deleted member's earlier addresses, were kept forever */
+    await env.PROWL_ALERTS.put(ck, JSON.stringify({ pro: ok, at: Date.now(), plan: plan }), { expirationTtl: 7 * 86400 });
     return { pro: ok, via: cid ? "customer orders" : "orders", plan: plan };
   } catch (e) { return { pro: null, via: "shopify unreachable" }; }
 }
@@ -4325,6 +4343,10 @@ async function alMove(request, env, origin) {
   if (await kvGet(env, "sub:" + to, null)) return json({ error: "That address already has its own Prowl Alerts. Unsubscribe it first, or sign in with it on this device." }, 409, origin);
   if (!(await vCount("almove:" + email, AL_MOVE_PER_EMAIL))) return json({ error: "That is 3 change requests today. Use the newest link in your inbox, or try tomorrow." }, 429, origin);
   const code = alToken();
+  /* v93: one pending change per member: a newer request retires the older link (a typo'd address), so a purge or a
+     cancel that follows mvf: finds every pending change */
+  const pmf = await kvGet(env, "mvf:" + email, null), pto = pmf && typeof pmf.to === "string" ? pmf.to : "";
+  if (pto && pto !== to) { const pm = await kvGet(env, "mv:" + pto, null); if (pm && pm.from === email) await env.PROWL_ALERTS.delete("mv:" + pto); }
   await env.PROWL_ALERTS.put("mv:" + to, JSON.stringify({ code: code, from: email }), { expirationTtl: 86400 });
   await env.PROWL_ALERTS.put("mvf:" + email, JSON.stringify({ to: to }), { expirationTtl: 86400 });
   const link = WORKER_BASE + "/alerts/move-confirm?e=" + encodeURIComponent(to) + "&c=" + code;
@@ -4344,6 +4366,9 @@ async function alMoveConfirm(request, env, url) {
   const c = to ? await kvGet(env, "mv:" + to, null) : null;
   if (!c || !alSame(url.searchParams.get("c"), c.code)) return alPage("Link expired", "Open Prowl, go to Den, then Settings, and tap Change email for a fresh link.");
   const from = alEmail(c.from);
+  /* v93: only the member's current pending change: a superseded, cancelled or purged one is turned away */
+  const pmf = from ? await kvGet(env, "mvf:" + from, null) : null;
+  if (!pmf || pmf.to !== to) return alPage("Link expired", "Open Prowl, go to Den, then Settings, and tap Change email for a fresh link.");
   const sub = from ? await kvGet(env, "sub:" + from, null) : null;
   if (!sub) return alPage("Nothing to move", "Prowl Alerts are no longer on for the old address, so there is nothing to move. Sign up again in Prowl with this address.");
   if (await kvGet(env, "sub:" + to, null)) return alPage("Already in use", "This address already has its own Prowl Alerts. Unsubscribe it first, then ask for a new link in Prowl.");
@@ -4355,6 +4380,7 @@ async function alMoveConfirm(request, env, url) {
   if (moved.cid) await kvPut(env, "cid:" + moved.cid, { email: to });
   await env.PROWL_ALERTS.put("moved:" + from, JSON.stringify({ to: to, tok: sub.tok, at: Date.now() }), { expirationTtl: 90 * 86400 });
   for (const k of ["sub:", "pend:", "seen:", "mvf:", "likes:", "conf:"]) await env.PROWL_ALERTS.delete(k + from);   /* v86: conf: too, or a waiting confirm link makes a second, empty member on the old address */
+  await env.PROWL_ALERTS.delete("pro:" + from);   /* v93: the old address's Pro cache; the next check rebuilds it while the address is in prev */
   await env.PROWL_ALERTS.delete("mv:" + to);
   /* one notice to the old address, so a change is never silent */
   const note = alShell(env, '<tr><td style="padding:12px 12px 4px;font:16px/1.5 Georgia,serif;color:#2b2118">' +
@@ -4402,6 +4428,7 @@ async function alPurge(env, email, sub) {
   /* after two changes (A to B, then B to C) moved:A still points at B, an earlier address of this same member */
   const prev = (sub && Array.isArray(sub.prev) ? sub.prev : []).map(String).filter(Boolean).slice(0, 3), mine = [email].concat(prev);
   for (const old of prev) {
+    await kv.delete("pro:" + old); gone.push("pro:");   /* the Pro check also looks up earlier addresses and caches each */
     const mv = await kvGet(env, "moved:" + old, null);
     if (mv && mine.indexOf(String(mv.to)) !== -1) { await kv.delete("moved:" + old); gone.push("moved:"); }
   }
