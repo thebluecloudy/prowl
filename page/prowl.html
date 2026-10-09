@@ -1376,7 +1376,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 [data-theme=uranium] .scout-app-wrapper.k2{--ac:#39ff14;--ac-ring:rgba(57,255,20,.35)}
 /* ---- v6.38: Flock tab. A full-screen feed that stops on every card; Saved view; swipe right to discard ---- */
 .scout-app-wrapper.flock-mode #otp-sf,.scout-app-wrapper.flock-mode #otp-sgw,.scout-app-wrapper.flock-mode #otp-picks,.scout-app-wrapper.flock-mode #otp-quick,.scout-app-wrapper.flock-mode #otp-res,.scout-app-wrapper.flock-mode #otp-guide{display:none!important}
-.scout-app-wrapper .fl-seg,.scout-app-wrapper .fl-x,.scout-app-wrapper .fl-auc,.scout-app-wrapper .fl-tags{display:none}
+.scout-app-wrapper .fl-seg,.scout-app-wrapper .fl-x,.scout-app-wrapper .fl-auc,.scout-app-wrapper .fl-tags,.scout-app-wrapper .fl-bar{display:none}
 .scout-app-wrapper #otp-flock.as-feed{display:flex!important;flex-direction:column;position:fixed;left:0;right:0;top:0;bottom:calc(70px + env(safe-area-inset-bottom));z-index:39;margin:0;padding:0;max-width:none;border:0;border-radius:0;box-shadow:none;background:var(--bg);overflow:hidden}
 .scout-app-wrapper #otp-flock.as-feed .flock-head{flex:0 0 auto;flex-wrap:wrap;gap:10px 12px;margin:0;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;background:var(--bg);border:0;border-bottom:1px solid var(--ln);border-radius:0;box-shadow:none}
 .scout-app-wrapper #otp-flock.as-feed .flock-head b{font-size:28px;line-height:1.1;font-weight:800;color:var(--ink);text-transform:none;letter-spacing:0}
@@ -1402,64 +1402,61 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper #otp-flock.as-feed #otp-flockRow::-webkit-scrollbar{display:none}
 .scout-app-wrapper #otp-flock.as-feed .sgw-grid{display:block!important;height:100%;padding:0!important;margin:0}
 .scout-app-wrapper #otp-flock.as-feed .fl-card,.scout-app-wrapper #otp-flock.as-feed .fl-note{position:relative;box-sizing:border-box;height:100%;max-width:520px;margin:0 auto;padding:12px 16px 14px;scroll-snap-align:start;scroll-snap-stop:always}
-.scout-app-wrapper #otp-flock.as-feed .fl-card{display:flex;flex-direction:column;gap:0;touch-action:pan-y;transition:transform .22s ease,opacity .22s ease;-webkit-user-select:none;user-select:none}
+.scout-app-wrapper #otp-flock.as-feed .fl-card{display:flex;flex-direction:column;gap:0;height:auto;min-height:100%;touch-action:pan-y;transition:transform .22s ease,opacity .22s ease;-webkit-user-select:none;user-select:none}
 .scout-app-wrapper #otp-flock.as-feed .fl-card.fl-drag{transition:none}
 .scout-app-wrapper #otp-flock.as-feed .fl-card.fl-fly{opacity:0}
-.scout-app-wrapper #otp-flock.as-feed .fl-card>.sgw-card{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;position:static;overflow:visible;background:none;border:0;border-radius:0;box-shadow:none;transform:none}
-.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-card img{flex:1 1 0;min-height:0;height:0;width:100%;aspect-ratio:auto;object-fit:contain;border:0;border-radius:16px;background:#F3EFE8;-webkit-user-drag:none}
-.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-t{display:block;height:26px;margin:10px 2px 0;padding:0;font-size:17px;font-weight:500;line-height:26px;letter-spacing:0;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:0;max-height:none;color:var(--ink);-webkit-line-clamp:unset}
-.scout-app-wrapper #otp-flock.as-feed .fl-card .fl-for{height:18px;padding:0 2px;font-size:13px;line-height:18px;color:var(--mu)}
+/* v6.66: the photo link and the ✕ share .fl-media, so the ✕ and the price are placed from the photo's top corners */
+.scout-app-wrapper #otp-flock.as-feed .fl-media{position:relative;display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.scout-app-wrapper #otp-flock.as-feed .fl-media>.sgw-card{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;position:static;overflow:visible;background:none;border:0;border-radius:0;box-shadow:none;transform:none}
+/* v6.66: never thinner than this; on a short screen (or with larger text) the card grows and scrolls instead */
+.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-card img{flex:1 1 0;min-height:clamp(120px,28vh,260px);height:0;width:100%;aspect-ratio:auto;object-fit:contain;border:0;border-radius:16px;background:#F3EFE8;-webkit-user-drag:none}
+.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-t{display:block;flex:0 0 auto;height:26px;margin:10px 2px 0;padding:0;font-size:17px;font-weight:500;line-height:26px;letter-spacing:0;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:0;max-height:none;color:var(--ink);-webkit-line-clamp:unset}
+.scout-app-wrapper #otp-flock.as-feed .fl-card .fl-for{flex:0 0 auto;height:18px;padding:0 2px;font-size:13px;line-height:18px;color:var(--mu)}
 .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-m{display:none}
-.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-p{position:absolute;top:24px;right:28px;z-index:2;margin:0;padding:7px 14px;border-radius:99px;background:#fff;color:#111;font-size:17px;font-weight:800;line-height:1.2;box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer}
+.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-p{position:absolute;top:12px;right:12px;z-index:2;margin:0;padding:7px 14px;border-radius:99px;background:#fff;color:#111;font-size:17px;font-weight:800;line-height:1.2;box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer}
 .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-p:empty{display:none}
-/* v6.53: where it is sold, and an auction's time and bids, stacked bottom-left on the photo */
-.scout-app-wrapper #otp-flock.as-feed .fl-tags{display:flex;flex-direction:column;align-items:flex-start;gap:6px;position:absolute;left:28px;bottom:78px;z-index:2;pointer-events:none}
-.scout-app-wrapper #otp-flock.as-feed .fl-auc,.scout-app-wrapper #otp-flock.as-feed .fl-site{display:block;padding:6px 12px;border-radius:99px;font-size:14px;font-weight:800;line-height:1.2}
+/* v6.53: where it is sold, and an auction's time and bids. v6.66: they and the heart, Share and the star are one row
+   under the title, in the card's flow: on the photo they covered the title and the New badge on some phones */
+.scout-app-wrapper #otp-flock.as-feed .fl-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;flex:0 0 auto;min-height:40px;margin:8px 0 0}
+/* beside the buttons while there are 140px for the pills (stacked if both do not fit), else on their own line above them */
+.scout-app-wrapper #otp-flock.as-feed .fl-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex:1 1 140px;min-width:0;pointer-events:none}
+.scout-app-wrapper #otp-flock.as-feed .fl-auc,.scout-app-wrapper #otp-flock.as-feed .fl-site{display:block;max-width:100%;padding:5px 11px;border-radius:99px;font-size:13.5px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scout-app-wrapper #otp-flock.as-feed .fl-auc{background:#D9541E;color:#fff}
-.scout-app-wrapper #otp-flock.as-feed .fl-site{background:#fff;color:#111;box-shadow:0 2px 10px rgba(0,0,0,.18)}
-.scout-app-wrapper #otp-flock.as-feed .fl-x,.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv{-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;position:absolute;z-index:3;width:40px;height:40px;min-width:40px;padding:0;border:0;border-radius:99px;background:#fff;color:#111;font-size:18px;line-height:1;box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
-.scout-app-wrapper #otp-flock.as-feed .fl-x{top:24px;left:28px}
-.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv{top:auto;right:28px;bottom:76px;font-size:20px}
-.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv.on{color:#D9541E;background:#fff;border:0}
+.scout-app-wrapper #otp-flock.as-feed .fl-site{background:var(--cd3);color:var(--ink)}
+.scout-app-wrapper #otp-flock.as-feed .fl-acts{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin-left:auto}
+.scout-app-wrapper #otp-flock.as-feed .fl-bar .fl-lk,.scout-app-wrapper #otp-flock.as-feed .fl-bar .fl-sh,.scout-app-wrapper #otp-flock.as-feed .fl-bar .sgw-sv{-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;position:static;width:40px;height:40px;min-width:40px;padding:0;border:1px solid var(--ln);border-radius:99px;background:var(--cd);color:var(--ink);line-height:1;box-shadow:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.scout-app-wrapper #otp-flock.as-feed .fl-bar .sgw-sv{font-size:20px}
+.scout-app-wrapper #otp-flock.as-feed .fl-bar .sgw-sv.on{color:var(--go);border-color:var(--go);background:var(--go-soft)}
+.scout-app-wrapper #otp-flock.as-feed .fl-x{-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;position:absolute;z-index:3;top:12px;left:12px;width:40px;height:40px;min-width:40px;padding:0;border:0;border-radius:99px;background:#fff;color:#111;font-size:18px;line-height:1;box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
 .scout-app-wrapper #otp-flock.as-feed .fl-x:focus-visible,.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
 .scout-app-wrapper #otp-flock.as-feed .fl-note{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;color:var(--ink);font-size:19px;font-weight:600;line-height:1.4}
 .scout-app-wrapper #otp-flock.as-feed .fl-note p{margin:0;max-width:22em}
 .scout-app-wrapper #otp-flock.as-feed .fl-note .gh{border-radius:99px}
 .scout-app-wrapper #otp-toast.act{pointer-events:auto}
 .scout-app-wrapper #otp-toast .gh{margin-left:8px;min-height:34px;padding:4px 12px;border-color:currentColor;color:inherit;font-weight:800}
+/* v6.66: on a phone the card's row of buttons is at its foot, where the toast was (bottom:104px): an Undo toast took the
+   tap meant for the heart. In Flock the toast sits over the bottom of the photo instead, clear of the tallest row: the
+   dock 70, the card's padding 14, a two-line row 66 + 8, the hunt line 18 and the title 36, plus 10. (Text size is a
+   zoom on the wrapper, so all of these grow together.) */
+@media(max-width:1023px){.scout-app-wrapper.flock-mode #otp-toast{bottom:calc(222px + env(safe-area-inset-bottom))}}
 @media(prefers-reduced-motion:reduce){.scout-app-wrapper #otp-flock.as-feed #otp-flockRow{scroll-behavior:auto}.scout-app-wrapper #otp-flock.as-feed .fl-card{transition:none}}
 @media(min-width:1024px){
   .scout-app-wrapper #otp-flock.as-feed .flock-head{flex-wrap:nowrap;padding:16px 32px}
   .scout-app-wrapper #otp-flock.as-feed .fl-seg{order:0;flex:0 0 auto;margin-left:24px}
   .scout-app-wrapper #otp-flock.as-feed #otp-flockRow{scroll-snap-type:none}
   .scout-app-wrapper #otp-flock.as-feed .sgw-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px 24px;height:auto;max-width:1600px;margin:0 auto;padding:28px 32px 40px!important}
-  .scout-app-wrapper #otp-flock.as-feed .fl-card{height:auto;max-width:none;margin:0;padding:0;scroll-snap-align:none;scroll-snap-stop:normal}
-  .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-card img{flex:none;height:auto;aspect-ratio:1/1;object-fit:cover}
-  .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-p{top:12px;right:12px}
-  .scout-app-wrapper #otp-flock.as-feed .fl-x{top:12px;left:12px}
-  .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv{right:12px;bottom:62px}
-  .scout-app-wrapper #otp-flock.as-feed .fl-tags{left:12px;bottom:64px}
+  .scout-app-wrapper #otp-flock.as-feed .fl-card{height:auto;min-height:0;max-width:none;margin:0;padding:0;scroll-snap-align:none;scroll-snap-stop:normal}
+  .scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-card img{flex:none;height:auto;min-height:0;aspect-ratio:1/1;object-fit:cover}
   .scout-app-wrapper #otp-flock.as-feed .fl-note{grid-column:1/-1;height:auto;max-width:none;padding:48px 0}
 }
 @media(min-width:1024px) and (hover:hover){
-  .scout-app-wrapper #otp-flock.as-feed .fl-x,.scout-app-wrapper #otp-flock.as-feed .fl-card .sgw-sv:not(.on){opacity:0}
-  .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .fl-x,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .fl-x,
-  .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .sgw-sv,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .sgw-sv{opacity:1}
+  .scout-app-wrapper #otp-flock.as-feed .fl-x{opacity:0}
+  .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .fl-x,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .fl-x{opacity:1}
 }
 /* ---- v6.61: + Add to hunts, on a Flock card whose search is not in the Den ---- */
 .scout-app-wrapper #otp-flock .fl-addrow{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin:0 0 6px;min-height:36px}
 .scout-app-wrapper #otp-flock .fl-addrow .fl-near,.scout-app-wrapper #otp-flock .fl-addrow .fl-nd{flex:1 1 auto;min-width:0;margin:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:18px}
-/* the price and the ✕ sit on the photo, below the row (they were drawn over it); the "Because you liked" line alone is shorter */
-.scout-app-wrapper #otp-flock.as-feed .fl-card.fl-row .sgw-p,.scout-app-wrapper #otp-flock.as-feed .fl-card.fl-row .fl-x{top:66px}
-.scout-app-wrapper #otp-flock.as-feed .fl-card.fl-lab .sgw-p,.scout-app-wrapper #otp-flock.as-feed .fl-card.fl-lab .fl-x{top:48px}
-.scout-app-wrapper #otp-flock.as-feed .fl-card.fl-row.fl-first-new .sgw-p,.scout-app-wrapper #otp-flock.as-feed .fl-card.fl-row.fl-first-new .fl-x{top:94px}
-.scout-app-wrapper #otp-flock.as-feed .fl-card.fl-lab.fl-first-new .sgw-p,.scout-app-wrapper #otp-flock.as-feed .fl-card.fl-lab.fl-first-new .fl-x{top:76px}
-@media(min-width:1024px){
-  .scout-app-wrapper #otp-flock.as-feed .fl-card.fl-row .sgw-p,.scout-app-wrapper #otp-flock.as-feed .fl-card.fl-row .fl-x,
-  .scout-app-wrapper #otp-flock.as-feed .fl-card.fl-row.fl-first-new .sgw-p,.scout-app-wrapper #otp-flock.as-feed .fl-card.fl-row.fl-first-new .fl-x{top:54px}
-  .scout-app-wrapper #otp-flock.as-feed .fl-card.fl-lab .sgw-p,.scout-app-wrapper #otp-flock.as-feed .fl-card.fl-lab .fl-x,
-  .scout-app-wrapper #otp-flock.as-feed .fl-card.fl-lab.fl-first-new .sgw-p,.scout-app-wrapper #otp-flock.as-feed .fl-card.fl-lab.fl-first-new .fl-x{top:36px}
-}
+/* v6.66: the price and the ✕ are placed from the photo (.fl-media), so the row and the label above it need no offsets */
 .scout-app-wrapper #otp-flock .fl-nd{display:block;font-size:12.5px;font-weight:700;line-height:18px;color:var(--mu)}
 .scout-app-wrapper #otp-flock .fl-add{-webkit-appearance:none;appearance:none;flex:0 0 auto;min-height:30px;padding:4px 12px;border:1.5px solid var(--ac);border-radius:99px;background:transparent;color:var(--ac);font:inherit;font-size:13px;font-weight:800;line-height:1.2;white-space:nowrap;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .scout-app-wrapper #otp-flock .fl-add.on{border-color:var(--ln);color:var(--mu);cursor:default}
@@ -1487,37 +1484,24 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .mg-watch{width:100%;min-height:48px;border-radius:99px}
 .scout-app-wrapper .mg-watch[aria-pressed=true]{background:var(--cd3);color:var(--ink);border-color:var(--l2)}
 .scout-app-wrapper .fl-sh{display:none}
-.scout-app-wrapper #otp-flock.as-feed .fl-sh{-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;position:absolute;z-index:3;right:76px;bottom:76px;width:40px;height:40px;min-width:40px;padding:0;border:0;border-radius:99px;background:#fff;color:#111;box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
 .scout-app-wrapper #otp-flock.as-feed .fl-sh svg{width:19px;height:19px}
 .scout-app-wrapper #otp-flock.as-feed .fl-sh:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
 .scout-app-wrapper .fl-newb{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:99px;background:var(--ac);color:var(--onink);font-size:11px;font-weight:800;letter-spacing:.04em;line-height:18px;vertical-align:2px}
 .scout-app-wrapper #otp-flock.as-feed .fl-new,.scout-app-wrapper #otp-flock.as-feed .fl-group{max-width:520px;margin:0 auto;padding:12px 18px 4px;font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--mu)}
 .scout-app-wrapper #otp-flock.as-feed .fl-card .fl-new{flex:0 0 auto;margin:0;padding:0 2px 8px;line-height:20px;color:var(--ac)}
 .scout-app-wrapper #otp-flock .fl-near{display:block;flex:0 0 auto;margin:0 0 6px;font-size:12.5px;font-weight:700;line-height:18px;color:var(--ac)}
-.scout-app-wrapper #otp-flock.as-feed .fl-first-new .sgw-p,.scout-app-wrapper #otp-flock.as-feed .fl-first-new .fl-x{top:52px}
 @media(min-width:1024px){
-  .scout-app-wrapper #otp-flock.as-feed .fl-sh{right:60px;bottom:62px}
   .scout-app-wrapper #otp-flock.as-feed .fl-group{grid-column:1/-1;max-width:none;padding:8px 0 0}
   .scout-app-wrapper #otp-flock.as-feed .fl-card .fl-new{position:absolute;left:0;right:0;bottom:100%;padding:0 0 4px;white-space:nowrap}
-  .scout-app-wrapper #otp-flock.as-feed .fl-first-new .sgw-p{top:12px}.scout-app-wrapper #otp-flock.as-feed .fl-first-new .fl-x{top:12px}
-}
-@media(min-width:1024px) and (hover:hover){
-  .scout-app-wrapper #otp-flock.as-feed .fl-sh{opacity:0}
-  .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .fl-sh,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .fl-sh{opacity:1}
 }
 @media(prefers-reduced-motion:reduce){.scout-app-wrapper .otp-sheet{transition:none}}
 /* ---- v6.47: likes. The heart on a Flock card, and the Den's LIKES tab ---- */
 .scout-app-wrapper .fl-lk{display:none}
-.scout-app-wrapper #otp-flock.as-feed .fl-lk{-webkit-appearance:none;appearance:none;display:flex;align-items:center;justify-content:center;position:absolute;z-index:3;right:124px;bottom:76px;width:40px;height:40px;min-width:40px;padding:0;border:0;border-radius:99px;background:#fff;color:#111;font-size:21px;line-height:1;box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s}
-.scout-app-wrapper #otp-flock.as-feed .fl-lk.on{color:#E0245E}
+.scout-app-wrapper #otp-flock.as-feed .fl-bar .fl-lk{font-size:21px}
+.scout-app-wrapper #otp-flock.as-feed .fl-bar .fl-lk.on{color:#E0245E;border-color:#E0245E}
 .scout-app-wrapper #otp-flock.as-feed .fl-lk.pop{animation:otpLkPop .35s ease-out}
 .scout-app-wrapper #otp-flock.as-feed .fl-lk:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
 @keyframes otpLkPop{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
-@media(min-width:1024px){.scout-app-wrapper #otp-flock.as-feed .fl-lk{right:108px;bottom:62px}}
-@media(min-width:1024px) and (hover:hover){
-  .scout-app-wrapper #otp-flock.as-feed .fl-lk:not(.on){opacity:0}
-  .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .fl-lk,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .fl-lk{opacity:1}
-}
 @media(prefers-reduced-motion:reduce){.scout-app-wrapper #otp-flock.as-feed .fl-lk.pop{animation:none}}
 .scout-app-wrapper .lk-h{margin:4px 0 8px;font-size:14px;font-weight:700;color:var(--ink)}
 .scout-app-wrapper .lk-sub,.scout-app-wrapper .lk-empty{margin:0;font-size:13px;line-height:1.5;color:var(--mu)}
@@ -2453,7 +2437,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.65';
+var PROWL_VERSION='v6.66';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -5352,25 +5336,38 @@ function flFeed(){
 }
 function flockCardHtml(c){
   var it=c.it,u=it.url,h=sgwCard(it,c.t,true),auc=[];   /* v6.63: bare, Flock places its own buttons */
+  /* v6.66: listing text goes in through a function, so a "$&" or "$'" in a title or hunt is kept as typed and never
+     pulls a copy of the card's markup into it */
+  var put=function(a,b){h=h.replace(a,function(){return b})};
   h=h.replace('<button type="button" class="sgw-fp">Fair price?</button>','');   /* comps would come from other hunts */
   h=h.replace(/<button type="button" class="sgw-lk[^"]*"[^>]*>[^<]*<\/button>/,'');   /* v6.54: Flock has its own heart */
   if(FP&&FP[u])h=h.replace(fpHtml(FP[u]),'');   /* v6.38: a verdict already in hand stays out too */
-  h=h.replace('<div class="sgw-cell"','<div class="sgw-cell fl-card" role="article" aria-label="'+esc(it.title)+'"'+(h.indexOf(' data-h="')<0?' data-h="'+esc(c.t||'')+'"':'')+(h.indexOf(' data-u="')<0?' data-u="'+esc(u)+'"':''));
+  var sv=(h.match(/<button type="button" class="sgw-sv[^"]*"[^>]*>[^<]*<\/button>/)||[''])[0];   /* v6.66: the star joins the row */
+  if(sv)h=h.replace(sv,'');
+  put('<div class="sgw-cell"','<div class="sgw-cell fl-card" role="article" aria-label="'+esc(it.title)+'"'+(h.indexOf(' data-h="')<0?' data-h="'+esc(c.t||'')+'"':'')+(h.indexOf(' data-u="')<0?' data-u="'+esc(u)+'"':''));
   /* v6.52 near cards; v6.61: a card whose search is not in the Den gets + Add to hunts */
   var lab=c.near?'<span class="fl-near">Because you liked '+esc(c.t)+'</span>':'',add=c.t&&!flInDen(c.t)?flAddBtn(c.t):'';
-  if(add)h=h.replace('<a class="sgw-card"','<div class="fl-addrow">'+(lab||'<span class="fl-nd">'+(sgwFind(c.t.toLowerCase())?'On your home panel, not in the Den':'Not in your hunts yet')+'</span>')+add+'</div><a class="sgw-card"');
-  else if(lab)h=h.replace('<a class="sgw-card"',lab+'<a class="sgw-card"');
-  if(add||lab)h=h.replace('<div class="sgw-cell fl-card"','<div class="sgw-cell fl-card '+(add?'fl-row':'fl-lab')+'"'+(c.near?' data-near="1"':''));
+  if(add)put('<a class="sgw-card"','<div class="fl-addrow">'+(lab||'<span class="fl-nd">'+(sgwFind(c.t.toLowerCase())?'On your home panel, not in the Den':'Not in your hunts yet')+'</span>')+add+'</div><a class="sgw-card"');
+  else if(lab)put('<a class="sgw-card"',lab+'<a class="sgw-card"');
+  if(add||lab)put('<div class="sgw-cell fl-card"','<div class="sgw-cell fl-card '+(add?'fl-row':'fl-lab')+'"'+(c.near?' data-near="1"':''));
   var lk=likeHas(u);   /* v6.47 */
-  h=h.replace('<div class="sgw-p">','<div class="sgw-p" data-act="margin" role="button" aria-label="What you would clear reselling at '+esc(it.price||'')+'">');
+  put('<div class="sgw-p">','<div class="sgw-p" data-act="margin" role="button" aria-label="What you would clear reselling at '+esc(it.price||'')+'">');
   if(c.isNew)h=h.replace('<div class="sgw-t">','<div class="sgw-t"><span class="fl-newb">New</span>');   /* v6.39 */
   if(it.time_left)auc.push(esc(it.time_left));
   if(typeof it.bids==='number')auc.push(esc(String(it.bids))+' bid'+(it.bids===1?'':'s'));
-  return h.replace('</a>',(c.t?'<div class="fl-for">for '+esc(c.t)+'</div>':'')+'</a>'+
+  /* v6.66: where it is sold, the heart, Share and the star sit in one row under the title, off the photo (on the photo
+     they covered the title and the New badge on some phones). The ✕ and the price stay in the photo's top corners,
+     placed from the photo (.fl-media holds the photo link and the ✕), not from the top of the card. */
+  put('<a class="sgw-card"','<div class="fl-media"><a class="sgw-card"');
+  put('</a>',(c.t?'<div class="fl-for">for '+esc(c.t)+'</div>':'')+'</a>'+
+    '<button type="button" class="fl-x" aria-label="Not for me: hide this find" title="Not for me">✕</button></div>'+
+    '<div class="fl-bar">'+
     '<div class="fl-tags"><span class="fl-site">'+esc(LIVE_NAME[it.src]||'ShopGoodwill')+'</span>'+(auc.length?'<span class="fl-auc">'+auc.join(' · ')+'</span>':'')+'</div>'+   /* v6.53: where it is sold */
-    '<button type="button" class="fl-x" aria-label="Not for me: hide this find" title="Not for me">✕</button>'+
+    '<div class="fl-acts">'+
     '<button type="button" class="fl-lk'+(lk?' on':'')+'" aria-pressed="'+lk+'" aria-label="Like: show me more like this" title="Like">'+(lk?'\u2665':'\u2661')+'</button>'+
-    '<button type="button" class="fl-sh" aria-label="Share this find" title="Share"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"></path><path d="M7 8l5-5 5 5"></path><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg></button>');
+    '<button type="button" class="fl-sh" aria-label="Share this find" title="Share"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"></path><path d="M7 8l5-5 5 5"></path><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg></button>'+
+    sv+'</div></div>');
+  return h;
 }
 function flNote(cls,html){return '<div class="fl-note '+cls+'">'+html+'</div>'}
 /* v6.61: + Add to hunts puts a card's search in the Den (not locked), and Flock keeps going without starting over */
@@ -6628,19 +6625,29 @@ function flyStep(){
   row.addEventListener('keydown',function(e){
     if(!flockOpen()||flWide())return;
     var k=e.key,d=(k==='ArrowDown'||k==='PageDown')?1:((k==='ArrowUp'||k==='PageUp')?-1:0);if(!d)return;
-    var cs=row.querySelectorAll('.fl-card,.fl-note'),i,cur=0;if(!cs.length)return;
-    for(i=0;i<cs.length;i++)if(cs[i].offsetTop<=row.scrollTop+4)cur=i;
-    e.preventDefault();flGoIdx(cur+d);
+    if(!row.querySelector('.fl-card,.fl-note'))return;
+    e.preventDefault();flStep(d);
   });
   /* never fly past a card. scroll-snap-stop:always does this for touch; for a wheel or trackpad, one gesture moves
-     exactly one card. */
+     exactly one card (or, in a card taller than the feed, most of a screen within it: flStep). */
   var wl=false,wt=null,stT=null;
   function flIdx(){return flIdxOf(row)}
-  function flGoIdx(i){var cs=row.querySelectorAll('.fl-card,.fl-note'),n=cs[Math.max(0,Math.min(cs.length-1,i))];if(!n)return;FLOCK.at=Math.max(0,Math.min(cs.length-1,i));try{row.scrollTo({top:n.offsetTop,behavior:flReduced()?'auto':'smooth'})}catch(er){row.scrollTop=n.offsetTop}}
+  function flGoIdx(i){var cs=row.querySelectorAll('.fl-card,.fl-note'),n=cs[Math.max(0,Math.min(cs.length-1,i))];if(!n)return;FLOCK.at=Math.max(0,Math.min(cs.length-1,i));flTo(n.offsetTop)}
+  function flTo(y){try{row.scrollTo({top:y,behavior:flReduced()?'auto':'smooth'})}catch(er){row.scrollTop=y}}
+  /* v6.66: a card taller than the feed (a short screen, or larger text: the photo keeps a minimum height) is read down
+     to its row of buttons before the next card comes, and back up to its top before the one above */
+  function flStep(d){
+    var cs=row.querySelectorAll('.fl-card,.fl-note'),i,cur=0,st=row.scrollTop,h=row.clientHeight,c,top,bot;if(!cs.length)return;
+    for(i=0;i<cs.length;i++)if(cs[i].offsetTop<=st+4)cur=i;
+    c=cs[cur];top=c.offsetTop;bot=top+c.offsetHeight;
+    if(d>0&&bot>st+h+4){flTo(Math.min(bot-h,st+Math.round(h*0.8)));return}
+    if(d<0&&top<st-4){flTo(Math.max(top,st-Math.round(h*0.8)));return}
+    flGoIdx(cur+d);
+  }
   row.addEventListener('wheel',function(e){
     if(!flockOpen()||flWide()||e.ctrlKey||Math.abs(e.deltaY)<Math.abs(e.deltaX))return;
     e.preventDefault();
-    if(!wl&&Math.abs(e.deltaY)>=4){wl=true;flGoIdx(flIdx()+(e.deltaY>0?1:-1))}
+    if(!wl&&Math.abs(e.deltaY)>=4){wl=true;flStep(e.deltaY>0?1:-1)}
     clearTimeout(wt);wt=setTimeout(function(){wl=false},220);
   },{passive:false});
   /* v6.51: the feed no longer pulls you back when a scroll lands more than one card away. It fired while a slow drag

@@ -163,6 +163,7 @@ test('wired in: Facebook is a label, never a live source; public needs a deliber
   const live = /var LIVE_SRC=\[[\s\S]*?\];/.exec(PAGE);
   assert.ok(live, 'LIVE_SRC');
   assert.doesNotMatch(live[0], /facebook/i, 'no live search of Facebook: the worker cannot reach it');
-  assert.match(PAGE, /var PROWL_VERSION='v6\.65';/);
+  const v = /var PROWL_VERSION='v6\.(\d+)';/.exec(PAGE);
+  assert.ok(v && Number(v[1]) >= 65, 'the page says v6.65 or later');
   assert.match(PAGE, /\.scout-app-wrapper \.sgw-sub \.sgw-live,\.scout-app-wrapper \.sgw-sub \.sgw-fbh\{font-family:var\(--display\);font-size:20px;/, 'a section heading like the others');
 });

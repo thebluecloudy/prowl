@@ -1,5 +1,5 @@
-// Page v6.53: every Flock card says where the find is sold, in a pill on the photo; an auction's time and bids sit
-// in the same bottom-left stack, so the two never overlap.
+// Page v6.53: every Flock card says where the find is sold, in a pill; an auction's time and bids sit beside it, so
+// the two never overlap. v6.66: both are in the row under the title (flock-bar.test.mjs), no longer on the photo.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
@@ -31,7 +31,7 @@ test('every card carries a pill naming the site it is sold on', async () => {
   await p.close();
 });
 
-test('an auction shows its site and its time and bids in one stack', async () => {
+test('an auction shows its site and its time and bids together', async () => {
   const p = await flock({ only: 'shopgoodwill' });
   const c = p.$('#otp-flockRow .fl-card');
   const tags = c.querySelector('.fl-tags');
