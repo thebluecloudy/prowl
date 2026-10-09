@@ -103,7 +103,9 @@ Matthew: "I want affiliates, just keep them there as I apply for them." Etsy, Re
 switched-off slots in the admin Affiliates tab; only eBay is on.
 
 - **Etsy:** its slot is built for Awin; if he is approved elsewhere, change the template before turning it on.
-- **Depop:** stays out (Rakuten closed the account on 2026-10-09).
+- **Depop:** back as a switched-off slot (worker v95 / page v6.67): Matthew was approved through Rakuten Advertising on
+  2026-10-09, and Depop's advertiser ID (53555) is filled in. Paste the Rakuten publisher ID, save, then Turn on. Page
+  links only; the alert emails and the extension stay plain.
 - **Den research links:** the Den's saved-research "Sold before" eBay links now go through the router (page v6.64).
 
 ## 7. Amazon: still off
@@ -120,4 +122,5 @@ Before turning Amazon on:
 4. Postal address: done (`ALERT_ADDRESS`).
 5. Login: only `PROWL_SESSION_SECRET` and one Log out tap. Nothing else; the custom app and proxy are live.
 6. KV and Resend: done, both live.
-7. Affiliate networks: apply when ready; each program is turned on in Admin > Affiliates with no code change.
+7. Affiliate networks: apply when ready; each program is turned on in Admin > Affiliates with no code change. Depop:
+   paste the Rakuten publisher ID, Save IDs, Turn on (keep the approval email).

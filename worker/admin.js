@@ -1046,10 +1046,14 @@ async function apiAffiliateIds(c) {
   if (!(await H.vCount("admaff", 100))) return jerr(429, "That is a lot of affiliate changes today. Try again tomorrow.");
   const cur = await H.kvGet(env, H.AFF_IDS_KEY, null), next = {};
   for (const p of H.AFF_PROGRAMS) if (cur && typeof cur === "object" && !Array.isArray(cur) && cur[p.id] && typeof cur[p.id] === "object") next[p.id] = cur[p.id];
+  const was = H.affReady(H.affIdsClean(next, env), prog);
   next[id] = save;
   await H.kvPut(env, H.AFF_IDS_KEY, next);
   const ready = H.affReady(H.affIdsClean(next, env), prog);
-  if (!ready) {   /* incomplete IDs: the switch goes off too, so it stays off once the IDs are filled in again */
+  /* incomplete IDs: the switch goes off too, so it stays off once the IDs are filled in again. v95: and IDs complete for
+     the first time never switch a program on by themselves (an old KV aff:on value, like Depop's from v84-v91, says
+     nothing about today): it is on only once the owner presses Turn on */
+  if (!ready || !was) {
     const on = await H.kvGet(env, H.AFF_KEY, null);
     if (!on || on[id] !== false) { const o = on && typeof on === "object" && !Array.isArray(on) ? Object.assign({}, on) : {}; o[id] = false; await H.kvPut(env, H.AFF_KEY, o); }
   }

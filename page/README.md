@@ -2,7 +2,7 @@ prowl.html is the Prowl page body. A push that changes it deploys it to Shopify 
 
 ## Affiliate tags
 
-Outbound listing and search links go through `prowlAff()` in the first `<script>` of `prowl.html`: eBay gets its EPN tag (`prowlEpn`), and Etsy, Reverb and 1stDibs get their network's click URL from `window.PROWL_AFF`. Depop links always go out plain. Which programs are on, and their IDs, come from the admin area (below). The footer and Help disclosure list exactly the programs that are on.
+Outbound listing and search links go through `prowlAff()` in the first `<script>` of `prowl.html`: eBay gets its EPN tag (`prowlEpn`), and Depop, Etsy, Reverb and 1stDibs get their network's click URL from `window.PROWL_AFF`. Which programs are on, and their IDs, come from the admin area (below). The footer and Help disclosure list exactly the programs that are on.
 
 ### Affiliates in the admin area (worker v90 / page v6.60)
 
@@ -14,6 +14,7 @@ here needs a code change.
 | Program | Network | IDs to paste | Where its links are tagged |
 |---|---|---|---|
 | eBay | eBay Partner Network | Campaign ID (10 digits) | page, alert emails, listing popup |
+| Depop | Rakuten Advertising | Depop advertiser ID (filled in: 53555), your Rakuten publisher ID | page |
 | Etsy | Awin | Etsy advertiser ID (awinmid), your Awin publisher ID | page |
 | Reverb | Awin | Reverb advertiser ID (awinmid), your Awin publisher ID | page |
 | 1stDibs | Partnerize | camref | page |
@@ -29,10 +30,14 @@ How it is safe: only the IDs are editable. The link templates stay in code (`AFF
 worker reads it, and again on the page, so a pasted value can only ever fill its own slot. KV keeps `aff:on` (the
 switches) and `aff:ids` (the IDs); `GET /aff` answers both. IDs are public, since they are in every affiliate link.
 
-**Depop has no affiliate link.** Rakuten closed the Owl & Twig publisher account on 2026-10-09, and its agreement says
-to stop using and remove its links. Worker v92, page v6.62 and extension 1.6.4 removed the Rakuten link and the
-publisher ID everywhere, and `__tests__/page/no-rakuten.test.mjs` fails if either comes back. Do not add a Depop link or
-ID unless Rakuten reinstates the account and Depop approves the partnership in writing.
+**Depop (worker v95, page v6.67).** Matthew was approved for Depop through Rakuten Advertising on 2026-10-09 (Depop's
+Rakuten advertiser ID is 53555). Depop's slot is back in the Affiliates tab, off: paste the publisher ID from your own
+Rakuten links (the `id=` in any Rakuten link you make), press **Save IDs**, then **Turn on**. Only the Prowl page tags
+Depop links (`https://click.linksynergy.com/deeplink?id={ranid}&mid={mid}&murl=...`); the alert emails and the extension
+keep plain Depop links, since Rakuten bars its links in email without its written permission. Rakuten closed the earlier
+publisher account on 2026-10-09 (worker v92 / page v6.62 removed that link and its ID), so the old ID is never filled in
+for you, and `__tests__/page/depop-rakuten.test.mjs` fails if it comes back, or if a Rakuten link reaches the worker or
+the extension.
 
 **Before any program goes on:** keep proof that the advertiser approved the partnership (a dated email or dashboard
 screenshot). The alert emails and the extension each need the network's or advertiser's written permission first:

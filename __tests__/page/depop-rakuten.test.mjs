@@ -1,0 +1,41 @@
+// Depop through Rakuten Advertising (worker v95, page v6.67). Rakuten closed Owl & Twig's earlier publisher account on
+// 2026-10-09 (worker v92 / page v6.62 removed its link and publisher ID everywhere); Matthew was approved for Depop
+// through Rakuten again the same day. The link is back on the Prowl page only, as a template with two slots filled from
+// the admin area, never with a publisher ID written into the code:
+// - the page has exactly one Rakuten URL, Depop's template in PROWL_AFF, with {ranid} and {mid} slots;
+// - the old publisher ID never comes back, anywhere;
+// - the worker (alert emails, /aff, the admin area) and the Chrome extension build no Rakuten link (Rakuten bars its
+//   links in email without written permission, and needs an extension approved before it carries them).
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+
+const ROOT = fileURLToPath(new URL('../../', import.meta.url));
+const read = (f) => readFileSync(join(ROOT, f), 'utf8');
+const worker = readdirSync(join(ROOT, 'worker')).filter((f) => f.endsWith('.js')).map((f) => 'worker/' + f);
+const extension = readdirSync(join(ROOT, 'extension')).filter((f) => /\.(js|html|json)$/.test(f)).map((f) => 'extension/' + f);
+const OLD_ID = /jh1j\/r7/i;
+
+test('the old publisher ID is nowhere: the page, the worker or the extension', () => {
+  const files = ['page/prowl.html', ...worker, ...extension];
+  assert.ok(files.length > 10, 'the files are found');
+  for (const f of files) assert.doesNotMatch(read(f), OLD_ID, f);
+});
+
+test('the worker and the extension build no Rakuten link', () => {
+  for (const f of [...worker, ...extension]) {
+    const m = /linksynergy|mid=53555/i.exec(read(f));
+    assert.equal(m, null, f + ' has "' + (m && m[0]) + '"');
+  }
+});
+
+test("the page has one Rakuten URL: Depop's template, with both IDs as slots", () => {
+  const page = read('page/prowl.html');
+  const all = page.match(/linksynergy/gi) || [];
+  assert.equal(all.length, 1, 'one template');
+  assert.match(page, /'depop\.com':\{n:'Depop',id:'depop',t:'https:\/\/click\.linksynergy\.com\/deeplink\?id=\{ranid\}&mid=\{mid\}&murl=\{url\}'\}/);
+  assert.doesNotMatch(page, /mid=53555/, 'the advertiser ID comes from the admin area, like the publisher ID');
+  assert.match(page, /window\.PROWL_AFF_ON=\{[^}]*depop:false/, 'off until the owner turns it on');
+});
