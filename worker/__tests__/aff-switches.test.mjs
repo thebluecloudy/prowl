@@ -31,7 +31,7 @@ function lift() {
   const src = [lineOf(/^const DEPOP_URL = [^\n]*;/m), lineOf(/^const AFF_RE = [^\n]*;/m),
     lineOf(/^const AFF_PROGRAMS = \[[\s\S]*?\n\];/m), lineOf(/^const AFF_KEY = [^\n]*;/m), lineOf(/^const affObj = [^\n]*;/m),
     ...["affIdsClean", "affReady", "affClean"].map(indexFn), lineOf(/^let AFF_IDS = [^\n]*;/m),
-    ...["affId", "affLoad", "affNote", "epnUrl"].map(indexFn), "const AL_ALSO = " + /const AL_ALSO = (\[[\s\S]*?\n\]);/.exec(INDEX)[1] + ";"].join("\n");
+    ...["affId", "affLoad", "affNote", "epnUrl", "ctbUrl"].map(indexFn), "const AL_ALSO = " + /const AL_ALSO = (\[[\s\S]*?\n\]);/.exec(INDEX)[1] + ";"].join("\n");
   return new Function("kvGet", src + "\nreturn { AFF_PROGRAMS, AFF_KEY, AFF_IDS_KEY, affClean, affIdsClean, affReady, affLoad, affNote, epnUrl, AL_ALSO, on: () => AFF_ON, ids: () => AFF_IDS };")(kvGet);
 }
 const EPN = { EPN_CAMPAIGN_ID: "5339216838" };
