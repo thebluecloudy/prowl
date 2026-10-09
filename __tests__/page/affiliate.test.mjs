@@ -124,3 +124,24 @@ test("the popup's eBay affiliate URL wins over generic tagging; anything else is
   assert.match(p.win.prowlAff('https://www.ebay.com/itm/123', 'prowl-popup', 'https://evil.example/x'), /campid=5339216838&customid=prowl-popup/);
   await p.close();
 });
+
+/* v6.64: the Den's saved research shows "Sold before" eBay links; they go through the router like the appraiser's
+   (they were plain, so a sale from the Den earned nothing). The saved copy stays plain, so a shared note links plainly. */
+test('v6.64: Den "Sold before" eBay links are tagged when drawn; other sites and the saved copy stay plain', async () => {
+  const ebay = 'https://www.ebay.com/itm/123456789012', other = 'https://www.worthpoint.com/worthopedia/black-panther-lamp';
+  const note = { item: 'Black panther TV lamp', rows: [['What', 'A 1950s ceramic TV lamp']], src: [], at: 1,
+    solds: [{ title: 'Panther TV lamp, green eyes', price: '$45.00', url: ebay, date: 'Sep 2026', where: 'eBay' },
+      { title: 'Panther lamp', price: '$60.00', url: other }] };
+  const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [] }, 'prowl.research': [note] } });
+  await tick(30);
+  p.$('#otp-dock .db[data-m="den"]').click();   /* the Den draws saved research when it opens */
+  await tick(30);
+  const links = p.$$('#otp-denRes .dx-sold a').map((a) => a.getAttribute('href'));
+  assert.equal(links.length, 2);
+  assert.notEqual(links[0], ebay, 'tagged');
+  assert.equal(links[0], p.win.prowlAff(ebay, 'prowl-den'));
+  assert.match(links[0], /campid=5339216838/);
+  assert.equal(links[1], other, 'not an affiliate site: as it was');
+  assert.equal(JSON.parse(p.win.localStorage.getItem('prowl.research'))[0].solds[0].url, ebay, 'stored plain');
+  await p.close();
+});
