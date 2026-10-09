@@ -1006,7 +1006,7 @@ async function apiSearches(c) {
 
 /* ---------- affiliates (v89) ----------
    One switch per affiliate program. index.js keeps the list (AFF_PROGRAMS) and reads KV aff:on before building any
-   link; GET /aff tells the Prowl page and the extension within about 5 minutes. */
+   link; GET /aff tells the Prowl page within about 5 minutes. */
 async function affView(c) {
   const H = c.H, on = await H.affLoad(c.env, true), ids = H.affIdsClean(await H.kvGet(c.env, H.AFF_IDS_KEY, null), c.env);
   return H.AFF_PROGRAMS.map(p => ({ id: p.id, name: p.name, net: p.net, on: on[p.id] === true, def: p.def === true, ready: H.affReady(ids, p),
@@ -1026,7 +1026,7 @@ async function apiAffiliateSet(c) {
   await H.kvPut(env, H.AFF_KEY, next);
   await audit(c, { action: want ? "aff-on" : "aff-off", id: id, ok: true });
   const msg = prog.name + " links are " + (want ? "tagged now (" + prog.net + ")" : "plain now, with no affiliate tag") +
-    ". The Prowl page and the extension pick this up within about 5 minutes; alert emails from the next one on.";
+    ". The Prowl page picks this up within about 5 minutes; alert emails from the next one on.";
   return jres({ ok: true, message: msg, programs: await affView(c) });
 }
 

@@ -24,7 +24,7 @@ export const SITES = [
   plain('mercari', 'Mercari', 'https://www.mercari.com/search/?keyword='),
   plain('mercarijp', 'Mercari Japan', 'https://jp.mercari.com/search?keyword='),
   plain('poshmark', 'Poshmark', 'https://poshmark.com/search?query='),
-  { id: 'depop', name: 'Depop', url: (q) => depopAff('https://www.depop.com/search/?q=' + E(q)) },   // 1.6.2 Rakuten; 1.6.3: only while switched on
+  plain('depop', 'Depop', 'https://www.depop.com/search/?q='),   // 1.6.4: always plain; the Rakuten link (1.6.2-1.6.3) is removed
   plain('grailed', 'Grailed', 'https://www.grailed.com/shop?query='),
   plain('rubylane', 'Ruby Lane', 'https://www.rubylane.com/search?q='),
   plain('chairish', 'Chairish', 'https://www.chairish.com/search?q='),
@@ -74,31 +74,9 @@ export function soldUrl(q) {
 // Amazon Associates. Off until Matthew has the tracking ID and the traffic to keep it (Amazon drops
 // associates with fewer than 3 sales in 180 days). While off, the menu item does not exist and no
 // Amazon URL is ever built. Amazon is new goods: menu only, never a marketplace.
-export const AFF = { amz: 'YOUR_AMAZON_TAG', amzEnabled: false,
-  // 1.6.2: Depop through Rakuten (merchant 53555). Applied only to links the user clicks, and disclosed in the
-  // popup while on. Same link as the Prowl page and the alert emails.
-  depop: 'https://click.linksynergy.com/deeplink?id=jh1j/r7*wkQ&mid=53555&murl=',
-  // 1.6.3: the owner turns each program on or off in the Prowl admin area (Affiliates). affSync() reads the
-  // worker's /aff answer; until then the last answer kept in this browser, else off.
-  on: { depop: false } };
-export function depopAff(u) {
-  return AFF.on.depop === true && /^https:\/\/(www\.)?depop\.com\//.test(String(u || '')) && typeof AFF.depop === 'string' && AFF.depop.indexOf('https://') === 0 ? AFF.depop + encodeURIComponent(u) : u;
-}
-function affApply(o) {
-  if (!o || typeof o !== 'object') return null;
-  const keep = {};
-  for (const k of Object.keys(AFF.on)) if (typeof o[k] === 'boolean') { AFF.on[k] = o[k]; keep[k] = o[k]; }
-  return keep;
-}
-export async function affSync() {
-  try { const st = await chrome.storage.local.get('affOn'); affApply(st && st.affOn); } catch (e) { /* storage unavailable: defaults */ }
-  try {
-    const r = await fetch('https://prowl.thebluecloud.workers.dev/aff');
-    const keep = r.ok ? affApply((await r.json()).on) : null;
-    if (keep) await chrome.storage.local.set({ affOn: keep });
-  } catch (e) { /* offline: keep what we have */ }
-  return AFF.on;
-}
+// 1.6.4: no other affiliate link. The Depop link through Rakuten (1.6.2) and its switch (1.6.3) are removed, so every
+// marketplace link the extension builds is the site's own plain search link.
+export const AFF = { amz: 'YOUR_AMAZON_TAG', amzEnabled: false };
 export function amazonOn() {
   return AFF.amzEnabled === true && typeof AFF.amz === 'string' && /^[A-Za-z0-9_-]{3,40}$/.test(AFF.amz) && AFF.amz.indexOf('YOUR_') !== 0;
 }

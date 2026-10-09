@@ -14,8 +14,8 @@ test('placeholders mean clean links: nothing is tagged until the real IDs are in
   await p.close();
 });
 
-/* v6.59: each program follows its switch in the admin area (worker /aff). Depop is off by default: Rakuten declined. */
-const RAN = 'https://click.linksynergy.com/deeplink?id=jh1j/r7*wkQ&mid=53555&murl=';
+/* v6.59: each program follows its switch in the admin area (worker /aff). v6.62: Depop has no affiliate program at all
+   (Rakuten closed the publisher account), so no answer, kept answer or ID can tag a Depop link. */
 const DEPOP = ['https://www.depop.com/products/abc-vintage-tee/', 'https://www.depop.com/search/?q=ceramic%20panther', 'https://depop.com/products/x/'];
 function affFetch(on) {
   const asked = [], out = { asked, ids: null };
@@ -28,32 +28,27 @@ function affFetch(on) {
   return out;
 }
 
-test('Depop is off by default: its links go out plain and no disclosure names it', async () => {
+test('v6.62: Depop links always go out plain and no disclosure names Depop, even if an answer or a kept value says on', async () => {
   const p = await page();
   for (const u of DEPOP) assert.equal(p.win.prowlAff(u, 'prowl-live'), u);
   assert.equal(p.win.prowlAffLive('depop.com'), false);
   assert.ok(p.$$('.aff-say').every((el) => !el.hidden && !/Depop/.test(el.textContent)));
+  assert.equal('depop' in p.win.PROWL_AFF_ON, false);
+  assert.equal('depop' in p.win.PROWL_AFF_IDS, false);
+  assert.doesNotMatch(p.doc.documentElement.innerHTML, /linksynergy|jh1j|mid=53555/);
   await p.close();
-});
-
-test("switched on in the admin area: the worker's answer tags Depop, is remembered, and the disclosure follows", async () => {
+  /* an old answer from the worker, or one kept in this browser, with Depop on and a publisher ID */
   const f = affFetch({ ebay: true, depop: true });
-  const p = loadPage({ fetchImpl: f.impl });
+  f.ids = { depop: { pub: 'Abc123/x*Y' } };
+  const q = loadPage({ fetchImpl: f.impl, storage: { 'prowl.affOn': { ebay: true, depop: true }, 'prowl.affIds': { depop: { pub: 'Abc123/x*Y' } } } });
   await tick(40);
-  assert.equal(f.asked.length, 1);
-  for (const u of DEPOP) assert.equal(p.win.prowlAff(u, 'prowl-live'), RAN + encodeURIComponent(u));
-  assert.deepEqual(JSON.parse(p.win.localStorage.getItem('prowl.affOn')), { ebay: true, depop: true });
-  assert.equal(p.$('.copyr .aff-list').textContent, 'eBay and Depop');
-  await p.close();
-  // the next visit uses the kept answer before the worker replies
-  const q = loadPage({ storage: { 'prowl.affOn': { depop: true } } });
-  await tick(30);
-  assert.equal(q.win.prowlAff(DEPOP[0]), RAN + encodeURIComponent(DEPOP[0]));
+  for (const u of DEPOP) assert.equal(q.win.prowlAff(u, 'prowl-live'), u);
+  assert.equal(q.$('.copyr .aff-list').textContent, 'eBay');
   await q.close();
 });
 
 test('eBay switched off: plain eBay links, the popup affiliate URL is ignored, and with nothing on the disclosure goes', async () => {
-  const f = affFetch({ ebay: false, depop: false });
+  const f = affFetch({ ebay: false });
   const p = loadPage({ fetchImpl: f.impl });
   await tick(40);
   assert.equal(p.win.prowlAff('https://www.ebay.com/itm/123', 'prowl-live'), 'https://www.ebay.com/itm/123');
@@ -64,10 +59,10 @@ test('eBay switched off: plain eBay links, the popup affiliate URL is ignored, a
 });
 
 test('a bad or missing /aff answer changes nothing', async () => {
-  const f = affFetch({ ebay: 'no', depop: 1 });
+  const f = affFetch({ ebay: 'no', etsy: 1 });
   const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.affOn': 'junk', 'prowl.affIds': 'junk' } });
   await tick(40);
-  assert.deepEqual({ ...p.win.PROWL_AFF_ON }, { ebay: true, depop: false, etsy: false, reverb: false, '1stdibs': false, amazon: false });
+  assert.deepEqual({ ...p.win.PROWL_AFF_ON }, { ebay: true, etsy: false, reverb: false, '1stdibs': false, amazon: false });
   assert.equal(p.win.prowlAffId('ebay', 'camp'), '5339216838');
   await p.close();
 });
@@ -81,13 +76,12 @@ test('eBay keeps its EPN tag and non-https links are blocked', async () => {
 });
 
 test("v6.60: IDs from the admin area build each network's click URL, only while the program is on", async () => {
-  const f = affFetch({ ebay: true, depop: true, etsy: true, reverb: false, '1stdibs': true, amazon: false });
-  f.ids = { ebay: { camp: '2222222222' }, depop: { pub: 'Abc123/x*Y' }, etsy: { mid: '6220', aff: '1234567' }, reverb: { mid: '7777', aff: '1234567' }, '1stdibs': { camref: '1l3vabc' } };
+  const f = affFetch({ ebay: true, etsy: true, reverb: false, '1stdibs': true, amazon: false });
+  f.ids = { ebay: { camp: '2222222222' }, etsy: { mid: '6220', aff: '1234567' }, reverb: { mid: '7777', aff: '1234567' }, '1stdibs': { camref: '1l3vabc' } };
   const p = loadPage({ fetchImpl: f.impl });
   await tick(40);
   const etsy = 'https://www.etsy.com/listing/1/pyrex?ref=x';
   assert.equal(p.win.prowlAff(etsy), 'https://www.awin1.com/cread.php?awinmid=6220&awinaffid=1234567&ued=' + encodeURIComponent(etsy));
-  assert.equal(p.win.prowlAff('https://www.depop.com/products/a/'), 'https://click.linksynergy.com/deeplink?id=Abc123/x*Y&mid=53555&murl=' + encodeURIComponent('https://www.depop.com/products/a/'));
   assert.equal(p.win.prowlAff('https://www.1stdibs.com/x/'), 'https://prf.hn/click/camref:1l3vabc/destination:' + encodeURIComponent('https://www.1stdibs.com/x/'));
   assert.match(p.win.prowlAff('https://www.ebay.com/itm/1', 'prowl-live'), /campid=2222222222&customid=prowl-live/, 'the eBay campaign comes from the IDs');
   // subdomains count; lookalike hosts do not
@@ -99,17 +93,16 @@ test("v6.60: IDs from the admin area build each network's click URL, only while 
   assert.equal(p.win.prowlAff(wrapped), wrapped);
   // Reverb has IDs but is switched off: untouched
   assert.equal(p.win.prowlAff('https://reverb.com/item/2'), 'https://reverb.com/item/2');
-  assert.deepEqual([...p.win.prowlAffNames()], ['eBay', 'Etsy', '1stDibs', 'Depop']);
+  assert.deepEqual([...p.win.prowlAffNames()], ['eBay', 'Etsy', '1stDibs']);
   assert.deepEqual(JSON.parse(p.win.localStorage.getItem('prowl.affIds')).etsy, { mid: '6220', aff: '1234567' }, 'kept for the next visit');
   await p.close();
 });
 
 test('v6.60: IDs in the wrong form are ignored, so a program with them stays plain', async () => {
-  const f = affFetch({ ebay: true, depop: true, etsy: true });
-  f.ids = { depop: { pub: 'x&evil=1' }, etsy: { mid: '6220"><b>', aff: '1234567' }, ebay: { camp: 'javascript:1' } };
+  const f = affFetch({ ebay: true, etsy: true });
+  f.ids = { etsy: { mid: '6220"><b>', aff: '1234567' }, ebay: { camp: 'javascript:1' } };
   const p = loadPage({ fetchImpl: f.impl });
   await tick(40);
-  assert.equal(p.win.prowlAff('https://www.depop.com/x'), 'https://www.depop.com/x');
   assert.equal(p.win.prowlAff('https://www.etsy.com/listing/1'), 'https://www.etsy.com/listing/1');
   assert.equal(p.win.prowlAff('https://www.ebay.com/itm/1', 'prowl-live'), 'https://www.ebay.com/itm/1');
   assert.deepEqual([...p.win.prowlAffNames()], []);

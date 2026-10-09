@@ -24,7 +24,7 @@
 /* v6.59 affiliate switches. The owner turns each program on or off in the Prowl admin area (Affiliates); the worker
    says which are on at /aff. Until it answers, the last answer this browser saw is used (prowl.affOn), else these
    defaults. A program that is off sends plain links and is left out of the disclosure. */
-window.PROWL_AFF_ON={ebay:true,depop:false,etsy:false,reverb:false,'1stdibs':false,amazon:false};
+window.PROWL_AFF_ON={ebay:true,etsy:false,reverb:false,'1stdibs':false,amazon:false};
 window.prowlAffSet=function(o){
   if(!o||typeof o!=='object')return false;
   var k,ch=false;
@@ -33,9 +33,9 @@ window.prowlAffSet=function(o){
 };
 /* v6.60: each program's IDs, edited in the admin area and sent with /aff (kept in prowl.affIds). Only values in the
    right form are used; each fills its own slot in a fixed template below, so an ID can never point a link elsewhere. */
-window.PROWL_AFF_FMT={ebay:{camp:/^\d{10}$/},depop:{pub:/^[A-Za-z0-9*\/._~-]{6,40}$/},etsy:{mid:/^\d{3,8}$/,aff:/^\d{4,10}$/},
+window.PROWL_AFF_FMT={ebay:{camp:/^\d{10}$/},etsy:{mid:/^\d{3,8}$/,aff:/^\d{4,10}$/},
   reverb:{mid:/^\d{3,8}$/,aff:/^\d{4,10}$/},'1stdibs':{camref:/^[A-Za-z0-9]{4,24}$/},amazon:{tag:/^[A-Za-z0-9-]{1,40}-2\d$/}};
-window.PROWL_AFF_IDS={ebay:{camp:'5339216838'},depop:{pub:'jh1j/r7*wkQ'}};
+window.PROWL_AFF_IDS={ebay:{camp:'5339216838'}};
 window.prowlAffIdsSet=function(o){
   if(!o||typeof o!=='object')return false;
   var p,k,F,v,next,ch=false;
@@ -69,8 +69,8 @@ window.prowlEpn=function(u,cid){
 window.PROWL_AFF={
   'etsy.com':{n:'Etsy',id:'etsy',t:'https://www.awin1.com/cread.php?awinmid={mid}&awinaffid={aff}&ued={url}'},
   'reverb.com':{n:'Reverb',id:'reverb',t:'https://www.awin1.com/cread.php?awinmid={mid}&awinaffid={aff}&ued={url}'},
-  '1stdibs.com':{n:'1stDibs',id:'1stdibs',t:'https://prf.hn/click/camref:{camref}/destination:{url}'},
-  'depop.com':{n:'Depop',id:'depop',t:'https://click.linksynergy.com/deeplink?id={pub}&mid=53555&murl={url}'}   /* v6.46 Rakuten; v6.59 switch; v6.60 IDs from the admin area */
+  '1stdibs.com':{n:'1stDibs',id:'1stdibs',t:'https://prf.hn/click/camref:{camref}/destination:{url}'}
+  /* v6.62: Depop has no affiliate link (the Rakuten link of v6.46-v6.61 is removed); its links always go out plain */
 };
 window.prowlAffLive=function(d){var a=window.PROWL_AFF[d];return !!(a&&a.id&&window.prowlAffUse(a.id)&&typeof a.t==='string'&&a.t.indexOf('{url}')>-1&&/^https:\/\//.test(a.t))};
 /* the template with its IDs filled in: IDs as they are (their formats allow nothing that could break out of the slot) */
@@ -2438,7 +2438,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.61';
+var PROWL_VERSION='v6.62';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};

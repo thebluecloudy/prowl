@@ -1595,7 +1595,7 @@ function appBody() {
       '<p class="sub">What people search for on Prowl. Visitors count each person once a day. Searches that look personal are never recorded.</p><div id="sbox"></div></section>') +
     panel("affiliates",
       '<section class="card"><div class="ch"><h2>Affiliates</h2></div>' +
-      '<p class="sub">Each affiliate program has its IDs and an on/off switch. Paste the IDs from the network, press Save IDs, then Turn on. Off means links to that site go out plain and no disclosure names it. The Prowl page, the browser extension and the alert emails follow within about 5 minutes. IDs are public (they are in every affiliate link), so nothing secret goes here.</p>' +
+      '<p class="sub">Each affiliate program has its IDs and an on/off switch. Paste the IDs from the network, press Save IDs, then Turn on. Off means links to that site go out plain and no disclosure names it. The Prowl page and the alert emails follow within about 5 minutes. IDs are public (they are in every affiliate link), so nothing secret goes here.</p>' +
       '<div id="affbox"></div><p class="msg" id="aff-msg" aria-live="polite"></p></section>') +
     "</main>" +
     '<div class="toast" id="toast" role="status" aria-live="polite"></div>' +

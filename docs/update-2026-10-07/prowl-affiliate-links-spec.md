@@ -12,6 +12,7 @@ Goal: every outbound listing link earns commission where a program exists. Same 
 | 1stDibs | yes | varies by partner | varies | Partnerize |
 | Depop | yes (verified 2026-10-06: Gem's outbound links route through Rakuten LinkShare, merchant ID 53555) | check Rakuten directory | check Rakuten directory | Rakuten |
 | | **Application status:** Matthew's Rakuten application was declined — likely the policy's "price comparison sites" clause. Exception requested via affiliate-marketing@depop.com (the policy's written-approval channel). Keep the placeholder until approved; Depop links pass through untagged meanwhile. | | | |
+| | **Closed 2026-10-09:** Rakuten terminated the Owl & Twig publisher account. Do not build Depop affiliate links; worker v92, page v6.62 and extension 1.6.4 removed them (see `page/README.md`). | | | |
 
 **eBay popup links:** when the eBay listing popup (see `prowl-ebay-popup-spec.md`) is live, its "View on eBay" button must use the `itemAffiliateWebUrl` returned by eBay's Browse API — eBay's docs require that exact URL for the sale to commission. `prowlAff` should prefer it over generic EPN tagging whenever it's present.
 
@@ -47,7 +48,7 @@ function prowlAff(url){
 
 - `tagAff` builds the network click URL per merchant (each network has its own format — Awin, Rakuten, Partnerize all use redirect-style click URLs, not query params; store the full click-URL template per merchant).
 - Route every listing-link renderer through `prowlAff`: SGW cards, appraiser links, eBay comp links, flock cards, saved list, guide "Hunt it" links — everywhere `prowlEpn` is called today.
-- Depop links: build the Rakuten LinkShare deeplink the way Gem does — `https://click.linksynergy.com/deeplink?id=<YOUR_RAN_ID>&mid=53555&murl=<encoded-depop-url>`. Depop's Rakuten merchant ID is 53555 (verified from Gem's live redirect chain, 2026-10-06).
+- (Closed 2026-10-09, do not implement.) Depop links: build the Rakuten LinkShare deeplink the way Gem does — `https://click.linksynergy.com/deeplink?id=<YOUR_RAN_ID>&mid=53555&murl=<encoded-depop-url>`. Depop's Rakuten merchant ID is 53555 (verified from Gem's live redirect chain, 2026-10-06).
 - Matthew fills in the real tags/IDs — placeholders only, never invent them.
 
 ## 2. Disclosure
