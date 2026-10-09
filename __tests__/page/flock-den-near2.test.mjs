@@ -81,6 +81,15 @@ test('a like whose near search became a hunt starts no leftover search, even wit
   await p2.close();
 });
 
+test('a like of a many-word hunt whose title starts with that hunt still starts its near search', async () => {
+  const f = liveFetch();
+  const like = { u: 'https://www.ebay.com/itm/2', t: 'Pyrex Butterprint Turquoise Mixing Bowl', p: '$20.00', s: 'ebay', i: '', h: 'Pyrex Butterprint', at: 1 };
+  const p = await flock(f, { 'prowl.v36': { seen: true, hunts: ['Pyrex Butterprint', 'Blenko glass'] }, 'prowl.likes': [like] });
+  assert.ok(terms(p.calls).includes('turquoise mixing'), 'its own hunt does not count as its spark: ' + terms(p.calls).join(' | '));
+  await waitFor(() => cards(p).find((x) => x.getAttribute('data-near') === '1' && x.getAttribute('data-h') === 'turquoise mixing'), { timeout: 8000 });
+  await p.close();
+});
+
 test('past FLOCK_NEAR_KEEP near searches, the newest stay in the feed and the oldest give way', async () => {
   let ctr = 0;
   const W = ['alder', 'birch', 'cedar', 'dogwood', 'elm', 'fir', 'ginkgo', 'hazel', 'ironwood', 'juniper', 'kapok', 'larch', 'maple', 'nutmeg', 'oak', 'pine', 'quince', 'rowan', 'spruce', 'teak', 'ulmus', 'viburnum', 'walnut', 'xylem', 'yew', 'zelkova'];

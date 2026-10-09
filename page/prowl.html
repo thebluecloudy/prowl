@@ -5093,12 +5093,12 @@ function flUnseen(p){return FLOCK.sm&&!FLOCK.sm[p.it.url]?1:0}
    v6.61: a like searches straight away: the two strongest words of each of your two newest likes lead. Words you keep
    swiping away (twice or more, more often than liked) never start a search, and a near search whose finds you swipe
    away twice, with none liked, is dropped for this visit. */
-/* a like whose spark became a Den hunt: some hunt, made only of the like's words, is what ranked() gives it without every
-   other hunt's words (the way flNearTerms made the spark) */
+/* a like whose spark became a Den hunt: some hunt, made only of the like's words and none of its own hunt's (a spark
+   never has those), is what ranked() gives it without every other hunt's words (the way flNearTerms made the spark) */
 function flSpentBy(l,FT,hw,ranked){
-  var lw=likeWords(l.t),i,w,tw,sk;
+  var lw=likeWords(l.t),own=likeWords(l.h||''),i,w,tw,sk;
   for(i=0;i<FT.length;i++){
-    tw=likeWords(FT[i]);if(!tw.length||tw.some(function(x){return lw.indexOf(x)<0}))continue;
+    tw=likeWords(FT[i]);if(!tw.length||tw.some(function(x){return lw.indexOf(x)<0||own.indexOf(x)>-1}))continue;
     sk=Object.create(null);for(w in hw)if(tw.indexOf(w)<0)sk[w]=1;
     if(flNKey(ranked(l,sk).slice(0,2).join(' '))===flNKey(FT[i]))return true;
   }
