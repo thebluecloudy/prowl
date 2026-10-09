@@ -2,7 +2,7 @@ prowl.html is the Prowl page body. A push that changes it deploys it to Shopify 
 
 ## Affiliate tags
 
-Outbound listing and search links go through `prowlAff()` in the first `<script>` of `prowl.html`: eBay gets its EPN tag (`prowlEpn`), and Etsy, Reverb, 1stDibs and Depop get their network's click URL from `window.PROWL_AFF`. Which programs are on, and their IDs, come from the admin area (below). The footer and Help disclosure list exactly the programs that are on.
+Outbound listing and search links go through `prowlAff()` in the first `<script>` of `prowl.html`: eBay gets its EPN tag (`prowlEpn`), and Etsy, Reverb and 1stDibs get their network's click URL from `window.PROWL_AFF`. Depop links always go out plain. Which programs are on, and their IDs, come from the admin area (below). The footer and Help disclosure list exactly the programs that are on.
 
 ### Affiliates in the admin area (worker v90 / page v6.60)
 
