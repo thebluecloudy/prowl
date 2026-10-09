@@ -39,7 +39,10 @@ test('a result card is the link, then one row: star, heart, Fair price?; nothing
   }
   /* the row's buttons are laid out in the row, not absolutely over the photo */
   assert.match(PAGE, /\.scout-app-wrapper \.sgw-cbar \.sgw-sv,\.scout-app-wrapper \.sgw-cbar \.sgw-lk\{position:static;/);
-  assert.match(PAGE, /\.scout-app-wrapper \.sgw-cbar\{display:flex;/);
+  assert.match(PAGE, /\.scout-app-wrapper \.sgw-cbar\{display:flex;flex-wrap:wrap;/);
+  /* Fair price? is never narrower than its longest word: where the row has no room for that (320px phones, larger text)
+     it wraps to its own line under the star and heart instead of running out of its button */
+  assert.match(PAGE, /\.scout-app-wrapper \.sgw-cbar \.sgw-fp\{flex:1 1 0;width:auto;min-width:min-content;[^}]*overflow-wrap:normal\}/);
   assert.equal(p.errors.length, 0, String(p.errors[0] || ''));
   await p.close();
 });
@@ -60,7 +63,10 @@ test('a Fair price answer goes under the row; the star and heart stay in it', as
   const f = withVerdict();
   const p = await home(f);
   const c = p.$('#otp-sgw .sgw-cell');
-  c.querySelector('.sgw-cbar .sgw-fp').click();
+  const fp = c.querySelector('.sgw-cbar .sgw-fp');
+  fp.click();
+  assert.equal(fp.textContent, 'Check\u00ading\u2026', 'while it checks: a soft hyphen, so the label can take two lines in the row');
+  assert.equal(fp.disabled, true);
   const ans = await waitFor(() => c.querySelector('.sgw-fpr'));
   assert.equal(f.sent.length, 1);
   assert.equal(f.sent[0].url, c.getAttribute('data-u'), 'the cell is found from the button in the row');

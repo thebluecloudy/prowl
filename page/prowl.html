@@ -1076,10 +1076,11 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-lk.pop{animation:otpLkPop .35s ease-out }
 .scout-app-wrapper .sgw-lk:focus-visible{outline:2px solid var(--ac);outline-offset:2px }
 /* v6.63: on result cards the star and heart leave the photo for one row under the card, with Fair price? */
-.scout-app-wrapper .sgw-cbar{display:flex;align-items:stretch;gap:4px;min-width:0}
+.scout-app-wrapper .sgw-cbar{display:flex;flex-wrap:wrap;align-items:stretch;gap:4px;min-width:0}
 .scout-app-wrapper .sgw-cbar .sgw-sv,.scout-app-wrapper .sgw-cbar .sgw-lk{position:static;top:auto;right:auto;flex:0 0 auto;align-self:center;width:34px;height:34px;min-width:34px;box-shadow:none;font-size:17px}
-/* in a narrow phone column Fair price? takes two lines rather than being cut short */
-.scout-app-wrapper .sgw-cbar .sgw-fp{flex:1 1 auto;width:auto;min-width:0;min-height:36px;padding:3px 4px;font-size:13px;line-height:1.15;white-space:normal;overflow-wrap:normal}
+/* Fair price? takes what the row has left, in two lines if it must; never narrower than its longest word, so where even
+   that does not fit (a 320px phone, larger text) it moves to its own line under the star and heart, full width */
+.scout-app-wrapper .sgw-cbar .sgw-fp{flex:1 1 0;width:auto;min-width:min-content;min-height:36px;padding:3px 4px;font-size:13px;line-height:1.15;white-space:normal;overflow-wrap:normal}
 .scout-app-wrapper .dx-wrap:empty{display:none }
 .scout-app-wrapper .dx{border:1px solid var(--ln);border-radius:14px;background:var(--cd2);overflow:hidden }
 .scout-app-wrapper .dx summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:50px;padding:0 16px;cursor:pointer;font-size:14px;-webkit-tap-highlight-color:transparent }
@@ -3900,7 +3901,7 @@ function fpAsk(btn){
   if(aiOff())return;   /* v6.33 */
   var cell=(btn.closest&&btn.closest('.sgw-cell'))||btn.parentNode,u=cell.getAttribute('data-u');   /* v6.63: the button may sit in the card's row */
   if(!u||btn.disabled)return;
-  btn.disabled=true;btn.textContent='Checking…';
+  btn.disabled=true;btn.textContent='Check\u00ading…';   /* v6.63: the soft hyphen lets it take two lines in the card's row, as Fair price? does */
   /* v5.34: send whatever else the card shows (source, bids, time left) as
      details; the Worker names the piece first, then prices it. */
   var mEl=cell.querySelector('.sgw-m');
