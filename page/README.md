@@ -100,3 +100,13 @@ extension does not have it yet (it needs a store release).
   set itself followed that CSS, so every redraw as finds came in slid the feed from where the snap had put it back to
   your card. `flJump` sets them at once; your own moves (a swipe, Fly, the arrows, Back to top) stay smooth. Tests:
   `__tests__/page/flock-scroll.test.mjs`.
+
+## Uranium hero (page v6.70, worker v97)
+
+Uranium mode's hero is two of the owner's drawings. The mushroom-night mark (`page/art/prowl-mushroom-night.svg`) is in
+the page as a data URI, 96px. The fireflies scene (`worker/art/prowl-hero-fireflies.svg`, animated) is served by the
+worker at `/art/fireflies.svg` (`worker/art.js`, a year-long immutable cache), so its 23 KB cost the Shopify page (capped
+at 512 KB) nothing; `heroScene` asks for it only once Uranium is on (`HERO_ART`). With motion allowed, a wide night box
+(5:2, the scene's shape) holds the mark and the scene fades in over it, so nothing moves when it arrives; under reduced
+motion, the mark alone; if the scene cannot load, the mark stays. A new drawing: change the file in `worker/art/`,
+re-embed it in `worker/art.js` and bump `?v=` in `HERO_ART`.

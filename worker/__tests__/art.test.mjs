@@ -1,0 +1,52 @@
+// Worker v97: GET /art/<name> serves the page's drawings (worker/art.js), so they cost the Shopify page (capped at
+// 512 KB) nothing. fireflies.svg is Uranium mode's hero: the owner's drawing exactly, plus one <style> for its pulse.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { ART, PULSE_STYLE, artResponse } from '../art.js';
+import { routeKey } from '../metrics.js';
+
+const read = (f) => readFileSync(fileURLToPath(new URL('../' + f, import.meta.url)), 'utf8');
+const INDEX = read('index.js');
+
+test('the fireflies scene is the drawing as given, with only the pulse style added', () => {
+  const given = read('art/prowl-hero-fireflies.svg').replace(/\n$/, '');
+  assert.equal(ART['fireflies.svg'], given.replace('<defs>', PULSE_STYLE + '<defs>'));
+  assert.equal(ART['fireflies.svg'].split(PULSE_STYLE).length, 2, 'once');
+  assert.match(PULSE_STYLE, /^<style>@media \(prefers-reduced-motion:no-preference\)\{\.pmPulse\{animation:[^}]*\}\}@keyframes pmPulse\{[^<]*\}<\/style>$/, 'its animation only with motion allowed');
+  assert.ok(given.includes('class="pmPulse"'), 'the class it pulses is in the drawing');
+  assert.doesNotMatch(ART['fireflies.svg'], /<script|on[a-z]+=|href=["'](?!#)|xlink:href|<foreignObject|<image/i, 'nothing that runs or fetches');
+});
+
+test('GET answers the drawing as an image with a year-long immutable cache; HEAD without a body; others 405; unknown 404', async () => {
+  const r = artResponse('fireflies.svg', 'GET');
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('content-type'), 'image/svg+xml; charset=utf-8');
+  assert.equal(r.headers.get('cache-control'), 'public, max-age=31536000, immutable');
+  assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(r.headers.get('access-control-allow-origin'), '*');
+  assert.equal(r.headers.get('cross-origin-resource-policy'), 'cross-origin', 'the Shopify page may show it');
+  assert.match(r.headers.get('content-security-policy'), /default-src 'none'/);
+  assert.equal(await r.text(), ART['fireflies.svg']);
+  const h = artResponse('fireflies.svg', 'HEAD');
+  assert.equal(h.status, 200);
+  assert.equal(await h.text(), '');
+  for (const m of ['POST', 'PUT', 'DELETE', 'OPTIONS']) assert.equal(artResponse('fireflies.svg', m).status, 405, m);
+  for (const n of ['', 'nope.svg', '../index.js', 'constructor', '__proto__', 'toString', 'FIREFLIES.SVG']) {
+    const x = artResponse(n, 'GET');
+    assert.equal(x.status, 404, JSON.stringify(n));
+    assert.equal(await x.text(), 'not found');
+  }
+});
+
+test('the route answers /art/ before anything else, and its hits are counted as "art"', () => {
+  const body = /async function handleFetch\(request, env, ctx\) \{([\s\S]*?)\n\s*\/\* v78: the owner's admin area/.exec(INDEX)[1];
+  const art = body.indexOf('if (url.pathname.startsWith("/art/")) return artResponse(url.pathname.slice(5), request.method);');
+  assert.ok(art > -1, 'the route');
+  assert.ok(art < body.indexOf('affLoad(env)'), 'before the KV read');
+  assert.ok(art < body.indexOf('const origin'), 'before any origin rule');
+  assert.match(INDEX, /^import \{ artResponse \} from "\.\/art\.js";/m);
+  assert.equal(routeKey('/art/fireflies.svg'), 'art');
+  assert.equal(routeKey('/artful'), 'other');
+});
