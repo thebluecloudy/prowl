@@ -18,7 +18,7 @@ Double-click `print-finder.pyw`. The first run installs `requests` and
 | --- | --- |
 | The Met, Art Institute of Chicago, Cleveland Museum of Art | CC0 |
 | Wikimedia Commons, Rijksmuseum, SMK Copenhagen, Library of Congress | Public domain (filtered) |
-| Medieval Bestiary (bestiary.ca) | **Not public domain.** Owned by the library that holds each manuscript. Results are marked "check rights", and the CSV says so. |
+| Medieval Bestiary (bestiary.ca) | The medieval art is public domain. The photographs come from the libraries that hold the manuscripts, and some set terms for commercial use. Results are marked "check library terms", and the CSV says so. |
 
 The Medieval Bestiary is searched by animal name (`owl`, `fish`, `dragon`).
 You can also paste a bestiary.ca page address into the search box to pull the

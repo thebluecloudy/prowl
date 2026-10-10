@@ -195,6 +195,20 @@ class OtherPageLayoutTests(unittest.TestCase):
     def test_words_that_merely_end_in_img_are_not_pictures(self):
         self.assertEqual(self.numbers('<div style="background:url(logoimg9.gif)">'), [])
 
+    def test_picture_links_named_by_title_or_alt(self):
+        html = ('<a href="beast245.htm" title="Owl"><img src="owl.gif"></a>'
+                '<a href="beast181.htm"><img src="dog.gif" alt="Dog"></a>')
+        self.assertEqual(pf.parse_bestiary_index(html), {"245": "Owl", "181": "Dog"})
+
+    def test_drop_down_and_clickable_rows(self):
+        html = ('<select><option value="beast245.htm">Owl</option></select>'
+                '<table><tr onclick="location.href=\'beast181.htm\'"><td>Dog</td></tr></table>')
+        self.assertEqual(pf.parse_bestiary_index(html), {"245": "Owl", "181": "Dog"})
+
+    def test_rows_holding_a_gallery_link_are_not_beasts(self):
+        html = '<li data-go="beastgallery245.htm">Owl gallery</li>'
+        self.assertEqual(pf.parse_bestiary_index(html), {})
+
     def test_index_links_in_any_style(self):
         html = ("<a href='beast1.htm'>Owl</a>"
                 '<a href=beast2.htm>Lion</a>'
@@ -258,7 +272,7 @@ class SearchBestiaryTests(BestiaryTestCase):
     def test_every_result_is_flagged_not_public_domain(self):
         items = pf.search_bestiary("owl", 24, FakeSession(self.pages()))
         for item in items:
-            self.assertIn("NOT public domain", item["rights"])
+            self.assertIn("library", item["rights"])
             self.assertNotIn("CC0", item["credit"])
         self.assertIn("Medieval Bestiary", pf.CHECK_RIGHTS)
 
@@ -472,7 +486,7 @@ class PastedLinkTests(BestiaryTestCase):
         self.assertEqual([i["id"] for i in items],
                          ["bestiary-1001", "bestiary-1002", "bestiary-1003", "bestiary-2001"])
         self.assertTrue(items[0]["title"].startswith("Owl,"))
-        self.assertTrue(all("NOT public domain" in i["rights"] for i in items))
+        self.assertTrue(all(i["rights"] == pf.BESTIARY_RIGHTS for i in items))
 
     def test_tries_the_entry_gallery_first(self):
         session = FakeSession(self.pages(**{

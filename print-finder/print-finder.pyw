@@ -18,9 +18,10 @@ Sources, all keyless:
   Art Institute of Chicago  50,000+ CC0 images
   Cleveland Museum of Art   ~40,000 CC0 images
   Wikimedia Commons, Rijksmuseum, SMK Copenhagen, Library of Congress
-  Medieval Bestiary (bestiary.ca) -- manuscript beasts. NOT public domain:
-      the libraries that hold the manuscripts own the images, so these are
-      marked "check rights" and the CSV says so.
+  Medieval Bestiary (bestiary.ca) -- manuscript beasts. The medieval art is
+      public domain, but the photographs belong to the libraries that hold
+      the manuscripts, and some set terms for commercial use. These are
+      marked "check library terms" and the CSV says so.
 """
 
 import csv
@@ -452,9 +453,9 @@ def search_loc(term, limit, session, key=None):
 
 
 BESTIARY = "https://bestiary.ca/"
-BESTIARY_RIGHTS = ("NOT public domain by default. Owned by the library that holds the "
-                   "manuscript; see the image's Copyright tab on bestiary.ca and get "
-                   "permission before printing or selling.")
+BESTIARY_RIGHTS = ("Medieval artwork, public domain. The photograph comes from the library "
+                   "that holds the manuscript, which may set terms for commercial use; see "
+                   "the image's Copyright tab on bestiary.ca.")
 
 # Words in a search that describe the medium, not the animal. The bestiary is
 # searched by beast name, so "owl print" should look for "owl".
@@ -505,17 +506,23 @@ def _text(fragment):
 
 
 def parse_bestiary_index(html):
-    """{beast id: name} from a beast list page. Matches beast123.htm links
-    only, not beastgallery123.htm or beastbiblio123.htm. Any quoting, any
-    path, absolute or relative."""
+    """{beast id: name} from a beast list page. Finds any element that points
+    at beast123.htm -- a link, a drop-down <option>, a clickable row -- but
+    not beastgallery123.htm or beastbiblio123.htm. The name is the element's
+    text, or failing that its title, alt or aria-label (a picture link)."""
     beasts = {}
     for match in re.finditer(
-        r"""<a\b[^>]*?\bhref\s*=\s*["']?(?:[^"'\s>]*/)?beast(\d+)\.html?(?:[#?][^"'\s>]*)?["']?[^>]*>(.*?)</a>""",
+        r"""<(a|option|li|tr|td|div|span|button)\b([^>]*?(?<![a-z])beast(\d+)\.html?\b[^>]*)>(.*?)</\1\s*>""",
         html, re.I | re.S,
     ):
-        name = _text(match.group(2))
-        if name and match.group(1) not in beasts:
-            beasts[match.group(1)] = name
+        attributes, beast_id, inner = match.group(2), match.group(3), match.group(4)
+        name = _text(inner)
+        if not name:
+            label = re.search(r"""\b(?:title|alt|aria-label)\s*=\s*["']([^"']+)""",
+                              attributes + " " + inner, re.I)
+            name = _text(label.group(1)) if label else ""
+        if name and beast_id not in beasts:
+            beasts[beast_id] = name
     return beasts
 
 
@@ -564,7 +571,7 @@ def _gallery_scripts(html, base):
     return urls[:3]
 
 
-INDEX_VERSION = 2          # bump to throw away beast lists saved by older versions
+INDEX_VERSION = 3          # bump to throw away beast lists saved by older versions
 INDEX_START = ("beasts/beastalpha.htm", "beasts.htm")
 INDEX_MAX_PAGES = 40
 
@@ -966,8 +973,8 @@ class App(tk.Tk):
 
         keyrow = tk.Frame(self, bg=CREAM, padx=18, pady=6)
         keyrow.pack(fill="x")
-        tk.Label(keyrow, text="None need an account. Medieval Bestiary images are NOT public domain — "
-                              "check rights before printing.",
+        tk.Label(keyrow, text="None need an account. Medieval Bestiary art is public domain, but the "
+                              "libraries' photos may have terms for selling prints.",
                  font=("Georgia", 8, "italic"), bg=CREAM, fg=MUTED).pack(side="left")
         tk.Label(keyrow, text="per source", font=("Georgia", 9), bg=CREAM, fg=MUTED).pack(side="right")
         ttk.Spinbox(keyrow, from_=6, to=60, increment=6, width=4,
@@ -1091,7 +1098,7 @@ class App(tk.Tk):
                 text="Nothing came back. Try a broader word \u2014 'woodcut' rather than 'Dutch woodcut 1918'.",
                 font=("Georgia", 11, "italic"), bg=CREAM, fg=MUTED,
             ).grid(row=first_row, column=0, columnspan=columns, padx=20, pady=40)
-            self.status.set("No results")
+            self.status.set("No results" + (f" \u2014 {notes[0]}" if notes else ""))
             return
 
         for index, item in enumerate(found):
@@ -1110,7 +1117,7 @@ class App(tk.Tk):
                      font=("Georgia", 8), bg=CREAM, fg=MUTED,
                      wraplength=190, justify="left").pack(anchor="w")
             if item["source"] in CHECK_RIGHTS:
-                tk.Label(tile, text="\u26a0 check rights before printing",
+                tk.Label(tile, text="\u26a0 check library terms",
                          font=("Georgia", 8, "italic"), bg=CREAM, fg=BRASS).pack(anchor="w")
 
             starred = item["id"] in self.shortlist
@@ -1266,9 +1273,9 @@ class App(tk.Tk):
                     target, count, restricted = value
                     self.status.set(f"Saved {count} files")
                     warning = (
-                        f"\n\n{restricted} of them are from the Medieval Bestiary and are "
-                        "NOT public domain. Check the rights column in provenance.csv "
-                        "before printing them."
+                        f"\n\n{restricted} of them are from the Medieval Bestiary. The art "
+                        "is public domain, but check each library's terms (rights column "
+                        "in provenance.csv) before selling prints of them."
                     ) if restricted else ""
                     if messagebox.askyesno(
                         "Finished",
