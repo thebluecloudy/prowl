@@ -505,12 +505,31 @@ def _text(fragment):
     return re.sub(r"\s+", " ", unescape(re.sub(r"<[^>]+>", " ", fragment))).strip()
 
 
+def _add_name(names, name):
+    if name and name.lower() not in (n.lower() for n in names):
+        names.append(name)
+
+
 def parse_bestiary_index(html):
-    """{beast id: name} from a beast list page. Finds any element that points
-    at beast123.htm -- a link, a drop-down <option>, a clickable row -- but
-    not beastgallery123.htm or beastbiblio123.htm. The name is the element's
-    text, or failing that its title, alt or aria-label (a picture link)."""
-    beasts = {}
+    """{beast id: [names]} from a beast list page, the everyday name first.
+
+    bestiary.ca's list is a table with one row per name a beast went by: the
+    link holds the medieval name ("Bubo", "Canis") and the next column the
+    common one ("Owl", "Dog"). Every name is kept so any of them finds the
+    beast. Other layouts work too: any element pointing at beast123.htm (a
+    link, a drop-down <option>, a clickable row) but not beastgallery123.htm,
+    named by its text or else its title, alt or aria-label."""
+    common, others = {}, {}
+
+    for row in re.finditer(r"<tr\b[^>]*>(.*?)</tr\s*>", html, re.I | re.S):
+        beast = re.search(r"(?<![a-z])beast(\d+)\.html?\b", row.group(1), re.I)
+        cells = re.findall(r"<td\b[^>]*>(.*?)</td\s*>", row.group(1), re.I | re.S)
+        if beast and len(cells) >= 2:
+            # Name | Common | Type | Description: only the first two are names.
+            name = _text(cells[1])
+            if name and beast.group(1) not in common:
+                common[beast.group(1)] = name
+
     for match in re.finditer(
         r"""<(a|option|li|tr|td|div|span|button)\b([^>]*?(?<![a-z])beast(\d+)\.html?\b[^>]*)>(.*?)</\1\s*>""",
         html, re.I | re.S,
@@ -521,8 +540,16 @@ def parse_bestiary_index(html):
             label = re.search(r"""\b(?:title|alt|aria-label)\s*=\s*["']([^"']+)""",
                               attributes + " " + inner, re.I)
             name = _text(label.group(1)) if label else ""
-        if name and beast_id not in beasts:
-            beasts[beast_id] = name
+        _add_name(others.setdefault(beast_id, []), name)
+
+    beasts = {}
+    for beast_id in list(common) + [b for b in others if b not in common]:
+        names = []
+        _add_name(names, common.get(beast_id))
+        for name in others.get(beast_id, []):
+            _add_name(names, name)
+        if names:
+            beasts[beast_id] = names
     return beasts
 
 
@@ -571,7 +598,7 @@ def _gallery_scripts(html, base):
     return urls[:3]
 
 
-INDEX_VERSION = 3          # bump to throw away beast lists saved by older versions
+INDEX_VERSION = 4          # bump to throw away beast lists saved by older versions
 INDEX_START = ("beasts/beastalpha.htm", "beasts.htm")
 INDEX_MAX_PAGES = 40
 
@@ -594,14 +621,15 @@ def _list_pages(html, base):
 
 
 def bestiary_index(session):
-    """{beast id: name} for every beast on bestiary.ca. The list is spread
-    over several pages, so this follows every list page it finds. Saved for
-    30 days, so only the first search waits for it."""
+    """{beast id: [names]} for every beast on bestiary.ca, everyday name
+    first. Follows every list page it finds. Saved for 30 days, so only the
+    first search waits for it."""
     try:
         with open(BESTIARY_CACHE, encoding="utf-8") as handle:
             cached = json.load(handle)
         if (cached.get("version") == INDEX_VERSION and cached.get("beasts")
-                and time.time() - cached.get("saved", 0) < 30 * 86400):
+                and time.time() - cached.get("saved", 0) < 30 * 86400
+                and all(isinstance(v, list) and v for v in cached["beasts"].values())):
             return cached["beasts"]
     except (OSError, ValueError, AttributeError):
         pass
@@ -621,7 +649,9 @@ def bestiary_index(session):
         found = parse_bestiary_index(html)
         if not found and url.replace(BESTIARY, "") in INDEX_START:
             _bestiary_debug(url.replace(BESTIARY, "").replace("/", "_"), html)
-        beasts.update({k: v for k, v in found.items() if k not in beasts})
+        for beast_id, names in found.items():
+            for name in names:
+                _add_name(beasts.setdefault(beast_id, []), name)
         queue_.extend(u for u in _list_pages(html, url) if u not in visited)
 
     if not beasts:
@@ -659,11 +689,11 @@ def match_beasts(term, beasts):
     if not words:
         return []
     exact, partial = [], []
-    for beast_id, name in beasts.items():
-        name_words = _words(name)
-        if not words & name_words:
+    for beast_id, names in beasts.items():
+        name_words = [_words(name) for name in names]
+        if not any(words & each for each in name_words):
             continue
-        (exact if name_words <= words else partial).append(beast_id)
+        (exact if any(each and each <= words for each in name_words) else partial).append(beast_id)
     return exact + partial
 
 
@@ -785,11 +815,11 @@ def bestiary_from_url(url, limit, session, follow=6):
             pass
 
     linked = parse_bestiary_index(html)
-    for beast_id, beast in list(linked.items())[:follow]:
+    for beast_id, names in list(linked.items())[:follow]:
         if len(out) >= limit:
             break
         images, page, _ = bestiary_images(session, beast_id)
-        add(images, beast, page)
+        add(images, names[0], page)
 
     if not out:
         _bestiary_debug("pasted-page.htm", html)
@@ -825,7 +855,7 @@ def search_bestiary(term, limit, session, key=None):
 
     out, unreadable, problems = [], [], []
     for beast_id in matched:
-        name = beasts[beast_id]
+        name = beasts[beast_id][0]
         images, page, problem = bestiary_images(session, beast_id)
         if problem:
             problems.append(problem)

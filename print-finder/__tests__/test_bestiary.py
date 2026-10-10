@@ -116,23 +116,25 @@ class BestiaryTestCase(unittest.TestCase):
 class ParseIndexTests(unittest.TestCase):
     def test_reads_beast_links_and_names(self):
         beasts = pf.parse_bestiary_index(INDEX_HTML)
-        self.assertEqual(beasts["155"], "Owl")
-        self.assertEqual(beasts["262"], "Lion")
+        self.assertEqual(beasts["155"], ["Owl"])
+        self.assertEqual(beasts["262"], ["Lion"])
 
     def test_strips_inner_tags_and_entities(self):
         beasts = pf.parse_bestiary_index(INDEX_HTML)
-        self.assertEqual(beasts["156"], "Horned Owl")
-        self.assertEqual(beasts["400"], "Ant & Antlion")
+        self.assertEqual(beasts["156"], ["Horned Owl"])
+        self.assertEqual(beasts["400"], ["Ant & Antlion"])
 
     def test_ignores_gallery_and_bibliography_links(self):
         beasts = pf.parse_bestiary_index(INDEX_HTML)
-        self.assertNotIn("Owl gallery", beasts.values())
-        self.assertNotIn("Owl bibliography", beasts.values())
+        names = [n for names in beasts.values() for n in names]
+        self.assertNotIn("Owl gallery", names)
+        self.assertNotIn("Owl bibliography", names)
         self.assertEqual(len(beasts), 6)
 
-    def test_first_name_wins_for_repeated_id(self):
-        html = '<a href="beast1.htm">Owl</a> <a href="beast1.htm">Owl (again)</a>'
-        self.assertEqual(pf.parse_bestiary_index(html), {"1": "Owl"})
+    def test_every_name_of_a_beast_is_kept_once(self):
+        html = ('<a href="beast1.htm">Owl</a> <a href="beast1.htm">Bubo</a>'
+                '<a href="beast1.htm">owl</a>')
+        self.assertEqual(pf.parse_bestiary_index(html), {"1": ["Owl", "Bubo"]})
 
     def test_empty_page(self):
         self.assertEqual(pf.parse_bestiary_index("<html></html>"), {})
@@ -198,12 +200,12 @@ class OtherPageLayoutTests(unittest.TestCase):
     def test_picture_links_named_by_title_or_alt(self):
         html = ('<a href="beast245.htm" title="Owl"><img src="owl.gif"></a>'
                 '<a href="beast181.htm"><img src="dog.gif" alt="Dog"></a>')
-        self.assertEqual(pf.parse_bestiary_index(html), {"245": "Owl", "181": "Dog"})
+        self.assertEqual(pf.parse_bestiary_index(html), {"245": ["Owl"], "181": ["Dog"]})
 
     def test_drop_down_and_clickable_rows(self):
         html = ('<select><option value="beast245.htm">Owl</option></select>'
                 '<table><tr onclick="location.href=\'beast181.htm\'"><td>Dog</td></tr></table>')
-        self.assertEqual(pf.parse_bestiary_index(html), {"245": "Owl", "181": "Dog"})
+        self.assertEqual(pf.parse_bestiary_index(html), {"245": ["Owl"], "181": ["Dog"]})
 
     def test_rows_holding_a_gallery_link_are_not_beasts(self):
         html = '<li data-go="beastgallery245.htm">Owl gallery</li>'
@@ -215,12 +217,72 @@ class OtherPageLayoutTests(unittest.TestCase):
                 '<a href="https://bestiary.ca/beasts/beast3.html">Cat</a>'
                 '<a class="x" href="/beasts/beast4.htm#top">Dog</a>')
         self.assertEqual(pf.parse_bestiary_index(html),
-                         {"1": "Owl", "2": "Lion", "3": "Cat", "4": "Dog"})
+                         {"1": ["Owl"], "2": ["Lion"], "3": ["Cat"], "4": ["Dog"]})
+
+
+# bestiary.ca's real beast list layout, trimmed: one row per name the beast
+# went by, the medieval name linked, the common name in the next column.
+REAL_TABLE = """
+<table id="filter-table" class="beast-table3 note-text">
+  <tr><th>Name</th><th>Common</th><th>Type</th><th></th></tr>
+  <tr>
+    <td><a href="beast245.htm">Bubo</a></td>
+    <td>Owl</td><td>Bird</td><td></td>
+  </tr><tr>
+    <td><span id="letter-C"></span>
+<a href="beast181.htm">Ca</a></td>
+    <td>Dog</td><td>Beast</td><td></td>
+  </tr><tr>
+    <td><a href="beast181.htm">Canis</a></td>
+    <td>Dog</td><td>Beast</td><td>Dogs are loyal to their masters</td>
+  </tr><tr>
+    <td><a href="beast245.htm">Chat-huant</a></td>
+    <td>Owl</td><td>Bird</td><td></td>
+  </tr><tr>
+    <td><a href="beast100.htm">Fish</a></td>
+    <td>Fish</td><td>Fish</td><td>Fish are creatures of the water</td>
+  </tr><tr>
+    <td><a href="beast350.htm">Canis marinus</a></td>
+    <td>Sea-dog</td><td>Fish</td><td></td>
+  </tr>
+</table>
+"""
+
+
+class RealListLayoutTests(unittest.TestCase):
+    """Owls and dogs went missing because only the first, medieval name of
+    each beast was read ("Bubo", "Ca") and never its common name."""
+
+    def setUp(self):
+        self.beasts = pf.parse_bestiary_index(REAL_TABLE)
+
+    def test_common_name_comes_first_then_medieval_names(self):
+        self.assertEqual(self.beasts["245"], ["Owl", "Bubo", "Chat-huant"])
+        self.assertEqual(self.beasts["181"], ["Dog", "Ca", "Canis"])
+
+    def test_type_and_description_columns_are_not_names(self):
+        names = [n for names in self.beasts.values() for n in names]
+        self.assertNotIn("Bird", names)
+        self.assertNotIn("Dogs are loyal to their masters", names)
+
+    def test_owl_and_dog_are_found_by_common_name(self):
+        self.assertEqual(pf.match_beasts("owl", self.beasts), ["245"])
+        self.assertEqual(pf.match_beasts("dogs", self.beasts), ["181", "350"])
+
+    def test_medieval_names_work_too(self):
+        self.assertEqual(pf.match_beasts("bubo", self.beasts), ["245"])
+        self.assertEqual(pf.match_beasts("canis", self.beasts)[0], "181")
+
+    def test_searching_a_type_does_not_match_every_beast_of_that_type(self):
+        self.assertEqual(pf.match_beasts("bird", self.beasts), [])
+
+    def test_header_row_is_not_a_beast(self):
+        self.assertEqual(set(self.beasts), {"245", "181", "100", "350"})
 
 
 class MatchBeastsTests(unittest.TestCase):
-    BEASTS = {"155": "Owl", "156": "Horned Owl", "262": "Lion", "100": "Cat",
-              "300": "Sea-horse"}
+    BEASTS = {"155": ["Owl"], "156": ["Horned Owl"], "262": ["Lion"], "100": ["Cat"],
+              "300": ["Sea-horse"]}
 
     def test_medium_words_are_ignored(self):
         self.assertEqual(pf.match_beasts("owl woodcut print", self.BEASTS)[0], "155")
@@ -243,11 +305,11 @@ class MatchBeastsTests(unittest.TestCase):
         self.assertEqual(pf.match_beasts("skeleton skull", self.BEASTS), [])
 
     def test_hyphenated_names_match_their_parts(self):
-        beasts = {"1": "Screech-owl", "2": "Owl"}
+        beasts = {"1": ["Screech-owl"], "2": ["Owl"]}
         self.assertEqual(pf.match_beasts("owl", beasts), ["2", "1"])
 
     def test_short_words_ending_in_s_are_not_stemmed(self):
-        self.assertEqual(pf.match_beasts("ass", {"1": "Ass"}), ["1"])
+        self.assertEqual(pf.match_beasts("ass", {"1": ["Ass"]}), ["1"])
 
 
 class SearchBestiaryTests(BestiaryTestCase):
@@ -323,7 +385,7 @@ class SearchBestiaryTests(BestiaryTestCase):
         self.assertNotIn("https://bestiary.ca/beasts/beastalpha.htm", second.requested)
 
     def test_stale_or_corrupt_cache_is_refetched(self):
-        for content in ('{"saved": 0, "beasts": {"1": "Owl"}}', "[]", "not json"):
+        for content in ('{"saved": 0, "beasts": {"1": ["Owl"]}}', "[]", "not json"):
             with open(self.cache, "w", encoding="utf-8") as handle:
                 handle.write(content)
             session = FakeSession(self.pages())
@@ -359,7 +421,7 @@ class FullBeastListTests(BestiaryTestCase):
     def test_follows_every_list_page(self):
         session = FakeSession(self.site())
         beasts = pf.bestiary_index(session)
-        self.assertEqual(beasts, {"100": "Fish", "1": "Amphisbaena", "245": "Owl"})
+        self.assertEqual(beasts, {"100": ["Fish"], "1": ["Amphisbaena"], "245": ["Owl"]})
         self.assertEqual(session.requested.count(self.ALPHA), 1)
         self.assertFalse(any("elsewhere" in url for url in session.requested))
         self.assertFalse(any("beastgallery" in url for url in session.requested))
@@ -387,6 +449,23 @@ class FullBeastListTests(BestiaryTestCase):
         with mock.patch.object(pf, "INDEX_MAX_PAGES", 5):
             pf.bestiary_index(session)
         self.assertEqual(len(session.requested), 5)
+
+
+class RealListSearchTests(BestiaryTestCase):
+    def test_owl_search_shows_owl_pictures_titled_owl(self):
+        pages = {
+            "https://bestiary.ca/beasts/beastalpha.htm": REAL_TABLE,
+            "https://bestiary.ca/beasts/beastgallery245.htm": '<img src="/beastimage/img7.jpg">',
+        }
+        items = pf.search_bestiary("owl", 24, FakeSession(pages))
+        self.assertEqual([i["title"] for i in items], ["Owl, bestiary image 7"])
+
+    def test_list_saved_in_the_old_one_name_format_is_replaced(self):
+        with open(self.cache, "w", encoding="utf-8") as handle:
+            json.dump({"version": pf.INDEX_VERSION, "saved": pf.time.time(),
+                       "beasts": {"245": "Bubo"}}, handle)
+        session = FakeSession({"https://bestiary.ca/beasts/beastalpha.htm": REAL_TABLE})
+        self.assertEqual(pf.bestiary_index(session)["245"][0], "Owl")
 
 
 class FallbackAndExplanationTests(BestiaryTestCase):
