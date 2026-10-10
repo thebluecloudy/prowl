@@ -25,6 +25,7 @@ Sources, all keyless:
 """
 
 import csv
+import datetime
 import io
 import json
 import os
@@ -147,10 +148,13 @@ PRESETS = [
 # Museum adapters. Each returns a list of dicts with the same shape.
 # --------------------------------------------------------------------------
 
-def search_met(term, limit, session, key=None):
+def search_met(term, limit, session, key=None, medium="Prints"):
+    params = {"q": term, "hasImages": "true"}
+    if medium:
+        params["medium"] = medium
     hits = session.get(
         "https://collectionapi.metmuseum.org/public/collection/v1/search",
-        params={"q": term, "hasImages": "true", "medium": "Prints"},
+        params=params,
         timeout=30,
     )
     hits.raise_for_status()
@@ -178,6 +182,7 @@ def search_met(term, limit, session, key=None):
                 "title": item.get("title") or "Untitled",
                 "artist": item.get("artistDisplayName") or "Unknown",
                 "date": item.get("objectDate") or "",
+                "year": item.get("objectEndDate") or None,
                 "thumb": item.get("primaryImageSmall"),
                 "full": item.get("primaryImage") or item.get("primaryImageSmall"),
                 "page": item.get("objectURL", ""),
@@ -885,6 +890,89 @@ SOURCES = {
     "Medieval Bestiary": search_bestiary,
 }
 
+# --------------------------------------------------------------------------
+# Postcards: the same open collections, searched for postcards, with each
+# card's year worked out so cards still under copyright can be left out.
+# --------------------------------------------------------------------------
+
+# US copyright on published work runs 95 years: in 2026 everything published
+# before 1931 is public domain, in 2027 before 1932, and so on.
+PD_CUTOFF = datetime.date.today().year - 95
+
+POSTCARD_PRESETS = [
+    "Halloween postcard",
+    "black cat postcard",
+    "witch postcard",
+    "jack-o'-lantern postcard",
+    "Christmas postcard",
+    "Santa Claus postcard",
+    "Valentine postcard",
+    "Easter postcard",
+    "Thanksgiving postcard",
+    "New Year postcard",
+    "St. Patrick's Day postcard",
+    "Fourth of July postcard",
+    "birthday postcard",
+    "embossed greeting postcard",
+    "art nouveau postcard",
+]
+
+
+def year_of(text):
+    """The latest year in a date like "ca. 1905\u201310" or "1907", or None.
+    The latest, because a card is only safe once its last possible year is."""
+    if isinstance(text, int):
+        return text if 1400 <= text <= 2100 else None
+    years = [int(y) for y in re.findall(r"(?<!\d)(1[4-9]\d\d|20\d\d)(?!\d)", str(text or ""))]
+    if len(years) == 1:
+        # "1905-10" style: the second year is written short.
+        short = re.search(rf"{years[0]}\s*[-\u2013/]\s*(\d{{2}})(?![-\d])", str(text))
+        if short:
+            years.append(years[0] // 100 * 100 + int(short.group(1)))
+    return max(years) if years else None
+
+
+def as_postcards(search, **options):
+    """A prints source turned into a postcard source: the word "postcard" is
+    added to the search, and each card gets a year."""
+    def run(term, limit, session, key=None):
+        query = term if re.search(r"post\s*card", term, re.I) else f"{term} postcard"
+        items = search(query, limit, session, key, **options)
+        for item in items:
+            item["year"] = year_of(item.get("year")) or year_of(item.get("date"))
+            item["section"] = "Postcards"
+        return items
+    run.__name__ = f"postcards_{search.__name__}"
+    return run
+
+
+def public_domain_only(items, cutoff=None):
+    """Drop cards dated in or after the cutoff year. Cards with no date stay,
+    marked on screen as undated. Returns (kept, hidden count)."""
+    cutoff = cutoff or PD_CUTOFF
+    kept = [item for item in items if not (item.get("year") and item["year"] >= cutoff)]
+    return kept, len(items) - len(kept)
+
+
+POSTCARD_SOURCES = {
+    # The Met's Burdick collection holds thousands of postcards, filed under
+    # other media than "Prints", so the medium filter is off here.
+    "The Met": as_postcards(search_met, medium=None),
+    "Wikimedia Commons": as_postcards(search_commons),
+    "Library of Congress": as_postcards(search_loc),
+    "Art Institute": as_postcards(search_aic),
+    "Cleveland": as_postcards(search_cma),
+}
+
+# Each section of the window: its sources, its drop-down of searches, the
+# search it starts with, and where its ticked sources are remembered.
+SECTIONS = {
+    "Prints": {"sources": SOURCES, "presets": PRESETS, "start": "woodcut",
+               "setting": "sources"},
+    "Postcards": {"sources": POSTCARD_SOURCES, "presets": POSTCARD_PRESETS,
+                  "start": "Halloween postcard", "setting": "postcard_sources"},
+}
+
 NEEDS_KEY = set()   # every source is keyless
 CHECK_RIGHTS = {"Medieval Bestiary"}   # sources whose images are not public domain
 
@@ -906,15 +994,22 @@ class App(tk.Tk):
         self.session = requests.Session()
         self.session.headers.update(UA)
 
-        self.term = tk.StringVar(value="woodcut")
+        settings = self.load_settings()
+        self.section = settings.get("section") if settings.get("section") in SECTIONS else "Prints"
+        self.terms = {name: section["start"] for name, section in SECTIONS.items()}
+        self.term = tk.StringVar(value=self.terms[self.section])
         self.per_source = tk.IntVar(value=24)
         self.status = tk.StringVar(value="Ready")
-        # Sources ticked last time; everything ticked on a first run.
-        ticked = self.load_settings().get("sources")
-        self.use = {
-            name: tk.BooleanVar(value=not isinstance(ticked, list) or name in ticked)
-            for name in SOURCES
-        }
+        self.pre1931 = tk.BooleanVar(value=settings.get("pre1931", True) is not False)
+        # Sources ticked last time in each section; everything on a first run.
+        self.uses = {}
+        for name, section in SECTIONS.items():
+            ticked = settings.get(section["setting"])
+            self.uses[name] = {
+                source: tk.BooleanVar(value=not isinstance(ticked, list) or source in ticked)
+                for source in section["sources"]
+            }
+        self.use = self.uses[self.section]
 
         self.results = []
         self.thumbs = {}          # keeps PhotoImage refs alive
@@ -942,9 +1037,20 @@ class App(tk.Tk):
         except (OSError, ValueError):
             return {}
 
+    def current_section(self):
+        return SECTIONS[getattr(self, "section", "Prints")]
+
+    def current_sources(self):
+        return self.current_section()["sources"]
+
     def save_settings(self):
         settings = self.load_settings()
-        settings["sources"] = [name for name in SOURCES if self.use[name].get()]
+        settings[self.current_section()["setting"]] = [
+            name for name in self.current_sources() if self.use[name].get()
+        ]
+        settings["section"] = getattr(self, "section", "Prints")
+        if hasattr(self, "pre1931"):
+            settings["pre1931"] = bool(self.pre1931.get())
         try:
             with open(SETTINGS, "w", encoding="utf-8") as handle:
                 json.dump(settings, handle)
@@ -972,40 +1078,41 @@ class App(tk.Tk):
             font=("Georgia", 10, "italic"), bg=CREAM, fg=MUTED,
         ).pack(anchor="w", pady=(2, 0))
 
+        tabs = tk.Frame(self, bg=CREAM, padx=18)
+        tabs.pack(fill="x", pady=(0, 6))
+        self.tab_buttons = {}
+        for name in SECTIONS:
+            button = tk.Button(
+                tabs, text=name, font=("Georgia", 10), relief="flat", padx=16, pady=3,
+                cursor="hand2", command=lambda n=name: self.switch_section(n),
+            )
+            button.pack(side="left", padx=(0, 4))
+            self.tab_buttons[name] = button
+
         bar = tk.Frame(self, bg=CREAM, padx=18)
         bar.pack(fill="x", pady=(4, 0))
 
-        combo = ttk.Combobox(bar, textvariable=self.term, values=PRESETS, font=("Georgia", 11))
-        combo.pack(side="left", fill="x", expand=True, ipady=3)
-        combo.bind("<Return>", lambda _: self.search())
+        self.combo = ttk.Combobox(bar, textvariable=self.term, font=("Georgia", 11))
+        self.combo.pack(side="left", fill="x", expand=True, ipady=3)
+        self.combo.bind("<Return>", lambda _: self.search())
 
         tk.Button(
             bar, text="Search", command=self.search, font=("Georgia", 10),
             bg=MOSS, fg="white", relief="flat", padx=18, pady=5, cursor="hand2",
         ).pack(side="left", padx=(8, 0))
 
-        opts = tk.Frame(self, bg=CREAM, padx=18, pady=4)
-        opts.pack(fill="x")
-        names = list(SOURCES)
-        for index, name in enumerate(names):
-            label = name
-            tk.Checkbutton(
-                opts, text=label, variable=self.use[name], font=("Georgia", 9),
-                bg=CREAM, fg=INK, activebackground=CREAM, selectcolor="white",
-                command=self.sources_changed,
-            ).grid(row=index // 4, column=index % 4, sticky="w", padx=(0, 16))
-        self.all_button = tk.Button(
-            opts, command=self.toggle_all_sources, font=("Georgia", 9), width=11,
-            bg=CREAM, fg=MUTED, relief="solid", bd=1, cursor="hand2",
-        )
-        self.all_button.grid(row=0, column=4, rowspan=2, sticky="w", padx=(4, 0))
-        self.refresh_all_button()
+        self.opts = tk.Frame(self, bg=CREAM, padx=18, pady=4)
+        self.opts.pack(fill="x")
 
         keyrow = tk.Frame(self, bg=CREAM, padx=18, pady=6)
         keyrow.pack(fill="x")
-        tk.Label(keyrow, text="None need an account. Medieval Bestiary art is public domain, but the "
-                              "libraries' photos may have terms for selling prints.",
-                 font=("Georgia", 8, "italic"), bg=CREAM, fg=MUTED).pack(side="left")
+        self.pd_check = tk.Checkbutton(
+            keyrow, text=f"Before {PD_CUTOFF} only (US public domain)", variable=self.pre1931,
+            font=("Georgia", 9), bg=CREAM, fg=INK, activebackground=CREAM,
+            selectcolor="white", command=self.save_settings,
+        )
+        self.key_note = tk.Label(keyrow, font=("Georgia", 8, "italic"), bg=CREAM, fg=MUTED)
+        self.key_note.pack(side="left")
         tk.Label(keyrow, text="per source", font=("Georgia", 9), bg=CREAM, fg=MUTED).pack(side="right")
         ttk.Spinbox(keyrow, from_=6, to=60, increment=6, width=4,
                     textvariable=self.per_source).pack(side="right", padx=(0, 6))
@@ -1051,6 +1158,57 @@ class App(tk.Tk):
         ).pack(side="right", padx=(0, 8))
 
         self.refresh_count()
+        self.show_section()
+
+    # ---------- sections ----------
+
+    NOTES = {
+        "Prints": "None need an account. Medieval Bestiary art is public domain, but the "
+                  "libraries' photos may have terms for selling prints.",
+        "Postcards": "Cards published before {cutoff} are public domain in the US. "
+                     "Undated cards are marked \u2014 check them before selling.",
+    }
+
+    def switch_section(self, name):
+        if name == self.section:
+            return
+        self.terms[self.section] = self.term.get()
+        self.section = name
+        self.use = self.uses[name]
+        self.term.set(self.terms[name])
+        self.show_section()
+        self.save_settings()
+
+    def show_section(self):
+        """Point the tabs, drop-down, source boxes and notes at the section."""
+        section = self.current_section()
+        for name, button in self.tab_buttons.items():
+            active = name == self.section
+            button.configure(bg=MOSS if active else CREAM, fg="white" if active else MUTED,
+                             relief="flat" if active else "solid", bd=0 if active else 1)
+        self.combo.configure(values=section["presets"])
+
+        for child in self.opts.winfo_children():
+            child.destroy()
+        for index, name in enumerate(section["sources"]):
+            tk.Checkbutton(
+                self.opts, text=name, variable=self.use[name], font=("Georgia", 9),
+                bg=CREAM, fg=INK, activebackground=CREAM, selectcolor="white",
+                command=self.sources_changed,
+            ).grid(row=index // 4, column=index % 4, sticky="w", padx=(0, 16))
+        self.all_button = tk.Button(
+            self.opts, command=self.toggle_all_sources, font=("Georgia", 9), width=11,
+            bg=CREAM, fg=MUTED, relief="solid", bd=1, cursor="hand2",
+        )
+        self.all_button.grid(row=0, column=4, rowspan=2, sticky="w", padx=(4, 0))
+        self.refresh_all_button()
+
+        self.pd_check.pack_forget()
+        self.key_note.pack_forget()
+        if self.section == "Postcards":
+            self.pd_check.pack(side="left", padx=(0, 10))
+        self.key_note.configure(text=self.NOTES[self.section].format(cutoff=PD_CUTOFF))
+        self.key_note.pack(side="left")
 
     # ---------- source choice ----------
 
@@ -1078,9 +1236,12 @@ class App(tk.Tk):
         term = self.term.get().strip()
         if not term:
             return
-        chosen = [name for name in SOURCES if self.use[name].get()]
+        table = self.current_sources()
+        chosen = [name for name in table if self.use[name].get()]
         if is_bestiary_url(term):
-            chosen = ["Medieval Bestiary"]   # a pasted bestiary.ca page means only that
+            # A pasted bestiary.ca page means only that, whichever tab is open.
+            table = {"Medieval Bestiary": SOURCES["Medieval Bestiary"]}
+            chosen = ["Medieval Bestiary"]
         if not chosen:
             messagebox.showinfo("Pick a source", "Tick at least one museum.")
             return
@@ -1092,15 +1253,21 @@ class App(tk.Tk):
         self.status.set(f"Searching for \u201c{term}\u201d\u2026")
 
         threading.Thread(
-            target=self._search_worker, args=(term, chosen), daemon=True
+            target=self._search_worker,
+            args=(term, chosen, table,
+                  self.section == "Postcards" and self.pre1931.get() and not is_bestiary_url(term)),
+            daemon=True,
         ).start()
 
-    def _search_worker(self, term, chosen):
-        found, notes = [], []
+    def _search_worker(self, term, chosen, table=None, public_domain=False):
+        table = table if table is not None else self.current_sources()
+        found, notes, hidden = [], [], 0
         for name in chosen:
             try:
-                items = SOURCES[name](term, self.per_source.get(), self.session,
-                                      None)
+                items = table[name](term, self.per_source.get(), self.session, None)
+                if public_domain:
+                    items, dropped = public_domain_only(items)
+                    hidden += dropped
                 found.extend(items)
                 self.messages.put(("status", f"{name}: {len(items)}"))
                 if name == "Medieval Bestiary" and bestiary_note[0]:
@@ -1109,6 +1276,9 @@ class App(tk.Tk):
                 # Any failure in one source must not leave the search hanging.
                 self.messages.put(("status", f"{name} failed: {type(error).__name__}"))
                 notes.append(f"{name} failed: {error}"[:200])
+        if hidden:
+            notes.append(f"Hid {hidden} card{'s' if hidden != 1 else ''} dated {PD_CUTOFF} or "
+                         f"later (untick \u201cBefore {PD_CUTOFF} only\u201d to see them).")
         self.messages.put(("results", (found, notes)))
 
     def render(self, found, notes=()):
@@ -1146,6 +1316,9 @@ class App(tk.Tk):
             tk.Label(tile, text=f"{item['source']} \u00b7 {item['date']}"[:46],
                      font=("Georgia", 8), bg=CREAM, fg=MUTED,
                      wraplength=190, justify="left").pack(anchor="w")
+            if item.get("section") == "Postcards" and not item.get("year"):
+                tk.Label(tile, text="\u26a0 undated \u2014 check before selling",
+                         font=("Georgia", 8, "italic"), bg=CREAM, fg=BRASS).pack(anchor="w")
             if item["source"] in CHECK_RIGHTS:
                 tk.Label(tile, text="\u26a0 check library terms",
                          font=("Georgia", 8, "italic"), bg=CREAM, fg=BRASS).pack(anchor="w")
@@ -1266,6 +1439,7 @@ class App(tk.Tk):
                         "title": item["title"],
                         "artist": item["artist"],
                         "date": item["date"],
+                        "year": item.get("year") or "",
                         "source": item["source"],
                         "page": item["page"],
                         "credit_line": item["credit"],
