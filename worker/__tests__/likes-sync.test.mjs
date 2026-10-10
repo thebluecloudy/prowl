@@ -134,7 +134,7 @@ test("wired in: route, metrics name, purge and email move carry likes:", () => {
   assert.match(INDEX, /if \(url\.pathname === "\/alerts\/likes" && request\.method === "POST"\) return alLikes\(request, env, origin\);/);
   const list = (re) => { const m = re.exec(INDEX); assert.ok(m, String(re)); return JSON.parse(m[1]); };
   assert.ok(list(/async function alPurge[\s\S]*?for \(const p of (\[[^\]]*\])\) \{ await kv\.delete/).includes("likes:"), "Delete purges likes");
-  assert.match(INDEX, /for \(const k of \["pend:", "seen:", "likes:"\]\) \{ const v = await kvGet\(env, k \+ from, null\)/, "a change of email copies likes");
+  assert.ok(list(/for \(const k of (\[[^\]]*\])\) \{ const v = await kvGet\(env, k \+ from, null\)/).includes("likes:"), "a change of email copies likes");
   assert.ok(list(/for \(const k of (\[[^\]]*\])\) await env\.PROWL_ALERTS\.delete\(k \+ from\);/).includes("likes:"), "and removes them from the old address");
   const v = /const WORKER_VERSION = "v(\d+)[a-z]?";/.exec(INDEX);
   assert.ok(v && Number(v[1]) >= 85, "v85 or later");

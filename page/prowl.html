@@ -1027,6 +1027,12 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-mail .mail-seg button:disabled{opacity:.5;cursor:default}
 .scout-app-wrapper .sgw-mail .mail-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px dashed var(--ln);font-size:13.5px}
 .scout-app-wrapper .sgw-mail .mail-row:last-child{border-bottom:0}
+.scout-app-wrapper .pnc textarea{width:100%;box-sizing:border-box;font:inherit;font-size:14px;padding:8px;border:1px solid var(--l2);border-radius:9px;background:var(--cd);color:var(--ink)}
+.scout-app-wrapper .pnc-sp{display:block;font-size:12px;color:var(--i3)}
+.scout-app-wrapper .pnc-hit{display:flex;gap:10px;padding:8px;margin:6px 0;border:1.5px solid var(--l2);border-radius:10px;font-size:13px;overflow-wrap:anywhere}
+.scout-app-wrapper .pnc-hit.pnc-on{border-color:var(--ac)}
+.scout-app-wrapper .pnc-hit img{width:84px;height:84px;object-fit:cover;border-radius:7px;flex:none}
+.scout-app-wrapper .pnc-hit .sgw-fp{width:auto}
 .scout-app-wrapper .sgw-mail .mail-row .nm{flex:1;min-width:0;overflow-wrap:anywhere;color:var(--ink)}
 .scout-app-wrapper .sgw-mail .mail-row.off .nm{color:var(--i3);text-decoration:line-through}
 .scout-app-wrapper .sgw-mail .mail-row.lock .nm{color:var(--i3)}
@@ -2652,7 +2658,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.76';
+var PROWL_VERSION='v6.77';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4914,6 +4920,7 @@ function prefsPush(){
 }
 function prefsHtml(on,em,n){
   var p=prefs(),pro=mailPro(),act=prefsActive(),hs=mailHunts(),h='',i,k,muted,locked,paused=prefsPaused();
+  h+=pncHtml();   /* v6.77: Pounce */
   /* how often */
   h+='<div class="mail-sec"><h4>How often</h4><div class="mail-seg">';
   var fw=MAIL.freeWeekly&&!pro,fq=fw?'weekly':p.freq;   /* v6.05: free = Mondays */
@@ -4950,6 +4957,82 @@ function prefsHtml(on,em,n){
   if(MAIL.saving)h+='<p class="mail-save" role="status">'+esc(MAIL.saving)+'</p>';
   return h;
 }
+/* v6.77: Pounce. A quarry is one of the member's saved hunts plus their own words for the exact piece (optional
+   skip-words, size range in inches, reference photo). Worker v104 checks each new listing's photo and title against
+   it on the alert clock and taps the member's phone (ntfy) when one fits: Open it, Check price, Not it. Matches show
+   here too, with Fair price? and Not it. Kept on the worker (sub.quarries, gm:); the page only mirrors it.
+   Compact on purpose: the slimmed page has little room left under Shopify's 512 KB. */
+var PNC={edit:'',d:null,busy:0,msg:'',focus:'',fp:0};
+function pncQ(){return MAIL.quarries||{} }
+function pncD(k){var q=pncQ()[k]||{};return {spec:q.spec||'',avoid:(q.avoid||[]).join(', '),min:q.min||'',max:q.max||'',photo:q.photo||'',maybe:q.maybe?1:0} }
+function pncIn(k,ph,v,t){return '<input type="'+(t||'text')+'" data-pk="'+k+'" placeholder="'+ph+'" aria-label="'+ph+'" value="'+esc(v)+'">'}
+function pncHtml(){
+  var hs=mailHunts(),act=prefsActive(),q=pncQ(),n=0,h,i,k,g,d,gm=MAIL.gm||[],P=MAIL.push;
+  for(k in q)if(q[k]&&q[k].spec)n++;
+  h='<div class="mail-sec pnc"><h4>\uD83D\uDC3E Pounce<small>'+n+' of '+(MAIL.quarryMax||1)+'</small></h4><p class="mail-fine">Describe the exact piece you are stalking. Prowl looks at every new listing\u2019s photo and title, and you only hear about the ones that fit.</p>'+
+    (P&&P.url?'<p class="mail-fine">\uD83D\uDCF1 <b>Phone alerts on.</b> <a class="sgw-ml" href="'+esc(P.url)+'" target="_blank" rel="noopener">Open in ntfy</a> \u00b7 <button type="button" class="sgw-ml" data-pnc="pushoff">Turn off</button></p>':
+      '<p class="mail-fine"><button type="button" class="b p" data-pnc="pushon"'+(PNC.busy?' disabled':'')+'>\uD83D\uDCF1 Tap my phone when it\u2019s found</button><br>Free ntfy app, Android or iPhone. Without it, finds wait in your Prowl email.</p>');
+  for(i=0;i<hs.length;i++){
+    k=hs[i].toLowerCase();if(!act[k])continue;g=q[k];
+    h+='<div class="mail-row'+(g&&g.spec?' on':'')+'"><span class="nm">'+esc(hs[i])+(g&&g.spec?'<small class="pnc-sp">'+esc(g.spec.slice(0,90))+'</small>':'')+'</span><button type="button" class="tg" data-pnc="edit" data-h="'+esc(k)+'">'+(g&&g.spec?'Edit':'Set your quarry')+'</button></div>';
+    if(PNC.edit===k){d=PNC.d||pncD(k);
+      h+='<div class="pnc-ed"><textarea id="otp-pncSpec" data-pk="spec" maxlength="600" rows="4" aria-label="The exact piece" placeholder="Must have: size, shape, era. Not: other versions, lamps, repros.">'+esc(d.spec)+'</textarea>'+
+        '<div class="mail-in">'+pncIn('avoid','Skip words: lamp, planter',d.avoid)+'</div><div class="mail-in">'+pncIn('min','Min inches',d.min,'number')+pncIn('max','Max inches',d.max,'number')+'</div><div class="mail-in">'+pncIn('photo','Reference photo link',d.photo,'url')+'</div>'+
+        '<label class="sgw-mc"><input type="checkbox" data-pnc="maybe"'+(d.maybe?' checked':'')+'><span class="cbx" aria-hidden="true"></span> Strong maybes too</label>'+
+        '<span class="sgw-mf"><button type="button" class="b p" data-pnc="save"'+(PNC.busy?' disabled':'')+'>Save quarry</button>'+(g&&g.spec?'<button type="button" class="b" data-pnc="del">Stop stalking</button>':'')+'<button type="button" class="b" data-pnc="edit" data-h="'+esc(k)+'">Cancel</button></span></div>'}
+  }
+  if(PNC.msg)h+='<p class="mail-save" role="status">'+esc(PNC.msg)+'</p>';
+  if(gm.length){h+='<h4>Spotted for you</h4>';
+    gm.slice(0,8).forEach(function(x){if(!x||!/^https:\/\//.test(x.url||''))return;
+      h+='<div class="sgw-cell pnc-hit'+(PNC.focus===x.url?' pnc-on':'')+'" data-u="'+esc(x.url)+'" data-t="'+esc(x.title||'')+'" data-p="'+esc(x.price||'')+'">'+(/^https:\/\//.test(x.image||'')?'<img src="'+esc(x.image)+'" alt="" loading="lazy">':'')+
+        '<div><b>'+esc(x.title||'')+'</b><br><span class="mail-fine">'+esc([x.price,x.hunt].filter(Boolean).join(' \u00b7 '))+'</span><br>\uD83D\uDC3E '+esc(x.reason||'')+(x.match==='maybe'?' (maybe)':'')+
+        '<span class="sgw-mf"><a class="b p" href="'+esc(x.url)+'" target="_blank" rel="noopener">Open it</a>'+(aiOff()?'':'<button type="button" class="sgw-fp">Fair price?</button>')+'<button type="button" class="b" data-pnc="not" data-h="'+esc(x.hunt||'')+'" data-u="'+esc(x.url)+'">Not it</button></span></div></div>'});
+    h+='<p class="mail-fine">An AI check of photo and title. Look closely before you buy.</p>'}
+  return h+'</div>';
+}
+function pncPost(path,b,cb){
+  var t=mGet('alertTok'),e=mGet('alertEmail');if(!t||!e||typeof fetch!=='function'){cb(null);return}
+  b.email=e;b.tok=t;
+  fetch(SGW_API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json()}).then(cb,function(){cb(null)});
+}
+function pncTake(j){if(j.quarries)MAIL.quarries=j.quarries;if(j.max)MAIL.quarryMax=j.max;if(j.matches)pncSeen(j.matches)}
+/* matches newer than this device last saw: the panther pounces (the magic block checks reduced motion) */
+function pncSeen(l){
+  MAIL.gm=Array.isArray(l)?l:[];
+  var top=String((MAIL.gm[0]||{}).at||''),was=mGet('pounceSeen');
+  if(top>was){mSet('pounceSeen',top);if(was){try{document.dispatchEvent(new CustomEvent('prowl:pounce'))}catch(e){}toast('\uD83D\uDC3E Pounce spotted something for <b>'+esc(MAIL.gm[0].hunt||'')+'</b>. See Den, Settings.',6000)} }
+}
+function pncSay(j,ok){PNC.busy=0;if(j&&j.ok){pncTake(j);PNC.msg=ok}else PNC.msg=(j&&j.error)||'Could not reach Prowl. Try again in a minute.';rMail()}
+document.addEventListener('input',function(e){var k=e.target.getAttribute&&e.target.getAttribute('data-pk');if(k&&PNC.edit){PNC.d=PNC.d||pncD(PNC.edit);PNC.d[k]=e.target.value} });
+document.addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('.otp-mail [data-pnc]');if(!b)return;
+  var a=b.getAttribute('data-pnc'),hh=b.getAttribute('data-h')||'',d;
+  if(a==='maybe'){PNC.d=PNC.d||pncD(PNC.edit);PNC.d.maybe=b.checked?1:0;return}
+  e.preventDefault();
+  if(a==='edit'){PNC.edit=PNC.edit===hh?'':hh;PNC.d=null;PNC.msg='';rMail();return}
+  if(a==='save'||a==='del'){
+    d=PNC.d||pncD(PNC.edit);
+    if(a==='save'&&String(d.spec).trim().length<8){PNC.msg='Describe the piece in a few words first.';rMail();return}
+    PNC.busy=1;rMail();
+    pncPost('alerts/quarry',a==='del'?{hunt:PNC.edit,spec:''}:{hunt:PNC.edit,spec:d.spec,avoid:String(d.avoid).toLowerCase().split(/[,;]+/),min:parseInt(d.min,10)||0,max:parseInt(d.max,10)||0,photo:String(d.photo).trim(),maybe:d.maybe},
+      function(j){if(j&&j.ok){PNC.edit='';PNC.d=null}pncSay(j,a==='save'?'Saved. Pounce is stalking it.':'Stopped.')});
+    return;
+  }
+  if(a==='not'){b.disabled=true;pncPost('alerts/quarry',{hunt:hh,notUrl:b.getAttribute('data-u')},function(j){pncSay(j,'Not it. I will skip listings like that.')});return}
+  if(a==='pushon'||a==='pushoff'){PNC.busy=1;rMail();
+    pncPost('alerts/push',{on:a==='pushon'?1:0,hello:1},function(j){if(j&&j.ok){MAIL.push=j.push;if(j.push)try{window.open(j.push.url,'_blank','noopener')}catch(x){} }pncSay(j,j&&j.push?'Phone alerts on. In ntfy, tap Subscribe.':'Phone alerts off.')})}
+});
+/* ?pounce=<listing> (the phone note) opens Den > Settings at that match; &fp=1 runs Fair price? on it */
+try{var pnm=/[?&]pounce=([^&#]+)/.exec(location.search);if(pnm){
+  PNC.focus=decodeURIComponent(pnm[1]);PNC.fp=/[?&]fp=1/.test(location.search);
+  try{history.replaceState(null,'',location.pathname+location.hash)}catch(e1){}
+  var pnt=0;(function go(){
+    if(!pnt)openMailSettings();
+    var c=null;[].forEach.call(document.querySelectorAll('.pnc-hit'),function(x){if(x.getAttribute('data-u')===PNC.focus)c=x});
+    if(c){try{c.scrollIntoView({block:'center'})}catch(e3){}if(PNC.fp&&c.querySelector('.sgw-fp'))fpAsk(c.querySelector('.sgw-fp'));PNC.fp=0;return}
+    if(++pnt<20)setTimeout(go,500);
+  })();
+} }catch(e){}
 function openMailSettings(){denTab='settings';if(den&&den.hidden)openDen();else setDenTab('settings');}
 /* v5.80: plan and billing, in plain view. Free users see the price and terms
    before they buy; Pro users see what they pay, when it renews, the receipt
@@ -5036,7 +5119,7 @@ function mailStatus(fresh,cb){
       /* v6.04: the membership moved to a new address (same token): follow it once */
       if(j&&j.on===false&&j.moved&&!MAIL.movedHop){MAIL.movedHop=1;var mv=String(j.moved).toLowerCase();mSet('alertEmail',mv);mSet('alertSig','');MAIL.moving='';MAIL.msg='Your Prowl Alerts now go to '+mv+'. This device switched over.';setTimeout(function(){mailStatus(true,cb)},0);return}
       if(j&&j.on){MAIL.moving=j.moving||'';mailStoreLook();}
-      if(j&&j.on){mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;if(typeof j.defHour==='number')MAIL.defHour=j.defHour;MAIL.mail=j.mail==='off'?'off':'on';MAIL.hadPro=!!j.hadPro;MAIL.freeWeekly=!!j.freeWeekly;MAIL.plan=j.plan||null;if(j.prefs&&!MAIL.pending&&!MAIL.saving){MAIL.prefs=j.prefs;setTimeout(prefsTzSync,0)}if(j.hunts&&j.hunts.length!==undefined)mailMerge(j.hunts);}
+      if(j&&j.on){mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;if(typeof j.defHour==='number')MAIL.defHour=j.defHour;MAIL.mail=j.mail==='off'?'off':'on';MAIL.hadPro=!!j.hadPro;MAIL.freeWeekly=!!j.freeWeekly;MAIL.plan=j.plan||null;if(j.prefs&&!MAIL.pending&&!MAIL.saving){MAIL.prefs=j.prefs;setTimeout(prefsTzSync,0)}if(j.hunts&&j.hunts.length!==undefined)mailMerge(j.hunts);MAIL.quarries=j.quarries||{};MAIL.quarryMax=j.quarryMax||1;MAIL.push=j.push||null;pncSeen(j.quarryMatches);}
       else if(j&&j.on===false){mSet('alertTok','');mSet('alertSig','');}
       /* v6.00: this device may push its list only after a real pull merged the
          member's list in; a bad or missing answer leaves sync off until the next status */
@@ -7793,6 +7876,7 @@ try{loadSGW()}catch(e){}
   }
   var sf=document.getElementById('otp-sf');
   if(sf)sf.addEventListener('submit',function(){startHunt(sf.querySelector('button[type=submit]'))});
+  document.addEventListener('prowl:pounce',function(){if(lively()){pounce();walk()} });   /* v6.77: Pounce spotted a quarry */
   ['otp-sa','otp-fb'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(){startHunt(b)})});
   root.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('[data-sgw="pick"]')){unicorns=1;UNI=null}},true);   /* picking a hunt */
   /* the chip sheen: once each time the pointer comes onto a hunt's chip. The chips are redrawn as results come in (the
