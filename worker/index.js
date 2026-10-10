@@ -3797,10 +3797,10 @@ function alExact(items, term) {
    POUNCE_PER_RUN per 5-minute run (the run's budget of outside calls) and POUNCE_SITE_PER_DAY for the whole site. */
 const POUNCE_PRO_QUARRIES = 5, POUNCE_FREE_QUARRIES = 1;
 const POUNCE_PRO_PER_DAY = 40, POUNCE_FREE_PER_DAY = 10, POUNCE_SITE_PER_DAY = 2000;
-const POUNCE_PER_RUN = 6, POUNCE_MAYBE_P = 0.8;
+const POUNCE_PER_RUN = 30, POUNCE_PER_MEMBER_RUN = 6, POUNCE_MAYBE_P = 0.8;   /* v104 review: 30 a run shared, 6 of them at most for one member */
 const POUNCE_SPEC_MAX = 600, POUNCE_JUDGED_CAP = 3000, POUNCE_MATCH_CAP = 20, POUNCE_TIMEOUT_MS = 20000;
 const POUNCE_STOP = { vintage: 1, antique: 1, rare: 1, old: 1, the: 1, and: 1, of: 1, a: 1, an: 1, with: 1, mcm: 1, mid: 1, century: 1, modern: 1 };
-let PJ_RUN = { left: POUNCE_PER_RUN };   /* reset at the top of every alTick */
+let PJ_RUN = { left: POUNCE_PER_RUN, m: {} };   /* reset at the top of every alTick */
 
 function pounceMax(sub) { return sub && sub.pro ? POUNCE_PRO_QUARRIES : POUNCE_FREE_QUARRIES; }
 function pounceDayCap(sub) { return sub && sub.pro ? POUNCE_PRO_PER_DAY : POUNCE_FREE_PER_DAY; }
@@ -3898,12 +3898,13 @@ async function pounceHunt(env, sub, term, items) {
   for (const x of items) {
     if (!x || !x.url || was.has(x.url)) continue;
     if (pounceSkip(term, g, x)) { add.push(x.url); was.add(x.url); continue; }   /* dropped for free, never asked again */
-    if (PJ_RUN.left <= 0) break;
+    if (PJ_RUN.left <= 0 || (PJ_RUN.m[sub.email] || 0) >= POUNCE_PER_MEMBER_RUN) break;
     if (!(await vCount("pj:" + sub.email, pounceDayCap(sub)))) break;
     if (!(await vCount("pj:all", POUNCE_SITE_PER_DAY))) break;
-    PJ_RUN.left--;
+    PJ_RUN.left--; PJ_RUN.m[sub.email] = (PJ_RUN.m[sub.email] || 0) + 1;
     const v = await pounceJudge(env, term, g, x);
-    if (!v) continue;
+    /* v104 review: a photo the judge cannot read gets one more try on a later run, then is let go */
+    if (!v) { if (was.has("?" + x.url)) { add.push(x.url); was.add(x.url); } else { add.push("?" + x.url); was.add("?" + x.url); } continue; }
     add.push(x.url); was.add(x.url);
     if (pounceKeep(g, v)) hits.push(Object.assign({}, x, { pounce: v, hunt: term }));
   }
@@ -4058,6 +4059,9 @@ async function pounceSave(request, env, origin) {
   }
   sub.quarries = gs;
   await alMerge(env, sub, ["quarries"]);
+  /* v104 review: a changed description, skip words or size range means a fresh look at listings already judged */
+  const same = (a, c) => !!a && !!c && a.spec === c.spec && a.min === c.min && a.max === c.max && a.photo === c.photo && a.maybe === c.maybe && a.avoid.join() === c.avoid.join();
+  if (g && !same(was, g)) await kvPut(env, "pj:" + email, []);
   return json({ ok: true, quarries: gs, max: pounceMax(sub), matches: await kvGet(env, "gm:" + email, []) }, 200, origin);
 }
 /* POST /alerts/quarry-test (owner only): what Pounce would say about this hunt's listings right now. Nothing is kept. */
@@ -4073,8 +4077,8 @@ async function pounceTest(request, env, origin) {
   for (const x of items) {
     const why = pounceSkip(term, g, x);
     if (why) { out.push({ title: x.title, url: x.url, skipped: why }); continue; }
-    if (asked >= POUNCE_PER_RUN) { out.push({ title: x.title, url: x.url, skipped: "past this test's " + POUNCE_PER_RUN + " checks" }); continue; }
-    asked++;
+    if (asked >= POUNCE_PER_MEMBER_RUN || !(await vCount("pj:all", POUNCE_SITE_PER_DAY))) { out.push({ title: x.title, url: x.url, skipped: "past this test's checks" }); continue; }
+    asked++;   /* v104 review: counts against the site's daily judging budget; a test never sends a push or keeps a match */
     const v = await pounceJudge(env, term, g, x);
     out.push({ title: x.title, url: x.url, price: x.price, image: x.image, verdict: v, alert: pounceKeep(g, v) });
   }
@@ -4326,7 +4330,7 @@ async function alTrialNotes(env, sub) {
 async function alTick(env) {
   if (!alReady(env)) return { skipped: "off or no KV" };
   const now = alNow(env);
-  PJ_RUN = { left: POUNCE_PER_RUN };   /* v104: Pounce's share of this run's outside calls */
+  PJ_RUN = { left: POUNCE_PER_RUN, m: {} };   /* v104: Pounce's share of this run's outside calls */
   let budget = alBatch(env), proLeft = AL_PRO_REFRESH_PER_RUN;
   /* v51: every member key (KV lists 1000 at a time), and each run starts at a
      different member, so the top of the alphabet never starves the bottom. */

@@ -4983,7 +4983,7 @@ function pncHtml(){
   }
   if(PNC.msg)h+='<p class="mail-save" role="status">'+esc(PNC.msg)+'</p>';
   if(gm.length){h+='<h4>Spotted for you</h4>';
-    gm.slice(0,8).forEach(function(x){if(!x||!/^https:\/\//.test(x.url||''))return;
+    gm.forEach(function(x,i){if(!x||i>7&&x.url!==PNC.focus||!/^https:\/\//.test(x.url||''))return;
       h+='<div class="sgw-cell pnc-hit'+(PNC.focus===x.url?' pnc-on':'')+'" data-u="'+esc(x.url)+'" data-t="'+esc(x.title||'')+'" data-p="'+esc(x.price||'')+'">'+(/^https:\/\//.test(x.image||'')?'<img src="'+esc(x.image)+'" alt="" loading="lazy">':'')+
         '<div><b>'+esc(x.title||'')+'</b><br><span class="mail-fine">'+esc([x.price,x.hunt].filter(Boolean).join(' \u00b7 '))+'</span><br>\uD83D\uDC3E '+esc(x.reason||'')+(x.match==='maybe'?' (maybe)':'')+
         '<span class="sgw-mf"><a class="b p" href="'+esc(x.url)+'" target="_blank" rel="noopener">Open it</a>'+(aiOff()?'':'<button type="button" class="sgw-fp">Fair price?</button>')+'<button type="button" class="b" data-pnc="not" data-h="'+esc(x.hunt||'')+'" data-u="'+esc(x.url)+'">Not it</button></span></div></div>'});

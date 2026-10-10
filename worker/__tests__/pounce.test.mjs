@@ -26,9 +26,9 @@ function load(over) {
   const kv = new Map(), calls = { judge: [], push: [], counts: {} };
   const deps = Object.assign({
     AL_SKIP_MAX: 12, AL_SKIP_LEN: 24, POUNCE_NOT_MAX: 8, AL_SRC_NAME: { ebay: "eBay", etsy: "Etsy" }, POUNCE_PRO_QUARRIES: 5, POUNCE_FREE_QUARRIES: 1, POUNCE_PRO_PER_DAY: 40, POUNCE_FREE_PER_DAY: 10,
-    POUNCE_SITE_PER_DAY: 2000, POUNCE_PER_RUN: 6, POUNCE_MAYBE_P: 0.8, POUNCE_SPEC_MAX: 600, POUNCE_JUDGED_CAP: 3000, POUNCE_MATCH_CAP: 20, POUNCE_PUSH_PER_DAY: 10,
+    POUNCE_SITE_PER_DAY: 2000, POUNCE_PER_RUN: 30, POUNCE_PER_MEMBER_RUN: 6, POUNCE_MAYBE_P: 0.8, POUNCE_SPEC_MAX: 600, POUNCE_JUDGED_CAP: 3000, POUNCE_MATCH_CAP: 20, POUNCE_PUSH_PER_DAY: 10,
     PROWL_APP: "https://www.owlandtwigvintage.com/pages/prowl-app", WORKER_BASE: "https://prowl.example",
-    PJ_RUN: { left: 6 },
+    PJ_RUN: { left: 6, m: {} },
     alActive: (env, sub) => sub.hunts,
     epnUrl: (env, u) => u,
     kvGet: async (env, k, d) => (kv.has(k) ? JSON.parse(kv.get(k)) : d),
@@ -134,7 +134,7 @@ test("the run budget stops the judge, and what it did not reach is tried next ru
   await P.pounceHunt({}, sub, "haeger panther", items);
   assert.equal(calls.judge.length, 1);
   assert.deepEqual(JSON.parse(kv.get("pj:m@x.com")), ["https://e/a"], "b is not marked judged");
-  deps.PJ_RUN.left = 6;
+  deps.PJ_RUN.left = 6; deps.PJ_RUN.m = {};
   await P.pounceHunt({}, sub, "haeger panther", items);
   assert.deepEqual(calls.judge, ["Haeger panther a", "Haeger panther b"]);
 });
@@ -183,7 +183,7 @@ test("wired in: routes, the alert check, status, purge and email move", () => {
   assert.match(INDEX, /url\.pathname === "\/alerts\/push" && request\.method === "POST"\) return pounceTopicSet/);
   assert.ok(INDEX.indexOf('url.pathname === "/alerts/quarry-no"') < INDEX.indexOf('if (request.method === "POST" && ALLOW_ORIGINS.indexOf(origin) === -1)'), "Not it works from the phone note, which has no Origin");
   assert.match(indexFn("alCheck"), /pounceHunt\(env, sub, h, all\)/);
-  assert.match(indexFn("alTick"), /PJ_RUN = \{ left: POUNCE_PER_RUN \}/);
+  assert.match(indexFn("alTick"), /PJ_RUN = \{ left: POUNCE_PER_RUN, m: \{\} \}/);
   assert.match(indexFn("alStatus"), /quarryMatches/);
   assert.match(indexFn("alPurge"), /"pj:", "gm:"/);
   assert.match(indexFn("alMoveConfirm"), /"pj:", "gm:"/);
@@ -212,4 +212,20 @@ test("saving: a quarry on a deleted hunt is dropped and can be removed; one on a
   assert.match(src, /\(!removing && mine\.indexOf\(k\) === -1\)/);
   assert.match(src, /if \(mine\.indexOf\(h\) === -1 \|\| !pounceClean\(gs\[h\]\)\) delete gs\[h\]/);
   assert.match(src, /h !== k && live\.indexOf\(h\) !== -1/);
+});
+
+test("an unreadable photo gets one retry, then is let go; one member cannot take the whole run", async () => {
+  const { P, kv, calls, deps } = load({ pounceJudge: async (env, t, g, x) => { calls.judge.push(x.title); return null; } });
+  const sub = { email: "u@x.com", hunts: ["haeger panther"], quarries: { "haeger panther": R495 } };
+  const items = [{ title: "Haeger panther a", url: "https://e/a" }];
+  await P.pounceHunt({}, sub, "haeger panther", items);
+  deps.PJ_RUN.m = {};
+  await P.pounceHunt({}, sub, "haeger panther", items);
+  deps.PJ_RUN.m = {};
+  await P.pounceHunt({}, sub, "haeger panther", items);
+  assert.equal(calls.judge.length, 2);
+  const many = Array.from({ length: 10 }, (_, i) => ({ title: "Haeger panther " + i, url: "https://e/m" + i }));
+  deps.PJ_RUN.left = 30; deps.PJ_RUN.m = {}; calls.judge.length = 0;
+  await P.pounceHunt({}, { email: "v@x.com", hunts: ["haeger panther"], quarries: { "haeger panther": R495 } }, "haeger panther", many);
+  assert.equal(calls.judge.length, 6);
 });
