@@ -118,8 +118,10 @@ test('past FLOCK_NEAR_KEEP near searches, the newest stay in the feed and the ol
   const p = await flock(f, { 'prowl.v36': { seen: true, hunts: ['pyrex'] } }, { wide: true });
   const nearNow = () => new Set(cards(p).filter((c) => c.getAttribute('data-near') === '1').map((c) => c.getAttribute('data-h')));
   const order = [];   // near searches in the order they first showed up
-  const lost = [];
+  const lost = [], drawn = new Set(), gone = [];
   for (let k = 0; k < 11; k++) {
+    for (const u of drawn) if (!cards(p).some((x) => x.getAttribute('data-u') === u)) gone.push(u);
+    cards(p).forEach((x) => drawn.add(x.getAttribute('data-u')));
     const c = cards(p).find((x) => !x.querySelector('.fl-lk.on'));
     if (!c) break;
     c.querySelector('.fl-lk').click();
@@ -131,6 +133,8 @@ test('past FLOCK_NEAR_KEEP near searches, the newest stay in the feed and the ol
   }
   assert.ok(order.length > 8, 'more near searches than the feed keeps: ' + order.length);
   assert.deepEqual(lost, [], 'the most recent near searches keep their cards');
-  assert.ok(nearNow().size <= 8, 'and the feed holds at most FLOCK_NEAR_KEEP of them');
+  /* v6.73: on a computer the grid never takes a card away under the mouse; an older near search that gives way
+     keeps the cards already drawn and only stops adding new ones */
+  assert.deepEqual(gone, [], 'no card on a computer\'s grid disappears');
   await p.close();
 });

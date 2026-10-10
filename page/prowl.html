@@ -358,6 +358,9 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 [data-theme=uranium] .scout-app-wrapper .markwrap{display:flex}
 .scout-app-wrapper .mark{height:22px;width:auto;display:block}
 .scout-app-wrapper .bar-actions{display:flex;gap:8px;align-items:center}
+/* v6.73: room for Aa beside the theme switch on the narrowest phones; bigger text (a zoom, .tz) needs it on wider ones */
+@media(max-width:374px){.scout-app-wrapper .bar{gap:6px;padding-left:12px;padding-right:12px}.scout-app-wrapper .bar-actions{gap:4px}.scout-app-wrapper .bar-actions .gh{min-width:0;padding-left:9px;padding-right:9px}}
+@media(max-width:479px){.scout-app-wrapper.tz .bar{gap:6px;padding-left:10px;padding-right:10px}.scout-app-wrapper.tz .bar-actions{gap:4px}.scout-app-wrapper.tz .bar-actions .gh{min-width:0;padding-left:8px;padding-right:8px}.scout-app-wrapper.tz .bar .homedots{display:none}}
 .scout-app-wrapper .gh{background:none;border:1px solid var(--l2);border-radius:9px;padding:7px 12px;font-size:12.5px;font-weight:600;color:var(--i2);transition:background .15s,color .15s,border-color .15s,box-shadow .15s}
 .scout-app-wrapper .gh:hover{background:var(--hover);color:var(--ink)}
 [data-theme=uranium] .scout-app-wrapper .gh:hover{box-shadow:0 0 14px rgba(57,255,20,.35)}
@@ -1579,9 +1582,9 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper #otp-toast .gh{margin-left:8px;min-height:34px;padding:4px 12px;border-color:currentColor;color:inherit;font-weight:800}
 /* v6.66: on a phone the card's row of buttons is at its foot, where the toast was (bottom:104px): an Undo toast took the
    tap meant for the heart. In Flock the toast sits over the bottom of the photo instead, clear of the tallest row: the
-   dock 70, the card's padding 14, a two-line row 66 + 8, the hunt line 18 and the title 36, plus 10. (Text size is a
-   zoom on the wrapper, so all of these grow together.) */
-@media(max-width:1023px){.scout-app-wrapper.flock-mode #otp-toast{bottom:calc(222px + env(safe-area-inset-bottom))}}
+   dock 70, the card's padding 14, a two-line row 66 + 8, the hunt line 18 and the title 36, plus 10; v6.73: plus the
+   + Add to hunts row under the buttons, 36 + 8. (Text size is a zoom on the wrapper, so all of these grow together.) */
+@media(max-width:1023px){.scout-app-wrapper.flock-mode #otp-toast{bottom:calc(266px + env(safe-area-inset-bottom))}}
 @media(prefers-reduced-motion:reduce){.scout-app-wrapper #otp-flock.as-feed #otp-flockRow{scroll-behavior:auto}.scout-app-wrapper #otp-flock.as-feed .fl-card{transition:none}}
 @media(min-width:1024px){
   .scout-app-wrapper #otp-flock.as-feed .flock-head{flex-wrap:nowrap;padding:16px 32px}
@@ -1597,8 +1600,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
   .scout-app-wrapper #otp-flock.as-feed .fl-card:hover .fl-x,.scout-app-wrapper #otp-flock.as-feed .fl-card:focus-within .fl-x{opacity:1}
 }
 /* ---- v6.61: + Add to hunts, on a Flock card whose search is not in the Den ---- */
-.scout-app-wrapper #otp-flock .fl-addrow{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin:0 0 6px;min-height:36px}
-.scout-app-wrapper #otp-flock .fl-addrow .fl-near,.scout-app-wrapper #otp-flock .fl-addrow .fl-nd{flex:1 1 auto;min-width:0;margin:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:18px}
+.scout-app-wrapper #otp-flock .fl-addrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;flex:0 0 auto;margin:8px 0 0;min-height:36px}
+.scout-app-wrapper #otp-flock .fl-addrow .fl-near,.scout-app-wrapper #otp-flock .fl-addrow .fl-nd{flex:1 1 9em;min-width:0;margin:0;overflow-wrap:anywhere;line-height:18px}
 /* v6.66: the price and the ✕ are placed from the photo (.fl-media), so the row and the label above it need no offsets */
 .scout-app-wrapper #otp-flock .fl-nd{display:block;font-size:12.5px;font-weight:700;line-height:18px;color:var(--mu)}
 .scout-app-wrapper #otp-flock .fl-add{-webkit-appearance:none;appearance:none;flex:0 0 auto;min-height:30px;padding:4px 12px;border:1.5px solid var(--ac);border-radius:99px;background:transparent;color:var(--ac);font:inherit;font-size:13px;font-weight:800;line-height:1.2;white-space:nowrap;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -1632,7 +1635,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .fl-newb{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:99px;background:var(--ac);color:var(--onink);font-size:11px;font-weight:800;letter-spacing:.04em;line-height:18px;vertical-align:2px}
 .scout-app-wrapper #otp-flock.as-feed .fl-new,.scout-app-wrapper #otp-flock.as-feed .fl-group{max-width:520px;margin:0 auto;padding:12px 18px 4px;font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--mu)}
 .scout-app-wrapper #otp-flock.as-feed .fl-card .fl-new{flex:0 0 auto;margin:0;padding:0 2px 8px;line-height:20px;color:var(--ac)}
-.scout-app-wrapper #otp-flock .fl-near{display:block;flex:0 0 auto;margin:0 0 6px;font-size:12.5px;font-weight:700;line-height:18px;color:var(--ac)}
+.scout-app-wrapper #otp-flock .fl-near{display:block;flex:0 0 auto;margin:8px 0 0;font-size:12.5px;font-weight:700;line-height:18px;color:var(--ac)}
 @media(min-width:1024px){
   .scout-app-wrapper #otp-flock.as-feed .fl-group{grid-column:1/-1;max-width:none;padding:8px 0 0}
   .scout-app-wrapper #otp-flock.as-feed .fl-card .fl-new{position:absolute;left:0;right:0;bottom:100%;padding:0 0 4px;white-space:nowrap}
@@ -1699,6 +1702,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
   <div class="bar-actions">
     <span class="hi" id="otp-hi" hidden></span>
     <button class="gh apphdr" id="otp-appHdr" type="button" hidden>App</button>
+    <button class="gh" id="otp-sizeTop" type="button" aria-label="Text size: Standard. Tap for bigger." title="Text size">Aa</button>
     <button class="gh" id="otp-themeBtn" type="button" aria-label="Cycle theme" title="Dark mode">☾</button>
     <button class="gh" id="otp-how" type="button" aria-label="How Prowl works">Help</button>
   </div>
@@ -2451,7 +2455,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
       <div class="setrow">
         <div>
 <h3>Text size</h3>
-<p>Make everything in Prowl bigger and easier to read. Also on the home screen as Aa.</p>
+<p>Make everything in Prowl bigger and easier to read. Also at the top of every screen as Aa.</p>
 </div>
         <button class="gh" id="otp-sizeBtn" type="button">Standard</button>
       </div>
@@ -2580,7 +2584,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.72';
+var PROWL_VERSION='v6.73';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4272,8 +4276,9 @@ var SIZES=[{n:'Standard',z:1},{n:'Large',z:1.12},{n:'Extra large',z:1.25}];
 function textSizeGet(){var i=0;try{i=parseInt(localStorage.getItem('prowl.textSize')||'0',10)||0}catch(e){}return (i>=0&&i<SIZES.length)?i:0}
 function textSizeApply(i){
   var w=document.querySelectorAll('.scout-app-wrapper'),k;
-  for(k=0;k<w.length;k++)w[k].style.zoom=SIZES[i].z===1?'':String(SIZES[i].z);
+  for(k=0;k<w.length;k++){w[k].style.zoom=SIZES[i].z===1?'':String(SIZES[i].z);w[k].classList.toggle('tz',SIZES[i].z!==1)}
   var b=document.getElementById('otp-sizeBtn');if(b)b.textContent=SIZES[i].n;
+  var t=document.getElementById('otp-sizeTop');if(t){t.setAttribute('aria-label','Text size: '+SIZES[i].n+'. Tap to change.');t.title='Text size: '+SIZES[i].n}   /* v6.73 */
 }
 function textSizeNext(){
   var i=(textSizeGet()+1)%SIZES.length;
@@ -5495,9 +5500,11 @@ function flockCards(dm){
   }
   return cards;
 }
-/* the same, with the cards you have reached (and the next one) kept where they are; the batch below them may still
-   reorder as other hunts' finds arrive, so a slow marketplace still gets mixed in */
-function flPinned(){return (FLOCK.shown||[]).slice(0,(FLOCK.reach||0)+2)}
+/* the same, with the cards you have reached (and the next one) kept where they are; on a phone the batch below them may
+   still reorder as other hunts' finds arrive, so a slow marketplace still gets mixed in. v6.73: a computer's grid shows
+   every card at once, so there every card on screen stays put and later finds go at the bottom (the grid reshuffled
+   under the mouse, and a click landed on a find that had just moved in) */
+function flPinned(){var s=FLOCK.shown||[];return flWide()?s.slice():s.slice(0,(FLOCK.reach||0)+2)}
 function flockList(dm){
   var all=flockCards(dm),by=Object.create(null),out=[],sh=flPinned(),i,u;
   for(i=0;i<all.length;i++)by[all[i].it.url]=all[i];
@@ -5569,8 +5576,8 @@ function flockCardHtml(c){
   put('<div class="sgw-cell"','<div class="sgw-cell fl-card" role="article" aria-label="'+esc(it.title)+'"'+(h.indexOf(' data-h="')<0?' data-h="'+esc(c.t||'')+'"':'')+(h.indexOf(' data-u="')<0?' data-u="'+esc(u)+'"':''));
   /* v6.52 near cards; v6.61: a card whose search is not in the Den gets + Add to hunts */
   var lab=c.near?'<span class="fl-near">Because you liked '+esc(c.t)+'</span>':'',add=c.t&&!flInDen(c.t)?flAddBtn(c.t):'';
-  if(add)put('<a class="sgw-card"','<div class="fl-addrow">'+(lab||'<span class="fl-nd">'+(sgwFind(c.t.toLowerCase())?'On your home panel, not in the Den':'Not in your hunts yet')+'</span>')+add+'</div><a class="sgw-card"');
-  else if(lab)put('<a class="sgw-card"',lab+'<a class="sgw-card"');
+  /* v6.73: the row goes under the buttons, not above the photo: above, it pushed one card's photo below its neighbour's */
+  var foot=add?'<div class="fl-addrow">'+(lab||'<span class="fl-nd">'+(sgwFind(c.t.toLowerCase())?'On your home panel, not in the Den':'Not in your hunts yet')+'</span>')+add+'</div>':lab;
   if(add||lab)put('<div class="sgw-cell fl-card"','<div class="sgw-cell fl-card '+(add?'fl-row':'fl-lab')+'"'+(c.near?' data-near="1"':''));
   var lk=likeHas(u);   /* v6.47 */
   put('<div class="sgw-p">','<div class="sgw-p" data-act="margin" role="button" aria-label="What you would clear reselling at '+esc(it.price||'')+'">');
@@ -5588,7 +5595,7 @@ function flockCardHtml(c){
     '<div class="fl-acts">'+
     '<button type="button" class="fl-lk'+(lk?' on':'')+'" aria-pressed="'+lk+'" aria-label="Like: show me more like this" title="Like">'+(lk?'\u2665':'\u2661')+'</button>'+
     '<button type="button" class="fl-sh" aria-label="Share this find" title="Share"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"></path><path d="M7 8l5-5 5 5"></path><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg></button>'+
-    sv+'</div></div>');
+    sv+'</div></div>'+foot);
   return h;
 }
 function flNote(cls,html){return '<div class="fl-note '+cls+'">'+html+'</div>'}
@@ -5664,6 +5671,20 @@ function flockRender(top){
       /* v6.39: finds you have not seen get a NEW badge and a divider above the first one; on a first visit everything is new, so neither shows.
          v6.52: the feed shows what is already on screen plus the next batch, and grows as you scroll (flFeed) */
       var show=flWide()?cards:cards.slice(0,Math.max(FLOCK.limit||FLOCK_CARDS,flPinned().length));   /* a desktop grid shows them all */
+      /* v6.73: the cards on screen are the same and in the same order: add the new ones at the bottom and leave the
+         rest alone, so nothing under your finger or mouse is redrawn (a redraw between press and release lost a click) */
+      var g0=!top&&row.querySelector('.sgw-grid'),old=FLOCK.shown||[],same=!!g0&&old.length>0&&show.length>=old.length&&!!row.querySelector('.fl-card');
+      for(i=0;same&&i<old.length;i++)if(show[i].it.url!==old[i])same=false;
+      if(same){
+        var end0=g0.querySelector('.fl-end'),tmp0=document.createElement('div');
+        if(show.length>old.length){tmp0.innerHTML=flCardsHtml(show.slice(old.length),!!g0.querySelector('.fl-new'));while(tmp0.firstChild)g0.insertBefore(tmp0.firstChild,end0||null)}
+        tmp0.innerHTML=flEndHtml(cards.length>show.length);if(end0)g0.replaceChild(tmp0.firstChild,end0);else g0.appendChild(tmp0.firstChild);
+        FLOCK.shown=show.map(function(c){return c.it.url});
+        row.setAttribute('aria-busy',FLOCK.pend>0?'true':'false');
+        FLOCK.at=flIdxOf(row);FLOCK.reach=Math.max(FLOCK.reach||0,FLOCK.at||0);
+        flBadge();setTimeout(flFeed,0);
+        return;
+      }
       h+=flCardsHtml(show,false);
       FLOCK.shown=show.map(function(c){return c.it.url});
       h+=flEndHtml(cards.length>show.length);
@@ -7472,7 +7493,7 @@ function planTableHtml(isPro){
 load();counts();rQuick();rDenHunts();rDenLocal();rDenOne();rDrawer();rDock();rRes();
 applyDeepLink();
 Array.prototype.forEach.call(document.querySelectorAll('.prowl-version'),function(el){el.textContent=PROWL_VERSION});
-try{textSizeApply(textSizeGet());var szb=$('#otp-sizeBtn');if(szb)szb.addEventListener('click',textSizeNext);}catch(e){}
+try{textSizeApply(textSizeGet());var szb=$('#otp-sizeBtn');if(szb)szb.addEventListener('click',textSizeNext);var szt=$('#otp-sizeTop');if(szt)szt.addEventListener('click',textSizeNext);}catch(e){}
 /* v5.89: while the store's phone menu is open, hide Prowl's top bar and bottom
    dock, which otherwise sit on top of the menu. Works with the Horizon and Dawn
    menu drawer (details#Details-menu-drawer-container). */
