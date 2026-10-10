@@ -130,3 +130,14 @@ includes it, so every answer was about 3% low. It now takes eBay's per-order fee
 less, $0.40 above), and the final value fee is 13.6% of the first $7,500 and 2.35% of the rest. Promoted listing stays
 at 2%. Fees as checked 2026-10-10; they live in `FEES`. The sheet still takes the listing's own price as the sale
 price. Tests: `__tests__/page/flock-next.test.mjs`.
+
+## Local links that 404'd (page v6.80, worker v105)
+
+- **Craigslist with a ZIP.** A ZIP saved as the city (Den › Local) made `www.craigslist.org/search/area/48377`, which
+  Craigslist answers with a 404. A ZIP (or ZIP+4) now searches 25 miles around it on the default region's site
+  (`annarbor.craigslist.org/search/gms?postal=48377&search_distance=25`), for garage sales, free stuff and keyword
+  searches alike (`clZip`, `clAt`). City names and region codes make the same links as before.
+- **Estate sales.** A sale whose block left out its city and ZIP showed as in the city searched for, and its link was
+  built with an empty ZIP (`/MI/novi//5100273`, a 404). The worker now shows a sale in its own city only, and links it
+  by its own link, or one built from a full state, city and ZIP, or else the city's page on EstateSales.net. Lists
+  are kept under `es2:`, so the ones kept before the fix are not served.

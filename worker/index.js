@@ -19,6 +19,11 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v105: 2026-10-10. Estate sales: a sale is shown in its own city only, never the one searched for, and its link is
+ *        its own (the SaleEvent's url or @id, or the app block's, when it names the sale) or built only from a full
+ *        state, city and ZIP, found in the block or one level down (an address object); otherwise the city's page on
+ *        EstateSales.net. v103 linked /MI/novi//5100273, a 404 (the sale is /MI/Farmington-Hills/48336/5100273), and
+ *        showed it as in Novi. Lists are kept under es2: so the ones kept before this are not served.
  *   v104: 2026-10-10. Photo check on a busy photo: the AI is told the piece being checked is the one that fills the
  *        frame, and to ignore what is around it (books, bookends, flowers), and that eBay's photo search looked at the
  *        whole photo, so a lookalike of something else in the frame is not evidence. A Couroc café tray shot beside a
@@ -359,7 +364,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-const WORKER_VERSION = "v104";
+const WORKER_VERSION = "v105";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4985,7 +4990,7 @@ const ES_TTL_MS = 6 * 3600000, ES_FETCH_PER_IP = 20, ES_MAX = 60;
 function esPlace(st, city) {
   st = String(st || "").trim().toUpperCase(); city = String(city || "").replace(/\s+/g, " ").trim();
   if (!/^[A-Z]{2}$/.test(st) || !/^[A-Za-z][A-Za-z .'-]{1,39}$/.test(city)) return null;
-  return { st: st, city: city, slug: city.replace(/[.']/g, "").replace(/\s+/g, "-"), key: "es:" + st + ":" + city.toLowerCase().replace(/[^a-z]+/g, "-") };
+  return { st: st, city: city, slug: city.replace(/[.']/g, "").replace(/\s+/g, "-"), key: "es2:" + st + ":" + city.toLowerCase().replace(/[^a-z]+/g, "-") };
 }
 function esJsonBlocks(html) {
   const out = [];
@@ -5024,10 +5029,25 @@ function esParse(html, place) {
     if (!id || seen[id]) return; seen[id] = 1;
     s = s || {}; e = e || {};
     const loc = (e.location && typeof e.location === "object" ? e.location : {}), adr = loc.address && typeof loc.address === "object" ? loc.address : {}, geo = loc.geo || {};
-    const st = txt(s.stateCode || adr.addressRegion || (place && place.st), 2).toUpperCase();
-    const city = txt(s.cityName || adr.addressLocality || (place && place.city), 40);
-    const zip = txt(s.postalCodeNumber || adr.postalCode, 10);
-    const url = https(e.url) || ("https://www.estatesales.net/" + encodeURIComponent(st) + "/" + encodeURIComponent(city.replace(/\s+/g, "-")) + "/" + encodeURIComponent(zip) + "/" + encodeURIComponent(id));
+    /* v105: a sale's own city, state and ZIP only. v103 fell back to the city searched for, so a sale whose block
+       left them out showed as in that city ("novi, MI") and its link was built with an empty ZIP
+       (/MI/novi//5100273), a 404 on EstateSales.net. */
+    const deep = (o, re, ok, d) => {   /* the first value under a key like re that looks right (ok), in o or one level down */
+      if (!o || typeof o !== "object" || d > 1) return "";
+      for (const k of Object.keys(o)) if (re.test(k) && (typeof o[k] === "string" || typeof o[k] === "number") && ok.test(String(o[k]).trim())) return String(o[k]).trim();
+      for (const k of Object.keys(o)) if (o[k] && typeof o[k] === "object" && !Array.isArray(o[k])) { const v = deep(o[k], re, ok, (d || 0) + 1); if (v) return v; }
+      return "";
+    };
+    const st = txt(s.stateCode || adr.addressRegion || deep(s, /^(state(Code)?|region|addressRegion)$/i, /^[A-Za-z]{2}$/), 2).toUpperCase();
+    const city = txt(s.cityName || adr.addressLocality || deep(s, /^(city(Name)?|locality|addressLocality)$/i, /^[A-Za-z][A-Za-z .'-]{1,39}$/), 40);
+    const zip = txt(s.postalCodeNumber || adr.postalCode || deep(s, /^(postal(Code)?(Number)?|zip(Code)?)$/i, /^\d{5}(-\d{4})?$/), 10);
+    /* a sale's own link: the SaleEvent's url, else its @id (the block may carry the link only there; sales are already
+       matched by url or @id), else a link in the app's block, any of them only when it names this sale */
+    const mine = u => (typeof u === "string" && /^\/[A-Za-z0-9/_.-]+$/.test(u) ? "https://www.estatesales.net" + u : https(u));
+    const own = [e.url, e["@id"], s.url, s.saleUrl, s.saleDetailUrl, s.detailUrl, s.link].map(mine).filter(u => u && /^https:\/\/www\.estatesales\.net\//.test(u) && new RegExp("/" + id + "/?$").test(u.replace(/[?#].*$/, "")))[0];
+    const url = own || https(e.url) || (/^[A-Z]{2}$/.test(st) && city && /^\d{5}$/.test(zip)
+      ? "https://www.estatesales.net/" + encodeURIComponent(st) + "/" + encodeURIComponent(city.replace(/\s+/g, "-")) + "/" + encodeURIComponent(zip) + "/" + encodeURIComponent(id)
+      : (place ? "https://www.estatesales.net/" + encodeURIComponent(place.st) + "/" + encodeURIComponent(place.slug) : "https://www.estatesales.net/"));   /* the city's page, never a 404 */
     const img = Array.isArray(e.image) ? e.image[0] : (e.image && typeof e.image === "object" ? e.image.url : e.image);
     items.push({
       id: String(id), name: txt(e.name, 120) || txt(s.typeName, 40).replace(/([a-z])([A-Z])/g, "$1 $2") || "Estate sale",
