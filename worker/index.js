@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v98: 2026-10-10. Alert emails send exact matches only: a listing whose title holds every word of the hunt (the
+ *        page's v6.72 rule, alExact). A hunt with no exact listing sends all of them, as before. And POST /share/email
+ *        { to, from, item, text, card } -> { ok } brings back page v5.99's "Email this" (the route was never saved):
+ *        6 a day per visitor, 12 per neighbourhood, 300 site-wide; text only, Owl & Twig links only, PNG card <1.5MB.
  *   v88: 2026-10-08. Etsy in the listing popup. /item opens etsy.com/listing/<id> through the Etsy Open API
  *        (listings/<id>?includes=Images,Shop): every photo in rank order, price, the description (plain text, escaped,
  *        new lines kept), the shop, when it was made and materials. A sold-out or expired listing reads as gone.
@@ -336,7 +340,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-const WORKER_VERSION = "v97";
+const WORKER_VERSION = "v98";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -3568,6 +3572,46 @@ function alSame(a, b) {
   let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return d === 0;
 }
+/* ---------- v98: Email this ----------
+   Page v5.99 had an "Email this" button on a Photo check or research result: the notes, and the photo card
+   attached, mailed from Prowl to any address (the Windows share sheet has no mail or Messenger in it). The route
+   itself was never saved, so this is new. It mails Prowl's own words to an address a visitor types, so it is kept
+   from being a way to send anything to anyone: 6 a day per visitor, 12 per neighbourhood and 300 for the whole
+   site; the item and the notes are cut to size and sent as escaped text; only Owl & Twig links become links (a
+   research source is shown as plain text); the card must be a PNG under 1.5MB; the sender's address, if given,
+   is only named in the text, never used as From or Reply-To. */
+const SHARE_PER_IP = 6, SHARE_PER_NET = 12, SHARE_PER_DAY = 300, SHARE_CARD_MAX = 1572864;
+async function shareEmail(request, env, origin) {
+  const b = await readJson(request, 2200000);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  const to = alEmail(b.to);
+  if (!to) return json({ error: "That email does not look right." }, 400, origin);
+  const item = String(b.item || "").replace(/[\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "A find";
+  const text = String(b.text || "").replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000b-\u001f]+/g, "").slice(0, 4000).trim();
+  if (!text) return json({ error: "Nothing to send." }, 400, origin);
+  const from = alEmail(b.from);
+  let card = "";
+  const m = /^data:image\/png;base64,([A-Za-z0-9+\/=]+)$/.exec(String(b.card || ""));
+  if (m && m[1].length * 3 / 4 <= SHARE_CARD_MAX) card = m[1];
+  if (!env.RESEND_API_KEY) return json({ error: "Could not send right now." }, 503, origin);
+  if (!isOwner(request, env)) {
+    const ip = ipKey(request.headers.get("CF-Connecting-IP"));
+    if (!(await vCount("she:" + ip, SHARE_PER_IP))) return json({ error: "limit" }, 429, origin);
+    if (!(await vCount("shn:" + ipNet(ip), SHARE_PER_NET))) return json({ error: "limit" }, 429, origin);
+    if (!(await vCount("sha:day", SHARE_PER_DAY))) return json({ error: "Email this is busy today. Try again tomorrow." }, 429, origin);
+  }
+  const lines = text.split("\n"), OT = /^https:\/\/(www\.)?owlandtwigvintage\.com\/[^\s<>"']*$/;
+  const body = lines.map(l => l.split(/(\s+)/).map(w => (OT.test(w) ? '<a href="' + alEsc(w) + '" style="color:#C2491F">' + alEsc(w) + "</a>" : alEsc(w))).join("")).join("<br>");
+  const who = from ? alEsc(from) : "a Prowl user";
+  const html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1C1815;max-width:560px">' +
+    '<p style="margin:0 0 14px;color:#6B6259;font-size:13px">Sent from Prowl by ' + who + '.</p>' +
+    '<p style="margin:0 0 14px">' + body + "</p>" +
+    (card ? '<p style="margin:0 0 14px;color:#6B6259;font-size:13px">The photo card is attached.</p>' : "") +
+    '<p style="margin:18px 0 0;color:#6B6259;font-size:12px">Prowl searches 29 vintage marketplaces at once. <a href="' + PROWL_PAGE + '?utm_source=share&amp;utm_medium=email" style="color:#C2491F">Try it free</a>.</p></div>';
+  const plain = "Sent from Prowl by " + (from || "a Prowl user") + ".\n\n" + text + "\n\nProwl searches 29 vintage marketplaces at once: " + PROWL_PAGE;
+  const r = await alSend(env, to, "A find from Prowl: " + item, html, plain, "", card ? [{ filename: "prowl-find.png", content: card }] : null);
+  return r.ok ? json({ ok: true }, 200, origin) : json({ error: "Could not send right now. Try again in a minute." }, 502, origin);
+}
 function alEsc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[c]);
 }
@@ -3599,9 +3643,10 @@ function alUnsubUrl(sub, hunt) {
 
 const AL_UNSUB_MAIL = "hello@owlandtwigvintage.com";
 /* v83: a reply or a mailto unsubscribe lands here. v89: the commission line is affNote(), built from the switches. */
-async function alSend(env, to, subject, html, text, unsub) {
+async function alSend(env, to, subject, html, text, unsub, attachments) {
   if (!env.RESEND_API_KEY) return { ok: false, error: "RESEND_API_KEY not set" };
   const body = { from: env.ALERT_FROM || "Prowl by Owl & Twig <onboarding@resend.dev>", to: [to], subject: subject, html: html, text: text };
+  if (attachments && attachments.length) body.attachments = attachments;   /* v98: Email this sends the photo card */
   body.reply_to = env.ALERT_REPLY_TO || AL_UNSUB_MAIL;   /* v93: the footer says a reply works, so a reply always reaches hello@ */
   /* v83: + mailto. v93: the one-click link first (RFC 2369: clients use the leftmost they support), the mailto after */
   if (unsub) body.headers = { "List-Unsubscribe": "<" + unsub + ">, <mailto:" + AL_UNSUB_MAIL + "?subject=unsubscribe>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" };
@@ -3683,7 +3728,23 @@ async function alHunt(env, term, sub) {
     try { const jr = await jevClean(env, term, out, mode); out = jr.items; } catch (e) {}
   }
   if (sub) out = alFilter(sub, out, local);   /* v50: price ceiling, skip-words */
-  return out;
+  return alExact(out, term);   /* v98: exact matches only, unless there are none */
+}
+
+/* v98: the page's exact match (page v6.72 exWords), so an alert and the page agree on what "exact" means. A listing
+   is exact when every word of the hunt is in its title: case, punctuation and apostrophes aside, and a plural s or
+   es dropped from words longer than three letters. Alerts send only the exact ones; a hunt with none sends all of
+   them, as before. Filtered here, before alCheck drops what was already sent, so a hunt that has any exact listing
+   never falls back to close ones on a day it has nothing new. */
+function alExWords(v) {
+  return String(v || "").toLowerCase().replace(/[\u2019']/g, "").replace(/[^a-z0-9\u00c0-\uffff]+/g, " ").split(" ").filter(Boolean)
+    .map(w => (w.length > 3 ? w.replace(/(es|s)$/, "") : w));
+}
+function alExact(items, term) {
+  const need = alExWords(term);
+  if (!need.length || !Array.isArray(items)) return items;
+  const ex = items.filter(x => { const have = " " + alExWords(x && x.title).join(" ") + " "; return need.every(w => have.indexOf(" " + w + " ") !== -1); });
+  return ex.length ? ex : items;
 }
 
 /* v51: the cron holds a member's record for many seconds while it searches. Only
@@ -5030,6 +5091,9 @@ async function handleFetch(request, env, ctx) {
     }
     if (url.pathname === "/research" && request.method === "POST") {
       return research(request, env, origin);
+    }
+    if (url.pathname === "/share/email" && request.method === "POST") {   /* v98 */
+      return shareEmail(request, env, origin);
     }
     if (url.pathname === "/guide" && request.method === "POST") {   /* v68 */
       return guide(request, env, origin, ctx);
