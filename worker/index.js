@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v99: 2026-10-10. /__probe also asks the garage-sale finders (EstateSales.net by city, Craigslist garage sales
+ *        and its RSS, gsalr, yardsalesearch), fixed addresses, so the owner can see from Cloudflare which ones a
+ *        Worker may read before the Local tab shows their listings.
  *   v98: 2026-10-10. Alert emails send exact matches only: a listing whose title holds every word of the hunt (the
  *        page's rule, alExact; a plural counts as its word). A hunt with no exact listing sends all of them, as
  *        before; close matches are remembered as seen either way, so they never go out later as new. Diagnose shows
@@ -342,7 +345,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-const WORKER_VERSION = "v98";
+const WORKER_VERSION = "v99";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -1927,6 +1930,13 @@ function buildCandidates(Q) {
     ["firstdibs",       "https://www.1stdibs.com/search/?q=" + encodeURIComponent(Q)],
     ["hibid",           "https://hibid.com/lots?q=" + encodeURIComponent(Q)],
     ["estatesales",     "https://www.estatesales.net/search?q=" + encodeURIComponent(Q)],
+    /* v99: garage-sale finders for the page's Local tab (build plan item 5): can a Worker read them, or is there a wall?
+       Fixed addresses only, never one a caller passes in, so the probe is never an open proxy */
+    ["estatesales-city", "https://www.estatesales.net/MI/Novi"],
+    ["craigslist-gms",  "https://detroit.craigslist.org/search/gms"],
+    ["craigslist-gms-rss", "https://detroit.craigslist.org/search/gms?format=rss"],
+    ["gsalr",           "https://gsalr.com/"],
+    ["yardsalesearch",  "https://www.yardsalesearch.com/"],
     ["abebooks",        "https://www.abebooks.com/servlet/SearchResults?kn=" + encodeURIComponent(Q)],
     ["thriftbooks",     "https://www.thriftbooks.com/browse/?b.search=" + encodeURIComponent(Q)],
     ["liveauctioneers", "https://www.liveauctioneers.com/search/?keyword=" + encodeURIComponent(Q)],
