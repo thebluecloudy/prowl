@@ -153,20 +153,23 @@ test('a panel term that is not in the Den says so, offers + Add to hunts, and th
   await p.close();
 });
 
-test('the price and ✕ sit below the row, so + Add to hunts is not under them', async () => {
+test('+ Add to hunts sits under the buttons, so every photo in a row starts at the same height', async () => {
   const p = await flock({ hunts: ['panther', 'pyrex'] });
   await settle(p);
   cards(p)[0].querySelector('.fl-lk').click();
   await settle(p);
   const near = await waitFor(() => cards(p).find((x) => x.getAttribute('data-near') === '1'), { timeout: 8000 });
   assert.ok(near.classList.contains('fl-row'));
-  /* v6.66: they are placed from the photo box, which starts after the row (no card-top offsets to keep in step) */
-  const media = near.querySelector(':scope > .fl-media');
-  assert.ok(media && near.querySelector(':scope > .fl-addrow').compareDocumentPosition(media) & p.win.Node.DOCUMENT_POSITION_FOLLOWING, 'the photo box comes after the row');
+  /* v6.73: the row comes last; above the photo it pushed that card's photo below its neighbours' on a computer */
+  const media = near.querySelector(':scope > .fl-media'), bar = near.querySelector(':scope > .fl-bar'), addrow = near.querySelector(':scope > .fl-addrow');
+  assert.ok(media && bar && addrow);
+  assert.equal(near.lastElementChild, addrow, 'the row is the last thing on the card');
+  assert.ok(media.compareDocumentPosition(bar) & p.win.Node.DOCUMENT_POSITION_FOLLOWING, 'photo, then buttons');
   assert.ok(media.querySelector(':scope > .fl-x') && media.querySelector('.sgw-card .sgw-p'), 'the ✕ and the price are in the photo box');
   const css = [...p.doc.querySelectorAll('style')].map((x) => x.textContent).join('\n');
   assert.match(css, /#otp-flock\.as-feed \.fl-media\{position:relative;/);
-  assert.match(css, /\.fl-addrow \.fl-near,[^{]*\{[^}]*-webkit-line-clamp:2/, 'the reason wraps to two lines instead of losing the term');
+  assert.match(css, /#otp-flock \.fl-addrow\{[^}]*flex-wrap:wrap/, 'the button drops under the reason instead of squeezing it');
+  assert.doesNotMatch(css, /\.fl-addrow \.fl-near,[^{]*\{[^}]*line-clamp/, 'the whole reason shows');
   await p.close();
 });
 
