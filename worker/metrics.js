@@ -25,6 +25,7 @@ export function routeKey(pathname) {
   if (NAMED[p]) return NAMED[p];
   if (p === "/alerts" || p.startsWith("/alerts/")) { const n = p.slice(8); return "alerts:" + (ALERTS.has(n) ? n : "other"); }
   if (p === "/proxy" || p.startsWith("/proxy/")) return "store:login";
+  if (p.startsWith("/art/")) return "art";   /* v97: the page's drawings, so they do not swell "other" */
   return "other";
 }
 

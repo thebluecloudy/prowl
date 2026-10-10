@@ -46,6 +46,10 @@
  *   v96: 2026-10-09. CTBids (Caring Transitions' online estate sale auctions) joins "where to look" (WHERE_MKTS) and the
  *        alert emails' "Also search" links. Link-out only: its search API wants a session token. Its results page is
  *        /view-more-items/<words> (ctbUrl, same as the page's). Cached /where answers (30 days) keep their old list.
+ *   v97: 2026-10-10. GET /art/<name> serves the page's art (worker/art.js), so a drawing costs the Shopify page (capped at
+ *        512 KB) nothing: fireflies.svg is Uranium mode's hero, fireflies-still.svg its first frame for phones. Answered
+ *        before anything else (no KV read, no origin rule),
+ *        with a year-long immutable cache; the page asks for it with ?v=. 404 for an unknown name, 405 for other methods.
  *   v94: 2026-10-09. Facebook Marketplace sweep (Oct 8 briefing). POST /fb-ingest takes each morning's new Facebook finds
  *        for one locked hunt from Prowl-the-agent (X-Prowl-Ingest must match the FB_INGEST_KEY secret; 403 without it,
  *        413 over 128 KB, 300 tries a day per address) and keeps the last 7 days' finds in KV as fb:<term>, merged by
@@ -331,7 +335,8 @@
 /* v78: admin area (/admin) and the traffic numbers behind it */
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
-const WORKER_VERSION = "v96";
+import { artResponse } from "./art.js";   /* v97 */
+const WORKER_VERSION = "v97";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4967,8 +4972,10 @@ async function fbFinds(request, env, url, origin) {
 
 async function handleFetch(request, env, ctx) {
     G_ENV = env;
-    try { await affLoad(env); } catch (e) {}   /* v89: affiliate switches for every link built below */
     const url = new URL(request.url);
+    /* v97: the page's art (worker/art.js), before anything else: no KV, no origin rule, a year in the browser's cache */
+    if (url.pathname.startsWith("/art/")) return artResponse(url.pathname.slice(5), request.method);
+    try { await affLoad(env); } catch (e) {}   /* v89: affiliate switches for every link built below */
     const origin = request.headers.get("Origin") || "";
 
     /* v78: the owner's admin area. Its own sign-in, same-origin only, no CORS. */
