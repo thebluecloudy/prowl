@@ -112,3 +112,12 @@ frame (`stillSvg`), for phones (`hover:none`), where the animation kept a mid-ra
 scene's shape) holds the mark and the scene fades in over it, so nothing moves when it arrives; under reduced motion, the
 mark alone (the lazy image is never fetched); if the scene cannot load, the mark stays. A new drawing: change the file in
 `worker/art/`, re-embed it in `worker/art.js` and bump `HERO_V`.
+
+## Panther QR (page v6.76)
+
+Tap the panther at the top of the app (or the little QR square on its corner) to show someone Prowl: the bottom sheet
+opens with the QR code, bigger than in the share strip, the name to say out loud ("Prowl by Owl & Twig"), the address,
+and **Send the link** (the system share sheet, else the link is copied). The panther pounces first, except under reduced
+motion. The code is copied from the share strip's `#otp-qrPanel .qr-box`, so there is one QR to keep right; the share
+strip and its own QR button are unchanged. Once the panther has tucked away on scroll it is `visibility:hidden`, so its
+button leaves the tab order. Tests: `__tests__/page/panther-qr.test.mjs`.
