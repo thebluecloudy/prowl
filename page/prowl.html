@@ -166,11 +166,11 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
   /* The app's colours come later (its stylesheet, applyTheme, the New look's palette on the wrapper), so the curtain
      brings its own, picked the way the app picks them: the saved theme, else the device's dark or light; the New
      look unless Classic is chosen. Keep in step with :root, [data-theme=...] and the .k2 palettes below. */
-  var th='',k2=!/[?&]look=1(&|$)/.test(location.search),PAL;
+  var th='',k2=true,PAL;
   try{
     th=localStorage.getItem('prowl.theme')||'';
     k2=!(/[?&]look=1(&|$)/.test(location.search)||(localStorage.getItem('prowl.look')==='1'&&!/[?&]look=2(&|$)/.test(location.search)));
-  }catch(e){}   /* storage blocked: the app falls back the same way */
+  }catch(e){k2=true}   /* storage blocked: the app stays in the New look (even its ?look=1 needs storage) and the device's theme */
   if(!/^(light|dark|midnight|uranium)$/.test(th))th=mm('(prefers-color-scheme: dark)')?'dark':'light';
   PAL={   /* --bg, --ink, --ln, --ac, --ac-ring */
     light:['#FAF6EE','#1C1815','#E7DED1',k2?'#C2491F':'#B0522B',k2?'rgba(194,73,31,.18)':'rgba(176,82,43,.14)'],
@@ -4213,15 +4213,17 @@ function seenAnswered(k){
   return a;
 }
 function seenMark(k){
-  var S=seenLoad(),u=seenUrls(k),old=S[k]||[],now={},has={},on=[],gone=[],held=[],ans,src,room,i,n=0;
+  var S=seenLoad(),u=seenUrls(k),old=S[k]||[],now={},has={},on=[],rest=[],ans,src,drop,i,n=0;
   if(!u.length)return;
   for(i=0;i<old.length;i++)has[old[i]]=1;
   for(i=0;i<u.length;i++)if(!now[u[i]]){now[u[i]]=1;on.push(u[i]);if(!has[u[i]])n++}
-  ans=seenAnswered(k);
-  for(i=0;i<old.length;i++)if(!now[old[i]]){src=seenSrc(old[i]);(src&&!ans[src]?held:gone).push(old[i])}
-  room=Math.max(0,SEEN_CAP-held.length-on.length);
-  if(gone.length>room){gone=gone.slice(gone.length-room);n++}
-  S[k]=gone.concat(held,on);
+  for(i=0;i<old.length;i++)if(!now[old[i]])rest.push(old[i]);   /* off screen, in the order they were first seen */
+  drop=rest.length+on.length-SEEN_CAP;
+  if(drop>0){
+    ans=seenAnswered(k);
+    rest=rest.filter(function(x){if(drop<=0)return true;src=seenSrc(x);if(src&&!ans[src])return true;drop--;n++;return false});
+  }
+  S[k]=rest.concat(on);
   if(n||!old.length)seenSave();
 }
 /* v6.69: listings of hunt k that were not seen before this visit (FRESH), measured against what was seen when the hunt
@@ -4238,7 +4240,8 @@ function freshPaint(el){var cs=el.querySelectorAll('.sgw-cell[data-u]'),i;for(i=
 function seenNew(k){
   var S=seenLoad(),u=seenUrls(k),i,set={},n=0;
   if(!u.length)return 0;
-  if(!S[k]){S[k]=u.slice(-Math.max(SEEN_CAP,u.length));seenSave();return 0}   /* first look: nothing is "new" yet */
+  if(!S[k])return 0;   /* never looked at: nothing is "new", and nothing is kept until the hunt is opened (v6.69: a snapshot
+     taken while Flock or Daily had only some marketplaces' answers made the rest look new on the first look) */
   for(i=0;i<S[k].length;i++)set[S[k][i]]=1;
   for(i=0;i<u.length;i++)if(!set[u[i]])n++;
   return n;
@@ -7536,7 +7539,7 @@ try{loadSGW()}catch(e){}
   function chipOf(n){return n&&n.closest?n.closest('.sgw-chip'):null}
   function chipKey(c){var t='',n;for(n=c.firstChild;n;n=n.nextSibling)if(n.nodeType===3)t+=n.nodeValue;return t}
   root.addEventListener('mouseover',function(e){
-    var c=chipOf(e.target),k;if(!c)return;
+    var c=chipOf(e.target),k;if(!c){sheenK='';return}   /* over something else: the next chip is a new hover */
     k=chipKey(c);if(k===sheenK)return;
     sheenK=k;if(!lively())return;
     c.classList.remove('pm-sheen');void c.offsetWidth;c.classList.add('pm-sheen');

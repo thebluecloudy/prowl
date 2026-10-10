@@ -139,6 +139,8 @@ test('the curtain wears the theme and look the app opens in, from its first fram
     { name: 'Classic from the address (?look=1)', theme: 'light', k2: false, qs: '?look=1' },
     { name: 'storage blocked, device dark: Blue hour, as the app falls back', theme: 'dark', k2: true, osDark: true, blocked: true },
     { name: 'storage blocked, device light', theme: 'light', k2: true, blocked: true },
+    { name: 'storage blocked, ?look=1: the app stays New (its ?look=1 needs storage)', theme: 'light', k2: true, blocked: true, qs: '?look=1' },
+    { name: 'storage blocked, device dark, ?look=1', theme: 'dark', k2: true, blocked: true, osDark: true, qs: '?look=1' },
   ];
   for (const c of cases) {
     const storage = { ...DEN, ...(c.saved ? { 'prowl.theme': c.saved } : {}), ...(c.k2 || c.qs ? {} : { 'prowl.look': '1' }) };
@@ -151,6 +153,10 @@ test('the curtain wears the theme and look the app opens in, from its first fram
     const got = ['--bg', '--ink', '--ln', '--ac', '--ac-ring'].map((k) => new RegExp(k + ':\\s*([^;]+)').exec(style)[1].trim());
     assert.deepEqual(got, expected(c.theme, c.k2), c.name);
     assert.ok(got.every(Boolean), c.name + ': every colour found in the stylesheet');
+    /* and what the app itself ends up in, once its own theme and look code has run */
+    await tick(20);
+    const h = p.doc.documentElement, app = h.getAttribute('data-dark') === 'midnight' ? 'midnight' : (h.getAttribute('data-theme') || 'light');
+    assert.deepEqual([app, p.$('.scout-app-wrapper').classList.contains('k2')], [c.theme, c.k2], c.name + ': the app opens the same way');
     await p.close();
   }
 });
@@ -478,6 +484,47 @@ test('a marketplace that fails for a visit keeps its listings, so they are not "
   await q.close();
 });
 
+test('a hunt that Flock fetched part of is not "new" on its first look', async () => {
+  const f = liveFetch();
+  let release, first = null, answered = 0; const gate = new Promise((r) => { release = r; });
+  const fx = (u) => {   /* whichever marketplace Flock asks first about lamp answers; the rest wait for the first look */
+    const x = new URL(String(u), 'https://x/'), q = (x.searchParams.get('q') || '').toLowerCase(), src = x.pathname.replace(/\//g, '') || 'shopgoodwill';
+    if (q === 'lamp' && first === null) first = src;
+    const now = q !== 'lamp' || src === first;
+    return (now ? Promise.resolve() : gate).then(() => new Promise((r) => setTimeout(() => { if (q === 'lamp' && now) answered++; r(f.impl(u)); }, 60)));
+  };
+  const p = loadPage({ fetchImpl: fx, beforeLoad: layout, storage: { 'prowl.v36': { seen: true, hunts: ['pyrex', 'lamp'] }, owlTwigSgwTerms: ['pyrex', 'lamp'], 'prowl.lastHunt': 'pyrex' } });
+  p.win.confirm = () => true;
+  await waitFor(() => p.$$('#otp-sgw .sgw-cell[data-u]').length >= 3, { timeout: 6000 });
+  await tick(500);
+  p.$('#otp-dock .db[data-m="flock"]').click();   /* Flock asks one marketplace about lamp; the rest answer later */
+  await waitFor(() => answered > 0, { timeout: 15000 });
+  await tick(600);
+  p.$('#otp-dock .db[data-m="prowl"]').click();
+  await tick(100);
+  p.$$('#otp-sgw .sgw-chip[data-sgw="pick"]').find((c) => /lamp/i.test(c.textContent)).click();
+  release();
+  await tick(1500);
+  assert.ok(p.$$('#otp-sgw .sgw-cell[data-u]').some((c) => /lamp/.test(c.getAttribute('data-u'))), 'lamp is on screen');
+  assert.deepEqual(p.$$('#otp-sgw .sgw-cell[data-fresh]').map((c) => c.getAttribute('data-u')), [], 'a first look: nothing new');
+  await p.close();
+});
+
+test('what is cut keeps the order listings were first seen: the oldest of the answering marketplaces first', async () => {
+  const f = liveFetch();
+  const slow = (u) => new Promise((r) => setTimeout(() => r(f.impl(u)), /etsy/.test(String(u)) ? 700 : 60));   /* Etsy answers last */
+  const old = [...Array.from({ length: 20 }, (_, i) => 'https://www.etsy.com/listing/old-' + i), ...Array.from({ length: 130 }, (_, i) => 'https://shopgoodwill.com/item/old-' + i)];
+  const p = await results({ fetchImpl: slow, storage: { 'prowl.seenUrls': { pyrex: old } } });
+  await tick(1600);
+  const saved = JSON.parse(p.win.localStorage.getItem('prowl.seenUrls')).pyrex;
+  const idx = (re) => saved.map((u, i) => (re.test(u) ? i : -1)).filter((i) => i > -1);
+  const etsyOld = idx(/etsy\.com\/listing\/old-/), sgwOld = idx(/shopgoodwill\.com\/item\/old-/);
+  assert.ok(sgwOld.length > 0);
+  assert.ok(etsyOld.every((i) => i < sgwOld[0]), 'older Etsy entries stay ahead of newer ShopGoodwill ones');
+  assert.ok(saved.length <= 150);
+  await p.close();
+});
+
 test('the seen list is written only when what it remembers changes, and keeps more than 150 when that many are on screen', async () => {
   const p0 = await results();
   await tick(900);
@@ -507,21 +554,31 @@ test('the chip sheen plays once each time the pointer comes onto a hunt, not aga
   const chip = () => p.$('#otp-sgw .sgw-chip[data-sgw="pick"]');
   const over = (el, from = null) => el.dispatchEvent(new p.win.MouseEvent('mouseover', { bubbles: true, relatedTarget: from }));
   const out = (el, to) => el.dispatchEvent(new p.win.MouseEvent('mouseout', { bubbles: true, relatedTarget: to }));
+  const fresh = (el) => { el.classList.remove('pm-sheen'); return el; };
   let c = chip();
   over(c);
   assert.ok(c.classList.contains('pm-sheen'), 'onto the chip');
-  /* redrawn under a resting pointer, much later, its "new" badge changed: the same hover */
+  /* redrawn under a resting pointer, much later, its "new" badge changed: the same hover (a removed chip gets no mouseout) */
   const realNow = p.win.Date.now; p.win.Date.now = () => realNow() + 60000;
-  const c2 = c.cloneNode(true); c2.classList.remove('pm-sheen');
+  const c2 = fresh(c.cloneNode(true));
   c2.insertAdjacentHTML('beforeend', '<em class="sgw-new">3 new</em>');
   c.replaceWith(c2);
   over(c2);
   assert.equal(c2.classList.contains('pm-sheen'), false, 'no replay');
-  over(c2.querySelector('.sgw-x') || c2, c2);   /* onto its own × */
-  assert.equal(c2.classList.contains('pm-sheen'), false);
-  out(c2, p.$('#otp-q'));   /* the pointer really leaves */
+  /* onto its own badge and back: the events a browser sends */
+  const badge = c2.querySelector('.sgw-new');
+  out(c2, badge); over(badge, c2);
+  out(badge, c2); over(c2, badge);
+  assert.equal(c2.classList.contains('pm-sheen'), false, 'still the same hover');
+  out(c2, p.$('#otp-q')); over(p.$('#otp-q'), c2);   /* the pointer really leaves */
   over(c2, p.$('#otp-q'));
   assert.ok(c2.classList.contains('pm-sheen'), 'back onto it: once more');
+  /* a redraw moves the chip away: the pointer is over something else, then onto the chip again */
+  fresh(c2);
+  const c3 = fresh(c2.cloneNode(true)); c2.replaceWith(c3);
+  over(p.$('#otp-sgw .sgw-head') || p.$('#otp-sgw'));
+  over(c3, p.$('#otp-sgw'));
+  assert.ok(c3.classList.contains('pm-sheen'), 'a new hover after the pointer was off it');
   p.win.Date.now = realNow;
   await p.close();
 });
