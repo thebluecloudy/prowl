@@ -654,6 +654,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-head b{font-size:13px;font-weight:800;color:var(--ink)}
 .scout-app-wrapper .sgw-upd{font-size:11px;color:var(--mu);font-weight:600}
 .scout-app-wrapper .sgw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;padding:0 15px 10px}
+.scout-app-wrapper .sgw-close{grid-column:1/-1;margin:6px 0 0;padding-top:8px;border-top:1px dashed var(--ln);font-size:12px;font-weight:700;color:var(--mu)}
 .scout-app-wrapper .sgw-card{background:var(--cd);border:1px solid var(--ln);border-radius:10px;overflow:hidden;text-decoration:none;color:inherit;text-align:left;display:flex;flex-direction:column;transition:border-color .15s,box-shadow .2s}
 .scout-app-wrapper .sgw-card:hover{border-color:var(--ac)}
 [data-theme=uranium] .scout-app-wrapper .sgw-card:hover{box-shadow:0 0 16px rgba(57,255,20,.4)}
@@ -2579,7 +2580,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.71';
+var PROWL_VERSION='v6.72';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3472,8 +3473,8 @@ function liveRunStrip(name,t,c){
   var items=[],i;
   for(i=0;i<c.items.length;i++){if(c.items[i]&&c.items[i].url&&c.items[i].title)items.push(c.items[i])}
   if(!items.length)return '<div class="rlive">'+head+'</div><p class="sgw-note">Nothing live for <b>'+esc(t)+'</b> on '+name+' right now. The rows below still search it everywhere else.</p></div>';
-  var rows='';for(i=0;i<items.length;i++)rows+=sgwCard(items[i],t);
-  return '<div class="rlive">'+head+'<span class="sgw-upd">'+items.length+(c.stale?' from earlier today':' live now')+'</span></div><div class="sgw-grid">'+rows+'</div></div>';
+  var r=exRows(items,t);   /* v6.72 */
+  return '<div class="rlive">'+head+exUpd(r,c)+'</div><div class="sgw-grid">'+r.rows+'</div></div>';
 }
 function sgwRunStrip(r){
   var t=sgwTermOf(r);
@@ -4294,6 +4295,27 @@ function liveCount(c){
   for(i=0;i<c.items.length;i++){if(c.items[i]&&c.items[i].url&&c.items[i].title)n++}
   return n;
 }
+/* v6.72: exact matches first. A listing is exact when every word of the hunt is in its title (Fire-King and
+   fire king alike, a plural s or es aside); the rest are close matches, kept in the marketplace's own order below
+   a line. "fire king jadeite" no longer opens on Jay King jadeite rings. One word hunts are all exact or all close. */
+function exWords(v){return String(v||'').toLowerCase().replace(/[\u2019']/g,'').replace(/[^a-z0-9\u00c0-\uffff]+/g,' ').split(' ').filter(Boolean).map(function(w){return w.length>3?w.replace(/(es|s)$/,''):w})}
+function exSort(items,t){
+  var need=exWords(t),ex=[],near=[],i,j,have,ok;
+  for(i=0;i<items.length;i++){
+    have=' '+exWords(items[i].title).join(' ')+' ';ok=true;
+    for(j=0;j<need.length&&ok;j++)if(have.indexOf(' '+need[j]+' ')<0)ok=false;
+    (ok?ex:near).push(items[i]);
+  }
+  return {ex:ex,near:near};
+}
+function exRows(items,t){
+  var g=exSort(items,t),rows='',i;
+  for(i=0;i<g.ex.length;i++)rows+=sgwCard(g.ex[i],t);
+  if(g.ex.length&&g.near.length)rows+='<p class="sgw-close">Close matches</p>';
+  for(i=0;i<g.near.length;i++)rows+=sgwCard(g.near[i],t);
+  return {rows:rows,n:items.length,ex:g.near.length&&g.ex.length?g.ex.length:0};
+}
+function exUpd(r,c){return '<span class="sgw-upd">'+(r.ex?r.ex+' exact · ':'')+r.n+(c.stale?' from earlier today':' live now')+'</span>'}
 /* v6.33: why a live block failed, in words a visitor can act on. */
 function liveErrNote(name,c){
   if(c.err===2&&c.cap)return 'Live results are busy on your connection right now. Try again in a little while. The rows below still search every site directly.';
@@ -4324,12 +4346,11 @@ function liveBlock(name,t,c,busy){
   if(busy)return head+'</div><p class="sgw-note">Looking on '+name+'…</p>';
   if(!c)return head+'</div><p class="sgw-note">&nbsp;</p>';
   if(c.err)return head+'</div><p class="sgw-note">'+esc(liveErrNote(name,c))+'</p>';
-  var rows='',i,n=0;
-  for(i=0;i<c.items.length;i++){
-    if(c.items[i]&&c.items[i].url&&c.items[i].title){rows+=sgwCard(c.items[i],t);n++}
-  }
-  if(!n)return head+'</div><p class="sgw-note">Nothing live for <b>'+esc(t)+'</b> on '+name+' right now. The full hunt below still searches everywhere else.</p>';
-  return head+'<span class="sgw-upd">'+n+(c.stale?' from earlier today':' live now')+'</span></div><div class="sgw-grid">'+rows+'</div>';   /* v6.61: worker v91's spare answer */
+  var items=[],i;
+  for(i=0;i<c.items.length;i++){if(c.items[i]&&c.items[i].url&&c.items[i].title)items.push(c.items[i])}
+  if(!items.length)return head+'</div><p class="sgw-note">Nothing live for <b>'+esc(t)+'</b> on '+name+' right now. The full hunt below still searches everywhere else.</p>';
+  var r=exRows(items,t);   /* v6.72: exact matches first */
+  return head+exUpd(r,c)+'</div><div class="sgw-grid">'+r.rows+'</div>';   /* v6.61: worker v91's spare answer */
 }
 /* v6.65: Facebook Marketplace finds from the morning sweep (worker v94, GET /fb-finds). Meta has no Marketplace API,
    so Prowl-the-agent sweeps the locked hunts through Matthew's own Facebook account each morning and hands the new
