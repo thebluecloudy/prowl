@@ -40,7 +40,7 @@ test('no city yet: the Ann Arbor area, as Craigslist does elsewhere in Prowl, an
   await p.close();
 });
 
-test('worker v99 probes the garage-sale finders at fixed addresses only', () => {
+test('worker v99 probes the garage-sale finders at fixed addresses only (v101: never gsalr)', () => {
   const W = readFileSync(new URL('../../worker/index.js', import.meta.url), 'utf8');
   const fn = /^function buildCandidates\(Q\) \{[\s\S]*?\n\}/m.exec(W)[0];
   const list = new Function(fn + '\nreturn buildCandidates;')()('ceramic panther');
@@ -48,8 +48,9 @@ test('worker v99 probes the garage-sale finders at fixed addresses only', () => 
   assert.equal(by['estatesales-city'], 'https://www.estatesales.net/MI/Novi');
   assert.equal(by['craigslist-gms'], 'https://detroit.craigslist.org/search/gms');
   assert.equal(by['craigslist-gms-rss'], 'https://detroit.craigslist.org/search/gms?format=rss');
-  assert.equal(by.gsalr, 'https://gsalr.com/');
+  assert.equal(by.gsalr, undefined, 'v101: gsalr forbids any automated access, so it is never asked');
+  assert.ok(!list.some(([, u]) => /gsalr/.test(u)));
   assert.equal(by.yardsalesearch, 'https://www.yardsalesearch.com/');
   const other = new Function(fn + '\nreturn buildCandidates;')()('anything else');
-  for (const k of ['estatesales-city', 'craigslist-gms', 'craigslist-gms-rss', 'gsalr', 'yardsalesearch']) assert.equal(Object.fromEntries(other)[k], by[k], k + ' does not depend on the query');
+  for (const k of ['estatesales-city', 'craigslist-gms', 'craigslist-gms-rss', 'yardsalesearch']) assert.equal(Object.fromEntries(other)[k], by[k], k + ' does not depend on the query');
 });

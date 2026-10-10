@@ -149,7 +149,7 @@ function makeH(kvOf, over = {}) {
     alNear: (sub, term) => !!sub && !!sub.pro && !!prefsOf(sub).zip && prefsOf(sub).local.includes(String(term).toLowerCase()),
     runProbes: async () => [{ t: 1, source: "ebay", ok: true, status: 200, n: 12, ms: 300, err: "" }, { t: 1, source: "etsy", ok: false, status: 0, n: 0, ms: 12000, err: "no answer for jane@example.com" }],
     salesProbe: async () => [{ name: "craigslist-gms", url: "https://detroit.craigslist.org/search/gms", status: 200, ms: 400, bytes: 90000, wall: false, readable: true },
-      { name: "gsalr", url: "https://gsalr.com/", status: 403, ms: 200, bytes: 5000, wall: true, readable: false, err: "<script>x</script> for jane@example.com" }],
+      { name: "yardsalesearch", url: "https://www.yardsalesearch.com/", status: 403, ms: 200, bytes: 5000, wall: true, readable: false, err: "<script>x</script> for jane@example.com" }],
     capsCall: async (name, op, body) => {
       calls.caps.push({ name, op, body });
       if (H.capsFail.has(name + " " + op) || H.capsFail.has("*")) throw new Error("caps 500");
@@ -923,7 +923,7 @@ test("salescheck asks the garage-sale sites, says which a Worker can read, scrub
   const res = await apiPost(env, H, "/admin/api/salescheck", {});
   assert.equal(res.status, 200);
   const j = await res.json();
-  assert.deepEqual(j.results.map((r) => [r.name, r.readable, r.wall, r.status]), [["craigslist-gms", true, false, 200], ["gsalr", false, true, 403]]);
+  assert.deepEqual(j.results.map((r) => [r.name, r.readable, r.wall, r.status]), [["craigslist-gms", true, false, 200], ["yardsalesearch", false, true, 403]]);
   assert.ok(!/jane@example\.com/.test(JSON.stringify(j)) && /\[email\]/.test(j.results[1].err), "errors are cleaned like the health check's (the page shows them as text)");
   H.deny.add("admsales");
   assert.equal((await apiPost(env, H, "/admin/api/salescheck", {})).status, 429);

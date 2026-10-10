@@ -19,6 +19,7 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v101: 2026-10-10. gsalr.com out of /__probe and the garage-sale check: its terms forbid automated access of any kind.
  *   v100: 2026-10-10. The admin area's Marketplaces card has "Check garage-sale sites": the same five fixed addresses,
  *        asked from Cloudflare, each marked Readable, Bot wall or Not readable (/__probe needs the debug key, which a
  *        browser address bar cannot send, so it answers "not found").
@@ -348,7 +349,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-const WORKER_VERSION = "v100";
+const WORKER_VERSION = "v101";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -1938,7 +1939,6 @@ function buildCandidates(Q) {
     ["estatesales-city", "https://www.estatesales.net/MI/Novi"],
     ["craigslist-gms",  "https://detroit.craigslist.org/search/gms"],
     ["craigslist-gms-rss", "https://detroit.craigslist.org/search/gms?format=rss"],
-    ["gsalr",           "https://gsalr.com/"],
     ["yardsalesearch",  "https://www.yardsalesearch.com/"],
     ["abebooks",        "https://www.abebooks.com/servlet/SearchResults?kn=" + encodeURIComponent(Q)],
     ["thriftbooks",     "https://www.thriftbooks.com/browse/?b.search=" + encodeURIComponent(Q)],
@@ -4897,7 +4897,9 @@ const PROBE_TERMS = { chairish: "vintage lamp", grailed: "vintage levis" };
 /* v78: one small test search per live marketplace (hourly from the cron, or the admin's "Run health check now") */
 /* v99: the garage-sale finders, asked from Cloudflare at fixed addresses (the same ones /__probe lists), for the
    admin area's "Check garage-sale sites" button: can a Worker read them, or is there a wall? Nothing is kept. */
-const SALES_PROBES = ["estatesales-city", "craigslist-gms", "craigslist-gms-rss", "gsalr", "yardsalesearch"];
+/* v101: gsalr is out. Its terms (2026-01-24) forbid any automated access, even checking whether it is up "for any
+   competitive purpose", with damages per page and per day; Prowl never asks it again. */
+const SALES_PROBES = ["estatesales-city", "craigslist-gms", "craigslist-gms-rss", "yardsalesearch"];
 async function salesProbe() {
   const all = buildCandidates("ceramic panther").filter(c => SALES_PROBES.indexOf(c[0]) !== -1);
   return Promise.all(all.map(async ([name, u]) => {

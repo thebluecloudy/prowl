@@ -3101,7 +3101,8 @@ function rNear(){
 }
 /* v6.75: garage sales, the listings themselves rather than a map search (build plan item 5). Craigslist's garage &
    moving sales section (gms) for the saved city, newest first, and the same with the free-stuff section. Other
-   finders (EstateSales.net, gsalr, yardsalesearch) wait until the worker can show that it may fetch them. */
+   finders wait for permission: gsalr's terms forbid any automated access (worker v101 never asks it); EstateSales.net
+   and yardsalesearch need a yes in writing first. */
 function gmsUrl(cat,view){var c=clSlug()||CL_DEFAULT;return 'https://www.craigslist.org/search/area/'+E(c)+'?cat='+cat+'#search=1~'+(view||'list')+'~0~0'}   /* view: list or map (Craigslist's own map of the sales) */
 function rSales(){
   var g=$('#otp-salesGrid');if(!g)return;

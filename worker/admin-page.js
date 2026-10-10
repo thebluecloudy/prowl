@@ -830,7 +830,7 @@ function healthView() {
       H.results.map(r => [srcName(r.source), r.ok ? st("good", "Up") : st("critical", "Down"), secs(r.ms), num(r.n), r.err || (r.status && r.status !== 200 ? "Answered " + r.status : "")]),
       "Health check results", true)]);
 }
-const SALES_NAMES = { "estatesales-city": "EstateSales.net (Novi)", "craigslist-gms": "Craigslist garage sales (Detroit)", "craigslist-gms-rss": "Craigslist garage sales, RSS feed", gsalr: "gsalr.com", yardsalesearch: "YardSaleSearch.com" };
+const SALES_NAMES = { "estatesales-city": "EstateSales.net (Novi)", "craigslist-gms": "Craigslist garage sales (Detroit)", "craigslist-gms-rss": "Craigslist garage sales, RSS feed", yardsalesearch: "YardSaleSearch.com" };
 function salesView() {
   const X = S.sales;
   if (!X) return null;
