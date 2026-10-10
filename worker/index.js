@@ -3893,12 +3893,13 @@ function pounceKeep(g, v) { return !!v && (v.match === "yes" || (g.maybe && v.ma
    unjudged (run budget, daily cap, a failed call) are not marked judged, so the next run tries them again. */
 async function pounceHunt(env, sub, term, items) {
   const g = pounceQuarries(env, sub)[String(term || "").toLowerCase()];
-  if (!g || !Array.isArray(items) || !items.length) return [];
+  if (!g || !Array.isArray(items) || !items.length || !(env && env.MUSE_API_KEY)) return [];   /* v104 review: no key, nothing spent */
   const judged = await kvGet(env, "pj:" + sub.email, []), was = new Set(Array.isArray(judged) ? judged : []), add = [], hits = [];
+  let more = false;
   for (const x of items) {
     if (!x || !x.url || was.has(x.url)) continue;
     if (pounceSkip(term, g, x)) { add.push(x.url); was.add(x.url); continue; }   /* dropped for free, never asked again */
-    if (PJ_RUN.left <= 0 || (PJ_RUN.m[sub.email] || 0) >= POUNCE_PER_MEMBER_RUN) break;
+    if (PJ_RUN.left <= 0 || (PJ_RUN.m[sub.email] || 0) >= POUNCE_PER_MEMBER_RUN) { more = true; break; }
     if (!(await vCount("pj:" + sub.email, pounceDayCap(sub)))) break;
     if (!(await vCount("pj:all", POUNCE_SITE_PER_DAY))) break;
     PJ_RUN.left--; PJ_RUN.m[sub.email] = (PJ_RUN.m[sub.email] || 0) + 1;
@@ -3914,6 +3915,7 @@ async function pounceHunt(env, sub, term, items) {
     await kvPut(env, "gm:" + sub.email, hits.map(x => ({ hunt: term, title: x.title, price: x.price, url: x.url, image: x.image, src: x.src, match: x.pounce.match, p: x.pounce.p, reason: x.pounce.reason, at: at }))
       .concat(Array.isArray(gm) ? gm : []).slice(0, POUNCE_MATCH_CAP));
   }
+  hits.more = more;   /* listings left for a later run today */
   return hits;
 }
 /* v104: a match goes to the member's phone, never to another email (Matt, 2026-10-10: fewer emails). The phone gets it
@@ -3982,6 +3984,7 @@ async function pounceSendPush(env, body) {
   finally { clearTimeout(timer); }
 }
 async function pounceNotify(env, sub, hits) {
+  if (PJ_RUN.quiet) return hits.slice();   /* a debug run: matches wait in the digest, no phone is tapped */
   const left = [], id = hits.length && sub.push ? await pounceSeal(env, sub.email) : "";
   for (const x of hits) {
     let ok = false;
@@ -4118,14 +4121,16 @@ async function alCheck(env, sub, limit, now, only) {
     if (fresh.length && !only) found[h] = fresh;
     /* v104: Pounce judges the quarry hunt's listings (seen or not: pj: remembers what it judged). A match goes to the
        member's phone; one that could not go rides at the top of the next digest with its reason. */
+    let later = false;
     if (sub.quarries) {
       try {
         const hits = await pounceHunt(env, sub, h, all);
+        later = !!hits.more;
         const left = hits.length ? await pounceNotify(env, sub, hits) : [];
         if (left.length && !only) found[h] = left.concat((found[h] || []).filter(y => !left.some(z => z.url === y.url)));
       } catch (e) { console.error("pounce", String(e && e.message || e)); }
     }
-    sub.done.push(h.toLowerCase()); checked.push(h.toLowerCase());
+    if (!later) { sub.done.push(h.toLowerCase()); checked.push(h.toLowerCase()); }   /* v104 review: Pounce not finished, check again next run */
   }
   const cur = await kvGet(env, "sub:" + sub.email, null);
   if (!cur) return todo.length;   /* v51: unsubscribed while we searched */
@@ -4364,10 +4369,11 @@ async function alTick(env) {
     if (!sub.hunts || !sub.hunts.length) continue;
     /* v55: emails off, membership and Pro stay. v104 review: a member with emails off and phone alerts on still gets
        Pounce: their quarry hunts are checked and judged, nothing waits for a digest and no email goes. */
-    const phoneOnly = sub.mail === "off" ? (sub.push && pounceTopicOk(sub.push.topic) ? pounceQuarries(env, sub) : null) : false;
-    if (phoneOnly === null || (phoneOnly && !Object.keys(phoneOnly).length)) continue;
     const loc = alLocal(sub, now);   /* v53: the member's own clock */
-    if (alPaused(sub, loc)) continue;   /* v50: paused members cost nothing */
+    /* v50: paused members cost nothing. v104 review: paused or emails off, a member with phone alerts and a quarry
+       still gets Pounce (phoneOnly), and nothing else runs for them */
+    const phoneOnly = sub.mail === "off" || alPaused(sub, loc) ? (sub.push && pounceTopicOk(sub.push.topic) ? pounceQuarries(env, sub) : null) : false;
+    if (phoneOnly === null || (phoneOnly && !Object.keys(phoneOnly).length)) continue;
     if ((sub.proDay !== now.day && proLeft > 0) || !sub.utok) {
       if (sub.proDay !== now.day) { proLeft--; await alProSet(env, sub, false); }
       if (!sub.utok) sub.utok = alToken();   /* v51: members from before v51 get an unsubscribe token */
@@ -5084,6 +5090,7 @@ async function alDebug(env, url) {
     return new Response(r.html || "<p>Nothing waiting yet. Run /__alerts-run first.</p>", { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
   }
   sub.day = ""; sub.done = [];
+  PJ_RUN = { left: POUNCE_PER_RUN, m: {}, quiet: url.searchParams.get("push") !== "1" };   /* v104 review: no real push from a debug run unless push=1 */
   const pr = await alPro(env, sub.email, true); if (pr.pro !== null) sub.pro = pr.pro;
   const n = await alCheck(env, sub, AL_MAX_HUNTS, alNow(env));
   const out = { checked: n, hunts: sub.hunts.length, pro: !!sub.pro, proCheck: pr.via };

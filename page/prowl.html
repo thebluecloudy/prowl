@@ -4981,6 +4981,7 @@ function pncHtml(){
         '<label class="sgw-mc"><input type="checkbox" data-pnc="maybe"'+(d.maybe?' checked':'')+'><span class="cbx" aria-hidden="true"></span> Strong maybes too</label>'+
         '<span class="sgw-mf"><button type="button" class="b p" data-pnc="save"'+(PNC.busy?' disabled':'')+'>Save quarry</button>'+(g&&g.spec?'<button type="button" class="b" data-pnc="del">Stop stalking</button>':'')+'<button type="button" class="b" data-pnc="edit" data-h="'+esc(k)+'">Cancel</button></span></div>'}
   }
+  for(k in q)if(!act[k]&&q[k]&&q[k].spec)h+='<div class="mail-row"><span class="nm">'+esc(k)+' (paused)</span><button type="button" class="tg" data-pnc="del" data-h="'+esc(k)+'">Stop stalking</button></div>';
   if(PNC.msg)h+='<p class="mail-save" role="status">'+esc(PNC.msg)+'</p>';
   if(gm.length){h+='<h4>Spotted for you</h4>';
     gm.forEach(function(x,i){if(!x||i>7&&x.url!==PNC.focus||!/^https:\/\//.test(x.url||''))return;
@@ -5011,7 +5012,7 @@ document.addEventListener('click',function(e){
   e.preventDefault();
   if(a==='edit'){PNC.edit=PNC.edit===hh?'':hh;PNC.d=null;PNC.msg='';rMail();return}
   if(a==='save'||a==='del'){
-    d=PNC.d||pncD(PNC.edit);
+    if(hh)PNC.edit=hh;d=PNC.d||pncD(PNC.edit);
     if(a==='save'&&String(d.spec).trim().length<8){PNC.msg='Describe the piece in a few words first.';rMail();return}
     PNC.busy=1;rMail();
     pncPost('alerts/quarry',a==='del'?{hunt:PNC.edit,spec:''}:{hunt:PNC.edit,spec:d.spec,avoid:String(d.avoid).toLowerCase().split(/[,;]+/),min:parseInt(d.min,10)||0,max:parseInt(d.max,10)||0,photo:String(d.photo).trim(),maybe:d.maybe},

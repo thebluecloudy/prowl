@@ -43,6 +43,7 @@ function load(over) {
   return { P, kv, calls, deps };
 }
 
+const MK = { MUSE_API_KEY: "k" };
 const R495 = { spec: "Royal Haeger R-495 black panther, 26 inches, tail lying flat along the base, 1946 to 1951. Not the 24 inch curled-tail one.", avoid: ["lamp", "planter"], min: 22, max: 30 };
 
 test("sizes are read from titles the way sellers write them", () => {
@@ -113,16 +114,16 @@ test("each listing is judged once, misses are remembered for free, and only yes 
     { title: "Royal Haeger panther TV lamp", url: "https://e/3", src: "ebay" },
     { title: "Royal Haeger panther maybe", url: "https://e/4", src: "ebay" },
   ];
-  const hits = await P.pounceHunt({}, sub, "royal haeger panther", items);
+  const hits = await P.pounceHunt(MK, sub, "royal haeger panther", items);
   assert.deepEqual(hits.map((x) => x.url), ["https://e/1"]);
   assert.equal(hits[0].pounce.reason, "Long tail flat on the base, 26 inches.");
   assert.equal(calls.judge.length, 3, "the lamp never reached the judge");
   assert.equal(JSON.parse(kv.get("gm:matt@x.com"))[0].url, "https://e/1");
-  await P.pounceHunt({}, sub, "royal haeger panther", items);
+  await P.pounceHunt(MK, sub, "royal haeger panther", items);
   assert.equal(calls.judge.length, 3, "nothing is judged twice");
   sub.quarries["royal haeger panther"] = Object.assign({}, R495, { maybe: 1 });
   kv.delete("pj:matt@x.com");
-  const again = await P.pounceHunt({}, sub, "royal haeger panther", items);
+  const again = await P.pounceHunt(MK, sub, "royal haeger panther", items);
   assert.deepEqual(again.map((x) => x.url).sort(), ["https://e/1", "https://e/4"], "a strong maybe, when asked for");
 });
 
@@ -131,11 +132,11 @@ test("the run budget stops the judge, and what it did not reach is tried next ru
   deps.PJ_RUN.left = 1;
   const sub = { email: "m@x.com", hunts: ["haeger panther"], quarries: { "haeger panther": R495 } };
   const items = [{ title: "Haeger panther a", url: "https://e/a" }, { title: "Haeger panther b", url: "https://e/b" }];
-  await P.pounceHunt({}, sub, "haeger panther", items);
+  await P.pounceHunt(MK, sub, "haeger panther", items);
   assert.equal(calls.judge.length, 1);
   assert.deepEqual(JSON.parse(kv.get("pj:m@x.com")), ["https://e/a"], "b is not marked judged");
   deps.PJ_RUN.left = 6; deps.PJ_RUN.m = {};
-  await P.pounceHunt({}, sub, "haeger panther", items);
+  await P.pounceHunt(MK, sub, "haeger panther", items);
   assert.deepEqual(calls.judge, ["Haeger panther a", "Haeger panther b"]);
 });
 
@@ -218,14 +219,14 @@ test("an unreadable photo gets one retry, then is let go; one member cannot take
   const { P, kv, calls, deps } = load({ pounceJudge: async (env, t, g, x) => { calls.judge.push(x.title); return null; } });
   const sub = { email: "u@x.com", hunts: ["haeger panther"], quarries: { "haeger panther": R495 } };
   const items = [{ title: "Haeger panther a", url: "https://e/a" }];
-  await P.pounceHunt({}, sub, "haeger panther", items);
+  await P.pounceHunt(MK, sub, "haeger panther", items);
   deps.PJ_RUN.m = {};
-  await P.pounceHunt({}, sub, "haeger panther", items);
+  await P.pounceHunt(MK, sub, "haeger panther", items);
   deps.PJ_RUN.m = {};
-  await P.pounceHunt({}, sub, "haeger panther", items);
+  await P.pounceHunt(MK, sub, "haeger panther", items);
   assert.equal(calls.judge.length, 2);
   const many = Array.from({ length: 10 }, (_, i) => ({ title: "Haeger panther " + i, url: "https://e/m" + i }));
   deps.PJ_RUN.left = 30; deps.PJ_RUN.m = {}; calls.judge.length = 0;
-  await P.pounceHunt({}, { email: "v@x.com", hunts: ["haeger panther"], quarries: { "haeger panther": R495 } }, "haeger panther", many);
+  await P.pounceHunt(MK, { email: "v@x.com", hunts: ["haeger panther"], quarries: { "haeger panther": R495 } }, "haeger panther", many);
   assert.equal(calls.judge.length, 6);
 });
