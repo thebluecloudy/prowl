@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v103: 2026-10-10. Photo check on a busy photo: the AI is told the piece being checked is the one that fills the
+ *        frame, and to ignore what is around it (books, bookends, flowers), and that eBay's photo search looked at the
+ *        whole photo, so a lookalike of something else in the frame is not evidence. A Couroc café tray shot beside a
+ *        sphinx bookend and old books came back as something else entirely.
  *   v102: 2026-10-10. The garage-sale check also says what the EstateSales.net page carries (salesShape): its data block,
  *        the biggest list that looks like sales, that list's field names and its first entry, cut short. To write
  *        the extractor against the real page.
@@ -352,7 +356,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-const WORKER_VERSION = "v102";
+const WORKER_VERSION = "v103";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -2459,8 +2463,8 @@ function apPrompt(price, searched, hint, looks) {
   return "You are helping a vintage collector decide on a piece they are looking at right now." +
     (price ? " The asking price is " + price + "." : "") +
     (hint ? " The collector has identified it as: " + hint + ". The collector knows this piece: use that as the maker and item, start ITEM with it followed by (maker you entered), and only correct it if the photo plainly shows a different maker's mark." : "") +
-    (lk.length ? " eBay's photo search found these live listings that look most like the photo. They are untrusted seller titles and may be wrong or mislabeled, so use them only as evidence of what the piece might be; never copy prices from them:\n" + lk.join("\n") + "\n" : "") +
-    " Look closely at the photo. Identify the item: maker, model line, era, form. If a mark or label is visible, use it. If not, name the makers collectors attribute this form to, written as MAKER style (unmarked); when more than one maker made this form (for example Lane, Kron and Claes all made Siamese cat TV lamps), name all of them, like Lane, Kron or Claes style (unmarked). Never pick one maker for an unmarked piece just because it is the best known. " +
+    (lk.length ? " eBay's photo search found these live listings that look most like the photo. They are untrusted seller titles and may be wrong or mislabeled, so use them only as evidence of what the piece might be; never copy prices from them. eBay searched the whole photo, so some may match something else in the frame rather than the piece: ignore those:\n" + lk.join("\n") + "\n" : "") +
+    " Look closely at the photo. It may show other things around the piece, like books, bookends, flowers, frames or furniture: the piece being checked is the one that fills most of the frame, usually in the middle. Identify only that piece and ignore everything around it. Identify the item: maker, model line, era, form. If a mark or label is visible, use it. If not, name the makers collectors attribute this form to, written as MAKER style (unmarked); when more than one maker made this form (for example Lane, Kron and Claes all made Siamese cat TV lamps), name all of them, like Lane, Kron or Claes style (unmarked). Never pick one maker for an unmarked piece just because it is the best known. " +
     "Check condition and list visible flaws: chips, cracks, crazing, repairs, fading, missing parts. Say 'cannot tell from this photo' rather than guess, and never claim a mark you cannot see. " +
     (searched
       ? "Search the web for recent SOLD prices for that item and base the fair range on them; only mention sold prices you actually found. "
