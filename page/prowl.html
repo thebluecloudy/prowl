@@ -1084,6 +1084,18 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-cont{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;margin:18px 15px 6px;padding:16px 0 4px;border-top:1px solid var(--ln)}
 .scout-app-wrapper .sgw-cont p{flex:1 1 240px;margin:0;font-size:14px;line-height:1.45;color:var(--i2)}
 .scout-app-wrapper .sgw-cont .sgw-hunt{flex:0 0 auto;max-width:100%;white-space:normal}
+.scout-app-wrapper #otp-esBox{margin-top:16px;padding-top:14px;border-top:1px solid var(--ln)}
+.scout-app-wrapper #otp-esBox[hidden],.scout-app-wrapper .es-map[hidden]{display:none}
+.scout-app-wrapper .es-h{margin:0 0 8px;font-size:15px;color:var(--ink)}
+.scout-app-wrapper .es-own{margin-left:6px;font-size:11px;font-weight:700;color:var(--mu)}
+.scout-app-wrapper .es-err{color:var(--ac)}
+.scout-app-wrapper .es-mapb{margin-left:6px;padding:2px 10px;border:1px solid var(--ln);border-radius:99px;background:transparent;color:var(--ac);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.scout-app-wrapper .es-map{height:280px;margin:10px 0;border-radius:12px;overflow:hidden;border:1px solid var(--ln)}
+.scout-app-wrapper .es-list{display:grid;gap:8px;margin-top:8px}
+.scout-app-wrapper .es-row{display:flex;gap:10px;align-items:center;padding:8px;border:1px solid var(--ln);border-radius:12px;color:var(--ink);text-decoration:none;background:var(--cd)}
+.scout-app-wrapper .es-row img,.scout-app-wrapper .es-ph{flex:0 0 56px;width:56px;height:56px;border-radius:8px;object-fit:cover;background:var(--cd2);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--mu)}
+.scout-app-wrapper .es-t{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:13px;color:var(--mu)}
+.scout-app-wrapper .es-t b{font-size:14px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .scout-app-wrapper .whyp[hidden],.scout-app-wrapper #otp-alerts[hidden]{display:none!important}
 .scout-app-wrapper .sgw-hunt{height:44px;padding:0 18px;font-size:14px}
 .scout-app-wrapper .sgw-ago{margin-left:auto;font-size:13px;color:var(--mu);font-weight:600}
@@ -2366,6 +2378,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 </h3>
         <p class="nearp">This week's garage, yard and moving sales, listed by the people holding them. Opens Craigslist for your city, on its map or as a list.</p>
         <div class="nearg" id="otp-salesGrid"></div>
+        <div id="otp-esBox" hidden></div>
       </div>
       <div class="nearblk">
         <h3 class="nearh">Facebook Marketplace <span id="otp-fbScope">my city</span>
@@ -2639,7 +2652,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.75';
+var PROWL_VERSION='v6.76';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3104,7 +3117,85 @@ function rNear(){
    finders wait for permission: gsalr's terms forbid any automated access (worker v101 never asks it); EstateSales.net
    and yardsalesearch need a yes in writing first. */
 function gmsUrl(cat,view){var c=clSlug()||CL_DEFAULT;return 'https://www.craigslist.org/search/area/'+E(c)+'?cat='+cat+'#search=1~'+(view||'list')+'~0~0'}   /* view: list or map (Craigslist's own map of the sales) */
+/* v6.76: estate sales near you, from EstateSales.net (with their permission) through worker v103 /sales, which
+   keeps each city 6 hours. The owner's only for now (the ?owner= key, like the Facebook strip). A list by date,
+   each sale linking to its page on EstateSales.net, and a map on request: Leaflet and OpenStreetMap load only when
+   the map is asked for. The place is kept on this device in a new key, prowl.salesPlace ("Novi, MI"). */
+var ES={busy:false,data:null,err:'',map:null,lf:0,lfq:[]};
+function esPlaceGet(){var v='';try{v=localStorage.getItem('prowl.salesPlace')||''}catch(e){}return v}
+function esPlaceParse(v){var m=/^\s*([A-Za-z][A-Za-z .'-]{1,39}?)\s*,\s*([A-Za-z]{2})\s*$/.exec(String(v||''));return m?{city:m[1].replace(/\s+/g,' '),st:m[2].toUpperCase()}:null}
+function esWhen(a,b){
+  var D=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function f(x){var d=new Date(x);return isNaN(d.getTime())?'':D[d.getDay()]+' '+M[d.getMonth()]+' '+d.getDate()}
+  var s=a?f(a):'',e=b?f(b):'';return s&&e&&s!==e?s+' – '+e:(s||e);
+}
+function esSorted(){var d=ES.data;return d&&d.items?d.items.slice().sort(function(a,b){return String(a.start).localeCompare(String(b.start))}):[]}
+function esList(items){
+  return items.map(function(x){
+    var where=[x.addr,x.city&&x.st?x.city+', '+x.st:x.city].filter(function(v){return !!v}).join(' · ');
+    return '<a class="es-row" href="'+esc(x.url)+'" target=_blank rel="noopener noreferrer">'+
+      (x.img?'<img src="'+esc(x.img)+'" alt="" loading="lazy">':'<span class="es-ph" aria-hidden="true">⌂</span>')+
+      '<span class="es-t"><b>'+esc(x.name)+'</b><span>'+esc(esWhen(x.start,x.end))+(x.type&&x.type!==x.name?' · '+esc(x.type):'')+'</span><span>'+esc(where)+'</span></span></a>';
+  }).join('');
+}
+function esLoad(v){
+  var p=esPlaceParse(v);
+  if(!p){ES.err='Type a city and its two-letter state, like Novi, MI.';rEs();return}
+  try{localStorage.setItem('prowl.salesPlace',p.city+', '+p.st)}catch(e){}
+  ES.busy=true;ES.err='';rEs();
+  fetch(SGW_API+'sales?st='+encodeURIComponent(p.st)+'&city='+encodeURIComponent(p.city),{headers:{'X-Prowl-Owner':fbOwnerKey()},cache:'no-store'}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}},function(){return {ok:false,j:null}})}).then(function(x){
+    ES.busy=false;
+    if(x.ok&&x.j&&Array.isArray(x.j.items)){ES.data=x.j;ES.map=null;ES.err=x.j.items.length?'':'No sales listed near '+p.city+', '+p.st+' right now.'}
+    else ES.err=(x.j&&x.j.error)||'Could not get sales right now.';
+    rEs();
+  })['catch'](function(){ES.busy=false;ES.err='Could not reach Prowl. Try again in a minute.';rEs()});
+}
+function rEs(){
+  var box=$('#otp-esBox');if(!box)return;
+  if(!fbOwnerKey()){box.hidden=true;box.innerHTML='';return}
+  box.hidden=false;
+  var d=ES.data,items=esSorted(),mapped=items.filter(function(x){return x.lat&&x.lon}).length;
+  box.innerHTML='<h4 class="es-h">Estate sales near you <span class="es-own">Only you see this</span></h4>'+
+    '<div class="addrow es-form"><input id="otp-esIn" type="text" placeholder="City, ST (like Novi, MI)" aria-label="City and state for estate sales" value="'+esc(esPlaceGet())+'"><button type="button" id="otp-esGo">'+(ES.busy?'Looking…':'Show sales')+'</button></div>'+
+    (ES.err?'<p class="nearp es-err" role="status">'+esc(ES.err)+'</p>':'')+
+    (d&&items.length?'<p class="nearp">'+items.length+' sale'+(items.length===1?'':'s')+' near '+esc(d.city+', '+d.st)+' from EstateSales.net'+(d.stale?' (from earlier)':'')+'. Tap one to open it there.'+(mapped?' <button type="button" class="es-mapb" id="otp-esMapB">'+(ES.map?'Hide the map':'Show on a map')+'</button>':'')+'</p>'+
+      '<div id="otp-esMap" class="es-map"'+(ES.map?'':' hidden')+'></div><div class="es-list">'+esList(items)+'</div>':'');
+  var go=$('#otp-esGo'),inp=$('#otp-esIn');
+  if(go)go.addEventListener('click',function(){esLoad(inp.value)});
+  if(inp)inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();esLoad(inp.value)}});
+  var mb=$('#otp-esMapB');if(mb)mb.addEventListener('click',function(){if(ES.map){ES.map=null;rEs();return}esMap(items)});
+  if(ES.map)esMap(items);
+}
+/* the map: Leaflet from cdnjs and OpenStreetMap tiles, loaded the first time it is asked for */
+function esLeaflet(cb){
+  if(window.L&&window.L.map){cb();return}
+  ES.lfq.push(cb);if(ES.lf)return;ES.lf=1;
+  var css=document.createElement('link');css.rel='stylesheet';css.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(css);
+  var js=document.createElement('script');js.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';js.async=true;
+  js.onload=function(){var q=ES.lfq;ES.lfq=[];q.forEach(function(f){try{f()}catch(e){}})};
+  js.onerror=function(){ES.lf=0;ES.lfq=[];ES.err='The map could not load. The list still works.';ES.map=null;rEs()};
+  document.head.appendChild(js);
+}
+function esMap(items){
+  ES.map=ES.map||{};
+  var el=$('#otp-esMap');if(!el)return;el.hidden=false;
+  var b=$('#otp-esMapB');if(b)b.textContent='Hide the map';
+  esLeaflet(function(){
+    var el2=$('#otp-esMap');if(!el2||!window.L||!ES.map)return;
+    var L=window.L,m=L.map(el2,{scrollWheelZoom:false}),pts=[];
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors · sales from EstateSales.net'}).addTo(m);
+    items.forEach(function(x){
+      if(!x.lat||!x.lon)return;
+      pts.push([x.lat,x.lon]);
+      L.circleMarker([x.lat,x.lon],{radius:8,weight:2,color:'#C2491F',fillColor:'#F2A743',fillOpacity:.9}).addTo(m)
+        .bindPopup('<a href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer"><b>'+esc(x.name)+'</b></a><br>'+esc(esWhen(x.start,x.end))+'<br>'+esc([x.city,x.st].filter(function(v){return !!v}).join(', ')));
+    });
+    if(pts.length)m.fitBounds(pts,{padding:[24,24],maxZoom:12});
+    ES.map=m;
+  });
+}
 function rSales(){
+  rEs();   /* v6.76 */
   var g=$('#otp-salesGrid');if(!g)return;
   var sc=$('#otp-salesScope');if(sc)sc.textContent=st.city?('near '+st.city):'near Ann Arbor';
   g.innerHTML='<a class=nearc href="'+esc(gmsUrl('gms','map'))+'" target=_blank rel="noopener noreferrer">Garage sales on a map</a>'+
