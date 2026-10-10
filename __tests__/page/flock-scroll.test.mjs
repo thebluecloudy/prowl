@@ -68,3 +68,40 @@ test('a scroll that lands several cards away stays there, down or up', async () 
   assert.equal(r.scrollTop, 100, 'the feed stays where you scrolled');
   await p.close();
 });
+
+// Page v6.69: the feed scrolls smoothly (CSS scroll-behavior) for your own moves, and a script's scrollTop, or a scrollTo
+// with behavior 'auto', follows that CSS. Every redraw as finds came in slid the feed from wherever the snap had put it
+// back to your card ("it scrolls around as it loads"). Positions the page sets itself are now set at once.
+function spyScroll(r) {
+  let st = r.scrollTop; const sets = [];
+  Object.defineProperty(r, 'scrollTop', { configurable: true, get: () => st, set: (v) => { sets.push({ v, sb: r.style.scrollBehavior || 'css' }); st = v; } });
+  r.scrollTo = (o) => { sets.push({ v: o.top, sb: o.behavior === 'smooth' || !o.behavior || o.behavior === 'auto' ? (o.behavior === 'smooth' ? 'smooth' : (r.style.scrollBehavior || 'css')) : o.behavior }); st = o.top; };
+  return { sets, at: (v) => { st = v; } };
+}
+
+test('a redraw as finds come in puts the feed back at once, never with a slide', async () => {
+  const f = heldFetch();
+  const p = await flock(f.impl);
+  await waitFor(() => f.held.length > 0);
+  const r = row(p), spy = spyScroll(r);
+  spy.at(300);   // a few cards down
+  const grid = r.firstChild;
+  f.release();
+  await waitFor(() => r.firstChild !== grid, { timeout: 3000 });
+  assert.ok(spy.sets.length > 0, 'the redraw put the feed back');
+  for (const x of spy.sets) assert.equal(x.sb, 'auto', 'at once, not by the feed\'s smooth CSS: ' + JSON.stringify(x));
+  assert.equal(r.style.scrollBehavior, '', 'your own scrolling is smooth again afterwards');
+  await p.close();
+});
+
+test('jumping to the top of a new view is at once too', async () => {
+  const p = await flock(liveFetch().impl);
+  await tick(300);
+  const r = row(p), spy = spyScroll(r);
+  spy.at(500);
+  p.$('#otp-flock .fl-seg [data-fv="saved"]').click();
+  await tick(50);
+  assert.ok(spy.sets.some((x) => x.v === 0), 'to the top');
+  for (const x of spy.sets) assert.equal(x.sb, 'auto', JSON.stringify(x));
+  await p.close();
+});

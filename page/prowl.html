@@ -115,6 +115,140 @@ window.prowlAuth=function(h){h=h||{};var t=window.prowlSess();if(t)h.Authorizati
 window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;for(d in window.PROWL_AFF)if(Object.prototype.hasOwnProperty.call(window.PROWL_AFF,d)&&window.prowlAffLive(d))a.push(window.PROWL_AFF[d].n);if(window.prowlAmzOn())a.push('Amazon');return a};
 </script>
 <style>
+/* v6.69 the curtain (Matthew's Curtain Intro). When the app opens (the installed app, or /pages/prowl-app), PROWL forms
+   in the middle out of a blur while its letters spread, a hairline fills as the app gets ready, and six columns lift
+   away to show it; the word flies up into the header's Prowl. Once a launch (sessionStorage), a tap or a key skips it,
+   and never under reduced motion. ?curtain=1 shows it on any page, ?curtain=0 never. */
+.pc-loader{position:fixed;inset:0;z-index:2147483600;overflow:hidden;color:var(--ink,#1C1815);font-family:var(--display,'Bricolage Grotesque',system-ui,sans-serif);cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+.pc-panels{position:absolute;inset:0;display:flex}
+.pc-panels>i{flex:1 1 0;margin-right:-1px;background:var(--bg,#FAF6EE);transform:translate3d(0,0,0);will-change:transform;transition:transform 1s cubic-bezier(.76,0,.24,1);transition-delay:calc(var(--p) * 65ms)}
+.pc-loader.is-out .pc-panels>i{transform:translate3d(0,-101%,0)}
+.pc-glow{position:absolute;inset:-30%;pointer-events:none;background:radial-gradient(38% 46% at 50% 50%,var(--ac-ring,rgba(176,82,43,.14)),transparent 70%);animation:pcGlow 9s ease-in-out infinite}
+.pc-loader.is-out .pc-glow{opacity:0;transition:opacity .6s ease}
+@keyframes pcGlow{0%,100%{transform:translate3d(-13%,-6%,0) scale(1)}50%{transform:translate3d(13%,6%,0) scale(1.18)}}
+.pc-content{position:absolute;z-index:2;left:50%;top:50%;width:min(40vw,560px);transform:translate(-50%,-50%);perspective:900px;visibility:hidden}
+.pc-loader.is-ready .pc-content{visibility:visible}
+.pc-loader.is-out .pc-content{perspective:none}
+.pc-mark{display:block;font-optical-sizing:none;font-weight:800;text-transform:uppercase;letter-spacing:.5em;line-height:.78;white-space:nowrap;font-size:8vw;transform-origin:0 0;will-change:transform}
+.pc-loader.is-ready .pc-mark{animation:pcSpread 1.9s cubic-bezier(.2,.7,.2,1) both}
+.pc-mark span{display:inline-block;opacity:0}
+.pc-loader.is-ready .pc-mark span{animation:pcIn 1.15s cubic-bezier(.16,.84,.3,1) both;animation-delay:calc(120ms + var(--i) * 62ms)}
+@keyframes pcSpread{from{letter-spacing:.04em}to{letter-spacing:.5em}}
+@keyframes pcIn{from{opacity:0;transform:translate3d(0,.8em,0) rotateX(-62deg);filter:blur(11px)}to{opacity:1;transform:none;filter:blur(0)}}
+.pc-rule{position:relative;height:1px;margin-top:clamp(28px,3.4vh,46px);background:var(--ln,rgba(0,0,0,.12));overflow:hidden;opacity:0}
+.pc-loader.is-ready .pc-rule{animation:pcMeta .9s cubic-bezier(.16,.84,.3,1) .95s both}
+.pc-rule>i{position:absolute;inset:0;background:var(--ac,#B0522B);transform:scaleX(0);transform-origin:0 50%}
+.pc-meta{display:flex;align-items:baseline;justify-content:space-between;gap:2em;margin-top:clamp(12px,1.5vh,18px);font-family:var(--sans,system-ui,sans-serif);font-size:clamp(9px,.67vw,11px);font-weight:600;text-transform:uppercase;letter-spacing:.25em;opacity:0}
+.pc-loader.is-ready .pc-meta{animation:pcMeta .9s cubic-bezier(.16,.84,.3,1) 1.1s both}
+.pc-pct{font-variant-numeric:tabular-nums}
+.pc-pct em{font-style:normal;opacity:.45;margin-left:.35em}
+@keyframes pcMeta{from{opacity:0;transform:translate3d(0,14px,0)}to{opacity:1;transform:none}}
+.pc-loader.is-out .pc-rule,.pc-loader.is-out .pc-meta{opacity:0;transform:translate3d(0,16px,0);transition:opacity .4s ease,transform .5s cubic-bezier(.76,0,.24,1);animation:none}
+.pc-measure{position:absolute;visibility:hidden;pointer-events:none;top:-9999px;left:-9999px;white-space:nowrap;font-optical-sizing:none;font-weight:800;text-transform:uppercase;letter-spacing:.5em;font-size:200px}
+@media(max-width:760px){.pc-meta{gap:1.2em;font-size:9px}.pc-label{display:none}}
+@media(max-width:639px){.pc-content{width:70vw}}
+</style>
+<script>
+(function(){
+  try{
+    if(window.prowlBouncing||!window.requestAnimationFrame||!document.body)return;
+    var qs=location.search;
+    if(/[?&]curtain=0(&|$)/.test(qs))return;
+    var mm=function(q){try{return !!(window.matchMedia&&window.matchMedia(q).matches)}catch(e){return false}};
+    var force=/[?&]curtain=1(&|$)/.test(qs);
+    var app=String(location.pathname).indexOf('prowl-app')!==-1||mm('(display-mode: standalone)')||mm('(display-mode: minimal-ui)')||mm('(display-mode: fullscreen)')||navigator.standalone===true;
+    if(!(app||force)||mm('(prefers-reduced-motion: reduce)'))return;
+    if(!force){var was='';try{was=sessionStorage.getItem('prowl.curtain')||'';sessionStorage.setItem('prowl.curtain','1')}catch(e){}if(was)return}
+  }catch(e){return}
+  var MIN_MS=1600,MAX_MS=5000,EASE=4,FLIP_MS=1050,FLIP_DELAY=200,FLIP_EASE='cubic-bezier(.72,0,.16,1)',FINISH_AT=1290;
+  var L=document.createElement('div'),h='<div class="pc-panels">',i,W='PROWL';
+  L.className='pc-loader';L.setAttribute('aria-hidden','true');
+  /* The app's colours come later (its stylesheet, applyTheme, the New look's palette on the wrapper), so the curtain
+     brings its own, picked the way the app picks them: the saved theme, else the device's dark or light; the New
+     look unless Classic is chosen. Keep in step with :root, [data-theme=...] and the .k2 palettes below. */
+  var th='',k2=true,PAL;
+  try{
+    th=localStorage.getItem('prowl.theme')||'';
+    k2=!(/[?&]look=1(&|$)/.test(location.search)||(localStorage.getItem('prowl.look')==='1'&&!/[?&]look=2(&|$)/.test(location.search)));
+  }catch(e){k2=true}   /* storage blocked: the app stays in the New look (even its ?look=1 needs storage) and the device's theme */
+  if(!/^(light|dark|midnight|uranium)$/.test(th))th=mm('(prefers-color-scheme: dark)')?'dark':'light';
+  PAL={   /* --bg, --ink, --ln, --ac, --ac-ring */
+    light:['#FAF6EE','#1C1815','#E7DED1',k2?'#C2491F':'#B0522B',k2?'rgba(194,73,31,.18)':'rgba(176,82,43,.14)'],
+    dark:k2?['#0B1430','#F1F4FB','#2C4478','#F2A743','rgba(242,167,67,.3)']:['#070706','#f5f3ee','#2a2a26','#ffb200','rgba(255,178,0,.24)'],
+    midnight:['#070706','#f5f3ee','#2a2a26',k2?'#F2A743':'#ffb200',k2?'rgba(242,167,67,.3)':'rgba(255,178,0,.24)'],
+    uranium:['#0a0e2e','#8affb8','rgba(57,255,20,.20)','#39ff14','rgba(57,255,20,.35)']   /* the top of its page gradient */
+  }[th];
+  L.setAttribute('data-pc',th+(k2?'':' classic'));
+  L.style.cssText='--bg:'+PAL[0]+';--ink:'+PAL[1]+';--ln:'+PAL[2]+';--ac:'+PAL[3]+';--ac-ring:'+PAL[4];
+  for(i=0;i<6;i++)h+='<i style="--p:'+i+'"></i>';
+  h+='<span class="pc-glow"></span></div><div class="pc-content"><div class="pc-mark">';
+  for(i=0;i<W.length;i++)h+='<span style="--i:'+i+'">'+W.charAt(i)+'</span>';
+  h+='</div><div class="pc-rule"><i></i></div><div class="pc-meta"><span class="pc-label">Waking the panther</span><span class="pc-pct"><span>0</span><em>%</em></span></div></div><span class="pc-measure">Prowl</span>';
+  L.innerHTML=h;document.body.appendChild(L);
+  var mark=L.querySelector('.pc-mark'),bar=L.querySelector('.pc-rule>i'),pct=L.querySelector('.pc-pct>span'),measure=L.querySelector('.pc-measure');
+  var ready=false,done=false,fontsOk=0,loaded=0,skip=false,s0=0,prev=0,shown=0;
+  function drop(){if(L.parentNode)L.parentNode.removeChild(L);document.removeEventListener('keydown',key,true)}
+  setTimeout(drop,9000);   /* whatever happens, the app is never left behind it */
+  window.addEventListener('load',function(){loaded=1});setTimeout(function(){loaded=1},2500);
+  function fit(){
+    var r=measure.getBoundingClientRect().width/200,w=mark.parentNode.clientWidth;
+    if(w&&r>0.5)mark.style.fontSize=(w/(r-0.5)).toFixed(2)+'px';   /* the glyphs, not the last letter's trailing space, meet the edges */
+  }
+  function go(){if(ready)return;ready=true;try{fit()}catch(e){}L.className+=' is-ready'}
+  function fonts(){   /* the page's @import is known once the document is parsed: wait for Prowl's face, at most 1.2s */
+    var t=Date.now();
+    (function tryIt(){
+      if(!document.fonts||!document.fonts.load){fontsOk=1;go();return}
+      document.fonts.load('800 100px "Bricolage Grotesque"').then(function(f){if((f&&f.length)||Date.now()-t>1200){fontsOk=1;go()}else setTimeout(tryIt,100)},function(){fontsOk=1;go()});
+    })();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fonts);else fonts();
+  setTimeout(function(){fontsOk=1;go()},1500);
+  function textRect(el){var r=document.createRange();r.selectNodeContents(el);return r.getBoundingClientRect()}
+  function reveal(){
+    if(done)return;done=true;
+    L.className+=' is-out';
+    try{
+      var t=document.querySelector('.scout-app-wrapper .bar .brand-wm'),tr=t&&t.getBoundingClientRect();
+      if(tr&&tr.width&&tr.bottom>0&&tr.top<window.innerHeight&&mark.animate){
+        /* scale by font size and land on the header word's middle (it is lower case and tight, the intro word wide),
+           fading as it arrives, so the header's own Prowl takes over */
+        var wz=t.closest('.scout-app-wrapper'),z=(wz&&parseFloat(wz.style.zoom))||1;   /* text size Large/Extra large zoom the header */
+        var sc=z*parseFloat(getComputedStyle(t).fontSize)/parseFloat(getComputedStyle(mark).fontSize),fr=textRect(mark),o=mark.getBoundingClientRect();
+        var dx=tr.left+tr.width/2-o.left-sc*(fr.left+fr.width/2-o.left),dy=tr.top+tr.height/2-o.top-sc*(fr.top+fr.height/2-o.top);
+        mark.animate([{transform:'none',opacity:1},{opacity:1,offset:0.78},{transform:'translate3d('+dx.toFixed(2)+'px,'+dy.toFixed(2)+'px,0) scale('+sc.toFixed(4)+')',opacity:0}],
+          {duration:FLIP_MS,delay:FLIP_DELAY,easing:FLIP_EASE,fill:'forwards'});
+      }else if(mark.animate)mark.animate([{opacity:1},{opacity:0}],{duration:500,fill:'forwards'});
+    }catch(e){}
+    setTimeout(drop,FINISH_AT);
+  }
+  function tick(now){
+    if(done)return;
+    if(ready){
+      if(!s0){s0=now;prev=now}
+      var dt=Math.min(Math.max((now-prev)/1000,0),0.1),el=now-s0;prev=now;
+      var want=Math.min((document.readyState!=='loading'?0.45:0)+fontsOk*0.3+loaded*0.25,el/MIN_MS);   /* never quicker than MIN_MS */
+      if(el>MAX_MS||skip)want=1;
+      shown+=(want-shown)*(1-Math.exp(-EASE*dt));if(want>=1&&shown>0.995)shown=1;
+      bar.style.transform='scaleX('+shown.toFixed(4)+')';pct.textContent=Math.round(shown*100);
+      if(shown>=1){reveal();return}
+    }
+    requestAnimationFrame(tick);
+  }
+  function skipNow(){skip=true;go();shown=1;bar.style.transform='scaleX(1)';pct.textContent='100';reveal()}
+  function key(e){   /* until the curtain is gone, Space, Page Up/Down, arrows, Home and End must not scroll the app beneath */
+    var t=e.target,typing=t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName||''));
+    if(e.key==='Escape'||(!typing&&/^( |Spacebar|PageUp|PageDown|ArrowUp|ArrowDown|ArrowLeft|ArrowRight|Home|End)$/.test(e.key)))e.preventDefault();
+    if(!done)skipNow();
+  }
+  L.addEventListener('click',skipNow);   /* click, not pointerdown: the tap ends on the curtain, never on the app beneath; and
+     the curtain keeps every tap until it is removed, so a second tap during the lift cannot press what is underneath */
+  L.addEventListener('wheel',function(e){e.preventDefault()},{passive:false});
+  document.addEventListener('keydown',key,true);
+  requestAnimationFrame(tick);
+})();
+</script>
+<style>
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Space+Grotesk:wght@400;500;600;700&family=Alfa+Slab+One&display=swap');
 /* legacy Scout V4 section still sitting in the theme — keep it hidden */
 [id$="custom_liquid_4XkmDr"]{display:none!important}
@@ -1555,7 +1689,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     <span class="markwrap">
       <img class="mark" src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ccircle%20cx='50'%20cy='52'%20r='46'%20fill='%2339ff14'%20fill-opacity='0.12'/%3E%3Ccircle%20cx='50'%20cy='52'%20r='34'%20fill='%2339ff14'%20fill-opacity='0.15'/%3E%3Cpath%20d='M8%2042%20Q8%2012%2050%2012%20Q92%2012%2092%2042%20Q92%2048%2086%2048%20L14%2048%20Q8%2048%208%2042%20Z'%20fill='%2339ff14'/%3E%3Cpath%20d='M38%2048%20L62%2048%20L60%2088%20Q58%2092%2050%2092%20Q42%2092%2040%2088%20Z'%20fill='%237dffc0'/%3E%3Ccircle%20cx='36'%20cy='28'%20r='5'%20fill='%230a0e2e'%20opacity='.85'/%3E%3Ccircle%20cx='62'%20cy='26'%20r='6'%20fill='%230a0e2e'%20opacity='.85'/%3E%3Ccircle%20cx='52'%20cy='40'%20r='4'%20fill='%230a0e2e'%20opacity='.85'/%3E%3C/svg%3E" alt="">
     </span>
-    Prowl<span class="probadge" title="Prowl Pro is on">PRO</span><a class="homedots" href="/" aria-label="Owl &amp; Twig home" title="Owl &amp; Twig home"><i> . . .</i></a>
+    <span class="brand-wm">Prowl</span><span class="probadge" title="Prowl Pro is on">PRO</span><a class="homedots" href="/" aria-label="Owl &amp; Twig home" title="Owl &amp; Twig home"><i> . . .</i></a>
   </span>
   <div class="bar-actions">
     <span class="hi" id="otp-hi" hidden></span>
@@ -1679,7 +1813,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
         <button class="b" id="otp-aprB2" type="button">Choose from photos</button>
         <input id="otp-aprF2" type="file" accept="image/*" hidden>
       </div>
-      <p class="apr-left" id="otp-aprLeft">Free: 2 photo checks a day. Prowl Pro: 25 a day.</p>
+      <p class="apr-left" id="otp-aprLeft">Free: 1 photo check a day. Prowl Pro: 25 a day.</p>
       <p class="apr-fine">Your photo is sent to an AI model to identify and price the piece.</p>
       <div id="otp-aprOut" aria-live="polite"></div>
     </section>
@@ -1700,7 +1834,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
      skips the Worker's daily caps. Kept in prowl.owner, outside the backup. */
   try{var om=/[?&]owner=([A-Za-z0-9_-]{12,80})/.exec(location.search);if(om){localStorage.setItem('prowl.owner',om[1]);if(history.replaceState)history.replaceState(null,'',location.pathname);} }catch(e){}
   function OH(){var h={'Content-Type':'application/json'};try{var k=localStorage.getItem('prowl.owner');if(k&&/^[A-Za-z0-9_-]{12,80}$/.test(k))h['X-Prowl-Owner']=k;}catch(e){}return window.prowlAuth?window.prowlAuth(h):h;}   /* v6.44: + Bearer */
-  /* v5.93: free = 2 photo checks a day, Prowl Pro = 15. The Worker counts;
+  /* v5.93: free and Prowl Pro photo checks a day: the worker's PHOTO_FREE_PER_DAY and PHOTO_PRO_PER_DAY (1 and 25 in v6.69). The Worker counts;
      signed-in members send their Prowl Alerts email + token so Pro is seen. */
   var LF=document.getElementById('otp-aprLeft');
   function lsG(k){try{return localStorage.getItem('prowl.'+k)||'';}catch(e){return '';} }
@@ -2075,7 +2209,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 
 
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Prowl by Owl & Twig","url":"https://owlandtwigvintage.com/pages/prowl","applicationCategory":"ShoppingApplication","operatingSystem":"Any","description":"Free tool for vintage collectors - type a piece once and search 29 marketplaces at once, including ShopGoodwill, Facebook Marketplace and Craigslist.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"Matt"},"publisher":{"@type":"Organization","name":"Owl & Twig Vintage","url":"https://owlandtwigvintage.com"}}</script>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is Prowl?","acceptedAnswer":{"@type":"Answer","text":"Prowl by Owl & Twig is a free search tool for vintage collectors. Type a piece once and it builds that search for 29 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist. It is built by Matt at Owl & Twig Vintage, a family vintage shop in Michigan."} },{"@type":"Question","name":"Which marketplaces does Prowl search?","acceptedAnswer":{"@type":"Answer","text":"eBay, Etsy, Mercari, Mercari Japan, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, Salvation Army, EstateSales.net, HiBid, LiveAuctioneers, CTBids, Heritage Auctions, Invaluable and Craigslist, plus eBay sold listings for pricing. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed and Salvation Army results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search."} },{"@type":"Question","name":"How do I find antique shops and estate sales near me?","acceptedAnswer":{"@type":"Answer","text":"Open the Den and tap Local. Tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area."} },{"@type":"Question","name":"Is Prowl free?","acceptedAnswer":{"@type":"Answer","text":"Yes. No account. Your search list stays on your device."} },{"@type":"Question","name":"Does it work on my phone?","acceptedAnswer":{"@type":"Answer","text":"Yes. Built mobile-first. Add it to your home screen, and allow pop-ups if you use Open all. On a phone, Facebook opens in your browser so the search sticks, so log in to Facebook there once."} },{"@type":"Question","name":"How does Price Check work?","acceptedAnswer":{"@type":"Answer","text":"One tap opens eBay's sold listings for your term — actual sale prices from the last 90 days, the most accurate read on what a piece is worth right now. Asking prices lie; sold prices don't."} },{"@type":"Question","name":"What if nothing sold in 90 days?","acceptedAnswer":{"@type":"Answer","text":"That happens with genuinely rare pieces. Price Check has a second button for three years of deep comps via eBay's Terapeak research — free with any eBay account. Open it in your browser rather than the eBay app, or the date range gets dropped."} }]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is Prowl?","acceptedAnswer":{"@type":"Answer","text":"Prowl by Owl & Twig is a free search tool for vintage collectors. Type a piece once and it builds that search for 29 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist. It is built by Matt at Owl & Twig Vintage, a family vintage shop in Michigan."} },{"@type":"Question","name":"Which marketplaces does Prowl search?","acceptedAnswer":{"@type":"Answer","text":"eBay, Etsy, Mercari, Mercari Japan, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, Salvation Army, EstateSales.net, HiBid, LiveAuctioneers, CTBids, Heritage Auctions, Invaluable, Craigslist and eBay Sold, for what pieces actually sold for: 29 in all. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed and Salvation Army results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search."} },{"@type":"Question","name":"How do I find antique shops and estate sales near me?","acceptedAnswer":{"@type":"Answer","text":"Open the Den and tap Local. Tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area."} },{"@type":"Question","name":"Is Prowl free?","acceptedAnswer":{"@type":"Answer","text":"Yes. Searching is free and needs no account, and your search list stays on your device. Email alerts are optional: free for 1 hunt every Monday, or Prowl Pro for daily alerts."} },{"@type":"Question","name":"Does it work on my phone?","acceptedAnswer":{"@type":"Answer","text":"Yes. Built mobile-first. Add it to your home screen, and allow pop-ups if you use Open all. On a phone, Facebook opens in your browser so the search sticks, so log in to Facebook there once."} },{"@type":"Question","name":"How does Price Check work?","acceptedAnswer":{"@type":"Answer","text":"One tap opens eBay's sold listings for your term — actual sale prices from the last 90 days, the most accurate read on what a piece is worth right now. Asking prices lie; sold prices don't."} },{"@type":"Question","name":"What if nothing sold in 90 days?","acceptedAnswer":{"@type":"Answer","text":"That happens with genuinely rare pieces. Price Check has a second button for three years of deep comps via eBay's Terapeak research — free with any eBay account. Open it in your browser rather than the eBay app, or the date range gets dropped."} }]}</script>
 
 
 <aside class="drawer otp-sheet" id="otp-sheet" role="dialog" aria-modal="true" aria-labelledby="otp-sheetT" hidden>
@@ -2199,8 +2333,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 </ul>
 </div>
 </div>
-<p><strong>Prowl runs your search across 29 vintage marketplaces at once.</strong> Free, no account, built by a collector who got tired of typing the same search into eight sites every morning.</p>
-<p class="trust-bar">🐾<span class="tb-note">29 marketplaces searched from one screen — no accounts, no fees.</span></p>
+<p><strong>Prowl runs your search across 29 vintage marketplaces at once.</strong> Free, no account needed to search, built by a collector who got tired of typing the same search into eight sites every morning.</p>
+<p class="trust-bar">🐾<span class="tb-note">29 marketplaces searched from one screen — free, no account needed.</span></p>
 <h2>How collectors use it</h2>
 <div class="tiles">
 <div class="tile">
@@ -2232,8 +2366,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 <p>AbeBooks for first editions, signed copies and ephemera.</p>
 </div>
 <div class="tile">
-<u>08</u><h3>No account, no fee</h3>
-<p>No email, no sign-up. Your list stays on your device.</p>
+<u>08</u><h3>Free to search, no account</h3>
+<p>Searching needs no email or sign-up, and your list stays on your device. Email alerts are optional.</p>
 </div>
 </div>
 <h2>Built for the rest of vintage</h2>
@@ -2242,7 +2376,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 <p><strong>Estate sales and auction houses.</strong> EstateSales.net, HiBid, LiveAuctioneers, CTBids and Invaluable, one tap each, so the Friday sale and the Saturday auction are in the same hunt as eBay.</p>
 <p><strong>Local, by city.</strong> Facebook Marketplace and Craigslist searched for your saved city, not a nationwide feed you have to filter down.</p>
 <p><strong>Sold prices, not wishes.</strong> Price Check opens eBay's sold listings, and three years of Terapeak comps when ninety days isn't enough. The Fair price verdict says whether its range came from sales or from listings, every time.</p>
-<p>One term, <span data-t>29</span> marketplaces, no account, your list stays on your phone.</p>
+<p>One term, <span data-t>29</span> marketplaces, no account needed to search, your list stays on your phone.</p>
 <div class="ctas">
 <div class="cta-vault vault">
 <h3>Hunting something specific?</h3>
@@ -2258,11 +2392,11 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 <h3>What is Prowl?</h3>
 <p>Prowl by Owl &amp; Twig is a free search tool for vintage collectors. Type a piece once and it builds that search for 29 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist. It is built by Matt at Owl &amp; Twig Vintage, a family vintage shop in Michigan.</p>
 <h3>Which marketplaces does Prowl search?</h3>
-<p>eBay, Etsy, Mercari, Mercari Japan, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, Salvation Army, EstateSales.net, HiBid, LiveAuctioneers, CTBids, Heritage Auctions, Invaluable and Craigslist, plus eBay sold listings for pricing. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed and Salvation Army results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search.</p>
+<p>eBay, Etsy, Mercari, Mercari Japan, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, Salvation Army, EstateSales.net, HiBid, LiveAuctioneers, CTBids, Heritage Auctions, Invaluable, Craigslist and eBay Sold, for what pieces actually sold for: <span data-t>29</span> in all. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed and Salvation Army results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search.</p>
 <h3>How do I find antique shops and estate sales near me?</h3>
 <p>Open the Den and tap Local. Tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area.</p>
 <h3>Is Prowl free?</h3>
-<p>Yes. No account. Your search list stays on your device.</p>
+<p>Yes. Searching is free and needs no account, and your search list stays on your device. Email alerts are optional: free for 1 hunt every Monday, or Prowl Pro for daily alerts.</p>
 <h3>Does it work on my phone?</h3>
 <p>Yes. Built mobile-first. Add it to your home screen, and allow pop-ups if you use Open all. On a phone, Facebook opens in your browser so the search sticks, so log in to Facebook there once.</p>
 <h3>How does Price Check work?</h3>
@@ -2270,7 +2404,6 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 <h3>What if nothing sold in 90 days?</h3>
 <p>That happens with genuinely rare pieces. Price Check has a second button for three years of deep comps via eBay's Terapeak research — free with any eBay account. Open it in your browser rather than the eBay app, or the date range gets dropped.</p>
 <p class="not-affiliated">Prowl is an independent tool built by Owl &amp; Twig Vintage and is not affiliated with, endorsed by, or sponsored by Goodwill, The Salvation Army, Facebook, Craigslist, eBay, Etsy, Mercari, Whatnot, Ruby Lane, EstateSales.net, HiBid, CTBids, Caring Transitions, Heritage Auctions, Chairish, 1stDibs, Poshmark, Vinted, AbeBooks, ThriftBooks, Biblio, Google, Instagram, OfferUp, or Shop App. All trademarks belong to their respective owners.</p>
-<p class="not-affiliated">Prowl © 2026 Owl &amp; Twig Vintage. All rights reserved.</p>
 <div class="site-link">
 <div class="sl-copy">
 <strong>Owl &amp; Twig Vintage</strong>
@@ -2401,19 +2534,19 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     <div class="mi">
 <u>4</u><div>
 <h3>Prowl Alerts by email</h3>
-<p>One email each morning with new finds for your hunts. <b style="color:var(--ink)">Free for 1 hunt, every Monday.</b> Prowl Pro is <b style="color:var(--ink)">free for the first month</b>, then $7 a month for up to 25 hunts every day and your Den. Cancel any time. Set it up, see your plan and receipts, or turn emails off in <b style="color:var(--ink)">Den › Settings</b>. Tap <b style="color:var(--ink)">Sign in or sign up</b> to use your Owl &amp; Twig account: we email you a 6-digit code, no password, and the same sign-in works on your phone and computer.</p>
+<p>One email with new finds for your hunts, as often as you pick. <b style="color:var(--ink)">Free for 1 hunt, every Monday.</b> Prowl Pro is <b style="color:var(--ink)">free for the first month</b>, then $7 a month for up to 25 hunts every day and your Den. Cancel any time. Set it up, see your plan and receipts, or turn emails off in <b style="color:var(--ink)">Den › Settings</b>. Tap <b style="color:var(--ink)">Sign in or sign up</b> to use your Owl &amp; Twig account: we email you a 6-digit code, no password, and the same sign-in works on your phone and computer.</p>
 </div>
 </div>
     <div class="mi">
 <u>5</u><div>
 <h3>Get the app</h3>
-<p>Prowl works best installed. Tap <b style="color:var(--ink)">Get the app</b>, then on iPhone use Share › Add to Home Screen; on Android or a computer tap Install. It is also in Den › Settings.</p>
+<p>Prowl works best installed. Tap <b style="color:var(--ink)">Get the app</b> (or <b style="color:var(--ink)">Add Prowl to your home screen</b>), then on iPhone use Share › Add to Home Screen; on Android or a computer tap Install. It is also in Den › Settings.</p>
 </div>
 </div>
     <div class="mi">
 <u>6</u><div>
 <h3>Check a photo</h3>
-<p>At a sale, tap <b style="color:var(--ink)">Photo</b> in the bar at the bottom, then <b style="color:var(--ink)">Take a photo</b>. Two free checks a day, 15 with Prowl Pro. Prowl names the piece, notes visible flaws and gives a fair price range, with eBay look-alikes.</p>
+<p>At a sale, tap <b style="color:var(--ink)">Photo</b> in the bar at the bottom, then <b style="color:var(--ink)">Take a photo</b>. One free check a day, 25 with Prowl Pro. Prowl names the piece, notes visible flaws and gives a fair price range, with eBay look-alikes.</p>
 </div>
 </div>
     <div class="mi">
@@ -2441,7 +2574,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.68';
+var PROWL_VERSION='v6.69';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3761,7 +3894,7 @@ $('#otp-clearBtn').addEventListener('click',function(){
   /* v5.87 (B1): save the cleared state, or the next load re-imports the old
      owlTwigSearches list through legacySeed(). */
   save();
-  SEEN=null;sgw.cur='';sgw.extra=sgwLoadExtra();sgwSync();rSGW();
+  SEEN=null;FRESH=Object.create(null);FRESH_BASE=Object.create(null);sgw.cur='';sgw.extra=sgwLoadExtra();sgwSync();rSGW();   /* v6.69: and nothing is new */
   rDenHunts();rDenLocal();rQuick();rDrawer();rDock();
   if(member)mailStatus(false);
   toast('Saved data cleared.',2400);
@@ -4067,17 +4200,48 @@ function seenUrls(k){
   for(i=0;i<LIVE_SRC.length;i++){c=lv[LIVE_SRC[i].id]&&lv[LIVE_SRC[i].id].cache[k];if(c&&c.items&&!c.err)for(j=0;j<c.items.length;j++)out.push(c.items[j].url);}
   return out;
 }
-function seenMark(k){
-  var S=seenLoad(),u=seenUrls(k),old=S[k]||[],set={},i,n=0;
-  if(!u.length)return;
-  for(i=0;i<old.length;i++)set[old[i]]=1;
-  for(i=0;i<u.length;i++)if(!set[u[i]]){set[u[i]]=1;old.push(u[i]);n++}
-  if(!S[k]||n){S[k]=old.slice(-150);seenSave()}
+/* v6.69: the listings on screen are never cut, so a listing that stays up is never dropped and then called "new" (the
+   glow) on a later look; nor are those of a marketplace that did not answer this time (it failed, or has not yet). What
+   is cut, oldest first, is only what an answering marketplace no longer lists. Written only when what is remembered
+   changes, not on every answer. */
+var SEEN_CAP=150;
+function seenSrc(u){var m=/^https:\/\/(?:[a-z0-9-]+\.)*(shopgoodwill|ebay|chairish|etsy|poshmark|vinted|grailed|shopthesalvationarmy)\.com(\/|$)/i.exec(u);return m?(m[1].toLowerCase()==='shopthesalvationarmy'?'salvation':m[1].toLowerCase()):''}
+function seenAnswered(k){
+  var a={},c=sgw.cache[k],i;
+  if(c&&!c.err)a.shopgoodwill=1;
+  for(i=0;i<LIVE_SRC.length;i++){c=lv[LIVE_SRC[i].id]&&lv[LIVE_SRC[i].id].cache[k];if(c&&!c.err)a[LIVE_SRC[i].id]=1}
+  return a;
 }
+function seenMark(k){
+  var S=seenLoad(),u=seenUrls(k),old=S[k]||[],now={},has={},on=[],rest=[],ans,src,drop,i,n=0;
+  if(!u.length)return;
+  for(i=0;i<old.length;i++)has[old[i]]=1;
+  for(i=0;i<u.length;i++)if(!now[u[i]]){now[u[i]]=1;on.push(u[i]);if(!has[u[i]])n++}
+  for(i=0;i<old.length;i++)if(!now[old[i]])rest.push(old[i]);   /* off screen, in the order they were first seen */
+  drop=rest.length+on.length-SEEN_CAP;
+  if(drop>0){
+    ans=seenAnswered(k);
+    rest=rest.filter(function(x){if(drop<=0)return true;src=seenSrc(x);if(src&&!ans[src])return true;drop--;n++;return false});
+  }
+  S[k]=rest.concat(on);
+  if(n||!old.length)seenSave();
+}
+/* v6.69: listings of hunt k that were not seen before this visit (FRESH), measured against what was seen when the hunt
+   was first shown this visit (FRESH_BASE): results come in one marketplace at a time and each is marked seen as it is
+   shown, so a later marketplace's listings are not "new" on a first look. A hunt never looked at before: nothing. */
+var FRESH=Object.create(null),FRESH_BASE=Object.create(null);
+function seenFresh(k){
+  var S=seenLoad(),u,i,b;
+  if(!(k in FRESH_BASE)){b=null;if(S[k]){b=Object.create(null);for(i=0;i<S[k].length;i++)b[S[k][i]]=1}FRESH_BASE[k]=b}
+  b=FRESH_BASE[k];if(!b)return;
+  u=seenUrls(k);for(i=0;i<u.length;i++)if(!b[u[i]])FRESH[u[i]]=1;
+}
+function freshPaint(el){var cs=el.querySelectorAll('.sgw-cell[data-u]'),i;for(i=0;i<cs.length;i++)if(FRESH[cs[i].getAttribute('data-u')])cs[i].setAttribute('data-fresh','1')}
 function seenNew(k){
   var S=seenLoad(),u=seenUrls(k),i,set={},n=0;
   if(!u.length)return 0;
-  if(!S[k]){S[k]=u.slice(-150);seenSave();return 0}   /* first look: nothing is "new" yet */
+  if(!S[k])return 0;   /* never looked at: nothing is "new", and nothing is kept until the hunt is opened (v6.69: a snapshot
+     taken while Flock or Daily had only some marketplaces' answers made the rest look new on the first look) */
   for(i=0;i<S[k].length;i++)set[S[k][i]]=1;
   for(i=0;i<u.length;i++)if(!set[u[i]])n++;
   return n;
@@ -4615,7 +4779,7 @@ function mailBody(on,wait,n,em){
       '<span class="sgw-mf"><input type="email" autocomplete="email" placeholder="you@email.com" aria-label="Email for Prowl Alerts" value="'+esc(em)+'"><button type="button" class="b p" data-mail="go"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Sending\u2026':'Email me daily')+'</button></span>'+
       '<p class="mail-fine">Set up on another device this way? <button type="button" class="sgw-ml" data-mail="signin">Email me a sign-in link</button> \u00b7 <button type="button" class="sgw-ml" data-mail="emailonly">Back</button></p>';
   }else{
-    h+='<p>One email each morning with new finds for your hunts, from ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted and Grailed. Only listings you have not been sent before. <b>Free for 1 hunt on Mondays</b>, or 25 hunts every day with Prowl Pro, first month free.</p>'+
+    h+='<p>One email with new finds for your hunts, from ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted and Grailed. Only listings you have not been sent before. <b>Free for 1 hunt on Mondays</b>, or 25 hunts every day with Prowl Pro, first month free.</p>'+
       '<span class="sgw-mf"><a class="b p" href="'+esc(loginUrl())+'" data-mail="storein">Sign in or sign up</a></span>'+
       '<p class="mail-fine">Uses your Owl &amp; Twig account: we email you a 6-digit code, no password. Same sign-in on your phone and computer.</p>'+
       '<p class="mail-fine">Rather not have an account? <button type="button" class="sgw-ml" data-mail="emailonly">Use email only</button></p>';
@@ -4674,7 +4838,7 @@ var ALERTS_OPEN=true;   /* v5.88: launched 2026-10-02 */
 function alertsLive(){return ALERTS_OPEN||mGet('alertsBeta')==='1'}
 function mailSoonHtml(mode){
   if(mode==='card')return '<div class="mail-top"><h3>\u2709 Prowl Alerts</h3><span class="mail-pill">Coming soon</span></div>'+
-    '<p>One email each morning with new finds for your hunts, from ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted and Grailed. We are putting the finishing touches on it. <button type="button" class="sgw-ml" data-mail="soon">Get an email when it opens</button></p>';
+    '<p>One email with new finds for your hunts, from ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted and Grailed. We are putting the finishing touches on it. <button type="button" class="sgw-ml" data-mail="soon">Get an email when it opens</button></p>';
   return '<button type="button" class="sgw-mh" data-mail="soon">\u2709 Prowl Alerts: <b>coming soon</b> \u203a</button>';
 }
 function alertsSoonPage(){
@@ -4684,14 +4848,14 @@ function alertsSoonPage(){
     sec.setAttribute('data-soon','1');
     var h=sec.querySelector('h2'),ps=sec.querySelectorAll('p'),go=$('#otp-alertsGo');
     if(h)h.textContent='Prowl Alerts \u00b7 coming soon';
-    if(ps[0])ps[0].textContent='One email each morning with new finds for your hunts on ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted and Grailed, only listings you have not seen. We are putting the finishing touches on it.';
+    if(ps[0])ps[0].textContent='One email with new finds for your hunts on ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted and Grailed, only listings you have not seen. We are putting the finishing touches on it.';
     if(go&&go.parentNode){go.parentNode.hidden=true;go.parentNode.style.display='none'}
     var f=sec.querySelector('p.fine');if(f)f.textContent='Leave your email and we will tell you the day it opens:';
   }
   var hs=document.querySelectorAll('.scout-app-wrapper #otp-ms h3'),i;
   for(i=0;i<hs.length;i++)if(hs[i].textContent==='Prowl Alerts by email'){
     hs[i].textContent='Prowl Alerts (coming soon)';
-    var hp=hs[i].nextElementSibling;if(hp)hp.textContent='One email each morning with new finds for your hunts. We are putting the finishing touches on it.';
+    var hp=hs[i].nextElementSibling;if(hp)hp.textContent='One email with new finds for your hunts. We are putting the finishing touches on it.';
   }
 }
 /* v6.15: the Prowl Alerts section at the foot of the home page knows who is reading it.
@@ -4998,8 +5162,9 @@ function rSGW(){
   var old=row.querySelectorAll('.sgw-chip');
   for(i=0;i<old.length;i++)row.removeChild(old[i]);
   /* v5.69: what the visitor is looking at now counts as seen; every other
-     hunt with results in hand gets a count of listings not seen before. */
-  if(sgw.cur)seenMark(sgw.cur);
+     hunt with results in hand gets a count of listings not seen before.
+     v6.69: the ones new since the last look are noted first (FRESH), so their cards can say so (data-fresh) */
+  if(sgw.cur){seenFresh(sgw.cur);seenMark(sgw.cur)}
   var NEWN=[],few=isNarrow()&&!sgw.more&&sgw.terms.length>CHIP_FEW+1,shown=0,hid=0;
   for(i=0;i<sgw.terms.length;i++){x=sgw.terms[i];NEWN.push(x.t.toLowerCase()===sgw.cur?0:seenNew(x.t.toLowerCase()));}
   for(i=0;i<sgw.terms.length;i++){
@@ -5015,6 +5180,7 @@ function rSGW(){
   else if(sgw.more&&isNarrow()&&sgw.terms.length>CHIP_FEW+1)html+='<span class="sgw-chip sgw-more" role="button" tabindex="0" data-sgw="less">Show fewer</span>';
   form.insertAdjacentHTML('beforebegin',html);
   mount.querySelector('.sgw-body').innerHTML=sgwBody();
+  freshPaint(mount);   /* v6.69 */
   mount.querySelector('.sgw-acts').innerHTML=sgwActs();
   sgwWhere(mount);
   mount.hidden=!!st.run;
@@ -5467,8 +5633,8 @@ function flockRender(top){
   row.setAttribute('aria-busy',FLOCK.pend>0&&FLOCK.view==='feed'?'true':'false');
   if(top){flTop(true);FLOCK.at=0}
   else{
-    row.scrollTop=y;
-    if(anchor){var cs=row.querySelectorAll('.fl-card');for(i=0;i<cs.length;i++)if(cs[i].getAttribute('data-u')===anchor){row.scrollTop=cs[i].offsetTop;break}}
+    if(anchor){var cs=row.querySelectorAll('.fl-card');for(i=0;i<cs.length;i++)if(cs[i].getAttribute('data-u')===anchor){y=cs[i].offsetTop;break}}
+    flJump(row,y);   /* v6.69: at once, never smooth: the feed stays still under you as finds come in */
     FLOCK.at=flIdxOf(row);
   }
   FLOCK.reach=Math.max(FLOCK.reach||0,FLOCK.at||0);
@@ -5479,7 +5645,11 @@ function flockRender(top){
 var FL_IDLE_MS=900;
 function flBusy(){var t=Date.now()-(FLOCK.touchAt||0);return (!!FLOCK.held&&t<10000)||t<FL_IDLE_MS}   /* a lost touchend never holds it for long */
 function flockRenderSoon(){clearTimeout(FLOCK.tm);FLOCK.tm=setTimeout(function(){if(!flockOpen())return;if(flBusy()){flockRenderSoon();return}flockRender()},180)}
-function flTop(now){var row=$('#otp-flockRow');if(!row)return;try{row.scrollTo({top:0,behavior:(now||flReduced())?'auto':'smooth'})}catch(e){row.scrollTop=0}}
+function flTop(now){var row=$('#otp-flockRow');if(!row)return;if(now||flReduced()){flJump(row,0);return}try{row.scrollTo({top:0,behavior:'smooth'})}catch(e){row.scrollTop=0}}
+/* v6.69: put the feed at y at once. The feed scrolls smoothly (CSS scroll-behavior), and a script's scrollTop, or a
+   scrollTo with behavior 'auto', follows that CSS: every background redraw slid the feed from wherever the snap had put
+   it back to your card. The visitor's own moves (a swipe, Fly, the arrows) stay smooth. */
+function flJump(row,y){var b=row.style.scrollBehavior;row.style.scrollBehavior='auto';row.scrollTop=y;row.style.scrollBehavior=b}
 /* fetch a few random hunt+source pairs we have nothing for yet, 250ms apart */
 function flockWarm(o){
   /* v6.52: every hunt and every near search, FLOCK_SRCS more marketplaces each time it is called.
@@ -7288,4 +7458,156 @@ try{loadSGW()}catch(e){}
 })();
 </script>
 
+<!-- v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
+     shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
+     under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing. -->
+<style>
+@media (prefers-reduced-motion:no-preference){
+/* backwards, not both: once a card has risen in, its own hover lift (a transform) works again */
+.scout-app-wrapper .pm-in{animation:pmIn .55s cubic-bezier(.2,.8,.2,1) backwards}
+@keyframes pmIn{0%{opacity:0;transform:translateY(10px) scale(.97)}60%{opacity:1}100%{opacity:1;transform:none}}
+.scout-app-wrapper .sgw-cell[data-fresh] .sgw-card{position:relative}
+/* the card clips its corners (overflow:hidden), so the glow is drawn inside its edge */
+.scout-app-wrapper .pm-halo{position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 1.5px var(--ac),inset 0 0 16px var(--ac);opacity:0;animation:pmHalo 2.6s ease-in-out 2;z-index:2}
+@keyframes pmHalo{0%{opacity:0}35%{opacity:.75}100%{opacity:0}}
+.scout-app-wrapper .pm-uni{position:absolute;top:4px;right:6px;font-size:18px;line-height:1;pointer-events:none;z-index:3;opacity:0;animation:pmUni 2.2s ease-out forwards}
+@keyframes pmUni{0%{opacity:0;transform:translateY(8px) rotate(-12deg) scale(.6)}25%{opacity:1;transform:translateY(-4px) rotate(6deg) scale(1.1)}70%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-14px)}}
+/* sparks and the walking panther are on body, outside the text-size zoom, so they land where the tap was */
+.pm-spark{position:fixed;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;pointer-events:none;z-index:2147483000;opacity:0;animation:pmSpark .8s ease-out forwards}
+.pm-spark.u{background:linear-gradient(135deg,#ffb3e6,#b5a8ff 50%,#9ff3ff)!important}
+@keyframes pmSpark{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.2)}}
+.pm-walk{position:fixed;left:0;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);width:54px;height:auto;pointer-events:none;z-index:2147482999;opacity:0;animation:pmWalk 3.2s linear forwards}
+@keyframes pmWalk{0%{opacity:0;transform:translateX(-70px)}10%{opacity:.85}90%{opacity:.85}100%{opacity:0;transform:translateX(calc(100vw + 10px))}}
+.scout-app-wrapper #otp-pan.pm-pounce img{animation:pmPounce .7s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pmPounce{0%{transform:none}30%{transform:translateY(4px) scale(.96,1.03)}60%{transform:translateY(-6px) scale(1.04,.98)}100%{transform:none}}
+/* a sheen across a hunt chip as the pointer comes onto it (Hark drew it for the old quick-search chips); a moving
+   background, so nothing is clipped or moved. Played once per hover by the script, not on :hover, which would start it
+   again each time the panel redraws under a resting pointer */
+.scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.4) 50%,transparent 70%);background-size:250% 100%;background-repeat:no-repeat;animation:pmSheen .8s ease-out}
+[data-theme=uranium] .scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(57,255,20,.35) 50%,transparent 70%)}
+@keyframes pmSheen{0%{background-position:130% 0}100%{background-position:-30% 0}}
+}
+</style>
+<script>
+/* v6.69 Prowl magic (Hark's idea). Read-only on the page: it watches for new result cards and lets each listing rise in
+   the first time it appears this visit (the panel redraws as each marketplace answers; a card redrawn mid-rise carries
+   on from where it was, ROSE keeps when each began). Listings new since your last look at a hunt (data-fresh, from seenFresh) glow,
+   and the first of them after you start a hunt or pick one gets a unicorn. Starting a hunt sparkles, and the panther
+   pounces and walks across. Reduced motion is checked every time, so changing the setting is followed at once. */
+(function(){
+  var root=document.querySelector('.scout-app-wrapper');
+  if(!root||!window.MutationObserver||!window.requestAnimationFrame)return;
+  function lively(){try{return !window.matchMedia||!window.matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}}
+  var CARD='.sgw-card,.hit,.found-card',ROSE=Object.create(null),HALO=Object.create(null),UNI=null,unicorns=1,walking=false,queue=[],queued=false,wait=[],tries=0,waitT=0;
+  function gone(el,ms){setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el)},ms)}
+  function accent(){var c='';try{c=getComputedStyle(root).getPropertyValue('--ac').trim()}catch(e){}return c||'#B0522B'}
+  function key(el){var c=el.closest('[data-u]');return (c&&c.getAttribute('data-u'))||el.getAttribute('href')||(el.textContent||'').slice(0,80)}
+  function sparks(x,y,n,uni){
+    var c=accent(),i,s,a,d;
+    for(i=0;i<n;i++){
+      s=document.createElement('i');s.className='pm-spark'+(uni&&i%2?' u':'');s.setAttribute('aria-hidden','true');
+      a=Math.random()*Math.PI*2;d=24+Math.random()*34;
+      s.style.left=Math.round(x)+'px';s.style.top=Math.round(y)+'px';s.style.background=c;
+      s.style.setProperty('--dx',Math.round(Math.cos(a)*d)+'px');s.style.setProperty('--dy',Math.round(Math.sin(a)*d)+'px');
+      s.style.animationDelay=Math.round(Math.random()*90)+'ms';
+      document.body.appendChild(s);gone(s,1100);
+    }
+  }
+  function pounce(){
+    var p=document.getElementById('otp-pan');if(!p)return;
+    p.classList.remove('pm-pounce');void p.offsetWidth;p.classList.add('pm-pounce');
+    setTimeout(function(){p.classList.remove('pm-pounce')},800);
+  }
+  function walk(){
+    var src=document.getElementById('otp-panImg');if(walking||!src||!src.getAttribute('src'))return;
+    walking=true;var w=document.createElement('img');w.className='pm-walk';w.alt='';w.setAttribute('aria-hidden','true');w.src=src.getAttribute('src');
+    var d=document.getElementById('otp-dock'),r=d&&d.getBoundingClientRect();   /* just above the dock, at any text size */
+    if(r&&r.height&&r.top>0&&r.top<window.innerHeight)w.style.bottom=Math.round(window.innerHeight-r.top+8)+'px';
+    document.body.appendChild(w);
+    setTimeout(function(){if(w.parentNode)w.parentNode.removeChild(w);walking=false},3300);
+  }
+  function startHunt(btn){
+    unicorns=1;UNI=null;
+    if(!lively())return;
+    if(btn&&btn.getBoundingClientRect){var r=btn.getBoundingClientRect();sparks(r.left+r.width/2,r.top+r.height/2,12,true)}
+    pounce();walk();
+  }
+  var sf=document.getElementById('otp-sf');
+  if(sf)sf.addEventListener('submit',function(){startHunt(sf.querySelector('button[type=submit]'))});
+  ['otp-sa','otp-fb'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(){startHunt(b)})});
+  root.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('[data-sgw="pick"]')){unicorns=1;UNI=null}},true);   /* picking a hunt */
+  /* the chip sheen: once each time the pointer comes onto a hunt's chip. The chips are redrawn as results come in (the
+     old ones removed, so they never see the pointer leave) and a new chip under a resting pointer gets a mouseover:
+     that is the same hover, known by the hunt (the chip's own text, not its "N new"), until the pointer really leaves */
+  var sheenK='';
+  function chipOf(n){return n&&n.closest?n.closest('.sgw-chip'):null}
+  function chipKey(c){var t='',n;for(n=c.firstChild;n;n=n.nextSibling)if(n.nodeType===3)t+=n.nodeValue;return t}
+  root.addEventListener('mouseover',function(e){
+    var c=chipOf(e.target),k;if(!c){sheenK='';return}   /* over something else: the next chip is a new hover */
+    k=chipKey(c);if(k===sheenK)return;
+    sheenK=k;if(!lively())return;
+    c.classList.remove('pm-sheen');void c.offsetWidth;c.classList.add('pm-sheen');
+    setTimeout(function(){c.classList.remove('pm-sheen')},900);
+  });
+  root.addEventListener('mouseout',function(e){
+    var c=chipOf(e.target),to=chipOf(e.relatedTarget);
+    if(c&&!(to&&chipKey(to)===chipKey(c)))sheenK='';   /* off the chip (not just onto its own badge or ×) */
+  });
+  function decorate(){
+    queued=false;
+    var list=queue.splice(0,queue.length),live=lively(),k=0,i,el,id,t=Date.now(),left,cell,h,u,fresh=[];
+    for(i=0;i<list.length;i++){   /* every card: a redraw of the panel adds 100 and more, the results after the links */
+      el=list[i].el;if(!el.isConnected)continue;
+      id=key(el);
+      /* drawn while nobody could watch it rise (the tab hidden, or reduced motion on): shown as it is from now on, so a
+         later redraw does not make it vanish and rise again */
+      if(!live||list[i].h){if(ROSE[id]===undefined)ROSE[id]=0}
+      else{
+        if(ROSE[id]===undefined){ROSE[id]=t+Math.min(k*45,600);k++}   /* when its rise begins */
+        left=ROSE[id]+550-t;
+        if(left>0){   /* a negative delay starts it part-way through */
+          el.style.animationDelay=(ROSE[id]-t)+'ms';el.classList.add('pm-in');
+          (function(x,ms){setTimeout(function(){x.classList.remove('pm-in');x.style.animationDelay=''},ms)})(el,left+150);
+        }
+      }
+      cell=el.closest('.sgw-cell');
+      if(live&&cell&&cell.getAttribute('data-fresh')&&!el.closest('#otp-flock'))fresh.push(el);
+    }
+    if(!fresh.length)return;
+    /* the glow and the unicorn start only where they can be seen: not under the curtain, not on a hidden panel (Daily or
+       Flock open over it); until then they wait, looked at again every half second for up to two minutes */
+    if(document.querySelector('.pc-loader')||!fresh[0].getClientRects().length){
+      if(tries>=240)return;   /* given up: nothing is kept */
+      for(i=0;i<wait.length;i++)if(wait[i].isConnected&&fresh.indexOf(wait[i])<0)fresh.push(wait[i]);
+      wait=fresh;   /* only cards still on the page */
+      if(!waitT)waitT=setTimeout(function(){
+        waitT=0;tries++;
+        for(var j=0;j<wait.length;j++)if(wait[j].isConnected)queue.push({el:wait[j],h:true});
+        wait=[];
+        if(queue.length&&!queued){queued=true;requestAnimationFrame(decorate)}
+      },500);
+      return;
+    }
+    tries=0;
+    for(i=0;i<fresh.length;i++){   /* the glow (two 2.6s pulses) and the unicorn (2.2s), carried on part-way on a redrawn card, like the rise */
+      el=fresh[i];id=key(el);
+      if(HALO[id]===undefined)HALO[id]=t;
+      if(!UNI&&unicorns>0){unicorns--;UNI={id:id,t:t}}
+      left=HALO[id]+5200-t;
+      if(left>0&&!el._pmHalo){el._pmHalo=1;h=document.createElement('i');h.className='pm-halo';h.setAttribute('aria-hidden','true');h.style.animationDelay=(HALO[id]-t)+'ms';el.appendChild(h);gone(h,left+100)}
+      if(UNI&&UNI.id===id&&!el._pmUni&&(left=UNI.t+2200-t)>0){el._pmUni=1;u=document.createElement('i');u.className='pm-uni';u.setAttribute('aria-hidden','true');u.style.animationDelay=(UNI.t-t)+'ms';u.textContent='\uD83E\uDD84';el.appendChild(u);gone(u,left+100)}
+    }
+  }
+  function collect(n,h){
+    if(n.nodeType!==1)return;
+    if(n.matches&&n.matches(CARD))queue.push({el:n,h:h});
+    else if(n.querySelectorAll){var c=n.querySelectorAll(CARD);for(var i=0;i<c.length;i++)queue.push({el:c[i],h:h})}
+  }
+  new MutationObserver(function(muts){
+    var h=!!document.hidden;   /* noted, not skipped: see decorate */
+    for(var i=0;i<muts.length;i++){var a=muts[i].addedNodes;for(var j=0;j<a.length;j++)collect(a[j],h)}
+    if(queue.length&&!queued){queued=true;requestAnimationFrame(decorate)}
+  }).observe(root,{childList:true,subtree:true});
+})();
+</script>
 <!-- Cloudflare Web Analytics --><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "38a4d29ec73843c1a55a0e2094ae6ae2"}'></script><!-- End Cloudflare Web Analytics -->

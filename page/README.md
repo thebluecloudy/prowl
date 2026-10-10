@@ -73,3 +73,30 @@ also uses for CTBids' own lists (`trending-now`, `ending-soon`, `featured`, `coo
 they stay a search. A saved marketplace set from before v6.68 gains CTBids once (`h68`); unticking it afterwards sticks.
 The worker's "where to look" list (`WHERE_MKTS`) has it too; cached answers (30 days) keep their old list. The Chrome
 extension does not have it yet (it needs a store release).
+
+## Motion (page v6.69)
+
+- **The curtain** (Matthew's Curtain Intro): when the app opens (the installed app, or `/pages/prowl-app`), PROWL forms
+  out of a blur in the middle, a hairline fills as the app gets ready, then six columns lift away to show it and the word
+  flies up into the header's Prowl (`.brand-wm`). Once a launch (sessionStorage `prowl.curtain`); a tap or any key skips
+  it (Space, Page Down and the arrows do not scroll the app beneath), and it keeps every tap until it is gone, so a second
+  tap during the lift cannot press what is underneath; never under reduced motion; it always clears within 9 seconds.
+  It brings its own colours, picked the way the app picks its theme (saved theme, else the device's dark or light; New
+  look or Classic; with storage blocked, the device's dark or light and the New look, as the app does), so it is the
+  app's colour from its first frame: keep its `PAL` table in step with the palettes (the test reads them from the
+  stylesheet; Uranium's panels take the top of its page gradient). `?curtain=1` shows it on any page (to look at it),
+  `?curtain=0` never. Its style and script sit right after the first script, so it covers the app before it paints, and
+  it is on `body`, outside the text-size zoom. Timing constants are at the top of its script (`MIN_MS`, `MAX_MS`, ...).
+- **Prowl magic** (Hark's idea): result cards rise in the first time each listing appears (a card redrawn mid-rise carries
+  on); listings new since your last look at a hunt glow (`data-fresh`, from `seenFresh`, measured against what was seen
+  when the visit started), and the first of them after you start or pick a hunt gets a unicorn; starting a hunt sparkles
+  at the button and the panther pounces and walks across. The glow and the unicorn wait until they can be seen (not under
+  the curtain, not on a hidden panel); a card drawn while the tab was hidden or under reduced motion does not rise later.
+  Opacity and transform only, apart from the hunt-chip sheen (a moving background, once per hover); nothing under reduced
+  motion, and nothing touches saved data, links or timing. The seen list (`seenMark`) now keeps every listing still on
+  screen, and those of a marketplace that did not answer this time, so neither glows as new on a later look; it is written
+  only when what it remembers changes. Tests: `__tests__/page/motion.test.mjs`.
+- **Flock holds still while it loads** (v6.69): the feed scrolls smoothly (CSS `scroll-behavior`), and positions the page
+  set itself followed that CSS, so every redraw as finds came in slid the feed from where the snap had put it back to
+  your card. `flJump` sets them at once; your own moves (a swipe, Fly, the arrows, Back to top) stay smooth. Tests:
+  `__tests__/page/flock-scroll.test.mjs`.
