@@ -24,6 +24,17 @@ Work down the phases in order. Anything marked **decide** is Matt's call before 
       - "Prowl – Thrift & Antique Alerts"
       Do not put "Goodwill", "eBay" or another company's name in the name or subtitle: Apple rejects other companies'
       trademarks there. They can go in the description.
+      **What the App Store search showed (Matt, 2026-10-10):** at least eight apps already start with "Prowl", each
+      with a suffix: "Prowl (Press9)", "Prowl: Location Assistant", "Powell Prowl: Rate Chase", "Prowl: Easy Push
+      Notifications" (Prowl Solutions LLC), "Prowl - Horror Hide & Seek IRL", "Prowl - Web Monitor", "Prowl: Job
+      Application Tracker", "Prowl (96a41b)". So:
+      - Plain "Prowl" is gone; "Prowl: <what it does>" is the normal pattern and is allowed.
+      - The suffix has to say vintage at a glance. "Prowl - Web Monitor" also watches sites and alerts you, so
+        "Prowl: Alerts" or "Prowl: Price Watch" would blur into it.
+      - **Check trademarks before committing to the name.** Prowl Solutions LLC has a long-running "Prowl"
+        notification app and a company named Prowl. Search the USPTO trademark database (tmsearch.uspto.gov) for
+        PROWL in classes 9 (apps) and 42 (software services), and ask a trademark attorney if anything live comes up.
+        "Prowl by Owl & Twig" ties the name to the shop, which helps whatever the search finds.
 - [ ] **decide: How Prowl Pro is sold in the app.** Today Pro is a Shopify product (`/products/prowl-pro`) with a free
       month. Apple's rule (Guideline 3.1.1) is that digital features bought in an iPhone app go through Apple's in-app
       purchase. Options:
