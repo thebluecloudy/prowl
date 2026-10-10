@@ -2341,7 +2341,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
           <li>
 <b>Set your city first.</b> Type your city, like <b>Novi</b>, or a Craigslist region code like <b>detroit</b> or <b>sfbay</b>, and tap Save. It stays on this phone and feeds Craigslist, Facebook and the store finder.</li>
           <li>
-<b>Find stores near you.</b> Tap a type, like antique stores, estate sales or flea markets, and a map search opens around you. Pick Google Maps or Apple Maps once and Prowl remembers.</li>
+<b>Find stores near you.</b> Tap a type, like antique stores, estate sales or flea markets, and a map search opens around you. Pick Google Maps or Apple Maps once and Prowl remembers. <b>Garage sales</b> opens this week's garage and moving sales on Craigslist for your city.</li>
           <li>
 <b>Pick your Facebook city.</b> Facebook only searches one city at a time. Choose your metro here, or All to cover every major metro. On a phone Facebook opens in your browser, so log in to Facebook there once.</li>
           <li>
@@ -2360,6 +2360,12 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
         <p class="nearp" id="otp-nearNote">One tap opens Google Maps on your phone. Works standing in a parking lot.</p>
         <div class="hubbar mapsw" id="otp-nearMaps" role="group" aria-label="Maps app"></div>
         <div class="nearg" id="otp-nearGrid"></div>
+      </div>
+      <div class="nearblk">
+        <h3 class="nearh">Garage sales <span id="otp-salesScope">near me</span>
+</h3>
+        <p class="nearp">This week's garage, yard and moving sales, listed by the people holding them. Opens Craigslist for your city, on its map or as a list.</p>
+        <div class="nearg" id="otp-salesGrid"></div>
       </div>
       <div class="nearblk">
         <h3 class="nearh">Facebook Marketplace <span id="otp-fbScope">my city</span>
@@ -2633,7 +2639,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.74';
+var PROWL_VERSION='v6.75';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3091,6 +3097,18 @@ function rNear(){
   g.innerHTML=NEARBY.map(function(n,i){
     return '<a class=nearc href="'+esc(nearUrl(n.q))+'" target=_blank rel="noopener noreferrer" data-ni='+i+'>'+esc(n.l)+'</a>';
   }).join('');
+  rSales();
+}
+/* v6.75: garage sales, the listings themselves rather than a map search (build plan item 5). Craigslist's garage &
+   moving sales section (gms) for the saved city, newest first, and the same with the free-stuff section. Other
+   finders (EstateSales.net, gsalr, yardsalesearch) wait until the worker can show that it may fetch them. */
+function gmsUrl(cat,view){var c=clSlug()||CL_DEFAULT;return 'https://www.craigslist.org/search/area/'+E(c)+'?cat='+cat+'#search=1~'+(view||'list')+'~0~0'}   /* view: list or map (Craigslist's own map of the sales) */
+function rSales(){
+  var g=$('#otp-salesGrid');if(!g)return;
+  var sc=$('#otp-salesScope');if(sc)sc.textContent=st.city?('near '+st.city):'near Ann Arbor';
+  g.innerHTML='<a class=nearc href="'+esc(gmsUrl('gms','map'))+'" target=_blank rel="noopener noreferrer">Garage sales on a map</a>'+
+    '<a class=nearc href="'+esc(gmsUrl('gms'))+'" target=_blank rel="noopener noreferrer">Garage &amp; moving sales</a>'+
+    '<a class=nearc href="'+esc(gmsUrl('zip'))+'" target=_blank rel="noopener noreferrer">Free stuff</a>';
 }
 
 (function(){
