@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v103: 2026-10-10. GET /sales?st=MI&city=Novi: estate sales from EstateSales.net's city page (its app state and its
+ *        SaleEvent blocks, merged), kept 6 hours per city, owner-only unless SALES_PUBLIC=on. The garage-sale
+ *        check shows what the extractor gets from the Novi page.
  *   v102: 2026-10-10. The garage-sale check also says what the EstateSales.net page carries (salesShape): its data block,
  *        the biggest list that looks like sales, that list's field names and its first entry, cut short. To write
  *        the extractor against the real page.
@@ -352,7 +355,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-const WORKER_VERSION = "v102";
+const WORKER_VERSION = "v103";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4956,12 +4959,112 @@ async function salesProbe() {
       const t = await r.text();
       const wall = /just a moment|attention required|enable javascript|access denied|are you a robot|cf-browser-verification|px-captcha|captcha/i.test(t.slice(0, 4000));
       const res = { name: name, url: u, status: r.status, ms: Date.now() - t0, bytes: t.length, wall: wall, readable: r.status === 200 && !wall && t.length > 2000 };
-      if (name === "estatesales-city" && res.readable) { try { res.shape = salesShape(t); } catch (e) {} }   /* v102 */
+      if (name === "estatesales-city" && res.readable) {
+        try { res.shape = salesShape(t); } catch (e) {}   /* v102 */
+        try { const it = esParse(t, esPlace("MI", "Novi")); res.extract = { count: it.length, mapped: it.filter(x => x.lat && x.lon).length, named: it.filter(x => x.name && !/^(Estate sale|Online Only Auctions)$/.test(x.name)).length, first: it.slice(0, 2) }; } catch (e) {}   /* v103 */
+      }
       return res;
     } catch (e) {
       return { name: name, url: u, status: 0, ms: Date.now() - t0, bytes: 0, wall: false, readable: false, err: String(e && e.name === "AbortError" ? "no answer in 10 seconds" : (e && e.message) || e).slice(0, 120) };
     } finally { clearTimeout(timer); }
   }));
+}
+/* ---------- v103: estate sales near you (EstateSales.net) ----------
+   A city page (estatesales.net/MI/Novi) carries its sales twice: the Angular app's own state
+   (NGRX_STATE.feature.cityViewState.filteredSales: id, city, state, ZIP, latitude, longitude, dates, type) and
+   schema.org SaleEvent blocks for search engines (name, link, dates, address). esParse reads both and merges them
+   by sale id. Built after the owner reported EstateSales.net's permission (2026-10-10); keep that written answer
+   on file. /sales keeps each city for 6 hours, so EstateSales.net sees a few requests a day however many people
+   look; it is the owner's only (SALES_PUBLIC=on opens it) until the owner opens it. Every sale links back to
+   EstateSales.net; an address is shown only when the sale itself shows it. */
+const ES_TTL_MS = 6 * 3600000, ES_FETCH_PER_IP = 20, ES_MAX = 60;
+function esPlace(st, city) {
+  st = String(st || "").trim().toUpperCase(); city = String(city || "").replace(/\s+/g, " ").trim();
+  if (!/^[A-Z]{2}$/.test(st) || !/^[A-Za-z][A-Za-z .'-]{1,39}$/.test(city)) return null;
+  return { st: st, city: city, slug: city.replace(/[.']/g, "").replace(/\s+/g, "-"), key: "es:" + st + ":" + city.toLowerCase().replace(/[^a-z]+/g, "-") };
+}
+function esJsonBlocks(html) {
+  const out = [];
+  String(html || "").replace(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi, (m, attrs, body) => {
+    if (/application\/(ld\+)?json/i.test(attrs)) { try { out.push(JSON.parse(body.trim().replace(/^<!--|-->$/g, ""))); } catch (e) {} }
+    return m;
+  });
+  return out;
+}
+function esDate(v) {
+  if (v && typeof v === "object") v = v._value || v.value || "";
+  const t = Date.parse(String(v || ""));
+  return t > 0 ? new Date(t).toISOString() : "";
+}
+function esNum(v) { const n = Number(v); return isFinite(n) && n !== 0 ? n : null; }
+function esParse(html, place) {
+  const blocks = esJsonBlocks(html), ld = Object.create(null), state = [];
+  const idOf = u => { const m = /\/(\d{5,12})\/?(?:[?#].*)?$/.exec(String(u || "")); return m ? m[1] : ""; };
+  const take = x => {
+    if (!x || typeof x !== "object") return;
+    if (Array.isArray(x)) { x.forEach(take); return; }
+    if (Array.isArray(x["@graph"])) x["@graph"].forEach(take);
+    if (/SaleEvent|Event$/.test(String(x["@type"] || ""))) {
+      const id = idOf(x.url || x["@id"]); if (id) ld[id] = x;
+    }
+  };
+  blocks.forEach(b => {
+    take(b);
+    const f = b && b.NGRX_STATE && b.NGRX_STATE.feature && b.NGRX_STATE.feature.cityViewState;
+    if (f && Array.isArray(f.filteredSales)) f.filteredSales.forEach(x => state.push(x));
+  });
+  const https = u => (typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u) ? u : "");
+  const txt = (v, n) => String(v == null ? "" : v).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, n || 120);
+  const items = [], seen = Object.create(null);
+  const add = (id, s, e) => {
+    if (!id || seen[id]) return; seen[id] = 1;
+    s = s || {}; e = e || {};
+    const loc = (e.location && typeof e.location === "object" ? e.location : {}), adr = loc.address && typeof loc.address === "object" ? loc.address : {}, geo = loc.geo || {};
+    const st = txt(s.stateCode || adr.addressRegion || (place && place.st), 2).toUpperCase();
+    const city = txt(s.cityName || adr.addressLocality || (place && place.city), 40);
+    const zip = txt(s.postalCodeNumber || adr.postalCode, 10);
+    const url = https(e.url) || ("https://www.estatesales.net/" + encodeURIComponent(st) + "/" + encodeURIComponent(city.replace(/\s+/g, "-")) + "/" + encodeURIComponent(zip) + "/" + encodeURIComponent(id));
+    const img = Array.isArray(e.image) ? e.image[0] : (e.image && typeof e.image === "object" ? e.image.url : e.image);
+    items.push({
+      id: String(id), name: txt(e.name, 120) || txt(s.typeName, 40).replace(/([a-z])([A-Z])/g, "$1 $2") || "Estate sale",
+      url: url, img: https(img), type: txt(s.typeName, 40).replace(/([a-z])([A-Z])/g, "$1 $2"),
+      start: esDate(e.startDate) || esDate(s.firstLocalStartDate) || esDate(s.firstUtcStartDate),
+      end: esDate(e.endDate) || esDate(s.lastLocalEndDate) || esDate(s.lastUtcEndDate),
+      city: city, st: st, zip: zip, addr: txt(adr.streetAddress, 80),
+      lat: esNum(s.latitude != null ? s.latitude : geo.latitude), lon: esNum(s.longitude != null ? s.longitude : geo.longitude),
+      dist: esNum(s.distance), when: txt(s.saleScheduleName, 20)
+    });
+  };
+  state.forEach(s => add(String(s && s.id || ""), s, ld[String(s && s.id || "")]));
+  Object.keys(ld).forEach(id => add(id, null, ld[id]));
+  return items.slice(0, ES_MAX);
+}
+async function esFetch(place) {
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 10000);
+  try {
+    const r = await fetch("https://www.estatesales.net/" + place.st + "/" + encodeURIComponent(place.slug), { signal: ctl.signal,
+      headers: { "User-Agent": PROBE_UA, "Accept": "text/html,application/xhtml+xml", "Accept-Language": "en-US,en;q=0.9" } });
+    if (r.status !== 200) return { status: r.status, items: null };
+    return { status: 200, items: esParse(await r.text(), place) };
+  } catch (e) { return { status: 0, items: null }; }
+  finally { clearTimeout(timer); }
+}
+async function esSales(request, env, url, origin) {
+  const hdr = { "Cache-Control": "private, no-store", "Vary": "X-Prowl-Owner" };
+  const owner = isOwner(request, env), open = String(env.SALES_PUBLIC || "").toLowerCase() === "on";
+  if ((!owner && !open) || !env.PROWL_ALERTS) return json({ error: "not found" }, 404, origin, hdr);
+  const place = esPlace(url.searchParams.get("st"), url.searchParams.get("city"));
+  if (!place) return json({ error: "need a city and a two-letter state" }, 400, origin, hdr);
+  const old = await kvGet(env, place.key, null);
+  if (old && Array.isArray(old.items) && Date.now() - (old.at || 0) < ES_TTL_MS) return json({ city: place.city, st: place.st, at: old.at, items: old.items }, 200, origin, hdr);
+  if (!owner && !(await vCount("esf:" + ipKey(request.headers.get("CF-Connecting-IP")), ES_FETCH_PER_IP))) {
+    return old ? json({ city: place.city, st: place.st, at: old.at, items: old.items, stale: 1 }, 200, origin, hdr) : json({ error: "slow down" }, 429, origin, hdr);
+  }
+  const got = await esFetch(place);
+  if (!got.items) return old ? json({ city: place.city, st: place.st, at: old.at, items: old.items, stale: 1 }, 200, origin, hdr) : json({ error: "EstateSales.net did not answer (" + got.status + ")" }, 502, origin, hdr);
+  const v = { at: Date.now(), items: got.items };
+  try { await env.PROWL_ALERTS.put(place.key, JSON.stringify(v), { expirationTtl: 7 * 86400 }); } catch (e) {}
+  return json({ city: place.city, st: place.st, at: v.at, items: v.items }, 200, origin, hdr);
 }
 async function runProbes(env) {
   const srcs = [], resting = [];
@@ -5234,6 +5337,7 @@ async function handleFetch(request, env, ctx) {
       return itemRoute(env, url, origin, request);
     }
     if (url.pathname === "/fb-finds") return fbFinds(request, env, url, origin);   /* v94 */
+    if (url.pathname === "/sales" && request.method === "GET") return esSales(request, env, url, origin);   /* v103 */
     if (url.pathname === "/shop-picks") {
       return shopPicks(env, url, origin, request);
     }
