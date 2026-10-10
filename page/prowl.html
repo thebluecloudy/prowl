@@ -2665,7 +2665,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.79';
+var PROWL_VERSION='v6.80';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -7775,12 +7775,10 @@ try{loadSGW()}catch(e){}
 @keyframes pmHalo{0%{opacity:0}35%{opacity:.75}100%{opacity:0}}
 .scout-app-wrapper .pm-uni{position:absolute;top:4px;right:6px;font-size:18px;line-height:1;pointer-events:none;z-index:3;opacity:0;animation:pmUni 2.2s ease-out forwards}
 @keyframes pmUni{0%{opacity:0;transform:translateY(8px) rotate(-12deg) scale(.6)}25%{opacity:1;transform:translateY(-4px) rotate(6deg) scale(1.1)}70%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-14px)}}
-/* sparks and the walking panther are on body, outside the text-size zoom, so they land where the tap was */
+/* sparks are on body, outside the text-size zoom, so they land where the tap was */
 .pm-spark{position:fixed;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;pointer-events:none;z-index:2147483000;opacity:0;animation:pmSpark .8s ease-out forwards}
 .pm-spark.u{background:linear-gradient(135deg,#ffb3e6,#b5a8ff 50%,#9ff3ff)!important}
 @keyframes pmSpark{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.2)}}
-.pm-walk{position:fixed;left:0;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);width:54px;height:auto;pointer-events:none;z-index:2147482999;opacity:0;animation:pmWalk 3.2s linear forwards}
-@keyframes pmWalk{0%{opacity:0;transform:translateX(-70px)}10%{opacity:.85}90%{opacity:.85}100%{opacity:0;transform:translateX(calc(100vw + 10px))}}
 .scout-app-wrapper #otp-pan.pm-pounce img{animation:pmPounce .7s cubic-bezier(.3,1.6,.5,1)}
 @keyframes pmPounce{0%{transform:none}30%{transform:translateY(4px) scale(.96,1.03)}60%{transform:translateY(-6px) scale(1.04,.98)}100%{transform:none}}
 /* a sheen across a hunt chip as the pointer comes onto it (Hark drew it for the old quick-search chips); a moving
@@ -7796,12 +7794,12 @@ try{loadSGW()}catch(e){}
    the first time it appears this visit (the panel redraws as each marketplace answers; a card redrawn mid-rise carries
    on from where it was, ROSE keeps when each began). Listings new since your last look at a hunt (data-fresh, from seenFresh) glow,
    and the first of them after you start a hunt or pick one gets a unicorn. Starting a hunt sparkles, and the panther
-   pounces and walks across. Reduced motion is checked every time, so changing the setting is followed at once. */
+   pounces. Reduced motion is checked every time, so changing the setting is followed at once. */
 (function(){
   var root=document.querySelector('.scout-app-wrapper');
   if(!root||!window.MutationObserver||!window.requestAnimationFrame)return;
   function lively(){try{return !window.matchMedia||!window.matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}}
-  var CARD='.sgw-card,.hit,.found-card',ROSE=Object.create(null),HALO=Object.create(null),UNI=null,unicorns=1,walking=false,queue=[],queued=false,wait=[],tries=0,waitT=0;
+  var CARD='.sgw-card,.hit,.found-card',ROSE=Object.create(null),HALO=Object.create(null),UNI=null,unicorns=1,queue=[],queued=false,wait=[],tries=0,waitT=0;
   function gone(el,ms){setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el)},ms)}
   function accent(){var c='';try{c=getComputedStyle(root).getPropertyValue('--ac').trim()}catch(e){}return c||'#B0522B'}
   function key(el){var c=el.closest('[data-u]');return (c&&c.getAttribute('data-u'))||el.getAttribute('href')||(el.textContent||'').slice(0,80)}
@@ -7821,19 +7819,11 @@ try{loadSGW()}catch(e){}
     p.classList.remove('pm-pounce');void p.offsetWidth;p.classList.add('pm-pounce');
     setTimeout(function(){p.classList.remove('pm-pounce')},800);
   }
-  function walk(){
-    var src=document.getElementById('otp-panImg');if(walking||!src||!src.getAttribute('src'))return;
-    walking=true;var w=document.createElement('img');w.className='pm-walk';w.alt='';w.setAttribute('aria-hidden','true');w.src=src.getAttribute('src');
-    var d=document.getElementById('otp-dock'),r=d&&d.getBoundingClientRect();   /* just above the dock, at any text size */
-    if(r&&r.height&&r.top>0&&r.top<window.innerHeight)w.style.bottom=Math.round(window.innerHeight-r.top+8)+'px';
-    document.body.appendChild(w);
-    setTimeout(function(){if(w.parentNode)w.parentNode.removeChild(w);walking=false},3300);
-  }
   function startHunt(btn){
     unicorns=1;UNI=null;
     if(!lively())return;
     if(btn&&btn.getBoundingClientRect){var r=btn.getBoundingClientRect();sparks(r.left+r.width/2,r.top+r.height/2,12,true)}
-    pounce();walk();
+    pounce();   /* v6.80: the panther no longer walks across (a small logo sliding backwards read as an ant) */
   }
   var sf=document.getElementById('otp-sf');
   if(sf)sf.addEventListener('submit',function(){startHunt(sf.querySelector('button[type=submit]'))});

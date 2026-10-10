@@ -583,23 +583,19 @@ test('the chip sheen plays once each time the pointer comes onto a hunt, not aga
   await p.close();
 });
 
-test('starting a hunt sparkles at the button, the panther pounces and walks across; all of it is cleared away', async () => {
+test('starting a hunt sparkles at the button and the panther pounces; no panther walks across (v6.80); all of it is cleared away', async () => {
   const p = await results();
   p.$('#otp-sf').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   assert.equal(p.$$('body > .pm-spark').length, 12, 'on body, outside the text-size zoom');
-  assert.equal(p.$$('body > .pm-walk').length, 1);
   assert.ok(p.$('#otp-pan').classList.contains('pm-pounce'));
-  p.$('#otp-sf').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
-  assert.equal(p.$$('body > .pm-walk').length, 1, 'one panther at a time');
+  assert.equal(p.$$('.pm-walk').length, 0, 'the small logo sliding across read as an ant, so it is gone');
   await tick(1250);
   assert.equal(p.$$('.pm-spark').length, 0);
   assert.equal(p.$('#otp-pan').classList.contains('pm-pounce'), false);
-  await tick(2200);
-  assert.equal(p.$$('.pm-walk').length, 0);
   await p.close();
 });
 
-test('reduced motion: no rising cards, no glow, no sparks, no panther walk', async () => {
+test('reduced motion: no rising cards, no glow, no sparks, no pounce', async () => {
   const p = await results({ reducedMotion: true, storage: { 'prowl.seenUrls': { pyrex: ['https://shopgoodwill.com/item/pyrex-0'] } } });
   await tick(300);
   assert.equal(p.$$('.pm-in,.pm-halo,.pm-uni').length, 0);
