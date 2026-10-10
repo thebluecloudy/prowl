@@ -167,3 +167,27 @@ test("Email this: 6 a day per visitor, 12 per neighbourhood; the owner is not co
 test("the route is wired: POST /share/email", () => {
   assert.match(INDEX, /url\.pathname === "\/share\/email" && request\.method === "POST"\) \{[^}]*return shareEmail\(request, env, origin\);/);
 });
+
+/* ---------- v99: the garage-sale finders, for the admin area's button ---------- */
+test("salesProbe asks exactly the five fixed garage-sale addresses and says which a Worker can read", async () => {
+  const asked = [];
+  const pages = {
+    "https://detroit.craigslist.org/search/gms": [200, "<html>" + "x".repeat(5000) + "</html>"],
+    "https://gsalr.com/": [403, "<title>Just a moment...</title>"],
+    "https://www.yardsalesearch.com/": [200, "tiny"],
+  };
+  const deps = {
+    fetch: async (u) => { asked.push(u); if (u.includes("estatesales")) throw new Error("boom"); const p = pages[u] || [200, "y".repeat(3000)]; return { status: p[0], text: async () => p[1] }; },
+    AbortController, setTimeout, clearTimeout, PROBE_UA: "UA",
+  };
+  const keys = Object.keys(deps);
+  const consts = INDEX.match(/^const SALES_PROBES = .*$/m)[0];
+  const f = new Function(...keys, consts + "\n" + indexFn("buildCandidates") + "\n" + indexFn("salesProbe") + "\nreturn salesProbe;")(...keys.map((k) => deps[k]));
+  const r = await f();
+  assert.deepEqual(asked.sort(), ["https://detroit.craigslist.org/search/gms", "https://detroit.craigslist.org/search/gms?format=rss", "https://gsalr.com/", "https://www.estatesales.net/MI/Novi", "https://www.yardsalesearch.com/"]);
+  const by = Object.fromEntries(r.map((x) => [x.name, x]));
+  assert.equal(by["craigslist-gms"].readable, true);
+  assert.equal(by.gsalr.wall, true); assert.equal(by.gsalr.readable, false);
+  assert.equal(by.yardsalesearch.readable, false, "an almost empty page is not readable");
+  assert.equal(by["estatesales-city"].status, 0); assert.equal(by["estatesales-city"].err, "boom");
+});

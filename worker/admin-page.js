@@ -362,7 +362,7 @@ const SS = {
   set: (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) { /* private mode: just don't remember */ } }
 };
 const TABS = ["overview", "members", "diagnose", "errors", "searches", "affiliates"];
-const S = { tab: "", aData: null, ov: null, ovAt: 0, ovSeq: 0, out: false, health: null, routesAll: false, top: "today",
+const S = { tab: "", aData: null, ov: null, ovAt: 0, ovSeq: 0, out: false, health: null, sales: null, routesAll: false, top: "today",
   mFilter: "all", mSort: "created", mData: null, mAt: 0, mSeq: 0, member: null, memberId: "", pushed: false, lastMsg: null,
   late: null, diag: null, dSel: null, diagRes: null, diagShow: "all", diagSeq: 0, errSeq: 0, sDays: 7, sSeq: 0, toastT: 0,
   gData: null, gAt: 0, gSeq: 0, giftsAll: false, glen: null };
@@ -519,7 +519,7 @@ const AI = { match: "Match", lot: "Lot or set", reproduction: "Reproduction", pa
 const AUDIT = { login: "Admin sign-in", logout: "Admin sign-out", "signin-link": "Sent a sign-in link", "refresh-pro": "Re-checked Pro",
   "recheck-today": "Re-check hunts today", "resend-today": "Send today's email again", "mail-on": "Turned emails on", "mail-off": "Turned emails off",
   unpause: "Unpaused", "signout-all": "Signed out all devices", "clear-seen": "Cleared already-sent memory", delete: "Deleted a member",
-  find: "Looked up a member", diagnose: "Ran Diagnose", healthcheck: "Ran a health check",
+  find: "Looked up a member", diagnose: "Ran Diagnose", healthcheck: "Ran a health check", salescheck: "Checked the garage-sale sites",
   "aff-on": "Turned an affiliate on", "aff-off": "Turned an affiliate off", "aff-ids": "Saved affiliate IDs", "gift-add": "Gifted Pro", "gift-remove": "Turned off a gift", "gift-on": "Gifted Pro to a member", "gift-off": "Turned off free Pro" };
 const ISSUES = { members: "member counts", alerts: "alert emails", metrics: "speed, errors and uptime", traffic: "speed and errors", uptime: "uptime",
   ai: "AI usage", pools: "AI usage", searches: "top searches", audit: "admin activity", errors: "recent errors" };
@@ -805,7 +805,17 @@ function marketsCard(ov) {
       h("span", { class: "nw", text: lastCheck(u) }), u.lastMs == null ? "\u2014" : secs(u.lastMs), num(u.lastN),
       u.lastErr || u.down ? h("span", { class: "small", text: (u.lastErr || "Last test search failed") + (u.down ? ". " + (u.lastOkAt ? "Last worked " + fmtWhen(u.lastOkAt) + "." : "No good check in 7 days.") : "") }) : ""]),
     "Marketplaces", true);
-  return card("markets", "Marketplaces", btn, [body, hbox], "A small test search runs on each marketplace every hour.");
+  /* v99: the garage-sale finders, on demand */
+  const sbox = h("div", { class: "hbox" }, salesView());
+  const sbtn = h("button", { class: "btn btn-s", type: "button", text: "Check garage-sale sites", disabled: !!(S.sales && S.sales.busy) });
+  sbtn.addEventListener("click", async () => {
+    if (S.sales && S.sales.busy) return;
+    sbtn.disabled = true; S.sales = { busy: true }; fill(sbox, salesView());
+    try { const j = await api("/admin/api/salescheck", {}); S.sales = { at: Date.now(), results: Array.isArray(j.results) ? j.results : [] }; }
+    catch (e) { S.sales = e.status === 401 ? null : { error: e.message }; }
+    sbtn.disabled = false; fill(sbox, salesView());
+  });
+  return card("markets", "Marketplaces", btn, [body, hbox, h("div", { class: "more" }, [sbtn]), sbox], "A small test search runs on each marketplace every hour.");
 }
 /* lastAt = when the latest test search ran (ms); older data only has the hour it last worked */
 function lastCheck(u) { const at = u.lastAt || u.lastOkAt; return at ? fmtWhen(at) : "\u2014"; }
@@ -819,6 +829,19 @@ function healthView() {
     tableOf([{ t: "Marketplace" }, { t: "Result", bare: 1 }, { t: "Speed", num: 1 }, { t: "Listings", num: 1 }, { t: "Note", cls: "wide" }],
       H.results.map(r => [srcName(r.source), r.ok ? st("good", "Up") : st("critical", "Down"), secs(r.ms), num(r.n), r.err || (r.status && r.status !== 200 ? "Answered " + r.status : "")]),
       "Health check results", true)]);
+}
+const SALES_NAMES = { "estatesales-city": "EstateSales.net (Novi)", "craigslist-gms": "Craigslist garage sales (Detroit)", "craigslist-gms-rss": "Craigslist garage sales, RSS feed", gsalr: "gsalr.com", yardsalesearch: "YardSaleSearch.com" };
+function salesView() {
+  const X = S.sales;
+  if (!X) return null;
+  if (X.busy) return loading("Asking the garage-sale sites from Cloudflare\u2026 up to 10 seconds.");
+  if (X.error) return note("bad", "Check failed. " + X.error);
+  const ok = X.results.filter(r => r.readable).length;
+  return h("div", { class: "more" }, [h("h3", { class: "small", text: "Garage-sale sites at " + fmtTime(new Date(X.at)) + ": " + ok + " of " + X.results.length + " readable by Prowl" }),
+    tableOf([{ t: "Site" }, { t: "Result", bare: 1 }, { t: "Answer", num: 1 }, { t: "Size", num: 1 }, { t: "Note", cls: "wide" }],
+      X.results.map(r => [SALES_NAMES[r.name] || r.name, r.readable ? st("good", "Readable") : r.wall ? st("critical", "Bot wall") : st("warning", "Not readable"),
+        r.status ? String(r.status) : "\u2014", num(r.bytes), r.err || (r.wall ? "It shows a robot check to Prowl." : r.readable ? "A page with content came back." : r.status === 200 ? "Almost empty page." : "")]),
+      "Garage-sale sites", true)]);
 }
 function alertsCard(ov) {
   const a = ov.alerts;

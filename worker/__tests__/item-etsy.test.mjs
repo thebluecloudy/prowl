@@ -88,5 +88,5 @@ test("/item sends Etsy to the Etsy reader; no Etsy keys means a plain 502", asyn
   assert.equal(r.status, 200); assert.equal(r.body.src, "etsy"); assert.equal(r.body.id, "1234567890"); assert.equal(r.body.images.length, 2);
   r = await load(async () => { throw new Error("ETSY_API_KEY / ETSY_SHARED_SECRET not set"); }).itemRoute({}, u, "o", req);
   assert.equal(r.status, 502); assert.equal(r.body.error, "upstream unreachable");
-  assert.match(INDEX, /const WORKER_VERSION = "v(8[89]|9\d)";/);
+  assert.match(INDEX, /const WORKER_VERSION = "v(8[89]|9\d|[1-9]\d{2})";/);
 });

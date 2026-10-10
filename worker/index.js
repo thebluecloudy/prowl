@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v100: 2026-10-10. The admin area's Marketplaces card has "Check garage-sale sites": the same five fixed addresses,
+ *        asked from Cloudflare, each marked Readable, Bot wall or Not readable (/__probe needs the debug key, which a
+ *        browser address bar cannot send, so it answers "not found").
  *   v99: 2026-10-10. /__probe also asks the garage-sale finders (EstateSales.net by city, Craigslist garage sales
  *        and its RSS, gsalr, yardsalesearch), fixed addresses, so the owner can see from Cloudflare which ones a
  *        Worker may read before the Local tab shows their listings.
@@ -345,7 +348,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-const WORKER_VERSION = "v99";
+const WORKER_VERSION = "v100";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4892,6 +4895,23 @@ async function liveFetchLocal(env, sub, term) {
 }
 const PROBE_TERMS = { chairish: "vintage lamp", grailed: "vintage levis" };
 /* v78: one small test search per live marketplace (hourly from the cron, or the admin's "Run health check now") */
+/* v99: the garage-sale finders, asked from Cloudflare at fixed addresses (the same ones /__probe lists), for the
+   admin area's "Check garage-sale sites" button: can a Worker read them, or is there a wall? Nothing is kept. */
+const SALES_PROBES = ["estatesales-city", "craigslist-gms", "craigslist-gms-rss", "gsalr", "yardsalesearch"];
+async function salesProbe() {
+  const all = buildCandidates("ceramic panther").filter(c => SALES_PROBES.indexOf(c[0]) !== -1);
+  return Promise.all(all.map(async ([name, u]) => {
+    const t0 = Date.now(), ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 10000);
+    try {
+      const r = await fetch(u, { signal: ctl.signal, headers: { "User-Agent": PROBE_UA, "Accept": "*/*", "Accept-Language": "en-US,en;q=0.9" } });
+      const t = await r.text();
+      const wall = /just a moment|attention required|enable javascript|access denied|are you a robot|cf-browser-verification|px-captcha|captcha/i.test(t.slice(0, 4000));
+      return { name: name, url: u, status: r.status, ms: Date.now() - t0, bytes: t.length, wall: wall, readable: r.status === 200 && !wall && t.length > 2000 };
+    } catch (e) {
+      return { name: name, url: u, status: 0, ms: Date.now() - t0, bytes: 0, wall: false, readable: false, err: String(e && e.name === "AbortError" ? "no answer in 10 seconds" : (e && e.message) || e).slice(0, 120) };
+    } finally { clearTimeout(timer); }
+  }));
+}
 async function runProbes(env) {
   const srcs = [], resting = [];
   /* v91: a marketplace cooling down is not asked; its record says so, so a long block does not look healthy */
@@ -4905,7 +4925,7 @@ async function runProbes(env) {
 }
 const ADMIN_H = {
   kvGet, kvPut, alNow, alLocal, alPrefs, alActive, alSlotHour, alSendDay, alPaused, alFree, alFreeWeekly, alLegacyFree, alUrgency,
-  alProSet, alMerge, alSendSignin, alToken, liveSources, liveFetch, jevClean, jevWouldDrop, memberDropReason, alExact, alNear, runProbes,
+  alProSet, alMerge, alSendSignin, alToken, liveSources, liveFetch, jevClean, jevWouldDrop, memberDropReason, alExact, alNear, runProbes, salesProbe,
   capsCall, capsDay, vCount, ipKey, ipNet, alSame, statTerm, scrubPII, summarize, uptimeFrom, pctFromHist,
   giftHash, alEmail, proListHas, proListCount, alSendGift, alPurge,   /* v83: alPurge */
   jevResultsMode, liveFetchLocal, alTitleKey,   /* v78: Diagnose follows what alerts really do */
