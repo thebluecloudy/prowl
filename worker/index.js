@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v102: 2026-10-10. The garage-sale check also says what the EstateSales.net page carries (salesShape): its data block,
+ *        the biggest list that looks like sales, that list's field names and its first entry, cut short. To write
+ *        the extractor against the real page.
  *   v101: 2026-10-10. gsalr.com out of /__probe and the garage-sale check: its terms forbid automated access of any kind.
  *   v100: 2026-10-10. The admin area's Marketplaces card has "Check garage-sale sites": the same five fixed addresses,
  *        asked from Cloudflare, each marked Readable, Bot wall or Not readable (/__probe needs the debug key, which a
@@ -349,7 +352,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-const WORKER_VERSION = "v101";
+const WORKER_VERSION = "v102";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4900,6 +4903,50 @@ const PROBE_TERMS = { chairish: "vintage lamp", grailed: "vintage levis" };
 /* v101: gsalr is out. Its terms (2026-01-24) forbid any automated access, even checking whether it is up "for any
    competitive purpose", with damages per page and per day; Prowl never asks it again. */
 const SALES_PROBES = ["estatesales-city", "craigslist-gms", "craigslist-gms-rss", "yardsalesearch"];
+/* v102: what a sale-finder page carries, so an extractor is written against facts, not guesses: which framework's
+   data block is in it, and the biggest list of objects that looks like sales (it has a latitude, a date or a city),
+   with its path, its size, the field names of its first entry and that entry cut short. Owner-only, one page. */
+function salesShape(html) {
+  html = String(html || "");
+  const out = { next: /<script[^>]+id="__NEXT_DATA__"/.test(html), nuxt: /__NUXT__/.test(html), ngState: /<script[^>]+id="(ng-state|serverApp-state)"/.test(html),
+    initialState: /__(INITIAL|PRELOADED)_STATE__/.test(html), ldTypes: [], best: null, blocks: 0 };
+  const blocks = [];
+  html.replace(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi, (m, attrs, body) => {
+    if (/application\/(ld\+)?json/i.test(attrs) || /id="(__NEXT_DATA__|ng-state|serverApp-state)"/i.test(attrs)) blocks.push(body);
+    else { const m2 = /__(?:INITIAL|PRELOADED)_STATE__\s*=\s*(\{[\s\S]*\})\s*;?\s*$/.exec(body); if (m2) blocks.push(m2[1]); }
+    return m;
+  });
+  out.blocks = blocks.length;
+  const saleish = o => o && typeof o === "object" && !Array.isArray(o) && Object.keys(o).some(k => /lat|lon|lng|date|start|city|zip|address/i.test(k));
+  const seen = [];
+  const walk = (v, path, d) => {
+    if (d > 9 || v == null || typeof v !== "object") return;
+    if (Array.isArray(v)) {
+      if (v.length >= 2 && saleish(v[0])) seen.push({ path: path, count: v.length, item: v[0] });
+      v.slice(0, 3).forEach((x, i) => walk(x, path + "[" + i + "]", d + 1));
+      return;
+    }
+    Object.keys(v).slice(0, 80).forEach(k => walk(v[k], path + "." + k, d + 1));
+  };
+  blocks.forEach((b, i) => {
+    let j = null;
+    try { j = JSON.parse(b.trim().replace(/^<!--|-->$/g, "")); } catch (e) { return; }
+    (Array.isArray(j) ? j : [j]).forEach(x => { if (x && x["@type"]) out.ldTypes.push(String(x["@type"]).slice(0, 30)); });
+    walk(j, "block" + i, 0);
+  });
+  out.ldTypes = out.ldTypes.slice(0, 12);
+  seen.sort((a, b) => b.count - a.count);
+  if (seen.length) {
+    const it = seen[0].item, short = {};
+    Object.keys(it).slice(0, 50).forEach(k => {
+      const v = it[k];
+      short[k] = v == null ? null : typeof v === "object" ? (Array.isArray(v) ? "[" + v.length + "]" : "{" + Object.keys(v).slice(0, 8).join(",") + "}") : String(v).slice(0, 60);
+    });
+    out.best = { path: seen[0].path, count: seen[0].count, fields: Object.keys(it).slice(0, 60), first: short };
+    out.others = seen.slice(1, 4).map(x => ({ path: x.path, count: x.count }));
+  }
+  return out;
+}
 async function salesProbe() {
   const all = buildCandidates("ceramic panther").filter(c => SALES_PROBES.indexOf(c[0]) !== -1);
   return Promise.all(all.map(async ([name, u]) => {
@@ -4908,7 +4955,9 @@ async function salesProbe() {
       const r = await fetch(u, { signal: ctl.signal, headers: { "User-Agent": PROBE_UA, "Accept": "*/*", "Accept-Language": "en-US,en;q=0.9" } });
       const t = await r.text();
       const wall = /just a moment|attention required|enable javascript|access denied|are you a robot|cf-browser-verification|px-captcha|captcha/i.test(t.slice(0, 4000));
-      return { name: name, url: u, status: r.status, ms: Date.now() - t0, bytes: t.length, wall: wall, readable: r.status === 200 && !wall && t.length > 2000 };
+      const res = { name: name, url: u, status: r.status, ms: Date.now() - t0, bytes: t.length, wall: wall, readable: r.status === 200 && !wall && t.length > 2000 };
+      if (name === "estatesales-city" && res.readable) { try { res.shape = salesShape(t); } catch (e) {} }   /* v102 */
+      return res;
     } catch (e) {
       return { name: name, url: u, status: 0, ms: Date.now() - t0, bytes: 0, wall: false, readable: false, err: String(e && e.name === "AbortError" ? "no answer in 10 seconds" : (e && e.message) || e).slice(0, 120) };
     } finally { clearTimeout(timer); }
@@ -4927,7 +4976,7 @@ async function runProbes(env) {
 }
 const ADMIN_H = {
   kvGet, kvPut, alNow, alLocal, alPrefs, alActive, alSlotHour, alSendDay, alPaused, alFree, alFreeWeekly, alLegacyFree, alUrgency,
-  alProSet, alMerge, alSendSignin, alToken, liveSources, liveFetch, jevClean, jevWouldDrop, memberDropReason, alExact, alNear, runProbes, salesProbe,
+  alProSet, alMerge, alSendSignin, alToken, liveSources, liveFetch, jevClean, jevWouldDrop, memberDropReason, alExact, alNear, runProbes, salesProbe, salesShape,
   capsCall, capsDay, vCount, ipKey, ipNet, alSame, statTerm, scrubPII, summarize, uptimeFrom, pctFromHist,
   giftHash, alEmail, proListHas, proListCount, alSendGift, alPurge,   /* v83: alPurge */
   jevResultsMode, liveFetchLocal, alTitleKey,   /* v78: Diagnose follows what alerts really do */

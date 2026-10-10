@@ -135,6 +135,7 @@ main.wrap{padding-top:16px;padding-bottom:64px}
 .grow{flex:1;min-width:0}
 .card>.note+.facts{margin-top:12px}
 .hbox>.more{margin-top:20px;padding-top:14px;border-top:1.5px solid var(--hair2)}
+.shape{white-space:pre-wrap;word-break:break-word;max-height:360px;overflow:auto;margin:10px 0 0;padding:10px;border:1px solid var(--hair2);border-radius:8px}
 .lnk{font:inherit;color:var(--link);background:none;border:0;padding:0;text-decoration:underline;cursor:pointer;font-weight:600}
 .banner{display:flex;gap:12px;align-items:flex-start;border:2px solid var(--ol);border-radius:12px;padding:14px 16px}
 .banner.ok{background:var(--good-bg)}
@@ -841,7 +842,13 @@ function salesView() {
     tableOf([{ t: "Site" }, { t: "Result", bare: 1 }, { t: "Answer", num: 1 }, { t: "Size", num: 1 }, { t: "Note", cls: "wide" }],
       X.results.map(r => [SALES_NAMES[r.name] || r.name, r.readable ? st("good", "Readable") : r.wall ? st("critical", "Bot wall") : st("warning", "Not readable"),
         r.status ? String(r.status) : "\u2014", num(r.bytes), r.err || (r.wall ? "It shows a robot check to Prowl." : r.readable ? "A page with content came back." : r.status === 200 ? "Almost empty page." : "")]),
-      "Garage-sale sites", true)]);
+      "Garage-sale sites", true)].concat(X.results.filter(r => r.shape).map(r => {
+      /* v102: what the page carries, to copy and send */
+      const pre = h("pre", { class: "small shape", text: r.shape });
+      const cp = h("button", { class: "btn btn-s", type: "button", text: "Copy page details" });
+      cp.addEventListener("click", () => { try { navigator.clipboard.writeText(r.shape).then(() => toast("Copied. Paste it to Claude."), () => toast("Could not copy. Select the text and copy it.", true)); } catch (e) { toast("Could not copy. Select the text and copy it.", true); } });
+      return h("div", { class: "more" }, [h("h3", { class: "small", text: "What the " + (SALES_NAMES[r.name] || r.name) + " page carries" }), cp, pre]);
+    })));
 }
 function alertsCard(ov) {
   const a = ov.alerts;
