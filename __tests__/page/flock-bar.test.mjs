@@ -21,7 +21,23 @@ async function flock(hunts, storage = {}) {
   await tick(50);
   p.$('#otp-dock .db[data-m="flock"]').click();
   await waitFor(() => cards(p).length >= 3, { timeout: 8000 });
+  p.calls = f.calls;
   return p;
+}
+
+/* Flock redraws as late answers come in (flockRenderSoon, 180ms after the last one), and a redraw that re-sorts the feed
+   replaces every card. Wait until no answer has come and nothing in the feed has changed for well past that. */
+async function settled(p, quiet = 600) {
+  const row = p.$('#otp-flockRow');
+  let last = Date.now(), n = p.calls.length;
+  const mo = new p.win.MutationObserver(() => { last = Date.now(); });
+  mo.observe(row, { childList: true, subtree: true });
+  try {
+    await waitFor(() => {
+      if (p.calls.length !== n) { n = p.calls.length; last = Date.now(); }
+      return Date.now() - last >= quiet;
+    }, { timeout: 8000 });
+  } finally { mo.disconnect(); }
 }
 
 test('every card: photo and text first, then one row with the site, the heart, Share and the star', async () => {
@@ -161,17 +177,25 @@ test('the ✕ and the price are placed from the photo, which has a floor; a card
 
 test('a card taller than the feed: a wheel step or ↓ shows its row first, the next step goes on to the next card', async () => {
   const p = await flock(['Roseville jardiniere', 'Pyrex Butterprint']);
+  await settled(p);
   const row = p.$('#otp-flockRow');
-  /* jsdom has no layout: a 200px feed of 300px cards (a short screen with larger text) */
-  let st = 0;
+  /* jsdom has no layout: a 200px feed of 300px cards (a short screen with larger text). The cards' layout comes from
+     their place in the feed, not from the elements themselves, so a redraw that replaces them keeps it */
+  let st = 0, H = 300;
   Object.defineProperty(row, 'scrollTop', { get: () => st, set: (v) => { st = v; }, configurable: true });
   Object.defineProperty(row, 'clientHeight', { get: () => 200, configurable: true });
   row.scrollTo = (o) => { st = o.top; };
-  const all = [...row.querySelectorAll('.fl-card,.fl-note')];
-  all.forEach((c, i) => {
-    Object.defineProperty(c, 'offsetTop', { get: () => i * 300, configurable: true });
-    Object.defineProperty(c, 'offsetHeight', { get: () => 300, configurable: true });
-  });
+  const proto = p.win.HTMLElement.prototype;
+  for (const [k, at] of [['offsetTop', (i) => i * H], ['offsetHeight', () => H]]) {
+    const own = Object.getOwnPropertyDescriptor(proto, k);
+    Object.defineProperty(proto, k, {
+      configurable: true,
+      get() {
+        const i = row.contains(this) ? [...row.querySelectorAll('.fl-card,.fl-note')].indexOf(this) : -1;
+        return i < 0 ? own.get.call(this) : at(i);
+      },
+    });
+  }
   const key = (k) => row.dispatchEvent(new p.win.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
   key('ArrowDown');
   assert.equal(st, 100, 'down to the first card\'s foot, where its row is');
@@ -186,10 +210,7 @@ test('a card taller than the feed: a wheel step or ↓ shows its row first, the 
   wheel(60);
   assert.equal(st, 300);
   /* a card that fits moves a whole card per step, as before */
-  all.forEach((c, i) => {
-    Object.defineProperty(c, 'offsetTop', { get: () => i * 200, configurable: true });
-    Object.defineProperty(c, 'offsetHeight', { get: () => 200, configurable: true });
-  });
+  H = 200;
   st = 0;
   key('ArrowDown');
   assert.equal(st, 200);

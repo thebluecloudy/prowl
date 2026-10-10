@@ -112,3 +112,21 @@ frame (`stillSvg`), for phones (`hover:none`), where the animation kept a mid-ra
 scene's shape) holds the mark and the scene fades in over it, so nothing moves when it arrives; under reduced motion, the
 mark alone (the lazy image is never fetched); if the scene cannot load, the mark stays. A new drawing: change the file in
 `worker/art/`, re-embed it in `worker/art.js` and bump `HERO_V`.
+
+## Panther QR (page v6.77)
+
+Tap the panther at the top of the app (or the little QR square on its corner) to show someone Prowl: the bottom sheet
+opens with the QR code, bigger than in the share strip, the name to say out loud ("Prowl by Owl & Twig"), the address,
+and **Send the link** (the system share sheet, else the link is copied). The panther pounces first, except under reduced
+motion. The code is copied from the share strip's `#otp-qrPanel .qr-box`, so there is one QR to keep right; the share
+strip and its own QR button are unchanged. Once the panther has tucked away on scroll it is `visibility:hidden`, so its
+button leaves the tab order. Tests: `__tests__/page/panther-qr.test.mjs`.
+
+## What you'd clear: eBay fees corrected (page v6.78)
+
+The price pill on a Flock card opens "What you'd clear" (`marginCalc`, `flMargin`). From v6.39 it took a separate
+payment processing fee (2.7% + $0.25), which eBay has not charged since its managed payments: the final value fee
+includes it, so every answer was about 3% low. It now takes eBay's per-order fee instead ($0.30 on orders of $10 or
+less, $0.40 above), and the final value fee is 13.6% of the first $7,500 and 2.35% of the rest. Promoted listing stays
+at 2%. Fees as checked 2026-10-10; they live in `FEES`. The sheet still takes the listing's own price as the sale
+price. Tests: `__tests__/page/flock-next.test.mjs`.

@@ -588,6 +588,19 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 [data-theme=uranium] .scout-app-wrapper .pmark img{filter:drop-shadow(0 0 18px rgba(57,255,20,.45))}
 .scout-app-wrapper .pmark+.eb{margin-top:10px}
 @media(max-width:480px){.scout-app-wrapper .pmark img{max-height:150px;max-width:92vw}}
+/* v6.77: the panther is a button that shows the QR code, so showing someone Prowl is one tap from the top of the app.
+   The little square on its corner says so. Theme resets, as for any button in the page body. */
+.scout-app-wrapper .pm-btn{position:relative;display:block;margin:0;padding:0;border:0;background:none;-webkit-appearance:none;appearance:none;text-transform:none;letter-spacing:normal;min-height:0;cursor:pointer;border-radius:14px;color:var(--ink);-webkit-tap-highlight-color:transparent}
+.scout-app-wrapper .pm-btn:focus-visible{outline:2px solid var(--ac);outline-offset:4px}
+.scout-app-wrapper .pm-qr{position:absolute;right:2px;bottom:2px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:var(--cd);border:1px solid var(--l2);color:var(--ink);box-shadow:0 2px 8px -3px var(--shadow-lg,rgba(0,0,0,.35))}
+.scout-app-wrapper .pm-qr svg{width:18px;height:18px;display:block}
+.scout-app-wrapper .pm-btn:hover .pm-qr{border-color:var(--ac);color:var(--ac)}
+[data-theme=uranium] .scout-app-wrapper .pm-qr{color:#39ff14;border-color:rgba(57,255,20,.6)}
+/* in the sheet the code is bigger: easier for a phone camera held across a table */
+.scout-app-wrapper .qr-panel.qr-big{margin:4px auto 0}
+.scout-app-wrapper .qr-panel.qr-big svg{width:240px;height:240px;max-width:70vw;max-height:70vw}
+.scout-app-wrapper .qr-panel .qr-name{font-size:13px}
+.scout-app-wrapper .qr-panel.qr-big .b{margin-top:14px}
 /* ---- stores near you (Den > Local) ---- */
 .scout-app-wrapper .lochelp{margin:0 0 14px;border:1px solid var(--ln);border-radius:12px;background:var(--cd2)}
 .scout-app-wrapper .lochelp>summary{list-style:none;cursor:pointer;padding:11px 14px;font-size:13px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px}
@@ -1731,7 +1744,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 </header>
 
 <main>
-  <div class="pmark" id="otp-pan"><img id="otp-panImg" src="https://cdn.shopify.com/s/files/1/0807/8537/5486/files/panther_white_eyes_new_tail_clear.png?v=1785688388" alt="" decoding="async"></div>
+  <div class="pmark" id="otp-pan"><button class="pm-btn" id="otp-panQr" type="button" aria-label="Show the Prowl QR code" title="Show the QR code"><img id="otp-panImg" src="https://cdn.shopify.com/s/files/1/0807/8537/5486/files/panther_white_eyes_new_tail_clear.png?v=1785688388" alt="" decoding="async"><span class="pm-qr" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2"></path></svg></span></button></div>
   <p class="eb" id="otp-verEb"></p>
   <div class="proban" id="otp-proBan" hidden></div>
 
@@ -1836,7 +1849,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     <section class="apr" id="otp-apr" aria-labelledby="otp-aprT">
       <div class="apr-row">
         <div class="apr-txt">
-<b id="otp-aprT">At a sale? Check a photo.</b><span>Snap the piece and get what it is, visible flaws and a fair range.</span>
+<b id="otp-aprT">At a sale? Check a photo.</b><span>Snap the piece and get what it is, visible flaws and a fair range. Fill the frame with just that piece: other things in the photo can throw it off.</span>
 </div>
         <label class="apr-price" for="otp-aprP"><span>Asking</span><input id="otp-aprP" type="text" inputmode="decimal" placeholder="$ optional" autocomplete="off"></label>
         <label class="apr-price apr-hint" for="otp-aprH"><span>Maker</span><input id="otp-aprH" type="text" maxlength="80" placeholder="if you know it" autocomplete="off"></label>
@@ -2652,7 +2665,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.76';
+var PROWL_VERSION='v6.79';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -6298,15 +6311,19 @@ function rDenLikes(){
 })();
 function watchDrop(u){var a=watchGet(),i=watchIdx(u),was=i>-1?a[i]:null;if(was){a.splice(i,1);watchPut(a)}return was}
 
-/* v6.39 margin math: eBay's fee stack as checked 2026-10-06. Final value ~13.6%, payment processing 2.7% + $0.25,
-   Promoted Listings General 2% baseline. Every source uses the eBay stack for now, and the sheet says so. */
-var FEES={fvf:0.136,proc:0.027,procFix:0.25,promo:0.02};
+/* v6.39 margin math: eBay's fee stack. Promoted Listings General 2% baseline. Every source uses the eBay stack for now,
+   and the sheet says so.
+   v6.78: eBay has charged no separate payment processing since its managed payments: the final value fee includes it.
+   v6.39 took 2.7% + $0.25 on top, about 3% too much. What eBay adds is a per-order fee, $0.30 on orders of $10 or less
+   and $0.40 above (checked 2026-10-10). The final value fee is 13.6% of the first $7,500 and 2.35% of the rest. */
+var FEES={fvf:0.136,fvfCap:7500,fvfOver:0.0235,order:0.40,orderSmall:0.30,orderSmallMax:10,promo:0.02};
 function priceNum(p){var m=String(p==null?'':p).replace(/,/g,'').match(/(\d+(?:\.\d+)?)/);return m?parseFloat(m[1]):NaN}
 function cents(x){return Math.round(x*100+1e-9)/100}
 function marginCalc(price){
   var p=typeof price==='number'?price:priceNum(price);if(!(p>0))return null;
-  var f=cents(p*FEES.fvf),pr=cents(p*FEES.proc+FEES.procFix),pm=cents(p*FEES.promo);
-  return {price:cents(p),fvf:f,proc:pr,promo:pm,clear:cents(p-f-pr-pm)};
+  var f=cents(Math.min(p,FEES.fvfCap)*FEES.fvf+Math.max(0,p-FEES.fvfCap)*FEES.fvfOver),
+      o=p<=FEES.orderSmallMax?FEES.orderSmall:FEES.order,pm=cents(p*FEES.promo);
+  return {price:cents(p),fvf:f,order:o,promo:pm,clear:cents(p-f-o-pm)};
 }
 function money(x){var neg=x<0;x=Math.abs(x);var s=x.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');return (neg?'\u2212$':'$')+s}
 
@@ -6340,8 +6357,8 @@ function flMargin(card){
     '<p class="mg-sub">Assuming you resell on eBay. Listed at '+esc(money(m.price))+' on '+esc(mktName(src)||'ShopGoodwill')+'.</p>'+
     '<dl class="mg-rows">'+
       '<div><dt>List price</dt><dd>'+money(m.price)+'</dd></div>'+
-      '<div><dt>Final value fee <small>13.6%</small></dt><dd>'+money(-m.fvf)+'</dd></div>'+
-      '<div><dt>Payment processing <small>2.7% + $0.25</small></dt><dd>'+money(-m.proc)+'</dd></div>'+
+      '<div><dt>Final value fee <small>13.6%'+(m.price>FEES.fvfCap?', 2.35% over $7,500':'')+'</small></dt><dd>'+money(-m.fvf)+'</dd></div>'+
+      '<div><dt>Per-order fee</dt><dd>'+money(-m.order)+'</dd></div>'+
       '<div><dt>Promoted listing <small>2%</small></dt><dd>'+money(-m.promo)+'</dd></div>'+
     '</dl>'+
     '<div class="mg-clear"><span>You\u2019d clear</span><b>'+money(m.clear)+'</b></div>'+
@@ -6764,6 +6781,32 @@ if(qrb&&qrp)qrb.addEventListener('click',function(){
   }
 });
 
+/* v6.77: tap the panther (or its little QR square) to show someone Prowl. Finding the QR at the foot of the page took
+   too long with a person waiting. The sheet shows the same code as the share strip (copied from it, so there is one
+   code to keep right), bigger, with the name to say out loud and a button to send the link. */
+var panQr=$('#otp-panQr');
+function showQr(){
+  var box=$('#otp-qrPanel .qr-box');if(!box)return;
+  var u=shb?shb.getAttribute('href'):'https://owlandtwigvintage.com/pages/prowl';
+  openSheet('Show someone Prowl','<div class="qr-panel qr-big">'+box.outerHTML+
+    '<p>Have them point their <b>phone camera</b> at it. Prowl opens straight away.</p>'+
+    '<p class="qr-name">Or search <b>Prowl by Owl &amp; Twig</b><br>'+esc(u.replace(/^https?:\/\/(www\.)?/,''))+'</p>'+
+    '<button type="button" class="b" id="otp-qrSend">\ud83d\udce4 Send the link</button></div>');
+  var sb=$('#otp-qrSend');
+  if(sb)sb.addEventListener('click',function(){
+    if(navigator.share){try{navigator.share({title:'Prowl',url:u})['catch'](function(){});return}catch(e){}}
+    if(copyTerm(u))toast('Link copied.',2600);
+  });
+}
+if(panQr)panQr.addEventListener('click',function(){
+  var pp=$('#otp-pan');   /* a little pounce first, as when a hunt starts */
+  if(pp&&!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)){
+    pp.classList.remove('pm-pounce');void pp.offsetWidth;pp.classList.add('pm-pounce');
+    setTimeout(function(){pp.classList.remove('pm-pounce')},800);
+  }
+  showQr();
+});
+
 /* ---------- PANTHER SCROLL TUCK ---------- */
 var pan=$('#otp-pan');
 if(pan){
@@ -6776,6 +6819,7 @@ if(pan){
       var k=y/PAN_RANGE;if(k<0)k=0;if(k>1)k=1;
       pan.style.opacity=1-k;
       pan.style.transform='translateY('+(-26*k).toFixed(2)+'px) scale('+(1-0.14*k).toFixed(3)+')';
+      pan.style.visibility=k>=1?'hidden':'';   /* v6.77: fully tucked, its QR button leaves the tab order too */
     });
   }
   var panImg=$('#otp-panImg');
