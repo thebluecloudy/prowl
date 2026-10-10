@@ -192,3 +192,29 @@ test("salesProbe asks exactly the four fixed garage-sale addresses (v101: gsalr 
   assert.equal(by.gsalr, undefined, "v101: never gsalr");
   assert.equal(by["estatesales-city"].status, 0); assert.equal(by["estatesales-city"].err, "boom");
 });
+
+/* ---------- v102: what a sale-finder page carries ---------- */
+const SHAPE = new Function(indexFn("salesShape") + "\nreturn salesShape;")();
+test("salesShape finds the list of sales in a Next.js data block: its path, size, fields and first entry", () => {
+  const sales = [1, 2, 3].map((i) => ({ id: 100 + i, name: "Estate sale " + i, latitude: [0, 42.49, 42.5, 42.51][i], longitude: -83.47, firstStartAt: "2026-10-1" + i, cityName: "Novi", photos: [{}, {}] }));
+  const html = `<html><head><script type="application/ld+json">{"@type":"Organization","name":"x"}</script></head><body>
+    <script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { menu: [{ a: 1 }, { a: 2 }], sales } } })}</script></body></html>`;
+  const s = SHAPE(html);
+  assert.equal(s.next, true);
+  assert.deepEqual(s.ldTypes, ["Organization"]);
+  assert.equal(s.best.path, "block1.props.pageProps.sales");
+  assert.equal(s.best.count, 3);
+  assert.deepEqual(s.best.fields, ["id", "name", "latitude", "longitude", "firstStartAt", "cityName", "photos"]);
+  assert.equal(s.best.first.latitude, "42.49");
+  assert.equal(s.best.first.photos, "[2]", "nested values are summarised, not copied");
+});
+test("salesShape reads other layouts too (a state block, schema.org events) and never throws on junk", () => {
+  const ev = [1, 2].map((i) => ({ "@type": "Event", name: "Sale " + i, startDate: "2026-10-1" + i, location: { address: "x" } }));
+  const s = SHAPE(`<script>window.__INITIAL_STATE__ = ${JSON.stringify({ list: { items: ev } })};</script><script type="application/json">{broken</script>`);
+  assert.equal(s.initialState, true);
+  assert.equal(s.best.path, "block0.list.items");
+  assert.equal(s.best.first.location, "{address}");
+  const none = SHAPE("<html>nothing here</html>");
+  assert.equal(none.best, null); assert.equal(none.blocks, 0);
+  assert.equal(SHAPE(null).best, null);
+});
