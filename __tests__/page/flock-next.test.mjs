@@ -31,8 +31,11 @@ test('price pill opens the margin sheet, not the listing; math to the cent', asy
   await tick(40);
   assert.ok(p.$('#otp-sheet').classList.contains('on'));
   assert.equal(p.$('#otp-sheetT').textContent, 'What you’d clear');
-  assert.deepEqual(rows(p), ['$12.50', '−$1.70', '−$0.59', '−$0.25']);
-  assert.equal(p.$('#otp-sheetB .mg-clear b').textContent, '$9.96');
+  // v6.77: no separate payment processing (eBay's final value fee includes it), and the $0.40 per-order fee
+  assert.deepEqual(rows(p), ['$12.50', '−$1.70', '−$0.40', '−$0.25']);
+  assert.equal(p.$('#otp-sheetB .mg-clear b').textContent, '$10.15');
+  assert.deepEqual(p.$$('#otp-sheetB .mg-rows dt').map((d) => d.firstChild.textContent.trim()), ['List price', 'Final value fee', 'Per-order fee', 'Promoted listing']);
+  assert.doesNotMatch(p.$('#otp-sheetB').textContent, /processing/i);
   assert.match(p.$('#otp-sheetB .mg-sub').textContent, /Assuming you resell on eBay/);
   await p.close();
 });
@@ -41,8 +44,28 @@ test('margin math on a four-figure price', async () => {
   const p = await openSaved([find(1, '$1,234.56')]);
   cards(p)[0].querySelector('.sgw-p').click();
   await tick(40);
-  assert.deepEqual(rows(p), ['$1,234.56', '−$167.90', '−$33.58', '−$24.69']);
-  assert.equal(p.$('#otp-sheetB .mg-clear b').textContent, '$1,008.39');
+  assert.deepEqual(rows(p), ['$1,234.56', '−$167.90', '−$0.40', '−$24.69']);
+  assert.equal(p.$('#otp-sheetB .mg-clear b').textContent, '$1,041.57');
+  await p.close();
+});
+
+test('margin math: an order of $10 or less pays the $0.30 per-order fee', async () => {
+  const p = await openSaved([find(1, '$10.00')]);
+  cards(p)[0].querySelector('.sgw-p').click();
+  await tick(40);
+  assert.deepEqual(rows(p), ['$10.00', '−$1.36', '−$0.30', '−$0.20']);
+  assert.equal(p.$('#otp-sheetB .mg-clear b').textContent, '$8.14');
+  await p.close();
+});
+
+test('margin math: over $7,500 the final value fee drops to 2.35% on the rest, and the sheet says so', async () => {
+  const p = await openSaved([find(1, '$10,000.00')]);
+  cards(p)[0].querySelector('.sgw-p').click();
+  await tick(40);
+  /* 13.6% of 7,500 = 1,020.00; 2.35% of 2,500 = 58.75 */
+  assert.deepEqual(rows(p), ['$10,000.00', '−$1,078.75', '−$0.40', '−$200.00']);
+  assert.equal(p.$('#otp-sheetB .mg-clear b').textContent, '$8,720.85');
+  assert.match(p.$('#otp-sheetB .mg-rows dt small').textContent, /2\.35% over \$7,500/);
   await p.close();
 });
 

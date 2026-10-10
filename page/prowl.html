@@ -2652,7 +2652,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.76';
+var PROWL_VERSION='v6.77';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -6220,15 +6220,19 @@ function rDenLikes(){
 })();
 function watchDrop(u){var a=watchGet(),i=watchIdx(u),was=i>-1?a[i]:null;if(was){a.splice(i,1);watchPut(a)}return was}
 
-/* v6.39 margin math: eBay's fee stack as checked 2026-10-06. Final value ~13.6%, payment processing 2.7% + $0.25,
-   Promoted Listings General 2% baseline. Every source uses the eBay stack for now, and the sheet says so. */
-var FEES={fvf:0.136,proc:0.027,procFix:0.25,promo:0.02};
+/* v6.39 margin math: eBay's fee stack. Promoted Listings General 2% baseline. Every source uses the eBay stack for now,
+   and the sheet says so.
+   v6.77: eBay has charged no separate payment processing since its managed payments: the final value fee includes it.
+   v6.39 took 2.7% + $0.25 on top, about 3% too much. What eBay adds is a per-order fee, $0.30 on orders of $10 or less
+   and $0.40 above (checked 2026-10-10). The final value fee is 13.6% of the first $7,500 and 2.35% of the rest. */
+var FEES={fvf:0.136,fvfCap:7500,fvfOver:0.0235,order:0.40,orderSmall:0.30,orderSmallMax:10,promo:0.02};
 function priceNum(p){var m=String(p==null?'':p).replace(/,/g,'').match(/(\d+(?:\.\d+)?)/);return m?parseFloat(m[1]):NaN}
 function cents(x){return Math.round(x*100+1e-9)/100}
 function marginCalc(price){
   var p=typeof price==='number'?price:priceNum(price);if(!(p>0))return null;
-  var f=cents(p*FEES.fvf),pr=cents(p*FEES.proc+FEES.procFix),pm=cents(p*FEES.promo);
-  return {price:cents(p),fvf:f,proc:pr,promo:pm,clear:cents(p-f-pr-pm)};
+  var f=cents(Math.min(p,FEES.fvfCap)*FEES.fvf+Math.max(0,p-FEES.fvfCap)*FEES.fvfOver),
+      o=p<=FEES.orderSmallMax?FEES.orderSmall:FEES.order,pm=cents(p*FEES.promo);
+  return {price:cents(p),fvf:f,order:o,promo:pm,clear:cents(p-f-o-pm)};
 }
 function money(x){var neg=x<0;x=Math.abs(x);var s=x.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');return (neg?'\u2212$':'$')+s}
 
@@ -6262,8 +6266,8 @@ function flMargin(card){
     '<p class="mg-sub">Assuming you resell on eBay. Listed at '+esc(money(m.price))+' on '+esc(mktName(src)||'ShopGoodwill')+'.</p>'+
     '<dl class="mg-rows">'+
       '<div><dt>List price</dt><dd>'+money(m.price)+'</dd></div>'+
-      '<div><dt>Final value fee <small>13.6%</small></dt><dd>'+money(-m.fvf)+'</dd></div>'+
-      '<div><dt>Payment processing <small>2.7% + $0.25</small></dt><dd>'+money(-m.proc)+'</dd></div>'+
+      '<div><dt>Final value fee <small>13.6%'+(m.price>FEES.fvfCap?', 2.35% over $7,500':'')+'</small></dt><dd>'+money(-m.fvf)+'</dd></div>'+
+      '<div><dt>Per-order fee</dt><dd>'+money(-m.order)+'</dd></div>'+
       '<div><dt>Promoted listing <small>2%</small></dt><dd>'+money(-m.promo)+'</dd></div>'+
     '</dl>'+
     '<div class="mg-clear"><span>You\u2019d clear</span><b>'+money(m.clear)+'</b></div>'+
