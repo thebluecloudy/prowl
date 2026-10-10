@@ -1,25 +1,37 @@
 // Worker v97: GET /art/<name> serves the page's drawings (worker/art.js), so they cost the Shopify page (capped at
-// 512 KB) nothing. fireflies.svg is Uranium mode's hero: the owner's drawing exactly, plus one <style> for its pulse.
+// 512 KB) nothing. fireflies.svg is Uranium mode's hero, the owner's drawing exactly; fireflies-still.svg its first frame.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { ART, PULSE_STYLE, artResponse } from '../art.js';
+import { ART, stillSvg, artResponse } from '../art.js';
 import { routeKey } from '../metrics.js';
 
 const read = (f) => readFileSync(fileURLToPath(new URL('../' + f, import.meta.url)), 'utf8');
 const INDEX = read('index.js');
 
-test('the fireflies scene is the drawing as given, with only the pulse style added', () => {
+test('the fireflies scene is the drawing exactly as given; the still is its first frame, with nothing left to animate', () => {
   const given = read('art/prowl-hero-fireflies.svg').replace(/\n$/, '');
-  assert.equal(ART['fireflies.svg'], given.replace('<defs>', PULSE_STYLE + '<defs>'));
-  assert.equal(ART['fireflies.svg'].split(PULSE_STYLE).length, 2, 'once');
-  assert.match(PULSE_STYLE, /^<style>@media \(prefers-reduced-motion:no-preference\)\{\.pmPulse\{animation:[^}]*\}\}@keyframes pmPulse\{[^<]*\}<\/style>$/, 'its animation only with motion allowed');
-  assert.ok(given.includes('class="pmPulse"'), 'the class it pulses is in the drawing');
-  assert.doesNotMatch(ART['fireflies.svg'], /<script|on[a-z]+=|href=["'](?!#)|xlink:href|<foreignObject|<image/i, 'nothing that runs or fetches');
+  assert.equal(ART['fireflies.svg'], given);
+  const still = ART['fireflies-still.svg'];
+  assert.equal(still, stillSvg(given));
+  assert.doesNotMatch(still, /<animate/, 'nothing moves');
+  /* each firefly where it starts and as bright as it starts; the bloom as it begins */
+  const moves = [...given.matchAll(/<animateTransform [^>]*values="([-\d.]+) ([-\d.]+);/g)].map((m) => `translate(${m[1]} ${m[2]})`);
+  const fades = [...given.matchAll(/<animate attributeName="opacity" [^>]*values="([\d.]+);/g)].map((m) => m[1]);
+  assert.equal(moves.length, 16);
+  assert.equal(fades.length, 17);
+  for (const t of moves) assert.ok(still.includes(`<g transform="${t}">`), t);
+  const ops = [...still.matchAll(/<g opacity="([\d.]+)">/g)].map((m) => m[1]);
+  assert.deepEqual(ops, fades);
+  /* and otherwise the same drawing: every shape still there */
+  const shapes = (s) => (s.match(/<(circle|path|rect|ellipse)\b/g) || []).length;
+  assert.equal(shapes(still), shapes(given));
+  for (const svg of [given, still]) assert.doesNotMatch(svg, /<script|on[a-z]+=|xlink:href|<foreignObject|<image/i, 'nothing that runs or fetches');
 });
 
 test('GET answers the drawing as an image with a year-long immutable cache; HEAD without a body; others 405; unknown 404', async () => {
+  assert.equal(artResponse('fireflies-still.svg', 'GET').status, 200);
   const r = artResponse('fireflies.svg', 'GET');
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('content-type'), 'image/svg+xml; charset=utf-8');

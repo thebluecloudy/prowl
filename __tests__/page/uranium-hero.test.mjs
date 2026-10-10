@@ -14,23 +14,30 @@ const read = (f) => readFileSync(fileURLToPath(new URL('../../' + f, import.meta
 const PAGE = read('page/prowl.html');
 const DEN = { 'prowl.v36': { seen: true, hunts: [] } };
 const scene = (p) => p.$('.scout-app-wrapper .heromark .hm-scene');
-const HERO = /var HERO_ART='([^']+)';/.exec(PAGE)[1];
+const [, BASE, V] = /var HERO_ART='([^']+)',HERO_V='([^']+)';/.exec(PAGE);
+const HERO = BASE + 'fireflies.svg' + V, STILL = BASE + 'fireflies-still.svg' + V;
 
-test("the scene's address is the worker's art, versioned", () => {
-  const u = new URL(HERO);
-  assert.equal(u.origin, 'https://prowl.thebluecloud.workers.dev');
-  assert.ok(u.pathname.startsWith('/art/') && Object.hasOwn(ART, u.pathname.slice(5)), 'the worker has ' + u.pathname);
-  assert.match(u.search, /^\?v=\d+$/, 'a new drawing is a new address (the worker caches a year)');
+test("the scene's addresses are the worker's art, versioned: animated, and its first frame for phones", () => {
+  for (const a of [HERO, STILL]) {
+    const u = new URL(a);
+    assert.equal(u.origin, 'https://prowl.thebluecloud.workers.dev');
+    assert.ok(u.pathname.startsWith('/art/') && Object.hasOwn(ART, u.pathname.slice(5)), 'the worker has ' + u.pathname);
+    assert.match(u.search, /^\?v=\d+$/, 'a new drawing is a new address (the worker caches a year)');
+  }
+  assert.match(PAGE, /<picture><source media="\(hover:none\)" data-art="fireflies-still\.svg"><img class="hm-scene" alt="" decoding="async" loading="lazy" [^>]*data-art="fireflies\.svg"><\/picture>/,
+    'phones get the still; lazy, so reduced motion (where it is hidden) never fetches it');
 });
 
 test('the scene loads only in Uranium: at once when Uranium is saved, or when the theme button reaches it', async () => {
   let p = loadPage({ storage: { ...DEN, 'prowl.theme': 'uranium' } });
   await tick(20);
   assert.equal(scene(p).getAttribute('src'), HERO);
+  assert.equal(p.$('.heromark source').getAttribute('srcset'), STILL);
   await p.close();
   p = loadPage({ storage: DEN });
   await tick(20);
   assert.equal(scene(p).getAttribute('src'), null, 'light: nothing fetched');
+  assert.equal(p.$('.heromark source').getAttribute('srcset'), null);
   const btn = p.$('#otp-themeBtn');
   btn.click(); btn.click();   /* Blue hour, Midnight */
   assert.equal(scene(p).getAttribute('src'), null, 'nor in the dark themes');
@@ -80,6 +87,7 @@ test('every scene rule is inside prefers-reduced-motion: no-preference; the mark
   assert.doesNotMatch(outside, /has-scene|aspect-ratio|opacity/, 'nothing about the scene outside');
   assert.match(inside, /\.heromark\{[^}]*aspect-ratio:5\/2/, 'the box is the scene\'s shape before it arrives, so nothing moves');
   assert.match(inside, /\.heromark \.hm-scene\{[^}]*opacity:0/);
+  assert.match(inside, /\.heromark \.hm-mark\{height:min\(96px,\d+%\)/, 'the mark fits a narrow box (Extra large text on a small phone)');
   assert.match(inside, /\.heromark\.has-scene \.hm-scene\{opacity:1\}/);
   assert.doesNotMatch(PAGE, /glowPulse/, 'the old mark\'s pulse is gone with it');
 });

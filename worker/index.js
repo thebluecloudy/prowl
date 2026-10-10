@@ -47,7 +47,8 @@
  *        alert emails' "Also search" links. Link-out only: its search API wants a session token. Its results page is
  *        /view-more-items/<words> (ctbUrl, same as the page's). Cached /where answers (30 days) keep their old list.
  *   v97: 2026-10-10. GET /art/<name> serves the page's art (worker/art.js), so a drawing costs the Shopify page (capped at
- *        512 KB) nothing: fireflies.svg is Uranium mode's hero. Answered before anything else (no KV read, no origin rule),
+ *        512 KB) nothing: fireflies.svg is Uranium mode's hero, fireflies-still.svg its first frame for phones. Answered
+ *        before anything else (no KV read, no origin rule),
  *        with a year-long immutable cache; the page asks for it with ?v=. 404 for an unknown name, 405 for other methods.
  *   v94: 2026-10-09. Facebook Marketplace sweep (Oct 8 briefing). POST /fb-ingest takes each morning's new Facebook finds
  *        for one locked hunt from Prowl-the-agent (X-Prowl-Ingest must match the FB_INGEST_KEY secret; 403 without it,
