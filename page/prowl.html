@@ -166,17 +166,17 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
   /* The app's colours come later (its stylesheet, applyTheme, the New look's palette on the wrapper), so the curtain
      brings its own, picked the way the app picks them: the saved theme, else the device's dark or light; the New
      look unless Classic is chosen. Keep in step with :root, [data-theme=...] and the .k2 palettes below. */
-  var th='light',k2=true,PAL;
+  var th='',k2=!/[?&]look=1(&|$)/.test(location.search),PAL;
   try{
     th=localStorage.getItem('prowl.theme')||'';
-    if(!/^(light|dark|midnight|uranium)$/.test(th))th=mm('(prefers-color-scheme: dark)')?'dark':'light';
     k2=!(/[?&]look=1(&|$)/.test(location.search)||(localStorage.getItem('prowl.look')==='1'&&!/[?&]look=2(&|$)/.test(location.search)));
-  }catch(e){}
+  }catch(e){}   /* storage blocked: the app falls back the same way */
+  if(!/^(light|dark|midnight|uranium)$/.test(th))th=mm('(prefers-color-scheme: dark)')?'dark':'light';
   PAL={   /* --bg, --ink, --ln, --ac, --ac-ring */
     light:['#FAF6EE','#1C1815','#E7DED1',k2?'#C2491F':'#B0522B',k2?'rgba(194,73,31,.18)':'rgba(176,82,43,.14)'],
     dark:k2?['#0B1430','#F1F4FB','#2C4478','#F2A743','rgba(242,167,67,.3)']:['#070706','#f5f3ee','#2a2a26','#ffb200','rgba(255,178,0,.24)'],
     midnight:['#070706','#f5f3ee','#2a2a26',k2?'#F2A743':'#ffb200',k2?'rgba(242,167,67,.3)':'rgba(255,178,0,.24)'],
-    uranium:['#040414','#8affb8','rgba(57,255,20,.20)','#39ff14','rgba(57,255,20,.35)']
+    uranium:['#0a0e2e','#8affb8','rgba(57,255,20,.20)','#39ff14','rgba(57,255,20,.35)']   /* the top of its page gradient */
   }[th];
   L.setAttribute('data-pc',th+(k2?'':' classic'));
   L.style.cssText='--bg:'+PAL[0]+';--ink:'+PAL[1]+';--ln:'+PAL[2]+';--ac:'+PAL[3]+';--ac-ring:'+PAL[4];
@@ -4200,17 +4200,29 @@ function seenUrls(k){
   for(i=0;i<LIVE_SRC.length;i++){c=lv[LIVE_SRC[i].id]&&lv[LIVE_SRC[i].id].cache[k];if(c&&c.items&&!c.err)for(j=0;j<c.items.length;j++)out.push(c.items[j].url);}
   return out;
 }
-/* v6.69: the listings on screen move to the newest end and the cap never cuts them, so a listing that stays up is never
-   dropped and then called "new" (the glow) on a later look. Only listings that are gone fall off the old end. */
+/* v6.69: the listings on screen are never cut, so a listing that stays up is never dropped and then called "new" (the
+   glow) on a later look; nor are those of a marketplace that did not answer this time (it failed, or has not yet). What
+   is cut, oldest first, is only what an answering marketplace no longer lists. Written only when what is remembered
+   changes, not on every answer. */
 var SEEN_CAP=150;
+function seenSrc(u){var m=/^https:\/\/(?:[a-z0-9-]+\.)*(shopgoodwill|ebay|chairish|etsy|poshmark|vinted|grailed|shopthesalvationarmy)\.com(\/|$)/i.exec(u);return m?(m[1].toLowerCase()==='shopthesalvationarmy'?'salvation':m[1].toLowerCase()):''}
+function seenAnswered(k){
+  var a={},c=sgw.cache[k],i;
+  if(c&&!c.err)a.shopgoodwill=1;
+  for(i=0;i<LIVE_SRC.length;i++){c=lv[LIVE_SRC[i].id]&&lv[LIVE_SRC[i].id].cache[k];if(c&&!c.err)a[LIVE_SRC[i].id]=1}
+  return a;
+}
 function seenMark(k){
-  var S=seenLoad(),u=seenUrls(k),old=S[k]||[],now={},out=[],i;
+  var S=seenLoad(),u=seenUrls(k),old=S[k]||[],now={},has={},on=[],gone=[],held=[],ans,src,room,i,n=0;
   if(!u.length)return;
-  for(i=0;i<u.length;i++)now[u[i]]=1;
-  for(i=0;i<old.length;i++)if(!now[old[i]])out.push(old[i]);
-  for(i=0;i<u.length;i++)if(now[u[i]]===1){now[u[i]]=2;out.push(u[i])}
-  out=out.slice(-Math.max(SEEN_CAP,u.length));
-  if(!S[k]||out.join('\n')!==old.join('\n')){S[k]=out;seenSave()}
+  for(i=0;i<old.length;i++)has[old[i]]=1;
+  for(i=0;i<u.length;i++)if(!now[u[i]]){now[u[i]]=1;on.push(u[i]);if(!has[u[i]])n++}
+  ans=seenAnswered(k);
+  for(i=0;i<old.length;i++)if(!now[old[i]]){src=seenSrc(old[i]);(src&&!ans[src]?held:gone).push(old[i])}
+  room=Math.max(0,SEEN_CAP-held.length-on.length);
+  if(gone.length>room){gone=gone.slice(gone.length-room);n++}
+  S[k]=gone.concat(held,on);
+  if(n||!old.length)seenSave();
 }
 /* v6.69: listings of hunt k that were not seen before this visit (FRESH), measured against what was seen when the hunt
    was first shown this visit (FRESH_BASE): results come in one marketplace at a time and each is marked seen as it is
@@ -7517,16 +7529,23 @@ try{loadSGW()}catch(e){}
   if(sf)sf.addEventListener('submit',function(){startHunt(sf.querySelector('button[type=submit]'))});
   ['otp-sa','otp-fb'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(){startHunt(b)})});
   root.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('[data-sgw="pick"]')){unicorns=1;UNI=null}},true);   /* picking a hunt */
-  /* the chip sheen: once as the pointer comes onto a chip; the same chip redrawn under a resting pointer does not replay it */
-  var sheenK='',sheenT=0;
+  /* the chip sheen: once each time the pointer comes onto a hunt's chip. The chips are redrawn as results come in (the
+     old ones removed, so they never see the pointer leave) and a new chip under a resting pointer gets a mouseover:
+     that is the same hover, known by the hunt (the chip's own text, not its "N new"), until the pointer really leaves */
+  var sheenK='';
+  function chipOf(n){return n&&n.closest?n.closest('.sgw-chip'):null}
+  function chipKey(c){var t='',n;for(n=c.firstChild;n;n=n.nextSibling)if(n.nodeType===3)t+=n.nodeValue;return t}
   root.addEventListener('mouseover',function(e){
-    var c=e.target&&e.target.closest&&e.target.closest('.sgw-chip'),k,n;if(!c||!lively())return;
-    k=(c.getAttribute('data-t')||c.textContent||'').slice(0,80);n=Date.now();
-    if(k===sheenK&&n-sheenT<4000){sheenT=n;return}
-    sheenK=k;sheenT=n;c.classList.remove('pm-sheen');void c.offsetWidth;c.classList.add('pm-sheen');
+    var c=chipOf(e.target),k;if(!c)return;
+    k=chipKey(c);if(k===sheenK)return;
+    sheenK=k;if(!lively())return;
+    c.classList.remove('pm-sheen');void c.offsetWidth;c.classList.add('pm-sheen');
     setTimeout(function(){c.classList.remove('pm-sheen')},900);
   });
-  root.addEventListener('mouseout',function(e){var c=e.target&&e.target.closest&&e.target.closest('.sgw-chip');if(c&&!c.contains(e.relatedTarget))sheenT=0});
+  root.addEventListener('mouseout',function(e){
+    var c=chipOf(e.target),to=chipOf(e.relatedTarget);
+    if(c&&!(to&&chipKey(to)===chipKey(c)))sheenK='';   /* off the chip (not just onto its own badge or ×) */
+  });
   function decorate(){
     queued=false;
     var list=queue.splice(0,queue.length),live=lively(),k=0,i,el,id,t=Date.now(),left,cell,h,u,fresh=[];

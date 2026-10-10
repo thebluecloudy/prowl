@@ -80,7 +80,7 @@ test('keys skip the curtain without scrolling the app beneath; typing in a box i
   const key = (k, target = p.doc.body) => { const e = new p.win.KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }); target.dispatchEvent(e); return e.defaultPrevented; };
   assert.equal(key(' '), true, 'Space skips and does not scroll');
   assert.match(curtain(p).className, /is-out/);
-  for (const k of ['PageDown', 'ArrowDown', 'End', 'Home', 'PageUp', ' ']) assert.equal(key(k), true, k + ' during the lift');
+  for (const k of ['PageDown', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'End', 'Home', 'PageUp', ' ']) assert.equal(key(k), true, k + ' during the lift');
   assert.equal(key(' ', p.$('#otp-q')), false, 'a space typed in the search box is a space');
   assert.equal(key('a'), false, "other keys are the app's");
   await waitFor(() => !curtain(p), { timeout: 8000 });
@@ -88,10 +88,16 @@ test('keys skip the curtain without scrolling the app beneath; typing in a box i
   await p.close();
 });
 
-test('the curtain keeps every tap until it is gone, so a second tap during the lift cannot press the app beneath', () => {
-  const css = /<style>\s*\/\* v6\.\d+ the curtain[\s\S]*?<\/style>/.exec(PAGE)[0];
-  assert.doesNotMatch(css, /\.pc-loader(\.is-out)?\{[^}]*pointer-events:\s*none/, 'the curtain itself never lets taps through');
-  assert.match(PAGE, /L\.addEventListener\('click',skipNow\)/);
+test('the curtain keeps every tap until it is gone, so a second tap during the lift cannot press the app beneath', async () => {
+  const p = loadPage({ url: APP, storage: DEN });
+  await tick(50);
+  const L = curtain(p);
+  const takes = () => L.style.pointerEvents !== 'none' && p.win.getComputedStyle(L).pointerEvents !== 'none';
+  assert.ok(takes(), 'up');
+  L.click();
+  assert.match(L.className, /is-out/);
+  while (curtain(p)) { assert.ok(takes(), 'lifting: still taking taps'); await tick(60); }
+  await p.close();
 });
 
 /* the app's palettes, read from its own stylesheet (every rule for a selector, later ones winning, as the cascade does),
@@ -101,6 +107,7 @@ function vars(sel) {
   for (const r of PAGE.matchAll(re)) for (const m of r[1].matchAll(/(--[a-z0-9-]+):([^;}]+)/g)) o[m[1]] = m[2].trim();
   return o;
 }
+const URANIUM_TOP = /\[data-theme=uranium\] \.scout-app-wrapper\{background:linear-gradient\(180deg,(#[0-9a-f]+) 0,/i.exec(PAGE)[1];
 const CSS = {
   root: vars(':root'),
   dark: vars('[data-theme=dark]'),
@@ -114,6 +121,7 @@ const CSS = {
 function expected(theme, k2) {
   const base = theme === 'light' ? CSS.root : theme === 'uranium' ? CSS.uranium : CSS.dark;   /* midnight is data-theme=dark */
   let v = { ...base };
+  if (theme === 'uranium') v['--bg'] = URANIUM_TOP;   /* it paints a gradient, not its --bg: the panels take its top */
   if (k2) v = { ...v, ...(theme === 'light' ? CSS.k2 : theme === 'uranium' ? CSS.k2uraAc : CSS.k2darkAc) };
   if (k2 && theme === 'dark') v = { ...v, ...CSS.k2blue };   /* Blue hour: not midnight */
   return ['--bg', '--ink', '--ln', '--ac', '--ac-ring'].map((k) => v[k]);
@@ -128,10 +136,16 @@ test('the curtain wears the theme and look the app opens in, from its first fram
     { name: 'Uranium', saved: 'uranium', theme: 'uranium', k2: true },
     { name: 'Classic look, light', saved: 'light', theme: 'light', k2: false },
     { name: 'Classic look, dark', saved: 'dark', theme: 'dark', k2: false },
+    { name: 'Classic from the address (?look=1)', theme: 'light', k2: false, qs: '?look=1' },
+    { name: 'storage blocked, device dark: Blue hour, as the app falls back', theme: 'dark', k2: true, osDark: true, blocked: true },
+    { name: 'storage blocked, device light', theme: 'light', k2: true, blocked: true },
   ];
   for (const c of cases) {
-    const storage = { ...DEN, ...(c.saved ? { 'prowl.theme': c.saved } : {}), ...(c.k2 ? {} : { 'prowl.look': '1' }) };
-    const p = loadPage({ url: APP, storage, beforeLoad: (w) => { if (c.osDark) { const m = w.matchMedia; w.matchMedia = (q) => ({ ...m(q), matches: /prefers-color-scheme: dark/.test(q) }); } } });
+    const storage = { ...DEN, ...(c.saved ? { 'prowl.theme': c.saved } : {}), ...(c.k2 || c.qs ? {} : { 'prowl.look': '1' }) };
+    const p = loadPage({ url: APP + (c.qs || ''), storage: c.blocked ? {} : storage, beforeLoad: (w) => {
+      if (c.osDark) { const m = w.matchMedia; w.matchMedia = (q) => ({ ...m(q), matches: /prefers-color-scheme: dark/.test(q) }); }
+      if (c.blocked) for (const k of ['localStorage', 'sessionStorage']) Object.defineProperty(w, k, { configurable: true, get() { throw new w.DOMException('blocked', 'SecurityError'); } });
+    } });
     const L = curtain(p);
     const style = L.getAttribute('style');
     const got = ['--bg', '--ink', '--ln', '--ac', '--ac-ring'].map((k) => new RegExp(k + ':\\s*([^;]+)').exec(style)[1].trim());
@@ -153,11 +167,33 @@ test('the curtain never lifts before MIN_MS, lifts by MAX_MS, and the 9-second n
   await waitFor(() => /is-ready/.test(L.className), { timeout: 5000 });
   let now = 1000, out = null;
   const run = (until) => { while (now < until && out === null) { now += 16; for (const f of frames.splice(0)) f(now); if (/is-out/.test(L.className)) out = now; } };
-  run(1000 + 1590);
-  assert.equal(out, null, 'not before MIN_MS, however ready the app is');
+  const bar = L.querySelector('.pc-rule > i');
+  const shown = () => Number((/scaleX\(([\d.]+)\)/.exec(bar.style.transform) || [0, 0])[1]);
+  let t0 = null;
+  while (now < 1000 + 1590) {   /* the bar never runs ahead of the time since it began, over MIN_MS */
+    now += 16; for (const f of frames.splice(0)) f(now);
+    if (t0 === null && bar.style.transform) t0 = now;
+    if (t0 !== null) assert.ok(shown() <= (now - t0) / 1600 + 0.02, 'bar ' + shown() + ' at ' + (now - t0) + 'ms');
+    assert.ok(!/is-out/.test(L.className), 'not before MIN_MS, however ready the app is');
+  }
   run(1000 + 7000);
   assert.ok(out !== null && out - 1000 >= 1600 && out - 1000 <= 6500, 'lifted at ' + (out - 1000) + 'ms');
   await p.close();
+  /* the page never finishes loading: the bar holds short of full until MAX_MS, then fills and lifts */
+  const frames3 = [];
+  const r = loadPage({ url: APP, storage: DEN, beforeLoad: (w) => {
+    w.requestAnimationFrame = (f) => { frames3.push(f); return frames3.length; };
+    const st = w.setTimeout.bind(w);
+    w.setTimeout = (f, ms, ...a) => (ms === 9000 || ms === 2500 ? 0 : st(f, ms, ...a));
+    const add = w.addEventListener.bind(w);
+    w.addEventListener = (type, ...a) => (type === 'load' ? undefined : add(type, ...a));
+  } });
+  const L3 = curtain(r);
+  await waitFor(() => /is-ready/.test(L3.className), { timeout: 5000 });
+  let n3 = 1000, out3 = null;
+  while (n3 < 1000 + 9000 && out3 === null) { n3 += 16; for (const f of frames3.splice(0)) f(n3); if (/is-out/.test(L3.className)) out3 = n3 - 1000; }
+  assert.ok(out3 !== null && out3 >= 5000 && out3 <= 6600, 'lifted at ' + out3 + 'ms: after MAX_MS, not before');
+  await r.close();
   /* stuck: no frames at all (a background tab), so it never lifts by itself; the net takes it away */
   let net2 = null;
   const q = loadPage({ url: APP, storage: DEN, beforeLoad: (w) => {
@@ -358,13 +394,14 @@ test('a card drawn while the tab is hidden, or under reduced motion, does not va
 
 test('the glow waits until it can be seen: not on a hidden panel, not under the curtain', async () => {
   let p = await results();
-  await still(p);
+  const later = await still(p);
   let got = record(p);
   const { add } = cells(p);
   p.$('#otp-sgw').hidden = true;   /* Daily or Flock open over it */
   add('https://x.example/w-1', true);
   await tick(800);
   assert.deepEqual(got, [], 'nothing plays where nobody can see it');
+  later(6000);   /* long enough that a glow begun while hidden would be over */
   p.$('#otp-sgw').hidden = false;
   await waitFor(() => got.some((x) => x.k === 'pm-halo' && x.u === 'https://x.example/w-1'), { timeout: 2000 });
   assert.equal(got.find((x) => x.k === 'pm-halo').delay, '0ms', 'it starts when it is seen, from the beginning');
@@ -399,13 +436,17 @@ test('Clear saved data forgets what was new', async () => {
 });
 
 test('a listing that stays up is never forgotten, so it never glows as new on a later look', async () => {
-  const gone = Array.from({ length: 149 }, (_, i) => 'https://gone.example/' + i);
-  const first = ['https://shopgoodwill.com/item/pyrex-0', ...gone];   /* the oldest entry is still listed */
+  const p0 = await results();
+  await tick(900);
+  const shown = p0.$$('#otp-sgw .sgw-cell[data-u]').map((c) => c.getAttribute('data-u'));
+  await p0.close();
+  assert.ok(shown.length >= 10);
+  /* seen before, oldest first: every listing on screen but the last, then a pile of listings gone since */
+  const gone = Array.from({ length: 150 }, (_, i) => 'https://shopgoodwill.com/item/gone-' + i);
+  const first = [...shown.slice(0, -1), ...gone].slice(0, 150);
   const p = await results({ storage: { 'prowl.seenUrls': { pyrex: first } } });
   await tick(900);
-  const shown = p.$$('#otp-sgw .sgw-cell[data-u]').map((c) => c.getAttribute('data-u'));
   const saved = JSON.parse(p.win.localStorage.getItem('prowl.seenUrls')).pyrex;
-  assert.ok(saved.includes('https://shopgoodwill.com/item/pyrex-0'), 'kept: it is still listed');
   for (const u of shown) assert.ok(saved.includes(u), u + ' is remembered');
   assert.ok(saved.length <= Math.max(150, shown.length), 'capped');
   await p.close();
@@ -413,6 +454,76 @@ test('a listing that stays up is never forgotten, so it never glows as new on a 
   await tick(900);
   assert.equal(q.$$('#otp-sgw .sgw-cell[data-fresh]').length, 0, 'next look: nothing new');
   await q.close();
+});
+
+test('a marketplace that fails for a visit keeps its listings, so they are not "new" when it answers again', async () => {
+  const f = liveFetch();
+  const p0 = await results();
+  await tick(900);
+  const etsy = p0.$$('#otp-sgw .sgw-cell[data-u]').map((c) => c.getAttribute('data-u')).filter((u) => /etsy\.com/.test(u));
+  await p0.close();
+  assert.ok(etsy.length >= 2);
+  const gone = Array.from({ length: 150 }, (_, i) => 'https://shopgoodwill.com/item/gone-' + i);
+  const seeded = [...etsy, ...gone].slice(0, 150);   /* Etsy's listings are the oldest entries */
+  const down = (u) => new Promise((r) => setTimeout(() => r(/\/etsy(\?|$)/.test(new URL(String(u), 'https://x/').pathname + '?') ? { ok: false, status: 503, json: () => Promise.resolve({ error: 'down' }), text: () => Promise.resolve('') } : f.impl(u)), 120));
+  const p = await results({ fetchImpl: down, storage: { 'prowl.seenUrls': { pyrex: seeded } } });
+  await tick(1200);
+  const saved = JSON.parse(p.win.localStorage.getItem('prowl.seenUrls')).pyrex;
+  for (const u of etsy) assert.ok(saved.includes(u), 'kept while Etsy is down: ' + u);
+  assert.ok(saved.length <= 150);
+  await p.close();
+  const q = await results({ storage: { 'prowl.seenUrls': { pyrex: saved } } });
+  await tick(900);
+  assert.deepEqual(q.$$('#otp-sgw .sgw-cell[data-fresh]').map((c) => c.getAttribute('data-u')).filter((u) => /etsy\.com/.test(u)), [], 'Etsy back: nothing of its is new');
+  await q.close();
+});
+
+test('the seen list is written only when what it remembers changes, and keeps more than 150 when that many are on screen', async () => {
+  const p0 = await results();
+  await tick(900);
+  const saved0 = JSON.parse(p0.win.localStorage.getItem('prowl.seenUrls')).pyrex;
+  await p0.close();
+  let writes = 0;
+  const p = await results({ storage: { 'prowl.seenUrls': { pyrex: saved0 } }, beforeLoad: (w) => {
+    const set = w.Storage.prototype.setItem;
+    w.Storage.prototype.setItem = function (k, v) { if (k === 'prowl.seenUrls') writes++; return set.call(this, k, v); };
+  } });
+  await tick(1200);
+  assert.equal(writes, 0, 'nothing new: no write');
+  await p.close();
+  const many = liveFetch({ perSource: 30 });
+  const r = await results({ fetchImpl: (u) => new Promise((res) => setTimeout(() => res(many.impl(u)), 60)), storage: { 'prowl.seenUrls': { pyrex: ['https://shopgoodwill.com/item/old'] } } });
+  await tick(1500);
+  const all = new Set([...r.$$('#otp-sgw .sgw-cell[data-u]').map((c) => c.getAttribute('data-u'))]);
+  const kept = JSON.parse(r.win.localStorage.getItem('prowl.seenUrls')).pyrex;
+  assert.ok(kept.length > 150, kept.length + ' kept');
+  for (const u of all) assert.ok(kept.includes(u), u);
+  await r.close();
+});
+
+test('the chip sheen plays once each time the pointer comes onto a hunt, not again when the chip is redrawn under it', async () => {
+  const p = await results();
+  await tick(900);
+  const chip = () => p.$('#otp-sgw .sgw-chip[data-sgw="pick"]');
+  const over = (el, from = null) => el.dispatchEvent(new p.win.MouseEvent('mouseover', { bubbles: true, relatedTarget: from }));
+  const out = (el, to) => el.dispatchEvent(new p.win.MouseEvent('mouseout', { bubbles: true, relatedTarget: to }));
+  let c = chip();
+  over(c);
+  assert.ok(c.classList.contains('pm-sheen'), 'onto the chip');
+  /* redrawn under a resting pointer, much later, its "new" badge changed: the same hover */
+  const realNow = p.win.Date.now; p.win.Date.now = () => realNow() + 60000;
+  const c2 = c.cloneNode(true); c2.classList.remove('pm-sheen');
+  c2.insertAdjacentHTML('beforeend', '<em class="sgw-new">3 new</em>');
+  c.replaceWith(c2);
+  over(c2);
+  assert.equal(c2.classList.contains('pm-sheen'), false, 'no replay');
+  over(c2.querySelector('.sgw-x') || c2, c2);   /* onto its own × */
+  assert.equal(c2.classList.contains('pm-sheen'), false);
+  out(c2, p.$('#otp-q'));   /* the pointer really leaves */
+  over(c2, p.$('#otp-q'));
+  assert.ok(c2.classList.contains('pm-sheen'), 'back onto it: once more');
+  p.win.Date.now = realNow;
+  await p.close();
 });
 
 test('starting a hunt sparkles at the button, the panther pounces and walks across; all of it is cleared away', async () => {
