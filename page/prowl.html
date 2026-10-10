@@ -5633,8 +5633,8 @@ function flockRender(top){
   row.setAttribute('aria-busy',FLOCK.pend>0&&FLOCK.view==='feed'?'true':'false');
   if(top){flTop(true);FLOCK.at=0}
   else{
-    row.scrollTop=y;
-    if(anchor){var cs=row.querySelectorAll('.fl-card');for(i=0;i<cs.length;i++)if(cs[i].getAttribute('data-u')===anchor){row.scrollTop=cs[i].offsetTop;break}}
+    if(anchor){var cs=row.querySelectorAll('.fl-card');for(i=0;i<cs.length;i++)if(cs[i].getAttribute('data-u')===anchor){y=cs[i].offsetTop;break}}
+    flJump(row,y);   /* v6.69: at once, never smooth: the feed stays still under you as finds come in */
     FLOCK.at=flIdxOf(row);
   }
   FLOCK.reach=Math.max(FLOCK.reach||0,FLOCK.at||0);
@@ -5645,7 +5645,11 @@ function flockRender(top){
 var FL_IDLE_MS=900;
 function flBusy(){var t=Date.now()-(FLOCK.touchAt||0);return (!!FLOCK.held&&t<10000)||t<FL_IDLE_MS}   /* a lost touchend never holds it for long */
 function flockRenderSoon(){clearTimeout(FLOCK.tm);FLOCK.tm=setTimeout(function(){if(!flockOpen())return;if(flBusy()){flockRenderSoon();return}flockRender()},180)}
-function flTop(now){var row=$('#otp-flockRow');if(!row)return;try{row.scrollTo({top:0,behavior:(now||flReduced())?'auto':'smooth'})}catch(e){row.scrollTop=0}}
+function flTop(now){var row=$('#otp-flockRow');if(!row)return;if(now||flReduced()){flJump(row,0);return}try{row.scrollTo({top:0,behavior:'smooth'})}catch(e){row.scrollTop=0}}
+/* v6.69: put the feed at y at once. The feed scrolls smoothly (CSS scroll-behavior), and a script's scrollTop, or a
+   scrollTo with behavior 'auto', follows that CSS: every background redraw slid the feed from wherever the snap had put
+   it back to your card. The visitor's own moves (a swipe, Fly, the arrows) stay smooth. */
+function flJump(row,y){var b=row.style.scrollBehavior;row.style.scrollBehavior='auto';row.scrollTop=y;row.style.scrollBehavior=b}
 /* fetch a few random hunt+source pairs we have nothing for yet, 250ms apart */
 function flockWarm(o){
   /* v6.52: every hunt and every near search, FLOCK_SRCS more marketplaces each time it is called.

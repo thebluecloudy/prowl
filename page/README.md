@@ -96,3 +96,7 @@ extension does not have it yet (it needs a store release).
   motion, and nothing touches saved data, links or timing. The seen list (`seenMark`) now keeps every listing still on
   screen, and those of a marketplace that did not answer this time, so neither glows as new on a later look; it is written
   only when what it remembers changes. Tests: `__tests__/page/motion.test.mjs`.
+- **Flock holds still while it loads** (v6.69): the feed scrolls smoothly (CSS `scroll-behavior`), and positions the page
+  set itself followed that CSS, so every redraw as finds came in slid the feed from where the snap had put it back to
+  your card. `flJump` sets them at once; your own moves (a swipe, Fly, the arrows, Back to top) stay smooth. Tests:
+  `__tests__/page/flock-scroll.test.mjs`.
