@@ -962,7 +962,14 @@ async function apiDiagnose(c) {
     const all = [].concat.apply([], g.map(r => r.items));
     if (all.length && all.every(x => x.aiDrop)) { all.forEach(x => { x.aiDrop = false; }); g.forEach(r => { r.aiAllFlagged = r.items.length > 0; }); }
   }
-  results.forEach(r => { r.kept = r.items.filter(x => !x.aiDrop && !x.memberDrop && !x.alreadySent).length; });
+  /* v98: an email keeps only the exact matches (every word of the hunt in the title) when the hunt has any; Diagnose
+     says so, over all the member's sites together as the email does, after the AI and their filters */
+  if (sub && typeof H.alExact === "function") {
+    const left = [].concat.apply([], results.map(r => r.items)).filter(x => !x.aiDrop && !x.memberDrop);
+    const ex = new Set(H.alExact(left, term));
+    if (ex.size < left.length) left.forEach(x => { if (!ex.has(x)) x.notExact = true; });
+  }
+  results.forEach(r => { r.kept = r.items.filter(x => !x.aiDrop && !x.memberDrop && !x.notExact && !x.alreadySent).length; });
   const sum = f => results.reduce((t, r) => t + r.items.filter(f).length, 0);
   const okN = results.filter(r => r.status === 200 && !r.err).length;
   const shown = scrubHunt(term, zip);
@@ -973,7 +980,7 @@ async function apiDiagnose(c) {
       skipWords: sub.pro ? skipView(sub, p.skip, zip) : [] } } : null,
     local: local, localOnly: localOnly, hunt: hunt, ai: { mode: word(mode, 10), alerts: alertsAi, live: aiLive }, results: results,
     summary: { sources: results.length, ok: okN, failed: results.length - okN, items: sum(() => true), aiDropped: sum(x => x.aiDrop), aiWould: sum(x => x.aiWould),
-      memberDropped: sum(x => !!x.memberDrop), alreadySent: sum(x => x.alreadySent), waiting: sum(x => x.waiting) }
+      memberDropped: sum(x => !!x.memberDrop), notExact: sum(x => !!x.notExact), alreadySent: sum(x => x.alreadySent), waiting: sum(x => x.waiting) }
   });
 }
 

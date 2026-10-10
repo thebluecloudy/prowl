@@ -51,10 +51,11 @@ test('closing with the ✕ gives the extra history entry back, so Back is not sw
   const p = setup();
   await tick(60);
   p.$('#otp-denBtn').click();
-  await tick(50);
+  /* the Den turns on in an animation frame and the entry follows it: wait for it, not a fixed time (a busy CI runner overran 50ms) */
+  await waitFor(() => p.win.history.state && p.win.history.state.prowlOv === 1, { timeout: 3000 }).catch(() => {});
   assert.equal(p.win.history.state && p.win.history.state.prowlOv, 1, 'Den open: entry pushed');
   p.$('#otp-denClose').click();
-  await tick(120);
+  await waitFor(() => !(p.win.history.state && p.win.history.state.prowlOv === 1), { timeout: 3000 }).catch(() => {});
   assert.notEqual(p.win.history.state && p.win.history.state.prowlOv, 1, 'entry given back');
   assert.ok(!p.$('#otp-den').classList.contains('on'));
   await p.close();

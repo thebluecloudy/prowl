@@ -1415,7 +1415,7 @@ const AI_STATUS = { "no key": "AI sorting is not set up (no AI key), so the AI d
   "jev failed": "The AI check did not answer, so the AI did not check these listings.",
   "AI check failed": "The AI check failed, so the AI did not check these listings.",
   off: "AI sorting is switched off, so the AI did not check these listings." };
-function leftOut(it) { return !!(it.aiDrop || it.memberDrop || it.alreadySent); }
+function leftOut(it) { return !!(it.aiDrop || it.memberDrop || it.notExact || it.alreadySent); }
 /* the server says whether the AI really hides listings right now (JEV_RESULTS "on", and for a member's emails ALERT_JEV
    and their own switch); older answers without it are read as on */
 function aiLive(j) { return !(j && j.ai && j.ai.live === false); }
@@ -1428,6 +1428,7 @@ function itemRow(it) {
       h("div", { class: "ip", text: [it.price, srcName(it.src)].filter(Boolean).join(" \u00b7 ") }),
       h("div", { class: "badges" }, [aiBadge(it), it.aiDrop ? h("span", { class: "bdg b-pro", text: "AI hides" }) : it.aiWould ? h("span", { class: "bdg b-out", text: "AI would hide (not on)" }) : null,
         it.memberDrop ? h("span", { class: "bdg b-trial", text: "Their filter: " + it.memberDrop }) : null,
+        it.notExact ? h("span", { class: "bdg b-out", text: "Not an exact match" }) : null,
         it.alreadySent ? h("span", { class: "bdg b-out", text: "Already emailed" }) : null,
         it.waiting ? h("span", { class: "bdg b-out", text: "Waiting for their next email" }) : null]),
       h("div", { class: "io" }, out ? st("serious", "Left out") : st("good", "Kept"))])]);
@@ -1467,7 +1468,7 @@ function renderDiag(j) {
   const summary = h("section", { class: "card" }, [h("div", { class: "ch" }, h("h2", { text: "Results for \u201c" + (j.term || "") + "\u201d" })),
     h("dl", { class: "dsum" }, [fact("Marketplaces answered", num(sm.ok) + " of " + num(sm.sources)), fact("Listings found", num(sm.items)),
       live ? fact("AI hides", num(sm.aiDropped)) : fact("AI would hide (not on)", num(sm.aiWould != null ? sm.aiWould : sm.aiDropped)),
-      fact("Their filters hide", mb ? num(sm.memberDropped) : "\u2014"), fact("Already emailed", mb ? num(sm.alreadySent) : "\u2014")]),
+      fact("Their filters hide", mb ? num(sm.memberDropped) : "\u2014"), fact("Not exact (left out)", mb ? num(sm.notExact) : "\u2014"), fact("Already emailed", mb ? num(sm.alreadySent) : "\u2014")]),
     h("div", { class: "stack more" }, notes)]);
   const show = h("div", { class: "chips", role: "group", "aria-label": "Show listings" }, [["all", "All listings"], ["out", "Left out"], ["kept", "Kept"]].map(o =>
     h("button", { class: "chip", type: "button", "aria-pressed": S.diagShow === o[0] ? "true" : "false", "data-k": o[0], text: o[1], onclick: () => {

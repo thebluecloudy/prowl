@@ -1081,6 +1081,10 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-mail .sgw-mm{font-weight:700;margin:6px 0 0}
 .scout-app-wrapper .sgw-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:2px 15px 12px}
 .scout-app-wrapper .sgw-acts:empty{display:none}
+.scout-app-wrapper .sgw-cont{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;margin:18px 15px 6px;padding:16px 0 4px;border-top:1px solid var(--ln)}
+.scout-app-wrapper .sgw-cont p{flex:1 1 240px;margin:0;font-size:14px;line-height:1.45;color:var(--i2)}
+.scout-app-wrapper .sgw-cont .sgw-hunt{flex:0 0 auto;max-width:100%;white-space:normal}
+.scout-app-wrapper .whyp[hidden],.scout-app-wrapper #otp-alerts[hidden]{display:none!important}
 .scout-app-wrapper .sgw-hunt{height:44px;padding:0 18px;font-size:14px}
 .scout-app-wrapper .sgw-ago{margin-left:auto;font-size:13px;color:var(--mu);font-weight:600}
 .scout-app-wrapper .alrt{margin:0 0 30px;padding:18px;border:1px solid var(--ac);border-radius:16px;background:var(--cd2)}
@@ -1157,6 +1161,12 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .apr-warn{margin:12px 0 0;padding:12px 14px;border-radius:12px;border:1px solid var(--ln);border-left:4px solid var(--warn);background:var(--warn-soft);color:var(--ink);font-size:15px;font-weight:600;line-height:1.4}
 .scout-app-wrapper .apr-looks{margin:12px 0 0}
 .scout-app-wrapper .apr-shr{display:inline-flex;align-items:center;justify-content:center}
+/* v5.99 Email this, back in v6.74 (worker v98 /share/email): Prowl's own mail, so it works on a computer too */
+.scout-app-wrapper .apr-em{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 0;width:100% }
+.scout-app-wrapper .apr-em input{appearance:none;-webkit-appearance:none;flex:1 1 200px;min-width:0;font:inherit;font-size:16px;padding:9px 11px;border:1px solid var(--l2);border-radius:10px;background:var(--cd);color:var(--ink)}
+.scout-app-wrapper .apr-em .b{height:44px}
+.scout-app-wrapper .apr-em .apr-ems{flex-basis:100%;font-size:13px;color:var(--mu);margin:0}
+.scout-app-wrapper .apr-em .apr-ems.ok{color:var(--ac);font-weight:700}
 .scout-app-wrapper .apr-guide{margin:12px 0 0;padding:12px 14px;border:1px solid var(--ac);border-radius:12px;background:var(--ac-soft);display:flex;flex-direction:column;gap:6px}
 .scout-app-wrapper .apr-guide a{color:var(--ac);font-weight:700;font-size:15px;text-decoration:underline;text-underline-offset:3px}
 .scout-app-wrapper .apr-lkh{margin:0 0 8px;font-size:14px;font-weight:800;color:var(--ink)}
@@ -1884,6 +1894,38 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
   }
   function cardFile(b){try{return new File([b],'prowl-find.png',{type:'image/png'});}catch(e){return null}}
   function cardDl(b){var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='prowl-find.png';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);if(a.parentNode)a.parentNode.removeChild(a);},4000);}
+  /* v5.99 Email this. The Windows share sheet only lists Store apps, so on a
+     computer there is no Messenger or Instagram in it. Prowl's own worker
+     (/share/email, Resend) mails the notes with the photo card attached to any
+     address, from any device. Six a day per visitor.
+     v6.74: back after the v6.00 rebuild lost it; the worker route is new in v98. */
+  var EAPI='https://prowl.thebluecloud.workers.dev/share/email';
+  function emailRow(host,item,text,r,src){
+    var old=host.querySelector('.apr-em');if(old&&old.parentNode===host){host.removeChild(old);return;}   /* v6.74: only this host's row (the research row sits inside the photo result) */
+    var row=document.createElement('div');row.className='apr-em';
+    var inp=document.createElement('input');inp.type='email';inp.autocomplete='email';inp.placeholder='friend@email.com';inp.setAttribute('aria-label','Send to this email');
+    try{inp.value=localStorage.getItem('prowl.alertEmail')||'';}catch(e){}
+    var go=document.createElement('button');go.type='button';go.className='b p';go.textContent='Send';
+    var st=document.createElement('p');st.className='apr-ems';st.setAttribute('role','status');st.textContent='Sends the notes and the photo card from Prowl.';
+    function send(){
+      var to=String(inp.value||'').replace(/\s+/g,'').toLowerCase();
+      if(!/^[^@]+@[^@]+\.[a-z]{2,}$/.test(to)){st.className='apr-ems';st.textContent='That email does not look right.';try{inp.focus();}catch(e){}return;}
+      go.disabled=true;go.textContent='Sending\u2026';st.className='apr-ems';st.textContent='';
+      var from='';try{from=localStorage.getItem('prowl.alertEmail')||'';}catch(e){}
+      function post(card){
+        fetch(EAPI,{method:'POST',headers:OH(),body:JSON.stringify({to:to,from:from,item:item,text:text,card:card||''})}).then(function(res){return res.json().then(function(j){return {ok:res.ok,status:res.status,j:j}},function(){return {ok:false,status:res.status,j:null}})}).then(function(x){
+          go.disabled=false;go.textContent='Send';
+          if(x.ok&&x.j&&x.j.ok){st.className='apr-ems ok';st.textContent='Sent to '+to+'. Check spam the first time.';}
+          else{st.className='apr-ems';st.textContent=x.status===429?'That is the limit for today (6 emails). Try again tomorrow.':(x.j&&x.j.error)||'Could not send right now. Try again in a minute.';}
+        },function(){go.disabled=false;go.textContent='Send';st.className='apr-ems';st.textContent='Could not reach Prowl. Try again in a minute.';});
+      }
+      if(r&&src){renderCard(r,src,function(b){if(!b||!window.FileReader){post('');return;}var fr=new FileReader();fr.onload=function(){post(String(fr.result||''));};fr.onerror=function(){post('');};fr.readAsDataURL(b);});}
+      else post('');
+    }
+    go.addEventListener('click',send);
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();send();}});
+    row.appendChild(inp);row.appendChild(go);row.appendChild(st);host.appendChild(row);try{inp.focus();}catch(e){}
+  }
   function shareCard(r,src,save){
     var PL='https://www.owlandtwigvintage.com/pages/prowl?utm_source=share&utm_medium=photo_card';
     try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(PL).then(function(){var n=document.getElementById('otp-aprLk');if(!n){n=document.createElement('p');n.id='otp-aprLk';n.className='apr-note';O.appendChild(n);}n.textContent='Prowl link copied. Paste it into your post or caption so people can tap it.';},function(){});}}catch(e){}
@@ -2018,7 +2060,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     try{var bs=atob(src.split(',')[1]),ar=new Uint8Array(bs.length);for(var k=0;k<bs.length;k++)ar[k]=bs.charCodeAt(k);var fl=new File([ar],'prowl-photo.jpg',{type:'image/jpeg'});
       if(navigator.canShare&&navigator.canShare({files:[fl]})){var sb=document.createElement('button');sb.type='button';sb.className='b';sb.textContent='Search this photo on Google Lens';sb.addEventListener('click',function(){navigator.share({files:[fl]}).catch(function(){});});L.appendChild(sb);}}catch(e){}
     if(hq){lk('Google Images','https://www.google.com/search?tbm=isch&q='+encodeURIComponent(hq));lk('eBay sold prices \u2197',window.prowlAff('https://www.ebay.com/sch/i.html?_nkw='+encodeURIComponent(hq)+'&LH_Sold=1&LH_Complete=1','prowl-photo'));}
-    if(r.basis!=='pending'&&r.fair){var shb=document.createElement('button');shb.type='button';shb.className='b';shb.textContent='Share this find';shb.addEventListener('click',function(){shareCard(r,src);});L.insertBefore(shb,L.children[1]||null);var svb=document.createElement('button');svb.type='button';svb.className='b';svb.textContent='Save picture';svb.addEventListener('click',function(){shareCard(r,src,true);});L.insertBefore(svb,shb.nextSibling);}
+    if(r.basis!=='pending'&&r.fair){var shb=document.createElement('button');shb.type='button';shb.className='b';shb.textContent='Share this find';shb.addEventListener('click',function(){shareCard(r,src);});L.insertBefore(shb,L.children[1]||null);var svb=document.createElement('button');svb.type='button';svb.className='b';svb.textContent='Save picture';svb.addEventListener('click',function(){shareCard(r,src,true);});L.insertBefore(svb,shb.nextSibling);
+      var emb=document.createElement('button');emb.type='button';emb.className='b';emb.textContent='Email this';emb.addEventListener('click',function(){var it=String(r.item||'').replace(/\([^)]*\)/g,' ').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'');emailRow(O,it||hq||'A find',(it||'A find')+' \u2014 fair price '+(r.fair||'')+(r.why?'. '+r.why:'')+'\nChecked with Prowl: https://www.owlandtwigvintage.com/pages/prowl?utm_source=share&utm_medium=photo_email',r,src);});L.insertBefore(emb,svb.nextSibling);}   /* v6.74 */
     if(r.basis!=='pending'){var rpb=document.createElement('button');rpb.type='button';rpb.className='b';rpb.textContent='Wrong item? Re-price';rpb.addEventListener('click',function(){var nm=H?String(H.value).replace(/^\s+|\s+$/g,''):'';if(!nm){if(H){H.placeholder='type what it really is';try{H.focus();}catch(e){}}return;}var nj={item:nm+' (your ID)',search:nm,condition:r.condition,flaws:r.flaws,basis:'pending',fair:'Checking sold prices\u2026'};show(nj,src);priceIt(nj,src);});L.appendChild(rpb);}
     if(RESEARCH_ON&&r.basis!=='pending'&&hq){var rsb=document.createElement('button');rsb.type='button';rsb.className='b';rsb.textContent='Research this piece';rsb.addEventListener('click',function(){researchIt(hq,rsb,r,src);});L.appendChild(rsb);}
     if(L.firstChild)O.appendChild(L);
@@ -2078,13 +2121,16 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
       /* v6.07: draw the photo card now, so the tap can share it at once */
       var cardF=null;
       if(r&&pic&&navigator.share&&navigator.canShare)renderCard(r,pic,function(b){cardF=b?cardFile(b):null;});
-      shr.addEventListener('click',function(){
+      function rsNotes(med){
         var LL=['Field notes: '+(j.item||name),''];
         for(var q=0;q<rows.length;q++){if(rows[q][1])LL.push(rows[q][0]+': '+rows[q][1]);}
         if(SD.length){LL.push('');LL.push('Sold before:');for(var sq=0;sq<SD.length;sq++){var sdw=[SD[sq].date,SD[sq].where].filter(function(v){return !!v}).join(', ');LL.push('- '+String(SD[sq].title).slice(0,80)+' '+SD[sq].price+(sdw?' ('+sdw+')':'')+' '+SD[sq].url);} }   /* v6.09 */
         var nsrc=0;for(var z=0;z<src.length&&z<6;z++){if(src[z]&&typeof src[z].url==='string'&&/^https:\/\//i.test(src[z].url)){if(!nsrc){LL.push('');LL.push('Sources:');}nsrc++;LL.push(nsrc+'. '+String(src[z].title||'').slice(0,90)+' '+src[z].url);}}
-        LL.push('');LL.push('Researched with Prowl: https://www.owlandtwigvintage.com/pages/prowl?utm_source=share&utm_medium=research');
-        var txt=LL.join('\n'),ttl='Field notes: '+(j.item||name);
+        LL.push('');LL.push('Researched with Prowl: https://www.owlandtwigvintage.com/pages/prowl?utm_source=share&utm_medium='+med);
+        return LL.join('\n');
+      }
+      shr.addEventListener('click',function(){
+        var txt=rsNotes('research'),ttl='Field notes: '+(j.item||name);
         function copyIt(){try{navigator.clipboard.writeText(txt).then(function(){shr.textContent='Copied. Paste it anywhere.';},function(){});}catch(e){}}
         function textOnly(){if(navigator.share){navigator.share({title:ttl,text:txt}).catch(function(e){if(!e||e.name!=='AbortError')copyIt();});}else{copyIt();}}
         /* v5.99: the photo card rides along with the notes, like "Share this find".
@@ -2095,6 +2141,9 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
         navigator.share({files:[cardF],title:ttl,text:txt}).catch(function(e){if(!e||e.name!=='AbortError')textOnly();});
       });
       d.appendChild(shr);
+      var emr=document.createElement('button');emr.type='button';emr.className='b apr-shr';emr.textContent='Email this';emr.style.marginLeft='8px';   /* v6.74 */
+      emr.addEventListener('click',function(){emailRow(d,j.item||name,rsNotes('research_email'),r,pic);});
+      d.appendChild(emr);
       O.appendChild(d);try{d.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}
       var lwX=document.getElementById('otp-aprPosh')||O.querySelector('.apr-looks:not(.apr-sold)');   /* v6.11: after the Poshmark sales */
       if(SDp){}else if(lwX&&lwX.parentNode)lwX.parentNode.insertBefore(sw,lwX.nextSibling);else d.insertBefore(sw,dl);   /* v6.09 */
@@ -2584,7 +2633,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.73';
+var PROWL_VERSION='v6.74';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -2958,13 +3007,16 @@ function rQuick(){
 }
 
 /* ---------- DEN: HUNTS ---------- */
+/* v6.74: the Den's hunts say how many finds are new since you last looked, like the home panel's chips (seenNew:
+   only for hunts this visit has fetched, and only once you have opened the hunt before) */
+function denNew(x){var n=0;try{n=seenNew(sgwClean(x).toLowerCase())}catch(e){}return n?' <em class="sgw-new" aria-label="'+n+' new">'+(n>9?'9+':n)+' new</em>':''}
 function rDenHunts(){
   setTimeout(function(){try{flockHunts()}catch(e){}},0);   /* v6.61: Flock follows the whole Den */
   $('#otp-denList').innerHTML=st.hunts.map(function(x,i){
     var s=st.sel.has(i),f=st.lock.has(i);
     return '<li class="term'+(s?' on':'')+'">'+
       '<button class=ck type=button data-c='+i+' aria-pressed='+s+'>'+(s?'✓':'')+'</button>'+
-      '<button class=tb type=button data-i='+i+'><span class=tt>'+esc(x)+'</span></button>'+
+      '<button class=tb type=button data-i='+i+'><span class=tt>'+esc(x)+denNew(x)+'</span></button>'+
       '<button class="sb'+(f?' on':'')+'" type=button data-l='+i+' title="'+(f?'Unlock':'Lock on')+'"><i>'+(f?'◉':'◎')+'</i><b>'+(f?'Locked':'Lock')+'</b></button>'+
       '<button class=rm type=button data-r='+i+' aria-label="Remove">✕</button></li>';
   }).join('');
@@ -3480,21 +3532,39 @@ function liveRunStrip(name,t,c){
   var r=exRows(items,t);   /* v6.72 */
   return '<div class="rlive">'+head+exUpd(r,c)+'</div><div class="sgw-grid">'+r.rows+'</div></div>';
 }
+/* v6.74: each strip says which marketplace it is (data-lv), so one answer redraws only its own strip (runPatch) */
+function lvTag(id,h){return h.replace(/^<div class="rlive">/,'<div class="rlive" data-lv="'+id+'">')}
 function sgwRunStrip(r){
   var t=sgwTermOf(r);
-  return liveRunStrip('ShopGoodwill',t,t?sgw.cache[t.toLowerCase()]:null);
+  return lvTag('shopgoodwill',liveRunStrip('ShopGoodwill',t,t?sgw.cache[t.toLowerCase()]:null));
 }
 /* v6.33: when every live source has answered empty for a single-term run, one card instead of eight lines. */
-function runLive(r){
+function runLive(r){return '<div class="run-live">'+runLive0(r)+'</div>'}   /* v6.74: runPatch's anchor */
+function runLive0(r){
   var t=sgwTermOf(r);
   if(t&&r.terms&&r.terms.length===1){var sm=liveSummary(t);if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return '<div class="rlive">'+liveEmptyCard(t)+'</div>'}
   return sgwRunStrip(r)+lvRunStrips(r);
+}
+/* v6.74 (bug I3): a live answer in a single search redrew all of #otp-res: every row, button and listener, up to
+   eight times, and the panel flashed and lost focus. Now only that marketplace's strip is redrawn, the way DAILY
+   patches one block (dgPatch); the whole live part only when it turns into, or out of, the "nothing live" card. */
+function runPatch(r,id){
+  if(st.run!==r||r.phase==='launching')return;
+  var w=res.querySelector('.run-live'),el,tmp,h,i,s,t;
+  if(!w){rRes();return}
+  el=w.querySelector('.rlive[data-lv="'+id+'"]');
+  if(id==='shopgoodwill')h=sgwRunStrip(r);
+  else for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];if(s.id===id){t=liveTermOf(r,s.mkt);h=t?lvTag(s.id,liveRunStrip(s.name,t,lv[s.id].cache[t.toLowerCase()])):''}}
+  var all=runLive0(r);
+  if(!el||!h||all.indexOf(h)<0){if(w.innerHTML!==all)w.innerHTML=all;return}   /* the empty card came or went */
+  tmp=document.createElement('div');tmp.innerHTML=h;
+  if(tmp.firstChild&&el.outerHTML!==tmp.innerHTML)el.parentNode.replaceChild(tmp.firstChild,el);
 }
 function lvRunStrips(r){
   var html='',i,s,t;
   for(i=0;i<LIVE_SRC.length;i++){
     s=LIVE_SRC[i];t=liveTermOf(r,s.mkt);
-    if(t)html+=liveRunStrip(s.name,t,lv[s.id].cache[t.toLowerCase()]);
+    if(t)html+=lvTag(s.id,liveRunStrip(s.name,t,lv[s.id].cache[t.toLowerCase()]));
   }
   return html;
 }
@@ -3563,9 +3633,9 @@ function dgFetchAll(r){
 function sgwForRun(r){
   if(r&&r.mode==='daily'){dgFetchAll(r);return}
   var t=sgwTermOf(r),i,s,e;
-  function again(){if(st.run===r&&r.phase!=='launching')rRes()}
-  if(t)sgwFetch(t,again);
-  for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];e=liveTermOf(r,s.mkt);if(e)lvFetch(s.id,e,again,true)}   /* v6.61: the visitor's own run goes first */
+  function again(id){return function(){runPatch(r,id)}}   /* v6.74: was rRes() */
+  if(t)sgwFetch(t,again('shopgoodwill'));
+  for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];e=liveTermOf(r,s.mkt);if(e)lvFetch(s.id,e,again(s.id),true)}   /* v6.61: the visitor's own run goes first */
 }
 
 function rRes(){
@@ -4260,7 +4330,8 @@ function seenFresh(k){
   b=FRESH_BASE[k];if(!b)return;
   u=seenUrls(k);for(i=0;i<u.length;i++)if(!b[u[i]])FRESH[u[i]]=1;
 }
-function freshPaint(el){var cs=el.querySelectorAll('.sgw-cell[data-u]'),i;for(i=0;i<cs.length;i++)if(FRESH[cs[i].getAttribute('data-u')])cs[i].setAttribute('data-fresh','1')}
+/* v6.74: + a "New" tag on the title that stays (the glow plays once, and not at all with reduced motion) */
+function freshPaint(el){var cs=el.querySelectorAll('.sgw-cell[data-u]'),i,t;for(i=0;i<cs.length;i++)if(FRESH[cs[i].getAttribute('data-u')]){cs[i].setAttribute('data-fresh','1');t=cs[i].querySelector('.sgw-t');if(t&&!t.querySelector('.fl-newb'))t.insertAdjacentHTML('afterbegin','<span class="fl-newb">New</span>')}}
 function seenNew(k){
   var S=seenLoad(),u=seenUrls(k),i,set={},n=0;
   if(!u.length)return 0;
@@ -4303,7 +4374,9 @@ function liveCount(c){
 /* v6.72: exact matches first. A listing is exact when every word of the hunt is in its title (Fire-King and
    fire king alike, a plural s or es aside); the rest are close matches, kept in the marketplace's own order below
    a line. "fire king jadeite" no longer opens on Jay King jadeite rings. One word hunts are all exact or all close. */
-function exWords(v){return String(v||'').toLowerCase().replace(/[\u2019']/g,'').replace(/[^a-z0-9\u00c0-\uffff]+/g,' ').split(' ').filter(Boolean).map(function(w){return w.length>3?w.replace(/(es|s)$/,''):w})}
+/* v6.74: a plural counts as its word: a final s (not ss), then a final e, come off, so vase/vases, dish/dishes and
+   glass/glasses meet (v6.72 took es off whole, and "vases" became "vas" while "vase" stayed "vase") */
+function exWords(v){return String(v||'').toLowerCase().replace(/[\u2019']/g,'').replace(/[^a-z0-9\u00c0-\uffff]+/g,' ').split(' ').filter(Boolean).map(function(w){return w.length>3?(/ss$/.test(w)?w:w.replace(/s$/,'')).replace(/(.{3,})e$/,'$1'):w})}
 function exSort(items,t){
   var need=exWords(t),ex=[],near=[],i,j,have,ok;
   for(i=0;i<items.length;i++){
@@ -4424,8 +4497,13 @@ function fbBlock(t){
   var note=fresh?'':'<p class="sgw-note">Nothing new on Facebook for this hunt '+(dd===0?'today':dd===1?'yesterday':'lately')+(rows?'. Earlier this week:':'.')+'</p>';
   return head+note+(rows?'<div class="sgw-grid">'+rows+'</div>':'');
 }
-function sgwBody(){
-  var t=sgwCurTerm();
+/* v6.74: the panel shows only the live listings; the full hunt (every marketplace) was a button up in the left
+   column, easy to miss under a long list of hunts. It is offered again where the live listings end. */
+function sgwCont(t){
+  return t?'<div class="sgw-cont"><p>These are the live listings. The full hunt searches all <b>'+TOTAL+'</b> marketplaces for <b>“'+esc(t)+'”</b>, from Facebook to estate sales and auctions.</p><button type="button" class="b p sgw-hunt" data-sgw="hunt">Continue the full hunt →</button></div>':'';
+}
+function sgwBody(){var t=sgwCurTerm();return sgwBody0(t)+sgwCont(sgw.terms.length?t:'')}
+function sgwBody0(t){
   if(t)fbFetch(t);   /* v6.65 */
   if(!sgw.terms.length)return '<p class="sgw-note">Type something you hunt into the box above. It is saved to your hunts, locked for Daily, and checked on ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Vinted and Grailed right away.</p>';
   var sm=liveSummary(t);
@@ -4436,11 +4514,11 @@ function sgwBody(){
   return html;
 }
 
+/* v6.74: "Run the full hunt" moved to the foot of the live listings as "Continue the full hunt" (sgwCont) */
 function sgwActs(){
   var x=sgwFind(sgw.cur);if(!x)return '';
   var ts=slog()[x.t.toLowerCase()],a=ago(ts);
-  return '<button type="button" class="b p sgw-hunt" data-sgw="hunt">Run the full hunt →</button>'+
-    '<button type="button" class="b sgw-hunt sgw-fb" data-sgw="fb">Facebook \u00b7 '+fbAllUsa().multi(x.t).length+' cities</button>'+
+  return '<button type="button" class="b sgw-hunt sgw-fb" data-sgw="fb">Facebook \u00b7 '+fbAllUsa().multi(x.t).length+' cities</button>'+
     igLink(x.t,'b sgw-hunt sgw-ig')+
     '<span class="sgw-ago">'+(ts?'Last run '+esc(a.charAt(0).toLowerCase()+a.slice(1)):'Not run yet')+'</span>';
 }
@@ -4903,6 +4981,14 @@ function alertsSoonPage(){
     var hp=hs[i].nextElementSibling;if(hp)hp.textContent='One email with new finds for your hunts. We are putting the finishing touches on it.';
   }
 }
+/* v6.74: "One search, every marketplace" explains Prowl to someone new. Once they are hunting (favorite hunts on
+   the home panel, or any hunt run on this device) it is not news, so it goes. */
+function whypPaint(){
+  var w=document.querySelector('.scout-app-wrapper .whyp');if(!w)return;
+  var hunting=sgw.terms.length>0,lg=slog(),k;
+  if(!hunting)for(k in lg){hunting=true;break}
+  w.hidden=hunting;
+}
 /* v6.15: the Prowl Alerts section at the foot of the home page knows who is reading it.
    A Pro member is not asked to try Pro; a signed-in member is sent to their settings. */
 function rAlertsHome(){
@@ -4912,6 +4998,7 @@ function rAlertsHome(){
   if(ps[0])ps[0].innerHTML=pro?'<b>You have Prowl Pro.</b> One email with new finds for your hunts on ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted and Grailed, only listings you have not seen, for up to 25 hunts every day. Pick the mornings, the hunts, a price ceiling and skip-words in your settings.':sec.getAttribute('data-copy');
   if(tryA)tryA.hidden=pro;
   if(go)go.textContent=pro||member?'Your Prowl Alerts settings':'Set up Prowl Alerts';
+  sec.hidden=member;   /* v6.74: Alerts are set up here; Den > Settings has them, the sign-up is for everyone else */
 }
 function rMail(){try{rDenAcct()}catch(e){}
   var boxes=document.querySelectorAll('.scout-app-wrapper .otp-mail'),i,box,h;
@@ -5226,6 +5313,7 @@ function rSGW(){
   form.insertAdjacentHTML('beforebegin',html);
   mount.querySelector('.sgw-body').innerHTML=sgwBody();
   freshPaint(mount);   /* v6.69 */
+  whypPaint();   /* v6.74 */
   mount.querySelector('.sgw-acts').innerHTML=sgwActs();
   sgwWhere(mount);
   mount.hidden=!!st.run;

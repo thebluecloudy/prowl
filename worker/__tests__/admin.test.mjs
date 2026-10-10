@@ -752,7 +752,7 @@ test("diagnose a typed term: every live source, AI tags, https-only links, failu
   assert.equal(ebay.kept, 2);
   assert.equal(etsy.status, 0); assert.equal(etsy.count, 0); assert.ok(etsy.err.includes("[email]"), "error text scrubbed");
   for (const r of j.results) for (const it of r.items) { assert.equal(it.memberDrop, null); assert.equal(it.alreadySent, false); }
-  assert.deepEqual(j.summary, { sources: 3, ok: 2, failed: 1, items: 5, aiDropped: 1, aiWould: 1, memberDropped: 0, alreadySent: 0, waiting: 0 });
+  assert.deepEqual(j.summary, { sources: 3, ok: 2, failed: 1, items: 5, aiDropped: 1, aiWould: 1, memberDropped: 0, notExact: 0, alreadySent: 0, waiting: 0 });
   assert.deepEqual(j.ai, { mode: "on", alerts: true, live: true });
   assert.equal(H.calls.jev.length, 2, "AI only for sources that returned listings");
   assert.ok(H.calls.jev.every(c => c[2] === "shadow"));
@@ -1555,7 +1555,7 @@ test("index.js alCheck: a reset or a cleared 'already sent' memory made while th
   kv.set("pend:" + E, { a: [{ url: "https://p/0" }] });
   const kvGet = async (e, k, d) => { const v = await e.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; };
   const kvPut = async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v));
-  const deps = { kvGet, kvPut, alActive: (e, s) => s.hunts, alPrefs: () => ({ freq: "daily" }), AL_PEND_CAP: 30, AL_SEEN_CAP: 6000,
+  const deps = { kvGet, kvPut, alActive: (e, s) => s.hunts, alExact: a => a, alPrefs: () => ({ freq: "daily" }), AL_PEND_CAP: 30, AL_SEEN_CAP: 6000,
     alTitleKey: x => "t:" + x.src + "|" + x.title,
     alHunt: async (e, h) => {
       if (h === "b") {   // the owner presses "Re-check hunts today" and "Clear already sent" while this hunt is being searched
@@ -1581,7 +1581,7 @@ test("index.js alCheck: after the 'already sent' memory is cleared, a re-check d
   kv.set("pend:" + E, { a: [{ url: "https://x/1", title: "one", src: "ebay" }, { url: "https://x/2", title: "two", src: "ebay" }] });   // and "Clear already sent" (no seen:)
   const kvGet = async (e, k, d) => { const v = await e.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; };
   const kvPut = async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v));
-  const deps = { kvGet, kvPut, alActive: (e, s) => s.hunts, alPrefs: () => ({ freq: "daily" }), AL_PEND_CAP: 30, AL_SEEN_CAP: 6000,
+  const deps = { kvGet, kvPut, alActive: (e, s) => s.hunts, alExact: a => a, alPrefs: () => ({ freq: "daily" }), AL_PEND_CAP: 30, AL_SEEN_CAP: 6000,
     alTitleKey: x => "t:" + x.src + "|" + x.title,
     alHunt: async () => [{ url: "https://x/1", title: "one", src: "ebay" }, { url: "https://x/2", title: "two", src: "ebay" }, { url: "https://x/3", title: "three", src: "ebay" }] };
   const X = fromIndex(["alMerge", "alCheck"], deps);
