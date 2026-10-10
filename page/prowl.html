@@ -371,7 +371,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .heromark .hm-mark{display:block;width:96px;height:96px;max-width:none;filter:drop-shadow(0 0 14px rgba(57,255,20,.35))}
 .scout-app-wrapper .heromark .hm-scene{display:none}
 @media (prefers-reduced-motion:no-preference){
-[data-theme=uranium] .scout-app-wrapper .heromark{display:flex;position:relative;width:100%;max-width:560px;aspect-ratio:5/2;overflow:hidden;border-radius:16px;
+[data-theme=uranium] .scout-app-wrapper .heromark{display:flex;position:relative;width:100%;max-width:560px;margin:0 auto 18px;aspect-ratio:5/2;overflow:hidden;border-radius:16px;
   background:radial-gradient(70% 70% at 50% 70%,#123a2a 0,#0b1a2e 50%,#050816 100%);box-shadow:0 0 22px rgba(57,255,20,.22)}
 [data-theme=uranium] .scout-app-wrapper .heromark .hm-mark{height:min(96px,82%);width:auto;aspect-ratio:1/1}   /* a narrow box at Extra large text */
 [data-theme=uranium] .scout-app-wrapper .heromark .hm-scene{display:block;position:absolute;inset:0;width:100%;height:100%;max-width:none;opacity:0;transition:opacity .6s ease}
@@ -2579,7 +2579,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.70';
+var PROWL_VERSION='v6.71';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
