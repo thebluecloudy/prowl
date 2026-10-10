@@ -2364,7 +2364,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
       <div class="nearblk">
         <h3 class="nearh">Garage sales <span id="otp-salesScope">near me</span>
 </h3>
-        <p class="nearp">This week's garage, yard and moving sales, listed by the people holding them. Opens Craigslist for your city.</p>
+        <p class="nearp">This week's garage, yard and moving sales, listed by the people holding them. Opens Craigslist for your city, on its map or as a list.</p>
         <div class="nearg" id="otp-salesGrid"></div>
       </div>
       <div class="nearblk">
@@ -3102,11 +3102,12 @@ function rNear(){
 /* v6.75: garage sales, the listings themselves rather than a map search (build plan item 5). Craigslist's garage &
    moving sales section (gms) for the saved city, newest first, and the same with the free-stuff section. Other
    finders (EstateSales.net, gsalr, yardsalesearch) wait until the worker can show that it may fetch them. */
-function gmsUrl(cat){var c=clSlug()||CL_DEFAULT;return 'https://www.craigslist.org/search/area/'+E(c)+'?cat='+cat+'#search=1~list~0~0'}
+function gmsUrl(cat,view){var c=clSlug()||CL_DEFAULT;return 'https://www.craigslist.org/search/area/'+E(c)+'?cat='+cat+'#search=1~'+(view||'list')+'~0~0'}   /* view: list or map (Craigslist's own map of the sales) */
 function rSales(){
   var g=$('#otp-salesGrid');if(!g)return;
   var sc=$('#otp-salesScope');if(sc)sc.textContent=st.city?('near '+st.city):'near Ann Arbor';
-  g.innerHTML='<a class=nearc href="'+esc(gmsUrl('gms'))+'" target=_blank rel="noopener noreferrer">Garage &amp; moving sales</a>'+
+  g.innerHTML='<a class=nearc href="'+esc(gmsUrl('gms','map'))+'" target=_blank rel="noopener noreferrer">Garage sales on a map</a>'+
+    '<a class=nearc href="'+esc(gmsUrl('gms'))+'" target=_blank rel="noopener noreferrer">Garage &amp; moving sales</a>'+
     '<a class=nearc href="'+esc(gmsUrl('zip'))+'" target=_blank rel="noopener noreferrer">Free stuff</a>';
 }
 

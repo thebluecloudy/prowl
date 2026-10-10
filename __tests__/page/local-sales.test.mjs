@@ -14,6 +14,7 @@ test('Local shows garage sales for the saved city, newest first, from Craigslist
   p.$('#otp-dock .db[data-m="den"]').click();
   await tick(50);
   assert.deepEqual(links(p), [
+    ['Garage sales on a map', 'https://www.craigslist.org/search/area/detroit?cat=gms#search=1~map~0~0'],
     ['Garage & moving sales', 'https://www.craigslist.org/search/area/detroit?cat=gms#search=1~list~0~0'],
     ['Free stuff', 'https://www.craigslist.org/search/area/detroit?cat=zip#search=1~list~0~0'],
   ]);
@@ -23,7 +24,7 @@ test('Local shows garage sales for the saved city, newest first, from Craigslist
   p.$('#otp-cityIn').value = 'sfbay';
   p.$('#otp-citySet').click();
   await tick(30);
-  assert.match(links(p)[0][1], /\/search\/area\/sfbay\?cat=gms/);
+  assert.match(links(p)[0][1], /\/search\/area\/sfbay\?cat=gms#search=1~map~/);
   assert.equal(p.$('#otp-salesScope').textContent, 'near sfbay');
   assert.deepEqual(p.errors, []);
   await p.close();
