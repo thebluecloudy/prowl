@@ -39,15 +39,34 @@ test("the worker's words match the page's (plurals, apostrophes, punctuation, wh
   }
   const ex = (t, title) => EX.alExact([{ title }, { title: "zzz" }], t).length === 1;
   assert.ok(ex("pyrex bowl", "PYREX mixing bowls, set of 4"));
+  for (const [a, b] of [["fenton vase", "Pair of Fenton Vases"], ["plate", "Dinner plates"], ["glass", "Amber glasses"], ["dresses", "1950s dress"]]) assert.ok(ex(a, b), a + " / " + b);
   assert.ok(ex("pfaltzgraff's yorktowne", "Pfaltzgraff’s Yorktowne plate"));
   assert.ok(!ex("hull", "Hullabaloo poster"), "whole words only");
 });
 
-test("alHunt filters before it returns, so alCheck's seen-store and the email only see the exact ones", () => {
-  const body = indexFn("alHunt");
-  assert.match(body, /return alExact\(out, term\);\s*\/\*[^*]*\*\/\s*\}$/, "the last thing alHunt does");
-  const check = indexFn("alCheck");
-  assert.match(check, /alHunt\(env, h, sub\)/, "alerts get their listings from alHunt");
+/* alCheck run for real, with alHunt stubbed: what goes in the email (pend) and what is remembered (seen) */
+function checkWorld(days) {
+  const kv = new Map(), day = { n: 0 };
+  const deps = {
+    alHunt: async () => days[day.n].map((title, i) => ({ title, url: "https://www.ebay.com/itm/" + title.replace(/\W+/g, "-") })),
+    alActive: () => ["fire king jadeite"], alPrefs: () => ({ freq: "daily" }), alMerge: async () => {},
+    kvGet: async (env, k, d) => (kv.has(k) ? JSON.parse(kv.get(k)) : d), kvPut: async (env, k, v) => { kv.set(k, JSON.stringify(v)); },
+    AL_PEND_CAP: 30, AL_SEEN_CAP: 6000,
+  };
+  const keys = Object.keys(deps);
+  const f = new Function(...keys, [indexFn("alWords"), indexFn("alTitleKey"), indexFn("alExWords"), indexFn("alExact"), indexFn("alCheck")].join("\n") + "\nreturn alCheck;")(...keys.map((k) => deps[k]));
+  kv.set("sub:me@x.com", JSON.stringify({ email: "me@x.com" }));
+  return { kv, day, run: async () => { const sub = { email: "me@x.com", day: "d" + day.n, done: [] }; await f({}, sub, 5, { day: "d" + day.n }); kv.set("pend:me@x.com", JSON.stringify(JSON.parse(kv.get("pend:me@x.com") || "{}"))); } };
+}
+test("alerts keep the exact matches, and remember the close ones so they never go out later as new", async () => {
+  const W = checkWorld([["Fire-King Jadeite Mug", "Jay King Jadeite Ring", "Jay King Jadeite Pendant"], ["Jay King Jadeite Ring", "Jay King Jadeite Pendant", "Jadeite Bead Necklace"]]);
+  await W.run();
+  const pend = () => (JSON.parse(W.kv.get("pend:me@x.com"))["fire king jadeite"] || []).map((x) => x.title);
+  assert.deepEqual(pend(), ["Fire-King Jadeite Mug"], "day 1: the exact one only");
+  W.kv.set("pend:me@x.com", "{}");   /* the email went out */
+  W.day.n = 1;   /* day 2: the mug is gone, nothing is exact, so the hunt falls back to everything */
+  await W.run();
+  assert.deepEqual(pend(), ["Jadeite Bead Necklace"], "only the listing never seen before, not the rings from day 1");
 });
 
 /* ---------- Email this ---------- */
@@ -67,10 +86,10 @@ function load() {
     Response: class { constructor(b) { this.b = b; } async text() { return this.b; } },
     fetch: async (u, o) => { sent.push({ u, body: JSON.parse(o.body) }); return { status: 200, text: async () => "{}" }; },
     AbortController, setTimeout, clearTimeout,
-    PROWL_PAGE: "https://www.owlandtwigvintage.com/pages/prowl", AL_UNSUB_MAIL: "hello@owlandtwigvintage.com",
+    PROWL_PAGE: "https://www.owlandtwigvintage.com/pages/prowl", AL_UNSUB_MAIL: "hello@owlandtwigvintage.com", G_ENV: null,
   };
   const consts = INDEX.match(/^const SHARE_[A-Z_]+ = .*$/m)[0];
-  const names = ["ip6Parts", "ipKey", "ipNet", "isOwner", "capsDay", "ctrName", "vCount", "alEmail", "alEsc", "alSend", "shareEmail"];
+  const names = ["ip6Parts", "ipKey", "ipNet", "isOwner", "capsDay", "ctrName", "vCount", "alEmail", "alEsc", "sha16", "alSend", "shareLinks", "shareEmail"];
   const keys = Object.keys(deps);
   const f = new Function(...keys, consts + "\n" + names.map(indexFn).join("\n") + "\nreturn { " + names.join(", ") + " };")(...keys.map((k) => deps[k]));
   return { ...f, sent };
@@ -78,11 +97,12 @@ function load() {
 const ENV = { RESEND_API_KEY: "re_test" };
 const PNG = "data:image/png;base64," + Buffer.from("fake png bytes").toString("base64");
 const req = (body, ip = "203.0.113.7", hdr = {}) => ({ body, headers: { get: (h) => (h === "CF-Connecting-IP" ? ip : hdr[h] || null) } });
-const good = (o = {}) => ({ to: "friend@example.com", from: "me@example.com", item: "Black panther TV lamp", text: "Black panther TV lamp, fair price $40-60.\nChecked with Prowl: https://www.owlandtwigvintage.com/pages/prowl?utm_source=share", card: PNG, ...o });
+let nTo = 0;
+const good = (o = {}) => ({ to: "friend" + (++nTo) + "@example.com", from: "me@example.com", item: "Black panther TV lamp", text: "Black panther TV lamp, fair price $40-60.\nChecked with Prowl: https://www.owlandtwigvintage.com/pages/prowl?utm_source=share", card: PNG, ...o });
 
 test("Email this sends the notes and the photo card through Resend", async () => {
   const L = load();
-  const r = await L.shareEmail(req(good()), ENV, "o");
+  const r = await L.shareEmail(req(good({ to: "friend@example.com" })), ENV, "o");
   assert.equal(r.status, 200);
   assert.deepEqual(r.body, { ok: true });
   assert.equal(L.sent.length, 1);
@@ -90,21 +110,25 @@ test("Email this sends the notes and the photo card through Resend", async () =>
   assert.deepEqual(b.to, ["friend@example.com"]);
   assert.equal(b.subject, "A find from Prowl: Black panther TV lamp");
   assert.deepEqual(b.attachments, [{ filename: "prowl-find.png", content: Buffer.from("fake png bytes").toString("base64") }]);
-  assert.match(b.html, /Sent from Prowl by me@example\.com\./);
+  assert.match(b.html, /Someone using Prowl sent you this find\./);
+  assert.ok(!/me@example\.com/.test(b.html + b.text), "the address the visitor typed as theirs is never shown: nothing proves it");
+  assert.match(b.text, /Reply and we will stop Prowl emails to this address/);
   assert.match(b.html, /<a href="https:\/\/www\.owlandtwigvintage\.com\/pages\/prowl\?utm_source=share"/, "an Owl & Twig link is a link");
   assert.equal(b.reply_to, "hello@owlandtwigvintage.com", "the sender's address is never the Reply-To");
   assert.ok(!/me@example\.com/.test(b.from));
   assert.equal(b.headers, undefined, "no unsubscribe headers on a one-off");
 });
 
-test("Email this is text only: markup is escaped and only Owl & Twig links become links", async () => {
+test("Email this is text only: markup is escaped and every outside web address is taken out (mail apps link bare ones)", async () => {
   const L = load();
-  await L.shareEmail(req(good({ text: 'Look <img src=x onerror=alert(1)> https://evil.example/win and "quotes"', item: "<b>x</b>" })), ENV, "o");
+  await L.shareEmail(req(good({ text: 'Look <img src=x onerror=alert(1)> https://evil.example/win, www.bad.co/x and evil.example/login and "quotes". Sold at $40.00, St. Louis. https://www.owlandtwigvintage.com/pages/prowl', item: "<b>x</b> see evil.example" })), ENV, "o");
   const b = L.sent[0].body;
   assert.ok(!/<img/.test(b.html) && /&lt;img src=x/.test(b.html));
-  assert.ok(!/href="https:\/\/evil/.test(b.html), "an outside address stays plain text");
-  assert.match(b.html, /https:\/\/evil\.example\/win/);
-  assert.equal(b.subject, "A find from Prowl: <b>x</b>", "the subject is plain text (Resend does not render it)");
+  for (const part of [b.html, b.text, b.subject]) assert.ok(!/evil\.example|bad\.co/.test(part), "no outside address anywhere: " + part.slice(0, 80));
+  assert.equal((b.text.match(/\[link removed\]/g) || []).length, 3);
+  assert.match(b.text, /Sold at \$40\.00, St\. Louis\./, "prices and abbreviations are not addresses");
+  assert.match(b.html, /<a href="https:\/\/www\.owlandtwigvintage\.com\/pages\/prowl"/, "Owl & Twig's own link stays a link");
+  assert.equal(b.subject, "A find from Prowl: <b>x</b> see [link removed]", "the subject is plain text (Resend does not render it)");
 });
 
 test("Email this refuses a bad address, an empty note, and drops a card that is not a small PNG", async () => {
@@ -118,7 +142,14 @@ test("Email this refuses a bad address, an empty note, and drops a card that is 
   await L.shareEmail(req(good({ card: "data:image/png;base64," + "A".repeat(2200000) })), ENV, "o");
   assert.equal(L.sent[1].body.attachments, undefined, "over 1.5MB: sent without the card");
   await L.shareEmail(req(good({ text: "x".repeat(9000) })), ENV, "o");
-  assert.ok(L.sent[2].body.text.length < 4200, "the notes are cut to 4000");
+  assert.equal((L.sent[2].body.text.match(/x+/) || [""])[0].length, 4000, "the notes are cut to 4000");
+});
+
+test("Email this: 2 a day to any one address, whoever sends them", async () => {
+  const L = load();
+  const codes = [];
+  for (let i = 0; i < 3; i++) codes.push((await L.shareEmail(req(good({ to: "Victim@Example.com" }), "192.0.2." + (10 + i * 50)), ENV, "o")).status);
+  assert.deepEqual(codes, [200, 200, 429]);
 });
 
 test("Email this: 6 a day per visitor, 12 per neighbourhood; the owner is not counted", async () => {

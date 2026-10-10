@@ -1901,7 +1901,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
      v6.74: back after the v6.00 rebuild lost it; the worker route is new in v98. */
   var EAPI='https://prowl.thebluecloud.workers.dev/share/email';
   function emailRow(host,item,text,r,src){
-    var old=host.querySelector('.apr-em');if(old){old.parentNode.removeChild(old);return;}
+    var old=host.querySelector('.apr-em');if(old&&old.parentNode===host){host.removeChild(old);return;}   /* v6.74: only this host's row (the research row sits inside the photo result) */
     var row=document.createElement('div');row.className='apr-em';
     var inp=document.createElement('input');inp.type='email';inp.autocomplete='email';inp.placeholder='friend@email.com';inp.setAttribute('aria-label','Send to this email');
     try{inp.value=localStorage.getItem('prowl.alertEmail')||'';}catch(e){}
@@ -4374,7 +4374,9 @@ function liveCount(c){
 /* v6.72: exact matches first. A listing is exact when every word of the hunt is in its title (Fire-King and
    fire king alike, a plural s or es aside); the rest are close matches, kept in the marketplace's own order below
    a line. "fire king jadeite" no longer opens on Jay King jadeite rings. One word hunts are all exact or all close. */
-function exWords(v){return String(v||'').toLowerCase().replace(/[\u2019']/g,'').replace(/[^a-z0-9\u00c0-\uffff]+/g,' ').split(' ').filter(Boolean).map(function(w){return w.length>3?w.replace(/(es|s)$/,''):w})}
+/* v6.74: a plural counts as its word: a final s (not ss), then a final e, come off, so vase/vases, dish/dishes and
+   glass/glasses meet (v6.72 took es off whole, and "vases" became "vas" while "vase" stayed "vase") */
+function exWords(v){return String(v||'').toLowerCase().replace(/[\u2019']/g,'').replace(/[^a-z0-9\u00c0-\uffff]+/g,' ').split(' ').filter(Boolean).map(function(w){return w.length>3?(/ss$/.test(w)?w:w.replace(/s$/,'')).replace(/(.{3,})e$/,'$1'):w})}
 function exSort(items,t){
   var need=exWords(t),ex=[],near=[],i,j,have,ok;
   for(i=0;i<items.length;i++){

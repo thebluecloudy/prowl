@@ -31,7 +31,12 @@ test('plurals, case, punctuation and apostrophes do not split a match; a word in
   assert.ok(ex('1/2 pint creamer', 'Fire King 1/2 pint creamer'));
   assert.ok(!ex('hull', 'Hullabaloo poster'), 'whole words only');
   assert.ok(!ex('mccoy pottery', 'McCoy planter'));
-  assert.deepEqual(exWords('  Fire-King   JADEITE '), ['fire', 'king', 'jadeite']);
+  assert.deepEqual(exWords('  Fire-King   JADEITE '), ['fir', 'king', 'jadeit']);
+  /* v6.74: a plural meets its word, also when the word ends in e or ss */
+  for (const [a, b] of [['vase', 'Vases'], ['plate', 'plates'], ['dish', 'dishes'], ['glass', 'glasses'], ['dress', 'dresses'], ['figurine', 'figurines'], ['box', 'boxes'], ['candle', 'candles']]) {
+    assert.ok(ex(a, 'Fenton ' + b + ' lot'), a + ' / ' + b);
+    assert.ok(ex(b, 'Fenton ' + a), b + ' / ' + a);
+  }
 });
 
 /* eBay answers with the four titles below; every other marketplace with nothing */

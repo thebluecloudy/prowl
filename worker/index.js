@@ -20,9 +20,11 @@
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
  *   v98: 2026-10-10. Alert emails send exact matches only: a listing whose title holds every word of the hunt (the
- *        page's v6.72 rule, alExact). A hunt with no exact listing sends all of them, as before. And POST /share/email
- *        { to, from, item, text, card } -> { ok } brings back page v5.99's "Email this" (the route was never saved):
- *        6 a day per visitor, 12 per neighbourhood, 300 site-wide; text only, Owl & Twig links only, PNG card <1.5MB.
+ *        page's rule, alExact; a plural counts as its word). A hunt with no exact listing sends all of them, as
+ *        before; close matches are remembered as seen either way, so they never go out later as new. Diagnose shows
+ *        "Not an exact match". And POST /share/email { to, item, text, card } -> { ok } brings back page v5.99's
+ *        "Email this" (the route was never saved): 6 a day per visitor, 12 per neighbourhood, 2 per recipient, 300
+ *        site-wide; escaped text with every non-Owl & Twig web address removed; no sender named; PNG card <1.5MB.
  *   v88: 2026-10-08. Etsy in the listing popup. /item opens etsy.com/listing/<id> through the Etsy Open API
  *        (listings/<id>?includes=Images,Shop): every photo in rank order, price, the description (plain text, escaped,
  *        new lines kept), the shop, when it was made and materials. A sold-out or expired listing reads as gone.
@@ -3575,21 +3577,28 @@ function alSame(a, b) {
 /* ---------- v98: Email this ----------
    Page v5.99 had an "Email this" button on a Photo check or research result: the notes, and the photo card
    attached, mailed from Prowl to any address (the Windows share sheet has no mail or Messenger in it). The route
-   itself was never saved, so this is new. It mails Prowl's own words to an address a visitor types, so it is kept
-   from being a way to send anything to anyone: 6 a day per visitor, 12 per neighbourhood and 300 for the whole
-   site; the item and the notes are cut to size and sent as escaped text; only Owl & Twig links become links (a
-   research source is shown as plain text); the card must be a PNG under 1.5MB; the sender's address, if given,
-   is only named in the text, never used as From or Reply-To. */
-const SHARE_PER_IP = 6, SHARE_PER_NET = 12, SHARE_PER_DAY = 300, SHARE_CARD_MAX = 1572864;
+   itself was never saved, so this is new. It mails what a visitor sends to an address they type, so it is kept from
+   being a way to send anything to anyone: 6 a day per visitor, 12 per neighbourhood, 2 to any one address and 300
+   for the whole site; the item and the notes are cut to size and sent as escaped text; every web address that is
+   not Owl & Twig's is taken out (mail apps turn a plain-text address into a link, so leaving it as text was not
+   enough), research sources included; the card must be a PNG under 1.5MB; and no sender is named, since nothing
+   proves who typed it. A recipient can reply to stop them. */
+const SHARE_PER_IP = 6, SHARE_PER_NET = 12, SHARE_PER_TO = 2, SHARE_PER_DAY = 300, SHARE_CARD_MAX = 1572864;
+/* any web address or bare domain (evil.example/x, www.x.co) that is not owlandtwigvintage.com becomes "[link removed]" */
+function shareLinks(t) {
+  return String(t || "").replace(/\b(?:(?:https?:\/\/|www\.)[^\s<>"']+|(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s<>"']*)?)/gi, m => {
+    const host = m.replace(/^https?:\/\//i, "").split(/[\/?#:]/)[0].toLowerCase();
+    return /(^|\.)owlandtwigvintage\.com$/.test(host) ? m : "[link removed]";
+  });
+}
 async function shareEmail(request, env, origin) {
   const b = await readJson(request, 2200000);
   if (b.big) return json({ error: "too large" }, 413, origin);
   const to = alEmail(b.to);
   if (!to) return json({ error: "That email does not look right." }, 400, origin);
-  const item = String(b.item || "").replace(/[\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "A find";
-  const text = String(b.text || "").replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000b-\u001f]+/g, "").slice(0, 4000).trim();
+  const item = shareLinks(String(b.item || "").replace(/[\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80)) || "A find";
+  const text = shareLinks(String(b.text || "").replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000b-\u001f]+/g, "").slice(0, 4000)).trim();
   if (!text) return json({ error: "Nothing to send." }, 400, origin);
-  const from = alEmail(b.from);
   let card = "";
   const m = /^data:image\/png;base64,([A-Za-z0-9+\/=]+)$/.exec(String(b.card || ""));
   if (m && m[1].length * 3 / 4 <= SHARE_CARD_MAX) card = m[1];
@@ -3598,17 +3607,17 @@ async function shareEmail(request, env, origin) {
     const ip = ipKey(request.headers.get("CF-Connecting-IP"));
     if (!(await vCount("she:" + ip, SHARE_PER_IP))) return json({ error: "limit" }, 429, origin);
     if (!(await vCount("shn:" + ipNet(ip), SHARE_PER_NET))) return json({ error: "limit" }, 429, origin);
+    if (!(await vCount("sht:" + to, SHARE_PER_TO))) return json({ error: "That address has had its Prowl emails for today. Try again tomorrow." }, 429, origin);
     if (!(await vCount("sha:day", SHARE_PER_DAY))) return json({ error: "Email this is busy today. Try again tomorrow." }, 429, origin);
   }
   const lines = text.split("\n"), OT = /^https:\/\/(www\.)?owlandtwigvintage\.com\/[^\s<>"']*$/;
   const body = lines.map(l => l.split(/(\s+)/).map(w => (OT.test(w) ? '<a href="' + alEsc(w) + '" style="color:#C2491F">' + alEsc(w) + "</a>" : alEsc(w))).join("")).join("<br>");
-  const who = from ? alEsc(from) : "a Prowl user";
   const html = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1C1815;max-width:560px">' +
-    '<p style="margin:0 0 14px;color:#6B6259;font-size:13px">Sent from Prowl by ' + who + '.</p>' +
+    '<p style="margin:0 0 14px;color:#6B6259;font-size:13px">Someone using Prowl sent you this find.</p>' +
     '<p style="margin:0 0 14px">' + body + "</p>" +
     (card ? '<p style="margin:0 0 14px;color:#6B6259;font-size:13px">The photo card is attached.</p>' : "") +
-    '<p style="margin:18px 0 0;color:#6B6259;font-size:12px">Prowl searches 29 vintage marketplaces at once. <a href="' + PROWL_PAGE + '?utm_source=share&amp;utm_medium=email" style="color:#C2491F">Try it free</a>.</p></div>';
-  const plain = "Sent from Prowl by " + (from || "a Prowl user") + ".\n\n" + text + "\n\nProwl searches 29 vintage marketplaces at once: " + PROWL_PAGE;
+    '<p style="margin:18px 0 0;color:#6B6259;font-size:12px">Prowl searches 29 vintage marketplaces at once. <a href="' + PROWL_PAGE + '?utm_source=share&amp;utm_medium=email" style="color:#C2491F">Try it free</a>. Did not expect this? Reply and we will stop Prowl emails to this address.</p></div>';
+  const plain = "Someone using Prowl sent you this find.\n\n" + text + "\n\nProwl searches 29 vintage marketplaces at once: " + PROWL_PAGE + "\nDid not expect this? Reply and we will stop Prowl emails to this address.";
   const r = await alSend(env, to, "A find from Prowl: " + item, html, plain, "", card ? [{ filename: "prowl-find.png", content: card }] : null);
   return r.ok ? json({ ok: true }, 200, origin) : json({ error: "Could not send right now. Try again in a minute." }, 502, origin);
 }
@@ -3728,17 +3737,17 @@ async function alHunt(env, term, sub) {
     try { const jr = await jevClean(env, term, out, mode); out = jr.items; } catch (e) {}
   }
   if (sub) out = alFilter(sub, out, local);   /* v50: price ceiling, skip-words */
-  return alExact(out, term);   /* v98: exact matches only, unless there are none */
+  return out;   /* v98: alCheck and alTest keep the exact ones (alExact) */
 }
 
 /* v98: the page's exact match (page v6.72 exWords), so an alert and the page agree on what "exact" means. A listing
-   is exact when every word of the hunt is in its title: case, punctuation and apostrophes aside, and a plural s or
-   es dropped from words longer than three letters. Alerts send only the exact ones; a hunt with none sends all of
-   them, as before. Filtered here, before alCheck drops what was already sent, so a hunt that has any exact listing
-   never falls back to close ones on a day it has nothing new. */
+   is exact when every word of the hunt is in its title: case, punctuation and apostrophes aside, and a word's plural
+   counting as the word (a final s, then a final e, comes off words longer than three letters, so vase and vases,
+   dish and dishes, glass and glasses meet). Alerts send only the exact ones; a hunt with none sends all of them, as
+   before. alCheck marks every listing seen, close ones too, so a close one is never sent later as new. */
 function alExWords(v) {
   return String(v || "").toLowerCase().replace(/[\u2019']/g, "").replace(/[^a-z0-9\u00c0-\uffff]+/g, " ").split(" ").filter(Boolean)
-    .map(w => (w.length > 3 ? w.replace(/(es|s)$/, "") : w));
+    .map(w => (w.length > 3 ? (/ss$/.test(w) ? w : w.replace(/s$/, "")).replace(/(.{3,})e$/, "$1") : w));
 }
 function alExact(items, term) {
   const need = alExWords(term);
@@ -3770,10 +3779,13 @@ async function alCheck(env, sub, limit, now) {
   const seen = {}; seenArr.forEach(u => { seen[u] = 1; });
   const found = {}, newKeys = [], checked = [];
   for (const h of todo) {
-    const items = await alHunt(env, h, sub);
+    const all = await alHunt(env, h, sub), items = alExact(all, h);   /* v98: exact matches only, unless there are none */
     /* v50: remembered by URL and by title, so a relisted piece is not new again */
-    const fresh = items.filter(x => !seen[x.url] && !seen[alTitleKey(x)]);
-    fresh.forEach(x => { const tk = alTitleKey(x); seen[x.url] = 1; seen[tk] = 1; newKeys.push(x.url, tk); });
+    const unseen = x => !seen[x.url] && !seen[alTitleKey(x)];
+    const fresh = items.filter(unseen);
+    /* v98: every listing found is remembered, the close matches left out today too: on a later day with no exact
+       listing, they would otherwise all go out as new */
+    all.filter(unseen).forEach(x => { const tk = alTitleKey(x); seen[x.url] = 1; seen[tk] = 1; newKeys.push(x.url, tk); });
     if (fresh.length) found[h] = fresh;
     sub.done.push(h.toLowerCase()); checked.push(h.toLowerCase());
   }
@@ -4649,7 +4661,7 @@ async function alTest(request, env, url, origin) {
   if (!sub || !alSame(p.t, sub.tok)) return json({ error: "Turn on Prowl Alerts first." }, 404, origin);
   if (!(await vCount("altest:" + email, AL_TESTS_PER_DAY))) return json({ error: "That is 3 test emails today. Try again tomorrow." }, 429, origin);   /* v51: atomic */
   const pick = alActive(env, sub).slice(0, alBatch(env));
-  const got = await Promise.all(pick.map(h => alHunt(env, h, sub).catch(() => [])));
+  const got = await Promise.all(pick.map(h => alHunt(env, h, sub).then(a => alExact(a, h)).catch(() => [])));   /* v98 */
   const pend = {}, seen = {};
   pick.forEach((h, i) => { const l = got[i].filter(x => !seen[x.url] && (seen[x.url] = 1)); if (l.length) pend[h] = l; });
   const tsub = Object.assign({}, sub, { hunts: pick });
@@ -4883,7 +4895,7 @@ async function runProbes(env) {
 }
 const ADMIN_H = {
   kvGet, kvPut, alNow, alLocal, alPrefs, alActive, alSlotHour, alSendDay, alPaused, alFree, alFreeWeekly, alLegacyFree, alUrgency,
-  alProSet, alMerge, alSendSignin, alToken, liveSources, liveFetch, jevClean, jevWouldDrop, memberDropReason, alNear, runProbes,
+  alProSet, alMerge, alSendSignin, alToken, liveSources, liveFetch, jevClean, jevWouldDrop, memberDropReason, alExact, alNear, runProbes,
   capsCall, capsDay, vCount, ipKey, ipNet, alSame, statTerm, scrubPII, summarize, uptimeFrom, pctFromHist,
   giftHash, alEmail, proListHas, proListCount, alSendGift, alPurge,   /* v83: alPurge */
   jevResultsMode, liveFetchLocal, alTitleKey,   /* v78: Diagnose follows what alerts really do */
