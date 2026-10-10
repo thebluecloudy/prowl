@@ -19,7 +19,7 @@ function indexConst(name) {
   return m[0];
 }
 const FNS = ["vClean", "alWords", "alExWords", "scrubListingText", "shareLinks", "pounceMax", "pounceDayCap", "pounceNum", "pounceClean", "pounceQuarries", "pounceInches", "pounceSkip",
-  "pouncePrompt", "pounceParse", "pounceKeep", "pounceHunt", "pounceTopicOk", "pounceNtfy", "pounceSig", "pounceNoUrl", "pouncePush", "pounceNotify"];
+  "pouncePrompt", "pounceParse", "pounceKeep", "pounceHunt", "pounceTopicOk", "pounceNtfy", "pounceSig", "pounceKey", "pounceSeal", "pounceOpen", "pounceNoUrl", "pouncePush", "pounceNotify"];
 const CONSTS = ["POUNCE_STOP"];
 
 function load(over) {
@@ -146,7 +146,8 @@ test("a match taps the phone with Open it, Check price and Not it; with no phone
   assert.equal((await P.pounceNotify({}, none, [x])).length, 1, "no phone: back to the digest");
   assert.equal(calls.push.length, 0);
   const sub = { email: "a@x.com", tok: "T".repeat(36), push: { topic: "prowl-" + "a".repeat(24) } };
-  assert.equal((await P.pounceNotify({}, sub, [x])).length, 0);
+  const env = { MEMBER_ID_SALT: "salt" };
+  assert.equal((await P.pounceNotify(env, sub, [x])).length, 0);
   const b = calls.push[0];
   assert.equal(b.topic, sub.push.topic);
   assert.equal(b.title, "\uD83D\uDC3E I think I spotted your quarry");
@@ -155,8 +156,17 @@ test("a match taps the phone with Open it, Check price and Not it; with no phone
   assert.deepEqual(b.actions.map((a) => a.label), ["Open it", "Check price", "Not it"]);
   assert.match(b.actions[1].url, /prowl-app\?pounce=.*&fp=1$/);
   assert.equal(b.actions[2].method, "POST");
-  assert.match(b.actions[2].url, /^https:\/\/prowl\.example\/alerts\/quarry-no\?e=a%40x\.com&h=royal%20haeger%20panther&u=.*&s=[a-f0-9]{32}$/);
-  assert.equal(b.actions[2].url.indexOf(sub.tok), -1, "the token itself never leaves");
+  const m = /^https:\/\/prowl\.example\/alerts\/quarry-no\?m=([A-Za-z0-9_-]+)&h=royal%20haeger%20panther&u=.*&s=[a-f0-9]{32}$/.exec(b.actions[2].url);
+  assert.ok(m, b.actions[2].url);
+  assert.equal(await P.pounceOpen(env, m[1]), "a@x.com", "only the worker can open the sealed member");
+  assert.equal(await P.pounceOpen({ MEMBER_ID_SALT: "other" }, m[1]), "", "another key cannot");
+  const wire = JSON.stringify(b);
+  assert.equal(wire.indexOf("a@x.com"), -1, "no address goes to ntfy");
+  assert.equal(wire.indexOf("a%40x.com"), -1, "not even encoded");
+  assert.equal(wire.indexOf(sub.tok), -1, "the token itself never leaves");
+  calls.push.length = 0;
+  await P.pounceNotify({}, sub, [x]);
+  assert.deepEqual(calls.push[0].actions.map((a) => a.label), ["Open it", "Check price"], "no key set: no Not it button rather than an address in the link");
 });
 
 test("a bad topic is never sent to, and NTFY_URL must be https", () => {
@@ -177,5 +187,29 @@ test("wired in: routes, the alert check, status, purge and email move", () => {
   assert.match(indexFn("alStatus"), /quarryMatches/);
   assert.match(indexFn("alPurge"), /"pj:", "gm:"/);
   assert.match(indexFn("alMoveConfirm"), /"pj:", "gm:"/);
+  const tick = indexFn("alTick"), chk = indexFn("alCheck");
+  assert.match(tick, /alCheck\(env, sub, budget, now, phoneOnly \|\| null\)/, "emails off + phone on: Pounce still runs");
+  assert.match(tick, /if \(n \|\| phoneOnly\) continue;/, "and no digest goes");
+  assert.match(chk, /if \(fresh\.length && !only\) found\[h\] = fresh;/);
+  assert.match(chk, /const pm = found\[h\]\.filter\(x => x && x\.pounce\)/, "Pounce matches lead the waiting list");
+  assert.match(indexFn("pounceNo"), /pounceOpen\(env, url\.searchParams\.get\("m"\)\)/);
   assert.doesNotMatch(INDEX, /grail(?!ed)/i, "the word is quarry everywhere (Grailed is a marketplace)");
+});
+
+test("a full waiting list keeps Pounce matches: they go first and replace a plain copy", () => {
+  const src = indexFn("alCheck");
+  const i = src.indexOf("const was = Array.isArray(pend[h])"), j = src.indexOf(".slice(0, cap);", i) + 15;
+  const merge = new Function("pend", "found", "h", "cap", src.slice(i, j));
+  const pend = { p: [{ url: "1" }, { url: "2" }, { url: "3" }] };
+  merge(pend, { p: [{ url: "9", pounce: { match: "yes" } }, { url: "2", pounce: { match: "yes" } }, { url: "8" }] }, "p", 3);
+  assert.deepEqual(pend.p.map((x) => x.url), ["9", "2", "1"]);
+  assert.ok(pend.p[1].pounce, "the copy with the reason wins");
+});
+
+test("saving: a quarry on a deleted hunt is dropped and can be removed; one on a muted hunt does not hold the slot", () => {
+  const src = indexFn("pounceSave");
+  assert.match(src, /const removing = !b\.notUrl && !String\(b\.spec \|\| ""\)\.trim\(\);/);
+  assert.match(src, /\(!removing && mine\.indexOf\(k\) === -1\)/);
+  assert.match(src, /if \(mine\.indexOf\(h\) === -1 \|\| !pounceClean\(gs\[h\]\)\) delete gs\[h\]/);
+  assert.match(src, /h !== k && live\.indexOf\(h\) !== -1/);
 });

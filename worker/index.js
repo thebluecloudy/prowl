@@ -3928,10 +3928,33 @@ async function pounceSig(sub, hunt, url) {
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("pounce|" + sub.tok + "|" + String(hunt).toLowerCase() + "|" + url));
   return Array.from(new Uint8Array(d), x => ("0" + x.toString(16)).slice(-2)).join("").slice(0, 32);
 }
-function pounceNoUrl(sub, hunt, url, sig) {
-  return WORKER_BASE + "/alerts/quarry-no?e=" + encodeURIComponent(sub.email) + "&h=" + encodeURIComponent(hunt) + "&u=" + encodeURIComponent(url) + "&s=" + sig;
+/* v104 review: the Not it link passes through ntfy, so it never carries the member's address. It carries the address
+   sealed (AES-GCM, key from MEMBER_ID_SALT or ADMIN_KEY); only this worker can open it. No key set: no Not it button. */
+async function pounceKey(env) {
+  const s = String((env && (env.MEMBER_ID_SALT || env.ADMIN_KEY)) || "");
+  if (!s) return null;
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("pounce-seal|" + s));
+  return crypto.subtle.importKey("raw", d, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
-function pouncePush(env, sub, x, sig) {
+async function pounceSeal(env, email) {
+  const k = await pounceKey(env);
+  if (!k) return "";
+  const iv = crypto.getRandomValues(new Uint8Array(12)), c = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, k, new TextEncoder().encode(email)));
+  const all = new Uint8Array(12 + c.length); all.set(iv); all.set(c, 12);
+  return btoa(String.fromCharCode.apply(null, all)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+async function pounceOpen(env, sealed) {
+  try {
+    const k = await pounceKey(env), t = String(sealed || "");
+    if (!k || !/^[A-Za-z0-9_-]{30,200}$/.test(t)) return "";
+    const b = Uint8Array.from(atob(t.replace(/-/g, "+").replace(/_/g, "/")), ch => ch.charCodeAt(0));
+    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: b.slice(0, 12) }, k, b.slice(12)));
+  } catch (e) { return ""; }
+}
+function pounceNoUrl(id, hunt, url, sig) {
+  return WORKER_BASE + "/alerts/quarry-no?m=" + id + "&h=" + encodeURIComponent(hunt) + "&u=" + encodeURIComponent(url) + "&s=" + sig;
+}
+function pouncePush(env, sub, x, sig, id) {
   const v = x.pounce, site = AL_SRC_NAME[x.src] || x.src || "";
   const title = String(x.title || "").replace(/\s+/g, " ").trim().slice(0, 110);
   const body = {
@@ -3942,10 +3965,10 @@ function pouncePush(env, sub, x, sig) {
     tags: ["paw_prints"], priority: v.match === "yes" ? 4 : 3,
     actions: [
       { action: "view", label: "Open it", url: epnUrl(env, x.url, "prowl-pounce"), clear: true },
-      { action: "view", label: "Check price", url: PROWL_APP + "?pounce=" + encodeURIComponent(x.url) + "&fp=1", clear: true },
-      { action: "http", label: "Not it", url: pounceNoUrl(sub, x.hunt, x.url, sig), method: "POST", clear: true }
+      { action: "view", label: "Check price", url: PROWL_APP + "?pounce=" + encodeURIComponent(x.url) + "&fp=1", clear: true }
     ]
   };
+  if (id) body.actions.push({ action: "http", label: "Not it", url: pounceNoUrl(id, x.hunt, x.url, sig), method: "POST", clear: true });
   if (x.image) body.attach = x.image;
   return body;
 }
@@ -3958,10 +3981,10 @@ async function pounceSendPush(env, body) {
   finally { clearTimeout(timer); }
 }
 async function pounceNotify(env, sub, hits) {
-  const left = [];
+  const left = [], id = hits.length && sub.push ? await pounceSeal(env, sub.email) : "";
   for (const x of hits) {
     let ok = false;
-    if (sub.push && pounceTopicOk(sub.push.topic) && (await vCount("pjm:" + sub.email, POUNCE_PUSH_PER_DAY))) ok = await pounceSendPush(env, pouncePush(env, sub, x, await pounceSig(sub, x.hunt, x.url)));
+    if (sub.push && pounceTopicOk(sub.push.topic) && (await vCount("pjm:" + sub.email, POUNCE_PUSH_PER_DAY))) ok = await pounceSendPush(env, pouncePush(env, sub, x, await pounceSig(sub, x.hunt, x.url), id));
     if (!ok) left.push(x);
   }
   return left;   /* not on the phone: these ride in the next digest */
@@ -3998,7 +4021,7 @@ async function pounceMarkNot(env, sub, hunt, u) {
    matches and its title joins the quarry's "not it" list, which the judge reads as listings to say no to. Signed with
    the member's token, so the link only works for that member, that hunt and that listing. */
 async function pounceNo(request, env, url) {
-  const email = alEmail(url.searchParams.get("e")), hunt = vClean(url.searchParams.get("h"), 60), u = String(url.searchParams.get("u") || "").slice(0, 600);
+  const email = alEmail(await pounceOpen(env, url.searchParams.get("m"))), hunt = vClean(url.searchParams.get("h"), 60), u = String(url.searchParams.get("u") || "").slice(0, 600);
   const sub = email && alReady(env) ? await kvGet(env, "sub:" + email, null) : null;
   const done = (t, m, st) => request.method === "POST" ? new Response(m, { status: st || 200, headers: { "Content-Type": "text/plain; charset=utf-8" } }) : alPage(t, m, st);
   if (!sub || !hunt || !/^https:\/\//.test(u) || !alSame(String(url.searchParams.get("s") || ""), await pounceSig(sub, hunt, u))) return done("Link expired", "Open Prowl and mark it in Den, then Settings, under Pounce.", 400);
@@ -4014,20 +4037,23 @@ async function pounceSave(request, env, origin) {
   const email = alEmail(b.email);
   const sub = email ? await kvGet(env, "sub:" + email, null) : null;
   if (!sub || !alSame(String(b.tok || ""), sub.tok)) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
-  const k = vClean(b.hunt, 60).toLowerCase();
-  if (!k || sub.hunts.map(h => h.toLowerCase()).indexOf(k) === -1) return json({ error: "Pounce works on one of your saved hunts." }, 400, origin);
+  const k = vClean(b.hunt, 60).toLowerCase(), mine = sub.hunts.map(h => h.toLowerCase()), live = alActive(env, sub).map(h => h.toLowerCase());
+  const removing = !b.notUrl && !String(b.spec || "").trim();
+  if (!k || (!removing && mine.indexOf(k) === -1)) return json({ error: "Pounce works on one of your saved hunts." }, 400, origin);
   if (b.notUrl) {   /* Not it, from the page */
     const u = String(b.notUrl).slice(0, 600);
     if (/^https:\/\//.test(u)) await pounceMarkNot(env, sub, k, u);
     return json({ ok: true, quarries: sub.quarries || {}, max: pounceMax(sub), matches: await kvGet(env, "gm:" + email, []) }, 200, origin);
   }
   const gs = (sub.quarries && typeof sub.quarries === "object") ? Object.assign({}, sub.quarries) : {};
+  /* v104 review: a quarry whose hunt was deleted goes, so it can never hold a free member's one slot */
+  Object.keys(gs).forEach(h => { if (mine.indexOf(h) === -1 || !pounceClean(gs[h])) delete gs[h]; });
   const was = pounceClean(gs[k]);
   const g = pounceClean(Object.assign({}, b, { not: b.clearNot ? [] : (was ? was.not : []), at: new Date().toISOString() }));
   if (!g) delete gs[k];
   else {
-    const others = Object.keys(gs).filter(h => h !== k && pounceClean(gs[h]));
-    if (!gs[k] && others.length >= pounceMax(sub)) return json({ error: sub.pro ? "Prowl Pro covers " + POUNCE_PRO_QUARRIES + " quarries. Remove one first." : "Free covers one quarry. Prowl Pro covers " + POUNCE_PRO_QUARRIES + ".", limit: pounceMax(sub) }, 409, origin);
+    const others = Object.keys(gs).filter(h => h !== k && live.indexOf(h) !== -1);   /* only quarries Pounce is running count; one on a muted hunt waits */
+    if (!(gs[k] && live.indexOf(k) !== -1) && others.length >= pounceMax(sub)) return json({ error: sub.pro ? "Prowl Pro covers " + POUNCE_PRO_QUARRIES + " quarries. Remove one first." : "Free covers one quarry. Prowl Pro covers " + POUNCE_PRO_QUARRIES + ".", limit: pounceMax(sub) }, 409, origin);
     gs[k] = g;
   }
   sub.quarries = gs;
@@ -4069,10 +4095,10 @@ async function alMerge(env, sub, fields) {
 }
 
 /* Check some hunts for one subscriber and hold the new listings. */
-async function alCheck(env, sub, limit, now) {
+async function alCheck(env, sub, limit, now, only) {
   const readDay = sub.day;
   if (sub.day !== now.day) { sub.day = now.day; sub.done = []; }
-  const todo = alActive(env, sub).filter(h => sub.done.indexOf(h.toLowerCase()) === -1).slice(0, limit);
+  const todo = alActive(env, sub).filter(h => sub.done.indexOf(h.toLowerCase()) === -1 && (!only || only[h.toLowerCase()])).slice(0, limit);
   if (!todo.length) return 0;
   const seenArr = await kvGet(env, "seen:" + sub.email, []);
   const seen = {}; seenArr.forEach(u => { seen[u] = 1; });
@@ -4085,14 +4111,14 @@ async function alCheck(env, sub, limit, now) {
     /* v98: every listing found is remembered, the close matches left out today too: on a later day with no exact
        listing, they would otherwise all go out as new */
     all.filter(unseen).forEach(x => { const tk = alTitleKey(x); seen[x.url] = 1; seen[tk] = 1; newKeys.push(x.url, tk); });
-    if (fresh.length) found[h] = fresh;
+    if (fresh.length && !only) found[h] = fresh;
     /* v104: Pounce judges the quarry hunt's listings (seen or not: pj: remembers what it judged). A match goes to the
        member's phone; one that could not go rides at the top of the next digest with its reason. */
     if (sub.quarries) {
       try {
         const hits = await pounceHunt(env, sub, h, all);
         const left = hits.length ? await pounceNotify(env, sub, hits) : [];
-        if (left.length) found[h] = left.concat((found[h] || []).filter(y => !left.some(z => z.url === y.url)));
+        if (left.length && !only) found[h] = left.concat((found[h] || []).filter(y => !left.some(z => z.url === y.url)));
       } catch (e) { console.error("pounce", String(e && e.message || e)); }
     }
     sub.done.push(h.toLowerCase()); checked.push(h.toLowerCase());
@@ -4107,7 +4133,9 @@ async function alCheck(env, sub, limit, now) {
      today, the check finds the waiting listings once more, and the next email carried each of them twice */
   Object.keys(found).forEach(h => {
     const was = Array.isArray(pend[h]) ? pend[h] : [], have = new Set(was.map(x => x && x.url));
-    pend[h] = was.concat(found[h].filter(x => !have.has(x.url))).slice(0, cap);
+    /* v104 review: Pounce matches go first and replace a plain copy of the same listing, so a full waiting list never drops them */
+    const pm = found[h].filter(x => x && x.pounce), pu = new Set(pm.map(x => x.url));
+    pend[h] = pm.concat(was.filter(x => !(x && pu.has(x.url))), found[h].filter(x => !(x && x.pounce) && !have.has(x.url))).slice(0, cap);
   });
   await kvPut(env, "seen:" + sub.email, (Array.isArray(seenNow) ? seenNow : []).concat(newKeys).slice(-AL_SEEN_CAP));
   await kvPut(env, "pend:" + sub.email, pend);
@@ -4330,7 +4358,10 @@ async function alTick(env) {
     const tp = alTrialPlan(sub);   /* v55; v78: also a free month that a gift now covers */
     if (tp) { try { const tn = await alTrialNotes(env, tp === sub.plan ? sub : Object.assign({}, sub, { plan: tp })); if (tn) log.push((await who(sub)) + " " + scrubPII(String(tn))); } catch (e) { log.push((await who(sub)) + " trial mail error"); note("trial mail error"); } }
     if (!sub.hunts || !sub.hunts.length) continue;
-    if (sub.mail === "off") continue;   /* v55: emails off, membership and Pro stay */
+    /* v55: emails off, membership and Pro stay. v104 review: a member with emails off and phone alerts on still gets
+       Pounce: their quarry hunts are checked and judged, nothing waits for a digest and no email goes. */
+    const phoneOnly = sub.mail === "off" ? (sub.push && pounceTopicOk(sub.push.topic) ? pounceQuarries(env, sub) : null) : false;
+    if (phoneOnly === null || (phoneOnly && !Object.keys(phoneOnly).length)) continue;
     const loc = alLocal(sub, now);   /* v53: the member's own clock */
     if (alPaused(sub, loc)) continue;   /* v50: paused members cost nothing */
     if ((sub.proDay !== now.day && proLeft > 0) || !sub.utok) {
@@ -4339,8 +4370,8 @@ async function alTick(env) {
       if (!(await alMerge(env, sub, ["pro", "plan", "proDay", "utok", "proCheck"]))) continue;
     }
     let n = 0;
-    if (budget > 0) { try { n = await alCheck(env, sub, budget, now); } catch (e) { log.push((await who(sub)) + " check failed: " + why(e)); note("check failed: " + String(e && e.message || e)); budget = 0; } budget -= n; tally.checked += n; if (n) log.push((await who(sub)) + " checked " + n); }
-    if (n) continue;
+    if (budget > 0) { try { n = await alCheck(env, sub, budget, now, phoneOnly || null); } catch (e) { log.push((await who(sub)) + " check failed: " + why(e)); note("check failed: " + String(e && e.message || e)); budget = 0; } budget -= n; tally.checked += n; if (n) log.push((await who(sub)) + " checked " + n); }
+    if (n || phoneOnly) continue;
     const allDone = sub.day === now.day && alActive(env, sub).every(h => sub.done.indexOf(h.toLowerCase()) !== -1);
     if (allDone && loc.hour >= alSlotHour(env, sub) && sub.sent !== loc.day && alSendDay(sub, loc)) {   /* v50: only on the member's days; v52: at their hour; v53: their local time */
       let r;

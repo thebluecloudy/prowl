@@ -4968,7 +4968,7 @@ function pncD(k){var q=pncQ()[k]||{};return {spec:q.spec||'',avoid:(q.avoid||[])
 function pncIn(k,ph,v,t){return '<input type="'+(t||'text')+'" data-pk="'+k+'" placeholder="'+ph+'" aria-label="'+ph+'" value="'+esc(v)+'">'}
 function pncHtml(){
   var hs=mailHunts(),act=prefsActive(),q=pncQ(),n=0,h,i,k,g,d,gm=MAIL.gm||[],P=MAIL.push;
-  for(k in q)if(q[k]&&q[k].spec)n++;
+  for(k in q)if(act[k]&&q[k].spec)n++;
   h='<div class="mail-sec pnc"><h4>\uD83D\uDC3E Pounce<small>'+n+' of '+(MAIL.quarryMax||1)+'</small></h4><p class="mail-fine">Describe the exact piece you are stalking. Prowl looks at every new listing\u2019s photo and title, and you only hear about the ones that fit.</p>'+
     (P&&P.url?'<p class="mail-fine">\uD83D\uDCF1 <b>Phone alerts on.</b> <a class="sgw-ml" href="'+esc(P.url)+'" target="_blank" rel="noopener">Open in ntfy</a> \u00b7 <button type="button" class="sgw-ml" data-pnc="pushoff">Turn off</button></p>':
       '<p class="mail-fine"><button type="button" class="b p" data-pnc="pushon"'+(PNC.busy?' disabled':'')+'>\uD83D\uDCF1 Tap my phone when it\u2019s found</button><br>Free ntfy app, Android or iPhone. Without it, finds wait in your Prowl email.</p>');
@@ -5020,7 +5020,7 @@ document.addEventListener('click',function(e){
   }
   if(a==='not'){b.disabled=true;pncPost('alerts/quarry',{hunt:hh,notUrl:b.getAttribute('data-u')},function(j){pncSay(j,'Not it. I will skip listings like that.')});return}
   if(a==='pushon'||a==='pushoff'){PNC.busy=1;rMail();
-    pncPost('alerts/push',{on:a==='pushon'?1:0,hello:1},function(j){if(j&&j.ok){MAIL.push=j.push;if(j.push)try{window.open(j.push.url,'_blank','noopener')}catch(x){} }pncSay(j,j&&j.push?'Phone alerts on. In ntfy, tap Subscribe.':'Phone alerts off.')})}
+    pncPost('alerts/push',{on:a==='pushon'?1:0,hello:1},function(j){if(j&&j.ok)MAIL.push=j.push;pncSay(j,j&&j.push?'Phone alerts on. Tap Open in ntfy, then Subscribe.':'Phone alerts off.')})}
 });
 /* ?pounce=<listing> (the phone note) opens Den > Settings at that match; &fp=1 runs Fair price? on it */
 try{var pnm=/[?&]pounce=([^&#]+)/.exec(location.search);if(pnm){
