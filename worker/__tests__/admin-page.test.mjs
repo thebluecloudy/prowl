@@ -133,7 +133,7 @@ test("sign out is a plain form post; searches offer 1/7/30 days", () => {
 
 test("script calls every admin API route, same-origin, with the admin header on POSTs", () => {
   for (const r of ['"/admin/api/overview"', '"/admin/api/members?filter="', '"/admin/api/member?id="', '"/admin/api/member/action"',
-    '"/admin/api/find"', '"/admin/api/diagnose"', '"/admin/api/healthcheck"', '"/admin/api/errors?limit=100"', '"/admin/api/searches?days="',
+    '"/admin/api/find"', '"/admin/api/diagnose"', '"/admin/api/healthcheck"', '"/admin/api/salescheck"', '"/admin/api/errors?limit=100"', '"/admin/api/searches?days="',
     '"/admin/api/gifts"', '"/admin/api/gift"', '"/admin/api/gift/remove"', '"/admin/api/affiliates"', '"/admin/api/affiliate"', '"/admin/api/affiliate/ids"']) {
     assert.ok(SCRIPT.includes(r), r);
   }

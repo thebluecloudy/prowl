@@ -995,6 +995,17 @@ async function apiHealth(c) {
   return jres({ results: results });
 }
 
+/* v99: can a Worker read the garage-sale finders? (build plan item 5: decides whether Prowl can show their sales) */
+async function apiSalesCheck(c) {
+  if (!(await c.H.vCount("admsales", 30))) return jerr(429, "That is a lot of checks today. Try again tomorrow.");
+  const results = arr(await c.H.salesProbe()).map(p => {
+    p = p || {};
+    return { name: word(p.name, 30), url: https(p.url), status: num(p.status), ms: num(p.ms), bytes: num(p.bytes), wall: !!p.wall, readable: !!p.readable, err: clean(p.err, 120) };
+  });
+  await audit(c, { action: "salescheck", ok: true, note: results.filter(r => r.readable).length + " of " + results.length + " readable" });
+  return jres({ results: results });
+}
+
 async function apiErrors(c) {
   const lim = Math.min(500, Math.max(1, Math.floor(num(c.url.searchParams.get("limit")) || 100)));
   let j;
@@ -1072,7 +1083,7 @@ async function apiAffiliateIds(c) {
 }
 
 const GETS = { overview: apiOverview, members: apiMembers, member: apiMember, errors: apiErrors, searches: apiSearches, gifts: apiGifts, affiliates: apiAffiliates };
-const POSTS = { find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, gift: apiGiftAdd, "gift/remove": apiGiftRemove, affiliate: apiAffiliateSet, "affiliate/ids": apiAffiliateIds };
+const POSTS = { find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, salescheck: apiSalesCheck, gift: apiGiftAdd, "gift/remove": apiGiftRemove, affiliate: apiAffiliateSet, "affiliate/ids": apiAffiliateIds };
 
 /* ---------- sign in / out ---------- */
 const capsDayOf = c => typeof c.H.capsDay === "function" ? c.H.capsDay() : "caps:" + utcDay(c.nowMs);
