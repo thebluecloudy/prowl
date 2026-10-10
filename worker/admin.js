@@ -1001,7 +1001,7 @@ async function apiSalesCheck(c) {
   const results = arr(await c.H.salesProbe()).map(p => {
     p = p || {};
     let shape = "";
-    try { if (p.shape) shape = clean(JSON.stringify(p.shape, null, 1), 6000); } catch (e) {}   /* v102: public listing data, phone numbers and the like masked */
+    try { if (p.shape) shape = clean(JSON.stringify(p.extract ? { extract: p.extract, shape: p.shape } : p.shape, null, 1), 8000); } catch (e) {}   /* v102: public listing data, phone numbers and the like masked; v103: + what the extractor gets */
     return { name: word(p.name, 30), url: https(p.url), status: num(p.status), ms: num(p.ms), bytes: num(p.bytes), wall: !!p.wall, readable: !!p.readable, err: clean(p.err, 120), shape: shape };
   });
   await audit(c, { action: "salescheck", ok: true, note: results.filter(r => r.readable).length + " of " + results.length + " readable" });

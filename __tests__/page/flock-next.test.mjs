@@ -31,7 +31,7 @@ test('price pill opens the margin sheet, not the listing; math to the cent', asy
   await tick(40);
   assert.ok(p.$('#otp-sheet').classList.contains('on'));
   assert.equal(p.$('#otp-sheetT').textContent, 'What you’d clear');
-  // v6.77: no separate payment processing (eBay's final value fee includes it), and the $0.40 per-order fee
+  // v6.78: no separate payment processing (eBay's final value fee includes it), and the $0.40 per-order fee
   assert.deepEqual(rows(p), ['$12.50', '−$1.70', '−$0.40', '−$0.25']);
   assert.equal(p.$('#otp-sheetB .mg-clear b').textContent, '$10.15');
   assert.deepEqual(p.$$('#otp-sheetB .mg-rows dt').map((d) => d.firstChild.textContent.trim()), ['List price', 'Final value fee', 'Per-order fee', 'Promoted listing']);

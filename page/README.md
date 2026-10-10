@@ -113,7 +113,7 @@ scene's shape) holds the mark and the scene fades in over it, so nothing moves w
 mark alone (the lazy image is never fetched); if the scene cannot load, the mark stays. A new drawing: change the file in
 `worker/art/`, re-embed it in `worker/art.js` and bump `HERO_V`.
 
-## Panther QR (page v6.76)
+## Panther QR (page v6.77)
 
 Tap the panther at the top of the app (or the little QR square on its corner) to show someone Prowl: the bottom sheet
 opens with the QR code, bigger than in the share strip, the name to say out loud ("Prowl by Owl & Twig"), the address,
@@ -122,7 +122,7 @@ motion. The code is copied from the share strip's `#otp-qrPanel .qr-box`, so the
 strip and its own QR button are unchanged. Once the panther has tucked away on scroll it is `visibility:hidden`, so its
 button leaves the tab order. Tests: `__tests__/page/panther-qr.test.mjs`.
 
-## What you'd clear: eBay fees corrected (page v6.77)
+## What you'd clear: eBay fees corrected (page v6.78)
 
 The price pill on a Flock card opens "What you'd clear" (`marginCalc`, `flMargin`). From v6.39 it took a separate
 payment processing fee (2.7% + $0.25), which eBay has not charged since its managed payments: the final value fee

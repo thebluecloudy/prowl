@@ -1,4 +1,4 @@
-/* v103: a photo check on a busy photo. A Couroc café tray shot beside a sphinx bookend and old books came back as
+/* v104: a photo check on a busy photo. A Couroc café tray shot beside a sphinx bookend and old books came back as
    something else: nothing told the AI which object was being checked, and eBay's photo search, which looks at the whole
    photo, handed it lookalikes of whatever else was in the frame as evidence. Run: node --test worker/__tests__/photo-subject.test.mjs */
 import { test } from "node:test";
@@ -37,7 +37,7 @@ test("a maker the collector typed still leads", () => {
   assert.match(p, /The collector has identified it as: Couroc\./);
 });
 
-test("the worker says v103 or later", () => {
+test("the worker says v104 or later", () => {
   const v = /const WORKER_VERSION = "v(\d+)";/.exec(INDEX);
-  assert.ok(v && Number(v[1]) >= 103);
+  assert.ok(v && Number(v[1]) >= 104);
 });

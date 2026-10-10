@@ -1,4 +1,4 @@
-// Page v6.76: tap the panther at the top of the app to show the QR code. Showing someone Prowl meant scrolling to the
+// Page v6.77: tap the panther at the top of the app to show the QR code. Showing someone Prowl meant scrolling to the
 // share strip at the foot of the page to find the QR button, which took too long with a person waiting.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -114,8 +114,8 @@ test('once the panther has tucked away on scroll it is hidden, so its button lea
   await p.close();
 });
 
-test('the QR button keeps the theme from styling it, and the page says v6.76 or later', () => {
+test('the QR button keeps the theme from styling it, and the page says v6.77 or later', () => {
   assert.match(PAGE, /\.scout-app-wrapper \.pm-btn\{[^}]*appearance:none[^}]*text-transform:none/);
   const v = /var PROWL_VERSION='v6\.(\d+)';/.exec(PAGE);
-  assert.ok(v && Number(v[1]) >= 76);
+  assert.ok(v && Number(v[1]) >= 77);
 });

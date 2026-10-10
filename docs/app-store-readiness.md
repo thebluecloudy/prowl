@@ -177,4 +177,4 @@ of the trust the app is meant to build.
 | Email alerts with photos | `worker/index.js` (Prowl Alerts) | Push notifications reuse the same matching; only delivery is new |
 | Store sign-in and Pro check | worker, `extension/member.js` | The app signs in the same way; RevenueCat adds a second way to be Pro |
 | Privacy section | `docs/privacy-policy-prowl-section.html` | Starting point for the app's privacy policy |
-| Panther QR and Send the link | page v6.76 | Becomes "Get it on the App Store" once the app is live |
+| Panther QR and Send the link | page v6.77 | Becomes "Get it on the App Store" once the app is live |
