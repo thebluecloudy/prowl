@@ -1,16 +1,18 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11.
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.82).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.81** | 6,243 bytes under Shopify's 512 KB (slimmed) |
+| Page | **v6.82** | 5962 bytes under Shopify's 512 KB (slimmed) |
 | Worker | **v106** | |
 
 Recently shipped, newest first:
 
+- **v6.82:** the header fits on phones in the dark theme (its mushroom chip is hidden under 480px wide, and the bar
+  tightens); Help no longer runs off the edge.
 - **v6.81 / v106:** estate sales within 30 miles by default with each sale's distance, and "Show N farther"; the
   worker finds EstateSales.net's `filteredSales` list wherever it sits. (#116)
 - **v6.80 / v105:** estate-sale links that 404'd now use the sale's own link; a ZIP saved as the Craigslist city
@@ -28,17 +30,23 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.82, worker v107**. Claim one here when you start.
+Next free numbers: **page v6.83, worker v107**. Claim one here when you start.
 
 ## Waiting on Matt
 
-- **Free-month checkout test.** Tap "Start my free month" with a fresh email: checkout should show $0 (code
-  PROWLMONTH, applied by the link `/checkout?discount=PROWLMONTH`) and save the card; Den > Settings should then
-  show "Free until <date>, then $7.00 a month". Never tested yet.
 - **In Shopify:** set the PROWLMONTH discount to one use per customer (the code is visible in the page source).
 - **Known gap:** if adding Pro to the cart fails, the page falls back to `/products/prowl-pro` without the code.
+- **Next:** check Den > Settings shows the free month and that the welcome email came.
 - **Facebook alerts cost test** (Apify, 5 real hunts in Detroit/Novi). Needs a go-ahead and the Apify token.
 - **Estate sales check:** admin > Diagnose > "Check garage-sale sites", then Den > Local with "Novi, MI".
+
+## Done
+
+- **Free-month checkout test passed** (2026-10-11): "Start my free month" opened checkout with PROWLMONTH
+  applied, $0.00 today, $7.00 a month after, card saved; Shopify's subscription page offers Pause, Skip and Cancel.
+  Cancel tested too: the store got "canceled a subscription contract". The $0 order stays paid, so Pro runs to the
+  end of the free month (Nov 11) and then stops, as no $7 order comes. Known gap: Prowl doesn't see the cancel, so
+  Den still says "then $7.00 a month" until then.
 
 ## Known issues
 
