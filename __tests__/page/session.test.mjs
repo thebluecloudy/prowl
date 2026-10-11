@@ -127,7 +127,8 @@ test('Log out clears the session and the alert token, then leaves for the store 
   assert.equal(ls(p, 'prowl.alertNoAuto'), '1', 'no silent sign-in on the way back');
   assert.ok(hi(p).hidden);
   assert.ok(p.errors.some((e) => /navigation/i.test(String(e.message || e))), 'it navigates to the store logout');
-  assert.match(PAGE, /'\/customer_authentication\/logout\?return_to='\+encodeURIComponent\('\/pages\/prowl'\)/);
+  /* v6.85: back to the page it left from (the installed app's /pages/prowl-app, or /pages/prowl) */
+  assert.match(PAGE, /'\/customer_authentication\/logout\?return_to='\+encodeURIComponent\(location\.pathname\)/);
   await p.close();
 });
 

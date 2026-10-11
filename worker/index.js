@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v107: 2026-10-11. A cached "not Pro" answer lasts 10 minutes (Pro still 6 hours), so a new order is found within
+ *        minutes even after the day's fresh checks are spent.
  *   v106: 2026-10-11. Estate sales: the app's list (filteredSales) is found by name anywhere in a data block, walked as
  *        salesShape walks it. The owner's sales check found it at NGRX_STATE.feature.cityViewState, yet every sale the
  *        extractor gave back had no distance, map position or type: the list was not read. The check's extract now
@@ -368,7 +370,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-const WORKER_VERSION = "v106";
+const WORKER_VERSION = "v107";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -3433,7 +3435,8 @@ function alFilter(sub, items, local) {
 const PRO_SKU = "PROWL-PRO-MONTHLY";
 const PRO_URL = "https://www.owlandtwigvintage.com/products/prowl-pro";
 const PRO_DAYS = 35;
-const PRO_TRIAL_CODE = "PROWLMONTH";   /* v55 */
+const PRO_TRIAL_CODE = "PROWLMONTH";
+const PRO_NO_CACHE_MS = 10 * 60 * 1000;   /* v107 */   /* v55 */
 const PRO_MANAGE_URL = "https://www.owlandtwigvintage.com/account";
 /* v55: members created before AL_FREE_CUTOFF keep the old free plan (3 hunts, any day). */
 const AL_FREE_CUTOFF = "2026-10-04";
@@ -3475,7 +3478,9 @@ async function alProShop(env, email, c, cid) {
      email it was placed under, and the line-item tag is not needed */
   cid = /^\d{1,20}$/.test(String(cid || "")) ? String(cid) : "";
   const ck = cid ? "pro:cid:" + cid : "pro:" + email;
-  if (c && Date.now() - c.at < 6 * 3600 * 1000) return { pro: !!c.pro, via: "cache", plan: c.plan || null };
+  /* v107: a "not Pro" answer is kept 10 minutes, a Pro one 6 hours. A not-Pro cached just before a new order reached
+     Shopify's order search held for 6 hours and left the buyer's "Still looking for your order" card up (2026-10-11) */
+  if (c && Date.now() - c.at < (c.pro ? 6 * 3600 * 1000 : PRO_NO_CACHE_MS)) return { pro: !!c.pro, via: "cache", plan: c.plan || null };
   if (!env.SHOPIFY_ORDERS_TOKEN) return { pro: null, via: "no token" };
   const since = new Date(Date.now() - PRO_DAYS * 86400000).toISOString().slice(0, 10);
   const q = cid ? "customer_id:" + cid + " AND sku:" + PRO_SKU + " AND created_at:>=" + since : 'email:"' + email.replace(/"/g, "") + '" AND sku:' + PRO_SKU + " AND created_at:>=" + since;
@@ -3491,7 +3496,9 @@ async function alProShop(env, email, c, cid) {
         j = await r.json();
       } finally { clearTimeout(timer); }
       const nodes = (j && j.data && j.data.orders && j.data.orders.nodes) || null;
-      return nodes ? { nodes: nodes } : { err: "shopify error" };
+      /* v107: say what Shopify said (e.g. "Access denied for orders field"), so the admin's "pro check failing" names it */
+      const why = j && Array.isArray(j.errors) && j.errors[0] && j.errors[0].message ? String(j.errors[0].message) : "error";
+      return nodes ? { nodes: nodes } : { err: ("shopify: " + why).slice(0, 40) };
     };
     /* v38: Prowl puts the Prowl Alerts email on the order line, because Shop Pay
        often checks out under a different address than the one in Prowl. */

@@ -1,16 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.84).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.85).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.84** | 4805 bytes under Shopify's 512 KB (slimmed) |
-| Worker | **v106** | |
+| Page | **v6.85** | 2813 bytes under Shopify's 512 KB (slimmed) |
+| Worker | **v107** | |
 
 Recently shipped, newest first:
 
+- **v6.85 / v107:** an account chip in the header on every screen (the installed app has no store header): the first
+  letter of who is signed in, a green ring for Pro, a person when nobody is; it opens Den > Settings, whose Prowl
+  Alerts box now shows the plan. A sign-in finished in a browser tab is picked up when the app comes back. Log out
+  returns to the page it came from. The "Still looking for your order" card lets go after a day, names the email it
+  looks under (with "Switch to it"), and asks the shop afresh 3 times a round, not 15. The worker keeps a "not Pro"
+  answer 10 minutes (it was 6 hours) and names Shopify's own error in "pro check failing". On phones the ... home link
+  makes way for the chip.
 - **v6.84:** a first visit starts with 3 sample hunts (ceramic panther, Halloween decor, ceramic Christmas tree)
   instead of 12. The Den keeps 5 hunts of your own on Free, up to 100 with Prowl Pro (`HUNTS_FREE`/`HUNTS_PRO`). The
   sample hunts (old and new) don't count; nothing saved is ever removed, a full Den just takes no new hunt. Plan table, FAQ and
@@ -34,10 +41,14 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.85, worker v107**. Claim one here when you start.
+Next free numbers: **page v6.86, worker v108**. Claim one here when you start.
 
 ## Waiting on Matt
 
+- **URGENT: Shopify rejects the worker's order token ("shopify 401", Re-check Pro, 2026-10-11).** No member can be
+  confirmed Pro until SHOPIFY_ORDERS_TOKEN is replaced: Shopify admin > Settings > Apps > Develop apps > the Prowl app >
+  API credentials (scope read_orders), copy the Admin API access token, then Cloudflare > Workers > prowl > Settings >
+  Variables and secrets > SHOPIFY_ORDERS_TOKEN > Edit. Then Re-check Pro in admin > Members.
 - **In Shopify:** set the PROWLMONTH discount to one use per customer (the code is visible in the page source).
 - **Known gap:** if adding Pro to the cart fails, the page falls back to `/products/prowl-pro` without the code.
 - **Next:** check Den > Settings shows the free month and that the welcome email came.
