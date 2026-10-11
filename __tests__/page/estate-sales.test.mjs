@@ -71,3 +71,39 @@ test('the owner asks for a city: sent with the owner key, listed soonest first, 
   assert.deepEqual(p.errors, []);
   await p.close();
 });
+
+// v6.81: EstateSales.net's Novi page lists sales up to 100 miles out. Within 30 miles by default, the rest a tap away
+test('sales farther than 30 miles wait behind "Show N farther"; each sale shows its distance; no distance stays in', async () => {
+  const far = { ...SALES, items: [
+    { id: '1', name: 'Farmington Hills sale', url: 'https://www.estatesales.net/MI/Farmington-Hills/48336/1', start: '2026-10-11T13:00:00Z', city: 'Farmington Hills', st: 'MI', dist: 4.2 },
+    { id: '2', name: 'Okemos sale', url: 'https://www.estatesales.net/MI/Okemos/48864/2', start: '2026-10-12T13:00:00Z', city: 'Okemos', st: 'MI', dist: 57.8 },
+    { id: '3', name: 'Homer sale', url: 'https://www.estatesales.net/MI/Homer/49245/3', start: '2026-10-13T13:00:00Z', city: 'Homer', st: 'MI', dist: 88 },
+    { id: '4', name: 'No distance', url: 'https://www.estatesales.net/MI/Novi', start: '2026-10-14T13:00:00Z' },
+  ] };
+  const calls = [];
+  const p = loadPage({
+    fetchImpl: (u) => (/\/sales\?/.test(String(u)) ? (calls.push(String(u)), Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(far) })) : Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ items: [] }), text: () => Promise.resolve('') })),
+    storage: { 'prowl.v36': { seen: true, hunts: [] }, 'prowl.owner': OWNER },
+  });
+  await tick(50);
+  p.$('#otp-dock .db[data-m="den"]').click();
+  await tick(50);
+  p.$('#otp-esIn').value = 'Novi, MI';
+  p.$('#otp-esGo').click();
+  await waitFor(() => p.$$('#otp-esBox .es-row').length > 0);
+  const names = () => p.$$('#otp-esBox .es-row b').map((b) => b.textContent);
+  assert.deepEqual(names(), ['Farmington Hills sale', 'No distance']);
+  assert.match(p.$('#otp-esBox').textContent, /2 sales within 30 miles of Novi, MI/);
+  assert.match(p.$$('#otp-esBox .es-row')[0].textContent, /Farmington Hills, MI · 4 mi/);
+  assert.equal(p.$('#otp-esFar').textContent, 'Show 2 farther');
+  p.$('#otp-esFar').click();
+  assert.deepEqual(names(), ['Farmington Hills sale', 'Okemos sale', 'Homer sale', 'No distance']);
+  assert.match(p.$('#otp-esBox').textContent, /4 sales near Novi, MI/);
+  assert.equal(p.$('#otp-esFar').textContent, 'Only within 30 miles');
+  /* a new search starts within 30 miles again */
+  p.$('#otp-esGo').click();
+  await waitFor(() => calls.length === 2 && p.$$('#otp-esBox .es-row').length === 2);
+  assert.equal(p.$('#otp-esFar').textContent, 'Show 2 farther');
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});

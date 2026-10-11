@@ -141,3 +141,14 @@ price. Tests: `__tests__/page/flock-next.test.mjs`.
   built with an empty ZIP (`/MI/novi//5100273`, a 404). The worker now shows a sale in its own city only, and links it
   by its own link, or one built from a full state, city and ZIP, or else the city's page on EstateSales.net. Lists
   are kept under `es2:`, so the ones kept before the fix are not served.
+
+## Estate sales within 30 miles (page v6.81, worker v106)
+
+EstateSales.net's city page lists sales up to about 100 miles out (Okemos, Homer, Marlette, Mason for Novi). The list
+in Den › Local now shows sales within 30 miles by default, each with its distance, and **Show N farther** shows the
+rest; a sale with no distance stays in. A new search starts within 30 miles again.
+
+The distances come from the app's list of sales (`filteredSales`). The owner's sales check (2026-10-11) showed that
+list on the page, yet every sale the extractor gave back had no distance or map position, so worker v106 finds the
+list by its name wherever it sits in a data block, as the check does. The check's extract now has `fromList`, the
+number of sales that came from that list: it should equal `count`. Lists are kept under `es3:`.
