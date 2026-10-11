@@ -127,3 +127,21 @@ test("the routes are wired behind the cross-origin POST guard", () => {
   const guard = INDEX.indexOf('if (request.method === "POST" && ALLOW_ORIGINS.indexOf(origin) === -1)');
   for (const r of ['"/alerts/code"', '"/alerts/verify"']) assert.ok(INDEX.indexOf(r) > guard, r);
 });
+
+test("wrong guesses are capped per address per day across its codes, and refused sends never use the site-wide cap", async () => {
+  const { X, env, sent, counters, req } = rig({ counts: { "alcvf:a@b.co": 3 } });
+  for (let k = 0; k < 2; k++) {
+    await X.alCode(req({ email: "a@b.co" }), env, "o");
+    const right = codeOf(sent[sent.length - 1]), wrong = right === "000000" ? "111111" : "000000";
+    for (let i = 0; i < 2 && k * 2 + i < 3; i++) assert.equal((await X.alVerify(req({ email: "a@b.co", code: wrong }), env, "o")).status, 400);
+  }
+  const right = codeOf(sent[sent.length - 1]), wrong = right === "000000" ? "111111" : "000000";
+  const fourth = await X.alVerify(req({ email: "a@b.co", code: wrong }), env, "o");
+  assert.equal(fourth.status, 429);
+  assert.match(fourth.body.error, /Too many wrong codes today/);
+  const r2 = rig({ counts: { "alcode:x@b.co": 1 } });
+  await r2.X.alCode(r2.req({ email: "x@b.co" }), r2.env, "o");
+  const refused = await r2.X.alCode(r2.req({ email: "x@b.co" }), r2.env, "o");
+  assert.equal(refused.status, 429);
+  assert.equal(r2.counters["alcode:all"], 1, "only the code actually sent counted site-wide");
+});

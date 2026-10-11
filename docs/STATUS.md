@@ -6,7 +6,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.86).
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.86** | 4619 bytes under Shopify's 512 KB (slimmed) |
+| Page | **v6.86** | 4286 bytes under Shopify's 512 KB (slimmed) |
 | Worker | **v108** | |
 
 Recently shipped, newest first:
@@ -15,7 +15,8 @@ Recently shipped, newest first:
   (POST /alerts/code, /alerts/verify; HMAC only, 10 minutes, 5 tries, same answer for any email). A new email becomes
   a member. Gone from view: the store "Log in" / "Sign in or sign up", the confirm-link and magic-link screens, and the
   Flock star's trip to the store login. Old confirm/sign-in links and the silent store sign-in still work. Upgrade asks
-  for the sign-in first, then carries on to checkout.
+  for the sign-in first, then carries on to checkout. "Hi, name · Log out" moved to a slim line under the header (it
+  overlapped the buttons on a computer), on phones too. Limits: 5 codes and 10 wrong guesses per address a day.
 - **v6.85 / v107:** an account chip in the header on every screen (the installed app has no store header): the first
   letter of who is signed in, a green ring for Pro, a person when nobody is; it opens Den > Settings, whose Prowl
   Alerts box now shows the plan. A sign-in finished in a browser tab is picked up when the app comes back. Log out

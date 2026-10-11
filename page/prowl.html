@@ -346,16 +346,16 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 @keyframes spin{to{transform:rotate(360deg)}}
 .scout-app-wrapper .pulse{animation:pulse 2.4s ease-in-out infinite}
 .scout-app-wrapper.theme-menu-open .bar,.scout-app-wrapper.theme-menu-open #otp-dock,.scout-app-wrapper.theme-menu-open .oabar{visibility:hidden}
-.scout-app-wrapper .bar .hi:not([hidden]){display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mu);white-space:nowrap}
-.scout-app-wrapper .bar .hi b{font-weight:600;max-width:9em;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom}
-@media (max-width:639px){.scout-app-wrapper .bar .hi:not([hidden]){display:none}}   /* v6.45: no room on phones; Den > Settings has it */
+/* v6.86: "Hi, name · Log out" sits on its own slim line under the header (it overlapped the buttons on a computer) */
+.scout-app-wrapper .hi:not([hidden]){display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:4px 16px;font-size:13px;color:var(--mu);white-space:nowrap}
+.scout-app-wrapper .hi b{font-weight:600;max-width:14em;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom}
+.scout-app-wrapper .hi .hi-out{background:none;border:0;padding:4px 0;min-height:0;font:inherit;font-weight:600;color:var(--ac);text-decoration:underline;cursor:pointer}
 /* v6.85: the account chip, on every screen: the first letter of who is signed in (a ring when Pro), or a person when
    nobody is. The installed app has no store header to show it. On a phone the ... link home makes way for it */
 .scout-app-wrapper .bar .acct{flex:none;min-width:0;align-self:stretch;aspect-ratio:1/1;padding:0;border-radius:50%;font-weight:800;font-size:14px;text-transform:uppercase}
 .scout-app-wrapper.is-pro .bar .acct{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}
 @media (max-width:479px){.scout-app-wrapper .bar .brand .homedots{display:none}}
 .scout-app-wrapper .bar .brand{flex-shrink:0}
-.scout-app-wrapper .bar .hi .gh{white-space:nowrap}
 .scout-app-wrapper .bar{position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 18px;background:var(--bar-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--ln)}
 .scout-app-wrapper .brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.02em}
 .scout-app-wrapper .brand i{color:var(--ac);font-style:normal}
@@ -1743,7 +1743,6 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     <span class="brand-wm">Prowl</span><span class="probadge" title="Prowl Pro is on">PRO</span><a class="homedots" href="/" aria-label="Owl &amp; Twig home" title="Owl &amp; Twig home"><i> . . .</i></a>
   </span>
   <div class="bar-actions">
-    <span class="hi" id="otp-hi" hidden></span>
     <button class="gh acct" id="otp-acct" type="button" aria-label="Sign in">•</button>
     <button class="gh apphdr" id="otp-appHdr" type="button" hidden>App</button>
     <button class="gh" id="otp-sizeTop" type="button" aria-label="Text size: Standard. Tap for bigger." title="Text size">Aa</button>
@@ -1751,6 +1750,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     <button class="gh" id="otp-how" type="button" aria-label="How Prowl works">Help</button>
   </div>
 </header>
+<div class="hi" id="otp-hi" hidden></div>
 
 <main>
   <div class="pmark" id="otp-pan"><button class="pm-btn" id="otp-panQr" type="button" aria-label="Show the Prowl QR code" title="Show the QR code"><img id="otp-panImg" src="https://cdn.shopify.com/s/files/1/0807/8537/5486/files/panther_white_eyes_new_tail_clear.png?v=1785688388" alt="" decoding="async"><span class="pm-qr" aria-hidden="true"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2"></path></svg></span></button></div>
@@ -4723,7 +4723,7 @@ function mailUpgrade(){
   var em=mailUpgradeEmail();
   if(MAIL.busy)return;
   if(!alertsLive()){toast('Prowl Pro is coming soon.',2400);return}
-  if(!mGet('alertTok')){MAIL.after=mailUpgrade;MAIL.msg='Sign in with your email first, so Pro knows whose it is.';MAIL.open=true;openMailSettings();rMail();return}   /* v6.86 */
+  if(!mGet('alertTok')){MAIL.after=mailUpgrade;MAIL.afterAt=Date.now();MAIL.msg='Sign in with your email first, so Pro knows whose it is.';MAIL.open=true;openMailSettings();rMail();return}   /* v6.86 */
   if(typeof fetch!=='function'){location.href=PRO_URL;return}
   MAIL.busy=true;MAIL.msg='Opening checkout\u2026';rMail();
   function fail(){MAIL.busy=false;location.href=PRO_URL}
@@ -5039,7 +5039,7 @@ function mailBody(on,wait,n,em){
     if(MAIL.mail==='off')h+='<p class="mail-off" role="status"><b>Prowl emails are off.</b> '+(pro?'Prowl Pro is still on: 25 photo checks a day and unlimited Fair price checks. To stop paying, <a href="'+MANAGE_URL+'">cancel in your account</a>. ':'Your hunts and settings are saved. ')+'<button type="button" class="sgw-ml" data-mail="mailon">Turn emails back on</button></p>';
     h+=mailAcctHtml(em)+'<p class="mail-fine">Same sign-in on your phone and computer keeps your hunts in step. <button type="button" class="sgw-ml" data-mail="signout">Sign out</button></p><p>One email <b>'+prefsFreqTxt(pf)+'</b> to <b>'+esc(em)+'</b> with new finds for '+(pro||n<=MAIL.free?(na+' hunt'+(na===1?'':'s')):('<b>'+na+' of your '+n+' hunts</b>'))+', only listings you have not been sent. Add or remove a favorite and the email follows.</p>';
     h+=prefsHtml(on,em,n);
-  }else if(wait){
+  }else if(wait&&Date.now()-(+mGet('alertCodeAt')||0)<9e5){   /* a code is out (15 minutes); an older wait (a confirm link) asks again */
     /* v6.86: one sign-in, inside the app: the 6-digit code we emailed (a link opened the browser, not the app) */
     h+='<p>Enter the 6-digit code we sent to <b>'+esc(wait)+'</b>.</p>'+
       '<span class="sgw-mf"><input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" data-k="verify" placeholder="123456" aria-label="6-digit code"><button type="button" class="b p" data-mail="verify"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Checking\u2026':'Sign in')+'</button></span>'+
@@ -5049,7 +5049,7 @@ function mailBody(on,wait,n,em){
       '<span class="sgw-mf"><button type="button" class="b p" data-mail="join"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Turning on\u2026':'Turn on Prowl Alerts')+'</button></span>';
   }else{
     h+='<p><b>Sign in with your email.</b> No password: we email you a 6-digit code. Your hunts then follow you to every phone and computer, with one email of new finds: <b>free for 1 hunt on Mondays</b>, or 25 hunts every day with Prowl Pro, first month free. Turn the email off any time.</p>'+
-      '<span class="sgw-mf"><input type="email" autocomplete="email" data-k="code" placeholder="you@email.com" aria-label="Your email" value="'+esc(em)+'"><button type="button" class="b p" data-mail="code"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Sending\u2026':'Email me a code')+'</button></span>';
+      '<span class="sgw-mf"><input type="email" autocomplete="email" data-k="code" placeholder="you@email.com" aria-label="Your email" value="'+esc(em||wait||'')+'"><button type="button" class="b p" data-mail="code"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Sending\u2026':'Email me a code')+'</button></span>';
   }
   if(pro)h+='<label class="sgw-mc"><input type="checkbox" data-mail="all"'+(mGet('alertAll')==='1'?' checked':'')+'><span class="cbx" aria-hidden="true"></span> Every hunt in my Den too (up to 25), not just favorites</label>';
   else h+='<label class="sgw-mc lock" title="Prowl Pro"><input type="checkbox" disabled><span class="cbx" aria-hidden="true"></span> \uD83D\uDD12 Pro: every hunt in my Den too (up to 25)</label>';
@@ -5194,8 +5194,8 @@ function mailCode(step,v){
     .then(function(r){return r.json()['catch'](function(){return {}})})
     .then(function(j){
       MAIL.busy=false;
-      if(step==='code'&&j&&j.sent){mSet('alertWait',em);MAIL.msg='Code sent to '+em+'.';rMail();var ci=document.querySelector('.otp-mail input[data-k=verify]');if(ci)try{ci.focus()}catch(x){}return}
-      if(j&&j.tok){pxTake(j,'Signed in as '+j.email+'.');mSet('alertSig','');try{flPendStar()}catch(x){}if(MAIL.after){var f=MAIL.after;MAIL.after=null;f()}return}
+      if(step==='code'&&j&&j.sent){mSet('alertWait',em);mSet('alertCodeAt',String(Date.now()));MAIL.msg='Code sent to '+em+'.';rMail();var ci=document.querySelector('#otp-denSettings .otp-mail input[data-k=verify]')||document.querySelector('.otp-mail input[data-k=verify]');if(ci)try{ci.focus()}catch(x){}return}
+      if(j&&j.tok){var f=MAIL.after&&Date.now()-MAIL.afterAt<6e5?MAIL.after:null;MAIL.after=null;pxTake(j,'Signed in as '+j.email+'.');mSet('alertSig','');try{flPendStar()}catch(x){}if(f)f();return}
       if(j&&j.expired)mSet('alertWait',em);
       MAIL.msg=(j&&j.error)||'Could not reach Prowl. Try again in a minute.';rMail();
     },function(){MAIL.busy=false;MAIL.msg='Could not reach Prowl. Try again in a minute.';rMail()});
@@ -5240,8 +5240,8 @@ function shopCheck(fromLogin){
   if(!fromLogin&&mGet('alertNoAuto')==='1')return;
   pxMe(function(me){
     hiMe(me);
-    if(!me){if(fromLogin){MAIL.msg='Sign-in did not finish here. Try again, or use email only below.';MAIL.open=true;rMail();openMailSettings()}return}
-    if(!me.in){if(fromLogin){MAIL.msg='Sign-in did not finish. Tap Sign in to try again.';MAIL.open=true;rMail();openMailSettings()}return}
+    if(!me){if(fromLogin){MAIL.msg='Sign-in did not finish. Type your email below and we will send you a code.';MAIL.open=true;rMail();openMailSettings()}return}
+    if(!me.in){if(fromLogin){MAIL.msg='Sign-in did not finish. Type your email below and we will send you a code.';MAIL.open=true;rMail();openMailSettings()}return}
     pxLogin(me,false,function(j){
       if(j&&j.member&&j.tok){pxTake(j,'Signed in as '+j.email+'. Your hunts and plan are on this device.');if(fromLogin){MAIL.open=true;openMailSettings()} }
       else if(j&&j.member===false){sessSet(j.session);hiRender();MAIL.shop={e:j.email,first:me.first||''};rMail();if(fromLogin){MAIL.open=true;openMailSettings()} }
@@ -5280,7 +5280,7 @@ function hiRender(){
   var on=MAIL.storeIn===true,nm=MAIL.first||'',
     login=false;   /* v6.86: the account chip is the one sign-in */
   el.hidden=!(on||login);
-  el.innerHTML=on?'<span class="hi-n">'+(nm?'Hi, <b>'+esc(nm)+'</b>':'Signed in')+'</span><button class="gh hi-out" type="button" data-hi="out">Log out</button>'
+  el.innerHTML=on?'<span class="hi-n">'+(nm?'Hi, <b>'+esc(nm)+'</b>':'Signed in')+'</span><button class="hi-out" type="button" data-hi="out">Log out</button>'
     :login?'<a class="gh hi-in" href="'+esc(loginUrl())+'" data-hi="in">Log in</a>':'';
   /* v6.45: the same, as an Account row in Den > Settings (the only place phones show it; signing in there is in the
      Prowl Alerts box) */
@@ -5297,7 +5297,7 @@ function hiLogout(){
 })})})();
 /* v6.85: the account chip opens Den > Settings at the sign-in. A sign-in finished in a browser tab (an email link, the
    store) shares this app's storage on Android: when the app comes back, or storage changes, show who it is now */
-(function(){var b=document.getElementById('otp-acct');if(b)b.addEventListener('click',function(){MAIL.open=true;openMailSettings();try{rMail();if(!mGet('alertTok')){var i=document.querySelector('#otp-denSettings .otp-mail input[data-k=verify],#otp-denSettings .otp-mail input[data-k=code]');if(i)i.focus()}}catch(e){}});
+(function(){var b=document.getElementById('otp-acct');if(b)b.addEventListener('click',function(){MAIL.after=null;MAIL.open=true;openMailSettings();try{rMail();if(!mGet('alertTok')){var i=document.querySelector('#otp-denSettings .otp-mail input[data-k=verify],#otp-denSettings .otp-mail input[data-k=code]');if(i)i.focus()}}catch(e){}});
   function sync(){var em=mGet('alertTok')?mGet('alertEmail'):'';if(em===ACCT.em)return;MAIL.store=undefined;MAIL.storeAsk=0;hiRender();if(em)mailStatus(false);try{rMail()}catch(e){}}
   document.addEventListener('visibilitychange',function(){if(!document.hidden)sync()});window.addEventListener('pageshow',sync);window.addEventListener('storage',sync);acctRender();})();
 /* v5.90: in the installed app, the store sign-in opens in a browser panel and
@@ -5378,7 +5378,7 @@ function mailSync(now){
     var sig=mailSig();if(sig===mGet('alertSig'))return;   /* v6.00: an empty list is sent too (worker v51) */
     mailPost({email:em,hunts:mailHunts(),tok:tok},function(j){
       if(j&&j.ok&&j.on){mSet('alertSig',sig);if(typeof j.pro==='boolean'&&(j.pro?'1':'')!==mGet('alertPro')){mSet('alertPro',j.pro?'1':'');rMail()} }
-      else if(j&&(j._s===404||j.confirm)){mSet('alertTok','');mSet('alertSig','');mSet('alertWait',j.confirm?em:'');rMail()}
+      else if(j&&(j._s===404||j.confirm)){mSet('alertTok','');mSet('alertSig','');mSet('alertWait','');rMail()}   /* v6.86: sign in again with a code */
     });
   },now?0:2500);
 }
@@ -7541,7 +7541,7 @@ function svTap(u){
   if(findIdx(u)>-1||flSignedIn()){svToggle(u);return}
   var it=SVI[u];if(!it)return;
   try{sessionStorage.setItem(PEND_KEY,JSON.stringify({title:it.title,price:it.price,url:it.url,image:it.image,src:it.src,hunt:it.hunt,at:Date.now()}))}catch(e){}
-  MAIL.open=true;MAIL.msg='Sign in to save it. It is held for you meanwhile.';openMailSettings();rMail();   /* v6.86: the in-app code sign-in, not the store */
+  MAIL.after=null;MAIL.open=true;MAIL.msg='Sign in to save it. It is held for you meanwhile.';openMailSettings();rMail();   /* v6.86: the in-app code sign-in, not the store */
 }
 function flGoTo(url){location.href=url}
 /* v6.64: the installed app does not reload after the store sign-in (it opens in a browser panel), so the held star is

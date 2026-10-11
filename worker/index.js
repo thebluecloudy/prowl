@@ -4345,7 +4345,7 @@ async function alSignin(request, env, origin) {
    email too (the code proves the inbox, so it is the sign-up), never leaves the installed app, and the answer to a send
    is the same whether or not the email has a membership. The code is stored only as an HMAC with a per-code nonce, lasts
    10 minutes, and allows 5 tries (counted in Caps, which is atomic; KV is not). */
-const AL_CODE_TTL = 600, AL_CODE_TRIES = 5, AL_CODE_PER_EMAIL = 5, AL_CODE_PER_NET = 30, AL_CODE_PER_DAY = 500, AL_CODE_VERIFY_PER_IP = 30;
+const AL_CODE_TTL = 600, AL_CODE_TRIES = 5, AL_CODE_PER_EMAIL = 5, AL_CODE_PER_NET = 30, AL_CODE_PER_DAY = 500, AL_CODE_VERIFY_PER_IP = 30, AL_CODE_VERIFY_PER_NET = 120, AL_CODE_FAILS_PER_DAY = 10;
 function alCodeKey(env) { return env.PROWL_SESSION_SECRET || env.MEMBER_ID_SALT || env.ADMIN_KEY || ""; }
 function alCodeMake() {
   const a = new Uint32Array(1);
@@ -4363,9 +4363,10 @@ async function alCode(request, env, origin) {
   const ip = ipKey(request.headers.get("CF-Connecting-IP"));
   if (!(await vCount("alsub:" + ip, AL_SUB_PER_IP))) return json({ error: "Too many tries today." }, 429, origin);
   if (!(await vCount("alcn:" + ipNet(ip), AL_CODE_PER_NET))) return json({ error: "Too many tries today." }, 429, origin);
-  if (!(await vCount("alcode:all", AL_CODE_PER_DAY))) return json({ error: "Sign-in is busy. Try again later." }, 429, origin);
   if (!(await kvGet(env, "sub:" + email, null)) && !alAllowed(env, email)) return json({ error: "Prowl Alerts is invite-only right now." }, 403, origin);
   if (!(await vCount("alcode:" + email, AL_CODE_PER_EMAIL))) return json({ error: "We already sent codes today. Use the newest one, or check spam." }, 429, origin);
+  /* the site-wide cap last, so refused requests (a 6th for one address, an invite-only address) never use it up */
+  if (!(await vCount("alcode:all", AL_CODE_PER_DAY))) return json({ error: "Sign-in is busy. Try again later." }, 429, origin);
   const code = alCodeMake(), n = alToken().slice(0, 12);
   const h = await pxHmac(key, "prowl-code-v1:" + email + "|" + n + "|" + code);
   await env.PROWL_ALERTS.put("code:" + email, JSON.stringify({ h: h, n: n, at: Date.now() }), { expirationTtl: AL_CODE_TTL });
@@ -4389,11 +4390,16 @@ async function alVerify(request, env, origin) {
   if (!key) return json({ error: "Sign-in is not set up yet." }, 503, origin);
   const ip = ipKey(request.headers.get("CF-Connecting-IP"));
   if (!(await vCount("alcvi:" + ip, AL_CODE_VERIFY_PER_IP))) return json({ error: "Too many tries today." }, 429, origin);
+  if (!(await vCount("alcvn:" + ipNet(ip), AL_CODE_VERIFY_PER_NET))) return json({ error: "Too many tries today." }, 429, origin);
   const rec = await kvGet(env, "code:" + email, null);
   if (!rec || !rec.h || Date.now() - (rec.at || 0) > AL_CODE_TTL * 1000) return json({ error: "That code has expired. Ask for a new one.", expired: true }, 400, origin);
   const left = await vTake("alcodev:" + email + ":" + rec.n, AL_CODE_TRIES);
   if (left < 0) { await env.PROWL_ALERTS.delete("code:" + email); return json({ error: "Too many tries. Ask for a new code.", expired: true }, 429, origin); }
-  if (!alSame(await pxHmac(key, "prowl-code-v1:" + email + "|" + rec.n + "|" + code), rec.h)) return json({ error: "That code is not right.", left: left }, 400, origin);
+  if (!alSame(await pxHmac(key, "prowl-code-v1:" + email + "|" + rec.n + "|" + code), rec.h)) {
+    /* wrong guesses per address per day, across all its codes (5 codes x 5 tries would be 25): about 10 in a million a day */
+    if (!(await vCount("alcvf:" + email, AL_CODE_FAILS_PER_DAY))) { await env.PROWL_ALERTS.delete("code:" + email); return json({ error: "Too many wrong codes today. Try again tomorrow.", expired: true }, 429, origin); }
+    return json({ error: "That code is not right.", left: left }, 400, origin);
+  }
   await env.PROWL_ALERTS.delete("code:" + email);
   await env.PROWL_ALERTS.delete("in:" + email);
   let sub = await kvGet(env, "sub:" + email, null);

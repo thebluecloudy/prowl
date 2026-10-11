@@ -62,7 +62,7 @@ test('email, then the code: signed in, the chip shows who, no store login and no
 
 test('closing the app while the code is out: it opens on the code box; a new code or a different email from there', async () => {
   const r = rig({ 'alerts/code': () => ({ ok: true, sent: true }) });
-  const p = await signedOut(r, { 'prowl.alertWait': 'a@b.co' });
+  const p = await signedOut(r, { 'prowl.alertWait': 'a@b.co', 'prowl.alertCodeAt': String(Date.now()) });
   assert.match(box(p).textContent, /Enter the 6-digit code we sent to a@b\.co/);
   assert.equal(p.win.document.activeElement, box(p).querySelector('input[data-k=verify]'), 'the chip puts you in the code box');
   box(p).querySelector('[data-mail=code]').click();
@@ -76,7 +76,7 @@ test('closing the app while the code is out: it opens on the code box; a new cod
 
 test('an expired code or a limit says why', async () => {
   const r = rig({ 'alerts/verify': () => ({ error: 'That code has expired. Ask for a new one.', expired: true }), 'alerts/code': () => ({ error: 'We already sent codes today. Use the newest one, or check spam.' }) });
-  const p = await signedOut(r, { 'prowl.alertWait': 'a@b.co' });
+  const p = await signedOut(r, { 'prowl.alertWait': 'a@b.co', 'prowl.alertCodeAt': String(Date.now()) });
   const ci = box(p).querySelector('input[data-k=verify]');
   ci.value = '123456'; ci.dispatchEvent(new p.win.Event('input', { bubbles: true }));
   await tick(30);
@@ -93,7 +93,7 @@ test('Upgrade while signed out asks for the sign-in first, then carries on to ch
     'alerts/status': () => ({ on: true, email: 'a@b.co', pro: false }),
     'cart.js': () => ({ items: [] }), 'cart/add.js': () => ({}),
   });
-  const p = await signedOut(r, { 'prowl.alertWait': 'a@b.co' });
+  const p = await signedOut(r, { 'prowl.alertWait': 'a@b.co', 'prowl.alertCodeAt': String(Date.now()) });
   const link = p.doc.createElement('a'); link.href = '/products/prowl-pro'; p.$('.scout-app-wrapper').appendChild(link);
   link.click();
   await tick(20);
@@ -105,5 +105,33 @@ test('Upgrade while signed out asks for the sign-in first, then carries on to ch
   assert.ok(r.calls.some((c) => /cart\/add\.js$/.test(c.url)), 'then on to checkout');
   const add = r.calls.find((c) => /cart\/add\.js$/.test(c.url)).body;
   assert.equal(add.items[0].properties['Prowl Alerts email'], 'a@b.co');
+  await p.close();
+});
+
+test('a wait left from an old confirm link (no code out) shows the email box, filled in, not a code box for a code never sent', async () => {
+  const r = rig({});
+  const p = await signedOut(r, { 'prowl.alertWait': 'old@b.co' });
+  assert.equal(box(p).querySelector('input[data-k=verify]'), null);
+  assert.equal(box(p).querySelector('input[data-k=code]').value, 'old@b.co');
+  await p.close();
+});
+
+test('an Upgrade given up on does not send a later sign-in (from a Flock star or the chip) to checkout', async () => {
+  const r = rig({
+    'alerts/code': () => ({ ok: true, sent: true }),
+    'alerts/verify': () => ({ ok: true, member: true, email: 'a@b.co', tok: 'tok-0123456789abcdef', pro: false }),
+    'alerts/status': () => ({ on: true, email: 'a@b.co', pro: false }),
+  });
+  const p = await signedOut(r, { 'prowl.alertWait': 'a@b.co', 'prowl.alertCodeAt': String(Date.now()) });
+  const link = p.doc.createElement('a'); link.href = '/products/prowl-pro'; p.$('.scout-app-wrapper').appendChild(link);
+  link.click();
+  await tick(20);
+  p.$('#otp-acct').click();   /* a fresh start: the upgrade is dropped */
+  await tick(20);
+  const ci = box(p).querySelector('input[data-k=verify]');
+  ci.value = '482913'; ci.dispatchEvent(new p.win.Event('input', { bubbles: true }));
+  await tick(60);
+  assert.equal(p.win.localStorage.getItem('prowl.alertTok'), 'tok-0123456789abcdef');
+  assert.equal(r.calls.filter((c) => /cart/.test(c.url)).length, 0, 'no checkout');
   await p.close();
 });
