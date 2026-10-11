@@ -64,13 +64,53 @@ test("esParse is safe on other pages: nothing found is an empty list, and outsid
   const bad = `<script type="application/ld+json">${JSON.stringify({ "@type": "SaleEvent", name: "<b>x</b>", url: "javascript:alert(1)/4400003", image: "http://insecure/1.jpg" })}</script>`;
   const it = ES.esParse(bad, ES.esPlace("MI", "Novi"));
   assert.equal(it.length, 1);
-  assert.match(it[0].url, /^https:\/\/www\.estatesales\.net\/MI\/Novi\//, "not the javascript: link");
+  assert.equal(it[0].url, "https://www.estatesales.net/MI/Novi", "not the javascript: link: the city's page");
   assert.equal(it[0].img, "");
   assert.equal(it[0].name, "x", "markup is taken out of names");
 });
 
+/* v105: the owner's Novi list had a sale whose app block left out its city and ZIP. v103 showed it as in Novi (the
+   city searched for) and linked https://www.estatesales.net/MI/novi//5100273, a 404. */
+const ngrxOnly = (sales) => `<script type="application/json">${JSON.stringify({ NGRX_STATE: { feature: { cityViewState: { filteredSales: sales } } } })}</script>`;
+test("a sale without its own city or ZIP is never shown in the city searched for, and never gets a link with an empty part", () => {
+  const [x] = ES.esParse(ngrxOnly([{ id: 5100273, typeName: "EstateSales", firstLocalStartDate: "2026-09-30T09:00:00" }]), ES.esPlace("MI", "novi"));
+  assert.equal(x.city, "", "not the searched city");
+  assert.equal(x.st, "");
+  assert.equal(x.url, "https://www.estatesales.net/MI/novi", "the city's page on EstateSales.net, which loads");
+  assert.doesNotMatch(x.url.replace("https://", ""), /\/\//, "no empty part in the path");
+  const [y] = ES.esParse(ngrxOnly([{ id: 5100274, stateCode: "MI", cityName: "Okemos", firstLocalStartDate: "2026-10-07T09:00:00" }]), ES.esPlace("MI", "Novi"));
+  assert.equal(y.city, "Okemos", "its own city still shows");
+  assert.equal(y.url, "https://www.estatesales.net/MI/Novi", "a city but no ZIP: still the city's page, not /MI/Okemos//5100274");
+});
+
+test("a sale's own link in the app block is used when it names the sale; other paths are not", () => {
+  const [a, b, c] = ES.esParse(ngrxOnly([
+    { id: 5100275, url: "/MI/Novi/48377/5100275" },
+    { id: 5100276, saleUrl: "https://www.estatesales.net/MI/Wixom/48393/5100276" },
+    { id: 5100277, url: "/MI/Novi/48377/9999999" },
+  ]), ES.esPlace("MI", "Novi"));
+  assert.equal(a.url, "https://www.estatesales.net/MI/Novi/48377/5100275", "a site-relative path is made whole");
+  assert.equal(b.url, "https://www.estatesales.net/MI/Wixom/48393/5100276");
+  assert.equal(c.url, "https://www.estatesales.net/MI/Novi", "a link to some other sale is not used");
+});
+
+/* the sale the owner opened: EstateSales.net's own link is https://www.estatesales.net/MI/Farmington-Hills/48336/5100273 */
+test("the SaleEvent's @id is its link when it has no url, and a nested address gives the sale's own city", () => {
+  const ld = `<script type="application/ld+json">${JSON.stringify({ "@type": "SaleEvent", "@id": "https://www.estatesales.net/MI/Farmington-Hills/48336/5100273", name: "Start Your Engines: Vintage Die-Cast Vehicles" })}</script>`;
+  const [x] = ES.esParse(ngrxOnly([{ id: 5100273, address: { city: "Farmington Hills", state: "MI", postalCode: "48336" } }]) + ld, ES.esPlace("MI", "novi"));
+  assert.equal(x.url, "https://www.estatesales.net/MI/Farmington-Hills/48336/5100273");
+  assert.equal(x.name, "Start Your Engines: Vintage Die-Cast Vehicles");
+  assert.equal(x.city, "Farmington Hills"); assert.equal(x.st, "MI"); assert.equal(x.zip, "48336");
+  /* the same sale with no @id: its link is built from the nested address, not the searched city */
+  const [y] = ES.esParse(ngrxOnly([{ id: 5100273, address: { city: "Farmington Hills", state: "MI", postalCode: "48336" } }]), ES.esPlace("MI", "novi"));
+  assert.equal(y.url, "https://www.estatesales.net/MI/Farmington-Hills/48336/5100273");
+  /* a field with the right name and the wrong kind of value is not taken (a numeric state, a city id) */
+  const [z] = ES.esParse(ngrxOnly([{ id: 5100278, state: 1, city: 42 }]), ES.esPlace("MI", "Novi"));
+  assert.equal(z.st, ""); assert.equal(z.city, "");
+});
+
 test("esPlace takes a city and a two-letter state only", () => {
-  assert.deepEqual(ES.esPlace("mi", " Grosse  Pointe "), { st: "MI", city: "Grosse Pointe", slug: "Grosse-Pointe", key: "es:MI:grosse-pointe" });
+  assert.deepEqual(ES.esPlace("mi", " Grosse  Pointe "), { st: "MI", city: "Grosse Pointe", slug: "Grosse-Pointe", key: "es2:MI:grosse-pointe" });   // v105: es2, so lists kept before the link fix are not served
   assert.equal(ES.esPlace("Michigan", "Novi"), null);
   assert.equal(ES.esPlace("MI", "Novi/../admin"), null);
   assert.equal(ES.esPlace("MI", ""), null);
@@ -109,7 +149,7 @@ test("/sales is the owner's only unless SALES_PUBLIC=on; a failed fetch serves t
   assert.equal((await route({ owner: false, publicOn: true }).go("st=MI&city=Novi")).status, 200);
   const R = route({ answer: 503 });
   assert.equal((await R.go("st=MI&city=Novi")).status, 502);
-  R.kv.set("es:MI:novi", JSON.stringify({ at: Date.now() - 7 * 3600000, items: [{ id: "1" }] }));
+  R.kv.set("es2:MI:novi", JSON.stringify({ at: Date.now() - 7 * 3600000, items: [{ id: "1" }] }));
   const old = await R.go("st=MI&city=Novi");
   assert.equal(old.status, 200); assert.equal(old.body.stale, 1); assert.deepEqual(old.body.items, [{ id: "1" }]);
 });

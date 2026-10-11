@@ -30,6 +30,34 @@ test('Local shows garage sales for the saved city, newest first, from Craigslist
   await p.close();
 });
 
+// v6.80: a ZIP typed as the city made www.craigslist.org/search/area/48377?cat=gms, a 404 (the owner, 2026-10-10)
+test('a ZIP as the city: Craigslist searches 25 miles around it, never /search/area/<ZIP>', async () => {
+  const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [], city: '48377' } } });
+  await tick(50);
+  p.$('#otp-dock .db[data-m="den"]').click();
+  await tick(50);
+  assert.deepEqual(links(p), [
+    ['Garage sales on a map', 'https://annarbor.craigslist.org/search/gms?postal=48377&search_distance=25#search=1~map~0~0'],
+    ['Garage & moving sales', 'https://annarbor.craigslist.org/search/gms?postal=48377&search_distance=25#search=1~list~0~0'],
+    ['Free stuff', 'https://annarbor.craigslist.org/search/zip?postal=48377&search_distance=25#search=1~list~0~0'],
+  ]);
+  for (const [, u] of links(p)) assert.doesNotMatch(u, /search\/area\/\d/);
+  /* ZIP+4 too, and the keyword search goes the same way */
+  p.$('#otp-cityIn').value = '48377-1234';
+  p.$('#otp-citySet').click();
+  await tick(30);
+  assert.equal(links(p)[1][1], 'https://annarbor.craigslist.org/search/gms?postal=48377&search_distance=25#search=1~list~0~0');
+  const cl = p.$$('#otp-denLocalList .tb').find((b) => /^Craigslist/.test(b.textContent));
+  assert.ok(cl, 'the Craigslist row in Local');
+  p.$('#otp-q').value = 'pyrex';
+  p.$('#otp-sf').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
+  await tick(300);
+  const u = [...p.opened, ...p.$$('a[href*="craigslist"]').map((x) => x.getAttribute('href'))].find((x) => /craigslist.*pyrex/.test(String(x)));
+  assert.equal(u, 'https://annarbor.craigslist.org/search/sss?query=pyrex&postal=48377&search_distance=25#search=1~gallery~0~0');
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
 test('no city yet: the Ann Arbor area, as Craigslist does elsewhere in Prowl, and it says so', async () => {
   const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [] } } });
   await tick(50);

@@ -2803,10 +2803,15 @@ function clSlug(){return String(st&&st.city?st.city:'').toLowerCase().replace(/[
    region instead — Ann Arbor, nearest to the Novi studio. Change it in
    Den > Local and that wins. Gallery view via the hash. */
 var CL_DEFAULT='annarbor';
-function clUrl(q){
-  var c=clSlug()||CL_DEFAULT;
-  return 'https://www.craigslist.org/search/area/'+E(c)+'?cat=sss&query='+E(q)+'#search=1~gallery~0~0';
+/* v6.80: a ZIP saved as the city made www.craigslist.org/search/area/48377, a 404. A ZIP now searches 25 miles around
+   it on the default region's site, Craigslist's own postal search. */
+function clZip(){var m=/^\s*(\d{5})(-\d{4})?\s*$/.exec(String(st&&st.city?st.city:''));return m?m[1]:''}
+function clAt(cat,qs,view){
+  var z=clZip();
+  if(z)return 'https://'+CL_DEFAULT+'.craigslist.org/search/'+cat+'?'+(qs?qs+'&':'')+'postal='+z+'&search_distance=25#search=1~'+view+'~0~0';
+  return 'https://www.craigslist.org/search/area/'+E(clSlug()||CL_DEFAULT)+'?cat='+cat+(qs?'&'+qs:'')+'#search=1~'+view+'~0~0';
 }
+function clUrl(q){return clAt('sss','query='+E(q),'gallery')}
 
 /* Facebook Marketplace has no nationwide keyword search either — every search
    is scoped to one city's marketplace. Prowl used to handle that with a hub
@@ -3129,7 +3134,7 @@ function rNear(){
    moving sales section (gms) for the saved city, newest first, and the same with the free-stuff section. Other
    finders wait for permission: gsalr's terms forbid any automated access (worker v101 never asks it); EstateSales.net
    and yardsalesearch need a yes in writing first. */
-function gmsUrl(cat,view){var c=clSlug()||CL_DEFAULT;return 'https://www.craigslist.org/search/area/'+E(c)+'?cat='+cat+'#search=1~'+(view||'list')+'~0~0'}   /* view: list or map (Craigslist's own map of the sales) */
+function gmsUrl(cat,view){return clAt(cat,'',view||'list')}   /* view: list or map (Craigslist's own map of the sales) */
 /* v6.76: estate sales near you, from EstateSales.net (with their permission) through worker v103 /sales, which
    keeps each city 6 hours. The owner's only for now (the ?owner= key, like the Facebook strip). A list by date,
    each sale linking to its page on EstateSales.net, and a map on request: Leaflet and OpenStreetMap load only when
