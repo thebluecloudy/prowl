@@ -360,6 +360,9 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .bar-actions{display:flex;gap:8px;align-items:center}
 /* v6.73: room for Aa beside the theme switch on the narrowest phones; bigger text (a zoom, .tz) needs it on wider ones */
 @media(max-width:374px){.scout-app-wrapper .bar{gap:6px;padding-left:12px;padding-right:12px}.scout-app-wrapper .bar-actions{gap:4px}.scout-app-wrapper .bar-actions .gh{min-width:0;padding-left:9px;padding-right:9px}}
+/* v6.82: on a phone the dark theme's mushroom chip pushed Help off the bar (the light theme has no chip and fits); the
+   hero below already shows the mushroom. The bar's gaps and button padding tighten on every phone, not only the narrowest */
+@media(max-width:479px){[data-theme=uranium] .scout-app-wrapper .markwrap{display:none}.scout-app-wrapper .bar{gap:6px;padding-left:12px;padding-right:12px}.scout-app-wrapper .bar-actions{gap:4px}.scout-app-wrapper .bar-actions .gh{min-width:0;padding-left:9px;padding-right:9px}}
 @media(max-width:479px){.scout-app-wrapper.tz .bar{gap:6px;padding-left:10px;padding-right:10px}.scout-app-wrapper.tz .bar-actions{gap:4px}.scout-app-wrapper.tz .bar-actions .gh{min-width:0;padding-left:8px;padding-right:8px}.scout-app-wrapper.tz .bar .homedots{display:none}}
 .scout-app-wrapper .gh{background:none;border:1px solid var(--l2);border-radius:9px;padding:7px 12px;font-size:12.5px;font-weight:600;color:var(--i2);transition:background .15s,color .15s,border-color .15s,box-shadow .15s}
 .scout-app-wrapper .gh:hover{background:var(--hover);color:var(--ink)}
@@ -2665,7 +2668,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.81';
+var PROWL_VERSION='v6.82';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
