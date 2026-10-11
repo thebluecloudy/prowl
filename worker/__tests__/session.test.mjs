@@ -94,7 +94,7 @@ function realPro(env, answer) {
   const giftHash = async (e) => "h" + e;
   const deps = { kvGet, kvPut: async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v)), giftHash, giftPro, proListHas: (env, e) => false,
     alNow: () => ({ day: "2026-10-07", hour: 10, wday: 1 }), PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", PRO_NO_CACHE_MS: 10 * 60 * 1000, fetch };
-  return Object.assign(fromIndex(["alFreePro", "alProShop", "alProSet"], deps), { asked });
+  return Object.assign(fromIndex(["shopHost", "shopCanToken", "shopToken", "alFreePro", "alProShop", "alProSet"], deps), { asked });
 }
 const order = (email, attrs = []) => ({ name: "#2001", createdAt: "2026-10-01T10:00:00Z", cancelledAt: null, displayFinancialStatus: "PAID", email, statusPageUrl: "https://store.example/r", discountCodes: [],
   totalPriceSet: { shopMoney: { amount: "7.00", currencyCode: "USD" } }, lineItems: { nodes: [{ sku: "PROWL-PRO-MONTHLY", customAttributes: attrs }] } });
@@ -152,8 +152,37 @@ test("a cached not-Pro is asked again after 10 minutes; a cached Pro holds for 6
 test("a Shopify GraphQL error is named in the answer, so the admin shows why the Pro check fails", async () => {
   const kv = new FakeKV(), env = { PROWL_ALERTS: kv, SHOPIFY_ORDERS_TOKEN: "t" };
   const fetch = async () => ({ status: 200, json: async () => ({ errors: [{ message: "Access denied for orders field." }] }) });
-  const X = fromIndex(["alProShop"], { kvGet: async () => null, kvPut: async () => {}, PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", PRO_NO_CACHE_MS: 600000, fetch });
+  const X = fromIndex(["shopHost", "shopCanToken", "shopToken", "alProShop"], { kvGet: async () => null, kvPut: async () => {}, PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", PRO_NO_CACHE_MS: 600000, fetch });
   const r = await X.alProShop(env, "member@example.com", null);
   assert.equal(r.pro, null);
   assert.equal(r.via, "shopify: Access denied for orders field.");
+});
+
+/* v109: the order token renews itself from the Dev Dashboard app's client ID and secret (its tokens last about a day) */
+test("with a client ID and secret the worker gets its own token, keeps it, and gets a fresh one after a 401", async () => {
+  const kv = new FakeKV(), env = { PROWL_ALERTS: kv, SHOPIFY_ORDERS_CLIENT_ID: "cid", SHOPIFY_ORDERS_CLIENT_SECRET: "sec" };
+  const minted = [], used = [];
+  let n = 0, expire = false;
+  const fetch = async (u, o) => {
+    if (/oauth\/access_token$/.test(u)) { const t = "shpat_" + (++n); minted.push(String(o.body)); return { ok: true, status: 200, json: async () => ({ access_token: t, expires_in: 86399 }) }; }
+    const t = o.headers["X-Shopify-Access-Token"]; used.push(t);
+    if (expire && t === "shpat_1") return { status: 401, json: async () => ({}) };
+    return { status: 200, json: async () => ({ data: { orders: { nodes: [] } } }) };
+  };
+  const X = fromIndex(["shopHost", "shopCanToken", "shopToken", "alProShop"], { kvGet: async () => null, kvPut: async () => {}, PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", PRO_NO_CACHE_MS: 600000, fetch }, "let SHOP_TOK = null;");
+  assert.equal((await X.alProShop(env, "a@b.co", null)).pro, false);
+  assert.match(minted[0], /grant_type=client_credentials&client_id=cid&client_secret=sec/);
+  await X.alProShop(env, "b@b.co", null);
+  assert.equal(minted.length, 1, "the token is kept, not asked for each time");
+  expire = true;
+  assert.equal((await X.alProShop(env, "c@b.co", null)).pro, false, "a 401 gets a fresh token and the question goes through");
+  assert.equal(minted.length, 2);
+  const k = used.lastIndexOf("shpat_1");
+  assert.equal(used[k + 1], "shpat_2", "the refused question is asked again with the fresh token");
+  assert.ok(used.slice(k + 1).every((t) => t === "shpat_2"), "and the fresh one is kept");
+});
+
+test("no client ID and no pasted token: the check says the shop is not connected", async () => {
+  const X = fromIndex(["shopHost", "shopCanToken", "shopToken", "alProShop"], { kvGet: async () => null, kvPut: async () => {}, PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", PRO_NO_CACHE_MS: 600000, fetch: async () => { throw new Error("no call"); } }, "let SHOP_TOK = null;");
+  assert.deepEqual(await X.alProShop({ PROWL_ALERTS: new FakeKV() }, "a@b.co", null), { pro: null, via: "no token" });
 });
