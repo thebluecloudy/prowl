@@ -109,8 +109,28 @@ test("the SaleEvent's @id is its link when it has no url, and a nested address g
   assert.equal(z.st, ""); assert.equal(z.city, "");
 });
 
+/* v106: the owner's sales check found the list at NGRX_STATE.feature.cityViewState.filteredSales, but the extract had
+   no distance or position on any sale. The list is found by its name wherever it sits. */
+test("the app's sales list is read wherever it sits in a block, with distance and position", () => {
+  const sale = { id: 5100001, stateCode: "MI", cityName: "Jackson", postalCodeNumber: "49201", latitude: "42.24", longitude: "-84.4", typeName: "OnlineOnlyAuctions", saleScheduleName: "Today", distance: "58.3" };
+  for (const wrap of [
+    { NGRX_STATE: { feature: { cityViewState: { filteredSales: [sale] } } } },
+    { state: { NGRX_STATE: { feature: { cityViewState: { filteredSales: [sale] } } } } },
+    [{ app: { filteredSales: [sale] } }],
+  ]) {
+    const [x] = ES.esParse(`<script type="application/json">${JSON.stringify(wrap)}</script>`, ES.esPlace("MI", "Novi"));
+    assert.ok(x, JSON.stringify(wrap).slice(0, 60));
+    assert.equal(x.city, "Jackson"); assert.equal(x.dist, 58.3, "a distance given as text is a number");
+    assert.equal(x.lat, 42.24); assert.equal(x.lon, -84.4);
+    assert.equal(x.url, "https://www.estatesales.net/MI/Jackson/49201/5100001");
+    assert.equal(x.when, "Today");
+  }
+  const [y] = ES.esParse(`<script type="application/json">${JSON.stringify({ x: { filteredSales: [{ name: "no id" }, sale] } })}</script>`, ES.esPlace("MI", "Novi"));
+  assert.equal(y.id, "5100001", "an entry without an id is passed over");
+});
+
 test("esPlace takes a city and a two-letter state only", () => {
-  assert.deepEqual(ES.esPlace("mi", " Grosse  Pointe "), { st: "MI", city: "Grosse Pointe", slug: "Grosse-Pointe", key: "es2:MI:grosse-pointe" });   // v105: es2, so lists kept before the link fix are not served
+  assert.deepEqual(ES.esPlace("mi", " Grosse  Pointe "), { st: "MI", city: "Grosse Pointe", slug: "Grosse-Pointe", key: "es3:MI:grosse-pointe" });   // v106: es3, so lists kept before the list was read are not served
   assert.equal(ES.esPlace("Michigan", "Novi"), null);
   assert.equal(ES.esPlace("MI", "Novi/../admin"), null);
   assert.equal(ES.esPlace("MI", ""), null);
@@ -149,7 +169,7 @@ test("/sales is the owner's only unless SALES_PUBLIC=on; a failed fetch serves t
   assert.equal((await route({ owner: false, publicOn: true }).go("st=MI&city=Novi")).status, 200);
   const R = route({ answer: 503 });
   assert.equal((await R.go("st=MI&city=Novi")).status, 502);
-  R.kv.set("es2:MI:novi", JSON.stringify({ at: Date.now() - 7 * 3600000, items: [{ id: "1" }] }));
+  R.kv.set("es3:MI:novi", JSON.stringify({ at: Date.now() - 7 * 3600000, items: [{ id: "1" }] }));
   const old = await R.go("st=MI&city=Novi");
   assert.equal(old.status, 200); assert.equal(old.body.stale, 1); assert.deepEqual(old.body.items, [{ id: "1" }]);
 });

@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v106: 2026-10-11. Estate sales: the app's list (filteredSales) is found by name anywhere in a data block, walked as
+ *        salesShape walks it. The owner's sales check found it at NGRX_STATE.feature.cityViewState, yet every sale the
+ *        extractor gave back had no distance, map position or type: the list was not read. The check's extract now
+ *        says how many sales came from the list (fromList). Lists are kept under es3:.
  *   v105: 2026-10-10. Estate sales: a sale is shown in its own city only, never the one searched for, and its link is
  *        its own (the SaleEvent's url or @id, or the app block's, when it names the sale) or built only from a full
  *        state, city and ZIP, found in the block or one level down (an address object); otherwise the city's page on
@@ -364,7 +368,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-const WORKER_VERSION = "v105";
+const WORKER_VERSION = "v106";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4970,7 +4974,7 @@ async function salesProbe() {
       const res = { name: name, url: u, status: r.status, ms: Date.now() - t0, bytes: t.length, wall: wall, readable: r.status === 200 && !wall && t.length > 2000 };
       if (name === "estatesales-city" && res.readable) {
         try { res.shape = salesShape(t); } catch (e) {}   /* v102 */
-        try { const it = esParse(t, esPlace("MI", "Novi")); res.extract = { count: it.length, mapped: it.filter(x => x.lat && x.lon).length, named: it.filter(x => x.name && !/^(Estate sale|Online Only Auctions)$/.test(x.name)).length, first: it.slice(0, 2) }; } catch (e) {}   /* v103 */
+        try { const it = esParse(t, esPlace("MI", "Novi")); res.extract = { count: it.length, fromList: it.filter(x => x.when || x.type || x.dist != null).length, mapped: it.filter(x => x.lat && x.lon).length, named: it.filter(x => x.name && !/^(Estate sale|Online Only Auctions)$/.test(x.name)).length, first: it.slice(0, 2) }; } catch (e) {}   /* v103 */
       }
       return res;
     } catch (e) {
@@ -4990,7 +4994,7 @@ const ES_TTL_MS = 6 * 3600000, ES_FETCH_PER_IP = 20, ES_MAX = 60;
 function esPlace(st, city) {
   st = String(st || "").trim().toUpperCase(); city = String(city || "").replace(/\s+/g, " ").trim();
   if (!/^[A-Z]{2}$/.test(st) || !/^[A-Za-z][A-Za-z .'-]{1,39}$/.test(city)) return null;
-  return { st: st, city: city, slug: city.replace(/[.']/g, "").replace(/\s+/g, "-"), key: "es2:" + st + ":" + city.toLowerCase().replace(/[^a-z]+/g, "-") };
+  return { st: st, city: city, slug: city.replace(/[.']/g, "").replace(/\s+/g, "-"), key: "es3:" + st + ":" + city.toLowerCase().replace(/[^a-z]+/g, "-") };
 }
 function esJsonBlocks(html) {
   const out = [];
@@ -5017,11 +5021,18 @@ function esParse(html, place) {
       const id = idOf(x.url || x["@id"]); if (id) ld[id] = x;
     }
   };
-  blocks.forEach(b => {
-    take(b);
-    const f = b && b.NGRX_STATE && b.NGRX_STATE.feature && b.NGRX_STATE.feature.cityViewState;
-    if (f && Array.isArray(f.filteredSales)) f.filteredSales.forEach(x => state.push(x));
-  });
+  /* v106: the app's list of sales is found by its name, filteredSales, wherever it sits in a block (the admin's
+     sales check found it at NGRX_STATE.feature.cityViewState, yet the v103-v105 fixed path left every sale without
+     its distance or map position). Walked the way salesShape walks, so what the check sees, this reads. */
+  const findSales = (v, d) => {
+    if (d > 9 || v == null || typeof v !== "object") return;
+    if (Array.isArray(v)) { v.slice(0, 3).forEach(x => findSales(x, d + 1)); return; }
+    Object.keys(v).slice(0, 80).forEach(k => {
+      if (k === "filteredSales" && Array.isArray(v[k])) v[k].forEach(x => { if (x && typeof x === "object" && x.id != null) state.push(x); });
+      else findSales(v[k], d + 1);
+    });
+  };
+  blocks.forEach(b => { take(b); findSales(b, 0); });
   const https = u => (typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u) ? u : "");
   const txt = (v, n) => String(v == null ? "" : v).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, n || 120);
   const items = [], seen = Object.create(null);

@@ -2665,7 +2665,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.80';
+var PROWL_VERSION='v6.81';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3150,7 +3150,7 @@ function esWhen(a,b){
 function esSorted(){var d=ES.data;return d&&d.items?d.items.slice().sort(function(a,b){return String(a.start).localeCompare(String(b.start))}):[]}
 function esList(items){
   return items.map(function(x){
-    var where=[x.addr,x.city&&x.st?x.city+', '+x.st:x.city].filter(function(v){return !!v}).join(' · ');
+    var where=[x.addr,x.city&&x.st?x.city+', '+x.st:x.city,x.dist!=null?Math.round(x.dist)+' mi':''].filter(function(v){return !!v}).join(' · ');
     return '<a class="es-row" href="'+esc(x.url)+'" target=_blank rel="noopener noreferrer">'+
       (x.img?'<img src="'+esc(x.img)+'" alt="" loading="lazy">':'<span class="es-ph" aria-hidden="true">⌂</span>')+
       '<span class="es-t"><b>'+esc(x.name)+'</b><span>'+esc(esWhen(x.start,x.end))+(x.type&&x.type!==x.name?' · '+esc(x.type):'')+'</span><span>'+esc(where)+'</span></span></a>';
@@ -3160,7 +3160,7 @@ function esLoad(v){
   var p=esPlaceParse(v);
   if(!p){ES.err='Type a city and its two-letter state, like Novi, MI.';rEs();return}
   try{localStorage.setItem('prowl.salesPlace',p.city+', '+p.st)}catch(e){}
-  ES.busy=true;ES.err='';rEs();
+  ES.busy=true;ES.err='';ES.far=false;rEs();
   fetch(SGW_API+'sales?st='+encodeURIComponent(p.st)+'&city='+encodeURIComponent(p.city),{headers:{'X-Prowl-Owner':fbOwnerKey()},cache:'no-store'}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}},function(){return {ok:false,j:null}})}).then(function(x){
     ES.busy=false;
     if(x.ok&&x.j&&Array.isArray(x.j.items)){ES.data=x.j;ES.map=null;ES.err=x.j.items.length?'':'No sales listed near '+p.city+', '+p.st+' right now.'}
@@ -3172,15 +3172,18 @@ function rEs(){
   var box=$('#otp-esBox');if(!box)return;
   if(!fbOwnerKey()){box.hidden=true;box.innerHTML='';return}
   box.hidden=false;
-  var d=ES.data,items=esSorted(),mapped=items.filter(function(x){return x.lat&&x.lon}).length;
+  /* v6.81: EstateSales.net's city page lists sales up to 100 miles out (Okemos, Homer, Marlette for Novi). Within 30
+     miles by default (a sale with no distance stays), the rest a tap away */
+  var d=ES.data,all=esSorted(),items=ES.far?all:all.filter(function(x){return x.dist==null||x.dist<=30}),far=all.length-items.length,mapped=items.filter(function(x){return x.lat&&x.lon}).length;
   box.innerHTML='<h4 class="es-h">Estate sales near you <span class="es-own">Only you see this</span></h4>'+
     '<div class="addrow es-form"><input id="otp-esIn" type="text" placeholder="City, ST (like Novi, MI)" aria-label="City and state for estate sales" value="'+esc(esPlaceGet())+'"><button type="button" id="otp-esGo">'+(ES.busy?'Looking…':'Show sales')+'</button></div>'+
     (ES.err?'<p class="nearp es-err" role="status">'+esc(ES.err)+'</p>':'')+
-    (d&&items.length?'<p class="nearp">'+items.length+' sale'+(items.length===1?'':'s')+' near '+esc(d.city+', '+d.st)+' from EstateSales.net'+(d.stale?' (from earlier)':'')+'. Tap one to open it there.'+(mapped?' <button type="button" class="es-mapb" id="otp-esMapB">'+(ES.map?'Hide the map':'Show on a map')+'</button>':'')+'</p>'+
+    (d&&all.length?'<p class="nearp">'+items.length+' sale'+(items.length===1?'':'s')+(ES.far||!all.some(function(x){return x.dist!=null})?' near ':' within 30 miles of ')+esc(d.city+', '+d.st)+' from EstateSales.net'+(d.stale?' (from earlier)':'')+'. Tap one to open it there.'+(far||ES.far?' <button type="button" class="es-mapb" id="otp-esFar">'+(ES.far?'Only within 30 miles':'Show '+far+' farther')+'</button>':'')+(mapped?' <button type="button" class="es-mapb" id="otp-esMapB">'+(ES.map?'Hide the map':'Show on a map')+'</button>':'')+'</p>'+
       '<div id="otp-esMap" class="es-map"'+(ES.map?'':' hidden')+'></div><div class="es-list">'+esList(items)+'</div>':'');
   var go=$('#otp-esGo'),inp=$('#otp-esIn');
   if(go)go.addEventListener('click',function(){esLoad(inp.value)});
   if(inp)inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();esLoad(inp.value)}});
+  var fb=$('#otp-esFar');if(fb)fb.addEventListener('click',function(){ES.far=!ES.far;ES.map=null;rEs()});
   var mb=$('#otp-esMapB');if(mb)mb.addEventListener('click',function(){if(ES.map){ES.map=null;rEs();return}esMap(items)});
   if(ES.map)esMap(items);
 }
