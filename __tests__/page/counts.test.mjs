@@ -18,7 +18,7 @@ async function live() {
   const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [] } } });
   await tick(30);
   const n = {
-    total: Number(p.$('#otp-dock .db[data-m="all"] [data-t]').textContent),
+    total: Number(p.$('.lede [data-t]').textContent),
     shop: Number(p.$('#otp-ts u').textContent),
     bolo: Number(p.$('#otp-tb u').textContent),
   };

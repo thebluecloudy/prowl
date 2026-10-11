@@ -34,7 +34,7 @@ test('dock: FLOCK takes the 4th slot, PHOTO is gone, the camera still opens phot
   const p = loadPage();
   await tick(30);
   const modes = p.$$('#otp-dock .db').map((b) => b.dataset.m);
-  assert.deepEqual(modes, ['prowl', 'one', 'all', 'flock', 'daily', 'den']);
+  assert.deepEqual(modes, ['prowl', 'one', 'local', 'flock', 'daily', 'den'], 'v6.88: LOCAL in the 3rd slot (was ALL)');
   assert.equal(p.$('#otp-photoBtn'), null);
   assert.ok(p.$('#otp-flockBtn use[href="#otp-swallow"]'));
   assert.ok(p.$('#otp-cam'));
