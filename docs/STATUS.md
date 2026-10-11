@@ -7,10 +7,13 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.86).
 | | Version | Page room left |
 |---|---|---|
 | Page | **v6.86** | 4286 bytes under Shopify's 512 KB (slimmed) |
-| Worker | **v108** | |
+| Worker | **v109** | |
 
 Recently shipped, newest first:
 
+- **v109:** the worker gets its own Shopify order token from a Dev Dashboard app (client credentials; those tokens last
+  about a day, which is why the pasted SHOPIFY_ORDERS_TOKEN went 401). Needs SHOPIFY_ORDERS_CLIENT_ID and
+  SHOPIFY_ORDERS_CLIENT_SECRET in Cloudflare.
 - **v6.86 / v108:** one sign-in, inside the app: tap the account chip, type your email, type the 6-digit code we email
   (POST /alerts/code, /alerts/verify; HMAC only, 10 minutes, 5 tries, same answer for any email). A new email becomes
   a member. Gone from view: the store "Log in" / "Sign in or sign up", the confirm-link and magic-link screens, and the
@@ -47,14 +50,15 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.87, worker v109**. Claim one here when you start.
+Next free numbers: **page v6.87, worker v110**. Claim one here when you start.
 
 ## Waiting on Matt
 
-- **URGENT: Shopify rejects the worker's order token ("shopify 401", Re-check Pro, 2026-10-11).** No member can be
-  confirmed Pro until SHOPIFY_ORDERS_TOKEN is replaced: Shopify admin > Settings > Apps > Develop apps > the Prowl app >
-  API credentials (scope read_orders), copy the Admin API access token, then Cloudflare > Workers > prowl > Settings >
-  Variables and secrets > SHOPIFY_ORDERS_TOKEN > Edit. Then Re-check Pro in admin > Members.
+- **URGENT: Pro checks fail until the order app's keys are in Cloudflare.** In the Shopify Dev Dashboard open the app
+  that will read orders ("Prowl"), make sure its access scopes include read_orders (release a new version if you add
+  it, and approve it in the store), copy its Client ID and Client secret, then in Cloudflare > Workers > prowl >
+  Settings > Variables and secrets add SHOPIFY_ORDERS_CLIENT_ID and SHOPIFY_ORDERS_CLIENT_SECRET (type Secret) and
+  Deploy. Then admin > Members > Re-check Pro.
 - **In Shopify:** set the PROWLMONTH discount to one use per customer (the code is visible in the page source).
 - **Known gap:** if adding Pro to the cart fails, the page falls back to `/products/prowl-pro` without the code.
 - **Next:** check Den > Settings shows the free month and that the welcome email came.

@@ -1015,7 +1015,7 @@ function realPro(env, shop) {
   const fetch = async () => { calls.shop++; if (!shop) throw new Error("offline"); return { status: 200, json: async () => ({ data: { orders: { nodes: shop } } }) }; };
   const deps = { kvGet, kvPut: async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v)), giftHash: IX.giftHash, giftPro, proListHas: IX.proListHas,
     alNow: () => ({ day: TODAY, hour: 10, wday: 1 }), PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", PRO_NO_CACHE_MS: 10 * 60 * 1000, fetch };
-  const fns = fromIndex(["alFreePro", "alProShop", "alPro", "alProSet"], deps);
+  const fns = fromIndex(["shopHost", "shopCanToken", "shopToken", "alFreePro", "alProShop", "alPro", "alProSet"], deps);
   return Object.assign(fns, { calls });
 }
 test("index.js alPro: the list, then a gift, both before the cache and Shopify; switching the list off falls through", async () => {
@@ -1375,7 +1375,7 @@ test("Re-check Pro says when the shop could not be asked, and that free Pro need
   assert.equal(rec(env).pro, true, "a paying member keeps Pro");
   H.nextPro = { pro: null, via: "no token" };
   ({ j } = await act(env, H, EMAIL, "refresh-pro"));
-  assert.match(j.message, /SHOPIFY_ORDERS_TOKEN/); assert.equal(j.ok, false);
+  assert.match(j.message, /SHOPIFY_ORDERS_CLIENT_ID/); assert.equal(j.ok, false);
   env.PROWL_ALERTS.set("gift:" + giftHashOf(EMAIL), { note: "", added: "2026-10-01T00:00:00Z", until: "2027-01-05", by: "admin" });
   ({ j } = await act(env, H, EMAIL, "refresh-pro"));
   assert.equal(j.ok, true); assert.match(j.message, /free Pro from your gift \(until 2027-01-05\), so the shop was not asked/);

@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v109: 2026-10-11. The order token renews itself: with SHOPIFY_ORDERS_CLIENT_ID and _SECRET (a Dev Dashboard app with
+ *        read_orders) the worker asks Shopify for a fresh token (client credentials), kept in memory, renewed before
+ *        it runs out and after a 401. The pasted SHOPIFY_ORDERS_TOKEN expired after a day ("shopify 401").
  *   v108: 2026-10-11. One sign-in inside the app: POST /alerts/code emails a 6-digit code, POST /alerts/verify signs
  *        in with it (a new email becomes a member, as a confirm link does). Codes: HMAC only, 10 minutes, 5 tries.
  *   v107: 2026-10-11. A cached "not Pro" answer lasts 10 minutes (Pro still 6 hours), so a new order is found within
@@ -372,7 +375,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-const WORKER_VERSION = "v108";
+const WORKER_VERSION = "v109";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -3432,7 +3435,7 @@ function alFilter(sub, items, local) {
    switched off in the admin area, or the owner gifted it there (v78), or the
    store has a paid, not-cancelled order for SKU PROWL-PRO-MONTHLY under that email
    in the last 35 days (the Subscriptions app makes a new order every renewal).
-   Needs secret SHOPIFY_ORDERS_TOKEN (read_orders). SHOPIFY_SHOP overrides the
+   Needs SHOPIFY_ORDERS_CLIENT_ID + SHOPIFY_ORDERS_CLIENT_SECRET (v109), or a SHOPIFY_ORDERS_TOKEN (read_orders). SHOPIFY_SHOP overrides the
    store domain. Cached 6 hours per email; a Shopify error never downgrades anyone. */
 const PRO_SKU = "PROWL-PRO-MONTHLY";
 const PRO_URL = "https://www.owlandtwigvintage.com/products/prowl-pro";
@@ -3475,6 +3478,27 @@ async function alPro(env, email, force) {
   return free || alProShop(env, email, c);
 }
 /* The 6-hour cache, then the shop's orders. c = the cached pro:<email> record, already read (null when forced). */
+/* v109: the order token. Shopify's Dev Dashboard apps hand out tokens that expire in about a day (client credentials),
+   so a token pasted into SHOPIFY_ORDERS_TOKEN stopped working ("shopify 401", 2026-10-11). With SHOPIFY_ORDERS_CLIENT_ID
+   and SHOPIFY_ORDERS_CLIENT_SECRET set (the app needs read_orders), the worker asks for a fresh one itself, keeps it in
+   this isolate's memory only (never in KV), renews it 5 minutes before it runs out and after a 401. Without them the
+   pasted SHOPIFY_ORDERS_TOKEN is used as before. */
+let SHOP_TOK = null;
+function shopHost(env) { return env.SHOPIFY_SHOP || "tz7xkc-du.myshopify.com"; }
+function shopCanToken(env) { return !!((env.SHOPIFY_ORDERS_CLIENT_ID && env.SHOPIFY_ORDERS_CLIENT_SECRET) || env.SHOPIFY_ORDERS_TOKEN); }
+async function shopToken(env, renew) {
+  const id = env.SHOPIFY_ORDERS_CLIENT_ID, secret = env.SHOPIFY_ORDERS_CLIENT_SECRET;
+  if (!id || !secret) return env.SHOPIFY_ORDERS_TOKEN || "";
+  if (!renew && SHOP_TOK && SHOP_TOK.id === id && Date.now() < SHOP_TOK.until) return SHOP_TOK.t;
+  const r = await fetch("https://" + shopHost(env) + "/admin/oauth/access_token", { method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+    body: new URLSearchParams({ grant_type: "client_credentials", client_id: id, client_secret: secret }).toString() });
+  let j = null; try { j = await r.json(); } catch (e) {}
+  if (!r.ok || !j || !j.access_token) { SHOP_TOK = null; return ""; }
+  const life = Number(j.expires_in) > 0 ? Number(j.expires_in) * 1000 : 3600 * 1000;
+  SHOP_TOK = { id: id, t: j.access_token, until: Date.now() + Math.max(60000, life - 5 * 60000) };
+  return SHOP_TOK.t;
+}
 async function alProShop(env, email, c, cid) {
   /* v82: with cid, the store customer's own orders: every paid Prowl Pro order on that account counts, whatever
      email it was placed under, and the line-item tag is not needed */
@@ -3483,7 +3507,7 @@ async function alProShop(env, email, c, cid) {
   /* v107: a "not Pro" answer is kept 10 minutes, a Pro one 6 hours. A not-Pro cached just before a new order reached
      Shopify's order search held for 6 hours and left the buyer's "Still looking for your order" card up (2026-10-11) */
   if (c && Date.now() - c.at < (c.pro ? 6 * 3600 * 1000 : PRO_NO_CACHE_MS)) return { pro: !!c.pro, via: "cache", plan: c.plan || null };
-  if (!env.SHOPIFY_ORDERS_TOKEN) return { pro: null, via: "no token" };
+  if (!shopCanToken(env)) return { pro: null, via: "no token" };
   const since = new Date(Date.now() - PRO_DAYS * 86400000).toISOString().slice(0, 10);
   const q = cid ? "customer_id:" + cid + " AND sku:" + PRO_SKU + " AND created_at:>=" + since : 'email:"' + email.replace(/"/g, "") + '" AND sku:' + PRO_SKU + " AND created_at:>=" + since;
   try {
@@ -3491,9 +3515,14 @@ async function alProShop(env, email, c, cid) {
       const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 12000);   /* v51 */
       let r, j;
       try {
-        r = await fetch("https://" + (env.SHOPIFY_SHOP || "tz7xkc-du.myshopify.com") + "/admin/api/2025-10/graphql.json", { method: "POST", signal: ctl.signal,
-          headers: { "X-Shopify-Access-Token": env.SHOPIFY_ORDERS_TOKEN, "Content-Type": "application/json" },
+        const tok = await shopToken(env, false);
+        if (!tok) return { err: "shopify token refused" };
+        const send = (t) => fetch("https://" + shopHost(env) + "/admin/api/2025-10/graphql.json", { method: "POST", signal: ctl.signal,
+          headers: { "X-Shopify-Access-Token": t, "Content-Type": "application/json" },
           body: JSON.stringify({ query: "query pro($q: String!, $n: Int!) { orders(first: $n, query: $q, sortKey: CREATED_AT, reverse: true) { nodes { name createdAt cancelledAt displayFinancialStatus email statusPageUrl discountCodes totalPriceSet { shopMoney { amount currencyCode } } lineItems(first: 5) { nodes { sku customAttributes { key value } } } } } }", variables: { q: qq, n: n } }) });
+        r = await send(tok);
+        /* a token that ran out early: one fresh one, once */
+        if (r.status === 401 && env.SHOPIFY_ORDERS_CLIENT_ID) { const t2 = await shopToken(env, true); if (t2) r = await send(t2); }
         if (r.status !== 200) return { err: "shopify " + r.status };
         j = await r.json();
       } finally { clearTimeout(timer); }
