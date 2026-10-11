@@ -346,16 +346,16 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 @keyframes spin{to{transform:rotate(360deg)}}
 .scout-app-wrapper .pulse{animation:pulse 2.4s ease-in-out infinite}
 .scout-app-wrapper.theme-menu-open .bar,.scout-app-wrapper.theme-menu-open #otp-dock,.scout-app-wrapper.theme-menu-open .oabar{visibility:hidden}
-.scout-app-wrapper .bar .hi:not([hidden]){display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mu);white-space:nowrap}
-.scout-app-wrapper .bar .hi b{font-weight:600;max-width:9em;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom}
-@media (max-width:639px){.scout-app-wrapper .bar .hi:not([hidden]){display:none}}   /* v6.45: no room on phones; Den > Settings has it */
+/* v6.86: "Hi, name · Log out" sits on its own slim line under the header (it overlapped the buttons on a computer) */
+.scout-app-wrapper .hi:not([hidden]){display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:4px 16px;font-size:13px;color:var(--mu);white-space:nowrap}
+.scout-app-wrapper .hi b{font-weight:600;max-width:14em;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom}
+.scout-app-wrapper .hi .hi-out{background:none;border:0;padding:4px 0;min-height:0;font:inherit;font-weight:600;color:var(--ac);text-decoration:underline;cursor:pointer}
 /* v6.85: the account chip, on every screen: the first letter of who is signed in (a ring when Pro), or a person when
    nobody is. The installed app has no store header to show it. On a phone the ... link home makes way for it */
 .scout-app-wrapper .bar .acct{flex:none;min-width:0;align-self:stretch;aspect-ratio:1/1;padding:0;border-radius:50%;font-weight:800;font-size:14px;text-transform:uppercase}
 .scout-app-wrapper.is-pro .bar .acct{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}
 @media (max-width:479px){.scout-app-wrapper .bar .brand .homedots{display:none}}
 .scout-app-wrapper .bar .brand{flex-shrink:0}
-.scout-app-wrapper .bar .hi .gh{white-space:nowrap}
 .scout-app-wrapper .bar{position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 18px;background:var(--bar-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--ln)}
 .scout-app-wrapper .brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.02em}
 .scout-app-wrapper .brand i{color:var(--ac);font-style:normal}
@@ -1743,7 +1743,6 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     <span class="brand-wm">Prowl</span><span class="probadge" title="Prowl Pro is on">PRO</span><a class="homedots" href="/" aria-label="Owl &amp; Twig home" title="Owl &amp; Twig home"><i> . . .</i></a>
   </span>
   <div class="bar-actions">
-    <span class="hi" id="otp-hi" hidden></span>
     <button class="gh acct" id="otp-acct" type="button" aria-label="Sign in">•</button>
     <button class="gh apphdr" id="otp-appHdr" type="button" hidden>App</button>
     <button class="gh" id="otp-sizeTop" type="button" aria-label="Text size: Standard. Tap for bigger." title="Text size">Aa</button>
@@ -1751,6 +1750,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     <button class="gh" id="otp-how" type="button" aria-label="How Prowl works">Help</button>
   </div>
 </header>
+<div class="hi" id="otp-hi" hidden></div>
 
 <main>
   <div class="pmark" id="otp-pan"><button class="pm-btn" id="otp-panQr" type="button" aria-label="Show the Prowl QR code" title="Show the QR code"><img id="otp-panImg" src="https://cdn.shopify.com/s/files/1/0807/8537/5486/files/panther_white_eyes_new_tail_clear.png?v=1785688388" alt="" decoding="async"><span class="pm-qr" aria-hidden="true"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2"></path></svg></span></button></div>
@@ -2674,7 +2674,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.85';
+var PROWL_VERSION='v6.86';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4713,7 +4713,7 @@ var PRO_VARIANT=67633421025534, PRO_PLAN=7674560766;
    box can buy Pro; the order carries that email and the worker matches it when
    the confirm or sign-in link is tapped. */
 function mailUpgradeEmail(){
-  var em=mGet('alertEmail')||mGet('alertWait'),i,ins,v;
+  var em=mGet('alertTok')?mGet('alertEmail'):'',i,ins,v;
   if(em)return em;
   ins=document.querySelectorAll('.scout-app-wrapper .otp-mail input[type=email]');
   for(i=0;i<ins.length;i++){v=String(ins[i].value||'').replace(/\s+/g,'').toLowerCase();if(/^[^@]+@[^@]+\.[a-z]{2,}$/.test(v))return v}
@@ -4723,7 +4723,7 @@ function mailUpgrade(){
   var em=mailUpgradeEmail();
   if(MAIL.busy)return;
   if(!alertsLive()){toast('Prowl Pro is coming soon.',2400);return}
-  if(!em){MAIL.msg='Type your email in Prowl Alerts first, then tap Upgrade, so Pro knows which email to upgrade.';MAIL.open=true;rMail();openMailSettings();return}
+  if(!mGet('alertTok')){MAIL.after=mailUpgrade;MAIL.afterAt=Date.now();MAIL.msg='Sign in with your email first, so Pro knows whose it is.';MAIL.open=true;openMailSettings();rMail();return}   /* v6.86 */
   if(typeof fetch!=='function'){location.href=PRO_URL;return}
   MAIL.busy=true;MAIL.msg='Opening checkout\u2026';rMail();
   function fail(){MAIL.busy=false;location.href=PRO_URL}
@@ -4792,16 +4792,13 @@ function mailInit(mount){
       var b=e.target.closest&&e.target.closest('.otp-mail [data-mail]');if(!b)return;
       var box=b.closest('.otp-mail'),a=b.getAttribute('data-mail');
       if(a==='open'){MAIL.open=!MAIL.open;MAIL.msg='';rMail();return}
-      if(a==='go'){var inp=box.querySelector('input[type=email]');mailSubscribe(inp?inp.value:'');return}
-      if(a==='signin'){MAIL.signin=!MAIL.signin;MAIL.msg='';rMail();var si=box.querySelector('input[type=email]');if(si)try{si.focus()}catch(x){}return}
-      if(a==='in'){var ii=box.querySelector('input[type=email]');mailSignin(ii?ii.value:'');return}
+      if(a==='code'){var ci0=box.querySelector('input[data-k=code]');mailCode('code',b.getAttribute('data-v')||(ci0?ci0.value:''));return}   /* v6.86 */
+      if(a==='verify'){var vi=box.querySelector('input[data-k=verify]');mailCode('verify',vi?vi.value:'');return}
       if(a==='soon'){e.preventDefault();var ws=$('#otp-alerts');if(den&&!den.hidden&&typeof closeDen==='function')closeDen();if(ws)try{ws.scrollIntoView({behavior:'smooth',block:'start'})}catch(x){ws.scrollIntoView()}return}
       if(a==='join'){shopJoin();return}
-      if(a==='storein'){mSet('alertNoAuto','');mSet('alertLoginAt',String(Date.now()));return}
       if(a==='signout'){mailSignout();return}
       if(a==='chg'){MAIL.chg=!MAIL.chg;MAIL.chgTo=b.getAttribute('data-to')||'';MAIL.msg='';rMail();var ci=document.getElementById('otp-chgTo');if(ci&&MAIL.chg)try{ci.focus()}catch(x){}return}   /* v6.04 */
       if(a==='chggo'){var cv=box.querySelector('input[data-k=chg]');mailMove(cv?cv.value:'');return}
-      if(a==='emailonly'){MAIL.emailOnly=!MAIL.emailOnly;MAIL.signin=false;MAIL.msg='';rMail();return}
       if(a==='off'){mailOff();return}
       if(a==='mailon'){mailOn();return}   /* v6.05 */
       if(a==='del'){mailDelete();return}
@@ -4830,12 +4827,11 @@ function mailInit(mount){
       var t=e.target;if(!t||!t.closest||!t.closest('.otp-mail'))return;
       if(t.getAttribute('data-mail')==='all'){mSet('alertAll',t.checked?'1':'');rMail();mailSync(false)}
     });
+    document.addEventListener('input',function(e){var t=e.target;if(t&&t.getAttribute&&t.getAttribute('data-k')==='verify'){t.value=t.value.replace(/\D/g,'').slice(0,6);if(t.value.length===6&&!MAIL.busy)mailCode('verify',t.value)}});
     document.addEventListener('keydown',function(e){
       var t=e.target;if(e.key!=='Enter'||!t||!t.closest||!t.closest('.otp-mail'))return;
       var pk=t.getAttribute&&t.getAttribute('data-k');
       if(pk){e.preventDefault();var pb=t.closest('.otp-mail').querySelector('[data-mail="'+pk+'"]');if(pb)pb.click();return}
-      if(t.type!=='email')return;
-      e.preventDefault();if(MAIL.signin)mailSignin(t.value);else mailSubscribe(t.value);
     });
   }
   rMail();
@@ -4873,7 +4869,7 @@ function proActivate(){
   MAIL.act=1;MAIL.tries=0;clearTimeout(MAIL.atimer);
   if(!mGet('alertTok')){
     MAIL.act=3;
-    proBan('<h3>One more tap for Prowl Pro</h3><p>Thanks for upgrading. Pro switches on the moment this phone or computer is signed in to Prowl Alerts: tap the confirm link we emailed you, or <button type="button" class="sgw-ml" data-pro="settings">sign in here</button>.</p><span class="sgw-mf"><button type="button" class="b" data-pro="close">Close</button></span>');
+    proBan('<h3>One more tap for Prowl Pro</h3><p>Thanks for upgrading. Pro switches on the moment this phone or computer is signed in with the email you paid with: <button type="button" class="sgw-ml" data-pro="settings">sign in here</button>.</p><span class="sgw-mf"><button type="button" class="b" data-pro="close">Close</button></span>');
     return;
   }
   proBan('<h3><span class="spin" aria-hidden="true"></span>Switching on Prowl Pro\u2026</h3><p>Thanks! Checking your order with the shop. This usually takes a few seconds.</p>');
@@ -5043,27 +5039,17 @@ function mailBody(on,wait,n,em){
     if(MAIL.mail==='off')h+='<p class="mail-off" role="status"><b>Prowl emails are off.</b> '+(pro?'Prowl Pro is still on: 25 photo checks a day and unlimited Fair price checks. To stop paying, <a href="'+MANAGE_URL+'">cancel in your account</a>. ':'Your hunts and settings are saved. ')+'<button type="button" class="sgw-ml" data-mail="mailon">Turn emails back on</button></p>';
     h+=mailAcctHtml(em)+'<p class="mail-fine">Same sign-in on your phone and computer keeps your hunts in step. <button type="button" class="sgw-ml" data-mail="signout">Sign out</button></p><p>One email <b>'+prefsFreqTxt(pf)+'</b> to <b>'+esc(em)+'</b> with new finds for '+(pro||n<=MAIL.free?(na+' hunt'+(na===1?'':'s')):('<b>'+na+' of your '+n+' hunts</b>'))+', only listings you have not been sent. Add or remove a favorite and the email follows.</p>';
     h+=prefsHtml(on,em,n);
-  }else if(wait){
-    h+='<p>We sent a confirm link to <b>'+esc(wait)+'</b>. Tap it and Prowl Alerts is on. Not there? Check spam. <button type="button" class="sgw-ml" data-mail="again">Use a different email</button></p>'+
-      /* v5.90: the confirm link opens in the browser, not the installed app, so
-         the app also offers the store sign-in from here. */
-      '<p class="mail-fine">Or skip the email: <a class="sgw-ml" href="'+esc(loginUrl())+'" data-mail="storein">Sign in with your Owl &amp; Twig account</a></p>';
-  }else if(MAIL.signin){
-    h+='<p><b>Sign in on this phone or computer.</b> Type the email you use for Prowl Alerts and we will send a sign-in link. Tap it here and your hunts and plan come with you. No password.</p>'+
-      '<span class="sgw-mf"><input type="email" autocomplete="email" placeholder="you@email.com" aria-label="Email for Prowl sign-in" value="'+esc(em)+'"><button type="button" class="b p" data-mail="in"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Sending\u2026':'Email me a sign-in link')+'</button></span>'+
-      '<p class="mail-fine"><button type="button" class="sgw-ml" data-mail="signin">Back</button></p>';
+  }else if(wait&&Date.now()-(+mGet('alertCodeAt')||0)<9e5){   /* a code is out (15 minutes); an older wait (a confirm link) asks again */
+    /* v6.86: one sign-in, inside the app: the 6-digit code we emailed (a link opened the browser, not the app) */
+    h+='<p>Enter the 6-digit code we sent to <b>'+esc(wait)+'</b>.</p>'+
+      '<span class="sgw-mf"><input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" data-k="verify" placeholder="123456" aria-label="6-digit code"><button type="button" class="b p" data-mail="verify"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Checking\u2026':'Sign in')+'</button></span>'+
+      '<p class="mail-fine">Not there? Check spam. <button type="button" class="sgw-ml" data-mail="code" data-v="'+esc(wait)+'">Send a new code</button> \u00b7 <button type="button" class="sgw-ml" data-mail="again">Use a different email</button></p>';
   }else if(MAIL.shop){
     h+='<p>Signed in to Owl &amp; Twig as <b>'+esc(MAIL.shop.e)+'</b>. One email with new finds for your hunts. <b>Free for 1 hunt on Mondays</b>, or 25 hunts every day with Prowl Pro, first month free.</p>'+
       '<span class="sgw-mf"><button type="button" class="b p" data-mail="join"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Turning on\u2026':'Turn on Prowl Alerts')+'</button></span>';
-  }else if(MAIL.emailOnly){
-    h+='<p><b>Email only, no account.</b> Type your email and tap the confirm link we send.</p>'+
-      '<span class="sgw-mf"><input type="email" autocomplete="email" placeholder="you@email.com" aria-label="Email for Prowl Alerts" value="'+esc(em)+'"><button type="button" class="b p" data-mail="go"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Sending\u2026':'Email me daily')+'</button></span>'+
-      '<p class="mail-fine">Set up on another device this way? <button type="button" class="sgw-ml" data-mail="signin">Email me a sign-in link</button> \u00b7 <button type="button" class="sgw-ml" data-mail="emailonly">Back</button></p>';
   }else{
-    h+='<p>One email with new finds for your hunts, from ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted and Grailed. Only listings you have not been sent before. <b>Free for 1 hunt on Mondays</b>, or 25 hunts every day with Prowl Pro, first month free.</p>'+
-      '<span class="sgw-mf"><a class="b p" href="'+esc(loginUrl())+'" data-mail="storein">Sign in or sign up</a></span>'+
-      '<p class="mail-fine">Uses your Owl &amp; Twig account: we email you a 6-digit code, no password. Same sign-in on your phone and computer.</p>'+
-      '<p class="mail-fine">Rather not have an account? <button type="button" class="sgw-ml" data-mail="emailonly">Use email only</button></p>';
+    h+='<p><b>Sign in with your email.</b> No password: we email you a 6-digit code. Your hunts then follow you to every phone and computer, with one email of new finds: <b>free for 1 hunt on Mondays</b>, or 25 hunts every day with Prowl Pro, first month free. Turn the email off any time.</p>'+
+      '<span class="sgw-mf"><input type="email" autocomplete="email" data-k="code" placeholder="you@email.com" aria-label="Your email" value="'+esc(em||wait||'')+'"><button type="button" class="b p" data-mail="code"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Sending\u2026':'Email me a code')+'</button></span>';
   }
   if(pro)h+='<label class="sgw-mc"><input type="checkbox" data-mail="all"'+(mGet('alertAll')==='1'?' checked':'')+'><span class="cbx" aria-hidden="true"></span> Every hunt in my Den too (up to 25), not just favorites</label>';
   else h+='<label class="sgw-mc lock" title="Prowl Pro"><input type="checkbox" disabled><span class="cbx" aria-hidden="true"></span> \uD83D\uDD12 Pro: every hunt in my Den too (up to 25)</label>';
@@ -5195,18 +5181,24 @@ function mailPost(body,cb){
     .then(function(r){return r.json().then(function(j){j._s=r.status;return j},function(){return {_s:r.status} })})
     .then(cb,function(){cb(null)});
 }
-function mailSubscribe(v){
-  var em=String(v||'').replace(/\s+/g,'').toLowerCase(),hs=mailHunts();
+/* v6.86: one sign-in, all inside Prowl: 'code' emails a 6-digit code to the address, 'verify' signs in with it. A new
+   email becomes a member with the hunts on this device. prowl.alertWait holds the address while the code is out, so
+   the app can be closed to read the email and come back to the code box. */
+function mailCode(step,v){
+  if(typeof fetch!=='function'||MAIL.busy)return;
+  var em=step==='code'?String(v||'').replace(/\s+/g,'').toLowerCase():mGet('alertWait'),code=String(v||'').replace(/\D/g,'');
   if(!/^[^@]+@[^@]+\.[a-z]{2,}$/.test(em)){MAIL.msg='That email does not look right.';rMail();return}
-  if(!hs.length){MAIL.msg='Add a favorite hunt first.';rMail();return}
+  if(step==='verify'&&code.length!==6){MAIL.msg='Type the 6 numbers from the email.';rMail();return}
   MAIL.busy=true;MAIL.msg='';rMail();
-  mailPost({email:em,hunts:hs,tok:mGet('alertEmail')===em?mGet('alertTok'):''},function(j){
-    MAIL.busy=false;
-    if(j&&j.ok&&j.on){mSet('alertEmail',em);mSet('alertTok',j.tok);mSet('alertSig',mailSig());mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;MAIL.ready=true;MAIL.msg='Saved.'}
-    else if(j&&j.ok&&j.confirm){mSet('alertEmail',em);mSet('alertWait',em);MAIL.msg=''}
-    else MAIL.msg=(j&&j.error)?j.error:'Could not reach Prowl. Try again in a minute.';
-    rMail();
-  });
+  fetch(SGW_API+'alerts/'+step,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(step==='code'?{email:em}:{email:em,code:code,hunts:mailHunts()})})
+    .then(function(r){return r.json()['catch'](function(){return {}})})
+    .then(function(j){
+      MAIL.busy=false;
+      if(step==='code'&&j&&j.sent){mSet('alertWait',em);mSet('alertCodeAt',String(Date.now()));MAIL.msg='Code sent to '+em+'.';rMail();var ci=document.querySelector('#otp-denSettings .otp-mail input[data-k=verify]')||document.querySelector('.otp-mail input[data-k=verify]');if(ci)try{ci.focus()}catch(x){}return}
+      if(j&&j.tok){var f=MAIL.after&&Date.now()-MAIL.afterAt<6e5?MAIL.after:null;MAIL.after=null;pxTake(j,'Signed in as '+j.email+'.');mSet('alertSig','');try{flPendStar()}catch(x){}if(f)f();return}
+      if(j&&j.expired)mSet('alertWait',em);
+      MAIL.msg=(j&&j.error)||'Could not reach Prowl. Try again in a minute.';rMail();
+    },function(){MAIL.busy=false;MAIL.msg='Could not reach Prowl. Try again in a minute.';rMail()});
 }
 /* v5.84 store login. Prowl signs in with the shop's own customer account (the
    Owl & Twig sign-in: an emailed code, no password). The Shopify app "Prowl
@@ -5238,7 +5230,7 @@ function pxTake(j,msg){
   sessSet(j.session);
   mSet('alertEmail',j.email);mSet('alertTok',j.tok);mSet('alertWait','');mSet('alertNoAuto','');mSet('alertLoginAt','');
   mSet('alertPro',j.pro?'1':'');hiRender();if(j.free)MAIL.free=j.free;
-  MAIL.shop=null;MAIL.signin=false;MAIL.ready=false;MAIL.msg=msg;if(j.store)MAIL.store=String(j.store).toLowerCase();rMail();
+  MAIL.shop=null;MAIL.ready=false;MAIL.msg=msg;if(j.store)MAIL.store=String(j.store).toLowerCase();rMail();
   mailStatus(true);
 }
 /* On load: if the visitor is signed in to the store, sign Prowl in too. */
@@ -5248,8 +5240,8 @@ function shopCheck(fromLogin){
   if(!fromLogin&&mGet('alertNoAuto')==='1')return;
   pxMe(function(me){
     hiMe(me);
-    if(!me){if(fromLogin){MAIL.msg='Sign-in did not finish here. Try again, or use email only below.';MAIL.open=true;rMail();openMailSettings()}return}
-    if(!me.in){if(fromLogin){MAIL.msg='Sign-in did not finish. Tap Sign in to try again.';MAIL.open=true;rMail();openMailSettings()}return}
+    if(!me){if(fromLogin){MAIL.msg='Sign-in did not finish. Type your email below and we will send you a code.';MAIL.open=true;rMail();openMailSettings()}return}
+    if(!me.in){if(fromLogin){MAIL.msg='Sign-in did not finish. Type your email below and we will send you a code.';MAIL.open=true;rMail();openMailSettings()}return}
     pxLogin(me,false,function(j){
       if(j&&j.member&&j.tok){pxTake(j,'Signed in as '+j.email+'. Your hunts and plan are on this device.');if(fromLogin){MAIL.open=true;openMailSettings()} }
       else if(j&&j.member===false){sessSet(j.session);hiRender();MAIL.shop={e:j.email,first:me.first||''};rMail();if(fromLogin){MAIL.open=true;openMailSettings()} }
@@ -5286,9 +5278,9 @@ function hiRender(){
   acctRender();
   var el=document.getElementById('otp-hi');if(!el)return;
   var on=MAIL.storeIn===true,nm=MAIL.first||'',
-    login=!on&&MAIL.storeIn===false&&!mGet('alertTok')&&alertsLive();   /* v6.64: the store says signed out */
+    login=false;   /* v6.86: the account chip is the one sign-in */
   el.hidden=!(on||login);
-  el.innerHTML=on?'<span class="hi-n">'+(nm?'Hi, <b>'+esc(nm)+'</b>':'Signed in')+'</span><button class="gh hi-out" type="button" data-hi="out">Log out</button>'
+  el.innerHTML=on?'<span class="hi-n">'+(nm?'Hi, <b>'+esc(nm)+'</b>':'Signed in')+'</span><button class="hi-out" type="button" data-hi="out">Log out</button>'
     :login?'<a class="gh hi-in" href="'+esc(loginUrl())+'" data-hi="in">Log in</a>':'';
   /* v6.45: the same, as an Account row in Den > Settings (the only place phones show it; signing in there is in the
      Prowl Alerts box) */
@@ -5305,7 +5297,7 @@ function hiLogout(){
 })})})();
 /* v6.85: the account chip opens Den > Settings at the sign-in. A sign-in finished in a browser tab (an email link, the
    store) shares this app's storage on Android: when the app comes back, or storage changes, show who it is now */
-(function(){var b=document.getElementById('otp-acct');if(b)b.addEventListener('click',function(){MAIL.open=true;openMailSettings();try{rMail()}catch(e){}});
+(function(){var b=document.getElementById('otp-acct');if(b)b.addEventListener('click',function(){MAIL.after=null;MAIL.open=true;openMailSettings();try{rMail();if(!mGet('alertTok')){var i=document.querySelector('#otp-denSettings .otp-mail input[data-k=verify],#otp-denSettings .otp-mail input[data-k=code]');if(i)i.focus()}}catch(e){}});
   function sync(){var em=mGet('alertTok')?mGet('alertEmail'):'';if(em===ACCT.em)return;MAIL.store=undefined;MAIL.storeAsk=0;hiRender();if(em)mailStatus(false);try{rMail()}catch(e){}}
   document.addEventListener('visibilitychange',function(){if(!document.hidden)sync()});window.addEventListener('pageshow',sync);window.addEventListener('storage',sync);acctRender();})();
 /* v5.90: in the installed app, the store sign-in opens in a browser panel and
@@ -5346,20 +5338,6 @@ function mailSignout(){
   MAIL.shop=null;MAIL.plan=null;MAIL.prefs=null;MAIL.msg='Signed out of Prowl on this device. Your alerts keep coming.'+(MAIL.storeIn===true?' (Your Owl & Twig account stays signed in; log out of it under Account.)':'');rMail();   /* v6.64: only when the store says so */
 }
 /* v5.81: one-time sign-in link for an existing member on a new device. */
-function mailSignin(v){
-  var em=String(v||'').replace(/\s+/g,'').toLowerCase();
-  if(!/^[^@]+@[^@]+\.[a-z]{2,}$/.test(em)){MAIL.msg='That email does not look right.';rMail();return}
-  if(typeof fetch!=='function'||MAIL.busy)return;
-  MAIL.busy=true;MAIL.msg='';rMail();
-  fetch(SGW_API+'alerts/signin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em})})
-    .then(function(r){return r.json()['catch'](function(){return {error:'Could not reach Prowl.'} })})
-    .then(function(j){
-      MAIL.busy=false;
-      if(j&&j.sent){mSet('alertEmail',em);MAIL.signin=false;mSet('alertWait','');MAIL.msg='If '+em+' has Prowl Alerts, a sign-in link is on its way. Open the email on this phone or computer and tap Sign me in. Not there? Check spam, or sign up below.'}
-      else MAIL.msg=(j&&j.error)||'Could not send. Try again in a minute.';
-      rMail();
-    },function(){MAIL.busy=false;MAIL.msg='Could not reach Prowl. Try again in a minute.';rMail();});
-}
 /* v5.81: bring the member's list onto this device. base = list at last sync.
    On the server but not in base: added elsewhere, so lock it here.
    In base but gone from the server: removed elsewhere, so unlock it here (it
@@ -5400,7 +5378,7 @@ function mailSync(now){
     var sig=mailSig();if(sig===mGet('alertSig'))return;   /* v6.00: an empty list is sent too (worker v51) */
     mailPost({email:em,hunts:mailHunts(),tok:tok},function(j){
       if(j&&j.ok&&j.on){mSet('alertSig',sig);if(typeof j.pro==='boolean'&&(j.pro?'1':'')!==mGet('alertPro')){mSet('alertPro',j.pro?'1':'');rMail()} }
-      else if(j&&(j._s===404||j.confirm)){mSet('alertTok','');mSet('alertSig','');mSet('alertWait',j.confirm?em:'');rMail()}
+      else if(j&&(j._s===404||j.confirm)){mSet('alertTok','');mSet('alertSig','');mSet('alertWait','');rMail()}   /* v6.86: sign in again with a code */
     });
   },now?0:2500);
 }
@@ -7563,8 +7541,7 @@ function svTap(u){
   if(findIdx(u)>-1||flSignedIn()){svToggle(u);return}
   var it=SVI[u];if(!it)return;
   try{sessionStorage.setItem(PEND_KEY,JSON.stringify({title:it.title,price:it.price,url:it.url,image:it.image,src:it.src,hunt:it.hunt,at:Date.now()}))}catch(e){}
-  var back=location.pathname+(flockOpen()?'?flock=1':'');
-  flGoTo('/customer_authentication/login?return_to='+encodeURIComponent(back)+(mGet('alertEmail')?'&login_hint='+encodeURIComponent(mGet('alertEmail')):''));
+  MAIL.after=null;MAIL.open=true;MAIL.msg='Sign in to save it. It is held for you meanwhile.';openMailSettings();rMail();   /* v6.86: the in-app code sign-in, not the store */
 }
 function flGoTo(url){location.href=url}
 /* v6.64: the installed app does not reload after the store sign-in (it opens in a browser panel), so the held star is

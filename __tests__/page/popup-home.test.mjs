@@ -106,8 +106,9 @@ test('a Flock card still opens the popup exactly once', async () => {
   await p.close();
 });
 
-test('phone header: the greeting leaves the top bar below 640px and the brand never shrinks', () => {
-  assert.match(PAGE, /@media \(max-width:639px\)\{\.scout-app-wrapper \.bar \.hi:not\(\[hidden\]\)\{display:none\}\}/);
+test('the greeting is out of the top bar on every screen (its own line under it, v6.86) and the brand never shrinks', () => {
+  assert.match(PAGE, /<\/header>\n<div class="hi" id="otp-hi" hidden><\/div>/);
+  assert.ok(!/<header class="bar">[\s\S]*id="otp-hi"[\s\S]*<\/header>/.test(PAGE.slice(PAGE.indexOf('<header class="bar">'), PAGE.indexOf('</header>') + 9)));
   assert.match(PAGE, /\.scout-app-wrapper \.bar \.brand\{flex-shrink:0\}/);
 });
 

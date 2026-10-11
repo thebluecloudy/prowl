@@ -191,7 +191,7 @@ test('share falls back to copying the link', async () => {
   await p.close();
 });
 
-test('star while logged out holds the find and heads to the store sign-in', async () => {
+test('star while logged out holds the find and opens the in-app sign-in (v6.86, no trip to the store)', async () => {
   const p = await open();
   await waitFor(() => cards(p).length);
   const c = cards(p)[0];
@@ -199,7 +199,9 @@ test('star while logged out holds the find and heads to the store sign-in', asyn
   const pend = JSON.parse(p.win.sessionStorage.getItem('prowl.pendStar'));
   assert.equal(pend.url, c.getAttribute('data-u'));
   assert.equal(ls(p, 'prowl.finds'), null, 'nothing saved locally yet');
-  assert.ok(p.errors.some((e) => /navigation/i.test(String(e.message || e))), 'it navigates to the sign-in');
+  assert.ok(!p.errors.some((e) => /navigation/i.test(String(e.message || e))), 'it stays in Prowl');
+  assert.equal(p.$('#otp-denSettings').hidden, false, 'Den > Settings, where the sign-in is');
+  assert.ok(p.$('#otp-denSettings .otp-mail input[data-k=code]'), 'the email box for the code');
   await p.close();
 });
 

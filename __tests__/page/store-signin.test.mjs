@@ -25,18 +25,13 @@ test('a store customer with no first name: "Signed in", Log out, and the Den row
   await p.close();
 });
 
-test('signed out of the store: a quiet Log in that remembers the tap, so the app notices the return', async () => {
+test('signed out of the store: no store Log in in the header any more; the account chip is the one sign-in (v6.86)', async () => {
   const f = liveFetch({ me: { in: false } });
   const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.v36': { seen: true, hunts: [] }, 'prowl.alertNoAuto': '1' } });
-  await waitFor(() => !hi(p).hidden);
-  const a = hi(p).querySelector('a[data-hi="in"]');
-  assert.ok(a, 'Log in');
-  assert.equal(a.textContent, 'Log in');
-  assert.match(a.getAttribute('href'), /^\/customer_authentication\/login\?return_to=%2Fpages%2Fprowl%3Flogin%3D1/);
-  assert.equal(p.$('#otp-hiDen').hidden, true, 'phones sign in from the Prowl Alerts box');
-  a.click();
-  assert.equal(p.win.localStorage.getItem('prowl.alertNoAuto'), null);
-  assert.ok(Number(p.win.localStorage.getItem('prowl.alertLoginAt')) > 0);
+  await waitFor(() => f.calls.some((u) => /apps\/prowl\/me/.test(u)));
+  await tick(50);
+  assert.equal(p.$('a[data-hi="in"]'), null);
+  assert.equal(p.$('#otp-acct').getAttribute('aria-label'), 'Sign in');
   await p.close();
 });
 

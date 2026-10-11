@@ -825,6 +825,7 @@ async function apiAction(c) {
     sub.tok = H.alToken();
     if (await merge(["tok"])) {
       await kv.delete("in:" + email);   // a waiting sign-in link would let a lost device straight back in
+      await kv.delete("code:" + email);   // v108: and so would a waiting sign-in code
       await kv.delete("conf:" + email);   // and so would a waiting confirm link (it signs in as the member too)
       const moved = await cancelMove(c, sub, email);
       msg = "Signed out on every phone and computer. They can sign back in with a new sign-in link." +

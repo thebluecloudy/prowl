@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v108: 2026-10-11. One sign-in inside the app: POST /alerts/code emails a 6-digit code, POST /alerts/verify signs
+ *        in with it (a new email becomes a member, as a confirm link does). Codes: HMAC only, 10 minutes, 5 tries.
  *   v107: 2026-10-11. A cached "not Pro" answer lasts 10 minutes (Pro still 6 hours), so a new order is found within
  *        minutes even after the day's fresh checks are spent.
  *   v106: 2026-10-11. Estate sales: the app's list (filteredSales) is found by name anywhere in a data block, walked as
@@ -370,7 +372,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-const WORKER_VERSION = "v107";
+const WORKER_VERSION = "v108";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4339,6 +4341,78 @@ async function alSignin(request, env, origin) {
   if (!r.ok) { console.error("signin mail", r.error); return json({ error: "Could not send the sign-in email." }, 502, origin); }
   return json({ ok: true, sent: true }, 200, origin);
 }
+/* v108: one sign-in for Prowl, inside the app: type your email, we email a 6-digit code, type it in. It works for a new
+   email too (the code proves the inbox, so it is the sign-up), never leaves the installed app, and the answer to a send
+   is the same whether or not the email has a membership. The code is stored only as an HMAC with a per-code nonce, lasts
+   10 minutes, and allows 5 tries (counted in Caps, which is atomic; KV is not). */
+const AL_CODE_TTL = 600, AL_CODE_TRIES = 5, AL_CODE_PER_EMAIL = 5, AL_CODE_PER_NET = 30, AL_CODE_PER_DAY = 500, AL_CODE_VERIFY_PER_IP = 30, AL_CODE_VERIFY_PER_NET = 120, AL_CODE_FAILS_PER_DAY = 10;
+function alCodeKey(env) { return env.PROWL_SESSION_SECRET || env.MEMBER_ID_SALT || env.ADMIN_KEY || ""; }
+function alCodeMake() {
+  const a = new Uint32Array(1);
+  do crypto.getRandomValues(a); while (a[0] >= 4294000000);
+  return String(a[0] % 1000000).padStart(6, "0");
+}
+async function alCode(request, env, origin) {
+  if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
+  const b = await readJson(request, 4096);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  const email = alEmail(b.email);
+  if (!email) return json({ error: "That email does not look right." }, 400, origin);
+  const key = alCodeKey(env);
+  if (!key) return json({ error: "Sign-in is not set up yet." }, 503, origin);
+  const ip = ipKey(request.headers.get("CF-Connecting-IP"));
+  if (!(await vCount("alsub:" + ip, AL_SUB_PER_IP))) return json({ error: "Too many tries today." }, 429, origin);
+  if (!(await vCount("alcn:" + ipNet(ip), AL_CODE_PER_NET))) return json({ error: "Too many tries today." }, 429, origin);
+  if (!(await kvGet(env, "sub:" + email, null)) && !alAllowed(env, email)) return json({ error: "Prowl Alerts is invite-only right now." }, 403, origin);
+  if (!(await vCount("alcode:" + email, AL_CODE_PER_EMAIL))) return json({ error: "We already sent codes today. Use the newest one, or check spam." }, 429, origin);
+  /* the site-wide cap last, so refused requests (a 6th for one address, an invite-only address) never use it up */
+  if (!(await vCount("alcode:all", AL_CODE_PER_DAY))) return json({ error: "Sign-in is busy. Try again later." }, 429, origin);
+  const code = alCodeMake(), n = alToken().slice(0, 12);
+  const h = await pxHmac(key, "prowl-code-v1:" + email + "|" + n + "|" + code);
+  await env.PROWL_ALERTS.put("code:" + email, JSON.stringify({ h: h, n: n, at: Date.now() }), { expirationTtl: AL_CODE_TTL });
+  const html = alShell(env, '<tr><td style="padding:12px 12px 4px;font:16px/1.5 Georgia,serif;color:#2b2118">' +
+    '<h2 style="font-size:22px;margin:0 0 8px">Your Prowl sign-in code</h2>' +
+    '<p style="margin:0 0 12px;font:bold 34px/1.2 Menlo,Consolas,monospace;letter-spacing:6px;color:#2b2118">' + code + '</p>' +
+    '<p style="margin:0 0 4px;font:13px/1.5 Arial,sans-serif;color:#6b5b4a">Type it in Prowl. It works once, for 10 minutes. No password, ever.</p></td></tr>',
+    'Someone asked to sign in to Prowl with this address. If that was not you, ignore this email. Nothing happens without the code.', '');
+  const r = await alSend(env, email, "Your Prowl code: " + code, html,
+    code + " is your Prowl sign-in code. It works once, for 10 minutes. Did not ask for this? Ignore this email." + alFootText(env, null), "");
+  if (!r.ok) { console.error("code mail", scrubPII(String(r.error || "send failed"))); return json({ error: "Could not send the code. Try again in a minute." }, 502, origin); }
+  return json({ ok: true, sent: true }, 200, origin);
+}
+async function alVerify(request, env, origin) {
+  if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
+  const b = await readJson(request, 8192);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  const email = alEmail(b.email), code = String(b.code || "").replace(/\D/g, "");
+  if (!email || !/^\d{6}$/.test(code)) return json({ error: "Type the 6 numbers from the email." }, 400, origin);
+  const key = alCodeKey(env);
+  if (!key) return json({ error: "Sign-in is not set up yet." }, 503, origin);
+  const ip = ipKey(request.headers.get("CF-Connecting-IP"));
+  if (!(await vCount("alcvi:" + ip, AL_CODE_VERIFY_PER_IP))) return json({ error: "Too many tries today." }, 429, origin);
+  if (!(await vCount("alcvn:" + ipNet(ip), AL_CODE_VERIFY_PER_NET))) return json({ error: "Too many tries today." }, 429, origin);
+  const rec = await kvGet(env, "code:" + email, null);
+  if (!rec || !rec.h || Date.now() - (rec.at || 0) > AL_CODE_TTL * 1000) return json({ error: "That code has expired. Ask for a new one.", expired: true }, 400, origin);
+  const left = await vTake("alcodev:" + email + ":" + rec.n, AL_CODE_TRIES);
+  if (left < 0) { await env.PROWL_ALERTS.delete("code:" + email); return json({ error: "Too many tries. Ask for a new code.", expired: true }, 429, origin); }
+  if (!alSame(await pxHmac(key, "prowl-code-v1:" + email + "|" + rec.n + "|" + code), rec.h)) {
+    /* wrong guesses per address per day, across all its codes (5 codes x 5 tries would be 25): about 10 in a million a day */
+    if (!(await vCount("alcvf:" + email, AL_CODE_FAILS_PER_DAY))) { await env.PROWL_ALERTS.delete("code:" + email); return json({ error: "Too many wrong codes today. Try again tomorrow.", expired: true }, 429, origin); }
+    return json({ error: "That code is not right.", left: left }, 400, origin);
+  }
+  await env.PROWL_ALERTS.delete("code:" + email);
+  await env.PROWL_ALERTS.delete("in:" + email);
+  let sub = await kvGet(env, "sub:" + email, null);
+  if (!sub || typeof sub !== "object" || Array.isArray(sub)) {
+    /* a new member: the code proved the inbox, as the confirm link does */
+    sub = { email: email, tok: alToken(), utok: alToken(), hunts: alHunts(Array.isArray(b.hunts) ? b.hunts : []), day: "", done: [], sent: "", created: new Date().toISOString(), via: "code" };
+    await alProSet(env, sub, true);
+    const again = await kvGet(env, "sub:" + email, null);   /* two verifies at once: the first one's token wins */
+    if (again && again.tok) sub = again; else await kvPut(env, "sub:" + email, sub);
+    await env.PROWL_ALERTS.delete("conf:" + email);
+  }
+  return json({ ok: true, member: true, email: sub.email, tok: sub.tok, pro: !!sub.pro, free: alFree(env, sub), hunts: sub.hunts, active: alActive(env, sub).length, session: sub.cid ? await sessMint(env, sub.cid) : "" }, 200, origin);
+}
 /* v78: a one-time sign-in link by email (the member's own request, or the owner from the admin page) */
 async function alSendSignin(env, sub) {
   const email = sub.email;
@@ -4530,7 +4604,7 @@ async function alMoveConfirm(request, env, url) {
   for (const k of ["pend:", "seen:", "likes:"]) { const v = await kvGet(env, k + from, null); if (v != null) await kvPut(env, k + to, v); }   /* v85: likes: */
   if (moved.cid) await kvPut(env, "cid:" + moved.cid, { email: to });
   await env.PROWL_ALERTS.put("moved:" + from, JSON.stringify({ to: to, tok: sub.tok, at: Date.now() }), { expirationTtl: 90 * 86400 });
-  for (const k of ["sub:", "pend:", "seen:", "mvf:", "likes:", "conf:"]) await env.PROWL_ALERTS.delete(k + from);   /* v86: conf: too, or a waiting confirm link makes a second, empty member on the old address */
+  for (const k of ["sub:", "pend:", "seen:", "mvf:", "likes:", "conf:", "code:"]) await env.PROWL_ALERTS.delete(k + from);   /* v86: conf: too, or a waiting confirm link makes a second, empty member on the old address */
   await env.PROWL_ALERTS.delete("pro:" + from);   /* v93: the old address's Pro cache; the next check rebuilds it while the address is in prev */
   await env.PROWL_ALERTS.delete("mv:" + to);
   /* one notice to the old address, so a change is never silent */
@@ -4583,7 +4657,7 @@ async function alPurge(env, email, sub) {
     const mv = await kvGet(env, "moved:" + old, null);
     if (mv && mine.indexOf(String(mv.to)) !== -1) { await kv.delete("moved:" + old); gone.push("moved:"); }
   }
-  for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:"]) { await kv.delete(p + email); gone.push(p); }   /* v85: likes:, v86: conf: */
+  for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "code:"]) { await kv.delete(p + email); gone.push(p); }   /* v85: likes:, v86: conf:, v108: code: */
   const cid = sub && sub.cid ? String(sub.cid) : "";
   if (cid) {
     const c = await kvGet(env, "cid:" + cid, null);
@@ -5312,6 +5386,8 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/alerts/signin" && request.method === "POST") {
       return alSignin(request, env, origin);
     }
+    if (url.pathname === "/alerts/code" && request.method === "POST") return alCode(request, env, origin);   /* v108 */
+    if (url.pathname === "/alerts/verify" && request.method === "POST") return alVerify(request, env, origin);   /* v108 */
     if (url.pathname === "/alerts/mail" && request.method === "POST") return alMailSet(request, env, origin);   /* v55 */
     if (url.pathname === "/alerts/delete" && request.method === "POST") return alDelete(request, env, origin);   /* v55 */
     if (url.pathname === "/alerts/likes" && request.method === "POST") return alLikes(request, env, origin);   /* v85 */
