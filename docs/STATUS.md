@@ -1,16 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.86).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.87).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.86** | 4286 bytes under Shopify's 512 KB (slimmed) |
-| Worker | **v109** | |
+| Page | **v6.87** | 4249 bytes under Shopify's 512 KB (slimmed) |
+| Worker | **v110** | |
 
 Recently shipped, newest first:
 
+- **v6.87 / v110:** Etsy's affiliate row is Rakuten Advertising, not Awin (Etsy's US program answered Matt's application
+  through Rakuten). Key `etsy_rak` (never `etsy`, which pages v6.60-v6.86 turn into an Awin link), fields Etsy's
+  advertiser id (mid) and the Rakuten publisher id, both empty and off; page only, like Depop. The Prowl page's Shopify
+  search title and description no longer frame it against Google (set in Shopify, not in the repo): "Prowl — Search 28
+  Vintage Marketplaces at Once | Owl & Twig Vintage".
 - **v109:** the worker gets its own Shopify order token from a Dev Dashboard app (client credentials; those tokens last
   about a day, which is why the pasted SHOPIFY_ORDERS_TOKEN went 401). Needs SHOPIFY_ORDERS_CLIENT_ID and
   SHOPIFY_ORDERS_CLIENT_SECRET in Cloudflare.
@@ -50,7 +55,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.87, worker v110**. Claim one here when you start.
+Next free numbers: **page v6.88, worker v111**. Claim one here when you start.
 
 ## Waiting on Matt
 
@@ -63,6 +68,9 @@ Next free numbers: **page v6.87, worker v110**. Claim one here when you start.
 - **Known gap:** if adding Pro to the cart fails, the page falls back to `/products/prowl-pro` without the code.
 - **Next:** check Den > Settings shows the free month and that the welcome email came.
 - **Facebook alerts cost test** (Apify, 5 real hunts in Detroit/Novi). Needs a go-ahead and the Apify token.
+- **Etsy affiliate (Rakuten):** declined 2026-10-11 ("temporarily", reapply after 15 days). Ask Etsy Affiliate US why;
+  reapply with https://www.owlandtwigvintage.com/pages/prowl. Once approved, paste Etsy's advertiser id (mid) and the
+  Rakuten publisher id in admin > Affiliates > Etsy, Save IDs, Turn on.
 - **Estate sales check:** admin > Diagnose > "Check garage-sale sites", then Den > Local with "Novi, MI".
 
 ## Done

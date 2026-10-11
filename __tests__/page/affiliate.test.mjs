@@ -90,10 +90,10 @@ test('eBay switched off: plain eBay links, the popup affiliate URL is ignored, a
 });
 
 test('a bad or missing /aff answer changes nothing', async () => {
-  const f = affFetch({ ebay: 'no', etsy: 1 });
+  const f = affFetch({ ebay: 'no', etsy_rak: 1 });
   const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.affOn': 'junk', 'prowl.affIds': 'junk' } });
   await tick(40);
-  assert.deepEqual({ ...p.win.PROWL_AFF_ON }, { ebay: true, depop_rak: false, etsy: false, reverb: false, '1stdibs': false, amazon: false });
+  assert.deepEqual({ ...p.win.PROWL_AFF_ON }, { ebay: true, depop_rak: false, etsy_rak: false, reverb: false, '1stdibs': false, amazon: false });
   assert.equal(p.win.prowlAffId('ebay', 'camp'), '5339216838');
   await p.close();
 });
@@ -107,16 +107,16 @@ test('eBay keeps its EPN tag and non-https links are blocked', async () => {
 });
 
 test("v6.60: IDs from the admin area build each network's click URL, only while the program is on", async () => {
-  const f = affFetch({ ebay: true, etsy: true, reverb: false, '1stdibs': true, amazon: false });
-  f.ids = { ebay: { camp: '2222222222' }, etsy: { mid: '6220', aff: '1234567' }, reverb: { mid: '7777', aff: '1234567' }, '1stdibs': { camref: '1l3vabc' } };
+  const f = affFetch({ ebay: true, etsy_rak: true, reverb: false, '1stdibs': true, amazon: false });
+  f.ids = { ebay: { camp: '2222222222' }, etsy_rak: { mid: '6220', ranid: 'Abc123/x*Y' }, reverb: { mid: '7777', aff: '1234567' }, '1stdibs': { camref: '1l3vabc' } };
   const p = loadPage({ fetchImpl: f.impl });
   await tick(40);
   const etsy = 'https://www.etsy.com/listing/1/pyrex?ref=x';
-  assert.equal(p.win.prowlAff(etsy), 'https://www.awin1.com/cread.php?awinmid=6220&awinaffid=1234567&ued=' + encodeURIComponent(etsy));
+  assert.equal(p.win.prowlAff(etsy), 'https://click.linksynergy.com/deeplink?id=Abc123/x*Y&mid=6220&murl=' + encodeURIComponent(etsy), 'v6.87: Etsy through Rakuten');
   assert.equal(p.win.prowlAff('https://www.1stdibs.com/x/'), 'https://prf.hn/click/camref:1l3vabc/destination:' + encodeURIComponent('https://www.1stdibs.com/x/'));
   assert.match(p.win.prowlAff('https://www.ebay.com/itm/1', 'prowl-live'), /campid=2222222222&customid=prowl-live/, 'the eBay campaign comes from the IDs');
   // subdomains count; lookalike hosts do not
-  assert.match(p.win.prowlAff('https://uk.etsy.com/listing/9'), /^https:\/\/www\.awin1\.com\//);
+  assert.match(p.win.prowlAff('https://uk.etsy.com/listing/9'), /^https:\/\/click\.linksynergy\.com\//);
   assert.equal(p.win.prowlAff('https://notetsy.com/listing/9'), 'https://notetsy.com/listing/9');
   assert.equal(p.win.prowlAff('https://etsy.com.evil.example/listing/9'), 'https://etsy.com.evil.example/listing/9');
   // a click URL is never wrapped twice
@@ -125,13 +125,13 @@ test("v6.60: IDs from the admin area build each network's click URL, only while 
   // Reverb has IDs but is switched off: untouched
   assert.equal(p.win.prowlAff('https://reverb.com/item/2'), 'https://reverb.com/item/2');
   assert.deepEqual([...p.win.prowlAffNames()], ['eBay', 'Etsy', '1stDibs']);
-  assert.deepEqual(JSON.parse(p.win.localStorage.getItem('prowl.affIds')).etsy, { mid: '6220', aff: '1234567' }, 'kept for the next visit');
+  assert.deepEqual(JSON.parse(p.win.localStorage.getItem('prowl.affIds')).etsy_rak, { mid: '6220', ranid: 'Abc123/x*Y' }, 'kept for the next visit');
   await p.close();
 });
 
 test('v6.60: IDs in the wrong form are ignored, so a program with them stays plain', async () => {
-  const f = affFetch({ ebay: true, etsy: true });
-  f.ids = { etsy: { mid: '6220"><b>', aff: '1234567' }, ebay: { camp: 'javascript:1' } };
+  const f = affFetch({ ebay: true, etsy_rak: true, etsy: true });
+  f.ids = { etsy_rak: { mid: '6220"><b>', ranid: 'Abc123/x*Y' }, etsy: { mid: '6220', aff: '1234567' }, ebay: { camp: 'javascript:1' } };
   const p = loadPage({ fetchImpl: f.impl });
   await tick(40);
   assert.equal(p.win.prowlAff('https://www.etsy.com/listing/1'), 'https://www.etsy.com/listing/1');

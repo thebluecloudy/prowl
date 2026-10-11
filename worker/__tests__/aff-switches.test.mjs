@@ -36,14 +36,14 @@ function lift() {
 }
 const EPN = { EPN_CAMPAIGN_ID: "5339216838" };
 
-const OFF = { depop_rak: false, etsy: false, reverb: false, "1stdibs": false, amazon: false };
+const OFF = { depop_rak: false, etsy_rak: false, reverb: false, "1stdibs": false, amazon: false };
 test("defaults: eBay on, the rest off; Depop's advertiser ID is filled in, its publisher ID is not; a stored choice wins", async () => {
   const X = lift(), ids = X.affIdsClean(null, null);
-  assert.deepEqual(ids, { ebay: { camp: "5339216838" }, depop_rak: { mid: "53555", ranid: "" }, etsy: { mid: "", aff: "" }, reverb: { mid: "", aff: "" }, "1stdibs": { camref: "" }, amazon: { tag: "" } });
+  assert.deepEqual(ids, { ebay: { camp: "5339216838" }, depop_rak: { mid: "53555", ranid: "" }, etsy_rak: { mid: "", ranid: "" }, reverb: { mid: "", aff: "" }, "1stdibs": { camref: "" }, amazon: { tag: "" } });
   assert.deepEqual(X.affClean(null, ids), { ebay: true, ...OFF });
   assert.deepEqual(X.affClean({ ebay: false }, ids), { ebay: false, ...OFF });
-  assert.deepEqual(X.affClean({ ebay: "no", depop: true, depop_rak: true, etsy: true }, ids), { ebay: true, ...OFF }, "only booleans; Depop and Etsy need their IDs; the old depop key is no program");
-  assert.deepEqual(X.AFF_PROGRAMS.map((p) => [p.id, p.def]), [["ebay", true], ["depop_rak", false], ["etsy", false], ["reverb", false], ["1stdibs", false], ["amazon", false]]);
+  assert.deepEqual(X.affClean({ ebay: "no", depop: true, depop_rak: true, etsy: true, etsy_rak: true }, ids), { ebay: true, ...OFF }, "only booleans; Depop and Etsy need their IDs; the old depop and etsy keys are no program");
+  assert.deepEqual(X.AFF_PROGRAMS.map((p) => [p.id, p.def]), [["ebay", true], ["depop_rak", false], ["etsy_rak", false], ["reverb", false], ["1stdibs", false], ["amazon", false]]);
   const kv = new FakeKV();
   assert.deepEqual(await X.affLoad({ PROWL_ALERTS: kv }, true), { ebay: true, ...OFF }, "nothing stored: defaults");
   await kv.put("aff:on", JSON.stringify({ ebay: false, depop: true }));
@@ -53,8 +53,9 @@ test("defaults: eBay on, the rest off; Depop's advertiser ID is filled in, its p
 
 test("v90 IDs: stored values over the defaults, off-format values dropped, eBay falls back to EPN_CAMPAIGN_ID", () => {
   const X = lift();
-  const ids = X.affIdsClean({ etsy: { mid: " 6220 ", aff: "1234567" }, amazon: { tag: "owltwig-20" }, depop: { pub: "Abc123/x*Y" }, "1stdibs": { camref: "1l3vabc" }, junk: { a: 1 } }, null);
-  assert.deepEqual(ids.etsy, { mid: "6220", aff: "1234567" });
+  const ids = X.affIdsClean({ etsy_rak: { mid: " 6220 ", ranid: "Abc123/x*Y" }, etsy: { mid: "1", aff: "1234567" }, amazon: { tag: "owltwig-20" }, depop: { pub: "Abc123/x*Y" }, "1stdibs": { camref: "1l3vabc" }, junk: { a: 1 } }, null);
+  assert.deepEqual(ids.etsy_rak, { mid: "6220", ranid: "Abc123/x*Y" });
+  assert.equal("etsy" in ids, false, "v110: the Awin-era etsy key is no program");
   assert.equal(ids.amazon.tag, "owltwig-20");
   assert.deepEqual(ids.depop_rak, { mid: "53555", ranid: "" }, "v95: nothing under the old depop key is reused");
   assert.equal("depop" in ids, false);
@@ -65,7 +66,7 @@ test("v90 IDs: stored values over the defaults, off-format values dropped, eBay 
   assert.equal(X.affIdsClean({ ebay: { camp: "2222222222" } }, { EPN_CAMPAIGN_ID: "1111111111" }).ebay.camp, "2222222222", "the admin's value wins");
   assert.equal(X.affIdsClean(null, { EPN_CAMPAIGN_ID: "nope" }).ebay.camp, "5339216838");
   assert.equal(X.affIdsClean({ ebay: { camp: "12" } }, null).ebay.camp, "", "a stored value in the wrong form is dropped, not replaced by the default");
-  for (const [p, f, bad] of [["ebay", "camp", "123"], ["depop_rak", "mid", "5a555"], ["depop_rak", "ranid", "a&murl=https://evil.example"], ["depop_rak", "ranid", "Abc 123"], ["depop_rak", "ranid", "3912345"], ["depop_rak", "ranid", "x\"><b>"], ["etsy", "mid", "12a"], ["etsy", "aff", "1"], ["1stdibs", "camref", "a/b"], ["amazon", "tag", "owltwig"], ["amazon", "tag", "x\"><script>-20"]]) {
+  for (const [p, f, bad] of [["ebay", "camp", "123"], ["depop_rak", "mid", "5a555"], ["depop_rak", "ranid", "a&murl=https://evil.example"], ["depop_rak", "ranid", "Abc 123"], ["depop_rak", "ranid", "3912345"], ["depop_rak", "ranid", "x\"><b>"], ["etsy_rak", "mid", "12a"], ["etsy_rak", "ranid", "3912345"], ["etsy_rak", "ranid", "a&murl=https://evil.example"], ["1stdibs", "camref", "a/b"], ["amazon", "tag", "owltwig"], ["amazon", "tag", "x\"><script>-20"]]) {
     assert.equal(X.affIdsClean({ [p]: { [f]: bad } }, null)[p][f], "", p + "." + f + " " + bad);
   }
 });
@@ -89,8 +90,8 @@ test("v90: the eBay link uses the stored ID; v95: an old Depop switch and ID (v8
   assert.equal("depop" in X.on(), false, "and still no on.depop");
   assert.equal(X.AL_ALSO.find((a) => a[0] === "Depop")[1]("hull pottery"), "https://www.depop.com/search/?q=hull%20pottery", "emails stay plain");
   assert.equal(X.affNote(), "Some links (eBay) earn Owl & Twig a small commission, at no cost to you.", "and their footer does not name Depop");
-  await kv.put("aff:on", JSON.stringify({ amazon: true, etsy: true }));
-  await kv.put("aff:ids", JSON.stringify({ amazon: { tag: "owltwig-20" }, etsy: { mid: "6220", aff: "1234567" } }));
+  await kv.put("aff:on", JSON.stringify({ amazon: true, etsy_rak: true }));
+  await kv.put("aff:ids", JSON.stringify({ amazon: { tag: "owltwig-20" }, etsy_rak: { mid: "6220", ranid: "Abc123/x*Y" } }));
   await X.affLoad({ PROWL_ALERTS: kv }, true);
   assert.equal(X.on().amazon, true);
   assert.equal(X.affNote(), "Some links (eBay) earn Owl & Twig a small commission, at no cost to you.", "emails tag no Amazon or Etsy links, so the footer does not name them");
@@ -151,7 +152,7 @@ test("admin: Affiliates lists each program with its state, and a switch turns it
   const A = admin();
   let r = await A.call("GET", "/admin/api/affiliates");
   assert.equal(r.status, 200);
-  assert.deepEqual(r.j.programs.map((p) => [p.id, p.name, p.on, p.ready]), [["ebay", "eBay", true, true], ["depop_rak", "Depop", false, false], ["etsy", "Etsy", false, false],
+  assert.deepEqual(r.j.programs.map((p) => [p.id, p.name, p.on, p.ready]), [["ebay", "eBay", true, true], ["depop_rak", "Depop", false, false], ["etsy_rak", "Etsy", false, false],
     ["reverb", "Reverb", false, false], ["1stdibs", "1stDibs", false, false], ["amazon", "Amazon", false, false]]);
   assert.deepEqual(r.j.programs[0].fields, [{ k: "camp", label: "Campaign ID", hint: "10 digits", value: "5339216838" }]);
   const dp = r.j.programs[1];
@@ -171,8 +172,10 @@ test("admin: Affiliates lists each program with its state, and a switch turns it
 
 test("admin: unknown programs, non-boolean values and requests from elsewhere change nothing", async () => {
   const A = admin();
-  let r = await A.call("POST", "/admin/api/affiliate", { id: "etsy", on: true });
+  let r = await A.call("POST", "/admin/api/affiliate", { id: "etsy_rak", on: true });
   assert.equal(r.status, 400);
+  r = await A.call("POST", "/admin/api/affiliate", { id: "etsy", on: true });
+  assert.equal(r.status, 400, "v110: the Awin-era key is no program");
   r = await A.call("POST", "/admin/api/affiliate", { id: "depop_rak", on: true });
   assert.equal(r.status, 400, "v95: Depop needs its publisher ID first");
   r = await A.call("POST", "/admin/api/affiliate", { id: "depop", on: true });
@@ -202,9 +205,9 @@ test("admin v90: Save IDs checks each format, saves, and only then can Turn on w
   assert.equal(am.ready, true); assert.equal(am.fields[0].value, "owltwig-20");
   r = await A.call("POST", "/admin/api/affiliate", { id: "amazon", on: true });
   assert.equal(r.status, 200); assert.equal(A.X.on().amazon, true);
-  r = await A.call("POST", "/admin/api/affiliate/ids", { id: "etsy", values: { mid: "6220" } });
+  r = await A.call("POST", "/admin/api/affiliate/ids", { id: "etsy_rak", values: { mid: "6220" } });
   assert.match(r.j.message, /^Etsy IDs saved\. They are not complete, so Etsy is off\./);
-  assert.deepEqual(A.kv.json("aff:ids"), { amazon: { tag: "owltwig-20" }, etsy: { mid: "6220", aff: "" } }, "the other program's IDs are kept");
+  assert.deepEqual(A.kv.json("aff:ids"), { amazon: { tag: "owltwig-20" }, etsy_rak: { mid: "6220", ranid: "" } }, "the other program's IDs are kept");
   r = await A.call("POST", "/admin/api/affiliate/ids", { id: "amazon", values: { tag: "" } });
   assert.match(r.j.message, /not complete, so Amazon is off/);
   assert.equal(A.kv.json("aff:on").amazon, false, "clearing the IDs turns it off and keeps it off");
@@ -212,7 +215,7 @@ test("admin v90: Save IDs checks each format, saves, and only then can Turn on w
   assert.deepEqual(A.audits.map((a) => a.action), ["aff-ids", "aff-on", "aff-ids", "aff-ids"]);
   r = await A.call("POST", "/admin/api/affiliate/ids", { id: "nope", values: {} });
   assert.equal(r.status, 400);
-  r = await A.call("POST", "/admin/api/affiliate/ids", { id: "etsy", values: "6220" });
+  r = await A.call("POST", "/admin/api/affiliate/ids", { id: "etsy_rak", values: "6220" });
   assert.equal(r.status, 400);
 });
 
