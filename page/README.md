@@ -15,7 +15,7 @@ here needs a code change.
 |---|---|---|---|
 | eBay | eBay Partner Network | Campaign ID (10 digits) | page, alert emails, listing popup |
 | Depop | Rakuten Advertising | Depop advertiser ID (filled in: 53555), your Rakuten publisher ID | page |
-| Etsy | Awin | Etsy advertiser ID (awinmid), your Awin publisher ID | page |
+| Etsy | Rakuten Advertising | Etsy advertiser ID (mid), your Rakuten publisher ID (same as Depop's) | page |
 | Reverb | Awin | Reverb advertiser ID (awinmid), your Awin publisher ID | page |
 | 1stDibs | Partnerize | camref | page |
 | Amazon | Amazon Associates | Tracking ID (ends in -20) | page (Field Guide supplies) |

@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v110: 2026-10-11. Etsy's affiliate row is Rakuten Advertising, not Awin: Etsy's US program answered Matthew's
+ *        application through Rakuten. Key etsy_rak (never etsy, which pages v6.60-v6.86 turn into an Awin link), fields
+ *        Etsy's advertiser id (mid) and the Rakuten publisher id, both empty and off. Page only, like Depop.
  *   v109: 2026-10-11. The order token renews itself: with SHOPIFY_ORDERS_CLIENT_ID and _SECRET (a Dev Dashboard app with
  *        read_orders) the worker asks Shopify for a fresh token (client credentials), kept in memory, renewed before
  *        it runs out and after a 401. The pasted SHOPIFY_ORDERS_TOKEN expired after a day ("shopify 401").
@@ -375,7 +378,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-const WORKER_VERSION = "v109";
+const WORKER_VERSION = "v110";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -422,9 +425,11 @@ const AFF_PROGRAMS = [
   { id: "depop_rak", name: "Depop", net: "Rakuten Advertising", def: false,
     fields: [{ k: "mid", label: "Depop advertiser ID (mid)", hint: "digits; Depop's is 53555", re: AFF_RE.ranMid, def: "53555" },
       { k: "ranid", label: "Your Rakuten publisher ID", hint: "the 11 characters after id= in a Rakuten link (Links > Get Link), not the Site ID", re: AFF_RE.ranId, def: "" }] },
-  { id: "etsy", name: "Etsy", net: "Awin", def: false,
-    fields: [{ k: "mid", label: "Etsy advertiser ID (awinmid)", hint: "3 to 8 digits", re: AFF_RE.awinMid, def: "" },
-      { k: "aff", label: "Your Awin publisher ID", hint: "4 to 10 digits", re: AFF_RE.awinAff, def: "" }] },
+  /* v110: Etsy US runs through Rakuten Advertising (Etsy's 2026-10-11 reply came from Rakuten), not Awin. Page only,
+     like Depop. The key is etsy_rak, never etsy: pages v6.60-v6.86 build an Awin link from on.etsy / ids.etsy. */
+  { id: "etsy_rak", name: "Etsy", net: "Rakuten Advertising", def: false,
+    fields: [{ k: "mid", label: "Etsy advertiser ID (mid)", hint: "digits, from Etsy's page in your Rakuten account", re: AFF_RE.ranMid, def: "" },
+      { k: "ranid", label: "Your Rakuten publisher ID", hint: "the same as Depop's: the 11 characters after id= in a Rakuten link", re: AFF_RE.ranId, def: "" }] },
   { id: "reverb", name: "Reverb", net: "Awin", def: false,
     fields: [{ k: "mid", label: "Reverb advertiser ID (awinmid)", hint: "3 to 8 digits", re: AFF_RE.awinMid, def: "" },
       { k: "aff", label: "Your Awin publisher ID", hint: "4 to 10 digits", re: AFF_RE.awinAff, def: "" }] },
