@@ -42,7 +42,7 @@ function seeded() {
   const kv = new FakeKV();
   const sub = { email: EMAIL, tok: "T".repeat(24), utok: "U".repeat(24), hunts: ["Hull pottery", "Pyrex"], cid: CID, mail: "on", pro: true };
   kv.set("sub:" + EMAIL, sub);
-  for (const p of ["pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:"]) kv.set(p + EMAIL, { x: 1 });
+  for (const p of ["pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "code:"]) kv.set(p + EMAIL, { x: 1 });
   kv.set("cid:" + CID, { email: EMAIL });
   kv.set("pro:cid:" + CID, { pro: true, at: 1 });
   kv.set("gift:abc123", { until: "2027-01-01" });
@@ -63,7 +63,7 @@ test("alPurge removes every key for the member, keeps gifts and other members, l
   assert.equal(kv.m.has("cid:" + CID), false);
   assert.equal(kv.m.has("pro:cid:" + CID), false);
   for (const k of ["gift:abc123", "giftoff:abc123", "giftnomail:abc123", "sub:other@example.com", "seen:other@example.com"]) assert.ok(kv.m.has(k), k);
-  assert.deepEqual(gone, ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "cid:", "pro:cid:"]);
+  assert.deepEqual(gone, ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "code:", "cid:", "pro:cid:"]);
   assert.ok(logs.length && logs.every((l) => !l.includes(EMAIL) && !l.includes(CID)), "no email or id in the log");
 });
 

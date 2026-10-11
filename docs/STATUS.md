@@ -1,16 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.85).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.86).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.85** | 2813 bytes under Shopify's 512 KB (slimmed) |
-| Worker | **v107** | |
+| Page | **v6.86** | 4619 bytes under Shopify's 512 KB (slimmed) |
+| Worker | **v108** | |
 
 Recently shipped, newest first:
 
+- **v6.86 / v108:** one sign-in, inside the app: tap the account chip, type your email, type the 6-digit code we email
+  (POST /alerts/code, /alerts/verify; HMAC only, 10 minutes, 5 tries, same answer for any email). A new email becomes
+  a member. Gone from view: the store "Log in" / "Sign in or sign up", the confirm-link and magic-link screens, and the
+  Flock star's trip to the store login. Old confirm/sign-in links and the silent store sign-in still work. Upgrade asks
+  for the sign-in first, then carries on to checkout.
 - **v6.85 / v107:** an account chip in the header on every screen (the installed app has no store header): the first
   letter of who is signed in, a green ring for Pro, a person when nobody is; it opens Den > Settings, whose Prowl
   Alerts box now shows the plan. A sign-in finished in a browser tab is picked up when the app comes back. Log out
@@ -41,7 +46,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.86, worker v108**. Claim one here when you start.
+Next free numbers: **page v6.87, worker v109**. Claim one here when you start.
 
 ## Waiting on Matt
 
