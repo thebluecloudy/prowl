@@ -349,6 +349,11 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .bar .hi:not([hidden]){display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mu);white-space:nowrap}
 .scout-app-wrapper .bar .hi b{font-weight:600;max-width:9em;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom}
 @media (max-width:639px){.scout-app-wrapper .bar .hi:not([hidden]){display:none}}   /* v6.45: no room on phones; Den > Settings has it */
+/* v6.85: the account chip, on every screen: the first letter of who is signed in (a ring when Pro), or a person when
+   nobody is. The installed app has no store header to show it. On a phone the ... link home makes way for it */
+.scout-app-wrapper .bar .acct{flex:none;min-width:0;align-self:stretch;aspect-ratio:1/1;padding:0;border-radius:50%;font-weight:800;font-size:14px;text-transform:uppercase}
+.scout-app-wrapper.is-pro .bar .acct{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}
+@media (max-width:479px){.scout-app-wrapper .bar .brand .homedots{display:none}}
 .scout-app-wrapper .bar .brand{flex-shrink:0}
 .scout-app-wrapper .bar .hi .gh{white-space:nowrap}
 .scout-app-wrapper .bar{position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 18px;background:var(--bar-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--ln)}
@@ -1739,6 +1744,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
   </span>
   <div class="bar-actions">
     <span class="hi" id="otp-hi" hidden></span>
+    <button class="gh acct" id="otp-acct" type="button" aria-label="Sign in">•</button>
     <button class="gh apphdr" id="otp-appHdr" type="button" hidden>App</button>
     <button class="gh" id="otp-sizeTop" type="button" aria-label="Text size: Standard. Tap for bigger." title="Text size">Aa</button>
     <button class="gh" id="otp-themeBtn" type="button" aria-label="Cycle theme" title="Dark mode">☾</button>
@@ -2668,7 +2674,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.84';
+var PROWL_VERSION='v6.85';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4728,7 +4734,7 @@ function mailUpgrade(){
     return fetch('/cart/add.js',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({items:[{id:PRO_VARIANT,quantity:1,selling_plan:PRO_PLAN,properties:{'Prowl Alerts email':em} } ]})});
   }).then(function(r){
-    if(r&&r.status===200){mSet('alertProWait','1');location.href=MAIL.hadPro?'/checkout':'/checkout?discount='+PRO_TRIAL_CODE;}   /* v6.05: first month free */
+    if(r&&r.status===200){mSet('alertProWait','1');mSet('alertProWaitAt',String(Date.now()));location.href=MAIL.hadPro?'/checkout':'/checkout?discount='+PRO_TRIAL_CODE;}   /* v6.05: first month free */
     else fail();
   },fail);
 }
@@ -4844,6 +4850,8 @@ function mailInit(mount){
   }
   /* v5.98: back from the Pro checkout: a banner at the top, polling the worker */
   if(/[?&]pro=back(&|$)/.test(location.search)){try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])pro=back(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}}
+  /* v6.85: the order card waits a day at most; an old flag (from before the time was kept) is let go */
+  if(mGet('alertProWait')==='1'&&!(Date.now()-(+mGet('alertProWaitAt')||0)<864e5)){mSet('alertProWait','');mSet('alertProWaitAt','')}
   if(mGet('alertProWait')==='1'&&!mailPro())setTimeout(proActivate,400);
   if(!MAIL.asked&&mGet('alertTok')){MAIL.asked=1;setTimeout(function(){mailStatus(false)},1200)}
 }
@@ -4870,18 +4878,19 @@ function proActivate(){
   }
   proBan('<h3><span class="spin" aria-hidden="true"></span>Switching on Prowl Pro\u2026</h3><p>Thanks! Checking your order with the shop. This usually takes a few seconds.</p>');
   function done(){
-    mSet('alertProWait','');MAIL.act=2;MAIL.msg='';rMail();
+    mSet('alertProWait','');mSet('alertProWaitAt','');MAIL.act=2;MAIL.msg='';rMail();
     proBan(proWelcomeHtml());
     toast('Prowl Pro is on.',3000);
   }
   function stuck(){
     MAIL.act=3;
-    proBan('<h3>Still looking for your order</h3><p>Shopify can take a couple of minutes to post it. Pro switches on by itself as soon as it shows, or check now. Paid and still seeing this? Email <a href="mailto:hello@owlandtwigvintage.com">hello@owlandtwigvintage.com</a> and we will sort it the same day.</p>'+
+    proBan('<h3>Still looking for your order</h3><p>We are looking for a Prowl Pro order for <b>'+esc(mGet('alertEmail'))+'</b>. Paid with a different Prowl Alerts email? <button type="button" class="sgw-ml" data-pro="settings">Switch to it</button>. Shopify can take a couple of minutes to post an order. Paid and still seeing this? Email <a href="mailto:hello@owlandtwigvintage.com">hello@owlandtwigvintage.com</a> and we will sort it the same day.</p>'+
       '<span class="sgw-mf"><button type="button" class="b p" data-pro="again">Check again</button><button type="button" class="b" data-pro="close">Close</button></span>');
   }
   function tick(){
     if(mailPro()){done();return}
-    mailStatus(true,function(j){
+    mailStatus(MAIL.tries%5===0,function(j){   /* v6.85: 3 fresh looks a round (the worker allows 10 a day) */
+      if(MAIL.act!==1)return;   /* closed while this was out */
       if(j&&j.pro){done();return}
       if(j&&j.on===false){MAIL.act=3;proBan('<h3>Signed out of Prowl Alerts</h3><p>Sign in again and Pro shows up on this device.</p><span class="sgw-mf"><button type="button" class="b p" data-pro="settings">Sign in</button><button type="button" class="b" data-pro="close">Close</button></span>');return}
       MAIL.tries++;
@@ -4894,7 +4903,7 @@ function proActivate(){
 document.addEventListener('click',function(e){
   var b=e.target.closest&&e.target.closest('#otp-proBan [data-pro]');if(!b)return;
   var a=b.getAttribute('data-pro');
-  if(a==='close'){proBan('');if(MAIL.act!==2)mSet('alertProWait','');MAIL.act=0;clearTimeout(MAIL.atimer);return}
+  if(a==='close'){proBan('');if(MAIL.act!==2){mSet('alertProWait','');mSet('alertProWaitAt','')}MAIL.act=0;clearTimeout(MAIL.atimer);return}
   if(a==='settings'){MAIL.open=true;openMailSettings();if(MAIL.act===2)proBan('');return}
   if(a==='again'){MAIL.act=0;proActivate();return}
 });
@@ -5265,7 +5274,16 @@ function hiCheck(){
     if(me&&me.in&&!window.prowlSess())pxLogin(me,false,function(j){if(j&&j.member&&j.email===mGet('alertEmail'))sessSet(j.session)});
   });
 }
+function acctRender(){
+  var b=document.getElementById('otp-acct');if(!b)return;
+  var em=mGet('alertTok')?mGet('alertEmail'):'',who=em||(MAIL.storeIn===true?MAIL.storeE||MAIL.first:'');
+  b.textContent=who?String(who).charAt(0):'\uD83D\uDC64';
+  b.setAttribute('aria-label',who?'Account: '+who+(mailPro()?', Prowl Pro':''):'Sign in');b.title=b.getAttribute('aria-label');
+  ACCT.em=em;
+}
+var ACCT={em:null};
 function hiRender(){
+  acctRender();
   var el=document.getElementById('otp-hi');if(!el)return;
   var on=MAIL.storeIn===true,nm=MAIL.first||'',
     login=!on&&MAIL.storeIn===false&&!mGet('alertTok')&&alertsLive();   /* v6.64: the store says signed out */
@@ -5279,12 +5297,17 @@ function hiRender(){
 }
 function hiLogout(){
   sessSet('');mSet('alertTok','');mSet('alertSig','');mSet('alertPro','');mSet('alertNoAuto','1');MAIL.first='';MAIL.storeIn=null;FLIN=false;hiRender();
-  location.href='/customer_authentication/logout?return_to='+encodeURIComponent('/pages/prowl');
+  location.href='/customer_authentication/logout?return_to='+encodeURIComponent(location.pathname);   /* v6.85: back to the app's page when in the app */
 }
 (function(){['otp-hi','otp-hiDen'].forEach(function(id){var el=document.getElementById(id);if(el)el.addEventListener('click',function(e){var b=e.target&&e.target.closest?e.target.closest('[data-hi]'):null;if(!b)return;
   if(b.getAttribute('data-hi')==='out'){hiLogout();return}
   mSet('alertNoAuto','');mSet('alertLoginAt',String(Date.now()))   /* v6.64 Log in: as the Prowl Alerts box's store sign-in, so the installed app notices the return */
 })})})();
+/* v6.85: the account chip opens Den > Settings at the sign-in. A sign-in finished in a browser tab (an email link, the
+   store) shares this app's storage on Android: when the app comes back, or storage changes, show who it is now */
+(function(){var b=document.getElementById('otp-acct');if(b)b.addEventListener('click',function(){MAIL.open=true;openMailSettings();try{rMail()}catch(e){}});
+  function sync(){var em=mGet('alertTok')?mGet('alertEmail'):'';if(em===ACCT.em)return;MAIL.store=undefined;MAIL.storeAsk=0;hiRender();if(em)mailStatus(false);try{rMail()}catch(e){}}
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)sync()});window.addEventListener('pageshow',sync);window.addEventListener('storage',sync);acctRender();})();
 /* v5.90: in the installed app, the store sign-in opens in a browser panel and
    the app itself never reloads, so it would not notice the sign-in. When the
    app comes back to the front within 20 minutes of tapping Sign in, check the
@@ -7700,6 +7723,7 @@ function mailStoreLook(){
 function mailAcctHtml(em){
   var st=MAIL.store,h='<div class="mail-acct">';
   h+='<div class="ma-row"><span>Prowl Alerts go to</span><b>'+esc(em)+'</b><button type="button" class="sgw-ml" data-mail="chg">'+(MAIL.chg?'Cancel':'Change email')+'</button></div>';
+  var pl=MAIL.plan;h+='<div class="ma-row"><span>Plan</span><b>'+(mailPro()?'Prowl Pro'+(pl&&pl.trial&&pl.renews?', free month until '+esc(mailDate(pl.renews)):''):'Free')+'</b></div>';   /* v6.85 */
   if(MAIL.chg){
     h+='<span class="sgw-mf"><input type="email" id="otp-chgTo" data-k="chg" autocomplete="email" placeholder="new@email.com" aria-label="New email for Prowl Alerts" value="'+esc(MAIL.chgTo||'')+'">'+
       '<button type="button" class="b p" data-mail="chggo"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Sending…':'Send confirm link')+'</button></span>'+

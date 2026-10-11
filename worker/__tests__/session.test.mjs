@@ -93,7 +93,7 @@ function realPro(env, answer) {
   const fetch = async (u, o) => { const q = JSON.parse(o.body).variables.q; asked.push(q); const nodes = answer(q); if (!nodes) throw new Error("offline"); return { status: 200, json: async () => ({ data: { orders: { nodes } } }) }; };
   const giftHash = async (e) => "h" + e;
   const deps = { kvGet, kvPut: async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v)), giftHash, giftPro, proListHas: (env, e) => false,
-    alNow: () => ({ day: "2026-10-07", hour: 10, wday: 1 }), PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", fetch };
+    alNow: () => ({ day: "2026-10-07", hour: 10, wday: 1 }), PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", PRO_NO_CACHE_MS: 10 * 60 * 1000, fetch };
   return Object.assign(fromIndex(["alFreePro", "alProShop", "alProSet"], deps), { asked });
 }
 const order = (email, attrs = []) => ({ name: "#2001", createdAt: "2026-10-01T10:00:00Z", cancelledAt: null, displayFinancialStatus: "PAID", email, statusPageUrl: "https://store.example/r", discountCodes: [],
@@ -136,4 +136,24 @@ test("a gift comes before any shop question; a shop outage never downgrades", as
   const paying = { email: "p@example.com", cid: "777", pro: true, plan: { via: "order" }, hunts: [] };
   assert.equal(await Y.alProSet(env2, paying, true), true, "still Pro when Shopify cannot be reached");
   assert.ok(paying.proCheck, "the admin sees the failing check");
+});
+
+/* v107: a cached "not Pro" lasts 10 minutes, a Pro one 6 hours; a Shopify error says what Shopify said */
+test("a cached not-Pro is asked again after 10 minutes; a cached Pro holds for 6 hours", async () => {
+  const kv = new FakeKV(), env = { PROWL_ALERTS: kv, SHOPIFY_ORDERS_TOKEN: "t" };
+  const X = realPro(env, () => [order("member@example.com")]);
+  const ago = (min) => Date.now() - min * 60000;
+  assert.equal((await X.alProShop(env, "member@example.com", { pro: false, at: ago(5) })).via, "cache", "5 minutes old: kept");
+  const fresh = await X.alProShop(env, "member@example.com", { pro: false, at: ago(11) });
+  assert.equal(fresh.pro, true, "11 minutes old: the shop is asked and finds the order");
+  assert.equal((await X.alProShop(env, "member@example.com", { pro: true, at: ago(5 * 60) })).via, "cache", "Pro, 5 hours old: kept");
+});
+
+test("a Shopify GraphQL error is named in the answer, so the admin shows why the Pro check fails", async () => {
+  const kv = new FakeKV(), env = { PROWL_ALERTS: kv, SHOPIFY_ORDERS_TOKEN: "t" };
+  const fetch = async () => ({ status: 200, json: async () => ({ errors: [{ message: "Access denied for orders field." }] }) });
+  const X = fromIndex(["alProShop"], { kvGet: async () => null, kvPut: async () => {}, PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", PRO_NO_CACHE_MS: 600000, fetch });
+  const r = await X.alProShop(env, "member@example.com", null);
+  assert.equal(r.pro, null);
+  assert.equal(r.via, "shopify: Access denied for orders field.");
 });
