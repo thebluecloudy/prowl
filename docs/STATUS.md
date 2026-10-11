@@ -1,16 +1,20 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.82).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.84).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.82** | 5962 bytes under Shopify's 512 KB (slimmed) |
+| Page | **v6.84** | 4805 bytes under Shopify's 512 KB (slimmed) |
 | Worker | **v106** | |
 
 Recently shipped, newest first:
 
+- **v6.84:** a first visit starts with 3 sample hunts (ceramic panther, Halloween decor, ceramic Christmas tree)
+  instead of 12. The Den keeps 5 hunts of your own on Free, up to 100 with Prowl Pro (`HUNTS_FREE`/`HUNTS_PRO`). The
+  sample hunts (old and new) don't count; nothing saved is ever removed, a full Den just takes no new hunt. Plan table, FAQ and
+  billing terms say so. Searching itself has no limit.
 - **v6.82:** the header fits on phones in the dark theme (its mushroom chip is hidden under 480px wide, and the bar
   tightens); Help no longer runs off the edge.
 - **v6.81 / v106:** estate sales within 30 miles by default with each sale's distance, and "Show N farther"; the
@@ -30,7 +34,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.83, worker v107**. Claim one here when you start.
+Next free numbers: **page v6.85, worker v107**. Claim one here when you start.
 
 ## Waiting on Matt
 

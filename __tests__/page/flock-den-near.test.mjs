@@ -133,7 +133,8 @@ test('once a like\'s search is a hunt, its leftover words start no new search', 
 
 test('locked hunts, panel terms and the newest hunts count first past 40 Den hunts', async () => {
   const hunts = Array.from({ length: 42 }, (_, i) => 'old' + i);
-  const p = await flock({ hunts, lock: [0] }, { owlTwigSgwTerms: ['haeger'] });
+  /* a Den this big is a Pro member's (Free keeps 5 hunts of its own, v6.83) */
+  const p = await flock({ hunts, lock: [0] }, { owlTwigSgwTerms: ['haeger'], 'prowl.alertPro': '1', 'prowl.alertTok': 'tok-0123456789abcdef' });
   await settle(p);
   for (const q of ['old0', 'haeger', 'old41']) assert.ok(searches(p, q) > 0, q + ' searched');
   p.$('#otp-newTerm').value = 'blenko';
@@ -148,14 +149,14 @@ test('first visit: a sample hunt removed from the Den leaves Flock', async () =>
   p.calls = f.calls;
   await tick(60);
   p.$('#otp-dock .db[data-m="flock"]').click();
-  await waitFor(() => cards(p).some((c) => c.getAttribute('data-h') === 'Roseville jardiniere'), { timeout: 10000 });
+  await waitFor(() => cards(p).some((c) => c.getAttribute('data-h') === 'ceramic panther'), { timeout: 10000 });
   // remove it in the Den (its ✕ there)
-  const x = p.$$('button.rm[data-r]').find((b) => /Roseville jardiniere/.test((b.closest('li') || b.parentNode).textContent));
+  const x = p.$$('button.rm[data-r]').find((b) => /ceramic panther/.test((b.closest('li') || b.parentNode).textContent));
   assert.ok(x, 'the Den has a remove button for it');
   p.win.confirm = () => true;
   x.click();
   await settle(p);
-  assert.ok(!cards(p).some((c) => c.getAttribute('data-h') === 'Roseville jardiniere'), 'gone from Flock');
+  assert.ok(!cards(p).some((c) => c.getAttribute('data-h') === 'ceramic panther'), 'gone from Flock');
   await p.close();
 });
 
