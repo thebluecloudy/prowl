@@ -1,16 +1,20 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.89).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-12 (v6.90).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.89** | 1100 bytes under Shopify's 512 KB (slimmed). Under 2 KB: trim before adding anything |
+| Page | **v6.90** | 1456 bytes under Shopify's 512 KB (slimmed). Under 2 KB: trim before adding anything |
 | Worker | **v110** | |
 
 Recently shipped, newest first:
 
+- **v6.90:** Near me takes Facebook USA's spot under the search box (Hunt · Search All · Near me). It does what the
+  dock's LOCAL does: with a hunt, Facebook (your city), Craigslist, OfferUp, EstateSales.net and CTBids; with none,
+  Den > Local. Facebook USA is still on the results ("Facebook Marketplace · search X in N cities") and in the
+  Goodwill panel. The dead `.b.fb` styles went with it (+356 bytes of room).
 - **v6.89:** in Uranium, starting a hunt sends a swarm of 22 fireflies across the screen (on body, removed when
   done; a new hunt clears the last swarm). Nothing in other themes or under reduced motion.
 - **v6.88:** the dock's ALL button is now LOCAL (map pin). With a hunt typed or selected it searches Facebook
@@ -63,7 +67,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.91, worker v111** (v6.90 is claimed by `claude/trusting-lovelace-0d3cnd-near-me`: Near me replaces Facebook USA under the search box). Claim one here when you start.
+Next free numbers: **page v6.91, worker v111**. Claim one here when you start.
 
 ## Waiting on Matt
 
