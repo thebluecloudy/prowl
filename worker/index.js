@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v111: 2026-10-12. GET /css/prowl.<hash>.css serves the page's main stylesheet (worker/page-css.js, written from the
+ *        page by scripts/build-page-css.mjs), so the Shopify body (capped at 512 KB, 886 bytes to spare at v6.91) links
+ *        to it instead of carrying 140 KB of CSS. Its own hash a year in the cache, any other hash never cached.
  *   v110: 2026-10-11. Etsy's affiliate row is Rakuten Advertising, not Awin: Etsy's US program answered Matthew's
  *        application through Rakuten. Key etsy_rak (never etsy, which pages v6.60-v6.86 turn into an Awin link), fields
  *        Etsy's advertiser id (mid) and the Rakuten publisher id, both empty and off. Page only, like Depop.
@@ -378,7 +381,8 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-const WORKER_VERSION = "v110";
+import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
+const WORKER_VERSION = "v111";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -5377,11 +5381,29 @@ async function fbFinds(request, env, url, origin) {
   return json({ term: v.term, updated: v.updated, items: v.items }, 200, origin, hdr);
 }
 
+/* v111: GET /css/prowl.<hash>.css, the page's main stylesheet. The deployed page links to it instead of carrying
+   140 KB of CSS in its Shopify body (capped at 512 KB); scripts/page-css.mjs builds the link, scripts/build-page-css.mjs
+   writes worker/page-css.js from the page. The hash this worker holds is kept for a year; any other hash gets the CSS
+   this worker has, never cached, so a page and a worker deployed a minute apart never cache a mismatch under the
+   wrong name. X-Prowl-Css says which hash this worker holds: the page deploy waits for it before sending the page. */
+function cssResponse(name, method) {
+  const m = String(method || "GET").toUpperCase();
+  if (m !== "GET" && m !== "HEAD") return new Response("method not allowed", { status: 405, headers: { "Allow": "GET, HEAD", "Content-Type": "text/plain; charset=utf-8" } });
+  const k = /^prowl\.([0-9a-f]{12})\.css$/.exec(String(name || ""));
+  if (!k) return new Response("not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=300", "X-Prowl-Css": PAGE_CSS_HASH } });
+  return new Response(m === "HEAD" ? null : PAGE_CSS, { status: 200, headers: {
+    "Content-Type": "text/css; charset=utf-8",
+    "Cache-Control": k[1] === PAGE_CSS_HASH ? "public, max-age=31536000, immutable" : "no-store",
+    "Access-Control-Allow-Origin": "*", "Access-Control-Expose-Headers": "X-Prowl-Css",
+    "Cross-Origin-Resource-Policy": "cross-origin", "X-Content-Type-Options": "nosniff", "X-Prowl-Css": PAGE_CSS_HASH } });
+}
 async function handleFetch(request, env, ctx) {
     G_ENV = env;
     const url = new URL(request.url);
     /* v97: the page's art (worker/art.js), before anything else: no KV, no origin rule, a year in the browser's cache */
     if (url.pathname.startsWith("/art/")) return artResponse(url.pathname.slice(5), request.method);
+    /* v111: the page's main stylesheet (worker/page-css.js), the same way */
+    if (url.pathname.startsWith("/css/")) return cssResponse(url.pathname.slice(5), request.method);
     try { await affLoad(env); } catch (e) {}   /* v89: affiliate switches for every link built below */
     const origin = request.headers.get("Origin") || "";
 

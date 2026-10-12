@@ -9,7 +9,7 @@ Any React/TypeScript/Zustand preferences in general profiles do **NOT** apply he
 ## Hard guardrails
 
 ### Architecture
-- **One file, always.** Style + HTML + script stay in a single block. No external JS/CSS files, no CDN libraries, no import/export.
+- **One file, always.** Style + HTML + script stay in a single block in the repo. No external JS/CSS files, no CDN libraries, no import/export. The one exception is made at deploy time, not in the file: since v6.92 the deploy sends the main `<style id="prowl-css">` block as a link to the worker (`scripts/page-css.mjs`), because the body hit Shopify's 512 KB cap. Edit the CSS in the page as always, then run `node scripts/build-page-css.mjs`.
 - **Vanilla JS, conservative syntax.** Match the existing style: `var`, classic `function`, string concatenation. No JSX, no async/await unless already present, no optional chaining (older mobile browsers matter for thrifters).
 - **Shopify-safe.** Never emit `{ {`, `} }`, `{ %`, or `% }` (without the spaces) in code or comments — Liquid will try to parse them and break the page. Keep the duplicate-section cleanup (`document.querySelectorAll('.scout-app-wrapper')...remove()`) and the `[id$="custom_liquid_4XkmDr"]` hide rule intact.
 - **Shopify sanitizer strips inline event handlers.** All handlers must use `addEventListener`. Share links need real `href` attributes, not JS-only click handlers.

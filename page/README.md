@@ -156,3 +156,25 @@ The distances come from the app's list of sales (`filteredSales`). The owner's s
 list on the page, yet every sale the extractor gave back had no distance or map position, so worker v106 finds the
 list by its name wherever it sits in a data block, as the check does. The check's extract now has `fromList`, the
 number of sales that came from that list: it should equal `count`. Lists are kept under `es3:`.
+
+## Main stylesheet on the worker (page v6.92, worker v111)
+
+At v6.91 the page body sent to Shopify was 886 bytes under its 512 KB cap. The main stylesheet (about 141 KB, no logic)
+now goes as a link to the worker, which leaves 144 KB of room. Nothing changes in how the page is written:
+
+- The repo page keeps the CSS inline in `<style id="prowl-css">` (the one block with that id; the curtain's and the
+  motion styles stay inline everywhere). Tests load the page with its CSS, as before.
+- After changing that CSS, run `node scripts/build-page-css.mjs`. It writes `worker/page-css.js` (the CSS without
+  comments and a 12-character hash of it). `__tests__/page/page-css.test.mjs` fails until the two match.
+- The worker serves it at `/css/prowl.<hash>.css` (`cssResponse` in `worker/index.js`, answered before anything else,
+  like `/art/`). Its own hash is cached for a year (`immutable`); any other hash gets the same CSS with `no-store`, so a
+  page that is briefly ahead of or behind the worker is still styled but nothing wrong is cached. The `X-Prowl-Css`
+  header names the hash it has.
+- The deploy (`scripts/deploy-page.mjs` via `scripts/page-css.mjs`) strips comments as before, swaps the block for
+  `<link rel="stylesheet" id="prowl-css" href="…/css/prowl.<hash>.css">` and a few lines of script, then waits (up to 10
+  minutes) until the worker answers with that hash before sending the page. A merge that changes CSS deploys the worker
+  (Workers Builds) and the page from the same push, so the page never links to a stylesheet the worker doesn't have.
+- The script covers two rare cases: if the link is gone (a sanitizer took it out), it adds it to the head; if the
+  stylesheet fails to load, it asks once more (`?r=1`).
+- If the worker is down the page loads unstyled, where before it would have loaded styled but without live results.
+- `node scripts/slim-page.mjs page/prowl.html` prints what is sent and the room left.

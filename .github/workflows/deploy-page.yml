@@ -9,6 +9,7 @@ on:
       - "page/*.html"
       - "scripts/deploy-page.mjs"
       - "scripts/slim-page.mjs"
+      - "scripts/page-css.mjs"
   workflow_dispatch:
     inputs:
       force:
@@ -26,7 +27,8 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # up to 10 minutes of it waiting for the worker to serve the page's new stylesheet (scripts/page-css.mjs)
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:

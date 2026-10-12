@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-12 (v6.91).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-12 (v6.92 / v111).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.91** | 886 bytes under Shopify's 512 KB (slimmed). Under 2 KB: trim before adding anything |
-| Worker | **v110** | |
+| Page | **v6.92** | 144,156 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Worker | **v111** | |
 
 Recently shipped, newest first:
 
+- **v6.92 / v111:** the page's main stylesheet (141 KB) is served by the worker, so the page body Shopify holds went
+  from 886 bytes to 144 KB under the limit. The repo page keeps it inline in `<style id="prowl-css">`, so editing and
+  tests are unchanged; the deploy swaps that block for a `<link>` to `/css/prowl.<hash>.css` plus a few lines of
+  script (re-adds the link if a sanitizer drops it, retries once if the worker fails). After changing the page's CSS,
+  run `node scripts/build-page-css.mjs` (a test fails until you do). The page deploy waits, up to 10 minutes, for the
+  worker to serve the new stylesheet before sending. See `page/README.md`, Main stylesheet on the worker.
 - **v6.91:** Matt's Vinted invite: one line under a run's first Vinted row ("New to Vinted? Join with Matt's invite:
   you each get $20 when you list 3 items, then $30 each at your first sale. Terms apply."). A referral, not an
   affiliate; the `VINV` constant holds the link and `''` hides it. Matt to confirm Vinted's terms allow it on a public
@@ -67,11 +73,11 @@ Recently shipped, newest first:
 
 | Branch | Owner | What | State |
 |---|---|---|---|
-| `hark/pounce` | Hark | Pounce: "quarry" hunts, Muse photo judging, ntfy phone taps | Not ready. Re-review of 1beb038 found 6 must-fix issues (one quarry edit wipes every quarry's judgements, phone-only checks mark listings seen, unfinished hunts re-searched every 5 min, a Muse outage drops listings, phone-only pushes lost on failure, test hides the first). Its versions (page v6.77, worker v104/v105) are taken: renumber before merging. |
+| `hark/pounce` | Hark | Pounce: "quarry" hunts, Muse photo judging, ntfy phone taps | Not ready. Re-review of 1beb038 found 6 must-fix issues (one quarry edit wipes every quarry's judgements, phone-only checks mark listings seen, unfinished hunts re-searched every 5 min, a Muse outage drops listings, phone-only pushes lost on failure, test hides the first). Its versions (page v6.77, worker v104/v105) are taken: renumber before merging. Needs a merge from main (the page room problem is gone with v6.92). |
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.92, worker v111**. Claim one here when you start.
+Next free numbers: **page v6.93, worker v112**. Claim one here when you start.
 
 ## Waiting on Matt
 
