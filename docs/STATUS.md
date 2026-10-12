@@ -1,16 +1,20 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-12 (v6.94 / v112).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-12 (v6.95 / v112).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.94** | 136,821 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v6.95** | 136,821 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v112** | |
 
 Recently shipped, newest first:
 
+- **v6.95:** in Uranium, the band at the top of the Den, the listing popup and the other pop-up screens is a deep
+  green gradient (#1e7f24 to #0c330e, from Matt's shades of #3cff49) instead of the bright #39ff14, with a pale title
+  (#ebffec). The screens under it stay black, and the home page's section bands keep the bright green. Other themes are
+  unchanged. Test: `__tests__/page/uranium-popups.test.mjs`.
 - **v6.94:** a tap on a liked ShopGoodwill, eBay, Etsy or Salvation Army find in Den > Likes opens its listing popup
   again. The popup and the Den are both drawers at the same level and the Den comes later in the page, so the popup
   opened behind it and the tap seemed to do nothing (Matt's Haeger pumpkin). The popup now sits above every drawer, and
@@ -98,7 +102,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.95, worker v113**. Claim one here when you start.
+Next free numbers: **page v6.96, worker v113**. Claim one here when you start.
 
 ## What's next
 

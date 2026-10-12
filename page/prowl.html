@@ -1519,6 +1519,11 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper.k2 .dh h2{font-family:var(--k2-slab);font-weight:400;font-size:26px;letter-spacing:.01em;color:var(--k2-bandink)!important;text-shadow:none}
 .scout-app-wrapper.k2 .dh .ic{background:var(--k2-card);color:var(--k2-ln);border:2.5px solid var(--k2-ln);border-radius:12px;box-shadow:0 3px 0 var(--k2-ln)}
 [data-theme=dark] .scout-app-wrapper.k2 .dh .ic,[data-theme=uranium] .scout-app-wrapper.k2 .dh .ic{color:var(--ink)}
+/* v6.95: in Uranium, the green band at the top of the Den, the listing popup and the other pop-up screens is a deep
+   green gradient (#1e7f24 to #0c330e, from Matt's shades of #3cff49) instead of the bright #39ff14, with a pale title
+   (4.9:1 or better). The screens under it stay black. */
+[data-theme=uranium] .scout-app-wrapper.k2 .dh{background:linear-gradient(180deg,#1e7f24 0,#0c330e 100%)}
+[data-theme=uranium] .scout-app-wrapper.k2 .dh h2{color:#ebffec!important}
 .scout-app-wrapper.k2 .tabs{gap:6px;padding:12px;border-bottom:2.5px solid var(--k2-ln);background:var(--bg)}
 .scout-app-wrapper.k2 .tab{border:2px solid var(--k2-ln);border-radius:999px;background:var(--k2-card);color:var(--k2-ln);min-height:40px;padding:8px 4px;font-size:11px;letter-spacing:.05em;text-shadow:none}
 [data-theme=dark] .scout-app-wrapper.k2 .tab,[data-theme=uranium] .scout-app-wrapper.k2 .tab{color:var(--ink)}
@@ -2683,7 +2688,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.94';
+var PROWL_VERSION='v6.95';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
