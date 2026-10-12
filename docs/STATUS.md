@@ -1,16 +1,20 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-12 (v6.90).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-12 (v6.91).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.90** | 1456 bytes under Shopify's 512 KB (slimmed). Under 2 KB: trim before adding anything |
+| Page | **v6.91** | 886 bytes under Shopify's 512 KB (slimmed). Under 2 KB: trim before adding anything |
 | Worker | **v110** | |
 
 Recently shipped, newest first:
 
+- **v6.91:** Matt's Vinted invite: one line under a run's first Vinted row ("New to Vinted? Join with Matt's invite:
+  you each get $20 when you list 3 items, then $30 each at your first sale. Terms apply."). A referral, not an
+  affiliate; the `VINV` constant holds the link and `''` hides it. Matt to confirm Vinted's terms allow it on a public
+  page.
 - **v6.90:** Near me takes Facebook USA's spot under the search box (Hunt · Search All · Near me). It does what the
   dock's LOCAL does: with a hunt, Facebook (your city), Craigslist, OfferUp, EstateSales.net and CTBids; with none,
   Den > Local. Facebook USA is still on the results ("Facebook Marketplace · search X in N cities") and in the
@@ -67,7 +71,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.91, worker v111**. Claim one here when you start.
+Next free numbers: **page v6.92, worker v111**. Claim one here when you start.
 
 ## Waiting on Matt
 
