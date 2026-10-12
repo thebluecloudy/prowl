@@ -870,6 +870,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* ---- v5.9 UX pass ---- */
 .scout-app-wrapper .hits li.grp{list-style:none;padding:14px 18px 6px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--i3);display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--ln);background:var(--cd2)}
 .scout-app-wrapper .hits li.grp:first-child{border-top:0}
+.scout-app-wrapper .hits li.vinv{padding:0 18px 10px 63px;font-size:12.5px;line-height:1.4;color:var(--mu)}
+.scout-app-wrapper .vinv a{color:inherit;text-decoration:none}.scout-app-wrapper .vinv b{color:var(--ac)}
 .scout-app-wrapper .hits li.grp span{font-weight:700;letter-spacing:.02em;text-transform:none;color:var(--mu)}
 .scout-app-wrapper .hit-icon{width:34px;height:34px;flex:0 0 34px;font-size:11px!important;font-weight:800;letter-spacing:.02em;color:var(--i2)!important;font-family:var(--sans)}
 .scout-app-wrapper .hit-icon.loc{background:var(--ac-tint);color:var(--ac)!important}
@@ -2672,7 +2674,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.90';
+var PROWL_VERSION='v6.91';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -2920,6 +2922,9 @@ var DEF=['ceramic panther','Halloween decor','ceramic Christmas tree'];
 var OLD_DEF=['Roseville jardiniere','Pyrex Butterprint','Fire-King jadeite','McCoy pottery','Hull pottery','Stangl birds','Bauer ringware','Blenko glass','Fenton hobnail','Mid-century lamp','Weller pottery','Vintage Fiestaware'];
 var ALL=M.map(function(m){return m.id}),SHOP=0,BOLO=0,i;
 for(i=0;i<M.length;i++){M[i].t==='shop'?SHOP++:BOLO++}
+/* v6.91: Matt's Vinted invite, shown once under a run's first Vinted row. A referral (both get credit), not an
+   affiliate program. '' hides the line. */
+var VINV='https://www.vinted.com/invite/thebluecloud/d44jnOwl00QMa1jkpzy6izwlkx6gat8ci';
 var TOTAL=M.length,GW=['shopgoodwill'],LOCAL_IDS=['facebook','craigslist','offerup','estatesales','ctbids'],PEEK=6,LS='prowl.v36';
 var ML={prowl:'your hunts',all:'Search All',goodwill:'Goodwill only',local:'Local \u00b7 near you',daily:'Daily prowl',single:'single hunt',facebook:'Facebook \u00b7 every metro'};
 
@@ -3831,7 +3836,7 @@ function rRes(){
   function badge(x){return BADGE[x.mkt]||String(x.name||'?').replace(/[^A-Za-z0-9]/g,'').slice(0,2).toUpperCase()}
   var groups=r.mode==='facebook'?[{k:'',ids:L.map(function(_,j){return j})}]:[{k:'Local & auctions',ids:[]},{k:'Online shops',ids:[]},{k:'Sold prices',ids:[]}];
   if(r.mode!=='facebook')for(var gj=0;gj<total;gj++){var gm=L[gj].mkt;groups[gm==='ebaysold'?2:(LOCALS[gm]?0:1)].ids.push(gj)}
-  var rows='<ul class=hits>';
+  var rows='<ul class=hits>',vi=!VINV;
   for(var gi=0;gi<groups.length;gi++){
    var G=groups[gi];if(!G.ids.length)continue;
    if(G.k)rows+='<li class=grp>'+G.k+'<span>'+G.ids.length+'</span></li>';
@@ -3842,6 +3847,7 @@ function rRes(){
       '<div class=hit-body><p class=hit-title>'+esc(x.name)+'</p>'+
       '<div class=hit-meta><span class=hit-src>'+esc(x.term)+'</span><span>'+esc(hostOf(x.url))+'</span></div></div>'+
       '<div class=hit-arrow>↗</div></a></li>';
+    if(x.mkt==='vinted'&&!vi){vi=1;rows+='<li class=vinv><a href="'+esc(VINV)+'" target=_blank rel=noopener>New to Vinted? <b>Join with Matt\u2019s invite</b>: you each get $20 when you list 3 items, then $30 each at your first sale. Terms apply.</a></li>'}
    }
   }
   rows+='</ul>';

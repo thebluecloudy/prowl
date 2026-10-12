@@ -30,6 +30,10 @@ How it is safe: only the IDs are editable. The link templates stay in code (`AFF
 worker reads it, and again on the page, so a pasted value can only ever fill its own slot. KV keeps `aff:on` (the
 switches) and `aff:ids` (the IDs); `GET /aff` answers both. IDs are public, since they are in every affiliate link.
 
+**Vinted invite (page v6.91).** Not an affiliate program and not in the admin area: Matt's Vinted referral link
+(both people get credit) is the `VINV` constant in `page/prowl.html`, shown once under a run's first Vinted row. Set it to
+`''` to hide the line.
+
 **Depop (worker v95, page v6.67).** Matthew was approved for Depop through Rakuten Advertising on 2026-10-09 (Depop's
 Rakuten advertiser ID is 53555). Depop's slot is back in the Affiliates tab, off: paste the publisher ID from your own
 Rakuten links (the `id=` in any Rakuten link you make), press **Save IDs**, then **Turn on**. Only the Prowl page tags
