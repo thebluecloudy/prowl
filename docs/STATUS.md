@@ -73,11 +73,16 @@ Recently shipped, newest first:
 
 | Branch | Owner | What | State |
 |---|---|---|---|
-| `hark/pounce` | Hark | Pounce: "quarry" hunts, Muse photo judging, ntfy phone taps | Not ready. Re-review of 1beb038 found 6 must-fix issues (one quarry edit wipes every quarry's judgements, phone-only checks mark listings seen, unfinished hunts re-searched every 5 min, a Muse outage drops listings, phone-only pushes lost on failure, test hides the first). Its versions (page v6.77, worker v104/v105) are taken: renumber before merging. Needs a merge from main (the page room problem is gone with v6.92). |
+| `hark/pounce` → `claude/sharp-goldberg-0zz64n` | Claude (for Hark; Matt's call 2026-10-12) | Pounce: "quarry" hunts, Muse photo judging, ntfy phone taps | Being brought up to date: merge main, renumber to **page v6.93 / worker v112**, fix the 6 must-fix review issues, drop the panther pounce/walk on a match (it repeats Prowl magic; no fireflies either). Hark's branch is left as it is. |
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.93, worker v112**. Claim one here when you start.
+Next free numbers: **page v6.94, worker v113**. Claim one here when you start.
+
+## What's next
+
+The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Pounce, then the two-photo photo check
+(the piece, then its mark or back), then community-lite.
 
 ## Waiting on Matt
 
