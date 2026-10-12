@@ -414,8 +414,6 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .b{height:50px;padding:0 20px;border:1px solid var(--l2);border-radius:12px;background:var(--cd2);font-size:14px;font-weight:700;white-space:nowrap;color:var(--ink);transition:background .15s,border-color .15s,box-shadow .2s}
 .scout-app-wrapper .b:hover{background:var(--hover)}
 .scout-app-wrapper .b.p{background:var(--ac);color:var(--onink);border-color:var(--ac)}
-.scout-app-wrapper .b.fb{border-color:#3b6ea5;color:#8fb6e2}
-.scout-app-wrapper .b.fb:hover{background:rgba(59,110,165,.16);border-color:#5b8ec5;color:#b9d4f0}
 .scout-app-wrapper .b.p:hover{filter:brightness(.94)}
 [data-theme=uranium] .scout-app-wrapper .b.p{box-shadow:0 0 20px rgba(57,255,20,.55),0 0 45px rgba(57,255,20,.28),inset 0 0 10px rgba(255,255,255,.15)}
 [data-theme=uranium] .scout-app-wrapper .b.p:hover{box-shadow:0 0 28px rgba(57,255,20,.75),0 0 60px rgba(57,255,20,.4),inset 0 0 10px rgba(255,255,255,.2)}
@@ -880,8 +878,6 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 [data-theme=uranium] .scout-app-wrapper .oabar{box-shadow:0 0 24px rgba(57,255,20,.2)}
 .scout-app-wrapper .oabar .b{flex:1;height:48px;margin:0}
 .scout-app-wrapper .oabar small{flex:0 1 130px;font-size:12px;line-height:1.35;color:var(--i3);font-weight:600}
-.scout-app-wrapper .b.fb{border-color:var(--l2);color:var(--ink)}
-.scout-app-wrapper .b.fb:hover{background:var(--hover);border-color:var(--l2);color:var(--ink)}
 .scout-app-wrapper .hc .lk{top:4px;right:4px;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer}
 .scout-app-wrapper .hc .lk:hover{background:var(--ac-soft)}
 .scout-app-wrapper .hc b{padding-right:36px}
@@ -1775,7 +1771,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     </div>
     <button class="b p" type="submit">Hunt</button>
     <button class="b" id="otp-sa" type="button">Search All</button>
-    <button class="b fb" id="otp-fb" type="button">Facebook USA</button>
+    <button class="b" id="otp-near" type="button">Near me</button>
   </form>
 
   <div class="gapp otp-getapp" data-mode="home" hidden></div>
@@ -2407,7 +2403,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
       <div class="nearblk">
         <h3 class="nearh">Facebook Marketplace <span id="otp-fbScope">my city</span>
 </h3>
-        <p class="nearp">Facebook has no nationwide search — every search is one city's marketplace. This sets the city Facebook uses everywhere else in Prowl. To sweep the whole country in one go, type a hunt up top and tap <b>Facebook USA</b> next to Search All.</p>
+        <p class="nearp">Facebook has no nationwide search — every search is one city's marketplace. This sets the city Facebook uses everywhere else in Prowl. To sweep the whole country, run a hunt: the results offer Facebook Marketplace in every big city.</p>
         <div class="hubbar" id="otp-fbHubBar"></div>
         <p class="nearp" id="otp-fbHubNote" style="margin:11px 0 0"></p>
       </div>
@@ -2618,7 +2614,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     <div class="mi">
 <u>1</u><div>
 <h3>Search everywhere at once</h3>
-<p>Type what you are hunting and tap <b style="color:var(--ink)">Hunt</b>. Every marketplace lands as a row; tap one to open it, or <b style="color:var(--ink)">Open all</b> (allow pop-ups for this site). <b style="color:var(--ink)">Facebook USA</b> runs the term in every big metro.</p>
+<p>Type what you are hunting and tap <b style="color:var(--ink)">Hunt</b>. Every marketplace lands as a row; tap one to open it, or <b style="color:var(--ink)">Open all</b> (allow pop-ups for this site). <b style="color:var(--ink)">Near me</b> searches Facebook, Craigslist, OfferUp and estate sales around your city.</p>
 </div>
 </div>
     <div class="mi">
@@ -2676,7 +2672,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.89';
+var PROWL_VERSION='v6.90';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3951,9 +3947,7 @@ dock.addEventListener('click',function(e){
   closeFlock();
   if(m==='prowl'){clearRun();window.scrollTo({top:0,behavior:'smooth'});return;}
   if(m==='one'){if(q.value.trim()){runProwl('one',chips(),[oneId()],oneName())}else{openFocus()}return;}
-  /* v6.88: LOCAL replaces the dock's ALL (Search All stays under the search box). With a hunt it searches the
-     city-aware sites; with none it opens Den > Local to set the city and find shops and sales. */
-  if(m==='local'){var lc=chips();if(lc.length)runProwl('local',lc,LOCAL_IDS.filter(mb),ML.local);else{denTab='local';openDen()}return;}
+  if(m==='local'){goLocal();return;}
   if(m==='daily'){
     if(st.lock.size===0){
       toast('Type into <b>+ add a hunt</b> and it joins your daily prowl.',4600);
@@ -3963,9 +3957,10 @@ dock.addEventListener('click',function(e){
   }
 });
 
-$('#otp-fb').addEventListener('click',function(){
-  runProwl('facebook',chips(),[fbAllUsa()],'Facebook USA');
-});
+/* v6.88: the dock's LOCAL; v6.90: also Near me under the search box, in Facebook USA's old spot (Facebook USA is on the
+   results). With a hunt it searches the city-aware sites; with none it opens Den > Local to set the city. */
+function goLocal(){var lc=chips();if(lc.length)runProwl('local',lc,LOCAL_IDS.filter(mb),ML.local);else{denTab='local';openDen()}}
+$('#otp-near').addEventListener('click',goLocal);
 $('#otp-sf').addEventListener('submit',function(e){
   e.preventDefault();
   runProwl('prowl',chips(),st.mkt.size?Array.from(st.mkt):ALL);
@@ -7905,7 +7900,7 @@ try{loadSGW()}catch(e){}
   }
   var sf=document.getElementById('otp-sf');
   if(sf)sf.addEventListener('submit',function(){startHunt(sf.querySelector('button[type=submit]'))});
-  ['otp-sa','otp-fb','otp-oneBtn','otp-localBtn'].forEach(function(id){var b=document.getElementById(id),dock=id==='otp-oneBtn'||id==='otp-localBtn';if(b)b.addEventListener('click',function(){var q=document.getElementById('otp-q');if(!dock||(q&&q.value.trim()))startHunt(b)})});   /* v6.88: the dock's one-site and LOCAL only when a hunt is typed (with none they open a picker, not a run) */
+  ['otp-sa','otp-near','otp-oneBtn','otp-localBtn'].forEach(function(id){var b=document.getElementById(id),dock=id!=='otp-sa';if(b)b.addEventListener('click',function(){var q=document.getElementById('otp-q');if(!dock||(q&&q.value.trim()))startHunt(b)})});   /* v6.88: one-site, LOCAL (v6.90: and Near me) only when a hunt is typed; with none they open a picker, not a run */
   root.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('[data-sgw="pick"]')){unicorns=1;UNI=null}},true);   /* picking a hunt */
   /* the chip sheen: once each time the pointer comes onto a hunt's chip. The chips are redrawn as results come in (the
      old ones removed, so they never see the pointer leave) and a new chip under a resting pointer gets a mouseover:
