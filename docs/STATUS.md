@@ -1,16 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-12 (v6.93 / v112).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-12 (v6.94 / v112).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.93** | 136,871 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v6.94** | 136,821 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v112** | |
 
 Recently shipped, newest first:
 
+- **v6.94:** a tap on a liked ShopGoodwill, eBay, Etsy or Salvation Army find in Den > Likes opens its listing popup
+  again. The popup and the Den are both drawers at the same level and the Den comes later in the page, so the popup
+  opened behind it and the tap seemed to do nothing (Matt's Haeger pumpkin). The popup now sits above every drawer, and
+  closing it keeps the scrim when the Den is still open. Finds from other sites link straight out, as before. Test:
+  `__tests__/page/likes-popup.test.mjs`.
 - **v6.93 / v112: Pounce** (Hark's branch, brought up to date by Claude). A quarry is one of a member's alert hunts
   plus their own words for the exact piece (skip words, a size range, a reference photo). On the alert clock, a free
   pre-filter drops obvious misses and Muse judges the rest with the photo (yes / maybe / no and a reason). A match taps
@@ -93,7 +98,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.94, worker v113**. Claim one here when you start.
+Next free numbers: **page v6.95, worker v113**. Claim one here when you start.
 
 ## What's next
 
