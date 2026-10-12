@@ -1657,6 +1657,9 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper #otp-flock .fl-add.on{border-color:var(--ln);color:var(--mu);cursor:default}
 .scout-app-wrapper #otp-flock .fl-add:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
 /* ---- v6.39: Flock next steps. Bottom sheet (centered on desktop), margin math, share, new since last visit ---- */
+/* v6.94: the listing popup sits above the Den (both are drawers, and the Den came later in the page, so a tap on a liked
+   ShopGoodwill or eBay find opened the popup behind it and seemed to do nothing) */
+.scout-app-wrapper .drawer.otp-sheet{z-index:76}
 .scout-app-wrapper .otp-sheet{top:auto;left:0;right:0;bottom:0;width:100%;max-width:560px;margin:0 auto;max-height:88vh;border-left:0;border-top:1px solid var(--ln);border-radius:18px 18px 0 0;transform:translateY(101%);box-shadow:0 -18px 50px -20px var(--shadow-lg)}
 .scout-app-wrapper .otp-sheet.on{transform:none}
 .scout-app-wrapper .otp-sheet.sh-drag{transition:none}
@@ -2680,7 +2683,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.93';
+var PROWL_VERSION='v6.94';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -6459,7 +6462,8 @@ function openSheet(title,html){
 }
 function closeSheet(){
   if(!sheetOpen())return;
-  sc.classList.remove('on');sh.classList.remove('on');sh.style.transform='';
+  sh.classList.remove('on');sh.style.transform='';
+  if(!$$('.scout-app-wrapper .drawer.on').length)sc.classList.remove('on');   /* v6.94: the Den (or another screen) under the popup keeps its scrim */
   setTimeout(function(){if(!sh.classList.contains('on'))sh.hidden=true},300);
   if(shLf&&shLf.focus){try{shLf.focus({preventScroll:true})}catch(e){shLf.focus()}}
 }
