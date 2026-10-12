@@ -2676,7 +2676,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.88';
+var PROWL_VERSION='v6.89';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -7828,6 +7828,9 @@ try{loadSGW()}catch(e){}
 .scout-app-wrapper .b:active{transform:scale(.97)}
 .scout-app-wrapper .pm-sw{margin:8px 0 0;font-size:13px;font-weight:600;color:var(--mu);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;animation:rise .3s ease-out}
 .scout-app-wrapper .pm-sw b{color:var(--ac)}
+/* v6.89: Uranium only, a swarm of fireflies crosses the screen when a hunt starts */
+.pm-ff{position:fixed;left:0;width:5px;height:5px;margin:-2px;border-radius:50%;background:#d8ff6b;box-shadow:0 0 6px 2px #39ff14,0 0 14px 4px rgba(57,255,20,.45);pointer-events:none;z-index:2147482990;opacity:0;animation:pmFF var(--t) cubic-bezier(.45,.1,.55,.9) var(--d) forwards}
+@keyframes pmFF{0%{opacity:0;transform:translate3d(-4vw,0,0)}10%{opacity:1}30%{opacity:.35;transform:translate3d(28vw,var(--y),0)}45%{opacity:1}60%{opacity:.5;transform:translate3d(60vw,calc(var(--y)*-1),0)}80%{opacity:1}100%{opacity:0;transform:translate3d(106vw,var(--y),0)}}
 }
 </style>
 <script>
@@ -7866,6 +7869,22 @@ try{loadSGW()}catch(e){}
     if(btn&&btn.getBoundingClientRect){var r=btn.getBoundingClientRect();sparks(r.left+r.width/2,r.top+r.height/2,12,true)}
     pounce();   /* v6.80: the panther no longer walks across (a small logo sliding backwards read as an ant) */
     setTimeout(sweep,30);
+    if(document.documentElement.getAttribute('data-theme')==='uranium')swarm();
+  }
+  /* v6.89: the firefly swarm (Uranium only). 22 lights on body, outside the text-size zoom, each its own height, drift,
+     speed and start; a second hunt mid-swarm clears the first. Opacity and transform only, then they are removed. */
+  function swarm(){
+    var old=document.querySelectorAll('.pm-ff'),i,f,t,d;
+    for(i=0;i<old.length;i++)old[i].parentNode.removeChild(old[i]);
+    for(i=0;i<22;i++){
+      f=document.createElement('i');f.className='pm-ff';f.setAttribute('aria-hidden','true');
+      t=1600+Math.random()*1400;d=Math.random()*700;
+      f.style.top=Math.round(8+Math.random()*80)+'vh';
+      f.style.setProperty('--y',Math.round(Math.random()*70-35)+'px');
+      f.style.setProperty('--t',Math.round(t)+'ms');f.style.setProperty('--d',Math.round(d)+'ms');
+      if(i%3===0){f.style.width=f.style.height='3px'}
+      document.body.appendChild(f);gone(f,t+d+100);
+    }
   }
   /* v6.88: the sweep line. Reads the rows the run just drew and names them one by one (60 ms each, about the rows'
      rise), then says how many are ready. It sits beside #otp-res, so a redraw of the results leaves it alone. */

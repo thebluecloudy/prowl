@@ -1,16 +1,18 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.88).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.89).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.88** | 2397 bytes under Shopify's 512 KB (slimmed) |
+| Page | **v6.89** | 1100 bytes under Shopify's 512 KB (slimmed). Under 2 KB: trim before adding anything |
 | Worker | **v110** | |
 
 Recently shipped, newest first:
 
+- **v6.89:** in Uranium, starting a hunt sends a swarm of 22 fireflies across the screen (on body, removed when
+  done; a new hunt clears the last swarm). Nothing in other themes or under reduced motion.
 - **v6.88:** the dock's ALL button is now LOCAL (map pin). With a hunt typed or selected it searches Facebook
   (your city), Craigslist, OfferUp, EstateSales.net and CTBids; with none it opens Den > Local. ALL used to scroll home
   and ask for a term. Search All stays under the search box. Tests that read the count from the dock read the hero.
@@ -61,7 +63,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.89, worker v111**. Claim one here when you start.
+Next free numbers: **page v6.91, worker v111** (v6.90 is claimed by `claude/trusting-lovelace-0d3cnd-near-me`: Near me replaces Facebook USA under the search box). Claim one here when you start.
 
 ## Waiting on Matt
 
