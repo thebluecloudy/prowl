@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { slimJs, slimCss, slimPage, SHOPIFY_MAX_BYTES } from '../../scripts/slim-page.mjs';
 import { deploy, checkBody } from '../../scripts/deploy-page.mjs';
+import { deployBody } from '../../scripts/page-css.mjs';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
 import { liveFetch, waitFor } from '../helpers/flockFixture.mjs';
 
@@ -65,10 +66,12 @@ test('CSS: comments go; strings and url() that hold comment-like text stay', () 
   assert.throws(() => slimCss('.a{content:"open}'), /not closed/);
 });
 
-test('the page sent to Shopify fits its 512 KB, with every script parsing and the rest untouched', () => {
-  const bytes = Buffer.byteLength(SLIM, 'utf8');
-  assert.ok(bytes <= SHOPIFY_MAX_BYTES, 'slim page is ' + bytes + ' bytes, over ' + SHOPIFY_MAX_BYTES);
-  assert.deepEqual(checkBody(SLIM.trimEnd()), []);
+test('the page sent to Shopify fits its 512 KB, with every script parsing and the rest untouched', async () => {
+  /* v6.92: what is sent carries the main stylesheet as a link (scripts/page-css.mjs, __tests__/page/page-css.test.mjs) */
+  const SENT = (await deployBody(PAGE)).body;
+  const bytes = Buffer.byteLength(SENT.trimEnd(), 'utf8');
+  assert.ok(bytes <= SHOPIFY_MAX_BYTES, 'the page sent is ' + bytes + ' bytes, over ' + SHOPIFY_MAX_BYTES);
+  assert.deepEqual(checkBody(SENT.trimEnd()), []);
   const before = scripts(PAGE), after = scripts(SLIM);
   assert.equal(after.length, before.length);
   after.forEach((s, i) => {
@@ -100,9 +103,11 @@ test('deploy sends the slim page, verifies it, and refuses one over 512 KB befor
   const dir = mkdtempSync(join(tmpdir(), 'prowl-deploy-'));
   let live = PAGE, sent = null;
   const calls = [];
+  const SENT = await deployBody(PAGE);
   const fetchFn = async (url, o) => {
     calls.push(String(url));
     if (/access_token/.test(url)) return new Response(JSON.stringify({ access_token: 'tok' }));
+    if (/\/css\/prowl\./.test(url)) return new Response(null, { headers: { 'X-Prowl-Css': SENT.hash } });   /* the worker has the stylesheet */
     const b = JSON.parse(o.body);
     if (/pageUpdate/.test(b.query)) { sent = b.variables.body; live = sent; return new Response(JSON.stringify({ data: { pageUpdate: { page: { id: 'p', updatedAt: 'now' }, userErrors: [] } } })); }
     return new Response(JSON.stringify({ data: { page: { id: 'p', updatedAt: 'before', body: live } } }));
@@ -112,7 +117,8 @@ test('deploy sends the slim page, verifies it, and refuses one over 512 KB befor
   const logs = [];
   const r = await deploy({ fetchFn, file, id: 'id', secret: 'secret', force: false, backupDir: join(dir, 'backup'), log: (s) => logs.push(s) });
   assert.equal(r.status, 'updated');
-  assert.equal(sent, SLIM.trimEnd());
+  assert.equal(sent, SENT.body.trimEnd());
+  assert.match(sent, /<link rel="stylesheet" id="prowl-css" href="https:\/\/prowl\.thebluecloud\.workers\.dev\/css\/prowl\.[0-9a-f]{12}\.css">/);
   assert.match(logs[0], /sent without comments/);
   /* a page too big even without its comments: refused, and Shopify is never called */
   const big = PAGE.replace('</body>', '') + '<div hidden>' + 'x'.repeat(SHOPIFY_MAX_BYTES) + '</div>';

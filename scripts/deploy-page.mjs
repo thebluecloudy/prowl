@@ -1,11 +1,14 @@
 // Prowl page deploy: sends page/prowl.html to the Shopify page body, then checks it landed. What is sent is the page
 // without its comments (scripts/slim-page.mjs): Shopify caps a page body at 512 KB, and the repo copy keeps them.
+// Since page v6.92 the main stylesheet goes as a link to the worker (scripts/page-css.mjs), and the deploy waits until
+// the worker serves that exact stylesheet before it sends the page.
 // Runs in GitHub Actions. Needs SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET (Dev Dashboard app,
 // scopes read_online_store_pages + write_online_store_pages, installed on the store).
 // Never prints the secret or the token.
 import { readFileSync, writeFileSync, mkdirSync, appendFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { slimPage, SHOPIFY_MAX_BYTES } from "./slim-page.mjs";
+import { SHOPIFY_MAX_BYTES } from "./slim-page.mjs";
+import { deployBody, waitForCss } from "./page-css.mjs";
 
 export const SHOP = process.env.SHOPIFY_SHOP || "tz7xkc-du.myshopify.com";
 export const PAGE_ID = "gid://shopify/Page/137091285246";
@@ -55,9 +58,10 @@ export async function gql(fetchFn, token, query, variables) {
 const READ = "query P($id: ID!) { page(id: $id) { id updatedAt body } }";
 const WRITE = "mutation U($id: ID!, $body: String!) { pageUpdate(id: $id, page: { body: $body }) { page { id updatedAt } userErrors { field message } } }";
 
-export async function deploy({ fetchFn, file, id, secret, force, backupDir, log }) {
+export async function deploy({ fetchFn, file, id, secret, force, backupDir, log, cssWait }) {
   const raw = readFileSync(file, "utf8");
-  const body = trimEnd(slimPage(raw));
+  const built = await deployBody(raw);
+  const body = trimEnd(built.body);
   const errs = checkBody(body);
   const size = Buffer.byteLength(body, "utf8");
   if (size > SHOPIFY_MAX_BYTES) errs.push("without its comments the page is " + size + " bytes, over Shopify's " + SHOPIFY_MAX_BYTES + " (512 KB); make it smaller");
@@ -77,7 +81,11 @@ export async function deploy({ fetchFn, file, id, secret, force, backupDir, log 
   writeFileSync(backupDir + "/live-before.json", JSON.stringify({ updatedAt: before.updatedAt, md5: md5(liveBody), bytes: liveBytes }, null, 2));
 
   if (md5(liveBody) === want) { log("Live page already matches the file. Nothing sent."); return { status: "same", md5: want }; }
-  if (!force && Buffer.byteLength(body, "utf8") < liveBytes * MIN_RATIO) {
+  if (built.hash && !(await waitForCss(fetchFn, built.hash, Object.assign({ log }, cssWait || {})))) {
+    throw new Error("Refusing to deploy: the worker does not serve stylesheet " + built.hash + " (" + built.url + "). Check that the worker deployed, and that worker/page-css.js was rebuilt (node scripts/build-page-css.mjs).");
+  }
+  /* the guard against a broken file counts the linked stylesheet as part of the page, as it was before v6.92 */
+  if (!force && Buffer.byteLength(body, "utf8") + Buffer.byteLength(built.css, "utf8") < liveBytes * MIN_RATIO) {
     throw new Error("Refusing to deploy: the file is less than " + Math.round(MIN_RATIO * 100) + "% of the live page size. Run the workflow by hand with force on if this is intended.");
   }
 

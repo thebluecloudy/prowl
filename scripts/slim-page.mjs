@@ -69,11 +69,13 @@ export function slimPage(html) {
     .replace(/(<style(\s[^>]*)?>)([\s\S]*?)(<\/style>)/gi, (m, open, attrs, css, close) => open + slimCss(css) + close);
 }
 
-if (import.meta.url === "file://" + process.argv[1]) {
+if (import.meta.url === "file://" + process.argv[1]) (async () => {   /* not awaited at the top: page-css.mjs imports this module */
   const { readFileSync } = await import("node:fs");
+  const { deployBody } = await import("./page-css.mjs");
   const file = process.argv[2] || "page/prowl.html";
   const raw = readFileSync(file, "utf8"), slim = slimPage(raw);
   const a = Buffer.byteLength(raw, "utf8"), b = Buffer.byteLength(slim, "utf8");
-  console.log(file + ": " + a + " bytes, " + b + " without comments (Shopify's limit " + SHOPIFY_MAX_BYTES + ", " + (SHOPIFY_MAX_BYTES - b) + " to spare)");
-  process.exit(b > SHOPIFY_MAX_BYTES ? 1 : 0);
-}
+  const c = Buffer.byteLength((await deployBody(raw)).body.replace(/\s+$/, ""), "utf8");
+  console.log(file + ": " + a + " bytes, " + b + " without comments, " + c + " sent with the stylesheet as a link (Shopify's limit " + SHOPIFY_MAX_BYTES + ", " + (SHOPIFY_MAX_BYTES - c) + " to spare)");
+  process.exit(c > SHOPIFY_MAX_BYTES ? 1 : 0);
+})();

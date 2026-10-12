@@ -29,6 +29,9 @@ sees the others' conversations. The repo is the only shared memory, so:
 - **CSS stays scoped** under `.scout-app-wrapper` (and the few other scoped roots already there).
 - **Shopify caps the page at 512 KB without comments.** `node scripts/slim-page.mjs page/prowl.html` prints the room
   left; record it in STATUS.md. Under ~2 KB left means trim before adding.
+- **The main stylesheet is served by the worker** (v6.92 / v111). It stays inline in the repo page
+  (`<style id="prowl-css">`); after changing it, run `node scripts/build-page-css.mjs` to rewrite `worker/page-css.js`
+  (a test fails until you do). See `page/README.md`, Main stylesheet on the worker.
 - **No member PII leaves the system** (no emails in third-party payloads such as ntfy, no PII in the admin views).
   Never commit secrets.
 - **Owner-only features** check `isOwner()` in the worker (header `X-Prowl-Owner`) and `fbOwnerKey()` on the page.
