@@ -178,3 +178,17 @@ now goes as a link to the worker, which leaves 144 KB of room. Nothing changes i
   stylesheet fails to load, it asks once more (`?r=1`).
 - If the worker is down the page loads unstyled, where before it would have loaded styled but without live results.
 - `node scripts/slim-page.mjs page/prowl.html` prints what is sent and the room left.
+
+## Pounce (page v6.93, worker v112)
+
+Hark's quarry hunt, brought onto main. In Den > Settings > Pounce, a member picks one of their alert hunts and
+describes the exact piece in their own words (with optional skip words, a size range in inches and a reference
+photo). The worker judges each new listing of that hunt against it on the alert clock (Muse, with the listing's photo)
+and taps the member's phone through ntfy when one fits, with Open it, Check price and Not it; without phone alerts the
+match rides at the top of the next digest. Matches also show here under "Spotted for you", with Fair price? and Not
+it. The page only mirrors what the worker keeps (`sub.quarries`, `gm:`); its one key of its own is
+`prowl.pounceSeen`, the newest match this device has shown a note for.
+
+A new match shows a note and nothing else. Hark's branch also made the panther pounce and walk; that was dropped,
+because Prowl magic already moves the panther (Matt, 2026-10-12). Opening `?pounce=<listing>` (the phone note) goes
+straight to that match, and `&fp=1` runs Fair price? on it. Tests: `__tests__/page/pounce.test.mjs`.

@@ -1578,7 +1578,7 @@ test("index.js alCheck: a reset or a cleared 'already sent' memory made while th
       }
       return [{ url: "https://new/" + h, title: "new " + h, src: "ebay" }];
     } };
-  const X = fromIndex(["alMerge", "alCheck"], deps);
+  const X = fromIndex(["alMerge", "alPendAdd", "alPendCap", "alCheck"], deps);
   const sub = kv.json("sub:" + E);
   assert.equal(await X.alCheck(env, sub, 2, now), 2);
   assert.deepEqual(kv.json("seen:" + E), ["https://new/b", "t:ebay|new b", "https://new/c", "t:ebay|new c"], "the cleared memory stays cleared, plus what this run found");
@@ -1597,7 +1597,7 @@ test("index.js alCheck: after the 'already sent' memory is cleared, a re-check d
   const deps = { kvGet, kvPut, alActive: (e, s) => s.hunts, alExact: a => a, alPrefs: () => ({ freq: "daily" }), AL_PEND_CAP: 30, AL_SEEN_CAP: 6000,
     alTitleKey: x => "t:" + x.src + "|" + x.title,
     alHunt: async () => [{ url: "https://x/1", title: "one", src: "ebay" }, { url: "https://x/2", title: "two", src: "ebay" }, { url: "https://x/3", title: "three", src: "ebay" }] };
-  const X = fromIndex(["alMerge", "alCheck"], deps);
+  const X = fromIndex(["alMerge", "alPendAdd", "alPendCap", "alCheck"], deps);
   assert.equal(await X.alCheck(env, kv.json("sub:" + E), 5, now), 1);
   assert.deepEqual(kv.json("pend:" + E).a.map(x => x.url), ["https://x/1", "https://x/2", "https://x/3"], "each listing once in the next email");
   assert.equal(kv.json("seen:" + E).length, 6, "all three are remembered again (url and title)");

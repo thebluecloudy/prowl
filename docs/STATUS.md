@@ -1,16 +1,33 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-12 (v6.92 / v111).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-12 (v6.93 / v112).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.92** | 144,156 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
-| Worker | **v111** | |
+| Page | **v6.93** | 136,871 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Worker | **v112** | |
 
 Recently shipped, newest first:
 
+- **v6.93 / v112: Pounce** (Hark's branch, brought up to date by Claude). A quarry is one of a member's alert hunts
+  plus their own words for the exact piece (skip words, a size range, a reference photo). On the alert clock, a free
+  pre-filter drops obvious misses and Muse judges the rest with the photo (yes / maybe / no and a reason). A match taps
+  the member's phone through ntfy (Open it, Check price, Not it), or rides at the top of the next digest when there is
+  no phone, and shows in Den > Settings > Pounce. Free: 1 quarry and 10 judgements a day; Pro: 5 and 40; the site
+  stops at 2,000 a day. Fixed from the review of Hark's 1beb038:
+  - editing one quarry re-judges that quarry only (pj: entries are per quarry), not every quarry;
+  - a phone-only check (emails off or paused) marks nothing seen, so the digest still has every listing when emails
+    come back, and keeps its own list of hunts searched today;
+  - listings Pounce did not reach in a run wait in pq: for the day, so the hunt is not searched again every 5 minutes;
+    the digest waits up to two hours past the member's hour for those matches;
+  - a Muse outage (network, timeout, 429, 5xx, a refused key) marks nothing, stops judging for 10 minutes (pjdown) and
+    keeps the listings waiting; only an unreadable listing gets the one-retry-then-let-go rule;
+  - a phone-only member's tap that does not go through waits in pp: and is sent on a later run, for up to 3 days;
+  - the test that cleared pj: by hand now goes through the real forget.
+  The panther no longer pounces and walks when a match arrives: Prowl magic already moves it (Matt). Page test:
+  `__tests__/page/pounce.test.mjs`; worker: `worker/__tests__/pounce.test.mjs`.
 - **v6.92 / v111:** the page's main stylesheet (141 KB) is served by the worker, so the page body Shopify holds went
   from 886 bytes to 144 KB under the limit. The repo page keeps it inline in `<style id="prowl-css">`, so editing and
   tests are unchanged; the deploy swaps that block for a `<link>` to `/css/prowl.<hash>.css` plus a few lines of
@@ -73,7 +90,6 @@ Recently shipped, newest first:
 
 | Branch | Owner | What | State |
 |---|---|---|---|
-| `hark/pounce` → `claude/sharp-goldberg-0zz64n` | Claude (for Hark; Matt's call 2026-10-12) | Pounce: "quarry" hunts, Muse photo judging, ntfy phone taps | Being brought up to date: merge main, renumber to **page v6.93 / worker v112**, fix the 6 must-fix review issues, drop the panther pounce/walk on a match (it repeats Prowl magic; no fireflies either). Hark's branch is left as it is. |
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
@@ -85,6 +101,11 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 (the piece, then its mark or back), then community-lite.
 
 ## Waiting on Matt
+
+- **Try Pounce:** in Den > Settings > Pounce, set a quarry on one hunt and tap "Tap my phone when it's found" (the free
+  ntfy app, then Subscribe). Matches also show in the same place. Muse is already set up for the photo check, so
+  nothing new is needed in Cloudflare. The Not it button on the phone needs MEMBER_ID_SALT or ADMIN_KEY (both are
+  set if admin works).
 
 - **URGENT: Pro checks fail until the order app's keys are in Cloudflare.** In the Shopify Dev Dashboard open the app
   that will read orders ("Prowl"), make sure its access scopes include read_orders (release a new version if you add
