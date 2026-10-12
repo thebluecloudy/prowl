@@ -6,7 +6,7 @@ import { waitFor } from '../helpers/flockFixture.mjs';
 test('Salvation Army is a marketplace and the counts follow (29 since CTBids, page v6.68)', async () => {
   const p = loadPage();
   await tick(40);
-  const all = p.$('#otp-dock .db[data-m="all"] [data-t]');
+  const all = p.$('.lede [data-t]');
   assert.equal(all.textContent, '29');
   assert.ok(p.doc.body.innerHTML.includes('https://shopthesalvationarmy.com/Browse?FullTextQuery='), 'link-out exists');
   assert.ok(/search 29 marketplaces/.test(p.doc.body.innerHTML));

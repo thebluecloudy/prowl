@@ -66,7 +66,7 @@ test('the worker builds the same CTBids link as the page (alert emails)', () => 
 test('CTBids is a BOLO marketplace: in the drawer, the count and Search All, grouped with the local sales and auctions', async () => {
   const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [] } } });
   await tick(30);
-  assert.equal(p.$('#otp-dock .db[data-m="all"] [data-t]').textContent, '29');
+  assert.equal(p.$('.lede [data-t]').textContent, '29');
   assert.equal(p.$('#otp-tb u').textContent, '10', 'BOLO count');
   p.$('#otp-shw').click();
   const row = p.$('#otp-mk input[data-m="ctbids"]');
@@ -76,7 +76,7 @@ test('CTBids is a BOLO marketplace: in the drawer, the count and Search All, gro
   assert.equal(row.closest('label').querySelector('.tag').textContent, 'BOLO');
 
   p.$('#otp-q').value = 'Pyrex Butterprint';
-  p.$('#otp-dock .db[data-m="all"]').click();
+  p.$('#otp-sa').click();   // v6.88: Search All under the search box (the dock's ALL is now LOCAL)
   await tick(30);
   const a = p.$$('#otp-res a.hit').find((x) => /ctbids\.com/.test(x.href));
   assert.ok(a, 'Search All has a CTBids row');

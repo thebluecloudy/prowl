@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.87).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-11 (v6.88).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.87** | 4249 bytes under Shopify's 512 KB (slimmed) |
+| Page | **v6.88** | 2397 bytes under Shopify's 512 KB (slimmed) |
 | Worker | **v110** | |
 
 Recently shipped, newest first:
 
+- **v6.88:** the dock's ALL button is now LOCAL (map pin). With a hunt typed or selected it searches Facebook
+  (your city), Craigslist, OfferUp, EstateSales.net and CTBids; with none it opens Den > Local. ALL used to scroll home
+  and ask for a term. Search All stays under the search box. Tests that read the count from the dock read the hero.
+  Taps answer (dock icons, rows and buttons press in), and a sweep line names each site as a hunt's rows rise, then
+  says how many are ready (none under reduced motion). The Shopify search title and description now say 29
+  marketplaces, not 28 (set in Shopify).
 - **v6.87 / v110:** Etsy's affiliate row is Rakuten Advertising, not Awin (Etsy's US program answered Matt's application
   through Rakuten). Key `etsy_rak` (never `etsy`, which pages v6.60-v6.86 turn into an Awin link), fields Etsy's
   advertiser id (mid) and the Rakuten publisher id, both empty and off; page only, like Depop. The Prowl page's Shopify
@@ -55,7 +61,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.88, worker v111**. Claim one here when you start.
+Next free numbers: **page v6.89, worker v111**. Claim one here when you start.
 
 ## Waiting on Matt
 

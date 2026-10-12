@@ -2319,7 +2319,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 <nav id="otp-dock" aria-label="Prowl modes">
   <button class="db on" data-m="prowl" aria-label="Prowl home"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path></svg><span>PROWL</span></button>
   <button class="db" data-m="one" id="otp-oneBtn"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11"></path><path d="M9 20v-6h6v6"></path></svg><span id="otp-oneLab">GOODWILL</span></button>
-  <button class="db" data-m="all" aria-label="Search all marketplaces"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4.2-4.2"></path></svg><span>ALL <span data-t>29</span></span></button>
+  <button class="db" data-m="local" id="otp-localBtn" aria-label="Local: search near you, or set your city"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.4"></circle></svg><span>LOCAL</span></button>
   <button class="db" data-m="flock" id="otp-flockBtn" aria-label="Flock: a look across your hunts"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#otp-swallow"></use></svg><span>FLOCK</span><em class="bd" id="otp-flbd" hidden></em></button>
   <button class="db" data-m="daily" aria-label="Daily prowl"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg><span>DAILY</span><em class="bd" id="otp-ds" hidden></em></button>
   <button class="db" data-m="den" id="otp-denBtn" aria-label="Den: hunts and settings"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"></path></svg><span>DEN</span></button>
@@ -2676,7 +2676,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.87';
+var PROWL_VERSION='v6.88';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -2924,8 +2924,8 @@ var DEF=['ceramic panther','Halloween decor','ceramic Christmas tree'];
 var OLD_DEF=['Roseville jardiniere','Pyrex Butterprint','Fire-King jadeite','McCoy pottery','Hull pottery','Stangl birds','Bauer ringware','Blenko glass','Fenton hobnail','Mid-century lamp','Weller pottery','Vintage Fiestaware'];
 var ALL=M.map(function(m){return m.id}),SHOP=0,BOLO=0,i;
 for(i=0;i<M.length;i++){M[i].t==='shop'?SHOP++:BOLO++}
-var TOTAL=M.length,GW=['shopgoodwill'],PEEK=6,LS='prowl.v36';
-var ML={prowl:'your hunts',all:'Search All',goodwill:'Goodwill only',daily:'Daily prowl',single:'single hunt',facebook:'Facebook \u00b7 every metro'};
+var TOTAL=M.length,GW=['shopgoodwill'],LOCAL_IDS=['facebook','craigslist','offerup','estatesales','ctbids'],PEEK=6,LS='prowl.v36';
+var ML={prowl:'your hunts',all:'Search All',goodwill:'Goodwill only',local:'Local \u00b7 near you',daily:'Daily prowl',single:'single hunt',facebook:'Facebook \u00b7 every metro'};
 
 /* The dock's second button was hard-wired to Goodwill. It is now whichever
    single marketplace the hunter picks in the Den, with Goodwill as the default
@@ -3951,7 +3951,9 @@ dock.addEventListener('click',function(e){
   closeFlock();
   if(m==='prowl'){clearRun();window.scrollTo({top:0,behavior:'smooth'});return;}
   if(m==='one'){if(q.value.trim()){runProwl('one',chips(),[oneId()],oneName())}else{openFocus()}return;}
-  if(m==='all'){runProwl('all',chips(),ALL);return;}
+  /* v6.88: LOCAL replaces the dock's ALL (Search All stays under the search box). With a hunt it searches the
+     city-aware sites; with none it opens Den > Local to set the city and find shops and sales. */
+  if(m==='local'){var lc=chips();if(lc.length)runProwl('local',lc,LOCAL_IDS.filter(mb),ML.local);else{denTab='local';openDen()}return;}
   if(m==='daily'){
     if(st.lock.size===0){
       toast('Type into <b>+ add a hunt</b> and it joins your daily prowl.',4600);
@@ -7819,6 +7821,13 @@ try{loadSGW()}catch(e){}
 .scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.4) 50%,transparent 70%);background-size:250% 100%;background-repeat:no-repeat;animation:pmSheen .8s ease-out}
 [data-theme=uranium] .scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(57,255,20,.35) 50%,transparent 70%)}
 @keyframes pmSheen{0%{background-position:130% 0}100%{background-position:-30% 0}}
+/* v6.88: taps answer (dock icons, rows, buttons press in), and a sweep line names the sites as a hunt's rows rise */
+.scout-app-wrapper .db svg,.scout-app-wrapper .hit{transition:transform .14s ease-out,background .15s}
+.scout-app-wrapper .db:active svg{transform:scale(.86)}
+.scout-app-wrapper .hit:active{transform:scale(.985)}
+.scout-app-wrapper .b:active{transform:scale(.97)}
+.scout-app-wrapper .pm-sw{margin:8px 0 0;font-size:13px;font-weight:600;color:var(--mu);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;animation:rise .3s ease-out}
+.scout-app-wrapper .pm-sw b{color:var(--ac)}
 }
 </style>
 <script>
@@ -7856,10 +7865,28 @@ try{loadSGW()}catch(e){}
     if(!lively())return;
     if(btn&&btn.getBoundingClientRect){var r=btn.getBoundingClientRect();sparks(r.left+r.width/2,r.top+r.height/2,12,true)}
     pounce();   /* v6.80: the panther no longer walks across (a small logo sliding backwards read as an ant) */
+    setTimeout(sweep,30);
+  }
+  /* v6.88: the sweep line. Reads the rows the run just drew and names them one by one (60 ms each, about the rows'
+     rise), then says how many are ready. It sits beside #otp-res, so a redraw of the results leaves it alone. */
+  var SW=null,swT=0,swF=null;
+  function sweep(){
+    var res=document.getElementById('otp-res');if(!res||res.hidden||res.firstChild===swF)return;   /* no new run, no sweep */
+    swF=res.firstChild;
+    var t=[].slice.call(res.querySelectorAll('.hit-title')).map(function(e){return e.textContent});if(!t.length)return;
+    if(!SW){SW=document.createElement('p');SW.className='pm-sw';SW.setAttribute('aria-hidden','true');res.parentNode.insertBefore(SW,res)}
+    clearInterval(swT);SW.hidden=false;
+    var i=0,n=Math.min(t.length,20);
+    function line(pre,bold,post){SW.textContent='';SW.appendChild(document.createTextNode(pre));var b=document.createElement('b');b.textContent=bold;SW.appendChild(b);SW.appendChild(document.createTextNode(post))}
+    swT=setInterval(function(){
+      if(i<n){line('Checking ',t[i],'\u2026');i++;return}
+      clearInterval(swT);line('','\u2713',' '+t.length+' searches ready');
+      swT=setTimeout(function(){SW.hidden=true},1800);
+    },60);
   }
   var sf=document.getElementById('otp-sf');
   if(sf)sf.addEventListener('submit',function(){startHunt(sf.querySelector('button[type=submit]'))});
-  ['otp-sa','otp-fb'].forEach(function(id){var b=document.getElementById(id);if(b)b.addEventListener('click',function(){startHunt(b)})});
+  ['otp-sa','otp-fb','otp-oneBtn','otp-localBtn'].forEach(function(id){var b=document.getElementById(id),dock=id==='otp-oneBtn'||id==='otp-localBtn';if(b)b.addEventListener('click',function(){var q=document.getElementById('otp-q');if(!dock||(q&&q.value.trim()))startHunt(b)})});   /* v6.88: the dock's one-site and LOCAL only when a hunt is typed (with none they open a picker, not a run) */
   root.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('[data-sgw="pick"]')){unicorns=1;UNI=null}},true);   /* picking a hunt */
   /* the chip sheen: once each time the pointer comes onto a hunt's chip. The chips are redrawn as results come in (the
      old ones removed, so they never see the pointer leave) and a new chip under a resting pointer gets a mouseover:
