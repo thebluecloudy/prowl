@@ -54,7 +54,7 @@ function checkWorld(days) {
     AL_PEND_CAP: 30, AL_SEEN_CAP: 6000,
   };
   const keys = Object.keys(deps);
-  const f = new Function(...keys, [indexFn("alWords"), indexFn("alTitleKey"), indexFn("alExWords"), indexFn("alExact"), indexFn("alCheck")].join("\n") + "\nreturn alCheck;")(...keys.map((k) => deps[k]));
+  const f = new Function(...keys, [indexFn("alWords"), indexFn("alTitleKey"), indexFn("alExWords"), indexFn("alExact"), indexFn("alPendAdd"), indexFn("alPendCap"), indexFn("alCheck")].join("\n") + "\nreturn alCheck;")(...keys.map((k) => deps[k]));
   kv.set("sub:me@x.com", JSON.stringify({ email: "me@x.com" }));
   return { kv, day, run: async () => { const sub = { email: "me@x.com", day: "d" + day.n, done: [] }; await f({}, sub, 5, { day: "d" + day.n }); kv.set("pend:me@x.com", JSON.stringify(JSON.parse(kv.get("pend:me@x.com") || "{}"))); } };
 }

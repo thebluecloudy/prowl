@@ -30,7 +30,7 @@ The scores are Claude's judgement, for discussion: change any you disagree with.
 | 1 | Two-photo photo check: the piece, then its mark or back | In the app | 8 | 8 | 7 | 7.7 | Quick win | **Next** after Pounce (Matt, 2026-10-12) | ThriftAI takes three shots; the Couroc tray’s mark is on the back |  |
 | 16 | Keyword-first store name, researched in Applyra | App Store and growth | 7 | 8 | 8 | 7.7 | Quick win |  | Gemli: “Thrift & Profit Finder - Gemli”; 8+ Prowl apps |  |
 | 10 | Estate sales for customers | In the app | 7 | 7 | 9 | 7.7 | Quick win |  | Works for Matt now | Confirm EstateSales.net’s permission covers the public |
-| 12 | Ship Hark’s Pounce | In the app | 8 | 8 | 6 | 7.3 | Big bet | **In progress** (Claude, decided 2026-10-12) | Hark’s branch | Merge main, renumber, the review fixes |
+| 12 | Ship Hark’s Pounce | In the app | 8 | 8 | 6 | 7.3 | Big bet | **Done** (page v6.93 / worker v112) | Hark’s branch |  |
 | 21 | Lifetime Pro option, sold through RevenueCat | Business and risk | 8 | 7 | 7 | 7.3 | Quick win |  | Cat On Chair: lifetime brings most revenue |  |
 | 3 | Panther-voiced alerts with the item photo | In the app | 7 | 7 | 8 | 7.3 | Quick win |  | Cat On Chair: the character sells it |  |
 | 20 | Trademark check with an attorney | Business and risk | 5 | 9 | 8 | 7.3 | Quick win |  | USPTO search: Neuintel PROWL, class 42 |  |

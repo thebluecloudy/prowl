@@ -3930,8 +3930,12 @@ function pounceParse(text) {
   const reason = shareLinks(String(j.reason || "").replace(/[\u0000-\u001f<>]+/g, " ").replace(/\s+/g, " ").trim()).slice(0, 160);
   return { match: match, p: Math.round(c * 100) / 100, reason: reason };
 }
+/* v112 review: what the judge's answer means for the listing. null = it could not read this one (a photo it cannot
+   open, an answer that is not the JSON asked for): one more try on a later run, then let go. { down: true } = Muse
+   itself is not answering (network, timeout, 429, 5xx, a refused key): nothing is marked, the run stops judging and
+   the listings wait (pq:), so an outage never drops a listing. */
 async function pounceJudge(env, term, g, x) {
-  if (!env || !env.MUSE_API_KEY) return null;
+  if (!env || !env.MUSE_API_KEY) return { down: true };
   const content = [{ type: "text", text: pouncePrompt(term, g, x) }];
   if (x.image) content.push({ type: "image_url", image_url: { url: x.image } });
   if (g.photo) content.push({ type: "image_url", image_url: { url: g.photo } });
@@ -3942,32 +3946,49 @@ async function pounceJudge(env, term, g, x) {
       headers: { "Authorization": "Bearer " + env.MUSE_API_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({ model: MUSE_MODEL, messages: [{ role: "user", content: content }], max_tokens: 400, reasoning_effort: "low", temperature: 0 })
     });
+    if (r.status === 429 || r.status === 401 || r.status === 403 || r.status >= 500) return { down: true };
     if (r.status !== 200) return null;
     const j = await r.json();
     const m = j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
     return pounceParse(typeof m === "string" ? m : (Array.isArray(m) ? m.map(p => (p && p.text) || "").join("") : ""));
-  } catch (e) { return null; }
+  } catch (e) { return { down: true }; }
   finally { clearTimeout(timer); }
 }
-function pounceKeep(g, v) { return !!v && (v.match === "yes" || (g.maybe && v.match === "maybe" && v.p >= POUNCE_MAYBE_P)); }
-/* Judge one quarry hunt's listings. Returns the matches, each listing with pounce: { match, p, reason }. Listings left
-   unjudged (run budget, daily cap, a failed call) are not marked judged, so the next run tries them again. */
+function pounceKeep(g, v) { return !!v && !v.down && (v.match === "yes" || (g.maybe && v.match === "maybe" && v.p >= POUNCE_MAYBE_P)); }
+/* v112 review: pj: holds "<quarry>\t<url>" (and "?<quarry>\t<url>" for a first unreadable try), so changing one
+   quarry re-judges that quarry's listings and leaves every other quarry's judgements alone */
+function pjKey(k, u) { return k + "\t" + u; }
+function pjOf(e) { return String(e || "").replace(/^\?/, "").split("\t")[0]; }
+async function pounceForget(env, email, k) {
+  const pj = await kvGet(env, "pj:" + email, []);
+  if (Array.isArray(pj)) await kvPut(env, "pj:" + email, pj.filter(e => pjOf(e) !== k));
+  const pq = await kvGet(env, "pq:" + email, null);
+  if (pq && pq.h && pq.h[k]) { delete pq.h[k]; await kvPut(env, "pq:" + email, pq); }
+}
+/* v112 review: Muse is not answering; every run in the next 10 minutes skips judging (one wasted call, not one a member) */
+async function pounceDownSet(env) { try { await env.PROWL_ALERTS.put("pjdown", "1", { expirationTtl: 600 }); } catch (e) {} }
+/* Judge one quarry hunt's listings. Returns the matches, each listing with pounce: { match, p, reason }, plus .more and
+   .rest: the listings this run did not reach (run budget, Muse down), which wait in pq: for the next run instead of
+   the hunt being searched again. A daily cap stops it too, without .more: tomorrow's search finds what is still listed. */
 async function pounceHunt(env, sub, term, items) {
-  const g = pounceQuarries(env, sub)[String(term || "").toLowerCase()];
-  if (!g || !Array.isArray(items) || !items.length || !(env && env.MUSE_API_KEY)) return [];   /* v112 review: no key, nothing spent */
-  const judged = await kvGet(env, "pj:" + sub.email, []), was = new Set(Array.isArray(judged) ? judged : []), add = [], hits = [];
-  let more = false;
-  for (const x of items) {
-    if (!x || !x.url || was.has(x.url)) continue;
-    if (pounceSkip(term, g, x)) { add.push(x.url); was.add(x.url); continue; }   /* dropped for free, never asked again */
-    if (PJ_RUN.left <= 0 || (PJ_RUN.m[sub.email] || 0) >= POUNCE_PER_MEMBER_RUN) { more = true; break; }
+  const k = String(term || "").toLowerCase(), g = pounceQuarries(env, sub)[k], hits = [];
+  hits.more = false; hits.rest = [];
+  if (!g || !Array.isArray(items) || !items.length || !(env && env.MUSE_API_KEY)) return hits;   /* v112 review: no key, nothing spent */
+  const judged = await kvGet(env, "pj:" + sub.email, []), was = new Set(Array.isArray(judged) ? judged : []), add = [];
+  const open = (y) => !!(y && y.url && !was.has(pjKey(k, y.url)));
+  for (let i = 0; i < items.length; i++) {
+    const x = items[i];
+    if (!open(x)) continue;
+    if (pounceSkip(term, g, x)) { add.push(pjKey(k, x.url)); was.add(pjKey(k, x.url)); continue; }   /* dropped for free, never asked again */
+    if (PJ_RUN.down || PJ_RUN.left <= 0 || (PJ_RUN.m[sub.email] || 0) >= POUNCE_PER_MEMBER_RUN) { hits.more = true; hits.rest = items.slice(i).filter(open); break; }
     if (!(await vCount("pj:" + sub.email, pounceDayCap(sub)))) break;
     if (!(await vCount("pj:all", POUNCE_SITE_PER_DAY))) break;
     PJ_RUN.left--; PJ_RUN.m[sub.email] = (PJ_RUN.m[sub.email] || 0) + 1;
     const v = await pounceJudge(env, term, g, x);
+    if (v && v.down) { PJ_RUN.down = true; await pounceDownSet(env); hits.more = true; hits.rest = items.slice(i).filter(open); break; }
     /* v112 review: a photo the judge cannot read gets one more try on a later run, then is let go */
-    if (!v) { if (was.has("?" + x.url)) { add.push(x.url); was.add(x.url); } else { add.push("?" + x.url); was.add("?" + x.url); } continue; }
-    add.push(x.url); was.add(x.url);
+    if (!v) { const q = "?" + pjKey(k, x.url), last = was.has(q) ? pjKey(k, x.url) : q; add.push(last); was.add(last); continue; }
+    add.push(pjKey(k, x.url)); was.add(pjKey(k, x.url));
     if (pounceKeep(g, v)) hits.push(Object.assign({}, x, { pounce: v, hunt: term }));
   }
   if (add.length) await kvPut(env, "pj:" + sub.email, (Array.isArray(judged) ? judged : []).concat(add).slice(-POUNCE_JUDGED_CAP));
@@ -3976,7 +3997,6 @@ async function pounceHunt(env, sub, term, items) {
     await kvPut(env, "gm:" + sub.email, hits.map(x => ({ hunt: term, title: x.title, price: x.price, url: x.url, image: x.image, src: x.src, match: x.pounce.match, p: x.pounce.p, reason: x.pounce.reason, at: at }))
       .concat(Array.isArray(gm) ? gm : []).slice(0, POUNCE_MATCH_CAP));
   }
-  hits.more = more;   /* listings left for a later run today */
   return hits;
 }
 /* v112: a match goes to the member's phone, never to another email (Matt, 2026-10-10: fewer emails). The phone gets it
@@ -4044,7 +4064,7 @@ async function pounceSendPush(env, body) {
   } catch (e) { return false; }
   finally { clearTimeout(timer); }
 }
-async function pounceNotify(env, sub, hits) {
+async function pounceNotify(env, sub, hits, phoneOnly) {
   if (PJ_RUN.quiet) return hits.slice();   /* a debug run: matches wait in the digest, no phone is tapped */
   const left = [], id = hits.length && sub.push ? await pounceSeal(env, sub.email) : "";
   for (const x of hits) {
@@ -4052,7 +4072,57 @@ async function pounceNotify(env, sub, hits) {
     if (sub.push && pounceTopicOk(sub.push.topic) && (await vCount("pjm:" + sub.email, POUNCE_PUSH_PER_DAY))) ok = await pounceSendPush(env, pouncePush(env, sub, x, await pounceSig(sub, x.hunt, x.url), id));
     if (!ok) left.push(x);
   }
+  if (phoneOnly && left.length) { await pounceHold(env, sub, left); return []; }   /* v112 review: no digest to fall back on */
   return left;   /* not on the phone: these ride in the next digest */
+}
+/* v112 review: a phone-only member (emails off or paused) has no digest, so a match the phone did not get (ntfy down,
+   past today's taps) waits in pp: and is tried again on later runs, for up to POUNCE_HOLD_DAYS. It is on the page's
+   Spotted for you list (gm:) all along. Phone alerts turned off: the waiting ones go (the page still has them). */
+const POUNCE_HOLD_DAYS = 3;
+function pounceSlim(x) { return { title: x.title, price: x.price, url: x.url, image: x.image, src: x.src, size: x.size, hunt: x.hunt, pounce: x.pounce }; }
+async function pounceHold(env, sub, list) {
+  const pp = await kvGet(env, "pp:" + sub.email, []), now = Date.now(), have = new Set((Array.isArray(pp) ? pp : []).map(x => x && x.url));
+  const add = list.filter(x => x && !have.has(x.url)).map(x => Object.assign(pounceSlim(x), { ppAt: x.ppAt || now }));
+  await kvPut(env, "pp:" + sub.email, (Array.isArray(pp) ? pp : []).concat(add).slice(-POUNCE_MATCH_CAP));
+}
+async function pounceRetry(env, sub) {
+  const pp = await kvGet(env, "pp:" + sub.email, null);
+  if (!Array.isArray(pp) || !pp.length) return 0;
+  const live = pp.filter(x => x && x.url && Date.now() - (Number(x.ppAt) || 0) < POUNCE_HOLD_DAYS * 86400000);
+  const left = sub.push && pounceTopicOk(sub.push.topic) && live.length ? await pounceNotify(env, sub, live, false) : [];
+  await kvPut(env, "pp:" + sub.email, left);
+  return pp.length - left.length;
+}
+/* One quarry hunt's listings through Pounce: judged, matches to the phone. digest = matches for the next email (none
+   for a phone-only member), rest = listings not reached this run (they wait in pq:). */
+async function pounceRun(env, sub, h, items, phoneOnly) {
+  const hits = await pounceHunt(env, sub, h, items);
+  const left = hits.length ? await pounceNotify(env, sub, hits, phoneOnly) : [];
+  return { digest: phoneOnly ? [] : left, rest: hits.more ? hits.rest.map(pounceSlim) : [] };
+}
+/* v112 review: listings a quarry hunt found but Pounce did not reach (run budget, Muse down) wait in pq: for the day,
+   and later runs judge them from there, without searching every marketplace again. Tomorrow's search finds what is
+   still listed. Returns how many still wait. */
+async function pounceCarry(env, sub, now, phoneOnly) {
+  const pq = await kvGet(env, "pq:" + sub.email, null);
+  if (!pq) return 0;
+  if (pq.day !== now.day || !pq.h || typeof pq.h !== "object") { await kvPut(env, "pq:" + sub.email, null); return 0; }
+  const found = {}, keep = {};
+  let waiting = 0;
+  for (const k of Object.keys(pq.h)) {
+    const c = pq.h[k];
+    if (!c || !Array.isArray(c.items) || !c.items.length) continue;
+    const r = await pounceRun(env, sub, c.n || k, c.items, phoneOnly);
+    if (r.rest.length) { keep[k] = { n: c.n || k, items: r.rest }; waiting += r.rest.length; }
+    if (r.digest.length) found[c.n || k] = r.digest;
+  }
+  await kvPut(env, "pq:" + sub.email, waiting ? { day: pq.day, h: keep } : null);
+  if (Object.keys(found).length) {
+    const pend = await kvGet(env, "pend:" + sub.email, {});
+    alPendAdd(pend, found, alPendCap(sub));
+    await kvPut(env, "pend:" + sub.email, pend);
+  }
+  return waiting;
 }
 /* POST /alerts/push { email, tok, on }: phone alerts on (makes the member's topic and sends a hello) or off */
 async function pounceTopicSet(request, env, origin) {
@@ -4123,9 +4193,10 @@ async function pounceSave(request, env, origin) {
   }
   sub.quarries = gs;
   await alMerge(env, sub, ["quarries"]);
-  /* v112 review: a changed description, skip words or size range means a fresh look at listings already judged */
+  /* v112 review: a changed description, skip words or size range means a fresh look at this quarry's listings, and only
+     this quarry's: every other quarry keeps its judgements. A removed quarry's go too. */
   const same = (a, c) => !!a && !!c && a.spec === c.spec && a.min === c.min && a.max === c.max && a.photo === c.photo && a.maybe === c.maybe && a.avoid.join() === c.avoid.join();
-  if (g && !same(was, g)) await kvPut(env, "pj:" + email, []);
+  if (!same(was, g)) await pounceForget(env, email, k);
   return json({ ok: true, quarries: gs, max: pounceMax(sub), matches: await kvGet(env, "gm:" + email, []) }, 200, origin);
 }
 /* POST /alerts/quarry-test (owner only): what Pounce would say about this hunt's listings right now. Nothing is kept. */
@@ -4162,51 +4233,68 @@ async function alMerge(env, sub, fields) {
   return cur;
 }
 
-/* Check some hunts for one subscriber and hold the new listings. */
-async function alCheck(env, sub, limit, now, only) {
-  const readDay = sub.day;
-  if (sub.day !== now.day) { sub.day = now.day; sub.done = []; }
-  const todo = alActive(env, sub).filter(h => sub.done.indexOf(h.toLowerCase()) === -1 && (!only || only[h.toLowerCase()])).slice(0, limit);
-  if (!todo.length) return 0;
-  const seenArr = await kvGet(env, "seen:" + sub.email, []);
-  const seen = {}; seenArr.forEach(u => { seen[u] = 1; });
-  const found = {}, newKeys = [], checked = [];
-  for (const h of todo) {
-    const all = await alHunt(env, h, sub), items = alExact(all, h);   /* v98: exact matches only, unless there are none */
-    /* v50: remembered by URL and by title, so a relisted piece is not new again */
-    const unseen = x => !seen[x.url] && !seen[alTitleKey(x)];
-    const fresh = items.filter(unseen);
-    /* v98: every listing found is remembered, the close matches left out today too: on a later day with no exact
-       listing, they would otherwise all go out as new */
-    all.filter(unseen).forEach(x => { const tk = alTitleKey(x); seen[x.url] = 1; seen[tk] = 1; newKeys.push(x.url, tk); });
-    if (fresh.length && !only) found[h] = fresh;
-    /* v112: Pounce judges the quarry hunt's listings (seen or not: pj: remembers what it judged). A match goes to the
-       member's phone; one that could not go rides at the top of the next digest with its reason. */
-    let later = false;
-    if (sub.quarries) {
-      try {
-        const hits = await pounceHunt(env, sub, h, all);
-        later = !!hits.more;
-        const left = hits.length ? await pounceNotify(env, sub, hits) : [];
-        if (left.length && !only) found[h] = left.concat((found[h] || []).filter(y => !left.some(z => z.url === y.url)));
-      } catch (e) { console.error("pounce", String(e && e.message || e)); }
-    }
-    if (!later) { sub.done.push(h.toLowerCase()); checked.push(h.toLowerCase()); }   /* v112 review: Pounce not finished, check again next run */
-  }
-  const cur = await kvGet(env, "sub:" + sub.email, null);
-  if (!cur) return todo.length;   /* v51: unsubscribed while we searched */
-  /* v78: the owner may have cleared the "already sent" memory, reset today's checks or put today's email back
-     (admin area) while this run searched. What this run found is added to what is stored now, so none of that is undone. */
-  const [seenNow, pend] = await Promise.all([kvGet(env, "seen:" + sub.email, []), kvGet(env, "pend:" + sub.email, {})]);
-  const cap = alPrefs(sub).freq === "daily" ? AL_PEND_CAP : AL_PEND_CAP * 2;
-  /* v78: a listing already waiting is not added again: after the owner clears the "already sent" memory and re-checks
-     today, the check finds the waiting listings once more, and the next email carried each of them twice */
+/* v78: a listing already waiting is not added again: after the owner clears the "already sent" memory and re-checks
+   today, the check finds the waiting listings once more, and the next email carried each of them twice.
+   v112 review: Pounce matches go first and replace a plain copy of the same listing, so a full waiting list never drops them */
+function alPendAdd(pend, found, cap) {
   Object.keys(found).forEach(h => {
     const was = Array.isArray(pend[h]) ? pend[h] : [], have = new Set(was.map(x => x && x.url));
-    /* v112 review: Pounce matches go first and replace a plain copy of the same listing, so a full waiting list never drops them */
     const pm = found[h].filter(x => x && x.pounce), pu = new Set(pm.map(x => x.url));
     pend[h] = pm.concat(was.filter(x => !(x && pu.has(x.url))), found[h].filter(x => !(x && x.pounce) && !have.has(x.url))).slice(0, cap);
   });
+  return pend;
+}
+function alPendCap(sub) { return alPrefs(sub).freq === "daily" ? AL_PEND_CAP : AL_PEND_CAP * 2; }
+
+/* Check some hunts for one subscriber and hold the new listings.
+   v112: only = the quarry hunts of a phone-only member (emails off or paused): Pounce runs on them, and nothing else
+   happens. v112 review: such a check keeps its own list of hunts searched today (pday, pdone) and marks nothing seen,
+   so when the member's emails come back, their digest still has every listing. */
+async function alCheck(env, sub, limit, now, only) {
+  const readDay = sub.day;
+  if (sub.day !== now.day) { sub.day = now.day; sub.done = []; }
+  if (only && (sub.pday !== now.day || !Array.isArray(sub.pdone))) { sub.pday = now.day; sub.pdone = []; }
+  const done = only ? sub.pdone : sub.done;
+  const todo = alActive(env, sub).filter(h => done.indexOf(h.toLowerCase()) === -1 && (!only || only[h.toLowerCase()])).slice(0, limit);
+  if (!todo.length) return 0;
+  const seenArr = only ? [] : await kvGet(env, "seen:" + sub.email, []);
+  const seen = {}; seenArr.forEach(u => { seen[u] = 1; });
+  const found = {}, newKeys = [], checked = [], carry = {};
+  for (const h of todo) {
+    const all = await alHunt(env, h, sub), items = alExact(all, h);   /* v98: exact matches only, unless there are none */
+    if (!only) {
+      /* v50: remembered by URL and by title, so a relisted piece is not new again */
+      const unseen = x => !seen[x.url] && !seen[alTitleKey(x)];
+      const fresh = items.filter(unseen);
+      /* v98: every listing found is remembered, the close matches left out today too: on a later day with no exact
+         listing, they would otherwise all go out as new */
+      all.filter(unseen).forEach(x => { const tk = alTitleKey(x); seen[x.url] = 1; seen[tk] = 1; newKeys.push(x.url, tk); });
+      if (fresh.length) found[h] = fresh;
+    }
+    /* v112: Pounce judges the quarry hunt's listings (seen or not: pj: remembers what it judged). A match goes to the
+       member's phone; one that could not go rides at the top of the next digest with its reason. v112 review: what
+       Pounce did not reach this run waits in pq:, and the hunt counts as searched, so it is not searched again. */
+    if (sub.quarries) {
+      try {
+        const r = await pounceRun(env, sub, h, all, !!only);
+        if (r.rest.length) carry[h.toLowerCase()] = { n: h, items: r.rest };
+        if (r.digest.length) found[h] = r.digest.concat((found[h] || []).filter(y => !r.digest.some(z => z.url === y.url)));
+      } catch (e) { console.error("pounce", String(e && e.message || e)); }
+    }
+    done.push(h.toLowerCase()); checked.push(h.toLowerCase());
+  }
+  if (Object.keys(carry).length) {
+    const pq = await kvGet(env, "pq:" + sub.email, null), keep = pq && pq.day === now.day && pq.h ? pq : { day: now.day, h: {} };
+    Object.assign(keep.h, carry);
+    await kvPut(env, "pq:" + sub.email, keep);
+  }
+  const cur = await kvGet(env, "sub:" + sub.email, null);
+  if (!cur) return todo.length;   /* v51: unsubscribed while we searched */
+  if (only) { await alMerge(env, sub, ["day", "done", "pday", "pdone"]); return todo.length; }
+  /* v78: the owner may have cleared the "already sent" memory, reset today's checks or put today's email back
+     (admin area) while this run searched. What this run found is added to what is stored now, so none of that is undone. */
+  const [seenNow, pend] = await Promise.all([kvGet(env, "seen:" + sub.email, []), kvGet(env, "pend:" + sub.email, {})]);
+  alPendAdd(pend, found, alPendCap(sub));
   await kvPut(env, "seen:" + sub.email, (Array.isArray(seenNow) ? seenNow : []).concat(newKeys).slice(-AL_SEEN_CAP));
   await kvPut(env, "pend:" + sub.email, pend);
   if (String(cur.day || "") !== String(readDay || "")) { sub.day = now.day; sub.done = checked; }   /* reset meanwhile: only what this call checked counts as done */
@@ -4396,7 +4484,7 @@ async function alTrialNotes(env, sub) {
 async function alTick(env) {
   if (!alReady(env)) return { skipped: "off or no KV" };
   const now = alNow(env);
-  PJ_RUN = { left: POUNCE_PER_RUN, m: {} };   /* v112: Pounce's share of this run's outside calls */
+  PJ_RUN = { left: POUNCE_PER_RUN, m: {}, down: !!(await kvGet(env, "pjdown", null)) };   /* v112: Pounce's share of this run's outside calls; v112 review: none while Muse is down */
   let budget = alBatch(env), proLeft = AL_PRO_REFRESH_PER_RUN;
   /* v51: every member key (KV lists 1000 at a time), and each run starts at a
      different member, so the top of the alphabet never starves the bottom. */
@@ -4440,9 +4528,18 @@ async function alTick(env) {
       if (!sub.utok) sub.utok = alToken();   /* v51: members from before v51 get an unsubscribe token */
       if (!(await alMerge(env, sub, ["pro", "plan", "proDay", "utok", "proCheck"]))) continue;
     }
+    /* v112 review: first the phone taps that did not go through, then the listings Pounce did not reach on earlier runs */
+    let held = 0;
+    if (sub.quarries) {
+      try { if (sub.push) await pounceRetry(env, sub); held = await pounceCarry(env, sub, now, !!phoneOnly); }
+      catch (e) { console.error("pounce carry", String(e && e.message || e)); }
+    }
     let n = 0;
     if (budget > 0) { try { n = await alCheck(env, sub, budget, now, phoneOnly || null); } catch (e) { log.push((await who(sub)) + " check failed: " + why(e)); note("check failed: " + String(e && e.message || e)); budget = 0; } budget -= n; tally.checked += n; if (n) log.push((await who(sub)) + " checked " + n); }
     if (n || phoneOnly) continue;
+    /* v112 review: Pounce is still judging today's listings: the digest waits a run or two for its matches, never past
+       two hours after the member's hour, and not at all while Muse is down */
+    if (held && !PJ_RUN.down && loc.hour < alSlotHour(env, sub) + 2) continue;
     const allDone = sub.day === now.day && alActive(env, sub).every(h => sub.done.indexOf(h.toLowerCase()) !== -1);
     if (allDone && loc.hour >= alSlotHour(env, sub) && sub.sent !== loc.day && alSendDay(sub, loc)) {   /* v50: only on the member's days; v52: at their hour; v53: their local time */
       let r;
