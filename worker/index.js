@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v113: 2026-10-13. Pounce takes a store session as well as the email token (pounceMember), as status, prefs and
+ *        likes do: a member signed in through the store saw the Pounce box, but every save was refused.
  *   v112: 2026-10-12. Pounce, the quarry hunt (Hark's branch, brought up to date by Claude): a saved hunt plus a
  *        plain-English description of the exact piece. The alert clock pre-filters the hunt's listings for free, Muse
  *        judges the rest with the photo (yes / maybe / no and a reason), each listing once per quarry (pj:), a match
@@ -388,7 +390,7 @@ import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
-const WORKER_VERSION = "v112";
+const WORKER_VERSION = "v113";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4124,14 +4126,23 @@ async function pounceCarry(env, sub, now, phoneOnly) {
   }
   return waiting;
 }
+/* v113: the member a Pounce request is from: the email and its token, or a store session (v82) for the member it is
+   linked to, as status, prefs and likes already take. Pounce took only the token, so a member signed in through the
+   store saw the Pounce box (status let them in) but every save was refused, and the page showed that out of sight. */
+async function pounceMember(request, env, b) {
+  const email = alEmail(b && b.email);
+  const sub = email ? await kvGet(env, "sub:" + email, null) : null;
+  if (sub && alSame(String((b && b.tok) || ""), sub.tok)) return sub;
+  const ss = await sessMember(request, env);
+  return ss && (!email || ss.email === email) ? ss : null;
+}
 /* POST /alerts/push { email, tok, on }: phone alerts on (makes the member's topic and sends a hello) or off */
 async function pounceTopicSet(request, env, origin) {
   if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
   const b = await readJson(request, 4096);
   if (b.big) return json({ error: "too large" }, 413, origin);
-  const email = alEmail(b.email);
-  const sub = email ? await kvGet(env, "sub:" + email, null) : null;
-  if (!sub || !alSame(String(b.tok || ""), sub.tok)) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
+  const sub = await pounceMember(request, env, b), email = sub && sub.email;
+  if (!sub) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
   const on = b.on === true || b.on === 1 || b.on === "1";
   if (!on) { sub.push = null; await alMerge(env, sub, ["push"]); return json({ ok: true, push: null }, 200, origin); }
   if (!(sub.push && pounceTopicOk(sub.push.topic))) { sub.push = { topic: "prowl-" + alToken().slice(0, 24), at: new Date().toISOString() }; await alMerge(env, sub, ["push"]); }
@@ -4169,9 +4180,8 @@ async function pounceSave(request, env, origin) {
   if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
   const b = await readJson(request, 8192);
   if (b.big) return json({ error: "too large" }, 413, origin);
-  const email = alEmail(b.email);
-  const sub = email ? await kvGet(env, "sub:" + email, null) : null;
-  if (!sub || !alSame(String(b.tok || ""), sub.tok)) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
+  const sub = await pounceMember(request, env, b), email = sub && sub.email;
+  if (!sub) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
   const k = vClean(b.hunt, 60).toLowerCase(), mine = sub.hunts.map(h => h.toLowerCase()), live = alActive(env, sub).map(h => h.toLowerCase());
   const removing = !b.notUrl && !String(b.spec || "").trim();
   if (!k || (!removing && mine.indexOf(k) === -1)) return json({ error: "Pounce works on one of your saved hunts." }, 400, origin);
@@ -4203,8 +4213,8 @@ async function pounceSave(request, env, origin) {
 async function pounceTest(request, env, origin) {
   if (!isOwner(request, env)) return json({ error: "not found" }, 404, origin);
   const b = await readJson(request, 8192);
-  const email = alEmail(b.email), sub = email ? await kvGet(env, "sub:" + email, null) : null;
-  if (!sub || !alSame(String(b.tok || ""), sub.tok)) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
+  const sub = await pounceMember(request, env, b);
+  if (!sub) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
   const term = vClean(b.hunt, 60), g = pounceClean((sub.quarries || {})[term.toLowerCase()]);
   if (!g) return json({ error: "No quarry on that hunt." }, 400, origin);
   const items = await alHunt(env, term, sub), out = [];

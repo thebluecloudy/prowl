@@ -357,3 +357,17 @@ test("an unreadable photo gets one retry, then is let go; one member cannot take
   await P.pounceHunt(MK, { email: "v@x.com", hunts: ["haeger panther"], quarries: { "haeger panther": R495 } }, "haeger panther", many);
   assert.equal(calls.judge.length, 6);
 });
+
+test("v113: Pounce takes the store sign-in as well as the email token, as status and likes do", async () => {
+  let sess = null;
+  const { P, kv } = load({ alEmail: (e) => String(e || "").trim().toLowerCase(), alSame: (a, b) => !!a && a === b, sessMember: async () => sess }, ["pounceMember"]);
+  const sub = { email: "matt@x.com", tok: "T".repeat(24), hunts: ["ceramic panther"] };
+  kv.set("sub:matt@x.com", JSON.stringify(sub));
+  assert.equal((await P.pounceMember({}, {}, { email: "matt@x.com", tok: sub.tok })).email, "matt@x.com", "the token");
+  assert.equal(await P.pounceMember({}, {}, { email: "matt@x.com", tok: "old-token" }), null, "a stale token and no session");
+  sess = sub;
+  assert.equal((await P.pounceMember({}, {}, { email: "matt@x.com", tok: "old-token" })).email, "matt@x.com", "the store session stands in");
+  assert.equal((await P.pounceMember({}, {}, { email: "", tok: "" })).email, "matt@x.com", "with no email on this device");
+  assert.equal(await P.pounceMember({}, {}, { email: "someone@else.com", tok: "" }), null, "never for another member's address");
+  for (const fn of ["pounceSave", "pounceTopicSet", "pounceTest"]) assert.match(indexFn(fn), /await pounceMember\(request, env, b\)/, fn + " uses it");
+});
