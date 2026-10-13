@@ -44,7 +44,8 @@ test('Den > Settings shows the quarry and what Pounce spotted, with Open it and 
   assert.equal(hit.querySelector('a.b.p').getAttribute('href'), MATCH.url);
   assert.equal(hit.querySelector('img').getAttribute('src'), MATCH.image);
   assert.ok(hit.querySelector('[data-pnc="not"]'), 'Not it');
-  assert.match(sec.textContent, /Tap my phone when it.s found/, 'phone alerts offered when they are off');
+  assert.doesNotMatch(sec.textContent, /ntfy/, 'v6.97: ntfy is gone');
+  assert.match(sec.textContent, /Finds wait at the top of your Prowl email\./, 'without Prowl\'s own alerts here, finds come by email');
   assert.deepEqual(p.errors, []);
   await p.close();
 });
@@ -113,25 +114,6 @@ test('an answer that is not JSON still says what came back', async () => {
   p.$('#otp-denSettings [data-pnc="save"]').click();
   await tick(60);
   assert.match(p.$('#otp-denSettings .pnc-msg').textContent, /Prowl could not save it \(502\)/);
-  await p.close();
-});
-
-test('v6.96: with phone alerts on, the channel is named, copies, and the ntfy app opens on it', async () => {
-  const calls = [];
-  const topic = 'prowl-0123456789abcdef01234567';
-  const p = loadPage({ storage: base({ 'prowl.pounceSeen': MATCH.at }), fetchImpl: worker(calls, { push: { topic, url: 'https://ntfy.sh/' + topic } }) });
-  const sec = await openSettings(p);
-  assert.equal(sec.querySelector('.pnc-topic').textContent, topic);
-  const links = [...sec.querySelectorAll('a.sgw-ml')].map((a) => a.getAttribute('href'));
-  assert.ok(links.includes('ntfy://ntfy.sh/' + topic), 'the app link: ' + links.join(' '));
-  assert.ok(links.includes('https://ntfy.sh/' + topic), 'and the web page');
-  let copied = '';
-  Object.defineProperty(p.win.navigator, 'clipboard', { value: { writeText: (t) => { copied = t; return Promise.resolve(); } }, configurable: true });
-  sec.querySelector('[data-pnc="copytopic"]').click();
-  await tick(30);
-  assert.equal(copied, topic);
-  assert.match(p.$('#otp-denSettings .pnc-msg').textContent, /Copied prowl-0123456789abcdef01234567\. Paste it in ntfy after \+\./);
-  assert.deepEqual(p.errors, []);
   await p.close();
 });
 
