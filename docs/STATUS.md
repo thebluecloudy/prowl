@@ -1,16 +1,19 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-13 (v6.95 / v113).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-13 (v6.96 / v113).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.95** | 136,821 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v6.96** | 136,821 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v113** | |
 
 Recently shipped, newest first:
 
+- **v6.96:** Pounce's phone line names the member's ntfy channel with a Copy button and links to the ntfy app itself
+  (`ntfy://ntfy.sh/<channel>`, the app's subscribe link) as well as ntfy's web page. "Open in ntfy" went to the web
+  page, so the app never learned the channel (Matt, 2026-10-13: an empty Subscribed topics list).
 - **v6.95 / v113: Pounce saves for members signed in through the store.** Status, prefs and likes take a store session
   (v82) in place of the email token; Pounce took only the token, so Matt saw the Pounce box but every Save quarry was
   refused ("Sign in to Prowl Alerts first."). The worker's `pounceMember` now takes either, for save, phone alerts and
@@ -108,7 +111,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.96, worker v114**. Claim one here when you start.
+Next free numbers: **page v6.97, worker v114**. Claim one here when you start.
 
 ## What's next
 

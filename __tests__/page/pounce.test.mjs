@@ -116,6 +116,25 @@ test('an answer that is not JSON still says what came back', async () => {
   await p.close();
 });
 
+test('v6.96: with phone alerts on, the channel is named, copies, and the ntfy app opens on it', async () => {
+  const calls = [];
+  const topic = 'prowl-0123456789abcdef01234567';
+  const p = loadPage({ storage: base({ 'prowl.pounceSeen': MATCH.at }), fetchImpl: worker(calls, { push: { topic, url: 'https://ntfy.sh/' + topic } }) });
+  const sec = await openSettings(p);
+  assert.equal(sec.querySelector('.pnc-topic').textContent, topic);
+  const links = [...sec.querySelectorAll('a.sgw-ml')].map((a) => a.getAttribute('href'));
+  assert.ok(links.includes('ntfy://ntfy.sh/' + topic), 'the app link: ' + links.join(' '));
+  assert.ok(links.includes('https://ntfy.sh/' + topic), 'and the web page');
+  let copied = '';
+  Object.defineProperty(p.win.navigator, 'clipboard', { value: { writeText: (t) => { copied = t; return Promise.resolve(); } }, configurable: true });
+  sec.querySelector('[data-pnc="copytopic"]').click();
+  await tick(30);
+  assert.equal(copied, topic);
+  assert.match(p.$('#otp-denSettings .pnc-msg').textContent, /Copied prowl-0123456789abcdef01234567\. Paste it in ntfy after \+\./);
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
 test('a new match shows a note and nothing else: no pounce event, the panther is not made to move again', async () => {
   const calls = [];
   const p = loadPage({
