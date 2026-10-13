@@ -1,16 +1,28 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-13 (v6.97 / v114).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-13 (v6.98 / v115).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.97** | 132,590 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
-| Worker | **v114** | |
+| Page | **v6.98** | 130,627 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Worker | **v115** | |
 
 Recently shipped, newest first:
 
+- **v6.98 / v115:** Prowl's notifications reached Matt's Android phone, but Chrome's on-device filter hid the first
+  test behind "Possible spam". The notes now say who they are from and why, with no emoji: the test is "Prowl by Owl &
+  Twig Vintage / Phone alerts are on. When Pounce spots the piece you described, Prowl shows it here with the photo."
+  and a match is "Prowl found a likely (possible) match for <hunt>". The page no longer promises a test the worker
+  could not deliver, and tells a member to tap Show notification if Chrome marks it as possible spam.
+  Also: **Share sends the find's photo.** Flock's Share and a new **Share this find** button in the listing popup (so
+  hunt results, Likes and any card that opens it) send the photo with the title, price and link (`shareFind`). The text reads like a person passing on a find, so
+  someone who has never heard of Prowl does not take it for spam or AI: "Found this on eBay: <title> · <price>", the
+  marketplace link, then one plain line, "Found with Prowl, a vintage search tool from Owl & Twig Vintage". The
+  worker hands the photo over (`GET /img?u=`, Prowl's pages only, images only, 4 MB, 200 a day per visitor, nothing
+  kept); a phone that cannot share files, or no photo in time, sends the link alone as before. Tests:
+  `__tests__/page/flock-share.test.mjs`, `worker/__tests__/img-share.test.mjs`.
 - **v6.97 / v114: Prowl's own notifications (Web Push), and ntfy is gone.** A Pounce match arrives as a notification
   from Prowl itself (Matt, 2026-10-13). Den > Settings > Pounce has **Alert this phone**: it registers Prowl's service
   worker (`worker/sw.js`, served at the shop's `/apps/prowl/sw.js` through the existing app proxy), asks for permission
@@ -125,7 +137,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.98, worker v115**. Claim one here when you start.
+Next free numbers: **page v6.99, worker v116**. Claim one here when you start.
 
 ## What's next
 

@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v115: 2026-10-13. GET /img?u=: a find's photo for Share in Flock (Prowl's pages only, images only, 4 MB, 200 a day
+ *        per visitor, nothing kept).
+ *   v115: 2026-10-13. Prowl's notes say who they are from and why, with no emoji (PUSH_TEST, pushMatch's title): Chrome's
+ *        on-device filter flagged the first test as possible spam. Delivery worked.
  *   v114: 2026-10-13. Prowl's own notifications (Web Push): a Pounce match arrives as a notification from Prowl, no ntfy
  *        app. The service worker is served at the shop's /apps/prowl/sw.js (app proxy, /proxy/sw.js here); /push/*
  *        keeps each member's phones (push:, up to 5) and sends with worker/push.js (VAPID + RFC 8291). Order: Prowl's
@@ -397,7 +401,7 @@ import { artResponse } from "./art.js";   /* v97 */
 import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb64u } from "./push.js";   /* v114 */
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
-const WORKER_VERSION = "v114";
+const WORKER_VERSION = "v115";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4072,6 +4076,25 @@ async function pounceRun(env, sub, h, items, phoneOnly) {
   const left = hits.length ? await pounceNotify(env, sub, hits, phoneOnly) : [];
   return { digest: phoneOnly ? [] : left, rest: hits.more ? hits.rest.map(pounceSlim) : [] };
 }
+/* v115: a find's photo for Share in Flock (Matt, 2026-10-13: "can it send a picture too?"). The page cannot read a
+   marketplace's image itself (no CORS), so it asks here: GET /img?u=<https image>. Only for Prowl's own pages (their
+   Origin), only an image, at most IMG_MAX bytes, IMG_PER_IP a day per visitor, and nothing is kept. */
+const IMG_MAX = 4 * 1024 * 1024, IMG_PER_IP = 200;
+async function imgShare(request, url, origin) {
+  if (ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "not found" }, 404, origin);
+  const u = String(url.searchParams.get("u") || "");
+  if (!/^https:\/\/[a-z0-9.-]+\.[a-z]{2,}\/[^\s"'<>]{1,800}$/i.test(u)) return json({ error: "bad url" }, 400, origin);
+  if (!(await vCount("img:" + ipKey(request.headers.get("CF-Connecting-IP")), IMG_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  let r;
+  try { r = await fetch(u, { headers: { "Accept": "image/avif,image/webp,image/jpeg,image/png,image/*" }, redirect: "follow", cf: { cacheTtl: 86400 } }); } catch (e) { return json({ error: "could not fetch" }, 502, origin); }
+  const type = String(r.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+  if (!r.ok || !/^image\/(jpeg|png|webp|gif|avif)$/.test(type)) return json({ error: "not an image" }, 415, origin);
+  if (Number(r.headers.get("Content-Length") || 0) > IMG_MAX) return json({ error: "too large" }, 413, origin);
+  const buf = await r.arrayBuffer();
+  if (buf.byteLength > IMG_MAX) return json({ error: "too large" }, 413, origin);
+  return new Response(buf, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": type, "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" }) });
+}
+
 /* ---------- v114: Prowl's own notifications (Web Push) ----------
    A Pounce match arrives as a notification from Prowl itself, without the ntfy app (Matt, 2026-10-13). The service
    worker (worker/sw.js) is served from the shop at /apps/prowl/sw.js through the app proxy (/proxy/sw.js here), the
@@ -4083,10 +4106,13 @@ async function pounceRun(env, sub, h, items, phoneOnly) {
      GET  /proxy/sw.js       the service worker (no Shopify signature needed: it is the same file for everyone)
      POST /push/subscribe    { email, tok | store session, sub, label }: keep this phone, then send it a test
      POST /push/unsubscribe  { email, tok | session, endpoint }
-     POST /push/test         { email, tok | session }: "Prowl is set to alert this phone."
+     POST /push/test         { email, tok | session }: the test note (PUSH_TEST)
      POST /push/act          { t, action }: a notification's Not it (t is a signed token for that match, 14 days)
      POST /push/swap         { old, sub }: the browser renewed a subscription */
 const PUSH_MAX = 5, PUSH_ACT_DAYS = 14;
+/* v115: the test note says who it is from and what will come, in plain words: a bare "Prowl is set to alert this phone"
+   was flagged by Chrome's on-device filter as possible spam (Matt, 2026-10-13) */
+const PUSH_TEST = { v: 1, title: "Prowl by Owl & Twig Vintage", body: "Phone alerts are on. When Pounce spots the piece you described, Prowl shows it here with the photo.", url: PROWL_APP, tag: "prowl-test" };
 async function pushHash(text, n) {
   const d = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
   return Array.from(d.slice(0, n), x => ("0" + x.toString(16)).slice(-2)).join("");
@@ -4147,7 +4173,7 @@ async function pushMatch(env, sub, x) {
   const v = x.pounce || {}, site = AL_SRC_NAME[x.src] || x.src || "";
   const title = String(x.title || "").replace(/\s+/g, " ").trim().slice(0, 110);
   const payload = {
-    v: 1, title: v.match === "yes" ? "🐾 I think I spotted your quarry" : "🐾 This might be your quarry",
+    v: 1, title: v.match === "yes" ? "Prowl found a likely match for " + String(x.hunt || "your quarry").slice(0, 40) : "Prowl found a possible match for " + String(x.hunt || "your quarry").slice(0, 40),   /* v115: says who it is from and why, no emoji (Chrome flagged the first test as possible spam) */
     body: (title + "\n" + [x.price, site ? "on " + site : ""].filter(Boolean).join(" ") + "\nWhy: " + (v.reason || "it fits your description")).slice(0, 400),
     url: PROWL_APP + "?pounce=" + encodeURIComponent(x.url), img: /^https:\/\//.test(x.image || "") ? x.image : "",
     t: await pushActToken(env, sub.email, x.hunt, x.url), tag: "pounce-" + await pushHash(String(x.hunt || "").toLowerCase(), 4)
@@ -4192,7 +4218,7 @@ async function pushRoute(request, env, url, origin) {
     for (const d of r.dropped) { try { await env.PROWL_ALERTS.delete("pushep:" + await pushHash(d.endpoint, 16)); } catch (e) {} }
     await kvPut(env, "pushep:" + await pushHash(s.endpoint, 16), { k: pid });
     sub.phone = "prowl"; await alMerge(env, sub, ["phone"]);   /* the default: Prowl's own alerts first */
-    const t = await pushToMember(env, sub.email, { v: 1, title: "🐾 Prowl", body: "Prowl is set to alert this phone.", url: PROWL_APP, tag: "prowl-test" });
+    const t = await pushToMember(env, sub.email, PUSH_TEST);
     return json({ ok: true, n: r.list.length, test: t.ok > 0 }, 200, origin);
   }
   if (path === "/push/unsubscribe") {
@@ -4204,7 +4230,7 @@ async function pushRoute(request, env, url, origin) {
   }
   if (path === "/push/test") {
     if (!(await vCount("pushtest:" + pid, 10))) return json({ error: "That is enough tests for today." }, 429, origin);
-    const t = await pushToMember(env, sub.email, { v: 1, title: "🐾 Prowl", body: "Prowl is set to alert this phone.", url: PROWL_APP, tag: "prowl-test" });
+    const t = await pushToMember(env, sub.email, PUSH_TEST);
     return json({ ok: true, sent: t.ok, n: t.n - t.gone }, 200, origin);
   }
   return json({ error: "not found" }, 404, origin);
@@ -5962,6 +5988,7 @@ async function handleFetch(request, env, ctx) {
     /* v28: unsubscribe links work from any mail app, including one-click POSTs */
     if (url.pathname === "/alerts/unsub") return alUnsub(request, env, url, origin);
     if (url.pathname === "/alerts/confirm") return alConfirm(request, env, url);
+    if (url.pathname === "/img" && request.method === "GET") return imgShare(request, url, origin);   /* v115: a find's photo, for Share */
     if (url.pathname === "/aff" && request.method === "GET") return json({ on: AFF_ON, ids: AFF_IDS }, 200, origin, { "Cache-Control": "public, max-age=300" });   /* v89; v90: ids */
     if (url.pathname === "/alerts/gift") return alGiftStart(request, env, url);   /* v78c */
     if (url.pathname === "/alerts/giftstop") return alGiftStop(request, env, url);   /* v78c */

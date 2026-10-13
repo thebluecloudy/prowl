@@ -1745,6 +1745,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .pp-d h3,.scout-app-wrapper .pp-d h4{margin:8px 0 4px;font-size:15px}
 .scout-app-wrapper .pp-more{margin-top:4px;padding:4px 0;border:0;background:none;color:var(--ac);font-weight:700;font-size:14px;cursor:pointer}
 .scout-app-wrapper .pp-fp{margin-top:14px}
+.scout-app-wrapper .pp-share{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;margin-top:10px;border-radius:99px;font-weight:800;font-size:15px}
 .scout-app-wrapper .pp-go{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;margin-top:14px;border-radius:99px;text-decoration:none;font-weight:800;font-size:16px}
 .scout-app-wrapper .pp-end{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--cd3);color:var(--ink);font-weight:700}
 @media(prefers-reduced-motion:reduce){.scout-app-wrapper .pp-gal{scroll-behavior:auto}}
@@ -2691,7 +2692,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.97';
+var PROWL_VERSION='v6.98';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -5098,7 +5099,7 @@ function wpOn(){
     return navigator.serviceWorker.register(WP_SW,{scope:WP_SCOPE})})
   .then(wpReady)
   .then(function(reg){return reg.pushManager.getSubscription().then(function(s){return s||reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:wpKey(MAIL.wpush.key)})})})
-  .then(function(s){pncPost('push/subscribe',{sub:s.toJSON(),label:wpLabel()},function(j){if(j&&j.ok){mSet('wpushOn','1');MAIL.phone='prowl'}pncSay(j,'Alerts on this phone. A test is on its way.')})})
+  .then(function(s){pncPost('push/subscribe',{sub:s.toJSON(),label:wpLabel()},function(j){if(j&&j.ok){mSet('wpushOn','1');MAIL.phone='prowl'}pncSay(j,j&&j.test?'Alerts on this phone. A test note is on its way. If Chrome marks it \u201cPossible spam\u201d, tap Show notification.':'Alerts are on, but the test did not get through. Tap Send test.')})})
   ['catch'](wpFail);
 }
 function wpOff(){
@@ -5140,7 +5141,7 @@ document.addEventListener('click',function(e){
   }
   if(a==='wpon'){wpOn();return}
   if(a==='wpoff'){wpOff();return}
-  if(a==='wptest'){PNC.mk='';PNC.busy=1;rMail();pncPost('push/test',{},function(j){pncSay(j,j&&j.sent?'Test sent. It should arrive in a few seconds.':'Prowl could not reach this phone. Turn alerts off and on again.')});return}
+  if(a==='wptest'){PNC.mk='';PNC.busy=1;rMail();pncPost('push/test',{},function(j){pncSay(j,j&&j.sent?'Test sent. It should arrive in a few seconds. If Chrome marks it \u201cPossible spam\u201d, tap Show notification.':'Prowl could not reach this phone. Turn alerts off and on again.')});return}
   if(a==='not'){PNC.mk='';b.disabled=true;pncPost('alerts/quarry',{hunt:hh,notUrl:b.getAttribute('data-u')},function(j){pncSay(j,'Not it. I will skip listings like that.')});return}
 });
 /* ?pounce=<listing> (the phone note) opens Den > Settings at that match; &fp=1 runs Fair price? on it */
@@ -6316,6 +6317,7 @@ function popPaint(d){
   if(price&&!d.gone&&!aiOff())h+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'" data-d="'+esc(popDetails(meta,d))+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
   var go=window.prowlAff(d.url||P.u,'prowl-popup',d.affUrl);
   if(go!=='#')h+='<a class="b p pp-go" href="'+esc(go)+'" target="_blank" rel="noopener noreferrer">View on '+esc(POP_NAME[P.src])+' ↗</a>';
+  P.share={u:d.url||P.u,t:title,p:price,img:imgs[0]||''};h+='<button type="button" class="b pp-share" data-ppshare="1">Share this find</button>';   /* v6.98 */
   b.innerHTML=h;
   if(d.description){var box=$('#otp-ppd');box.appendChild(popDesc(d.description));
     if(box.scrollHeight<=box.clientHeight+2){box.classList.remove('clip');var mb=b.querySelector('[data-ppmore]');if(mb)mb.parentNode.removeChild(mb)}}
@@ -6563,15 +6565,46 @@ function flWatchTap(btn){
   }
   if(flockOpen()&&FLOCK.view==='saved')flockRender();
 }
-/* share: the system share sheet where there is one, else the link goes on the clipboard */
+/* share: the system share sheet where there is one, else the link goes on the clipboard.
+   v6.98: with the find's photo too (Matt, 2026-10-13). The worker hands the photo over (/img, the page cannot read a
+   marketplace's image itself); the link rides in the text, since apps that take a photo often drop a separate url. The
+   photo is fetched once per find and kept (FL_SHF). If it is not ready within the tap's time, or the phone cannot share
+   files, the link goes alone, as before; a phone that refuses the late share gets the photo on the next tap. */
+var FL_SHF={u:'',f:null,busy:0};
+function flShareFile(img,u,cb){
+  if(FL_SHF.u===u&&FL_SHF.f){cb(FL_SHF.f);return}
+  if(!img||!/^https:\/\//.test(img)||typeof fetch!=='function'||!window.File){cb(null);return}
+  var done=0,t=setTimeout(function(){if(!done){done=1;cb(null)} },2500);
+  fetch(SGW_API+'img?u='+encodeURIComponent(img)).then(function(r){if(!r.ok)throw 0;return r.blob()}).then(function(b){
+    var ty=b.type||'image/jpeg',f=new File([b],'prowl-find.'+(/png/.test(ty)?'png':/webp/.test(ty)?'webp':'jpg'),{type:ty});
+    FL_SHF={u:u,f:f,busy:0};if(!done){done=1;clearTimeout(t);cb(f)}
+  })['catch'](function(){if(!done){done=1;clearTimeout(t);cb(null)} });
+}
 function flShare(card){
   if(!card)return;
-  var u=card.getAttribute('data-u')||'',t=card.getAttribute('data-t')||card.getAttribute('aria-label')||'Vintage find',p=card.getAttribute('data-p')||'';
+  var im=card.querySelector('.sgw-card img');
+  shareFind({u:card.getAttribute('data-u')||'',t:card.getAttribute('data-t')||card.getAttribute('aria-label')||'',p:card.getAttribute('data-p')||'',img:im?im.getAttribute('src')||'':''});
+}
+/* v6.98: one share for Flock and the listing popup (hunts, Likes, the Den: every card that opens it) */
+function shareFind(o){
+  var u=o&&o.u||'',t=o&&o.t||'',p=o&&o.p||'',img=o&&o.img||'',sn=LIVE_NAME[seenSrc(u)]||'';
   if(!u)return;
-  if(navigator.share){
-    try{navigator.share({title:t,text:(p?p+' ':'')+'via Prowl',url:u})['catch'](function(){});return}catch(e){}
+  /* v6.98 (Matt: people who don't know Prowl may take it for spam or AI): read like a person passing on a find. The
+     find and its real marketplace link first, then one plain line saying what Prowl is. No second link. */
+  var said=(sn?'Found this on '+sn:'Found this')+(t||p?': ':'')+t+(t&&p?' · ':'')+p,by='Found with Prowl, a vintage search tool from Owl & Twig Vintage';
+  t=t||'Vintage find';
+  function linkOnly(){
+    if(navigator.share){try{navigator.share({title:t,text:said+'\n\n'+by,url:u})['catch'](function(){});return}catch(e){} }
+    if(copyTerm(u))toast('Link copied.',2200);else toast('Could not copy the link here.',2600);
   }
-  if(copyTerm(u))toast('Link copied.',2200);else toast('Could not copy the link here.',2600);
+  if(!navigator.share||!navigator.canShare){linkOnly();return}
+  flShareFile(img,u,function(f){
+    var ok=false;try{ok=!!(f&&navigator.canShare({files:[f]}))}catch(e){}
+    if(!ok){linkOnly();return}
+    try{navigator.share({files:[f],title:t,text:said+'\n'+u+'\n\n'+by})['catch'](function(e){
+      if(e&&e.name==='NotAllowedError')toast('The photo is ready. Tap Share again to send it.',3200);
+    })}catch(e){linkOnly()}
+  });
 }
 
 /* ---------- FIELD GUIDE ON ANYTHING (v6.19) ----------
@@ -7380,6 +7413,7 @@ function flyStep(){
   $('#otp-sheetClose').addEventListener('click',closeSheet);
   sb.addEventListener('click',function(e){
     var b=e.target.closest&&e.target.closest('[data-watch]');if(b){flWatchTap(b);return}
+    if(e.target.closest&&e.target.closest('[data-ppshare]')){if(POP&&POP.share)shareFind(POP.share);return}   /* v6.98 */
     if((b=e.target.closest&&e.target.closest('[data-pi]'))){var g=sb.querySelector('.pp-gal'),k=+b.getAttribute('data-pi');if(g){try{g.scrollTo({left:k*g.clientWidth,behavior:flReduced()?'auto':'smooth'})}catch(er){g.scrollLeft=k*g.clientWidth}}
       $$('#otp-sheet [data-pi]').forEach(function(x){x.setAttribute('aria-current',String(x===b))});return}
     if((b=e.target.closest&&e.target.closest('[data-ppmore]'))){var d=$('#otp-ppd');if(!d)return;var open=d.classList.toggle('clip');b.textContent=open?'Read more':'Show less';b.setAttribute('aria-expanded',String(!open));return}

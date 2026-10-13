@@ -77,7 +77,7 @@ test('the tap: permission, the service worker at /apps/prowl/, a subscription wi
   assert.equal(body.sub.keys.p256dh, KEY);
   assert.equal(body.tok, SIGNED['prowl.alertTok']);
   assert.match(p.$('#otp-denSettings .pnc').textContent, /Alerts on this phone ✓/);
-  assert.match(p.$('#otp-denSettings .pnc').textContent, /A test is on its way/);
+  assert.match(p.$('#otp-denSettings .pnc').textContent, /A test note is on its way\. If Chrome marks it “Possible spam”, tap Show notification\./);
   assert.equal(p.win.localStorage.getItem('prowl.wpushOn'), '1');
   /* Send test and Turn off */
   p.$('#otp-denSettings [data-pnc="wptest"]').click();
@@ -91,6 +91,19 @@ test('the tap: permission, the service worker at /apps/prowl/, a subscription wi
   assert.equal(p.win.localStorage.getItem('prowl.wpushOn'), null);
   assert.ok(p.$('#otp-denSettings [data-pnc="wpon"]'), 'offered again');
   assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test('v6.98: when the worker could not deliver the test, the page says so instead of promising it', async () => {
+  const B = {}, calls = [];
+  const base = worker(calls);
+  const fetchImpl = (u, o) => /push\/subscribe/.test(String(u)) ? (calls.push({ url: String(u), body: (o && o.body) || '' }), Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, n: 1, test: false }) })) : base(u, o);
+  const p = loadPage({ storage: storage(), fetchImpl, beforeLoad: browser(B) });
+  const sec = await settings(p);
+  sec.querySelector('[data-pnc="wpon"]').click();
+  await tick(80);
+  assert.match(p.$('#otp-denSettings .pnc').textContent, /Alerts are on, but the test did not get through\. Tap Send test\./);
+  assert.doesNotMatch(p.$('#otp-denSettings .pnc').textContent, /on its way/);
   await p.close();
 });
 
