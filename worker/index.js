@@ -22,8 +22,8 @@
  *   v114: 2026-10-13. Prowl's own notifications (Web Push): a Pounce match arrives as a notification from Prowl, no ntfy
  *        app. The service worker is served at the shop's /apps/prowl/sw.js (app proxy, /proxy/sw.js here); /push/*
  *        keeps each member's phones (push:, up to 5) and sends with worker/push.js (VAPID + RFC 8291). Order: Prowl's
- *        own alert, then ntfy (when chosen, or when push fails), then the digest. Needs VAPID_PRIVATE_JWK, VAPID_PUBLIC,
- *        VAPID_SUBJECT (scripts/vapid-keys.mjs); without them nothing changes.
+ *        own alert, else the digest. ntfy is gone (nobody had signed up; /alerts/push and /alerts/quarry-no with it).
+ *        Needs VAPID_PRIVATE_JWK (secret); VAPID_PUBLIC and VAPID_SUBJECT are in wrangler.toml.
  *   v113: 2026-10-13. Pounce takes a store session as well as the email token (pounceMember), as status, prefs and
  *        likes do: a member signed in through the store saw the Pounce box, but every save was refused.
  *   v112: 2026-10-12. Pounce, the quarry hunt (Hark's branch, brought up to date by Claude): a saved hunt plus a
@@ -3861,8 +3861,6 @@ function alExact(items, term) {
      sub.quarries = { "<hunt, lowercased>": { spec, avoid: [words], min, max (inches, 0 = any), photo, maybe: 0|1, at } }
      POST /alerts/quarry       { email, tok, hunt, spec, avoid, min, max, photo, maybe }  (empty spec removes it; notUrl = Not it)
      POST /alerts/quarry-test  { email, tok, hunt }  owner only: judges what the hunt finds right now, nothing kept
-     POST /alerts/push        { email, tok, on, hello }  phone alerts on or off (an ntfy topic)
-     GET|POST /alerts/quarry-no?e&h&u&s  the phone note's Not it button
    Caps: free members 1 quarry and POUNCE_FREE_PER_DAY judgements a day, Pro POUNCE_PRO_QUARRIES and POUNCE_PRO_PER_DAY;
    POUNCE_PER_RUN per 5-minute run (the run's budget of outside calls) and POUNCE_SITE_PER_DAY for the whole site. */
 const POUNCE_PRO_QUARRIES = 5, POUNCE_FREE_QUARRIES = 1;
@@ -4008,20 +4006,11 @@ async function pounceHunt(env, sub, term, items) {
   }
   return hits;
 }
-/* v112: a match goes to the member's phone, never to another email (Matt, 2026-10-10: fewer emails). The phone gets it
-   through ntfy (free app, Android and iPhone; NTFY_URL points at a self-hosted server instead). Each member has one
-   unguessable topic (sub.push.topic), made when they turn phone alerts on in Prowl. The note reads like a person who
-   was asked to look: "I think I spotted your quarry", the photo, price, site and why, and three buttons: Open it, Check
-   price (opens it in Prowl, where Fair price? runs) and Not it (teaches the quarry, see pounceNo). No phone set up, or
-   past POUNCE_PUSH_PER_DAY: the match rides in the member's next digest with its reason, so no extra email. */
+/* v114: a match goes to the member's phone as Prowl's own notification (Web Push, below), never as another email;
+   no phone set up, or past POUNCE_PUSH_PER_DAY, it rides in the member's next digest. ntfy is gone: nobody had signed
+   up for it (Matt, 2026-10-13). */
 const POUNCE_PUSH_PER_DAY = 10, POUNCE_NOT_MAX = 8;
-function pounceNtfy(env) { const u = String((env && env.NTFY_URL) || "https://ntfy.sh").replace(/\/+$/, ""); return /^https:\/\/[^\s"'<>]+$/.test(u) ? u : "https://ntfy.sh"; }
-function pounceTopicOk(t) { return /^prowl-[a-f0-9]{24}$/.test(String(t || "")); }
-async function pounceSig(sub, hunt, url) {
-  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("pounce|" + sub.tok + "|" + String(hunt).toLowerCase() + "|" + url));
-  return Array.from(new Uint8Array(d), x => ("0" + x.toString(16)).slice(-2)).join("").slice(0, 32);
-}
-/* v112 review: the Not it link passes through ntfy, so it never carries the member's address. It carries the address
+/* v112 review, v114: a notification's buttons never carry the member's address. They carry the address
    sealed (AES-GCM, key from MEMBER_ID_SALT or ADMIN_KEY); only this worker can open it. No key set: no Not it button. */
 async function pounceKey(env) {
   const s = String((env && (env.MEMBER_ID_SALT || env.ADMIN_KEY)) || "");
@@ -4044,54 +4033,21 @@ async function pounceOpen(env, sealed) {
     return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: b.slice(0, 12) }, k, b.slice(12)));
   } catch (e) { return ""; }
 }
-function pounceNoUrl(id, hunt, url, sig) {
-  return WORKER_BASE + "/alerts/quarry-no?m=" + id + "&h=" + encodeURIComponent(hunt) + "&u=" + encodeURIComponent(url) + "&s=" + sig;
-}
-function pouncePush(env, sub, x, sig, id) {
-  const v = x.pounce, site = AL_SRC_NAME[x.src] || x.src || "";
-  const title = String(x.title || "").replace(/\s+/g, " ").trim().slice(0, 110);
-  const body = {
-    topic: sub.push.topic,
-    title: v.match === "yes" ? "\uD83D\uDC3E I think I spotted your quarry" : "\uD83D\uDC3E This might be your quarry",
-    message: title + "\n" + [x.price, site ? "on " + site : ""].filter(Boolean).join(" ") + "\nWhy: " + (v.reason || "it fits your description") + "\nWant me to do anything with it?",
-    click: PROWL_APP + "?pounce=" + encodeURIComponent(x.url),
-    tags: ["paw_prints"], priority: v.match === "yes" ? 4 : 3,
-    actions: [
-      { action: "view", label: "Open it", url: epnUrl(env, x.url, "prowl-pounce"), clear: true },
-      { action: "view", label: "Check price", url: PROWL_APP + "?pounce=" + encodeURIComponent(x.url) + "&fp=1", clear: true }
-    ]
-  };
-  if (id) body.actions.push({ action: "http", label: "Not it", url: pounceNoUrl(id, x.hunt, x.url, sig), method: "POST", clear: true });
-  if (x.image) body.attach = x.image;
-  return body;
-}
-async function pounceSendPush(env, body) {
-  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 10000);
-  try {
-    const r = await fetch(pounceNtfy(env), { method: "POST", signal: ctl.signal, headers: Object.assign({ "Content-Type": "application/json" }, env && env.NTFY_TOKEN ? { "Authorization": "Bearer " + env.NTFY_TOKEN } : {}), body: JSON.stringify(body) });
-    return r.status >= 200 && r.status < 300;
-  } catch (e) { return false; }
-  finally { clearTimeout(timer); }
-}
 async function pounceNotify(env, sub, hits, phoneOnly) {
   if (PJ_RUN.quiet) return hits.slice();   /* a debug run: matches wait in the digest, no phone is tapped */
-  /* v114: the order a match tries: Prowl's own notification (Web Push) unless the member chose ntfy, then ntfy, then
-     the next digest (or, for a phone-only member, pp: to try again) */
-  const canNtfy = !!(sub.push && pounceTopicOk(sub.push.topic));
-  const canWeb = hits.length && sub.phone !== "ntfy" && pushReady(env) ? (await pushList(env, await pushId(env, sub.email))).length > 0 : false;
-  const left = [], id = hits.length && canNtfy ? await pounceSeal(env, sub.email) : "";
+  /* v114: Prowl's own notification on every phone the member has; one that does not go goes to the next digest (or,
+     for a phone-only member, pp: to try again) */
+  const canWeb = hits.length && pushReady(env) ? (await pushList(env, await pushId(env, sub.email))).length > 0 : false;
+  const left = [];
   for (const x of hits) {
     let ok = false;
-    if ((canWeb || canNtfy) && (await vCount("pjm:" + sub.email, POUNCE_PUSH_PER_DAY))) {
-      if (canWeb) ok = !!(await pushMatch(env, sub, x)).ok;
-      if (!ok && canNtfy) ok = await pounceSendPush(env, pouncePush(env, sub, x, await pounceSig(sub, x.hunt, x.url), id));
-    }
+    if (canWeb && (await vCount("pjm:" + sub.email, POUNCE_PUSH_PER_DAY))) ok = !!(await pushMatch(env, sub, x)).ok;
     if (!ok) left.push(x);
   }
   if (phoneOnly && left.length) { await pounceHold(env, sub, left); return []; }   /* v112 review: no digest to fall back on */
   return left;   /* not on the phone: these ride in the next digest */
 }
-/* v112 review: a phone-only member (emails off or paused) has no digest, so a match the phone did not get (ntfy down,
+/* v112 review: a phone-only member (emails off or paused) has no digest, so a match the phone did not get (the push service busy,
    past today's taps) waits in pp: and is tried again on later runs, for up to POUNCE_HOLD_DAYS. It is on the page's
    Spotted for you list (gm:) all along. Phone alerts turned off: the waiting ones go (the page still has them). */
 const POUNCE_HOLD_DAYS = 3;
@@ -4122,8 +4078,8 @@ async function pounceRun(env, sub, h, items, phoneOnly) {
    page subscribes the phone (Den > Settings > Pounce: Alert this phone), and worker/push.js sends (VAPID + RFC 8291).
      push:<pushId>     up to PUSH_MAX phones: [{ id, endpoint, p256dh, auth, label, created, lastOk }]
      pushep:<hash>     { k: pushId } for each endpoint, so the service worker can swap a renewed subscription
-   pushId is a salted hash of the address, so no address is in a key. sub.phone = "prowl" | "ntfy" | "" is the
-   member's choice of phone channel: Prowl's own alerts first unless they chose ntfy.
+   pushId is a salted hash of the address, so no address is in a key. sub.phone = "prowl" when the member has a phone
+   set up (it lets a member with emails off or paused still get Pounce), "" otherwise.
      GET  /proxy/sw.js       the service worker (no Shopify signature needed: it is the same file for everyone)
      POST /push/subscribe    { email, tok | store session, sub, label }: keep this phone, then send it a test
      POST /push/unsubscribe  { email, tok | session, endpoint }
@@ -4137,7 +4093,7 @@ async function pushHash(text, n) {
 }
 async function pushId(env, email) { return pushHash("push|" + String((env && (env.MEMBER_ID_SALT || env.ADMIN_KEY)) || "") + "|" + String(email || "").toLowerCase(), 12); }
 async function pushList(env, pid) { const l = await kvGet(env, "push:" + pid, []); return Array.isArray(l) ? l.filter(x => x && x.endpoint) : []; }
-function pounceHasPhone(sub) { return !!(sub && ((sub.push && pounceTopicOk(sub.push.topic)) || sub.phone === "prowl")); }
+function pounceHasPhone(sub) { return !!(sub && sub.phone === "prowl"); }
 /* keep a phone: the same endpoint replaces its old entry, the newest PUSH_MAX are kept */
 function pushAdd(list, s, label, now) {
   const rest = (Array.isArray(list) ? list : []).filter(x => x && x.endpoint !== s.endpoint);
@@ -4161,7 +4117,7 @@ async function pushToMember(env, email, payload) {
   if (out.gone || out.ok) await kvPut(env, "push:" + pid, keep);
   return out;
 }
-/* the signed token a notification carries for its buttons: the member (sealed, as in ntfy's Not it), the hunt, the
+/* the signed token a notification carries for its buttons: the member (sealed, pounceSeal), the hunt, the
    listing and an expiry, so the service worker never holds the member's sign-in */
 async function pushActKey(env) {
   const s = String((env && (env.MEMBER_ID_SALT || env.ADMIN_KEY)) || "");
@@ -4243,7 +4199,7 @@ async function pushRoute(request, env, url, origin) {
     const ep = String(b.endpoint || ""), list = await pushList(env, pid), rest = list.filter(x => x.endpoint !== ep);
     await kvPut(env, "push:" + pid, rest);
     if (ep) { try { await env.PROWL_ALERTS.delete("pushep:" + await pushHash(ep, 16)); } catch (e) {} }
-    if (!rest.length && sub.phone === "prowl") { sub.phone = sub.push && pounceTopicOk(sub.push.topic) ? "ntfy" : ""; await alMerge(env, sub, ["phone"]); }
+    if (!rest.length && sub.phone === "prowl") { sub.phone = ""; await alMerge(env, sub, ["phone"]); }
     return json({ ok: true, n: rest.length }, 200, origin);
   }
   if (path === "/push/test") {
@@ -4301,22 +4257,6 @@ async function pounceMember(request, env, b) {
   const ss = await sessMember(request, env);
   return ss && (!email || ss.email === email) ? ss : null;
 }
-/* POST /alerts/push { email, tok, on }: phone alerts on (makes the member's topic and sends a hello) or off */
-async function pounceTopicSet(request, env, origin) {
-  if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
-  const b = await readJson(request, 4096);
-  if (b.big) return json({ error: "too large" }, 413, origin);
-  const sub = await pounceMember(request, env, b), email = sub && sub.email;
-  if (!sub) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
-  const on = b.on === true || b.on === 1 || b.on === "1";
-  if (!on) { sub.push = null; if (sub.phone === "ntfy") sub.phone = ""; await alMerge(env, sub, ["push", "phone"]); return json({ ok: true, push: null }, 200, origin); }
-  sub.phone = "ntfy"; await alMerge(env, sub, ["phone"]);   /* v114: chose ntfy: it goes first */
-  if (!(sub.push && pounceTopicOk(sub.push.topic))) { sub.push = { topic: "prowl-" + alToken().slice(0, 24), at: new Date().toISOString() }; await alMerge(env, sub, ["push"]); }
-  const url = pounceNtfy(env) + "/" + sub.push.topic;
-  let hello = false;
-  if (b.hello && (await vCount("pjh:" + email, 5))) hello = await pounceSendPush(env, { topic: sub.push.topic, title: "\uD83D\uDC3E Prowl is on your phone", message: "When Pounce finds one of your quarries, I will tap you here first.", tags: ["paw_prints"], click: PROWL_APP });
-  return json({ ok: true, push: { topic: sub.push.topic, url: url }, hello: hello }, 200, origin);
-}
 /* a match the member says is not it: off their matches, its title onto the quarry's "not it" list */
 async function pounceMarkNot(env, sub, hunt, u) {
   const email = sub.email, gm = await kvGet(env, "gm:" + email, []), hit = (Array.isArray(gm) ? gm : []).find(x => x && x.url === u);
@@ -4328,18 +4268,6 @@ async function pounceMarkNot(env, sub, hunt, u) {
     gs[k] = g; sub.quarries = gs; await alMerge(env, sub, ["quarries"]);
   }
   return !!hit;
-}
-/* /alerts/quarry-no (the Not it button; ntfy POSTs it, a tap on the link GETs it): the listing comes off the member's
-   matches and its title joins the quarry's "not it" list, which the judge reads as listings to say no to. Signed with
-   the member's token, so the link only works for that member, that hunt and that listing. */
-async function pounceNo(request, env, url) {
-  const email = alEmail(await pounceOpen(env, url.searchParams.get("m"))), hunt = vClean(url.searchParams.get("h"), 60), u = String(url.searchParams.get("u") || "").slice(0, 600);
-  const sub = email && alReady(env) ? await kvGet(env, "sub:" + email, null) : null;
-  const done = (t, m, st) => request.method === "POST" ? new Response(m, { status: st || 200, headers: { "Content-Type": "text/plain; charset=utf-8" } }) : alPage(t, m, st);
-  if (!sub || !hunt || !/^https:\/\//.test(u) || !alSame(String(url.searchParams.get("s") || ""), await pounceSig(sub, hunt, u))) return done("Link expired", "Open Prowl and mark it in Den, then Settings, under Pounce.", 400);
-  if (request.method !== "POST") return alGate("Not your quarry?", "This listing comes off your Pounce matches for " + hunt + ", and I will skip listings like it.", "Not it", url);   /* a link preview never changes anything */
-  await pounceMarkNot(env, sub, hunt, u);
-  return done("Got it", "Not it. I will skip listings like that one for " + hunt + ".");
 }
 /* POST /alerts/quarry: save, change or remove one quarry */
 async function pounceSave(request, env, origin) {
@@ -5462,7 +5390,6 @@ async function alStatus(request, env, url, origin) {
     price: "7.00", plan: pl, manageUrl: "https://www.owlandtwigvintage.com/account", prefs: alPrefs(sub), email: sub.email,
     moving: (await kvGet(env, "mvf:" + email, null) || {}).to || "",   /* v54 */
     quarries: (sub.quarries && typeof sub.quarries === "object") ? sub.quarries : {}, quarryMax: pounceMax(sub), quarryMatches: await kvGet(env, "gm:" + email, []),
-    push: sub.push && pounceTopicOk(sub.push.topic) ? { topic: sub.push.topic, url: pounceNtfy(env) + "/" + sub.push.topic } : null,
     phone: sub.phone || "", wpush: pushReady(env) ? { key: String(env.VAPID_PUBLIC), n: (await pushList(env, await pushId(env, email))).length } : null }, 200, origin);   /* v114 */   /* v112 */
 }
 
@@ -6035,7 +5962,6 @@ async function handleFetch(request, env, ctx) {
     /* v28: unsubscribe links work from any mail app, including one-click POSTs */
     if (url.pathname === "/alerts/unsub") return alUnsub(request, env, url, origin);
     if (url.pathname === "/alerts/confirm") return alConfirm(request, env, url);
-    if (url.pathname === "/alerts/quarry-no") return pounceNo(request, env, url);   /* v112: ntfy's Not it button POSTs with no Origin */
     if (url.pathname === "/aff" && request.method === "GET") return json({ on: AFF_ON, ids: AFF_IDS }, 200, origin, { "Cache-Control": "public, max-age=300" });   /* v89; v90: ids */
     if (url.pathname === "/alerts/gift") return alGiftStart(request, env, url);   /* v78c */
     if (url.pathname === "/alerts/giftstop") return alGiftStop(request, env, url);   /* v78c */
@@ -6064,7 +5990,6 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname.startsWith("/push/") && request.method === "POST") return pushRoute(request, env, url, origin);   /* v114: Prowl's own notifications */
     if (url.pathname === "/alerts/quarry" && request.method === "POST") return pounceSave(request, env, origin);   /* v112: Pounce */
     if (url.pathname === "/alerts/quarry-test" && request.method === "POST") return pounceTest(request, env, origin);   /* v112 */
-    if (url.pathname === "/alerts/push" && request.method === "POST") return pounceTopicSet(request, env, origin);   /* v112 */
     if (url.pathname === "/alerts/prefs" && request.method === "POST") {   /* v50 */
       return alPrefsSave(request, env, origin);
     }

@@ -6,21 +6,22 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-13 (v6.97 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.97** | 130,799 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v6.97** | 132,590 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v114** | |
 
 Recently shipped, newest first:
 
-- **v6.97 / v114: Prowl's own notifications (Web Push).** A Pounce match arrives as a notification from Prowl itself,
-  no ntfy app (Matt, 2026-10-13). Den > Settings > Pounce has **Alert this phone**: it registers Prowl's service worker
-  (`worker/sw.js`, served at the shop's `/apps/prowl/sw.js` through the existing app proxy), asks for permission on
-  that tap only, subscribes and tells the worker, which sends a test. ntfy stays, under it ("Or use the free ntfy
-  app"). The worker keeps up to 5 phones per member (`push:<salted hash>`, `pushep:` to swap a renewed subscription)
-  and sends with `worker/push.js` (VAPID ES256 + RFC 8291 aes128gcm, Web Crypto, no dependencies; it posts only to
-  the browsers' own push services). A match tries Prowl's own alert first (unless the member chose ntfy), then ntfy,
-  then the digest; Android shows Check price and Not it (a signed 14-day token per match, never the member's
-  sign-in). iPhone: only from the Home Screen app (iOS 16.4+), no buttons. Tests: `worker/__tests__/push.test.mjs`
-  (RFC 8291 Appendix A byte for byte), `__tests__/page/push-button.test.mjs`, `worker/__tests__/pounce.test.mjs`.
+- **v6.97 / v114: Prowl's own notifications (Web Push), and ntfy is gone.** A Pounce match arrives as a notification
+  from Prowl itself (Matt, 2026-10-13). Den > Settings > Pounce has **Alert this phone**: it registers Prowl's service
+  worker (`worker/sw.js`, served at the shop's `/apps/prowl/sw.js` through the existing app proxy), asks for permission
+  on that tap only, subscribes and tells the worker, which sends a test. The worker keeps up to 5 phones per member
+  (`push:<salted hash>`, `pushep:` to swap a renewed subscription) and sends with `worker/push.js` (VAPID ES256 + RFC
+  8291 aes128gcm, Web Crypto, no dependencies; it posts only to the browsers' own push services). A match that cannot
+  go as a notification rides in the next digest (phone-only members: held and tried again); Android shows Check price
+  and Not it (a signed 14-day token per match, never the member's sign-in). iPhone: only from the Home Screen app
+  (iOS 16.4+), no buttons. **ntfy is removed** (nobody had signed up): its buttons, `/alerts/push` and
+  `/alerts/quarry-no` are gone; an old `sub.push` topic is ignored. Tests: `worker/__tests__/push.test.mjs` (RFC 8291
+  Appendix A byte for byte), `__tests__/page/push-button.test.mjs`, `worker/__tests__/pounce.test.mjs`.
 - **v6.96:** Pounce's phone line names the member's ntfy channel with a Copy button and links to the ntfy app itself
   (`ntfy://ntfy.sh/<channel>`, the app's subscribe link) as well as ntfy's web page. "Open in ntfy" went to the web
   page, so the app never learned the channel (Matt, 2026-10-13: an empty Subscribed topics list).
@@ -135,14 +136,13 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 - **Turn on Prowl's own notifications:** in Cloudflare > Workers > prowl > Settings > Variables and secrets, add
   `VAPID_PRIVATE_JWK` (type Secret) with the private key Claude gave in chat on 2026-10-13 (the public half is in
-  `worker/wrangler.toml`). Until then the page shows only ntfy. Then test: Android Chrome, Den > Settings > Pounce >
+  `worker/wrangler.toml`). Until then the page offers no phone alerts (finds come by email). Then test: Android Chrome, Den > Settings > Pounce >
   Alert this phone (a test note arrives); iPhone: add Prowl to the Home Screen, open it from there, same button.
   **iPhone gate:** if the test never arrives on iPhone with the service worker at `/apps/prowl/`, tell Claude.
 
-- **Try Pounce:** in Den > Settings > Pounce, set a quarry on one hunt and tap "Tap my phone when it's found" (the free
-  ntfy app, then Subscribe). Matches also show in the same place. Muse is already set up for the photo check, so
-  nothing new is needed in Cloudflare. The Not it button on the phone needs MEMBER_ID_SALT or ADMIN_KEY (both are
-  set if admin works).
+- **Try Pounce:** in Den > Settings > Pounce, set a quarry on one hunt and tap Alert this phone (once
+  VAPID_PRIVATE_JWK is in, above). Matches also show in the same place. The Not it button on the phone needs
+  MEMBER_ID_SALT or ADMIN_KEY (both are set if admin works).
 
 - **URGENT: Pro checks fail until the order app's keys are in Cloudflare.** In the Shopify Dev Dashboard open the app
   that will read orders ("Prowl"), make sure its access scopes include read_orders (release a new version if you add

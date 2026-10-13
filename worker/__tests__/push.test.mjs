@@ -224,6 +224,5 @@ test("wired in: the routes, status, delete and address change", () => {
   assert.match(indexFn("alPurge"), /await pushPurge\(env, email\)/);
   assert.match(indexFn("alMoveConfirm"), /await pushMove\(env, from, to\)/);
   assert.match(indexFn("pushRoute"), /sub\.phone = "prowl"/, "subscribing makes Prowl's own alerts the default");
-  assert.match(indexFn("pounceTopicSet"), /sub\.phone = "ntfy"/, "choosing ntfy puts it first");
   assert.match(INDEX, /const WORKER_VERSION = "v(11[4-9]|1[2-9]\d)";/);
 });

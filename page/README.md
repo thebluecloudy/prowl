@@ -184,8 +184,8 @@ now goes as a link to the worker, which leaves 144 KB of room. Nothing changes i
 Hark's quarry hunt, brought onto main. In Den > Settings > Pounce, a member picks one of their alert hunts and
 describes the exact piece in their own words (with optional skip words, a size range in inches and a reference
 photo). The worker judges each new listing of that hunt against it on the alert clock (Muse, with the listing's photo)
-and taps the member's phone through ntfy when one fits, with Open it, Check price and Not it; without phone alerts the
-match rides at the top of the next digest. Matches also show here under "Spotted for you", with Fair price? and Not
+and taps the member's phone when one fits (Prowl's own notification since v6.97; ntfy until then), with Check price and
+Not it; without phone alerts the match rides at the top of the next digest. Matches also show here under "Spotted for you", with Fair price? and Not
 it. The page only mirrors what the worker keeps (`sub.quarries`, `gm:`); its one key of its own is
 `prowl.pounceSeen`, the newest match this device has shown a note for.
 
@@ -195,7 +195,8 @@ straight to that match, and `&fp=1` runs Fair price? on it. Tests: `__tests__/pa
 
 ## Prowl's own notifications (page v6.97, worker v114)
 
-Pounce matches arrive as notifications from Prowl itself, so no ntfy app is needed. In Den > Settings > Pounce,
+Pounce matches arrive as notifications from Prowl itself. ntfy, which Pounce used before, is removed: nobody had
+signed up for it. In Den > Settings > Pounce,
 **Alert this phone**:
 
 1. asks for notification permission, on that tap only (never on load);
@@ -206,7 +207,7 @@ Pounce matches arrive as notifications from Prowl itself, so no ntfy app is need
    `/push/subscribe`, which keeps it and sends a test.
 
 The states are: Alerts on this phone ✓ (Send test, Turn off); blocked in the browser settings; on iPhone in Safari, add
-Prowl to the Home Screen first. When the browser has no push, or the worker has no keys yet, the old ntfy button is
-shown, as before. The service worker has no fetch handler and caches nothing, so the page works exactly as it did.
+Prowl to the Home Screen first. When the browser has no push, or the worker has no keys yet, the section says finds wait
+at the top of the Prowl email. The service worker has no fetch handler and caches nothing, so the page works exactly as it did.
 `prowl.wpushOn` remembers that this device turned alerts on. After changing `worker/sw.js`, run
 `node scripts/build-sw.mjs` (a test fails until you do).

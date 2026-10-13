@@ -1,6 +1,7 @@
 // Page v6.97 (worker v114): Prowl's own notifications. In Den > Settings > Pounce, "Alert this phone" registers Prowl's
 // service worker at the shop's /apps/prowl/sw.js, asks for permission (on that tap only, never on load), subscribes
-// and tells the worker. ntfy stays, under it. iPhone: from the Home Screen app only. The browser parts are stubbed.
+// and tells the worker. ntfy is gone (nobody had signed up). iPhone: from the Home Screen app only. The browser parts
+// are stubbed.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
@@ -44,13 +45,13 @@ async function settings(p) {
   return sec;
 }
 
-test('Alert this phone is offered, ntfy sits under it, and nothing asks for permission on load', async () => {
+test('Alert this phone is offered, ntfy is gone, and nothing asks for permission on load', async () => {
   const B = {}, calls = [];
   const p = loadPage({ storage: storage(), fetchImpl: worker(calls), beforeLoad: browser(B) });
   const sec = await settings(p);
   assert.match(sec.querySelector('[data-pnc="wpon"]').textContent, /Alert this phone/);
   assert.ok(sec.querySelector('[data-pnc="wpon"]').classList.contains('p'), 'the main button');
-  assert.match(sec.textContent, /Or use the free ntfy app/);
+  assert.doesNotMatch(sec.textContent, /ntfy/);
   assert.equal(B.perm, 0, 'no permission prompt on load');
   assert.equal(B.reg.length, 0, 'no service worker until the tap');
   assert.deepEqual(p.errors, []);
@@ -111,7 +112,6 @@ test('blocked in the browser settings: it says where to change it, and offers no
   const sec = await settings(p);
   assert.match(sec.textContent, /blocked in your browser settings/);
   assert.equal(sec.querySelector('[data-pnc="wpon"]'), null);
-  assert.match(sec.textContent, /Or use the free ntfy app/, 'ntfy still works');
   await p.close();
 });
 
@@ -121,17 +121,17 @@ test('iPhone in Safari: add Prowl to the Home Screen first', async () => {
   const sec = await settings(p);
   assert.match(sec.textContent, /On iPhone, add Prowl to your Home Screen first/);
   assert.equal(sec.querySelector('[data-pnc="wpon"]'), null);
-  assert.match(sec.textContent, /Or use the free ntfy app/);
   await p.close();
 });
 
-test('no push in this browser, or the worker not set up yet: no button, ntfy as before', async () => {
+test('no push in this browser, or the worker not set up yet: no button, and finds come by email', async () => {
   for (const [name, over, opts] of [['no push here', {}, { noPush: true }], ['worker not set up', { wpush: null }, {}]]) {
     const B = {}, calls = [];
     const p = loadPage({ storage: storage(), fetchImpl: worker(calls, over), beforeLoad: browser(B, opts) });
     const sec = await settings(p);
     assert.equal(sec.querySelector('[data-pnc="wpon"]'), null, name);
-    assert.match(sec.querySelector('[data-pnc="pushon"]').textContent, /Tap my phone when it.s found/, name + ': ntfy is the main button');
+    assert.match(sec.textContent, /Finds wait at the top of your Prowl email\./, name);
+    assert.doesNotMatch(sec.textContent, /ntfy/, name);
     await p.close();
   }
 });
