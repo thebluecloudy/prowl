@@ -21,7 +21,7 @@ function indexConst(name) {
 }
 const FNS = ["vClean", "alWords", "alExWords", "scrubListingText", "shareLinks", "pounceMax", "pounceDayCap", "pounceNum", "pounceClean", "pounceQuarries", "pounceInches", "pounceSkip",
   "pouncePrompt", "pounceParse", "pounceKeep", "pjKey", "pjOf", "pounceForget", "pounceHunt", "pounceTopicOk", "pounceNtfy", "pounceSig", "pounceKey", "pounceSeal", "pounceOpen", "pounceNoUrl", "pouncePush",
-  "pounceNotify", "pounceSlim", "pounceHold", "pounceRetry", "pounceRun", "pounceCarry", "alPendAdd", "alPendCap", "alCheck"];
+  "pounceHasPhone", "pounceNotify", "pounceSlim", "pounceHold", "pounceRetry", "pounceRun", "pounceCarry", "alPendAdd", "alPendCap", "alCheck"];
 const CONSTS = ["POUNCE_STOP"];
 
 function load(over, fns) {
@@ -39,6 +39,9 @@ function load(over, fns) {
     pounceJudge: async (env, term, g, x) => { calls.judge.push(x.title); return /26/.test(x.title) ? { match: "yes", p: 0.9, reason: "Long tail flat on the base, 26 inches." } : /maybe/i.test(x.title) ? { match: "maybe", p: 0.85, reason: "Tail hidden." } : { match: "no", p: 0.9, reason: "Curled tail." }; },
     pounceSendPush: async (env, body) => { calls.push.push(body); return true; },
     pounceDownSet: async () => { calls.down++; },
+    /* v114: Prowl's own notifications, stubbed: off unless a test turns them on */
+    pushReady: () => !!deps.PUSH_READY, pushId: async () => "pid", pushList: async () => deps.PUSH_LIST || [],
+    pushMatch: async (env, sub, x) => { (calls.web = calls.web || []).push(x.url); return { ok: deps.PUSH_OK !== false }; },
     POUNCE_HOLD_DAYS: 3, AL_PEND_CAP: 30, AL_SEEN_CAP: 6000,
     alPrefs: () => ({ freq: "daily" }),
     alHunt: async (env, h) => { calls.hunt.push(h); return (deps.LISTED || {})[h] || []; },
@@ -310,7 +313,7 @@ test("wired in: routes, the alert check, status, purge and email move", () => {
   assert.ok(INDEX.indexOf('url.pathname === "/alerts/quarry-no"') < INDEX.indexOf('if (request.method === "POST" && ALLOW_ORIGINS.indexOf(origin) === -1)'), "Not it works from the phone note, which has no Origin");
   assert.match(indexFn("alCheck"), /pounceRun\(env, sub, h, all, !!only\)/);
   assert.match(indexFn("alTick"), /PJ_RUN = \{ left: POUNCE_PER_RUN, m: \{\}, down: !!\(await kvGet\(env, "pjdown", null\)\) \}/);
-  assert.match(indexFn("alTick"), /if \(sub\.push\) await pounceRetry\(env, sub\); held = await pounceCarry\(env, sub, now, !!phoneOnly\);/);
+  assert.match(indexFn("alTick"), /if \(pounceHasPhone\(sub\)\) await pounceRetry\(env, sub\); held = await pounceCarry\(env, sub, now, !!phoneOnly\);/);
   assert.match(indexFn("alTick"), /if \(held && !PJ_RUN\.down && loc\.hour < alSlotHour\(env, sub\) \+ 2\) continue;/, "the digest waits briefly for Pounce, never for an outage");
   assert.match(indexFn("alStatus"), /quarryMatches/);
   assert.match(indexFn("alPurge"), /"pj:", "gm:", "pq:", "pp:"/);
@@ -370,4 +373,29 @@ test("v113: Pounce takes the store sign-in as well as the email token, as status
   assert.equal((await P.pounceMember({}, {}, { email: "", tok: "" })).email, "matt@x.com", "with no email on this device");
   assert.equal(await P.pounceMember({}, {}, { email: "someone@else.com", tok: "" }), null, "never for another member's address");
   for (const fn of ["pounceSave", "pounceTopicSet", "pounceTest"]) assert.match(indexFn(fn), /await pounceMember\(request, env, b\)/, fn + " uses it");
+});
+
+test("v114: delivery order: Prowl's own alert first, ntfy when chosen or when it fails, then the digest", async () => {
+  const x = { title: "Royal Haeger panther 26 inch", url: "https://www.ebay.com/itm/1", hunt: "royal haeger panther", pounce: { match: "yes", p: 0.9, reason: "Flat tail." } };
+  const topic = { topic: "prowl-" + "a".repeat(24) };
+  let L = load({}); L.deps.PUSH_READY = true; L.deps.PUSH_LIST = [{ endpoint: "https://fcm.googleapis.com/x" }];
+  assert.equal((await L.P.pounceNotify({}, { email: "a@x.com", tok: "T", push: topic, phone: "prowl" }, [x])).length, 0);
+  assert.deepEqual(L.calls.web, [x.url], "Prowl's own alert went");
+  assert.equal(L.calls.push.length, 0, "so ntfy did not");
+  L = load({}); L.deps.PUSH_READY = true; L.deps.PUSH_LIST = [{ endpoint: "https://fcm.googleapis.com/x" }]; L.deps.PUSH_OK = false;
+  assert.equal((await L.P.pounceNotify({}, { email: "a@x.com", tok: "T", push: topic, phone: "prowl" }, [x])).length, 0);
+  assert.equal(L.calls.web.length, 1);
+  assert.equal(L.calls.push.length, 1, "it failed everywhere: ntfy took it");
+  L = load({}); L.deps.PUSH_READY = true; L.deps.PUSH_LIST = [{ endpoint: "https://fcm.googleapis.com/x" }];
+  await L.P.pounceNotify({}, { email: "a@x.com", tok: "T", push: topic, phone: "ntfy" }, [x]);
+  assert.equal(L.calls.web, undefined, "the member chose ntfy: Prowl's alert is not tried");
+  assert.equal(L.calls.push.length, 1);
+  L = load({}); L.deps.PUSH_READY = true; L.deps.PUSH_LIST = [{ endpoint: "https://fcm.googleapis.com/x" }]; L.deps.PUSH_OK = false;
+  assert.equal((await L.P.pounceNotify({}, { email: "a@x.com", tok: "T", phone: "prowl" }, [x])).length, 1, "no ntfy and the alert failed: the digest");
+  assert.deepEqual(await L.P.pounceNotify({}, { email: "a@x.com", tok: "T", phone: "prowl" }, [x], true), [], "phone-only: kept to try again");
+  assert.equal(L.json("pp:a@x.com")[0].url, x.url);
+  L = load({});
+  assert.equal(L.P.pounceHasPhone({ phone: "prowl" }), true, "Prowl's own alerts make a member phone-only-able");
+  assert.equal(L.P.pounceHasPhone({ push: topic }), true);
+  assert.equal(L.P.pounceHasPhone({}), false);
 });

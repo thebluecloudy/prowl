@@ -2691,7 +2691,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.96';
+var PROWL_VERSION='v6.97';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -5041,7 +5041,7 @@ function pncHtml(){
   var hs=mailHunts(),act=prefsActive(),q=pncQ(),n=0,h,i,k,g,d,gm=MAIL.gm||[],P=MAIL.push;
   for(k in q)if(act[k]&&q[k].spec)n++;
   h='<div class="mail-sec pnc"><h4>\uD83D\uDC3E Pounce<small>'+n+' of '+(MAIL.quarryMax||1)+'</small></h4><p class="mail-fine">Describe the exact piece you are stalking. Prowl looks at every new listing\u2019s photo and title, and you only hear about the ones that fit.</p>'+
-    (P&&P.url?pncPhone(P):
+    (wpLine()||'')+(P&&P.url?pncPhone(P):wpShow()?'<p class="mail-fine">Or use the free ntfy app: <button type="button" class="sgw-ml" data-pnc="pushon"'+(PNC.busy?' disabled':'')+'>Use ntfy</button></p>':
       '<p class="mail-fine"><button type="button" class="b p" data-pnc="pushon"'+(PNC.busy?' disabled':'')+'>\uD83D\uDCF1 Tap my phone when it\u2019s found</button><br>Free ntfy app, Android or iPhone. Without it, finds wait in your Prowl email.</p>');
   /* v6.95: a message shows where it is about: under the hunt being saved, or here for phone alerts. It used to show
      only below every hunt, off the screen, so a refused save looked like nothing happened (Matt, 2026-10-13) */
@@ -5068,9 +5068,51 @@ function pncHtml(){
 }
 /* v6.96: the phone line says the channel by name, with Copy, and opens the ntfy app itself (ntfy://host/topic, its
    subscribe link). "Open in ntfy" went to ntfy's web page, so the app never learned the channel (Matt, 2026-10-13). */
+/* v6.97: Prowl's own notifications (worker v114). "Alert this phone" registers Prowl's service worker (the shop's
+   /apps/prowl/sw.js, through the app proxy), asks for permission (only on that tap, never on load), subscribes and
+   tells the worker, which sends a test. iPhone: only from the Home Screen app (iOS 16.4+). ntfy stays, under it. */
+var WP_SW='/apps/prowl/sw.js',WP_SCOPE='/apps/prowl/';
+function wpCan(){try{return !!(navigator.serviceWorker&&window.PushManager&&window.Notification)}catch(e){return false} }
+function wpIos(){var u=navigator.userAgent||'';return /iP(hone|ad|od)/.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)}
+function wpHome(){try{return typeof inStandalone==='function'?inStandalone():!!navigator.standalone}catch(e){return false} }
+function wpShow(){var W=MAIL.wpush;return !!(W&&W.key&&(wpCan()||(wpIos()&&!wpHome())))}
+function wpLine(){
+  var W=MAIL.wpush;if(!W||!W.key)return '';
+  if(wpIos()&&!wpHome())return '<p class="mail-fine">📱 <b>On iPhone, add Prowl to your Home Screen first:</b> tap Share, then Add to Home Screen, open Prowl from there, and turn alerts on here.</p>';
+  if(!wpCan())return '';
+  if(Notification.permission==='denied')return '<p class="mail-fine">📱 Notifications from this site are <b>blocked in your browser settings</b>. Allow them there, then come back.</p>';
+  if(mGet('wpushOn'))return '<p class="mail-fine">📱 <b>Alerts on this phone ✓</b> · <button type="button" class="sgw-ml" data-pnc="wptest">Send test</button> · <button type="button" class="sgw-ml" data-pnc="wpoff">Turn off</button></p>';
+  return '<p class="mail-fine"><button type="button" class="b p" data-pnc="wpon"'+(PNC.busy?' disabled':'')+'>📱 Alert this phone</button><br>Pounce taps this phone when it finds your quarry. No other app needed.</p>';
+}
+function wpKey(s){var t=String(s).replace(/-/g,'+').replace(/_/g,'/'),b=atob(t+'==='.slice((t.length+3)%4)),o=new Uint8Array(b.length),i;for(i=0;i<b.length;i++)o[i]=b.charCodeAt(i);return o}
+function wpLabel(){var u=navigator.userAgent||'';return wpIos()?'iPhone':/Android/.test(u)?'Android':'Computer'}
+function wpReady(reg){return new Promise(function(ok,no){
+  if(reg.active)return ok(reg);
+  var w=reg.installing||reg.waiting,t=setTimeout(function(){no(new Error('the alert helper did not start'))},15000);
+  if(!w){clearTimeout(t);return no(new Error('the alert helper did not start'))}
+  w.addEventListener('statechange',function(){if(w.state==='activated'){clearTimeout(t);ok(reg)} });
+})}
+function wpFail(er){PNC.busy=0;PNC.msg=er&&er.message==='blocked'?'Notifications are blocked for this site. Allow them in your browser settings, then try again.':er&&er.message==='dismissed'?'Alerts stay off. Tap Alert this phone again when you are ready.':'Could not turn on alerts here ('+((er&&er.message)||'unknown')+'). The ntfy app below still works.';rMail()}
+function wpOn(){
+  var p;PNC.mk='';PNC.busy=1;PNC.msg='Turning on alerts…';
+  try{p=Notification.requestPermission()}catch(e){p=null}   /* first, inside the tap */
+  rMail();
+  Promise.resolve(p).then(function(perm){perm=perm||Notification.permission;if(perm!=='granted')throw new Error(perm==='denied'?'blocked':'dismissed');
+    return navigator.serviceWorker.register(WP_SW,{scope:WP_SCOPE})})
+  .then(wpReady)
+  .then(function(reg){return reg.pushManager.getSubscription().then(function(s){return s||reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:wpKey(MAIL.wpush.key)})})})
+  .then(function(s){pncPost('push/subscribe',{sub:s.toJSON(),label:wpLabel()},function(j){if(j&&j.ok){mSet('wpushOn','1');MAIL.phone='prowl'}pncSay(j,'Alerts on this phone. A test is on its way.')})})
+  ['catch'](wpFail);
+}
+function wpOff(){
+  var ep='';PNC.mk='';PNC.busy=1;PNC.msg='Turning off…';rMail();
+  navigator.serviceWorker.getRegistration(WP_SCOPE).then(function(reg){return reg?reg.pushManager.getSubscription():null})
+  .then(function(s){if(!s)return;ep=s.endpoint;return s.unsubscribe()})
+  ['catch'](function(){}).then(function(){mSet('wpushOn','');pncPost('push/unsubscribe',{endpoint:ep},function(j){pncSay(j,'Alerts off on this phone.')})});
+}
 function pncPhone(P){
   var m=/^https:\/\/([^\/?#]+)\/([A-Za-z0-9_-]{1,64})$/.exec(String(P.url||'')),t=m?m[2]:String(P.topic||'');
-  return '<p class="mail-fine">\uD83D\uDCF1 <b>Phone alerts on.</b> In the ntfy app, tap + and subscribe to <b class="pnc-topic">'+esc(t)+'</b> <button type="button" class="sgw-ml" data-pnc="copytopic" data-t="'+esc(t)+'">Copy</button><br>'+
+  return '<p class="mail-fine">\uD83D\uDCF1 <b>'+(wpShow()?'ntfy alerts on.':'Phone alerts on.')+'</b> In the ntfy app, tap + and subscribe to <b class="pnc-topic">'+esc(t)+'</b> <button type="button" class="sgw-ml" data-pnc="copytopic" data-t="'+esc(t)+'">Copy</button><br>'+
     (m?'<a class="sgw-ml" href="ntfy://'+esc(m[1])+'/'+esc(t)+'">Open the ntfy app</a> \u00b7 <a class="sgw-ml" href="'+esc(P.url)+'" target="_blank" rel="noopener">ntfy on the web</a> \u00b7 ':'')+
     '<button type="button" class="sgw-ml" data-pnc="pushoff">Turn off</button></p>';
 }
@@ -5105,6 +5147,9 @@ document.addEventListener('click',function(e){
       function(j){if(j&&j.ok){PNC.edit='';PNC.d=null}pncSay(j,a==='save'?'Saved. Pounce is stalking it.':'Stopped.')});
     return;
   }
+  if(a==='wpon'){wpOn();return}
+  if(a==='wpoff'){wpOff();return}
+  if(a==='wptest'){PNC.mk='';PNC.busy=1;rMail();pncPost('push/test',{},function(j){pncSay(j,j&&j.sent?'Test sent. It should arrive in a few seconds.':'Prowl could not reach this phone. Turn alerts off and on again.')});return}
   if(a==='copytopic'){var tp=b.getAttribute('data-t')||'';PNC.mk='';
     try{navigator.clipboard.writeText(tp).then(function(){PNC.msg='Copied '+tp+'. Paste it in ntfy after +.';rMail()},function(){PNC.msg='Your channel is '+tp+'.';rMail()})}catch(er){PNC.msg='Your channel is '+tp+'.';rMail()}
     return}
@@ -5199,7 +5244,7 @@ function mailStatus(fresh,cb){
       /* v6.04: the membership moved to a new address (same token): follow it once */
       if(j&&j.on===false&&j.moved&&!MAIL.movedHop){MAIL.movedHop=1;var mv=String(j.moved).toLowerCase();mSet('alertEmail',mv);mSet('alertSig','');MAIL.moving='';MAIL.msg='Your Prowl Alerts now go to '+mv+'. This device switched over.';setTimeout(function(){mailStatus(true,cb)},0);return}
       if(j&&j.on){MAIL.moving=j.moving||'';mailStoreLook();}
-      if(j&&j.on){mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;if(typeof j.defHour==='number')MAIL.defHour=j.defHour;MAIL.mail=j.mail==='off'?'off':'on';MAIL.hadPro=!!j.hadPro;MAIL.freeWeekly=!!j.freeWeekly;MAIL.plan=j.plan||null;if(j.prefs&&!MAIL.pending&&!MAIL.saving){MAIL.prefs=j.prefs;setTimeout(prefsTzSync,0)}if(j.hunts&&j.hunts.length!==undefined)mailMerge(j.hunts);MAIL.quarries=j.quarries||{};MAIL.quarryMax=j.quarryMax||1;MAIL.push=j.push||null;pncSeen(j.quarryMatches);}
+      if(j&&j.on){mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;if(typeof j.defHour==='number')MAIL.defHour=j.defHour;MAIL.mail=j.mail==='off'?'off':'on';MAIL.hadPro=!!j.hadPro;MAIL.freeWeekly=!!j.freeWeekly;MAIL.plan=j.plan||null;if(j.prefs&&!MAIL.pending&&!MAIL.saving){MAIL.prefs=j.prefs;setTimeout(prefsTzSync,0)}if(j.hunts&&j.hunts.length!==undefined)mailMerge(j.hunts);MAIL.quarries=j.quarries||{};MAIL.quarryMax=j.quarryMax||1;MAIL.push=j.push||null;MAIL.wpush=j.wpush||null;MAIL.phone=j.phone||'';pncSeen(j.quarryMatches);}
       else if(j&&j.on===false){mSet('alertTok','');mSet('alertSig','');}
       /* v6.00: this device may push its list only after a real pull merged the
          member's list in; a bad or missing answer leaves sync off until the next status */

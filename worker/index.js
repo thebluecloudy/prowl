@@ -19,6 +19,11 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v114: 2026-10-13. Prowl's own notifications (Web Push): a Pounce match arrives as a notification from Prowl, no ntfy
+ *        app. The service worker is served at the shop's /apps/prowl/sw.js (app proxy, /proxy/sw.js here); /push/*
+ *        keeps each member's phones (push:, up to 5) and sends with worker/push.js (VAPID + RFC 8291). Order: Prowl's
+ *        own alert, then ntfy (when chosen, or when push fails), then the digest. Needs VAPID_PRIVATE_JWK, VAPID_PUBLIC,
+ *        VAPID_SUBJECT (scripts/vapid-keys.mjs); without them nothing changes.
  *   v113: 2026-10-13. Pounce takes a store session as well as the email token (pounceMember), as status, prefs and
  *        likes do: a member signed in through the store saw the Pounce box, but every save was refused.
  *   v112: 2026-10-12. Pounce, the quarry hunt (Hark's branch, brought up to date by Claude): a saved hunt plus a
@@ -389,8 +394,10 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
+import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb64u } from "./push.js";   /* v114 */
+import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
-const WORKER_VERSION = "v113";
+const WORKER_VERSION = "v114";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4068,10 +4075,17 @@ async function pounceSendPush(env, body) {
 }
 async function pounceNotify(env, sub, hits, phoneOnly) {
   if (PJ_RUN.quiet) return hits.slice();   /* a debug run: matches wait in the digest, no phone is tapped */
-  const left = [], id = hits.length && sub.push ? await pounceSeal(env, sub.email) : "";
+  /* v114: the order a match tries: Prowl's own notification (Web Push) unless the member chose ntfy, then ntfy, then
+     the next digest (or, for a phone-only member, pp: to try again) */
+  const canNtfy = !!(sub.push && pounceTopicOk(sub.push.topic));
+  const canWeb = hits.length && sub.phone !== "ntfy" && pushReady(env) ? (await pushList(env, await pushId(env, sub.email))).length > 0 : false;
+  const left = [], id = hits.length && canNtfy ? await pounceSeal(env, sub.email) : "";
   for (const x of hits) {
     let ok = false;
-    if (sub.push && pounceTopicOk(sub.push.topic) && (await vCount("pjm:" + sub.email, POUNCE_PUSH_PER_DAY))) ok = await pounceSendPush(env, pouncePush(env, sub, x, await pounceSig(sub, x.hunt, x.url), id));
+    if ((canWeb || canNtfy) && (await vCount("pjm:" + sub.email, POUNCE_PUSH_PER_DAY))) {
+      if (canWeb) ok = !!(await pushMatch(env, sub, x)).ok;
+      if (!ok && canNtfy) ok = await pounceSendPush(env, pouncePush(env, sub, x, await pounceSig(sub, x.hunt, x.url), id));
+    }
     if (!ok) left.push(x);
   }
   if (phoneOnly && left.length) { await pounceHold(env, sub, left); return []; }   /* v112 review: no digest to fall back on */
@@ -4091,7 +4105,7 @@ async function pounceRetry(env, sub) {
   const pp = await kvGet(env, "pp:" + sub.email, null);
   if (!Array.isArray(pp) || !pp.length) return 0;
   const live = pp.filter(x => x && x.url && Date.now() - (Number(x.ppAt) || 0) < POUNCE_HOLD_DAYS * 86400000);
-  const left = sub.push && pounceTopicOk(sub.push.topic) && live.length ? await pounceNotify(env, sub, live, false) : [];
+  const left = pounceHasPhone(sub) && live.length ? await pounceNotify(env, sub, live, false) : [];
   await kvPut(env, "pp:" + sub.email, left);
   return pp.length - left.length;
 }
@@ -4101,6 +4115,157 @@ async function pounceRun(env, sub, h, items, phoneOnly) {
   const hits = await pounceHunt(env, sub, h, items);
   const left = hits.length ? await pounceNotify(env, sub, hits, phoneOnly) : [];
   return { digest: phoneOnly ? [] : left, rest: hits.more ? hits.rest.map(pounceSlim) : [] };
+}
+/* ---------- v114: Prowl's own notifications (Web Push) ----------
+   A Pounce match arrives as a notification from Prowl itself, without the ntfy app (Matt, 2026-10-13). The service
+   worker (worker/sw.js) is served from the shop at /apps/prowl/sw.js through the app proxy (/proxy/sw.js here), the
+   page subscribes the phone (Den > Settings > Pounce: Alert this phone), and worker/push.js sends (VAPID + RFC 8291).
+     push:<pushId>     up to PUSH_MAX phones: [{ id, endpoint, p256dh, auth, label, created, lastOk }]
+     pushep:<hash>     { k: pushId } for each endpoint, so the service worker can swap a renewed subscription
+   pushId is a salted hash of the address, so no address is in a key. sub.phone = "prowl" | "ntfy" | "" is the
+   member's choice of phone channel: Prowl's own alerts first unless they chose ntfy.
+     GET  /proxy/sw.js       the service worker (no Shopify signature needed: it is the same file for everyone)
+     POST /push/subscribe    { email, tok | store session, sub, label }: keep this phone, then send it a test
+     POST /push/unsubscribe  { email, tok | session, endpoint }
+     POST /push/test         { email, tok | session }: "Prowl is set to alert this phone."
+     POST /push/act          { t, action }: a notification's Not it (t is a signed token for that match, 14 days)
+     POST /push/swap         { old, sub }: the browser renewed a subscription */
+const PUSH_MAX = 5, PUSH_ACT_DAYS = 14;
+async function pushHash(text, n) {
+  const d = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
+  return Array.from(d.slice(0, n), x => ("0" + x.toString(16)).slice(-2)).join("");
+}
+async function pushId(env, email) { return pushHash("push|" + String((env && (env.MEMBER_ID_SALT || env.ADMIN_KEY)) || "") + "|" + String(email || "").toLowerCase(), 12); }
+async function pushList(env, pid) { const l = await kvGet(env, "push:" + pid, []); return Array.isArray(l) ? l.filter(x => x && x.endpoint) : []; }
+function pounceHasPhone(sub) { return !!(sub && ((sub.push && pounceTopicOk(sub.push.topic)) || sub.phone === "prowl")); }
+/* keep a phone: the same endpoint replaces its old entry, the newest PUSH_MAX are kept */
+function pushAdd(list, s, label, now) {
+  const rest = (Array.isArray(list) ? list : []).filter(x => x && x.endpoint !== s.endpoint);
+  const one = { id: (now || Date.now()).toString(36) + Math.random().toString(36).slice(2, 6), endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth, label: vClean(label, 40), created: new Date(now || Date.now()).toISOString(), lastOk: "" };
+  const all = rest.concat([one]);
+  return { list: all.slice(-PUSH_MAX), dropped: all.slice(0, Math.max(0, all.length - PUSH_MAX)) };
+}
+function swResponse(env, method) {
+  const src = SW_SRC.replace("__PROWL_API__", WORKER_BASE + "/").replace("__PROWL_APP__", PROWL_APP).replace("__PROWL_VAPID__", String((env && env.VAPID_PUBLIC) || ""));
+  return new Response(method === "HEAD" ? null : src, { status: 200, headers: { "Content-Type": "application/javascript; charset=utf-8", "Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff" } });
+}
+/* send one payload to every phone the member has; a phone the push service says is gone (404/410) is dropped */
+async function pushToMember(env, email, payload) {
+  const pid = await pushId(env, email), list = await pushList(env, pid), keep = [], out = { ok: 0, retry: 0, gone: 0, n: list.length };
+  for (const s of list) {
+    const r = await pushSend(env, s, payload);
+    if (r.gone) { out.gone++; try { await env.PROWL_ALERTS.delete("pushep:" + await pushHash(s.endpoint, 16)); } catch (e) {} continue; }
+    if (r.ok) { out.ok++; s.lastOk = new Date().toISOString(); } else if (r.retry) out.retry++;
+    keep.push(s);
+  }
+  if (out.gone || out.ok) await kvPut(env, "push:" + pid, keep);
+  return out;
+}
+/* the signed token a notification carries for its buttons: the member (sealed, as in ntfy's Not it), the hunt, the
+   listing and an expiry, so the service worker never holds the member's sign-in */
+async function pushActKey(env) {
+  const s = String((env && (env.MEMBER_ID_SALT || env.ADMIN_KEY)) || "");
+  return s ? new TextEncoder().encode("push-act|" + s) : null;
+}
+async function pushActSign(key, data) {
+  const k = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return pushB64u(new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(data)))).slice(0, 32);
+}
+async function pushActToken(env, email, hunt, url, now) {
+  const key = await pushActKey(env), m = key ? await pounceSeal(env, email) : "";
+  if (!key || !m) return "";
+  const body = pushB64u(new TextEncoder().encode(JSON.stringify({ m: m, h: String(hunt).slice(0, 60), u: String(url).slice(0, 600), x: Math.floor((now || Date.now()) / 1000) + PUSH_ACT_DAYS * 86400 })));
+  return body + "." + await pushActSign(key, body);
+}
+async function pushActOpen(env, t, now) {
+  const key = await pushActKey(env), p = String(t || "").split(".");
+  if (!key || p.length !== 2 || p[0].length > 2000 || !alSame(p[1], await pushActSign(key, p[0]))) return null;
+  let j = null; try { j = JSON.parse(new TextDecoder().decode(pushUnb64u(p[0]))); } catch (e) { return null; }
+  if (!j || !(Number(j.x) > Math.floor((now || Date.now()) / 1000))) return null;
+  const email = alEmail(await pounceOpen(env, j.m));
+  return email ? { email: email, hunt: vClean(j.h, 60), url: String(j.u || "") } : null;
+}
+/* one Pounce match as Prowl's own notification. No address or name in it; tag = the quarry, so a newer match for the
+   same quarry replaces the older note instead of stacking */
+async function pushMatch(env, sub, x) {
+  const v = x.pounce || {}, site = AL_SRC_NAME[x.src] || x.src || "";
+  const title = String(x.title || "").replace(/\s+/g, " ").trim().slice(0, 110);
+  const payload = {
+    v: 1, title: v.match === "yes" ? "🐾 I think I spotted your quarry" : "🐾 This might be your quarry",
+    body: (title + "\n" + [x.price, site ? "on " + site : ""].filter(Boolean).join(" ") + "\nWhy: " + (v.reason || "it fits your description")).slice(0, 400),
+    url: PROWL_APP + "?pounce=" + encodeURIComponent(x.url), img: /^https:\/\//.test(x.image || "") ? x.image : "",
+    t: await pushActToken(env, sub.email, x.hunt, x.url), tag: "pounce-" + await pushHash(String(x.hunt || "").toLowerCase(), 4)
+  };
+  return pushToMember(env, sub.email, payload);
+}
+async function pushRoute(request, env, url, origin) {
+  if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
+  if (!pushReady(env)) return json({ error: "Phone alerts from Prowl are not set up yet." }, 503, origin);
+  const b = await readJson(request, 8192);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  const path = url.pathname;
+  if (path === "/push/act") {
+    const a = await pushActOpen(env, b.t);
+    if (!a) return json({ error: "That button has expired. Open Prowl to mark it." }, 400, origin);
+    const sub = await kvGet(env, "sub:" + a.email, null);
+    if (!sub) return json({ error: "not found" }, 404, origin);
+    if (b.action === "notit") { await pounceMarkNot(env, sub, a.hunt, a.url); return json({ ok: true }, 200, origin); }
+    return json({ ok: true, url: PROWL_APP + "?pounce=" + encodeURIComponent(a.url) + "&fp=1" }, 200, origin);
+  }
+  if (path === "/push/swap") {
+    const s = pushSubClean(b.sub), old = String(b.old || "");
+    const ix = old ? await kvGet(env, "pushep:" + await pushHash(old, 16), null) : null;
+    if (!s || !ix || !ix.k) return json({ error: "not found" }, 404, origin);
+    const list = await pushList(env, ix.k), at = list.findIndex(x => x.endpoint === old);
+    if (at < 0) return json({ error: "not found" }, 404, origin);
+    Object.assign(list[at], { endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth });
+    await kvPut(env, "push:" + ix.k, list);
+    try { await env.PROWL_ALERTS.delete("pushep:" + await pushHash(old, 16)); } catch (e) {}
+    await kvPut(env, "pushep:" + await pushHash(s.endpoint, 16), { k: ix.k });
+    return json({ ok: true }, 200, origin);
+  }
+  const sub = await pounceMember(request, env, b);
+  if (!sub) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
+  const pid = await pushId(env, sub.email);
+  if (path === "/push/subscribe") {
+    const s = pushSubClean(b.sub);
+    if (!s) return json({ error: "This browser's alert address was not one Prowl can use." }, 400, origin);
+    if (!(await vCount("pushsub:" + pid, 20))) return json({ error: "Too many tries today. Try again tomorrow." }, 429, origin);
+    const r = pushAdd(await pushList(env, pid), s, b.label);
+    await kvPut(env, "push:" + pid, r.list);
+    for (const d of r.dropped) { try { await env.PROWL_ALERTS.delete("pushep:" + await pushHash(d.endpoint, 16)); } catch (e) {} }
+    await kvPut(env, "pushep:" + await pushHash(s.endpoint, 16), { k: pid });
+    sub.phone = "prowl"; await alMerge(env, sub, ["phone"]);   /* the default: Prowl's own alerts first */
+    const t = await pushToMember(env, sub.email, { v: 1, title: "🐾 Prowl", body: "Prowl is set to alert this phone.", url: PROWL_APP, tag: "prowl-test" });
+    return json({ ok: true, n: r.list.length, test: t.ok > 0 }, 200, origin);
+  }
+  if (path === "/push/unsubscribe") {
+    const ep = String(b.endpoint || ""), list = await pushList(env, pid), rest = list.filter(x => x.endpoint !== ep);
+    await kvPut(env, "push:" + pid, rest);
+    if (ep) { try { await env.PROWL_ALERTS.delete("pushep:" + await pushHash(ep, 16)); } catch (e) {} }
+    if (!rest.length && sub.phone === "prowl") { sub.phone = sub.push && pounceTopicOk(sub.push.topic) ? "ntfy" : ""; await alMerge(env, sub, ["phone"]); }
+    return json({ ok: true, n: rest.length }, 200, origin);
+  }
+  if (path === "/push/test") {
+    if (!(await vCount("pushtest:" + pid, 10))) return json({ error: "That is enough tests for today." }, 429, origin);
+    const t = await pushToMember(env, sub.email, { v: 1, title: "🐾 Prowl", body: "Prowl is set to alert this phone.", url: PROWL_APP, tag: "prowl-test" });
+    return json({ ok: true, sent: t.ok, n: t.n - t.gone }, 200, origin);
+  }
+  return json({ error: "not found" }, 404, origin);
+}
+/* an address change carries the phones to the new address; a deletion removes them */
+async function pushMove(env, from, to) {
+  const a = await pushId(env, from), b = await pushId(env, to), list = await pushList(env, a);
+  if (!list.length) return;
+  await kvPut(env, "push:" + b, list);
+  for (const s of list) await kvPut(env, "pushep:" + await pushHash(s.endpoint, 16), { k: b });
+  await env.PROWL_ALERTS.delete("push:" + a);
+}
+async function pushPurge(env, email) {
+  const pid = await pushId(env, email), list = await pushList(env, pid);
+  for (const s of list) await env.PROWL_ALERTS.delete("pushep:" + await pushHash(s.endpoint, 16));
+  await env.PROWL_ALERTS.delete("push:" + pid);
+  return list.length;
 }
 /* v112 review: listings a quarry hunt found but Pounce did not reach (run budget, Muse down) wait in pq: for the day,
    and later runs judge them from there, without searching every marketplace again. Tomorrow's search finds what is
@@ -4144,7 +4309,8 @@ async function pounceTopicSet(request, env, origin) {
   const sub = await pounceMember(request, env, b), email = sub && sub.email;
   if (!sub) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
   const on = b.on === true || b.on === 1 || b.on === "1";
-  if (!on) { sub.push = null; await alMerge(env, sub, ["push"]); return json({ ok: true, push: null }, 200, origin); }
+  if (!on) { sub.push = null; if (sub.phone === "ntfy") sub.phone = ""; await alMerge(env, sub, ["push", "phone"]); return json({ ok: true, push: null }, 200, origin); }
+  sub.phone = "ntfy"; await alMerge(env, sub, ["phone"]);   /* v114: chose ntfy: it goes first */
   if (!(sub.push && pounceTopicOk(sub.push.topic))) { sub.push = { topic: "prowl-" + alToken().slice(0, 24), at: new Date().toISOString() }; await alMerge(env, sub, ["push"]); }
   const url = pounceNtfy(env) + "/" + sub.push.topic;
   let hello = false;
@@ -4531,7 +4697,7 @@ async function alTick(env) {
     const loc = alLocal(sub, now);   /* v53: the member's own clock */
     /* v50: paused members cost nothing. v112 review: paused or emails off, a member with phone alerts and a quarry
        still gets Pounce (phoneOnly), and nothing else runs for them */
-    const phoneOnly = sub.mail === "off" || alPaused(sub, loc) ? (sub.push && pounceTopicOk(sub.push.topic) ? pounceQuarries(env, sub) : null) : false;
+    const phoneOnly = sub.mail === "off" || alPaused(sub, loc) ? (pounceHasPhone(sub) ? pounceQuarries(env, sub) : null) : false;   /* v114: Prowl's own alerts count */
     if (phoneOnly === null || (phoneOnly && !Object.keys(phoneOnly).length)) continue;
     if ((sub.proDay !== now.day && proLeft > 0) || !sub.utok) {
       if (sub.proDay !== now.day) { proLeft--; await alProSet(env, sub, false); }
@@ -4541,7 +4707,7 @@ async function alTick(env) {
     /* v112 review: first the phone taps that did not go through, then the listings Pounce did not reach on earlier runs */
     let held = 0;
     if (sub.quarries) {
-      try { if (sub.push) await pounceRetry(env, sub); held = await pounceCarry(env, sub, now, !!phoneOnly); }
+      try { if (pounceHasPhone(sub)) await pounceRetry(env, sub); held = await pounceCarry(env, sub, now, !!phoneOnly); }
       catch (e) { console.error("pounce carry", String(e && e.message || e)); }
     }
     let n = 0;
@@ -5080,6 +5246,7 @@ async function alMoveConfirm(request, env, url) {
   await alProSet(env, moved, true);
   await kvPut(env, "sub:" + to, moved);
   for (const k of ["pend:", "seen:", "likes:", "pj:", "gm:", "pp:"]) { const v = await kvGet(env, k + from, null); if (v != null) await kvPut(env, k + to, v); }   /* v85: likes:, v112: pj: gm: pp: (Pounce) */
+  await pushMove(env, from, to);   /* v114: the phones move with the address */
   if (moved.cid) await kvPut(env, "cid:" + moved.cid, { email: to });
   await env.PROWL_ALERTS.put("moved:" + from, JSON.stringify({ to: to, tok: sub.tok, at: Date.now() }), { expirationTtl: 90 * 86400 });
   for (const k of ["sub:", "pend:", "seen:", "mvf:", "likes:", "conf:", "code:", "pj:", "gm:", "pq:", "pp:"]) await env.PROWL_ALERTS.delete(k + from);   /* v86: conf: too, or a waiting confirm link makes a second, empty member on the old address */
@@ -5136,6 +5303,7 @@ async function alPurge(env, email, sub) {
     if (mv && mine.indexOf(String(mv.to)) !== -1) { await kv.delete("moved:" + old); gone.push("moved:"); }
   }
   for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "code:", "pj:", "gm:", "pq:", "pp:"]) { await kv.delete(p + email); gone.push(p); }   /* v85: likes:, v86: conf:, v108: code:, v112: pj: gm: pq: pp: (Pounce) */
+  if (await pushPurge(env, email)) gone.push("push:");   /* v114 */
   const cid = sub && sub.cid ? String(sub.cid) : "";
   if (cid) {
     const c = await kvGet(env, "cid:" + cid, null);
@@ -5294,7 +5462,8 @@ async function alStatus(request, env, url, origin) {
     price: "7.00", plan: pl, manageUrl: "https://www.owlandtwigvintage.com/account", prefs: alPrefs(sub), email: sub.email,
     moving: (await kvGet(env, "mvf:" + email, null) || {}).to || "",   /* v54 */
     quarries: (sub.quarries && typeof sub.quarries === "object") ? sub.quarries : {}, quarryMax: pounceMax(sub), quarryMatches: await kvGet(env, "gm:" + email, []),
-    push: sub.push && pounceTopicOk(sub.push.topic) ? { topic: sub.push.topic, url: pounceNtfy(env) + "/" + sub.push.topic } : null }, 200, origin);   /* v112 */
+    push: sub.push && pounceTopicOk(sub.push.topic) ? { topic: sub.push.topic, url: pounceNtfy(env) + "/" + sub.push.topic } : null,
+    phone: sub.phone || "", wpush: pushReady(env) ? { key: String(env.VAPID_PUBLIC), n: (await pushList(env, await pushId(env, email))).length } : null }, 200, origin);   /* v114 */   /* v112 */
 }
 
 /* v50: save the member's email settings. Token required; the shape is checked by
@@ -5861,6 +6030,7 @@ async function handleFetch(request, env, ctx) {
       if (!env.DEBUG_KEY || String(env.DEBUG_KEY).length < 12 || !alSame(request.headers.get("X-Prowl-Debug") || "", env.DEBUG_KEY)) return new Response("not found", { status: 404 });   /* v51 */
     }
     /* v39: Shopify app proxy (store login). Its own signature check; same-origin, no CORS. */
+    if (url.pathname === "/proxy/sw.js" && (request.method === "GET" || request.method === "HEAD")) return swResponse(env, request.method);   /* v114: before the signature check */
     if (url.pathname === "/proxy" || url.pathname.startsWith("/proxy/")) return proxyHandle(request, env, url);
     /* v28: unsubscribe links work from any mail app, including one-click POSTs */
     if (url.pathname === "/alerts/unsub") return alUnsub(request, env, url, origin);
@@ -5891,6 +6061,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/alerts/mail" && request.method === "POST") return alMailSet(request, env, origin);   /* v55 */
     if (url.pathname === "/alerts/delete" && request.method === "POST") return alDelete(request, env, origin);   /* v55 */
     if (url.pathname === "/alerts/likes" && request.method === "POST") return alLikes(request, env, origin);   /* v85 */
+    if (url.pathname.startsWith("/push/") && request.method === "POST") return pushRoute(request, env, url, origin);   /* v114: Prowl's own notifications */
     if (url.pathname === "/alerts/quarry" && request.method === "POST") return pounceSave(request, env, origin);   /* v112: Pounce */
     if (url.pathname === "/alerts/quarry-test" && request.method === "POST") return pounceTest(request, env, origin);   /* v112 */
     if (url.pathname === "/alerts/push" && request.method === "POST") return pounceTopicSet(request, env, origin);   /* v112 */

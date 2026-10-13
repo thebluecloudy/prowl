@@ -41,3 +41,9 @@ ALERT_ADDRESS = "Owl & Twig Vintage · 6311 Haggerty Rd, Unit #699 · West Bloom
 # through Matthew's own Facebook account), "public" (every visitor whose hunt was swept), or "off". The page shows the
 # strip only on owner devices unless its PROWL_FB_PUBLIC is also true.
 FB_FINDS = "owner"
+
+# v114: Prowl's own notifications (Web Push). The public half of the VAPID pair; the private half is the secret
+# VAPID_PRIVATE_JWK (Cloudflare > Workers > prowl > Settings > Variables and secrets). The two must stay a pair: a new
+# pair means every phone turns alerts on again. The subject is the Prowl page, not a person's address.
+VAPID_PUBLIC = "BAyeoiDGno-hSAHVI14NcMvA9TkxHUkllcXS9lcBZ0x8Mvnfh38GJo85n0JNiFQinBC5XD9bBpkOtvnDhGtXVL0"
+VAPID_SUBJECT = "https://www.owlandtwigvintage.com/pages/prowl"

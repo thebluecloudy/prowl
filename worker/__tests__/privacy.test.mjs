@@ -29,7 +29,7 @@ const kvPut = async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v));
 const logs = [];
 const quiet = { log: (...a) => logs.push(a.join(" ")), error() {} };
 const json = (body, status) => ({ status: status || 200, body });
-const P = fromIndex(["alPurge", "alMerge", "alEmail", "alSame", "vClean", "alParams", "alUnsub", "alDelete"], {
+const P = fromIndex(["pushHash", "pushId", "pushList", "pushPurge", "alPurge", "alMerge", "alEmail", "alSame", "vClean", "alParams", "alUnsub", "alDelete"], {
   kvGet, kvPut, console: quiet, json, ALLOW_ORIGINS: ["https://www.owlandtwigvintage.com"],
   alReady: (env) => !!env.PROWL_ALERTS,
   readJson: async (r) => r.body || {},
@@ -203,7 +203,7 @@ test("wired in: Delete in Prowl and the admin delete share alPurge", () => {
    purge, which follows mvf:, leaves nothing; and a confirm link that is not the member's current one is turned away. */
 test("v93: a newer change-of-address request retires the older link; a purge then leaves no pending change", async () => {
   let n = 0;
-  const M = fromIndex(["alEmail", "alSame", "alMask", "alMove", "alMoveConfirm", "alPurge"], {
+  const M = fromIndex(["pushHash", "pushId", "pushList", "pushPurge", "pushMove", "alEmail", "alSame", "alMask", "alMove", "alMoveConfirm", "alPurge"], {
     kvGet, kvPut, console: quiet, json, ALLOW_ORIGINS: ["o"], alReady: () => true, AL_MOVE_PER_EMAIL: 3,
     readJson: async (r) => r.body, alAllowed: () => true, vCount: async () => true, alToken: () => "code" + (++n),
     WORKER_BASE: "https://w", alShell: () => "", alEsc: (x) => x, alSend: async () => ({ ok: true }), alFootText: () => "",
