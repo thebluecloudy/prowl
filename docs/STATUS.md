@@ -1,16 +1,26 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-12 (v6.94 / v112).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-13 (v6.95 / v113).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.94** | 136,821 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
-| Worker | **v112** | |
+| Page | **v6.95** | 136,821 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Worker | **v113** | |
 
 Recently shipped, newest first:
 
+- **v6.95 / v113: Pounce saves for members signed in through the store.** Status, prefs and likes take a store session
+  (v82) in place of the email token; Pounce took only the token, so Matt saw the Pounce box but every Save quarry was
+  refused ("Sign in to Prowl Alerts first."). The worker's `pounceMember` now takes either, for save, phone alerts and
+  the owner test, and the page sends the session with them. The refusal also showed below every hunt, off the screen,
+  so the box just stayed open: a Pounce message now shows right under the hunt it is about, "Saving…" shows at once,
+  and an answer that is not JSON still says what came back.
+- **v6.95:** in Uranium, the band at the top of the Den, the listing popup and the other pop-up screens is a deep
+  green gradient (#1e7f24 to #0c330e, from Matt's shades of #3cff49) instead of the bright #39ff14, with a pale title
+  (#ebffec), and the popup's View on <site> button matches it (pale label, bright #3cff49 edge). The screens under it stay black, and the home page's section bands keep the bright green. Other themes are
+  unchanged. Test: `__tests__/page/uranium-popups.test.mjs`.
 - **v6.94:** a tap on a liked ShopGoodwill, eBay, Etsy or Salvation Army find in Den > Likes opens its listing popup
   again. The popup and the Den are both drawers at the same level and the Den comes later in the page, so the popup
   opened behind it and the tap seemed to do nothing (Matt's Haeger pumpkin). The popup now sits above every drawer, and
@@ -98,7 +108,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.95, worker v113**. Claim one here when you start.
+Next free numbers: **page v6.96, worker v114**. Claim one here when you start.
 
 ## What's next
 

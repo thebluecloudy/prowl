@@ -79,6 +79,43 @@ test('editing a quarry posts the member\'s words to the worker, and a too-short 
   await p.close();
 });
 
+test('a refused save says why right under the box, not below every hunt (v6.95)', async () => {
+  const calls = [];
+  const refuse = (u, o) => /alerts\/quarry/.test(String(u))
+    ? (calls.push({ url: String(u), body: (o && o.body) || '' }), Promise.resolve({ ok: false, status: 400, json: () => Promise.resolve({ error: 'Pounce works on one of your saved hunts.' }) }))
+    : worker(calls, { quarries: {}, quarryMatches: [] })(u, o);
+  const p = loadPage({ storage: base({ owlTwigSgwTerms: [{ t: HUNT }, { t: 'Fiesta' }, { t: 'Pyrex' }] }), fetchImpl: refuse });
+  const sec = await openSettings(p);
+  sec.querySelector('[data-pnc="edit"]').click();
+  await tick(30);
+  p.$('#otp-pncSpec').value = 'Royal Haeger R-495 panther, 26 inches, flat tail.';
+  p.$('#otp-pncSpec').dispatchEvent(new p.win.Event('input', { bubbles: true }));
+  p.$('#otp-denSettings [data-pnc="save"]').click();
+  assert.match(p.$('#otp-denSettings .pnc-msg').textContent, /Saving/, 'it says it is saving at once');
+  await tick(60);
+  const msg = p.$('#otp-denSettings .pnc-msg');
+  assert.equal(msg.textContent, 'Pounce works on one of your saved hunts.');
+  assert.ok(msg.previousElementSibling && msg.previousElementSibling.classList.contains('pnc-ed'), 'right under the open box');
+  await p.close();
+});
+
+test('an answer that is not JSON still says what came back', async () => {
+  const calls = [];
+  const broken = (u, o) => /alerts\/quarry/.test(String(u))
+    ? Promise.resolve({ ok: false, status: 502, json: () => Promise.reject(new Error('not json')) })
+    : worker(calls, { quarries: {}, quarryMatches: [] })(u, o);
+  const p = loadPage({ storage: base(), fetchImpl: broken });
+  const sec = await openSettings(p);
+  sec.querySelector('[data-pnc="edit"]').click();
+  await tick(30);
+  p.$('#otp-pncSpec').value = 'Royal Haeger R-495 panther, 26 inches, flat tail.';
+  p.$('#otp-pncSpec').dispatchEvent(new p.win.Event('input', { bubbles: true }));
+  p.$('#otp-denSettings [data-pnc="save"]').click();
+  await tick(60);
+  assert.match(p.$('#otp-denSettings .pnc-msg').textContent, /Prowl could not save it \(502\)/);
+  await p.close();
+});
+
 test('a new match shows a note and nothing else: no pounce event, the panther is not made to move again', async () => {
   const calls = [];
   const p = loadPage({
