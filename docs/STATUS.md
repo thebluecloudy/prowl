@@ -13,7 +13,7 @@ Recently shipped, newest first:
 
 - **v6.95:** in Uranium, the band at the top of the Den, the listing popup and the other pop-up screens is a deep
   green gradient (#1e7f24 to #0c330e, from Matt's shades of #3cff49) instead of the bright #39ff14, with a pale title
-  (#ebffec). The screens under it stay black, and the home page's section bands keep the bright green. Other themes are
+  (#ebffec), and the popup's View on <site> button matches it (pale label, bright #3cff49 edge). The screens under it stay black, and the home page's section bands keep the bright green. Other themes are
   unchanged. Test: `__tests__/page/uranium-popups.test.mjs`.
 - **v6.94:** a tap on a liked ShopGoodwill, eBay, Etsy or Salvation Army find in Den > Likes opens its listing popup
   again. The popup and the Den are both drawers at the same level and the Den comes later in the page, so the popup

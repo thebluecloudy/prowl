@@ -21,6 +21,13 @@ test('Uranium pop-up bands: a deep green gradient with a pale title that reads o
   for (const bg of [band[1], band[2]]) assert.ok(contrast(title, bg) >= 4.5, title + ' on ' + bg + ': ' + contrast(title, bg).toFixed(1));
 });
 
+test('the popup\'s View on button matches the band, with a pale label and a bright edge', () => {
+  const m = /\[data-theme=uranium\] \.scout-app-wrapper\.k2 \.otp-sheet a\.b\.p\.pp-go\{background:linear-gradient\(180deg,(#[0-9a-f]{6}) 0,(#[0-9a-f]{6}) 100%\);color:(#[0-9a-f]{6});border-color:#3cff49/.exec(PAGE);
+  assert.ok(m, 'the button rule is in the page');
+  assert.deepEqual([m[1], m[2]], ['#1e7f24', '#0c330e']);
+  for (const bg of [m[1], m[2]]) assert.ok(contrast(m[3], bg) >= 4.5, m[3] + ' on ' + bg);
+});
+
 test('the screens under the band are not recoloured, and other themes keep their bands', () => {
   assert.doesNotMatch(PAGE, /\[data-theme=uranium\] \.scout-app-wrapper \.drawer\.otp-sheet,/, 'no green body on the popup');
   assert.match(PAGE, /\[data-theme=uranium\] \.scout-app-wrapper \.drawer\{background:#0a0a1e\}/);
