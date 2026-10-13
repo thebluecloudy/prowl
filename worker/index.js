@@ -401,7 +401,7 @@ import { artResponse } from "./art.js";   /* v97 */
 import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb64u } from "./push.js";   /* v114 */
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
-const WORKER_VERSION = "v115";
+const WORKER_VERSION = "v116";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -623,9 +623,25 @@ function money(v) {
   return "$" + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
+/* v116: ShopGoodwill gives end times in Pacific time with no zone ("2026-10-13T18:05:00"). Read zone-less
+   times as America/Los_Angeles wall time; strings with Z or an offset (eBay, Salvation) parse as before. */
+const PT_FMT = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+function ptOff(t) {
+  try { const p = {}; for (const x of PT_FMT.formatToParts(new Date(t))) p[x.type] = x.value;
+    return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - Math.floor(t / 1000) * 1000;
+  } catch (e) { return -7 * 3600000; }
+}
+function sgwMs(v) {
+  const s = String(v || "").trim();
+  if (!s) return NaN;
+  if (/(Z|[+-]\d\d:?\d\d)$/i.test(s) || !/^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(s)) return Date.parse(s);
+  const w = Date.parse(s + "Z");
+  if (isNaN(w)) return NaN;
+  return w - ptOff(w - ptOff(w));
+}
 function timeLeft(endIso) {
   if (!endIso) return "";
-  const end = Date.parse(endIso);
+  const end = sgwMs(endIso);
   if (isNaN(end)) return "";
   let s = Math.floor((end - Date.now()) / 1000);
   if (s <= 0) return "";
@@ -1643,8 +1659,8 @@ async function itemSgw(id) {
     };
     /* end times read the same way as the search results (normalize), so the card and the popup agree */
     if (j.isAuction !== false) { out.bids = Number(j.numberOfBids) || 0; const tl = timeLeft(j.endTime); if (tl) out.time_left = tl; }
-    const endMs = Date.parse(j.endTime || "");
-    if (j.isItemEndTimeExpire === true || (j.isAuction !== false && endMs > 0 && endMs <= Date.now())) out.gone = true;
+    const endMs = sgwMs(j.endTime || "");
+    if (j.isItemEndTimeExpire === true || (j.isItemEndTimeExpire !== false && j.isAuction !== false && endMs > 0 && endMs <= Date.now())) out.gone = true;
     return out;
   } finally { clearTimeout(timer); }
 }
@@ -1693,7 +1709,7 @@ function salvationItem(html, ref) {
 async function itemRoute(env, url, origin, request) {
   const ref = itemRef(url.searchParams.get("url"));
   if (!ref) return json({ error: "not a listing Prowl can open" }, 400, origin);
-  const ck = new Request("https://prowl-verdicts.invalid/item1/" + ref.src + "/" + ref.id);
+  const ck = new Request("https://prowl-verdicts.invalid/item2/" + ref.src + "/" + ref.id);
   try { const hit = await PCACHE.match(ck); if (hit) return json(await hit.json(), 200, origin, { "X-Prowl-Cache": "hit" }); } catch (e) {}
   if (!(await vCount("it:" + ipKey(request.headers.get("CF-Connecting-IP")), ITEM_PER_IP))) return json({ error: "slow down" }, 429, origin);
   let out;
