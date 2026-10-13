@@ -3404,11 +3404,22 @@ function rDrawer(){
   $('#otp-dc').textContent=st.mkt.size+' of '+TOTAL+' selected';
   $('#otp-shw').textContent=st.exp?'Collapse':'Show all '+TOTAL;
 }
+/* v6.96: a live site switched on or off changes the search on screen too, not only the next one: its results load (or
+   go) at once. It used to take a reload to bring Chairish back (Matt, 2026-10-13). */
+function liveScope(id,on){
+  var r=st.run,live=id==='shopgoodwill',i;
+  for(i=0;i<LIVE_SRC.length;i++)if(LIVE_SRC[i].mkt===id)live=true;
+  if(!live||!r||!Array.isArray(r.scope)||r.mode==='daily'||r.mode==='facebook')return;
+  var sc=r.scope.slice(),at=sc.indexOf(id);   /* a copy: the run may hold the shared ALL list */
+  if(on&&at===-1)sc.push(id);else if(!on&&at>-1)sc.splice(at,1);else return;
+  r.scope=sc;
+  rRes();if(on)sgwForRun(r);
+}
 $('#otp-mk').addEventListener('change',function(e){
   var c=e.target.closest('input[data-m]');if(!c)return;
   if(c.checked)st.mkt.add(c.dataset.m);else st.mkt.delete(c.dataset.m);
   var had=document.activeElement===c,id=c.dataset.m;
-  save();rDrawer();
+  save();rDrawer();liveScope(id,c.checked);
   if(had){var n=$('#otp-mk').querySelector('input[data-m="'+id+'"]');if(n)n.focus()}   /* v6.33: the redraw no longer drops keyboard focus */
 });
 $('#otp-ts').addEventListener('click',function(){st.tab='shop';st.exp=false;rDrawer();});

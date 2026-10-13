@@ -14,6 +14,9 @@ Recently shipped, newest first:
 - **v6.96:** Pounce's phone line names the member's ntfy channel with a Copy button and links to the ntfy app itself
   (`ntfy://ntfy.sh/<channel>`, the app's subscribe link) as well as ntfy's web page. "Open in ntfy" went to the web
   page, so the app never learned the channel (Matt, 2026-10-13: an empty Subscribed topics list).
+  Also: switching a live site (ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Vinted, Grailed, Salvation Army) off or
+  on in the marketplace list now changes the search on screen too (`liveScope`); turning Chairish back on took a
+  reload. Tests: `__tests__/page/live-scope.test.mjs`.
 - **v6.95 / v113: Pounce saves for members signed in through the store.** Status, prefs and likes take a store session
   (v82) in place of the email token; Pounce took only the token, so Matt saw the Pounce box but every Save quarry was
   refused ("Sign in to Prowl Alerts first."). The worker's `pounceMember` now takes either, for save, phone alerts and
