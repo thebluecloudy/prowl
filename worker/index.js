@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v115: 2026-10-13. GET /img?u=: a find's photo for Share in Flock (Prowl's pages only, images only, 4 MB, 200 a day
+ *        per visitor, nothing kept).
  *   v115: 2026-10-13. Prowl's notes say who they are from and why, with no emoji (PUSH_TEST, pushMatch's title): Chrome's
  *        on-device filter flagged the first test as possible spam. Delivery worked.
  *   v114: 2026-10-13. Prowl's own notifications (Web Push): a Pounce match arrives as a notification from Prowl, no ntfy
@@ -4074,6 +4076,25 @@ async function pounceRun(env, sub, h, items, phoneOnly) {
   const left = hits.length ? await pounceNotify(env, sub, hits, phoneOnly) : [];
   return { digest: phoneOnly ? [] : left, rest: hits.more ? hits.rest.map(pounceSlim) : [] };
 }
+/* v115: a find's photo for Share in Flock (Matt, 2026-10-13: "can it send a picture too?"). The page cannot read a
+   marketplace's image itself (no CORS), so it asks here: GET /img?u=<https image>. Only for Prowl's own pages (their
+   Origin), only an image, at most IMG_MAX bytes, IMG_PER_IP a day per visitor, and nothing is kept. */
+const IMG_MAX = 4 * 1024 * 1024, IMG_PER_IP = 200;
+async function imgShare(request, url, origin) {
+  if (ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "not found" }, 404, origin);
+  const u = String(url.searchParams.get("u") || "");
+  if (!/^https:\/\/[a-z0-9.-]+\.[a-z]{2,}\/[^\s"'<>]{1,800}$/i.test(u)) return json({ error: "bad url" }, 400, origin);
+  if (!(await vCount("img:" + ipKey(request.headers.get("CF-Connecting-IP")), IMG_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  let r;
+  try { r = await fetch(u, { headers: { "Accept": "image/avif,image/webp,image/jpeg,image/png,image/*" }, redirect: "follow", cf: { cacheTtl: 86400 } }); } catch (e) { return json({ error: "could not fetch" }, 502, origin); }
+  const type = String(r.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+  if (!r.ok || !/^image\/(jpeg|png|webp|gif|avif)$/.test(type)) return json({ error: "not an image" }, 415, origin);
+  if (Number(r.headers.get("Content-Length") || 0) > IMG_MAX) return json({ error: "too large" }, 413, origin);
+  const buf = await r.arrayBuffer();
+  if (buf.byteLength > IMG_MAX) return json({ error: "too large" }, 413, origin);
+  return new Response(buf, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": type, "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" }) });
+}
+
 /* ---------- v114: Prowl's own notifications (Web Push) ----------
    A Pounce match arrives as a notification from Prowl itself, without the ntfy app (Matt, 2026-10-13). The service
    worker (worker/sw.js) is served from the shop at /apps/prowl/sw.js through the app proxy (/proxy/sw.js here), the
@@ -5967,6 +5988,7 @@ async function handleFetch(request, env, ctx) {
     /* v28: unsubscribe links work from any mail app, including one-click POSTs */
     if (url.pathname === "/alerts/unsub") return alUnsub(request, env, url, origin);
     if (url.pathname === "/alerts/confirm") return alConfirm(request, env, url);
+    if (url.pathname === "/img" && request.method === "GET") return imgShare(request, url, origin);   /* v115: a find's photo, for Share */
     if (url.pathname === "/aff" && request.method === "GET") return json({ on: AFF_ON, ids: AFF_IDS }, 200, origin, { "Cache-Control": "public, max-age=300" });   /* v89; v90: ids */
     if (url.pathname === "/alerts/gift") return alGiftStart(request, env, url);   /* v78c */
     if (url.pathname === "/alerts/giftstop") return alGiftStop(request, env, url);   /* v78c */
