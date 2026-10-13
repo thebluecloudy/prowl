@@ -2691,7 +2691,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.97';
+var PROWL_VERSION='v6.98';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -5098,7 +5098,7 @@ function wpOn(){
     return navigator.serviceWorker.register(WP_SW,{scope:WP_SCOPE})})
   .then(wpReady)
   .then(function(reg){return reg.pushManager.getSubscription().then(function(s){return s||reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:wpKey(MAIL.wpush.key)})})})
-  .then(function(s){pncPost('push/subscribe',{sub:s.toJSON(),label:wpLabel()},function(j){if(j&&j.ok){mSet('wpushOn','1');MAIL.phone='prowl'}pncSay(j,'Alerts on this phone. A test is on its way.')})})
+  .then(function(s){pncPost('push/subscribe',{sub:s.toJSON(),label:wpLabel()},function(j){if(j&&j.ok){mSet('wpushOn','1');MAIL.phone='prowl'}pncSay(j,j&&j.test?'Alerts on this phone. A test note is on its way. If Chrome marks it \u201cPossible spam\u201d, tap Show notification.':'Alerts are on, but the test did not get through. Tap Send test.')})})
   ['catch'](wpFail);
 }
 function wpOff(){
@@ -5140,7 +5140,7 @@ document.addEventListener('click',function(e){
   }
   if(a==='wpon'){wpOn();return}
   if(a==='wpoff'){wpOff();return}
-  if(a==='wptest'){PNC.mk='';PNC.busy=1;rMail();pncPost('push/test',{},function(j){pncSay(j,j&&j.sent?'Test sent. It should arrive in a few seconds.':'Prowl could not reach this phone. Turn alerts off and on again.')});return}
+  if(a==='wptest'){PNC.mk='';PNC.busy=1;rMail();pncPost('push/test',{},function(j){pncSay(j,j&&j.sent?'Test sent. It should arrive in a few seconds. If Chrome marks it \u201cPossible spam\u201d, tap Show notification.':'Prowl could not reach this phone. Turn alerts off and on again.')});return}
   if(a==='not'){PNC.mk='';b.disabled=true;pncPost('alerts/quarry',{hunt:hh,notUrl:b.getAttribute('data-u')},function(j){pncSay(j,'Not it. I will skip listings like that.')});return}
 });
 /* ?pounce=<listing> (the phone note) opens Den > Settings at that match; &fp=1 runs Fair price? on it */

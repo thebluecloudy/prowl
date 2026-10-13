@@ -192,7 +192,8 @@ test("a match's notification: no address or name, under 3 KB, one tag per quarry
   assert.equal(wire.indexOf("Matt"), -1, "no name");
   assert.equal(wire.indexOf("T".repeat(36)), -1, "no token");
   assert.ok(Buffer.byteLength(wire) < 3072);
-  assert.equal(payload.title, "🐾 I think I spotted your quarry");
+  assert.equal(payload.title, "Prowl found a likely match for Royal Haeger panther", "v115: who it is from and why, no emoji");
+  assert.doesNotMatch(payload.title + payload.body, /\p{Extended_Pictographic}/u);
   assert.match(payload.body, /\$185 on eBay\nWhy: Flat tail along the base\./);
   assert.equal(payload.url, "https://www.owlandtwigvintage.com/pages/prowl-app?pounce=https%3A%2F%2Fwww.ebay.com%2Fitm%2F1");
   assert.equal(payload.img, x.image);
@@ -215,6 +216,16 @@ test("the service worker: served from the app proxy as JavaScript, filled in, no
   for (const ev of ["push", "notificationclick", "pushsubscriptionchange"]) assert.match(SW, new RegExp("addEventListener\\('" + ev + "'"));
   assert.match(SW, /action: 'price', title: 'Check price'/);
   assert.match(SW, /action: 'notit', title: 'Not it'/);
+});
+
+test("v115: the test note says who it is from and what will come, with no emoji", () => {
+  const m = /const PUSH_TEST = (\{[^\n]*\});/.exec(INDEX);
+  assert.ok(m);
+  const t = new Function("PROWL_APP", "return " + m[1])("https://shop.example/app");
+  assert.equal(t.title, "Prowl by Owl & Twig Vintage");
+  assert.match(t.body, /Pounce spots the piece you described/);
+  assert.doesNotMatch(t.title + t.body, /\p{Extended_Pictographic}/u);
+  assert.equal((INDEX.match(/pushToMember\(env, sub\.email, PUSH_TEST\)/g) || []).length, 2, "the subscribe test and Send test both use it");
 });
 
 test("wired in: the routes, status, delete and address change", () => {
