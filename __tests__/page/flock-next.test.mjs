@@ -177,7 +177,7 @@ test('share uses the system sheet when there is one', async () => {
   const got = [];
   Object.defineProperty(p.win.navigator, 'share', { value: (d) => { got.push(d); return Promise.resolve(); }, configurable: true });
   cards(p)[0].querySelector('.fl-sh').click();
-  assert.deepEqual(JSON.parse(JSON.stringify(got)), [{ title: 'Find 1', text: '$12.00 via Prowl', url: 'https://shopgoodwill.com/item/f1' }]);   // the object comes from the page's realm
+  assert.deepEqual(JSON.parse(JSON.stringify(got)), [{ title: 'Find 1', text: 'Found this on ShopGoodwill: Find 1 · $12.00\n\nFound with Prowl, a vintage search tool from Owl & Twig Vintage', url: 'https://shopgoodwill.com/item/f1' }]);   // the object comes from the page's realm
   await p.close();
 });
 
