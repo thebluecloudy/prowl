@@ -1,16 +1,19 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-14 (v7.00 / v116).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-14 (v7.01 / v116).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.00** | 125,821 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.01** | 125,821 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v116** | |
 
 Recently shipped, newest first:
 
+- **v7.01:** the orange "N new" badge on a favorite hunt chip no longer squashes into "1 / ne / w" beside a long hunt name
+  (Matt's screenshot, 2026-10-14): `.sgw-new` is `flex:none; white-space:nowrap`, so the name wraps and the badge
+  stays on one line. Test: `__tests__/page/new-badge.test.mjs`.
 - **v7.00: Back on Android (Matt, 2026-10-14).** Back closed the installed app when he expected Prowl's home screen.
   Search results now count as a layer: Back clears them and scrolls to the top (`ovAny`/`ovCloseTop` include
   `st.run`; `rRes` resyncs the guard). In the installed app only (`ovApp`: /pages/prowl-app, standalone, fullscreen or
@@ -163,7 +166,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.01, worker v117**. Claim one here when you start.
+Next free numbers: **page v7.02, worker v117**. Claim one here when you start.
 
 ## What's next
 
