@@ -116,6 +116,6 @@ test('once the panther has tucked away on scroll it is hidden, so its button lea
 
 test('the QR button keeps the theme from styling it, and the page says v6.77 or later', () => {
   assert.match(PAGE, /\.scout-app-wrapper \.pm-btn\{[^}]*appearance:none[^}]*text-transform:none/);
-  const v = /var PROWL_VERSION='v6\.(\d+)';/.exec(PAGE);
+  const m = /var PROWL_VERSION='v(\d+)\.(\d+)';/.exec(PAGE), v = m && [m[0], Number(m[1]) * 100 + Number(m[2]) - 600];   // v7.00 reads as 100, so v6.xx floors still hold
   assert.ok(v && Number(v[1]) >= 77);
 });

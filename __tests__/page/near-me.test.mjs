@@ -64,6 +64,6 @@ test('Facebook USA is still one tap away on the results', async () => {
 });
 
 test('the page says v6.90 or later', () => {
-  const v = /var PROWL_VERSION='v6\.(\d+)';/.exec(PAGE);
+  const m = /var PROWL_VERSION='v(\d+)\.(\d+)';/.exec(PAGE), v = m && [m[0], Number(m[1]) * 100 + Number(m[2]) - 600];   // v7.00 reads as 100, so v6.xx floors still hold
   assert.ok(v && Number(v[1]) >= 90);
 });
