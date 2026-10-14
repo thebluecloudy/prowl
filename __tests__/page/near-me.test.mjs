@@ -10,10 +10,10 @@ const PAGE = readFileSync(fileURLToPath(new URL('../../page/prowl.html', import.
 const DEN = { 'prowl.v36': { seen: true, hunts: [] } };
 const hosts = (p) => p.$$('#otp-res a.hit').map((a) => new URL(a.href).hostname.replace(/^www\./, ''));
 
-test('the row under the search box is Hunt, Search All, Near me', async () => {
+test('the row under the search box is Hunt and Near me (v7.03: Search All folded into Hunt)', async () => {
   const p = loadPage({ storage: DEN });
   await tick(30);
-  assert.deepEqual(p.$$('#otp-sf > button.b').map((b) => b.textContent.trim()), ['Hunt', 'Search All', 'Near me']);
+  assert.deepEqual(p.$$('#otp-sf > button.b').filter((b) => !b.hidden).map((b) => b.textContent.replace(/[^A-Za-z ]/g, '').trim()), ['Hunt', 'Near me']);
   assert.equal(p.$('#otp-fb'), null, 'Facebook USA left the row');
   assert.ok(p.$('#otp-localBtn'), 'the dock keeps LOCAL');
   assert.doesNotMatch(PAGE, /\.b\.fb[{:]/, 'its styles went with it');

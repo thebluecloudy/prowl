@@ -923,6 +923,26 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-empty a{color:var(--ac);font-weight:700}
 .scout-app-wrapper .otp-fbk{margin:18px 0 6px;padding:12px 14px;border:1px solid var(--ln);border-radius:12px;font-size:14px;color:var(--i2);text-align:center}
 .scout-app-wrapper .otp-fbk a{color:var(--ac);font-weight:700}
+.scout-app-wrapper .bar-actions{position:relative}
+.scout-app-wrapper .bar-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:60;display:flex;flex-direction:column;gap:4px;min-width:200px;padding:8px;background:var(--cd);border:1px solid var(--l2);border-radius:14px;box-shadow:0 14px 34px -14px var(--shadow-lg)}
+.scout-app-wrapper .bar-menu[hidden]{display:none!important}
+.scout-app-wrapper .bar-menu .gh{justify-content:flex-start;width:100%;border:0;min-height:46px;font-size:15px;gap:10px}
+.scout-app-wrapper .bar-menu .gh[data-l]::after{content:attr(data-l);font-weight:700}
+.scout-app-wrapper .bar-menu .gh[hidden]{display:none!important}
+.scout-app-wrapper .near-chip{height:40px;padding:0 14px;border-radius:99px;font-size:13.5px;flex:0 0 auto}
+.scout-app-wrapper .sgw-morep{width:100%}
+.scout-app-wrapper .sgw-morep>summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;font-size:14px;font-weight:700;color:var(--ac)}
+.scout-app-wrapper .sgw-morep>summary::-webkit-details-marker{display:none}
+.scout-app-wrapper .sgw-morep>summary::after{content:'\203A';font-size:18px;transition:transform .2s}
+.scout-app-wrapper .sgw-morep[open]>summary::after{transform:rotate(90deg)}
+.scout-app-wrapper .sgw-morepb{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 6px}
+.scout-app-wrapper .ab-lead{margin:14px 0 4px;font-size:15px;line-height:1.55;color:var(--i2)}
+.scout-app-wrapper .ab-more,.scout-app-wrapper .set-more{margin:14px 0 0;border-top:1px solid var(--ln)}
+.scout-app-wrapper .ab-more>summary,.scout-app-wrapper .set-more>summary{cursor:pointer;padding:14px 0;font-weight:800;font-size:15px;color:var(--ink)}
+/* v7.03: one promo at a time on the home page (promoPick) */
+.scout-app-wrapper.pm-alerts #otp-guide.gd-promo,.scout-app-wrapper.pm-alerts .otp-getapp[data-mode=home],
+.scout-app-wrapper.pm-app #otp-alerts,.scout-app-wrapper.pm-app #otp-guide.gd-promo,
+.scout-app-wrapper.pm-guide #otp-alerts,.scout-app-wrapper.pm-guide .otp-getapp[data-mode=home]{display:none!important}
 .scout-app-wrapper .sgw-where{flex-basis:100%;font-size:13px;color:var(--i3);margin-top:4px}
 .scout-app-wrapper .picks-row{display:flex;gap:10px;overflow-x:auto;padding:0 15px 4px;-webkit-overflow-scrolling:touch}
 .scout-app-wrapper .picks .fc-for{font-size:10px;color:var(--mu);padding:0 8px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1771,10 +1791,13 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
   </span>
   <div class="bar-actions">
     <button class="gh acct" id="otp-acct" type="button" aria-label="Sign in">•</button>
-    <button class="gh apphdr" id="otp-appHdr" type="button" hidden>App</button>
-    <button class="gh" id="otp-sizeTop" type="button" aria-label="Text size: Standard. Tap for bigger." title="Text size">Aa</button>
-    <button class="gh" id="otp-themeBtn" type="button" aria-label="Cycle theme" title="Dark mode">☾</button>
-    <button class="gh" id="otp-how" type="button" aria-label="How Prowl works">Help</button>
+    <button class="gh bar-mb" id="otp-menuTop" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="otp-barMenu" aria-label="Menu">☰</button>
+    <div class="bar-menu" id="otp-barMenu" role="menu" hidden>
+    <button class="gh apphdr" id="otp-appHdr" type="button" role="menuitem" hidden>App</button>
+    <button class="gh" id="otp-sizeTop" type="button" role="menuitem" data-l="Text size" aria-label="Text size: Standard. Tap for bigger." title="Text size">Aa</button>
+    <button class="gh" id="otp-themeBtn" type="button" role="menuitem" data-l="Theme" aria-label="Cycle theme" title="Dark mode">☾</button>
+    <button class="gh" id="otp-how" type="button" role="menuitem" data-l="How Prowl works" aria-label="How Prowl works">?</button>
+    </div>
   </div>
 </header>
 <div class="hi" id="otp-hi" hidden></div>
@@ -1799,8 +1822,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
       <button type="button" class="sf-cam" id="otp-cam" aria-haspopup="dialog" aria-label="Photo check: snap a piece to identify and price it" title="Check a photo"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5h3.2l1.8-2.5h7l1.8 2.5h3.2v10.5h-17z"></path><circle cx="12" cy="13.5" r="3.4"></circle></svg></button>
     </div>
     <button class="b p" type="submit">Hunt</button>
-    <button class="b" id="otp-sa" type="button">Search All</button>
-    <button class="b" id="otp-near" type="button">Near me</button>
+    <button class="b" id="otp-sa" type="button" hidden>Search All</button>
+    <button class="b near-chip" id="otp-near" type="button">⌖ Near me</button>
   </form>
 
   <div class="gapp otp-getapp" data-mode="home" hidden></div>
@@ -1838,7 +1861,6 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     <div id="otp-guideMine"></div>
   </section>
 
-  <p class="otp-fbk" id="otp-fbk">Testing Prowl? <a id="otp-fbkA" href="/pages/contact">Tell me what is missing or broken</a>. Say what you searched and which phone or computer you used.</p>
 
   <div class="whyp">
     <p><b>One search, every marketplace.</b> All <span data-t>29</span>, from ShopGoodwill auctions to Facebook Marketplace, searched directly.</p>
@@ -2439,6 +2461,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
       <ul class="tl" id="otp-denLocalList"></ul>
     </div>
     <div class="denPane" id="otp-denAbout" hidden>
+<p class="ab-lead">Prowl searches <span data-t>29</span> vintage marketplaces at once, free, with no account. Built by Matt at Owl &amp; Twig Vintage, a family shop in Michigan.</p>
+<p class="otp-fbk" id="otp-fbk">Testing Prowl? <a id="otp-fbkA" href="/pages/contact">Tell me what is missing or broken</a>. Say what you searched and which phone or computer you used.</p>
 <div id="otp-foundStrip" class="found-strip">
 <div class="found-title">🐾 Found on the Prowl — now in <a href="/pages/vintage-vault">The Vintage Vault</a>
 </div>
@@ -2446,6 +2470,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 <div id="otp-foundTrack" class="found-track"></div>
 </div>
 </div>
+<details class="ab-more"><summary>How it works, and how collectors use it</summary>
 <section class="scout-seo">
 <h2>Every vintage marketplace, one search</h2>
 <p>Search "Roseville jardiniere" once and see the $18 one on ShopGoodwill, the pair on Facebook Marketplace, and eBay and Etsy, side by side.</p>
@@ -2539,6 +2564,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 <a class="sl-btn" href="https://www.owlandtwigvintage.com/">Visit the shop →</a>
 </div>
 </section>
+</details>
 <div class="share-strip">
 <div class="ss-title">Know another collector? Send them Prowl 🐾</div>
 <div class="share-btns">
@@ -2576,6 +2602,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 </div>
         <button class="gh" id="otp-sizeBtn" type="button">Standard</button>
       </div>
+      <details class="set-more"><summary>More settings</summary>
       <div class="setrow">
         <div>
 <h3>Marketplaces</h3>
@@ -2629,6 +2656,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 <p>Prowl <span class="prowl-version"></span> — find the prey across <span data-t>29</span> vintage marketplaces.</p>
 </div>
       </div>
+      </details>
     </div>
   </div>
   <div class="den-foot" id="otp-denFoot" hidden>
@@ -2701,7 +2729,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.02';
+var PROWL_VERSION='v7.03';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4615,7 +4643,7 @@ function liveEmptyCard(t,fb){
   return '<div class="sgw-empty"><p class="sgw-empty-h">'+(fb?'Nothing on Goodwill or the other live sites yet for':'Nothing live yet for')+' <b>“'+esc(t)+'”</b>.</p>'+
     '<p>Rare pieces come and go. Prowl can keep watching and email you when one is listed.</p>'+
     '<button type="button" class="b p" data-empty="watch" data-t="'+esc(t)+'">Email me when it shows up</button>'+
-    (links?'<p class="sgw-empty-l">Also try the sites Prowl can only link to: '+links+'</p>':'')+'</div>';
+    (links?'<details class="sgw-morep"><summary>More places to look</summary><p class="sgw-empty-l">'+links+'</p></details>':'')+'</div>';   /* v7.03 */
 }
 /* v6.33: one look across ShopGoodwill and every live source for a term. */
 function liveSummary(t){
@@ -4723,8 +4751,9 @@ function sgwBody0(t){
 function sgwActs(){
   var x=sgwFind(sgw.cur);if(!x)return '';
   var ts=slog()[x.t.toLowerCase()],a=ago(ts);
-  return '<button type="button" class="b sgw-hunt sgw-fb" data-sgw="fb">Facebook \u00b7 '+fbAllUsa().multi(x.t).length+' cities</button>'+
-    igLink(x.t,'b sgw-hunt sgw-ig')+
+  return '<details class="sgw-morep"><summary>Facebook and Instagram</summary><div class="sgw-morepb">'+
+    '<button type="button" class="b sgw-hunt sgw-fb" data-sgw="fb">Facebook \u00b7 '+fbAllUsa().multi(x.t).length+' cities</button>'+
+    igLink(x.t,'b sgw-hunt sgw-ig')+'</div></details>'+   /* v7.03 */
     '<span class="sgw-ago">'+(ts?'Last run '+esc(a.charAt(0).toLowerCase()+a.slice(1)):'Not run yet')+'</span>';
 }
 
@@ -4733,7 +4762,7 @@ function sgwActs(){
 function sgwShell(mount){
   mount.innerHTML='<div class="sgw-head"><b>Your favorite hunts</b><span class="sgw-live">Live on Goodwill, eBay, Chairish, Etsy, Poshmark, Vinted, Grailed</span><span class="sgw-upd"></span></div>'+
     '<div class="sgw-cols"><div class="sgw-left">'+
-    '<p class="sgw-denln">Tap \u00D7 to move a hunt back to your Den. <button type="button" data-sgw="den">See all your hunts in the Den \u2192</button> <button type="button" class="sgw-aa" data-sgw="size" aria-label="Change text size">Aa</button></p>'+
+    '<p class="sgw-denln"><button type="button" data-sgw="den">All your hunts \u2192</button></p>'+
     '<div class="sgw-chips"><span class="sgw-form">'+
       '<input id="otp-sgwIn" type="text" maxlength="60" autocomplete="off" enterkeyhint="done" placeholder="+ add a hunt" aria-label="Add a hunt. It is locked for Daily and checked on ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Vinted and Grailed right away.">'+
       '<button type="button" class="sgw-go" data-sgw="go">Add</button>'+
@@ -8046,6 +8075,24 @@ function planTableHtml(isPro){
 }
 
 /* ---------- BOOT ---------- */
+/* v7.03: the home page shows one promo, the one that fits: alerts for someone not signed up, the app for a phone
+   browser, otherwise the Field Guide. Someone who has made guides always keeps the guide box (it holds them). */
+function promoPick(){
+  var w=document.querySelector('.scout-app-wrapper');if(!w)return;
+  var g=$('#otp-guide'),ga=document.querySelector('.scout-app-wrapper .otp-getapp[data-mode="home"]'),mine=[];
+  try{mine=JSON.parse(localStorage.getItem('prowl.guides')||'[]')||[]}catch(e){}
+  if(g){if(mine.length)g.classList.remove('gd-promo');else g.classList.add('gd-promo')}
+  var pick=!(mGet('alertTok')||(window.prowlSess&&window.prowlSess()))?'alerts':((ga&&!ga.hidden)?'app':'guide');
+  w.classList.remove('pm-alerts','pm-app','pm-guide');w.classList.add('pm-'+pick);
+}
+(function(){
+  var mb=$('#otp-menuTop'),mn=$('#otp-barMenu');if(!mb||!mn)return;
+  function shut(){mn.hidden=true;mb.setAttribute('aria-expanded','false')}
+  mb.addEventListener('click',function(e){e.stopPropagation();var open=mn.hidden;mn.hidden=!open;mb.setAttribute('aria-expanded',String(open))});
+  mn.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('button');if(b&&(b.id==='otp-appHdr'||b.id==='otp-how'))shut()});
+  document.addEventListener('click',function(e){if(!mn.hidden&&!mn.contains(e.target)&&e.target!==mb)shut()});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!mn.hidden){shut();mb.focus()}});
+})();
 load();counts();rQuick();rDenHunts();rDenLocal();rDenOne();rDrawer();rDock();rRes();
 applyDeepLink();
 Array.prototype.forEach.call(document.querySelectorAll('.prowl-version'),function(el){el.textContent=PROWL_VERSION});
@@ -8072,6 +8119,7 @@ if(!st.seen)setTimeout(openM,420);
    break the app if products.json is slow, blocked or missing */
 try{loadFoundStrip()}catch(e){}
 try{loadSGW()}catch(e){}
+try{promoPick();setTimeout(promoPick,1500);window.addEventListener('focus',promoPick)}catch(e){}
 })();
 </script>
 
