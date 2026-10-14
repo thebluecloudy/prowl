@@ -891,6 +891,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .picks{display:block;margin:18px 0 0}
 .scout-app-wrapper .picks[hidden]{display:none}
 .scout-app-wrapper .sgw-new{font-style:normal;font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;background:#f0b35a;color:#1f1b16}
+.scout-app-wrapper .sgw-new{flex:none;white-space:nowrap;overflow-wrap:normal}   /* v7.01: a long hunt name squashed it into "1 / ne / w"; the name wraps, the badge never does */
 .scout-app-wrapper .sgw-chip.sgw-more{border-style:dashed;color:var(--ink)}
 /* v5.70: a long hunt name wraps inside its chip instead of pushing the page wider than the phone */
 .scout-app-wrapper .sgw-chip{max-width:100%;white-space:normal;overflow-wrap:anywhere}
@@ -2700,7 +2701,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.00';
+var PROWL_VERSION='v7.01';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
