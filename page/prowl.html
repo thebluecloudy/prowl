@@ -2701,7 +2701,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.01';
+var PROWL_VERSION='v7.02';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -6830,6 +6830,16 @@ function gdClick(e){
   }
 }
 
+/* v7.02: after a hunt chip is tapped, scroll down to its finds when they sit below the fold (phones: under a long
+   list of chips). On a wide screen the finds sit beside the chips and nothing moves. */
+function sgwToBody(){
+  setTimeout(function(){
+    var b=document.querySelector('#otp-sgw .sgw-body');if(!b||!b.getBoundingClientRect)return;
+    var r=b.getBoundingClientRect(),vh=window.innerHeight||document.documentElement.clientHeight||0;
+    if(!vh||r.top<vh*0.45)return;
+    try{b.scrollIntoView({behavior:flReduced()?'auto':'smooth',block:'start'})}catch(e){b.scrollIntoView(true)}
+  },60);
+}
 function sgwPick(i){
   var x=sgw.terms[i];if(!x)return;
   sgw.cur=x.t.toLowerCase();
@@ -6960,7 +6970,7 @@ function sgwWire(mount){
     var el=actOf(e.target);if(!el)return;
     var act=el.getAttribute('data-sgw'),i=parseInt(el.getAttribute('data-i'),10);
     if(act==='del'){e.stopPropagation();sgwDel(i);return}
-    if(act==='pick'){sgwSugHide();sgwPick(i);return}
+    if(act==='pick'){sgwSugHide();sgwPick(i);sgwToBody();return}   /* v7.02: a tapped hunt brings its finds into view */
     if(act==='go'){sgwSubmit();return}
     if(act==='sug'){sgwUseSug(i);return}
     if(act==='where'){var wx=sgwFind(sgw.cur),wm=el.getAttribute('data-m');if(wx&&mb(wm))runProwl('single',[wx.t],[wm]);return}

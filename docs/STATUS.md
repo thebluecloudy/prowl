@@ -1,16 +1,20 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-14 (v7.01 / v116).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-14 (v7.02 / v116).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.01** | 125,821 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.02** | 125,821 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v116** | |
 
 Recently shipped, newest first:
 
+- **v7.02:** tapping a hunt chip in Your favorite hunts scrolls down to that hunt's finds when they sit below the fold
+  (Matt, 2026-10-14: on a phone they were under the long chip list). `sgwToBody` runs only on a chip tap, only when
+  the finds start below 45% of the screen; on a wide screen they sit beside the chips and nothing moves. Test:
+  `__tests__/page/hunt-scroll.test.mjs`.
 - **v7.01:** the orange "N new" badge on a favorite hunt chip no longer squashes into "1 / ne / w" beside a long hunt name
   (Matt's screenshot, 2026-10-14): `.sgw-new` is `flex:none; white-space:nowrap`, so the name wraps and the badge
   stays on one line. Test: `__tests__/page/new-badge.test.mjs`.
@@ -166,7 +170,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.02, worker v117**. Claim one here when you start.
+Next free numbers: **page v7.03, worker v117**. Claim one here when you start.
 
 ## What's next
 
