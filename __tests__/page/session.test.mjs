@@ -138,5 +138,5 @@ test('wired in: AI calls send Bearer, the backup leaves the session out', () => 
   assert.match(PAGE, /headers:window\.prowlAuth\(\{'Content-Type':'application\/json'\}\),body:JSON\.stringify\(body\)\};/, 'guides');
   const exp = /function exportData\(\)\{[^]*?\n\}/.exec(PAGE)[0];
   assert.doesNotMatch(exp, /session/);
-  assert.match(PAGE, /var PROWL_VERSION='v6\.\d+';/);
+  assert.match(PAGE, /var PROWL_VERSION='v\d+\.\d+';/);
 });

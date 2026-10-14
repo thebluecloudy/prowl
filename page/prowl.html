@@ -2700,7 +2700,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.99';
+var PROWL_VERSION='v7.00';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3823,7 +3823,7 @@ function sgwForRun(r){
 }
 
 function rRes(){
-  var r=st.run;
+  var r=st.run;setTimeout(function(){if(typeof ovSync==='function')ovSync()},0);   /* v7.00 */
   var sgm=$('#otp-sgw');if(sgm&&sgm.innerHTML)sgm.hidden=!!r;
   if(!r&&st.focus){rFocus();return;}
   if(!r){res.hidden=true;res.innerHTML='';return;}
@@ -4202,15 +4202,30 @@ document.addEventListener('keydown',function(e){
    the intro) one layer at a time, instead of leaving Prowl. While anything is open there is one extra history entry;
    Back pops it and closes the top layer, and a layer closed with its own button gives the entry back. */
 var OV={guard:false,skip:0};
-function ovAny(){return sheetOpen()||ms.classList.contains('on')||dw.classList.contains('on')||den.classList.contains('on')||!!(pho&&pho.classList.contains('on'))||flockOpen()}
+function ovAny(){return !!st.run||sheetOpen()||ms.classList.contains('on')||dw.classList.contains('on')||den.classList.contains('on')||!!(pho&&pho.classList.contains('on'))||flockOpen()}
 function ovCloseTop(){
   if(sheetOpen()){closeSheet();return}
   if(ms.classList.contains('on')){closeM();return}
   if(dw.classList.contains('on')){closeDw();return}
   if(den.classList.contains('on')){closeDen();return}
   if(pho&&pho.classList.contains('on')){closePhoto();return}
-  if(flockOpen())closeFlock();
+  if(flockOpen()){closeFlock();return}
+  if(st.run){clearRun();try{window.scrollTo({top:0,behavior:'smooth'})}catch(e){window.scrollTo(0,0)}}   /* v7.00: search results are a layer too */
 }
+/* v7.00: in the installed app, Back on the home screen asks for a second Back instead of closing Prowl. The extra
+   history entry is added on a tap (Chrome skips entries added without one); after the first Back it is not put back
+   until the next tap, so a second Back within the toast closes the app as usual. Not in a browser tab. */
+var OVR={on:false,wait:0};
+function ovApp(){
+  try{if(/prowl-app/.test(location.pathname)||navigator.standalone===true)return true;
+    return !!(window.matchMedia&&(window.matchMedia('(display-mode: standalone)').matches||window.matchMedia('(display-mode: fullscreen)').matches||window.matchMedia('(display-mode: minimal-ui)').matches))}catch(e){return false}
+}
+function ovRootArm(){
+  if(OVR.on||OV.guard||Date.now()<OVR.wait||!ovApp()||!window.history||typeof history.pushState!=='function')return;
+  try{history.pushState({prowlRoot:1},'',location.href);OVR.on=true}catch(e){}
+}
+document.addEventListener('pointerdown',ovRootArm,true);
+document.addEventListener('keydown',ovRootArm,true);
 function ovSync(){
   if(!window.history||typeof history.pushState!=='function')return;
   var any=ovAny();
@@ -4219,7 +4234,10 @@ function ovSync(){
 }
 window.addEventListener('popstate',function(){
   if(OV.skip){OV.skip--;return}
-  if(!OV.guard)return;
+  if(!OV.guard){
+    if(OVR.on){OVR.on=false;OVR.wait=Date.now()+2500;toast('Press <b>Back</b> again to close Prowl.',2500)}
+    return;
+  }
   OV.guard=false;ovCloseTop();
   setTimeout(ovSync,0);   /* something still open (Flock under the popup): keep Back working for it */
 });

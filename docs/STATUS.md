@@ -1,16 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-13 (v6.99 / v116).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-14 (v7.00 / v116).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.99** | 126,818 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.00** | 125,821 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v116** | |
 
 Recently shipped, newest first:
 
+- **v7.00: Back on Android (Matt, 2026-10-14).** Back closed the installed app when he expected Prowl's home screen.
+  Search results now count as a layer: Back clears them and scrolls to the top (`ovAny`/`ovCloseTop` include
+  `st.run`; `rRes` resyncs the guard). In the installed app only (`ovApp`: /pages/prowl-app, standalone, fullscreen or
+  minimal-ui), Back on the home screen shows "Press Back again to close Prowl." The extra history entry is added on a
+  tap (Chrome skips entries pushed without one) and not again for 2.5 s after the toast, so a second Back closes the
+  app as Android expects. A browser tab is left alone. A "stay or close" dialog is not possible: pages cannot hold Back
+  with a prompt. Test: `__tests__/page/back-root.test.mjs`.
 - **v6.99: the listing popup (Matt, 2026-10-13).**
   - **Large text could trap you in the popup.** Large and Extra large zoom the whole app (1.12 / 1.25), and the popup
     is 94vh tall, so zoomed it was taller than the phone and its top bar with the X sat above the screen; only the
@@ -156,7 +163,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.00, worker v117**. Claim one here when you start.
+Next free numbers: **page v7.01, worker v117**. Claim one here when you start.
 
 ## What's next
 
