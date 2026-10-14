@@ -19,8 +19,9 @@ function load(nowIso) {
   const RealDate = Date;
   const fixed = RealDate.parse(nowIso);
   class FakeDate extends RealDate { constructor(...a) { super(...(a.length ? a : [fixed])); } static now() { return fixed; } }
-  const names = ["hibidText", "money", "timeLeft", "salvationEnd", "salvationNormalize"];
-  return new Function("Date", "SALVATION_BASE", "SALVATION_LIMIT", names.map(indexFn).join("\n") + "\nreturn { " + names.join(", ") + " };")(
+  const names = ["hibidText", "money", "ptOff", "sgwMs", "timeLeft", "salvationEnd", "salvationNormalize"];
+  const ptFmt = /^const PT_FMT = [^\n]+/m.exec(INDEX)[0];   // v116: timeLeft reads ShopGoodwill times as Pacific
+  return new Function("Date", "SALVATION_BASE", "SALVATION_LIMIT", ptFmt + "\n" + names.map(indexFn).join("\n") + "\nreturn { " + names.join(", ") + " };")(
     FakeDate, JSON.parse(constOf("SALVATION_BASE")), Number(constOf("SALVATION_LIMIT")));
 }
 

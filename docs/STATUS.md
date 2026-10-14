@@ -1,16 +1,35 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-13 (v6.98 / v115).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-13 (v6.99 / v116).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v6.98** | 130,627 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
-| Worker | **v115** | |
+| Page | **v6.99** | 126,818 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Worker | **v116** | |
 
 Recently shipped, newest first:
 
+- **v6.99: the listing popup (Matt, 2026-10-13).**
+  - **Large text could trap you in the popup.** Large and Extra large zoom the whole app (1.12 / 1.25), and the popup
+    is 94vh tall, so zoomed it was taller than the phone and its top bar with the X sat above the screen; only the
+    phone's Back button got out. `textSizeApply` now sets `--tz` on the wrapper and the popup, the other sheets, the
+    `.md` modals and the photo strip divide their vh heights by it (`dvh` where the browser has it). There is also a
+    **Close** button at the bottom of the popup. In large text, or under 420px, the item details stack (label over
+    value) instead of squeezing the values into a thin column.
+  - **Search this on Prowl:** a pill under the price. It closes the popup, puts a cleaned title in the search box and
+    runs the search (`popTerm`: the maker from the item details first, then the title without sales words like rare,
+    vintage, MCM or label, sizes, years, quotes or emoji, at most 7 words). A toast says what it searched.
+  - **Double-tap the photo to like** (`popLike`): adds the like Flock learns from, with a heart over the photo. It never
+    un-likes; the heart button still does that.
+  - Seller text escaped twice ("it&#39;s") is decoded once, as text, in the title, details and description
+    (`popUnEnt`), and a description that only repeats the title is left out.
+  Test: `__tests__/page/popup-v699.test.mjs`. Also: the worker tests for `/item` and Salvation Army load v116's
+  Pacific-time helpers (`PT_FMT`, `ptOff`, `sgwMs`) and its `item2` cache key; they had failed since v116.
+- **v116:** ShopGoodwill end times are Pacific wall time with no zone; the worker read them as UTC, so live auctions
+  showed about 7 hours short or "This listing ended" (Matt bid on one that was still live). `sgwMs` reads them as
+  America/Los_Angeles; `itemSgw` trusts ShopGoodwill's own expired flag; item cache key `item2`.
 - **v6.98 / v115:** Prowl's notifications reached Matt's Android phone, but Chrome's on-device filter hid the first
   test behind "Possible spam". The notes now say who they are from and why, with no emoji: the test is "Prowl by Owl &
   Twig Vintage / Phone alerts are on. When Pounce spots the piece you described, Prowl shows it here with the photo."
@@ -137,7 +156,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v6.99, worker v116**. Claim one here when you start.
+Next free numbers: **page v7.00, worker v117**. Claim one here when you start.
 
 ## What's next
 
