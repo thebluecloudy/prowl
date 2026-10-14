@@ -1,16 +1,32 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-14 (v7.02 / v116).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-14 (v7.03 / v116).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.02** | 125,821 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.03** | 123,339 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v116** | |
 
 Recently shipped, newest first:
 
+- **v7.03: less to read, fewer buttons (Matt picked ideas 1 to 7, 2026-10-14).** Phone home page 690 → 575 words and
+  58 → 46 controls (3 screens → 2); Den About 966 → 86 words; Den Settings 548 → 335.
+  1. One search button: Hunt. Search All is hidden (kept, other code clicks it); Near me is a small chip.
+  2/3. One promo on the home page (`promoPick`, wrapper class `pm-alerts|pm-app|pm-guide`): Alerts for someone not
+     signed up (no alert token or store session), the app on a phone browser when its box would show, else the Field
+     Guide. Someone with saved guides (`prowl.guides`) always keeps the guide box. The feedback line moved to Den › About.
+  4. Header: account + a ☰ menu holding App, Text size, Theme and How Prowl works (same ids and handlers).
+  5. "Tap × to move a hunt back to your Den" and the hunt panel's second Aa are gone; the link reads "All your hunts →".
+  6. Facebook/Instagram buttons fold into "Facebook and Instagram ›"; the link-only sites in the empty card fold into
+     "More places to look ›".
+  7. Den › About opens with two lines, the feedback note, the Vault strip, share and byline; the long SEO section is
+     still on the page inside a closed "How it works, and how collectors use it". Den › Settings keeps alerts,
+     appearance, style and text size up top; marketplaces, AI helpers, one-site, stats, backup, import, clear and
+     About sit under "More settings".
+  Not a bug after all: "Pro: 25 hunts" is right for alerts (worker `AL_MAX_HUNTS` 25); 100 is the Den cap.
+  Test: `__tests__/page/declutter-v703.test.mjs`.
 - **v7.02:** tapping a hunt chip in Your favorite hunts scrolls down to that hunt's finds when they sit below the fold
   (Matt, 2026-10-14: on a phone they were under the long chip list). `sgwToBody` runs only on a chip tap, only when
   the finds start below 45% of the screen; on a wide screen they sit beside the chips and nothing moves. Test:
@@ -170,7 +186,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.03, worker v117**. Claim one here when you start.
+Next free numbers: **page v7.04, worker v117**. Claim one here when you start.
 
 ## What's next
 
