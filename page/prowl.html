@@ -573,7 +573,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .den-foot .b{flex:1;height:48px}
 .scout-app-wrapper .mo{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--scrim);opacity:0;pointer-events:none;transition:.22s}
 .scout-app-wrapper .mo.on{opacity:1;pointer-events:auto}
-.scout-app-wrapper .md{background:var(--modal-bg);border-radius:20px;width:100%;max-width:540px;max-height:88vh;overflow:auto;padding:28px;box-shadow:0 30px 70px -28px var(--shadow-lg);transform:translateY(14px);transition:.28s;border:1px solid var(--ln)}
+.scout-app-wrapper .md{background:var(--modal-bg);border-radius:20px;width:100%;max-width:540px;max-height:88vh;max-height:calc(88vh / var(--tz,1));overflow:auto;padding:28px;box-shadow:0 30px 70px -28px var(--shadow-lg);transform:translateY(14px);transition:.28s;border:1px solid var(--ln)}
 [data-theme=uranium] .scout-app-wrapper .md{box-shadow:0 0 60px rgba(57,255,20,.2),0 30px 70px -28px rgba(0,0,0,.9)}
 .scout-app-wrapper .mo.on .md{transform:none}
 .scout-app-wrapper .md h2{font-family:var(--display);font-size:26px;font-weight:800;margin:0 0 8px;letter-spacing:-.025em}
@@ -1668,7 +1668,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v6.94: the listing popup sits above the Den (both are drawers, and the Den came later in the page, so a tap on a liked
    ShopGoodwill or eBay find opened the popup behind it and seemed to do nothing) */
 .scout-app-wrapper .drawer.otp-sheet{z-index:76}
-.scout-app-wrapper .otp-sheet{top:auto;left:0;right:0;bottom:0;width:100%;max-width:560px;margin:0 auto;max-height:88vh;border-left:0;border-top:1px solid var(--ln);border-radius:18px 18px 0 0;transform:translateY(101%);box-shadow:0 -18px 50px -20px var(--shadow-lg)}
+.scout-app-wrapper .otp-sheet{top:auto;left:0;right:0;bottom:0;width:100%;max-width:560px;margin:0 auto;max-height:88vh;max-height:calc(88vh / var(--tz,1));max-height:calc(88dvh / var(--tz,1));border-left:0;border-top:1px solid var(--ln);border-radius:18px 18px 0 0;transform:translateY(101%);box-shadow:0 -18px 50px -20px var(--shadow-lg)}
 .scout-app-wrapper .otp-sheet.on{transform:none}
 .scout-app-wrapper .otp-sheet.sh-drag{transition:none}
 .scout-app-wrapper .otp-sheet .dh{border-radius:18px 18px 0 0;touch-action:none}
@@ -1724,9 +1724,17 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .lk-x{-webkit-appearance:none;appearance:none;position:absolute;top:6px;right:6px;width:32px;height:32px;padding:0;border:0;border-radius:99px;background:#fff;color:#111;font-size:17px;line-height:1;box-shadow:0 1px 6px rgba(0,0,0,.25);cursor:pointer}
 @media(max-width:440px){.scout-app-wrapper.k2 .tab{font-size:10px;letter-spacing:.02em}}
 /* ---- v6.43: listing popup (photos, details, description), in the bottom sheet ---- */
-.scout-app-wrapper .otp-sheet.pop{max-height:94vh}
+.scout-app-wrapper .otp-sheet.pop{max-height:94vh;max-height:calc(94vh / var(--tz,1));max-height:calc(94dvh / var(--tz,1))}
 @media(min-width:700px){.scout-app-wrapper .otp-sheet.pop{width:min(640px,94vw)}}
-.scout-app-wrapper .pp-gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-radius:14px;background:#F3EFE8;aspect-ratio:1/1;max-height:56vh}
+.scout-app-wrapper .pp-gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-radius:14px;background:#F3EFE8;aspect-ratio:1/1;max-height:56vh;max-height:calc(56vh / var(--tz,1));touch-action:manipulation}
+.scout-app-wrapper .pp-galw{position:relative}
+.scout-app-wrapper .pp-heart{position:absolute;left:50%;top:50%;font-size:96px;line-height:1;font-style:normal;color:#fff;text-shadow:0 4px 24px rgba(0,0,0,.45);opacity:0;transform:translate(-50%,-50%) scale(.4);pointer-events:none}
+.scout-app-wrapper .pp-heart.on{animation:ppHeart .8s ease-out}
+@keyframes ppHeart{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}25%{opacity:.95;transform:translate(-50%,-50%) scale(1.15)}60%{opacity:.95;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
+.scout-app-wrapper .pp-hunt{display:inline-flex;align-items:center;gap:6px;min-height:44px;max-width:100%;margin:10px 0 2px;padding:0 16px;border:1.5px solid var(--ac);border-radius:99px;background:var(--ac-soft);color:var(--ink);font-weight:800;font-size:14.5px;text-align:left}
+.scout-app-wrapper .pp-close{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;margin-top:10px;border-radius:99px;font-weight:800;font-size:15px}
+@media(max-width:420px){.scout-app-wrapper .pp-asp{grid-template-columns:1fr;gap:0}.scout-app-wrapper .pp-asp dd{margin-bottom:8px}}
+.scout-app-wrapper.tz .pp-asp{grid-template-columns:1fr;gap:0}.scout-app-wrapper.tz .pp-asp dd{margin-bottom:8px}
 .scout-app-wrapper .pp-gal::-webkit-scrollbar{display:none}
 .scout-app-wrapper .pp-gal img{flex:0 0 100%;width:100%;height:100%;object-fit:contain;scroll-snap-align:center;display:block}
 .scout-app-wrapper .pp-thumbs{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}
@@ -1748,7 +1756,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .pp-share{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;margin-top:10px;border-radius:99px;font-weight:800;font-size:15px}
 .scout-app-wrapper .pp-go{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;margin-top:14px;border-radius:99px;text-decoration:none;font-weight:800;font-size:16px}
 .scout-app-wrapper .pp-end{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--cd3);color:var(--ink);font-weight:700}
-@media(prefers-reduced-motion:reduce){.scout-app-wrapper .pp-gal{scroll-behavior:auto}}
+@media(prefers-reduced-motion:reduce){.scout-app-wrapper .pp-gal{scroll-behavior:auto}.scout-app-wrapper .pp-heart.on{animation:none}}
 </style>
 
 <div class="scout-app-wrapper ot-r k2">
@@ -2692,7 +2700,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v6.98';
+var PROWL_VERSION='v6.99';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4525,7 +4533,7 @@ var SIZES=[{n:'Standard',z:1},{n:'Large',z:1.12},{n:'Extra large',z:1.25}];
 function textSizeGet(){var i=0;try{i=parseInt(localStorage.getItem('prowl.textSize')||'0',10)||0}catch(e){}return (i>=0&&i<SIZES.length)?i:0}
 function textSizeApply(i){
   var w=document.querySelectorAll('.scout-app-wrapper'),k;
-  for(k=0;k<w.length;k++){w[k].style.zoom=SIZES[i].z===1?'':String(SIZES[i].z);w[k].classList.toggle('tz',SIZES[i].z!==1)}
+  for(k=0;k<w.length;k++){w[k].style.zoom=SIZES[i].z===1?'':String(SIZES[i].z);w[k].classList.toggle('tz',SIZES[i].z!==1);w[k].style.setProperty('--tz',String(SIZES[i].z))}   /* v6.99: vh heights divide by it */
   var b=document.getElementById('otp-sizeBtn');if(b)b.textContent=SIZES[i].n;
   var t=document.getElementById('otp-sizeTop');if(t){t.setAttribute('aria-label','Text size: '+SIZES[i].n+'. Tap to change.');t.title='Text size: '+SIZES[i].n}   /* v6.73 */
 }
@@ -6249,6 +6257,34 @@ function popSrc(u){
 var POP_NAME={ebay:'eBay',shopgoodwill:'ShopGoodwill',salvation:'Salvation Army',etsy:'Etsy'};
 /* the worker already strips seller HTML down to a few tags; this walks it again and copies only those tags and text,
    so nothing in a description can run here whatever the worker sends */
+/* v6.99: some sellers' text arrives escaped twice ("it&#39;s"); decode what is left as plain text, never as HTML */
+function popUnEnt(s){
+  var M={amp:'&',quot:'"',apos:"'",lt:'<',gt:'>',nbsp:' '},k,out=String(s==null?'':s);
+  for(k=0;k<2;k++)out=out.replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|amp|quot|apos|lt|gt|nbsp);/ig,function(m,e){
+    if(e.charAt(0)==='#'){var n=e.charAt(1).toLowerCase()==='x'?parseInt(e.slice(2),16):parseInt(e.slice(1),10);return (n>31&&n<1114112&&(n<55296||n>57343))?String.fromCodePoint?String.fromCodePoint(n):String.fromCharCode(n):''}
+    return M[e.toLowerCase()];
+  });
+  return out;
+}
+/* v6.99 Search this on Prowl: the listing title cut to the words that find the piece. The maker from the item
+   details goes first; sales words, sizes and years go. */
+var POP_FILL={rare:1,vintage:1,vtg:1,retro:1,antique:1,original:1,orig:1,label:1,labeled:1,labelled:1,tag:1,tags:1,nice:1,wow:1,look:1,lot:1,used:1,'new':1,nos:1,htf:1,euc:1,guc:1,great:1,beautiful:1,gorgeous:1,cute:1,lovely:1,stunning:1,estate:1,find:1,condition:1,excellent:1,mcm:1,collectible:1,collectable:1,decor:1,piece:1,pc:1,pcs:1,the:1,a:1,an:1,and:1,of:1,'with':1,w:1,'for':1,'in':1,by:1,only:1,rarer:1,very:1};
+function popTerm(title,asp){
+  var raw=popUnEnt(title).replace(/l@@k/ig,' ').replace(/[^A-Za-z0-9\u00C0-\u024F'\- ]+/g,' '),ws=raw.split(/\s+/),out=[],seen=Object.create(null),mk=[],i,w,lw,a;
+  if(asp&&asp.length)for(i=0;i<asp.length;i++){a=asp[i];if(a&&/^(brand|maker|manufacturer|artist|designer|pottery|make|company)$/i.test(String(a.n||'').trim())&&a.v&&!/unbranded|unknown|does not apply|^n\/?a$|^none$/i.test(a.v)){mk=popUnEnt(a.v).replace(/[^A-Za-z0-9\u00C0-\u024F'\- ]+/g,' ').split(/\s+/).filter(Boolean).slice(0,3);break}}
+  function add(x){x=x.replace(/^['\-]+|['\-]+$/g,'');lw=x.toLowerCase();if(!x||seen[lw])return;seen[lw]=1;out.push(x)}
+  for(i=0;i<mk.length;i++)add(mk[i]);
+  for(i=0;i<ws.length;i++){
+    w=ws[i].replace(/^['\-]+|['\-]+$/g,'');lw=w.toLowerCase();
+    if(!w||POP_FILL[lw])continue;
+    if(/^\d/.test(w)&&/^\d+(?:[x\/.]\d+)*(?:s|in|inch|inches|cm|mm|ft|oz|lb|lbs|qt|pc|pcs)?$/i.test(w))continue;
+    add(w);
+  }
+  var t=out.slice(0,7).join(' ');
+  while(t.length>80&&out.length>1){out.pop();t=out.slice(0,7).join(' ')}
+  return t.slice(0,80);
+}
+function popPlain(x){return popUnEnt(String(x||'').replace(/<[^>]*>/g,' ')).replace(/[^A-Za-z0-9]+/g,' ').trim().toLowerCase()}
 var POP_TAGS={P:1,BR:1,B:1,STRONG:1,I:1,EM:1,U:1,UL:1,OL:1,LI:1,H3:1,H4:1};
 function popDesc(html){
   var out=document.createDocumentFragment(),t=document.createElement('template');
@@ -6256,7 +6292,7 @@ function popDesc(html){
   (function walk(from,to){
     var n,c,k;
     for(n=from.firstChild;n;n=n.nextSibling){
-      if(n.nodeType===3){to.appendChild(document.createTextNode(n.nodeValue))}
+      if(n.nodeType===3){to.appendChild(document.createTextNode(popUnEnt(n.nodeValue)))}
       else if(n.nodeType===1){
         if(POP_TAGS[n.nodeName]){c=document.createElement(n.nodeName.toLowerCase());to.appendChild(c);walk(n,c)}
         else if(!/^(SCRIPT|STYLE|IFRAME|OBJECT|EMBED|TEMPLATE|SVG|MATH|NOSCRIPT)$/.test(n.nodeName))walk(n,to);
@@ -6297,30 +6333,51 @@ function popPaint(d){
   var P=POP,b=$('#otp-sheetB');if(!P||!b)return;
   d=d||{};
   var imgs=(d.images&&d.images.length)?d.images:(P.img?[P.img]:[]);
-  var title=d.title||P.t,price=d.price||P.p,meta=[],i,h='';
+  var title=popUnEnt(d.title||P.t),price=d.price||P.p,meta=[],i,h='';
+  var desc=d.description&&popPlain(d.description)!==popPlain(title)?d.description:'';   /* v6.99: a description that only repeats the title is left out */
   if(typeof d.bids==='number'){meta.push(d.time_left?d.time_left+' left':'');meta.push(d.bids+' bid'+(d.bids===1?'':'s'))}
   else if(P.auc&&!d.title)meta.push(P.auc);
   if(d.condition)meta.push(d.condition);
   meta=meta.filter(Boolean);
   if(imgs.length){
-    h+='<div class="pp-gal" role="region" aria-label="Photos, '+imgs.length+'" tabindex="0">';
+    h+='<div class="pp-galw"><div class="pp-gal" role="region" aria-label="Photos, '+imgs.length+'. Double-tap to like" tabindex="0">';
     for(i=0;i<imgs.length;i++)h+='<img src="'+esc(imgs[i])+'" alt="'+esc(title)+(imgs.length>1?' (photo '+(i+1)+' of '+imgs.length+')':'')+'" decoding="async"'+(i?' loading="lazy"':'')+'>';
-    h+='</div>';
+    h+='</div><i class="pp-heart" aria-hidden="true">\u2665</i></div>';
     if(imgs.length>1){h+='<div class="pp-thumbs">';for(i=0;i<imgs.length;i++)h+='<button type="button" data-pi="'+i+'" aria-label="Photo '+(i+1)+'"'+(i?'':' aria-current="true"')+'><img src="'+esc(imgs[i])+'" alt="" loading="lazy"></button>';h+='</div>'}
   }
   h+='<h3 class="pp-t">'+esc(title)+'</h3>';
   if(price)h+='<p class="pp-p">'+esc(price)+'</p>';
   if(meta.length)h+='<p class="pp-m">'+esc(meta.join(' · '))+'</p>';
   if(d.gone)h+='<p class="pp-end">This listing ended.</p>';
-  if(d.aspects&&d.aspects.length){h+='<dl class="pp-asp">';for(i=0;i<d.aspects.length&&i<6;i++)h+='<dt>'+esc(d.aspects[i].n)+'</dt><dd>'+esc(d.aspects[i].v)+'</dd>';h+='</dl>'}
-  if(d.description)h+='<div class="pp-d clip" id="otp-ppd"></div><button type="button" class="pp-more" data-ppmore="1" aria-controls="otp-ppd" aria-expanded="false">Read more</button>';
+  P.term=popTerm(title,d.aspects);if(P.term)h+='<button type="button" class="pp-hunt" data-pphunt="1" aria-label="Search this on Prowl: '+esc(P.term)+'">\ud83d\udd0d Search this on Prowl</button>';   /* v6.99 */
+  if(d.aspects&&d.aspects.length){h+='<dl class="pp-asp">';for(i=0;i<d.aspects.length&&i<6;i++)h+='<dt>'+esc(popUnEnt(d.aspects[i].n))+'</dt><dd>'+esc(popUnEnt(d.aspects[i].v))+'</dd>';h+='</dl>'}
+  if(desc)h+='<div class="pp-d clip" id="otp-ppd"></div><button type="button" class="pp-more" data-ppmore="1" aria-controls="otp-ppd" aria-expanded="false">Read more</button>';
   if(price&&!d.gone&&!aiOff())h+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'" data-d="'+esc(popDetails(meta,d))+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
   var go=window.prowlAff(d.url||P.u,'prowl-popup',d.affUrl);
   if(go!=='#')h+='<a class="b p pp-go" href="'+esc(go)+'" target="_blank" rel="noopener noreferrer">View on '+esc(POP_NAME[P.src])+' ↗</a>';
   P.share={u:d.url||P.u,t:title,p:price,img:imgs[0]||''};h+='<button type="button" class="b pp-share" data-ppshare="1">Share this find</button>';   /* v6.98 */
+  h+='<button type="button" class="b pp-close" data-ppclose="1">Close</button>';   /* v6.99: a way out at the bottom too */
   b.innerHTML=h;
-  if(d.description){var box=$('#otp-ppd');box.appendChild(popDesc(d.description));
+  if(desc){var box=$('#otp-ppd');box.appendChild(popDesc(desc));
     if(box.scrollHeight<=box.clientHeight+2){box.classList.remove('clip');var mb=b.querySelector('[data-ppmore]');if(mb)mb.parentNode.removeChild(mb)}}
+}
+/* v6.99: double-tap the photo to like the listing. It only adds a like; un-liking stays on the heart button. */
+function popLike(){
+  var P=POP;if(!P)return;
+  var hr=$('#otp-sheetB .pp-heart');if(hr&&!flReduced()){hr.classList.remove('on');void hr.offsetWidth;hr.classList.add('on')}
+  if(likeHas(P.u)){toast('Already liked. It is in the Den, under Likes.',2200);return}
+  var S=P.share||{},l=likeClean({u:P.u,t:S.t||P.t,p:S.p||P.p,s:P.s||P.src,i:S.img||P.img,h:'',at:Date.now()});if(!l)return;
+  var a=likesGet();a.unshift(l);likesPut(a);likePaint(P.u);rDenLikes();
+  toast('\u2665 Liked. Flock will show you more like this.',2400);
+}
+/* v6.99: Search this on Prowl closes the popup and runs the cleaned title across every marketplace */
+function popHunt(){
+  var t=POP&&POP.term;if(!t||!q)return;
+  closeSheet();
+  if(den&&!den.hidden&&den.classList.contains('on'))closeDen();
+  if(flockOpen())closeFlock();
+  q.value=t;
+  setTimeout(function(){var sa=$('#otp-sa');if(sa)sa.click();toast('Searching <b>'+esc(t)+'</b>. Tap the search box to change it.',4200)},320);
 }
 /* the snap card nearest the top of the feed (cards and notes snap; dividers do not) */
 function flIdxOf(row){var cs=row.querySelectorAll('.fl-card,.fl-note'),i,b=0,bd=1e9,d;for(i=0;i<cs.length;i++){d=Math.abs(cs[i].offsetTop-row.scrollTop);if(d<bd){bd=d;b=i}}return b}
@@ -7409,11 +7466,14 @@ function flyStep(){
   row.addEventListener('pointercancel',function(e){end(e,true)});
   if(tst)tst.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('#otp-undis'))flUndo()});
   /* v6.39: the sheet. Close with ✕, the scrim, Escape, or a swipe down from its header. */
-  var sb=$('#otp-sheet');if(!sb)return;sh=sb;
+  var sb=$('#otp-sheet');if(!sb)return;sh=sb;var popTap=0;
   $('#otp-sheetClose').addEventListener('click',closeSheet);
   sb.addEventListener('click',function(e){
     var b=e.target.closest&&e.target.closest('[data-watch]');if(b){flWatchTap(b);return}
     if(e.target.closest&&e.target.closest('[data-ppshare]')){if(POP&&POP.share)shareFind(POP.share);return}   /* v6.98 */
+    if(e.target.closest&&e.target.closest('[data-ppclose]')){closeSheet();return}   /* v6.99 */
+    if(e.target.closest&&e.target.closest('[data-pphunt]')){popHunt();return}
+    if(e.target.closest&&e.target.closest('.pp-gal')){var nt=Date.now();if(nt-popTap<320){popTap=0;popLike()}else popTap=nt;return}
     if((b=e.target.closest&&e.target.closest('[data-pi]'))){var g=sb.querySelector('.pp-gal'),k=+b.getAttribute('data-pi');if(g){try{g.scrollTo({left:k*g.clientWidth,behavior:flReduced()?'auto':'smooth'})}catch(er){g.scrollLeft=k*g.clientWidth}}
       $$('#otp-sheet [data-pi]').forEach(function(x){x.setAttribute('aria-current',String(x===b))});return}
     if((b=e.target.closest&&e.target.closest('[data-ppmore]'))){var d=$('#otp-ppd');if(!d)return;var open=d.classList.toggle('clip');b.textContent=open?'Read more':'Show less';b.setAttribute('aria-expanded',String(!open));return}

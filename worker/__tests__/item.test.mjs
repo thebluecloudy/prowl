@@ -19,9 +19,9 @@ const constLine = (name) => { const m = new RegExp("^const " + name + " = [^\\n]
 function load(deps = {}, nowIso = "2026-10-07T19:36:00Z") {
   const RealDate = Date, fixed = RealDate.parse(nowIso);
   class FakeDate extends RealDate { constructor(...a) { super(...(a.length ? a : [fixed])); } static now() { return fixed; } }
-  const names = ["hibidText", "money", "ebayMoney", "timeLeft", "salvationEnd", "itemRef", "itemDesc", "itemImages", "itemEbay", "itemSgw", "salvationItem", "itemRoute"];
+  const names = ["hibidText", "money", "ebayMoney", "ptOff", "sgwMs", "timeLeft", "salvationEnd", "itemRef", "itemDesc", "itemImages", "itemEbay", "itemSgw", "salvationItem", "itemRoute"];
   const src = [
-    constLine("ITEM_TAGS"), "const itemImg = " + /const itemImg = ([^\n]+)/.exec(INDEX)[1],
+    constLine("ITEM_TAGS"), constLine("PT_FMT"), "const itemImg = " + /const itemImg = ([^\n]+)/.exec(INDEX)[1],
     'const SALVATION_BASE = "https://shopthesalvationarmy.com";',
     'const EBAY_ITEM_URL = "https://www.ebay.com/itm/";', constLine("EBAY_GETITEM_URL"), constLine("SGW_ITEM_API"),
     "const ITEM_CACHE_SECONDS = 86400, ITEM_PER_IP = 300, ITEM_IMAGES = 24, ITEM_DESC_MAX = 20000;",
@@ -139,7 +139,7 @@ test("/item: bad URLs refused, cache hit skips the source, errors are not cached
   const L2 = load({ PCACHE, fetch: async () => resp(500, "") });
   const e = await L2.itemRoute({}, new URL("https://w.example/item?url=" + encodeURIComponent("https://shopgoodwill.com/item/666")), "o", req);
   assert.equal(e.status, 502);
-  assert.ok(!store.has("https://prowl-verdicts.invalid/item1/shopgoodwill/666"));
+  assert.ok(!store.has("https://prowl-verdicts.invalid/item2/shopgoodwill/666"));
 });
 
 test("/item: the per-visitor cap answers 429 before any source is asked", async () => {
