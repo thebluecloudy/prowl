@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-14 (v7.03 / v116).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-15 (v7.04 / v116).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.03** | 123,339 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.04** | 122,508 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v116** | |
 
 Recently shipped, newest first:
 
+- **v7.04: the dock buttons morph the page (Matt, 2026-10-15).** Pressing Prowl, the one-site button, Local, Flock
+  or Daily fades the old main area up and the new one in (160 ms out, 240 ms in). Browsers with View Transitions use
+  `document.startViewTransition` with only `main#otp-main` named (`prowl-main`); the root crossfade is switched off
+  while `html.otp-vt` is set, so the Shopify header, footer and the dock itself stay still. Other browsers get the
+  same fade-in as a class (`otp-in`). Den keeps its drawer slide, Daily with no hunts only toasts, reduced motion
+  gets no animation. Test: `__tests__/page/dock-morph.test.mjs`.
 - **v7.03: less to read, fewer buttons (Matt picked ideas 1 to 7, 2026-10-14).** Phone home page 690 → 575 words and
   58 → 46 controls (3 screens → 2); Den About 966 → 86 words; Den Settings 548 → 335.
   1. One search button: Hunt. Search All is hidden (kept, other code clicks it); Near me is a small chip.

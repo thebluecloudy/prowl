@@ -1778,6 +1778,15 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .pp-go{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;margin-top:14px;border-radius:99px;text-decoration:none;font-weight:800;font-size:16px}
 .scout-app-wrapper .pp-end{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--cd3);color:var(--ink);font-weight:700}
 @media(prefers-reduced-motion:reduce){.scout-app-wrapper .pp-gal{scroll-behavior:auto}.scout-app-wrapper .pp-heart.on{animation:none}}
+/* v7.04: dock buttons swap the main area with a short morph (View Transitions, class fallback) */
+.scout-app-wrapper main#otp-main{view-transition-name:prowl-main}
+html.otp-vt::view-transition-old(root),html.otp-vt::view-transition-new(root){animation:none}
+html.otp-vt::view-transition-old(prowl-main){animation:otpVtOut 160ms cubic-bezier(.4,0,1,1) both}
+html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezier(0,0,.2,1) both}
+@keyframes otpVtOut{to{opacity:0;transform:translateY(-6px) scale(.99)}}
+@keyframes otpVtIn{from{opacity:0;transform:translateY(8px) scale(.99)}}
+.scout-app-wrapper main#otp-main.otp-in{animation:otpVtIn 240ms cubic-bezier(0,0,.2,1) both}
+@media(prefers-reduced-motion:reduce){.scout-app-wrapper main#otp-main.otp-in{animation:none}}
 </style>
 
 <div class="scout-app-wrapper ot-r k2">
@@ -1802,7 +1811,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 </header>
 <div class="hi" id="otp-hi" hidden></div>
 
-<main>
+<main id="otp-main">
   <div class="pmark" id="otp-pan"><button class="pm-btn" id="otp-panQr" type="button" aria-label="Show the Prowl QR code" title="Show the QR code"><img id="otp-panImg" src="https://cdn.shopify.com/s/files/1/0807/8537/5486/files/panther_white_eyes_new_tail_clear.png?v=1785688388" alt="" decoding="async"><span class="pm-qr" aria-hidden="true"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2"></path></svg></span></button></div>
   <p class="eb" id="otp-verEb"></p>
   <div class="proban" id="otp-proBan" hidden></div>
@@ -2729,7 +2738,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.03';
+var PROWL_VERSION='v7.04';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4010,10 +4019,31 @@ function rDock(){
   });
 }
 
+/* v7.04: a dock press morphs the main area. Den has its own drawer slide; Daily with no hunts only toasts. */
+function dockMorph(fn){
+  var mn=document.getElementById('otp-main'),de=document.documentElement;
+  var rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!mn||rm){fn();return;}
+  if(document.startViewTransition){
+    de.classList.add('otp-vt');
+    var t;
+    try{t=document.startViewTransition(fn);}catch(x){de.classList.remove('otp-vt');fn();return;}
+    var off=function(){de.classList.remove('otp-vt')};
+    if(t&&t.finished&&t.finished.then)t.finished.then(off,off);else setTimeout(off,400);
+    return;
+  }
+  fn();
+  mn.classList.remove('otp-in');void mn.offsetWidth;mn.classList.add('otp-in');
+  setTimeout(function(){mn.classList.remove('otp-in')},300);
+}
 dock.addEventListener('click',function(e){
   var b=e.target.closest('.db');if(!b)return;
   var m=b.dataset.m;
   if(m==='den')return;
+  if(m==='daily'&&st.lock.size===0){dockGo(m);return;}
+  dockMorph(function(){dockGo(m)});
+});
+function dockGo(m){
   /* v6.38: Flock is a tab; every other mode closes it */
   if(m==='flock'){if(flockOpen())flTop();else openFlock();return;}
   closeFlock();
@@ -4027,7 +4057,7 @@ dock.addEventListener('click',function(e){
     }
     runProwl('daily',lockTexts(),ALL);
   }
-});
+}
 
 /* v6.88: the dock's LOCAL; v6.90: also Near me under the search box, in Facebook USA's old spot (Facebook USA is on the
    results). With a hunt it searches the city-aware sites; with none it opens Den > Local to set the city. */
