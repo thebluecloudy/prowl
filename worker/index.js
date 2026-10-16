@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v118: 2026-10-16. Shelf scan: /appraise mode "shelf" names up to 3 pieces on a shelf worth a closer look, each
+ *         with a fair range and a pay-up-to price (shelfPrompt, shelfParse). Counts as one photo check.
  *   v117: 2026-10-16. GET /hunt?q=: one hunt across every live marketplace plus Craigslist (Hark's "hunt like Hark"):
  *         only true matches, cross-posts marked, the best 3 picks first, a row for every site. Logic in hunt.js.
  *   v115: 2026-10-13. GET /img?u=: a find's photo for Share in Flock (Prowl's pages only, images only, 4 MB, 200 a day
@@ -404,7 +406,7 @@ import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb6
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-const WORKER_VERSION = "v117";
+const WORKER_VERSION = "v118";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -3287,6 +3289,27 @@ async function fbTest(env, url) {
   }, null, 1), { status: 200, headers: { "Content-Type": "application/json" } });
 }
 
+/* v118: shelf scan. One photo of a shelf or table; the model names at most 3 pieces worth a closer look. It never
+   prices every item, and says so when nothing stands out. Lines: PICK n: name | why | fair range | pay up to. */
+function shelfPrompt() {
+  return "You are helping a vintage collector standing at a thrift store or estate sale shelf. The photo shows many items. " +
+    "Find at most 3 pieces that are most likely worth more than a thrift price to a vintage collector: known makers, marks, " +
+    "collectible glass, pottery, kitchenware, decor, toys or art. Skip ordinary modern items. For each, write exactly one line:\n" +
+    "PICK 1: what it is (maker if visible) | where it is in the photo (like top shelf left) | fair resale range in US dollars | most to pay to resell it at a profit\n" +
+    "Use plain dollar ranges like $20-$35. If nothing on the shelf stands out, write exactly: NONE: nothing here stands out. " +
+    "Do not add anything else. Be honest about uncertainty: say likely before a guess.";
+}
+function shelfParse(text) {
+  const out = [];
+  String(text || "").split(/\n/).forEach(l => {
+    const m = /^\s*PICK\s*\d\s*:\s*(.+)$/i.exec(l);
+    if (!m || out.length >= 3) return;
+    const p = m[1].split("|").map(x => x.replace(/\bebay\b/gi, "eBay").trim());
+    if (!p[0]) return;
+    out.push({ item: p[0].slice(0, 120), where: (p[1] || "").slice(0, 80), fair: noCents((p[2] || "").slice(0, 40)), payUpTo: noCents((p[3] || "").slice(0, 40)) });
+  });
+  return out;
+}
 async function appraise(request, env, origin) {
   if (!origin || ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);
   if (!env || !env.MUSE_API_KEY) return json({ error: "not configured" }, 500, origin);
@@ -3316,6 +3339,16 @@ async function appraise(request, env, origin) {
   }
   if (left !== null) { const pool = await poolOk(request, env, "ap:all", APPRAISE_PER_DAY); if (!pool.ok) return giveBack(["apf:" + ip, "apn:" + ipNet(ip)], busyNow(origin, pool)); }
 
+  if (mode === "shelf") {   /* v118 */
+    let sa = null;
+    try { sa = await museVision(env, shelfPrompt(), image, false); } catch (e) { sa = null; }
+    if (!sa || sa.status !== 200 || !sa.content) return json({ error: "ai unreachable" }, 502, origin);
+    const so = { shelf: shelfParse(sa.content), none: /^\s*NONE:/im.test(sa.content) };
+    if (!so.shelf.length && !so.none) return json({ error: "ai answer unreadable" }, 502, origin);
+    if (left !== null) { so.left = left; so.free = PHOTO_FREE_PER_DAY; }
+    if (pro) so.pro = true;
+    return json(so, 200, origin);
+  }
   let looks = [];
   if (mode === "fast") { try { looks = await ebayImageSearch(image, env); } catch (e) { looks = []; } }
   let a = null, basis = "sold";

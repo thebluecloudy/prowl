@@ -1,16 +1,26 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-16 (v7.07 / v117).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-16 (v7.08 / v118).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.07** | 118,834 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
-| Worker | **v117** | |
+| Page | **v7.08** | 115,184 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Worker | **v118** | |
 
 Recently shipped, newest first:
 
+- **v7.08 + worker v118: Keep it simple, and shelf scan (Matt picked PIE items 18 and 20, 2026-10-16).**
+  - **Keep it simple / Show everything** (Den › Settings, new key `prowl.detail`, `all` = everything). Simple is the
+    default: in a search the long marketplace list, the Open all bar, the pop-up warnings and the sign-in note fold
+    behind "Show all N marketplaces" (`#otp-dtMore`, adds `.dt-open` to that run); the cross-post line hides.
+    Best picks and live finds stay. Wrapper class `dt-simple`.
+  - **Shelf scan:** the photo screen has One piece / A whole shelf. Shelf sends `/appraise` mode `shelf`; worker
+    v118 asks for at most 3 pieces worth a closer look (`shelfPrompt`), each with where it sits, a fair range and a
+    pay-up-to price (`shelfParse`), or "Nothing stands out". Each card has Search this on Prowl. Uses one photo check.
+    Not tried against the real model yet.
+  Tests: `__tests__/page/detail-shelf-v708.test.mjs`, `worker/__tests__/shelf.test.mjs`.
 - **v7.07:** Best picks also show for the hunt picked in Your favorite hunts (Matt: they only came with the search
   box). `huntBox(t)` at the top of `sgwBody`; `huntPaint` fills every `.pk[data-t]` box for that term.
 - **v7.06 + worker v117: Best picks, "hunt like Hark" (Hark's spec and code, Matt 2026-10-16).** One call,
@@ -221,7 +231,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.08, worker v118**. Claim one here when you start.
+Next free numbers: **page v7.09, worker v119**. Claim one here when you start.
 
 ## What's next
 
