@@ -1,16 +1,28 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-15 (v7.04 / v116).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-16 (v7.05 / v116).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.04** | 122,508 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.05** | 121,645 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v116** | |
 
 Recently shipped, newest first:
 
+- **v7.05: bigger type and four quick wins from the Flippr teardown (Matt, 2026-10-16).** Ranked with a PIE matrix
+  (`claude/prowl-direction-and-roadmap-2026-10-16.md` in the project).
+  - **Type floor:** every font size in the main stylesheet moved up one step: under 12px → 12.5, 12–12.5 → 13,
+    13–13.5 → 14, 14–14.5 → 15, 15–15.5 → 16 (306 rules). Nothing below 12.5px is left. Text size Standard/Large/
+    Extra large and `prowl.textSize` are unchanged. The Den tabs got 4px gaps and no letter-spacing so SETTINGS fits.
+  - **Paw prints** (`.paws`, three 🐾 fading in turn) while a live source is loading ("Looking on eBay…") and while
+    a photo is being checked. Reduced motion: they stay still.
+  - **Photo tips** on the Photo check screen: One piece · Good light · Show the mark (`.apr-tips`).
+  - **Empty Den:** "No hunts saved yet" with two examples and an "Add my first hunt" button that puts the cursor in
+    the Add box (`.den-empty`, `#otp-denStart`).
+  - "Free checks left today" already existed (`#otp-aprLeft`), so it was not rebuilt.
+  Test: `__tests__/page/type-quickwins-v705.test.mjs`. No localStorage keys, IDs or marketplace changes.
 - **v7.04: the dock buttons morph the page (Matt, 2026-10-15).** Pressing Prowl, the one-site button, Local, Flock
   or Daily fades the old main area up and the new one in (160 ms out, 240 ms in). Browsers with View Transitions use
   `document.startViewTransition` with only `main#otp-main` named (`prowl-main`); the root crossfade is switched off
@@ -192,7 +204,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.04, worker v117**. Claim one here when you start.
+Next free numbers: **page v7.06, worker v117**. Claim one here when you start.
 
 ## What's next
 
