@@ -18,7 +18,8 @@ Recently shipped, newest first:
     Extra large and `prowl.textSize` are unchanged. The Den tabs got 4px gaps and no letter-spacing so SETTINGS fits.
   - **Paw prints** (`.paws`, three 🐾 fading in turn) while a live source is loading ("Looking on eBay…") and while
     a photo is being checked. Reduced motion: they stay still.
-  - **Photo tips** on the Photo check screen: One piece · Good light · Show the mark (`.apr-tips`).
+  - **Photo tips** on the Photo check screen: One piece · Good light · Show the mark (`.apr-tips`). Each `<li>` sits on its
+    own line: Shopify rewrites inline list items that way, and the first deploy's md5 check failed on it.
   - **Empty Den:** "No hunts saved yet" with two examples and an "Add my first hunt" button that puts the cursor in
     the Add box (`.den-empty`, `#otp-denStart`).
   - "Free checks left today" already existed (`#otp-aprLeft`), so it was not rebuilt.
