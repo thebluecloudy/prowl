@@ -1,16 +1,18 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-16 (v7.06 / v117).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-16 (v7.07 / v117).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.06** | 119,085 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.07** | 118,834 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v117** | |
 
 Recently shipped, newest first:
 
+- **v7.07:** Best picks also show for the hunt picked in Your favorite hunts (Matt: they only came with the search
+  box). `huntBox(t)` at the top of `sgwBody`; `huntPaint` fills every `.pk[data-t]` box for that term.
 - **v7.06 + worker v117: Best picks, "hunt like Hark" (Hark's spec and code, Matt 2026-10-16).** One call,
   `GET /hunt?q=` (optional `&cl=` Craigslist city, letters only, default detroit), checks every `LIVE_CALLS`
   marketplace plus Craigslist in parallel and answers `{term, ms, median, picks, rows, dupes}`. The matching lives in
@@ -219,7 +221,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.07, worker v118**. Claim one here when you start.
+Next free numbers: **page v7.08, worker v118**. Claim one here when you start.
 
 ## What's next
 

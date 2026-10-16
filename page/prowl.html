@@ -2771,7 +2771,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.06';
+var PROWL_VERSION='v7.07';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3920,10 +3920,12 @@ function huntInner(t){
     h+='<li class="'+(r.gated?'pk-gated':r.kept?'pk-yes':'pk-no')+'" title="'+esc(r.kept?'':r.note||'')+'">'+esc(huntSite(r.source))+(r.kept?' · '+r.kept:'')+'</li>'}
   return h+'</ul>';
 }
-function huntBlock(r){var t=huntTermOf(r);return t?'<div class="pk" id="otp-hpicks" data-t="'+esc(t.toLowerCase())+'">'+huntInner(t)+'</div>':''}
+function huntBox(t,id){return '<div class="pk"'+(id?' id="'+id+'"':'')+' data-t="'+esc(t.toLowerCase())+'">'+huntInner(t)+'</div>'}
+function huntBlock(r){var t=huntTermOf(r);return t?huntBox(t,'otp-hpicks'):''}
+function huntPaint(t){var k=t.toLowerCase(),b=document.querySelectorAll('.scout-app-wrapper .pk[data-t]'),i;for(i=0;i<b.length;i++)if(b[i].getAttribute('data-t')===k)b[i].innerHTML=huntInner(t)}   /* v7.07: results and the favorite-hunts panel */
 function sgwForRun(r){
   if(r&&r.mode==='daily'){dgFetchAll(r);return}
-  var ht=huntTermOf(r);if(ht)huntFetch(ht,function(){var b=document.getElementById('otp-hpicks');if(b&&b.getAttribute('data-t')===ht.toLowerCase())b.innerHTML=huntInner(ht)});   /* v7.06 */
+  var ht=huntTermOf(r);if(ht)huntFetch(ht,function(){huntPaint(ht)});   /* v7.06 */
   var t=sgwTermOf(r),i,s,e;
   function again(id){return function(){runPatch(r,id)}}   /* v6.74: was rRes() */
   if(t)sgwFetch(t,again('shopgoodwill'));
@@ -4835,7 +4837,7 @@ function fbBlock(t){
 function sgwCont(t){
   return t?'<div class="sgw-cont"><p>These are the live listings. The full hunt searches all <b>'+TOTAL+'</b> marketplaces for <b>“'+esc(t)+'”</b>, from Facebook to estate sales and auctions.</p><button type="button" class="b p sgw-hunt" data-sgw="hunt">Continue the full hunt →</button></div>':'';
 }
-function sgwBody(){var t=sgwCurTerm();return sgwBody0(t)+sgwCont(sgw.terms.length?t:'')}
+function sgwBody(){var t=sgwCurTerm();if(t&&sgw.terms.length)huntFetch(t,function(){huntPaint(t)});return (t&&sgw.terms.length?huntBox(t):'')+sgwBody0(t)+sgwCont(sgw.terms.length?t:'')}   /* v7.07: Best picks for the chosen hunt pill too */
 function sgwBody0(t){
   if(t)fbFetch(t);   /* v6.65 */
   if(!sgw.terms.length)return '<p class="sgw-note">Type something you hunt into the box above. It is saved to your hunts, locked for Daily, and checked on ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Vinted and Grailed right away.</p>';

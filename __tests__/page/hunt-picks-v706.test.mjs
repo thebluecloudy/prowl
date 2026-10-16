@@ -56,3 +56,15 @@ test('a failed hunt leaves no box content, and the regular results still show', 
   assert.ok(p.$('#otp-res .hits'), 'the marketplace rows are still there');
   await p.close();
 });
+
+test('v7.07: tapping a favorite-hunt pill shows Best picks for that hunt', async () => {
+  const base = liveFetch().impl, calls = [];
+  const fetchImpl = (url) => { const u = String(url); if (/\/hunt\?/.test(u)) { calls.push(u); return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(HUNT) }); } return base(url); };
+  const p = loadPage({ fetchImpl, storage: { owlTwigSgwTerms: ['ceramic panther', 'pyrex'], 'prowl.v36': { seen: true, hunts: [] } } });
+  await tick(400);
+  const box = p.$('#otp-sgw .pk[data-t]');
+  assert.ok(box, 'the panel has a picks box');
+  assert.ok(calls.length >= 1);
+  assert.ok(box.querySelectorAll('.pk-card').length >= 1);
+  await p.close();
+});
