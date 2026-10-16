@@ -1815,6 +1815,18 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .pk-sites li{padding:3px 9px;border-radius:999px;font-size:12.5px;background:var(--cd2);color:var(--mu);border:1px solid var(--l2)}
 .scout-app-wrapper .pk-sites .pk-yes{color:var(--ink);border-color:var(--ac);font-weight:700}
 .scout-app-wrapper .pk-sites .pk-gated{font-style:italic;opacity:.7}
+.scout-app-wrapper.dt-simple .rc:not(.dt-open) .hits,.scout-app-wrapper.dt-simple .rc:not(.dt-open) .oabar,.scout-app-wrapper.dt-simple .rc:not(.dt-open) .rf .oa-warn,.scout-app-wrapper.dt-simple .rc:not(.dt-open) .comps-note,.scout-app-wrapper.dt-simple .pk-dupe{display:none}
+.scout-app-wrapper .dt-more{display:none;margin:10px 15px}
+.scout-app-wrapper.dt-simple .rc:not(.dt-open) .dt-more{display:inline-flex}
+.scout-app-wrapper .apr-mode{display:flex;width:100%;border:1px solid var(--l2);border-radius:12px;overflow:hidden}
+.scout-app-wrapper .apr-mode button{flex:1;padding:11px 8px;border:0;background:var(--cd2);color:var(--i2);font-size:15px;font-weight:700}
+.scout-app-wrapper .apr-mode button.on{background:var(--ac);color:var(--onink)}
+.scout-app-wrapper .sh-h{margin:14px 0 8px;font-size:18px;font-weight:800;color:var(--ink)}
+.scout-app-wrapper .sh-card{display:flex;flex-direction:column;gap:4px;padding:12px;margin:0 0 10px;border:1px solid var(--l2);border-radius:12px;background:var(--cd)}
+.scout-app-wrapper .sh-card b{font-size:16px;color:var(--ink)}
+.scout-app-wrapper .sh-card small{font-size:13px;color:var(--mu)}
+.scout-app-wrapper .sh-card p{margin:0;font-size:15px;color:var(--ac);font-weight:700}
+.scout-app-wrapper .sh-go{align-self:flex-start;margin-top:4px}
 </style>
 
 <div class="scout-app-wrapper ot-r k2">
@@ -1948,6 +1960,9 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 </div>
         <label class="apr-price" for="otp-aprP"><span>Asking</span><input id="otp-aprP" type="text" inputmode="decimal" placeholder="$ optional" autocomplete="off"></label>
         <label class="apr-price apr-hint" for="otp-aprH"><span>Maker</span><input id="otp-aprH" type="text" maxlength="80" placeholder="if you know it" autocomplete="off"></label>
+        <div class="apr-mode" role="group" aria-label="What is in the photo">
+<button type="button" class="on" data-am="one" aria-pressed="true">One piece</button><button type="button" data-am="shelf" aria-pressed="false">A whole shelf</button>
+</div>
         <button class="b p" id="otp-aprB" type="button">Take a photo</button>
         <input id="otp-aprF" type="file" accept="image/*" capture="environment" hidden>
         <button class="b" id="otp-aprB2" type="button">Choose from photos</button>
@@ -2315,6 +2330,16 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     try{O.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}
   }
   B.addEventListener('click',function(){if(lsG('aiOff')==='1')return;if(!busy)F.click();});   /* v6.33 */
+  var SHELF=false,AM=document.querySelector('#otp-apr .apr-mode');   /* v7.08: shelf scan */
+  if(AM)AM.addEventListener('click',function(e){var b=e.target.closest('[data-am]');if(!b||busy)return;SHELF=b.getAttribute('data-am')==='shelf';var bs=AM.querySelectorAll('[data-am]');for(var i=0;i<bs.length;i++){var on=bs[i]===b;bs[i].classList.toggle('on',on);bs[i].setAttribute('aria-pressed',on?'true':'false')}});
+  function shelfShow(j){while(O.firstChild)O.removeChild(O.firstChild);var h=document.createElement('h3');h.className='sh-h';h.textContent=j.shelf&&j.shelf.length?'Worth a closer look':'Nothing stands out';O.appendChild(h);
+    if(!j.shelf||!j.shelf.length){var p0=document.createElement('p');p0.className='apr-note';p0.textContent='Nothing on this shelf looks worth more than a thrift price. Try a closer photo of one piece if something catches your eye.';O.appendChild(p0);return}
+    for(var i=0;i<j.shelf.length;i++){var s=j.shelf[i],c=document.createElement('div');c.className='sh-card';var t=document.createElement('b');t.textContent=s.item;c.appendChild(t);
+      if(s.where){var w=document.createElement('small');w.textContent=s.where;c.appendChild(w)}
+      var l=document.createElement('p');l.textContent=(s.fair?'Sells for '+s.fair:'')+(s.fair&&s.payUpTo?' \u00b7 ':'')+(s.payUpTo?'Pay up to '+s.payUpTo:'');if(l.textContent)c.appendChild(l);
+      var a=document.createElement('button');a.type='button';a.className='gh sh-go';a.textContent='Search this on Prowl';a.setAttribute('data-q',s.item.replace(/\(.*?\)/g,' ').replace(/\blikely\b/ig,' ').replace(/\s+/g,' ').trim().slice(0,60));c.appendChild(a);O.appendChild(c)}
+    var f=document.createElement('p');f.className='apr-fine';f.textContent='A quick read of the whole shelf. Check marks and condition in hand before you buy.';O.appendChild(f)}
+  O.addEventListener('click',function(e){var g=e.target.closest('.sh-go');if(!g)return;var q=document.getElementById('otp-q'),sa=document.getElementById('otp-sa'),cl=document.getElementById('otp-photoClose');if(cl)cl.click();if(q&&sa){q.value=g.getAttribute('data-q');setTimeout(function(){sa.click()},250)}});
   var PF=null,F2=document.getElementById('otp-aprF2'),B2=document.getElementById('otp-aprB2');
   if(B2&&F2){B2.addEventListener('click',function(){if(!busy)F2.click();});F2.addEventListener('change',function(){PF=F2.files&&F2.files[0];F2.value='';if(PF){var ev;try{ev=new Event('change');}catch(e){ev=document.createEvent('Event');ev.initEvent('change',true,true);}F.dispatchEvent(ev);}});}
   F.addEventListener('change',function(){
@@ -2324,11 +2349,12 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       /* v5.50: Google Lens identifies better than the AI photo guess, and it is free.
          The photo stays on the device; the old /appraise path is kept behind APR_AI. */
       if(!APR_AI){stopT();busy=false;B.disabled=false;B.textContent='Take another photo';F.value='';lensStep(data);return;}
-      var pb={image:data,price:P.value||'',hint:(H&&H.value)||'',mode:'fast'};if(lsG('alertTok')&&lsG('alertEmail')){pb.e=lsG('alertEmail');pb.t=lsG('alertTok');}
+      var pb={image:data,price:P.value||'',hint:(H&&H.value)||'',mode:SHELF?'shelf':'fast'};if(lsG('alertTok')&&lsG('alertEmail')){pb.e=lsG('alertEmail');pb.t=lsG('alertTok');}
       fetch(API,{method:'POST',headers:OH(),body:JSON.stringify(pb)}).then(function(res){
         return res.json().then(function(j){return {ok:res.ok,status:res.status,j:j} });
       }).then(function(x){
         if(x.ok&&x.j)leftNote(x.j);
+        if(x.ok&&x.j&&x.j.shelf){shelfShow(x.j);return;}   /* v7.08 */
         if(x.status===429&&x.j&&x.j.error==='free limit'){upsell(x.j.limit||2);return;}
         if(x.ok&&x.j&&(x.j.item||x.j.fair)){var fj=x.j;if(/^low/i.test(fj.sure||'')){fj.fair='Not sure enough to price';fj.verdict='';fj.why='Try Google Lens below, or type what it is in Maker and tap Re-price.';fj.basis='estimate';show(fj,data);return;}if(fj.basis==='sold'||!fj.item||/cannot tell|not identifiable|unknown item/i.test(fj.item)){show(fj,data);return;}show({item:fj.item,search:fj.search,condition:fj.condition,flaws:fj.flaws,sure:fj.sure,looks:fj.looks,fair:'Checking sold prices\u2026',basis:'pending'},data);return priceIt(fj,data);}
         else if(x.status===429&&x.j&&/^busy/.test(x.j.error||''))warn('Prowl is busy right now. Try again in a little while.');   /* v6.33: the shared pool, not this visitor's checks */
@@ -2644,6 +2670,13 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 </div>
         <button class="gh" id="otp-sizeBtn" type="button">Standard</button>
       </div>
+      <div class="setrow">
+        <div>
+<h3>How much to show</h3>
+<p>Keep it simple shows Best picks and live finds first, with the full marketplace list one tap away.</p>
+</div>
+        <button class="gh" id="otp-detailBtn" type="button">Keep it simple</button>
+      </div>
       <details class="set-more"><summary>More settings</summary>
       <div class="setrow">
         <div>
@@ -2771,7 +2804,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.07';
+var PROWL_VERSION='v7.08';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3983,7 +4016,7 @@ function rRes(){
   function badge(x){return BADGE[x.mkt]||String(x.name||'?').replace(/[^A-Za-z0-9]/g,'').slice(0,2).toUpperCase()}
   var groups=r.mode==='facebook'?[{k:'',ids:L.map(function(_,j){return j})}]:[{k:'Local & auctions',ids:[]},{k:'Online shops',ids:[]},{k:'Sold prices',ids:[]}];
   if(r.mode!=='facebook')for(var gj=0;gj<total;gj++){var gm=L[gj].mkt;groups[gm==='ebaysold'?2:(LOCALS[gm]?0:1)].ids.push(gj)}
-  var rows='<ul class=hits>',vi=!VINV;
+  var rows='<button type=button class="gh dt-more" id=otp-dtMore>Show all '+total+' marketplaces</button><ul class=hits>',vi=!VINV;   /* v7.08: simple mode folds the list */
   for(var gi=0;gi<groups.length;gi++){
    var G=groups[gi];if(!G.ids.length)continue;
    if(G.k)rows+='<li class=grp>'+G.k+'<span>'+G.ids.length+'</span></li>';
@@ -4028,6 +4061,7 @@ function rRes(){
     '</div></div>';
 
   var cr=$('#otp-cr');if(cr)cr.addEventListener('click',clearRun);
+  var dm=$('#otp-dtMore');if(dm)dm.addEventListener('click',function(){var rc=dm.closest('.rc');if(rc)rc.classList.add('dt-open')});
   var kb=$('#otp-keep');if(kb&&!kept)kb.addEventListener('click',function(){if(sgwAdd(kt))rRes()});   /* v6.10 */
   var fbx=$('#otp-fbAll');
   if(fbx)fbx.addEventListener('click',function(){runProwl('facebook',[r.terms[0]],[fbAllUsa()],'Facebook USA')});
@@ -8198,6 +8232,10 @@ function promoPick(){
 load();counts();rQuick();rDenHunts();rDenLocal();rDenOne();rDrawer();rDock();rRes();
 applyDeepLink();
 Array.prototype.forEach.call(document.querySelectorAll('.prowl-version'),function(el){el.textContent=PROWL_VERSION});
+/* v7.08: Keep it simple (default) or Show everything. prowl.detail = 'all' shows everything; wrapper class dt-simple hides the long parts */
+function detailGet(){var v='';try{v=localStorage.getItem('prowl.detail')||''}catch(e){}return v==='all'?'all':'simple'}
+function detailApply(){var simple=detailGet()==='simple',w=document.querySelectorAll('.scout-app-wrapper'),i;for(i=0;i<w.length;i++)w[i].classList.toggle('dt-simple',simple);var b=document.getElementById('otp-detailBtn');if(b)b.textContent=simple?'Keep it simple':'Show everything'}
+try{detailApply();var dtb=$('#otp-detailBtn');if(dtb)dtb.addEventListener('click',function(){var n=detailGet()==='simple'?'all':'simple';try{localStorage.setItem('prowl.detail',n)}catch(e){}detailApply();if(typeof toast==='function')toast(n==='all'?'Showing everything.':'Keeping it simple.',1600)});}catch(e){}
 try{textSizeApply(textSizeGet());var szb=$('#otp-sizeBtn');if(szb)szb.addEventListener('click',textSizeNext);var szt=$('#otp-sizeTop');if(szt)szt.addEventListener('click',textSizeNext);}catch(e){}
 /* v5.89: while the store's phone menu is open, hide Prowl's top bar and bottom
    dock, which otherwise sit on top of the menu. Works with the Horizon and Dawn
