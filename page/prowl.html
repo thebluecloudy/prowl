@@ -1799,6 +1799,22 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper #otp-den .tabs{gap:4px;padding-left:8px;padding-right:8px}
 .scout-app-wrapper #otp-den .tab{letter-spacing:-.01em;font-size:12.5px;padding-left:1px;padding-right:1px}
 .scout-app-wrapper .den-empty span{font-size:15px;color:var(--i2);line-height:1.5}
+.scout-app-wrapper .pk{margin:4px 0 12px}
+.scout-app-wrapper .pk:empty{display:none}
+.scout-app-wrapper .pk-wait{margin:6px 15px;font-size:14px;color:var(--mu)}
+.scout-app-wrapper .pk-h{margin:6px 15px 8px;font-size:18px;font-weight:800;color:var(--ink)}
+.scout-app-wrapper .pk-h small{font-size:13px;font-weight:600;color:var(--mu);margin-left:6px}
+.scout-app-wrapper .pk-row{display:flex;gap:10px;overflow-x:auto;padding:2px 15px 6px;scroll-snap-type:x mandatory}
+.scout-app-wrapper .pk-card{flex:0 0 156px;scroll-snap-align:start;display:flex;flex-direction:column;gap:3px;text-decoration:none;color:var(--ink);border:1px solid var(--l2);border-radius:12px;padding:6px;background:var(--cd)}
+.scout-app-wrapper .pk-card img,.scout-app-wrapper .pk-noimg{display:block;width:100%;height:124px;object-fit:cover;border-radius:8px;background:var(--cd2)}
+.scout-app-wrapper .pk-card b{font-size:17px;color:var(--ac)}
+.scout-app-wrapper .pk-t{font-size:13px;line-height:1.3;max-height:3.9em;overflow:hidden}
+.scout-app-wrapper .pk-card small{font-size:12.5px;color:var(--mu)}
+.scout-app-wrapper .pk-dupe{margin:4px 15px;font-size:13px;color:var(--i2)}
+.scout-app-wrapper .pk-sites{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:6px 15px 0;padding:0}
+.scout-app-wrapper .pk-sites li{padding:3px 9px;border-radius:999px;font-size:12.5px;background:var(--cd2);color:var(--mu);border:1px solid var(--l2)}
+.scout-app-wrapper .pk-sites .pk-yes{color:var(--ink);border-color:var(--ac);font-weight:700}
+.scout-app-wrapper .pk-sites .pk-gated{font-style:italic;opacity:.7}
 </style>
 
 <div class="scout-app-wrapper ot-r k2">
@@ -2755,7 +2771,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.05';
+var PROWL_VERSION='v7.06';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3871,8 +3887,43 @@ function dgFetchAll(r){
     },(n++)*250);
   });
 }
+/* v7.06: Best picks. One /hunt call (worker v117) checks every live marketplace plus Craigslist, keeps only true
+   matches, marks cross-posts and ranks the best 3. Kept per search in HUNT so a results redraw shows it again. */
+var HUNT={c:{},go:{}};
+var HUNT_NAME={hibid:'HiBid',craigslist:'Craigslist',ebaysold:'eBay Sold'};
+function huntSite(s){return (typeof LIVE_NAME!=='undefined'&&LIVE_NAME[s])||HUNT_NAME[s]||s}
+function huntTermOf(r){return (r&&r.terms&&r.terms.length===1&&r.mode!=='daily'&&r.mode!=='facebook')?String(r.terms[0]):''}
+function huntFetch(t,cb){
+  var k=t.toLowerCase();
+  if(HUNT.c[k]){if(cb)cb();return}
+  if(HUNT.go[k]||typeof fetch!=='function')return;
+  HUNT.go[k]=1;
+  fetch(SGW_API+'hunt?q='+encodeURIComponent(t)).then(function(x){return x.ok?x.json():null}).then(function(d){
+    HUNT.c[k]=(d&&d.rows)?d:{fail:1};delete HUNT.go[k];if(cb)cb();
+  }).catch(function(){HUNT.c[k]={fail:1};delete HUNT.go[k];if(cb)cb()});
+}
+function huntLink(it){var u=String(it.url||'');if(it.src==='ebay'&&window.prowlEpn)u=window.prowlEpn(u,'prowl-picks');return /^https:\/\//.test(u)?u:'#'}
+function huntInner(t){
+  var d=HUNT.c[t.toLowerCase()],h='',i,it,r;
+  if(!d)return '<p class="pk-wait"><span class="paws" aria-hidden="true"><i>🐾</i><i>🐾</i><i>🐾</i></span>Finding the best picks across every marketplace…</p>';
+  if(d.fail||!d.picks||!d.picks.length)return '';
+  h+='<h3 class="pk-h">Best picks'+(d.median?' <small>typical price '+esc(d.median)+'</small>':'')+'</h3><div class="pk-row">';
+  for(i=0;i<d.picks.length;i++){it=d.picks[i];
+    h+='<a class="pk-card" href="'+esc(huntLink(it))+'" target="_blank" rel="noopener noreferrer">'+
+      (it.image?'<img loading="lazy" src="'+esc(it.image)+'" alt="">':'<span class="pk-noimg"></span>')+
+      '<b>'+esc(it.price||'—')+'</b><span class="pk-t">'+esc(it.title)+'</span>'+
+      '<small>'+esc(huntSite(it.src))+(it.time_left?' · '+esc(it.time_left)+' left':'')+(it.where?' · '+esc(it.where):'')+'</small></a>'}
+  h+='</div>';
+  if(d.dupes&&d.dupes.length)h+='<p class="pk-dupe">'+d.dupes.length+' listing'+(d.dupes.length>1?'s are':' is')+' posted on two sites. Prowl shows the cheaper one.</p>';
+  h+='<ul class="pk-sites">';
+  for(i=0;i<d.rows.length;i++){r=d.rows[i];
+    h+='<li class="'+(r.gated?'pk-gated':r.kept?'pk-yes':'pk-no')+'" title="'+esc(r.kept?'':r.note||'')+'">'+esc(huntSite(r.source))+(r.kept?' · '+r.kept:'')+'</li>'}
+  return h+'</ul>';
+}
+function huntBlock(r){var t=huntTermOf(r);return t?'<div class="pk" id="otp-hpicks" data-t="'+esc(t.toLowerCase())+'">'+huntInner(t)+'</div>':''}
 function sgwForRun(r){
   if(r&&r.mode==='daily'){dgFetchAll(r);return}
+  var ht=huntTermOf(r);if(ht)huntFetch(ht,function(){var b=document.getElementById('otp-hpicks');if(b&&b.getAttribute('data-t')===ht.toLowerCase())b.innerHTML=huntInner(ht)});   /* v7.06 */
   var t=sgwTermOf(r),i,s,e;
   function again(id){return function(){runPatch(r,id)}}   /* v6.74: was rRes() */
   if(t)sgwFetch(t,again('shopgoodwill'));
@@ -3946,7 +3997,7 @@ function rRes(){
   }
   rows+='</ul>';
 
-  res.innerHTML='<div class=rc>'+head+(r.mode==='daily'?dgDigest(r):runLive(r))+rows+
+  res.innerHTML='<div class=rc>'+head+huntBlock(r)+(r.mode==='daily'?dgDigest(r):runLive(r))+rows+
     '<div class=oabar>'+
       (paused
         ?'<button class="b p" id=otp-next type=button>Open next '+nextN+'</button>'+

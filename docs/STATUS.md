@@ -1,16 +1,30 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-16 (v7.05 / v116).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-16 (v7.06 / v117).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.05** | 121,645 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
-| Worker | **v116** | |
+| Page | **v7.06** | 119,085 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Worker | **v117** | |
 
 Recently shipped, newest first:
 
+- **v7.06 + worker v117: Best picks, "hunt like Hark" (Hark's spec and code, Matt 2026-10-16).** One call,
+  `GET /hunt?q=` (optional `&cl=` Craigslist city, letters only, default detroit), checks every `LIVE_CALLS`
+  marketplace plus Craigslist in parallel and answers `{term, ms, median, picks, rows, dupes}`. The matching lives in
+  `worker/hunt.js` (pure, tested): every query word or a synonym must be in the title (pottery/porcelain count as
+  ceramic, plurals fold), noise phrases per word (Pink Panther, Marvel, Cartier…), cross-posts = 80% same title words
+  on two sites with prices within 6% (the dearer one gets `dupeOf`), picks = top 3 by below-median price, quiet live
+  auction, lot/pair, photo. Every site keeps a row with a note; Facebook and eBay Sold are listed as login-only.
+  A site that is cooling down (or Vinted out of turn) reports a row instead of being fetched. Cached 15 min
+  (PCACHE), 150 uncached hunts a visitor a day (`hu:`). Craigslist's static list is untested from a Worker address:
+  its row shows what it answered. Page: a Best picks strip at the top of a single search (`#otp-hpicks`; the id
+  `otp-picks` was already the shop strip), paw prints while it waits, eBay links tagged `prowl-picks`, chips per
+  site; a failed hunt leaves the box empty and the regular results stand. Not yet: Pro alerts from `/hunt`, more
+  sources (LiveAuctioneers, Ruby Lane, Mercari US), "close matches" when the gate keeps nothing.
+  Tests: `worker/__tests__/hunt.test.mjs`, `__tests__/page/hunt-picks-v706.test.mjs`.
 - **v7.05: bigger type and four quick wins from the Flippr teardown (Matt, 2026-10-16).** Ranked with a PIE matrix
   (`claude/prowl-direction-and-roadmap-2026-10-16.md` in the project).
   - **Type floor:** every font size in the main stylesheet moved up one step: under 12px → 12.5, 12–12.5 → 13,
@@ -205,7 +219,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.06, worker v117**. Claim one here when you start.
+Next free numbers: **page v7.07, worker v118**. Claim one here when you start.
 
 ## What's next
 
