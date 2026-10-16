@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v117: 2026-10-16. GET /hunt?q=: one hunt across every live marketplace plus Craigslist (Hark's "hunt like Hark"):
+ *         only true matches, cross-posts marked, the best 3 picks first, a row for every site. Logic in hunt.js.
  *   v115: 2026-10-13. GET /img?u=: a find's photo for Share in Flock (Prowl's pages only, images only, 4 MB, 200 a day
  *        per visitor, nothing kept).
  *   v115: 2026-10-13. Prowl's notes say who they are from and why, with no emoji (PUSH_TEST, pushMatch's title): Chrome's
@@ -401,7 +403,8 @@ import { artResponse } from "./art.js";   /* v97 */
 import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb64u } from "./push.js";   /* v114 */
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
-const WORKER_VERSION = "v116";
+import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
+const WORKER_VERSION = "v117";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -5590,6 +5593,55 @@ async function liveFetch(env, source, term) {
   out.ms = Date.now() - t0;
   return out;
 }
+/* v117: one hunt across every live marketplace (hunt.js does the matching). The same calls as liveFetch, keeping
+   auction fields, in parallel; a marketplace that is cooling down or out of turn reports a row instead of a fetch. */
+const HUNT_CACHE_SECONDS = 900, HUNT_PER_IP = 150, HUNT_PER_SOURCE = 40, CL_DEFAULT_SITE = "detroit";
+async function craigslistCall(term, site) {
+  const host = /^[a-z]{3,20}$/.test(site || "") ? site : CL_DEFAULT_SITE;   /* fixed host pattern: never an open proxy */
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), UPSTREAM_TIMEOUT_MS);
+  try {
+    const r = await fetch("https://" + host + ".craigslist.org/search/sss?query=" + encodeURIComponent(term) + "&sort=rel", {
+      signal: ctl.signal, headers: { "User-Agent": PROBE_UA, "Accept": "text/html", "Accept-Language": "en-US,en;q=0.9" } });
+    return { status: r.status, text: await r.text() };
+  } finally { clearTimeout(timer); }
+}
+async function huntOne(env, source, term, cl) {
+  const t0 = Date.now(), row = { source: source, status: 0, items: [], note: "" };
+  try {
+    if (source !== "craigslist" && await coolUntil(source)) row.note = "resting after too many searches; try it from the list";
+    else if (source === "vinted" && !(await vintedTurn())) row.note = "busy right now; try it from the list";
+    else {
+      let up, items;
+      if (source === "craigslist") { up = await craigslistCall(term, cl); items = up.status === 200 ? craigslistNormalize(up.text, SCRAPE_MAX) : null; }
+      else { up = await LIVE_CALLS[source][0](term, env); items = up && up.status === 200 ? LIVE_CALLS[source][1](up.text, term) : null; }
+      row.status = up ? up.status : 0;
+      if (items === null) row.note = up && up.status !== 200 ? "answered " + up.status : "could not read the page";
+      else row.items = (items || []).slice(0, HUNT_PER_SOURCE).filter(x => x && /^https:\/\//.test(x.url || "")).map(x => ({
+        title: String(x.title || "").slice(0, 160), price: String(x.price || ""), priceN: huntPriceN(x.price), url: x.url,
+        image: /^https:\/\//.test(x.image || "") ? x.image : "", src: source, bids: Number(x.bids) || 0,
+        time_left: String(x.time_left || ""), where: String(x.where || "").slice(0, 60) }));
+    }
+  } catch (e) { row.note = "unreachable"; }
+  row.ms = Date.now() - t0;
+  return row;
+}
+async function huntRoute(request, env, url, origin) {
+  const term = String(url.searchParams.get("q") || "").replace(/\s+/g, " ").trim().slice(0, 80);
+  if (term.length < 2) return json({ error: "q required" }, 400, origin);
+  const cl = String(url.searchParams.get("cl") || "").toLowerCase().replace(/[^a-z]/g, "").slice(0, 20);
+  const key = url.origin + "/hunt?q=" + encodeURIComponent(term.toLowerCase()) + "&cl=" + cl + "&v=1";
+  const hit = await PCACHE.match(key);
+  if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
+  if (!(await vCount("hu:" + ipKey(request.headers.get("CF-Connecting-IP")), HUNT_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  const t0 = Date.now();
+  const sources = Object.keys(LIVE_CALLS).filter(s => s !== "depop" || DEPOP_LIVE).concat(["craigslist"]);
+  const rows = await Promise.all(sources.map(s => huntOne(env, s, term, cl)));
+  const out = huntCombine(rows, term);
+  const body = Object.assign({ term: term, ms: Date.now() - t0 }, out);
+  const res = json(body, 200, origin, { "Cache-Control": "public, max-age=" + HUNT_CACHE_SECONDS });
+  try { await PCACHE.put(key, res.clone()); } catch (e) {}
+  return res;
+}
 /* v78: what a member's local hunt searches in their emails: eBay only, near their ZIP code (alHunt), the lean way
    alerts search it. Same answer shape as liveFetch; the ZIP never leaves the worker. Never throws. */
 async function liveFetchLocal(env, sub, term) {
@@ -6101,6 +6153,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/shop-picks") {
       return shopPicks(env, url, origin, request);
     }
+    if (url.pathname === "/hunt") return huntRoute(request, env, url, origin);   /* v117 */
     if (url.pathname === "/hunt-check") {
       return huntCheck(env, url, origin, request);
     }
