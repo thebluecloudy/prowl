@@ -102,3 +102,23 @@ Render r4: spec as before, -13.9 LUFS, -2.3 dBTP, sync 0.00 ms. Frame strips at 
 **Changed**
 - Final mark scale 1.2 -> 1.04 and centre raised to y 366, leaving clear space above the wordmark.
 - The ink finishes rising 0.16 s earlier, before the window becomes the tile.
+
+## Round 5 (final)
+
+Render r5 -> `renders/prowl-launch-film.mp4` (not committed; rebuild with `scripts/build-audio.mjs` then
+`scripts/render.mjs`). 1920x1080, 60/1 fps, 1200 frames, 20.000 s, H.264 + AAC 48 kHz stereo.
+-13.9 LUFS integrated, -2.3 dBFS true peak, LRA 2.0 LU. Sync check: 0.00 ms at all eight cues.
+
+**Found**
+- Every round 4 fix landed: the ink is solid before the window becomes the mark (17.20-17.40), the lockup has
+  clear space between mark and wordmark, the wordmark rises at 18.6 once the mark has settled, and the tagline and
+  "Available now" settle on the 19.2 s beat.
+- Story, layout and type hold at every half second; no frame shows two headlines in one mask, nothing below 28 px.
+- No new defects.
+
+**Still weak**
+- The panther is traced from the 128 px icon; edges are smooth but softer than the original artwork would give.
+  With the full-size PNG in the repo, re-run the trace (`assets/panther.js`) for crisper edges.
+- The skinned walk is deliberately small (the mark's legs are merged in the silhouette), so the gait reads as a
+  low prowl rather than a full stride, and paws slide slightly during the swing.
+- The sound was judged by measurement (onsets, levels, spectrum, loudness), not by ear.
