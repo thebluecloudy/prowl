@@ -62,7 +62,7 @@ test('Den, Daily with no hunts and reduced motion do not morph', async () => {
 test('the transition CSS is scoped: only main is named, root animation is off only while Prowl runs one', async () => {
   const p = loadPage();
   const css = p.doc.getElementById('prowl-css').textContent;
-  assert.match(css, /main#otp-main\{view-transition-name:prowl-main\}/);
+  assert.match(css, /html\.otp-vt \.scout-app-wrapper main#otp-main\{view-transition-name:prowl-main\}/, 'v7.09: named only during the morph, so Flock is not trapped under the top bar');
   assert.match(css, /html\.otp-vt::view-transition-old\(root\)/);
   assert.doesNotMatch(css, /(^|\})::view-transition/);
   await p.close();

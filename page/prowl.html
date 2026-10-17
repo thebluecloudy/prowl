@@ -1788,8 +1788,10 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .pp-go{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;margin-top:14px;border-radius:99px;text-decoration:none;font-weight:800;font-size:16px}
 .scout-app-wrapper .pp-end{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--cd3);color:var(--ink);font-weight:700}
 @media(prefers-reduced-motion:reduce){.scout-app-wrapper .pp-gal{scroll-behavior:auto}.scout-app-wrapper .pp-heart.on{animation:none}}
-/* v7.04: dock buttons swap the main area with a short morph (View Transitions, class fallback) */
-.scout-app-wrapper main#otp-main{view-transition-name:prowl-main}
+/* v7.04: dock buttons swap the main area with a short morph (View Transitions, class fallback). v7.09: named only
+   while the morph runs: a view-transition-name makes main its own layer, which put Prowl's top bar and the store's
+   header over Flock (fixed inside main) */
+html.otp-vt .scout-app-wrapper main#otp-main{view-transition-name:prowl-main}
 html.otp-vt::view-transition-old(root),html.otp-vt::view-transition-new(root){animation:none}
 html.otp-vt::view-transition-old(prowl-main){animation:otpVtOut 160ms cubic-bezier(.4,0,1,1) both}
 html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezier(0,0,.2,1) both}
@@ -6495,19 +6497,43 @@ function openFlock(){
   FLOCK.prev=st.mode;
   sec.hidden=false;sec.classList.add('as-feed');if(w)w.classList.add('flock-mode');
   try{var dh=dock&&dock.offsetHeight;if(dh)sec.style.bottom=dh+'px'}catch(e){}
+  flClear(sec);setTimeout(function(){if(flockOpen())flClear(sec)},450);   /* again once the dock's morph (v7.04) is over: during a view transition the top of the screen is the transition's own layer */
   st.mode='flock';rDock();flSeg();
   /* v6.47: likes changed since the last pick: pick again on the way in, so they show at once */
   if(FLOCK.view==='feed'&&(!FLOCK.started||FLOCK.key!==flTermsKey()||FLOCK.lv!==LIKE_VER))flockStart();
   else{flockRender();if(FLOCK.view==='feed')flockWarm()}
   var row=$('#otp-flockRow');try{row.focus({preventScroll:true})}catch(e){}
 }
+/* v7.09 (Matt's screenshot: the shop's menu, "Shop · Help and info · The drop list", over the Flock cards on a
+   computer): Flock is fixed from the top of the screen, and on the store page the theme pins its header above it.
+   Start Flock under whatever is pinned at the top that is not Flock, found by looking at what is drawn there, so it
+   does not depend on the theme's class names. The bare app page has no header and keeps top 0. The text-size zoom
+   scales the px, so the gap is divided by it. */
+function flClear(sec){
+  if(!sec)return;
+  sec.style.top='';
+  if(typeof document.elementFromPoint!=='function')return;
+  var top=0,xs=[0.2,0.5,0.8],i,el,a,cs,b,w,z;
+  try{
+    for(i=0;i<xs.length;i++){
+      el=document.elementFromPoint(Math.round(window.innerWidth*xs[i]),4);
+      if(!el||sec.contains(el))continue;
+      for(a=el;a&&a!==document.body&&a!==document.documentElement;a=a.parentElement){
+        cs=window.getComputedStyle(a);
+        if(cs.position==='fixed'||cs.position==='sticky'){b=a.getBoundingClientRect().bottom;if(b>top&&b<window.innerHeight/2)top=b;break}
+      }
+    }
+    if(top){w=sec.closest('.scout-app-wrapper');z=(w&&parseFloat(w.style.zoom))||1;sec.style.top=Math.round(top/z)+'px'}
+  }catch(e){}
+}
+window.addEventListener('resize',function(){var sec=$('#otp-flock');if(sec&&flockOpen())flClear(sec)});
 function closeFlock(){
   if(typeof flyStop==='function')flyStop();   /* v6.56 */
   if(!flockOpen())return;
   flSeenWrite();   /* v6.39 */
   if(sheetOpen())closeSheet();
   var sec=$('#otp-flock'),w=sec.closest('.scout-app-wrapper');
-  sec.classList.remove('as-feed');sec.hidden=true;sec.style.bottom='';if(w)w.classList.remove('flock-mode');
+  sec.classList.remove('as-feed');sec.hidden=true;sec.style.bottom='';sec.style.top='';if(w)w.classList.remove('flock-mode');
   if(st.mode==='flock')st.mode=(FLOCK.prev&&FLOCK.prev!=='flock')?FLOCK.prev:'prowl';
   rDock();
 }

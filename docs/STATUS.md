@@ -6,7 +6,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.09 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.09** | 109,821 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.09** | 108,894 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v118** | |
 
 Recently shipped, newest first:
@@ -25,6 +25,13 @@ Recently shipped, newest first:
   google links"). Both always open Den › Local at Stores near you (Google Maps, or Apple Maps if picked), with or
   without a hunt typed; they no longer run Facebook, Craigslist, OfferUp, EstateSales and CTBids, which stay on every
   search's rows. Tests: `__tests__/page/near-me.test.mjs`, `__tests__/page/vinted-invite.test.mjs`.
+  Also: **the shop's menu no longer draws over Flock** (Matt's screenshot, on a computer: "Shop · Help and info · The
+  drop list" over the cards). Two causes. v7.04 gave `main#otp-main` a `view-transition-name` all the time, which makes
+  main its own layer, so Flock (fixed inside main, z-index 39) fell under Prowl's top bar and the store header; it is
+  now named only while the morph runs (`html.otp-vt`). And the store theme pins its header above any z-index Flock
+  has, so Flock now starts under whatever is pinned at the top of the screen that is not Flock (`flClear`, by what is
+  drawn there, not the theme's class names; checked again after the morph and on resize). Tried in Chromium against a
+  mock sticky header. Test: `__tests__/page/flock-store-header-v709.test.mjs`.
 - **v7.08 + worker v118: Keep it simple, and shelf scan (Matt picked PIE items 18 and 20, 2026-10-16).**
   - **Keep it simple / Show everything** (Den › Settings, new key `prowl.detail`, `all` = everything). Simple is the
     default: in a search the long marketplace list, the Open all bar, the pop-up warnings and the sign-in note fold
