@@ -14,7 +14,7 @@ Recently shipped, newest first:
 - **v7.16: the launch film with Matt's panther artwork** (Matt, 2026-10-17). The help's film card (`#otp-film`)
   now plays the re-rendered cut, whose panther is Matt's own artwork (`video/launch-film/assets/art/prowl-panther.webp`)
   instead of the traced icon. Only the card's `data-src` changed: Shopify's 480p rendition (`.../c/vp/86e709e3...
-  SD-480p-1.2Mbps...mp4`), as Matt sent it. The film still says "28 marketplaces"; the page counts 29.
+  SD-480p-1.2Mbps...mp4`), as Matt sent it. The film says "28 marketplaces" and the page counts 29; Matt: "doesn't matter", leave both.
 
 - **v7.15 + worker v121: share a photo into Prowl on Android** (Matt, 2026-10-17: "Android same way" as the Chrome
   extension's image menu). The installed app shows up in Android's share sheet for images; the photo opens straight
