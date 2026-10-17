@@ -1,16 +1,20 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.10 / v120).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.11 / v120).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.10** | 105,206 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.11** | 105,086 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v120** | |
 
 Recently shipped, newest first:
 
+- **v7.11: How Prowl works starts at step 1** (Matt, 2026-10-17: a new visitor's help jumped to step 6). `openM`
+  focused Got it, which sits under step 6, so the browser scrolled the help to its end. Now it focuses with
+  `preventScroll` and sets the dialog's `scrollTop` to 0 (older Safari ignores `preventScroll`). Test:
+  `__tests__/page/help-top-v711.test.mjs` (fails on v7.10).
 - **Worker v120: Prowl admin as a phone app** (Matt, 2026-10-17). `/admin` now installs to the home screen: new
   `worker/admin-app.js` serves `/admin/app.webmanifest` (standalone, opens on `#members`), owl icons (180/192/512,
   512 maskable) and `/admin/sw.js` (pass-through, offline note only, caches nothing). Both admin pages link them; CSP

@@ -2829,7 +2829,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.10';
+var PROWL_VERSION='v7.11';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4474,7 +4474,7 @@ $('#otp-clearBtn').addEventListener('click',function(){
 });
 
 /* ---------- WELCOME ---------- */
-function openM(){ms.classList.add('on');$('#otp-mok').focus();}
+function openM(){ms.classList.add('on');var mok=$('#otp-mok'),md=ms.querySelector('.md');try{mok.focus({preventScroll:true})}catch(e){mok.focus()}if(md)md.scrollTop=0;ms.scrollTop=0;}   /* v7.11: open at the top; focusing Got it (under step 6) scrolled the help to its end */
 function closeM(){ms.classList.remove('on');if(!st.seen){st.seen=true;save();}}
 $('#otp-mok').addEventListener('click',closeM);
 $('#otp-how').addEventListener('click',openM);
