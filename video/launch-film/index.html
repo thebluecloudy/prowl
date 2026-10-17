@@ -14,6 +14,12 @@
         font-display: block;
       }
       @font-face {
+        font-family: "Alfa Slab One";
+        src: url("assets/fonts/AlfaSlabOne-latin.woff2") format("woff2");
+        font-weight: 400;
+        font-display: block;
+      }
+      @font-face {
         font-family: "Space Grotesk";
         src: url("assets/fonts/SpaceGrotesk-latin.woff2") format("woff2");
         font-weight: 400 700;
@@ -30,6 +36,11 @@
         --night: #040414;
         --display: "Bricolage Grotesque", sans-serif;
         --sans: "Space Grotesk", sans-serif;
+        --slab: "Alfa Slab One", serif;
+        --paper: #faf6ee;
+        --brown: #3b1e12;
+        --rust: #c2491f;
+        --pink: #e0245e;
       }
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--cream); }
@@ -42,95 +53,102 @@
       #bgDark { background: radial-gradient(60% 70% at var(--gx, 50%) var(--gy, 40%), rgba(57, 255, 20, 0.30) 0%, rgba(57, 255, 20, 0.10) 32%, rgba(57, 255, 20, 0) 62%), linear-gradient(180deg, #0a0e2e 0%, #040414 70%); }
       #cam { transform-origin: 960px 540px; }
       #persp { perspective: 2400px; perspective-origin: 1300px 520px; }
-      /* ---------- app window ---------- */
+      /* ---------- app window: the real Prowl page (page/prowl.html, light theme), drawn about 1.75x ----------
+         cream paper with a dot grid, 2-3px dark-brown outlines with a hard drop under them, the orange Hunt
+         gradient, Alfa Slab One headings, uppercase card titles with rust prices, the dock at the bottom. */
       #shell { position: absolute; border-radius: 28px; transform-style: preserve-3d; }
       .face { position: absolute; inset: 0; border-radius: inherit; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
-      #faceBack { background: #fffdf8; transform: rotateY(180deg); box-shadow: 0 2px 0 rgba(28, 24, 21, 0.04), 0 30px 60px -10px rgba(28, 24, 21, 0.20), 0 70px 120px -40px rgba(28, 24, 21, 0.28); }
-      #faceFront { background: #fffdf8; border: 2px solid #e7ded1; box-shadow: 0 30px 60px -16px rgba(28, 24, 21, 0.28), 0 8px 18px -6px rgba(28, 24, 21, 0.18); }
+      #faceBack { background-color: var(--paper); background-image: radial-gradient(rgba(59, 30, 18, 0.1) 2px, rgba(0, 0, 0, 0) 2.2px); background-size: 40px 40px; transform: rotateY(180deg); box-shadow: 0 8px 0 var(--brown), 0 30px 60px -10px rgba(28, 24, 21, 0.22), 0 70px 120px -40px rgba(28, 24, 21, 0.28); }
+      #faceFront { background: #fffdf8; border: 3px solid var(--brown); box-shadow: 0 8px 0 var(--brown), 0 30px 60px -16px rgba(28, 24, 21, 0.28); }
+      #shellLine { position: absolute; inset: 0; border-radius: inherit; border: 3px solid var(--brown); }
       #flood { position: absolute; inset: 0; border-radius: inherit; background: var(--ink); }
       #shellClip { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; }
       #win { position: absolute; left: 50%; top: 50%; width: 980px; height: 760px; margin: -380px 0 0 -490px; transform-origin: 50% 50%; }
       #shellRim { position: absolute; inset: -2px; border-radius: inherit; border: 3px solid var(--u); opacity: 0; box-shadow: 0 0 40px rgba(57, 255, 20, 0.55), inset 0 0 30px rgba(57, 255, 20, 0.25); }
-      .topbar { position: absolute; left: 0; top: 0; width: 980px; height: 80px; display: flex; align-items: center; padding: 0 34px; border-bottom: 1.5px solid #efe7da; transform-origin: 50% 0; }
-      .mini { width: 44px; height: 44px; border-radius: 12px; background: var(--ink); display: flex; align-items: center; justify-content: center; flex: none; }
-      .mini svg { width: 38px; height: 38px; }
-      .wm { font-family: var(--display); font-weight: 700; font-size: 34px; letter-spacing: -0.02em; margin-left: 14px; font-variation-settings: "opsz" 48; }
-      .tabs { margin-left: auto; display: flex; gap: 34px; font-size: 28px; font-weight: 500; color: var(--mu); position: relative; }
-      .tabs span { position: relative; }
-      #tabBar { position: absolute; bottom: -24px; height: 4px; border-radius: 2px; background: var(--ink); }
-      .viewport { position: absolute; left: 0; top: 80px; width: 980px; height: 680px; overflow: hidden; }
+      .topbar { position: absolute; left: 0; top: 0; width: 980px; height: 84px; display: flex; align-items: center; padding: 0 30px; background: rgba(250, 246, 238, 0.97); border-bottom: 2px solid #e7ded1; transform-origin: 50% 0; }
+      .wm { font-family: var(--display); font-weight: 800; font-size: 40px; letter-spacing: -0.02em; font-variation-settings: "opsz" 48; }
+      .wm i { font-style: normal; color: var(--rust); letter-spacing: 0.2em; margin-left: 14px; }
+      .tbtn { margin-left: auto; display: flex; gap: 14px; }
+      .tbtn span { width: 58px; height: 58px; border: 2px solid #d9cdbb; background: #fffbf5; display: flex; align-items: center; justify-content: center; }
+      .tbtn span:first-child { border-radius: 29px; }
+      .tbtn span:last-child { border-radius: 14px; }
+      .tbtn svg { width: 30px; height: 30px; }
+      .viewport { position: absolute; left: 0; top: 84px; width: 980px; height: 676px; overflow: hidden; }
       #scroller { position: absolute; left: 0; top: 0; width: 980px; height: 1500px; }
       .row { position: absolute; left: 0; width: 980px; transform-origin: 50% 0; }
-      #search { position: absolute; left: 40px; top: 28px; width: 716px; height: 86px; border-radius: 43px; border: 2.5px solid var(--ink); background: #fff; display: flex; align-items: center; padding-left: 74px; font-size: 36px; font-weight: 500; }
-      #search .mag { position: absolute; left: 26px; top: 23px; width: 36px; height: 36px; }
+      #h1 { position: absolute; left: 40px; top: 22px; font-family: var(--slab); font-size: 64px; line-height: 1.1; letter-spacing: 0.01em; white-space: nowrap; }
+      #search { position: absolute; left: 40px; top: 118px; width: 676px; height: 84px; border-radius: 24px; border: 3px solid var(--brown); background: #fffbf5; display: flex; align-items: center; padding-left: 28px; font-size: 34px; font-weight: 500; }
+      #search .cam { position: absolute; right: 22px; top: 21px; width: 38px; height: 38px; }
       #q { white-space: pre; }
       #caret { display: inline-block; width: 3px; height: 40px; background: var(--ink); margin-left: 3px; vertical-align: -6px; }
-      #ph { color: #a89d92; position: absolute; left: 74px; }
-      #huntBtn { position: absolute; left: 776px; top: 28px; width: 164px; height: 86px; border-radius: 43px; background: var(--ink); color: var(--cream); font-size: 32px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; }
-      #huntLbl { position: absolute; left: 40px; top: 134px; height: 40px; overflow: hidden; font-size: 28px; color: var(--mu); font-weight: 500; }
-      #huntLbl b { color: var(--ink); font-weight: 600; }
-      .chips { position: absolute; left: 40px; height: 60px; display: flex; gap: 16px; }
-      .chip { position: relative; height: 60px; border-radius: 30px; border: 2px solid #d9cdbb; background: #fbf7f0; font-size: 28px; font-weight: 500; display: flex; align-items: center; padding: 0 24px; white-space: nowrap; }
-      .chip i { display: inline-block; width: 12px; height: 12px; border-radius: 6px; background: var(--u); margin-right: 0; width: 0; box-shadow: 0 0 10px 2px rgba(57, 255, 20, 0.8); }
-      #huntSvg { position: absolute; left: 0; top: 0; width: 980px; height: 400px; overflow: visible; }
-      .card { position: absolute; width: 286px; height: 304px; border-radius: 22px; background: #fff; border: 1.5px solid var(--line); box-shadow: 0 12px 26px -12px rgba(28, 24, 21, 0.25); overflow: hidden; }
-      .skel { position: absolute; width: 286px; height: 304px; border-radius: 22px; border: 2px dashed #e4d9c8; background: #fbf8f2; overflow: hidden; }
-      .skel b { position: absolute; left: 14px; top: 14px; right: 14px; height: 152px; border-radius: 14px; background: #f1e9dc; }
-      .skel i { position: absolute; left: 18px; height: 22px; border-radius: 11px; background: #efe6d8; }
-      .skel i:nth-of-type(1) { top: 196px; width: 190px; } .skel i:nth-of-type(2) { top: 242px; width: 120px; }
-      .card .img { position: absolute; left: 0; top: 0; width: 286px; height: 180px; }
+      #ph { color: #8f857b; position: absolute; left: 28px; white-space: nowrap; }
+      #huntBtn { position: absolute; left: 736px; top: 118px; width: 204px; height: 84px; border-radius: 24px; border: 3px solid var(--brown); background: linear-gradient(90deg, #d9572b 0%, #e8743a 45%, #f2a743 100%); box-shadow: 0 6px 0 var(--brown); color: #2a140c; font-family: var(--display); font-size: 36px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+      #huntLbl { position: absolute; left: 40px; top: 224px; height: 40px; overflow: hidden; font-size: 28px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--rust); }
+      .chips { position: absolute; left: 40px; height: 58px; display: flex; gap: 14px; }
+      .chip { position: relative; height: 58px; border-radius: 29px; border: 2px solid #d9cdbb; background: #fffbf5; color: var(--ink2); font-size: 28px; font-weight: 700; display: flex; align-items: center; padding: 0 24px; white-space: nowrap; }
+      .chip i { display: none; }
+      #huntSvg { position: absolute; left: 0; top: 0; width: 980px; height: 400px; overflow: visible; visibility: hidden; }
+      .card { position: absolute; width: 286px; height: 286px; border-radius: 20px; background: #fff; border: 3px solid var(--brown); box-shadow: 0 5px 0 var(--brown); overflow: hidden; }
+      .skel { position: absolute; width: 286px; height: 286px; border-radius: 20px; border: 2px dashed #d9cdbb; background: #fffbf5; overflow: hidden; }
+      .skel b { position: absolute; left: 0; top: 0; right: 0; height: 124px; background: #f6f0e6; }
+      .skel i { position: absolute; left: 16px; height: 22px; border-radius: 11px; background: #efe6d8; }
+      .skel i:nth-of-type(1) { top: 150px; width: 200px; } .skel i:nth-of-type(2) { top: 206px; width: 110px; }
+      .card .img { position: absolute; left: 0; top: 0; width: 280px; height: 124px; border-bottom: 2px solid #d6ccbe; }
       .card .img svg { width: 100%; height: 100%; display: block; }
-      .card .t { position: absolute; left: 18px; top: 194px; font-size: 28px; font-weight: 600; white-space: nowrap; letter-spacing: -0.01em; }
-      .card .m { position: absolute; left: 18px; top: 240px; font-size: 28px; color: var(--mu); white-space: nowrap; }
-      .card .m b { color: var(--ink); font-weight: 700; font-size: 30px; margin-right: 6px; }
-      .tag { position: absolute; left: 14px; top: 14px; height: 40px; border-radius: 20px; padding: 0 14px; background: var(--ink); color: var(--mint); font-size: 28px; font-weight: 700; display: flex; align-items: center; gap: 8px; letter-spacing: 0.02em; }
-      .tag i { width: 10px; height: 10px; border-radius: 5px; background: var(--u); box-shadow: 0 0 8px 2px rgba(57, 255, 20, 0.8); }
-      #dailyHead { position: absolute; left: 40px; top: 726px; font-family: var(--display); font-weight: 700; font-size: 46px; letter-spacing: -0.02em; font-variation-settings: "opsz" 72; }
-      #dailyNew { position: absolute; right: 40px; top: 738px; font-size: 28px; color: var(--mu); font-weight: 500; display: flex; align-items: center; gap: 10px; }
-      #dailyNew i { width: 12px; height: 12px; border-radius: 6px; background: var(--u); box-shadow: 0 0 10px 2px rgba(57, 255, 20, 0.7); }
-      #vpVeil { position: absolute; left: 0; top: 80px; width: 980px; height: 680px; background: #f3ecdf; opacity: 0; }
-      /* detail card */
-      #detail { position: absolute; left: 30px; top: 96px; width: 920px; height: 640px; background: #fff; border-radius: 26px; box-shadow: 0 40px 80px -20px rgba(28, 24, 21, 0.35); }
+      .card .t { position: absolute; left: 16px; top: 134px; width: 250px; font-size: 26px; line-height: 1.12; font-weight: 800; text-transform: uppercase; letter-spacing: 0.01em; }
+      .card .m { position: absolute; left: 16px; top: 200px; font-size: 26px; color: var(--mu); white-space: nowrap; line-height: 1.2; }
+      .card .m b { display: block; color: var(--rust); font-weight: 800; font-size: 30px; margin-bottom: 4px; }
+      .tag { position: absolute; left: 12px; top: 12px; height: 38px; border-radius: 19px; padding: 0 14px; background: #f0b35a; color: #1f1b16; font-size: 26px; font-weight: 800; display: flex; align-items: center; letter-spacing: 0.02em; }
+      .tag i { display: none; }
+      #dailyHead { position: absolute; left: 30px; top: 724px; width: 920px; height: 76px; border-radius: 20px; border: 3px solid var(--brown); background: linear-gradient(90deg, #d9572b 0%, #e8743a 45%, #f2a743 100%); color: #2a140c; display: flex; align-items: center; padding: 0 26px; }
+      #dailyHead b { font-family: var(--slab); font-weight: 400; font-size: 36px; letter-spacing: 0.01em; }
+      #dailyHead em { margin-left: auto; font-style: normal; font-size: 26px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+      #dock { position: absolute; left: 0; top: 670px; width: 980px; height: 90px; display: flex; background: rgba(250, 246, 238, 0.96); border-top: 2px solid #e7ded1; transform-origin: 50% 100%; }
+      #dock span { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--mu); font-size: 22px; font-weight: 800; letter-spacing: 0.04em; }
+      #dock svg { width: 34px; height: 34px; }
+      #dkBar { position: absolute; top: 0; width: 46px; height: 4px; border-radius: 0 0 4px 4px; background: var(--rust); }
+      #vpVeil { position: absolute; left: 0; top: 0; width: 980px; height: 760px; background: #2b1f18; opacity: 0; }
+      /* the listing popup (#otp-sheet in the app) */
+      #detail { position: absolute; left: 30px; top: 96px; width: 920px; height: 640px; background-color: var(--paper); background-image: radial-gradient(rgba(59, 30, 18, 0.1) 2px, rgba(0, 0, 0, 0) 2.2px); background-size: 40px 40px; border-radius: 26px; border: 3px solid var(--brown); box-shadow: 0 40px 80px -20px rgba(28, 24, 21, 0.45); }
+      #dhead { position: absolute; left: 0; top: 0; width: 914px; height: 84px; border-radius: 23px 23px 0 0; border-bottom: 3px solid var(--brown); background: linear-gradient(90deg, #d9572b 0%, #e8743a 45%, #f2a743 100%); display: flex; align-items: center; padding: 0 22px 0 30px; font-size: 36px; font-weight: 500; }
+      #dhead i { margin-left: auto; width: 56px; height: 56px; border-radius: 14px; border: 2px solid var(--brown); background: #fffbf5; box-shadow: 0 4px 0 var(--brown); display: flex; align-items: center; justify-content: center; font-style: normal; font-size: 28px; }
       #detail .dimg { position: absolute; border-radius: 18px; overflow: hidden; }
       #detail .dimg svg { width: 100%; height: 100%; display: block; }
-      #dcol { position: absolute; left: 440px; top: 0; width: 460px; height: 640px; }
-      .src { position: absolute; left: 0; top: 40px; display: flex; align-items: center; gap: 14px; font-size: 28px; font-weight: 600; }
-      .live { height: 44px; border-radius: 22px; background: var(--ink); color: var(--mint); font-weight: 700; font-size: 28px; display: flex; align-items: center; gap: 10px; padding: 0 18px 0 14px; letter-spacing: 0.04em; }
-      .live i { width: 14px; height: 14px; border-radius: 7px; background: var(--u); box-shadow: 0 0 12px 3px rgba(57, 255, 20, 0.9); }
-      .dtitle { position: absolute; left: 0; top: 104px; width: 460px; font-family: var(--display); font-weight: 700; font-size: 50px; line-height: 1.04; letter-spacing: -0.025em; font-variation-settings: "opsz" 72; }
-      .dprice { position: absolute; left: 0; top: 230px; font-family: var(--display); font-weight: 800; font-size: 58px; letter-spacing: -0.02em; }
-      .dends { position: absolute; left: 132px; top: 252px; font-size: 28px; color: var(--mu); }
-      .dlbl { position: absolute; left: 0; top: 340px; font-size: 28px; color: var(--mu); font-weight: 500; }
-      .flag { position: absolute; left: 0; height: 56px; border-radius: 28px; font-size: 28px; font-weight: 600; display: flex; align-items: center; gap: 10px; padding: 0 22px 0 16px; white-space: nowrap; }
-      .flag svg { width: 28px; height: 28px; }
-      #flag1 { top: 388px; background: #fbe9c8; border: 2px solid #e2b765; }
-      #flag2 { top: 458px; background: #f8ddd4; border: 2px solid #dc9a86; }
-      #heart { position: absolute; left: 368px; top: 548px; width: 76px; height: 76px; border-radius: 38px; border: 2.5px solid var(--ink); background: #fff; display: flex; align-items: center; justify-content: center; }
+      #dcol { position: absolute; left: 384px; top: 84px; width: 506px; height: 550px; }
+      .src { position: absolute; left: 0; top: 22px; display: flex; align-items: center; gap: 14px; font-size: 28px; font-weight: 700; }
+      .live { height: 44px; border-radius: 22px; border: 2px solid #1d7a4f; background: #e3f3ea; color: #1d7a4f; font-weight: 800; font-size: 26px; display: flex; align-items: center; gap: 10px; padding: 0 16px 0 14px; letter-spacing: 0.08em; }
+      .live i { width: 14px; height: 14px; border-radius: 7px; background: #2e9e62; }
+      .dtitle { position: absolute; left: 0; top: 80px; width: 506px; font-family: var(--display); font-weight: 700; font-size: 46px; line-height: 1.06; letter-spacing: -0.02em; font-variation-settings: "opsz" 72; }
+      .dprice { position: absolute; left: 0; top: 184px; font-weight: 800; font-size: 50px; }
+      .dends { position: absolute; left: 196px; top: 200px; font-size: 28px; color: var(--mu); }
+      #flag1 { position: absolute; left: 0; top: 258px; width: 506px; padding: 12px 18px; border: 3px solid #d9541e; border-radius: 16px; background: rgba(217, 84, 30, 0.1); font-size: 28px; line-height: 1.3; }
+      #flag1 b { display: block; font-weight: 700; margin-bottom: 4px; }
+      #flag1 q, #flag2 { display: block; font-style: italic; }
+      #viewBtn { position: absolute; left: 96px; top: 424px; width: 410px; height: 76px; border-radius: 20px; border: 3px solid var(--brown); background: linear-gradient(90deg, #d9572b 0%, #e8743a 45%, #f2a743 100%); box-shadow: 0 5px 0 var(--brown); color: #2a140c; font-family: var(--display); font-size: 27px; font-weight: 800; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
+      #heart { position: absolute; left: 0; top: 424px; width: 76px; height: 76px; border-radius: 38px; border: 2px solid #e7ded1; background: #fff; display: flex; align-items: center; justify-content: center; }
       #heart svg { width: 40px; height: 40px; overflow: visible; }
-      #toast { position: absolute; left: 0; top: 556px; height: 60px; border-radius: 30px; background: var(--ink); color: var(--cream); font-size: 28px; font-weight: 600; display: flex; align-items: center; padding: 0 24px; gap: 10px; white-space: nowrap; }
-      #ripple { position: absolute; width: 76px; height: 76px; border-radius: 38px; border: 3px solid var(--u); left: 368px; top: 548px; box-shadow: 0 0 16px rgba(57, 255, 20, 0.7); }
-      .spark { position: absolute; width: 10px; height: 10px; border-radius: 5px; background: var(--u); box-shadow: 0 0 10px 2px rgba(57, 255, 20, 0.8); left: 401px; top: 581px; }
+      #toastWrap { position: absolute; left: 0; top: 684px; width: 980px; display: flex; justify-content: center; }
+      #toast { height: 64px; border-radius: 32px; background: var(--ink); color: #fbf7f0; font-size: 28px; font-weight: 600; display: flex; align-items: center; padding: 0 30px; white-space: nowrap; box-shadow: 0 14px 38px -12px rgba(28, 24, 21, 0.45); }
+      #ripple { position: absolute; width: 76px; height: 76px; border-radius: 38px; border: 3px solid var(--pink); left: 0; top: 424px; }
+      .spark { position: absolute; width: 10px; height: 10px; border-radius: 5px; background: var(--pink); left: 33px; top: 457px; }
       /* paper, envelope, mail, fresh find */
-      .paper { position: absolute; background-color: #fffdf9; background-image: repeating-linear-gradient(180deg, transparent 0 34px, #eee5d6 34px 38px); background-size: 70% 100%; background-position: 40px 30px; background-repeat: no-repeat; border: 1.5px solid #eadfcf; transform-origin: 50% 50%; backface-visibility: hidden; }
+      .paper { position: absolute; background-color: #fffdf9; background-image: repeating-linear-gradient(180deg, transparent 0 34px, #eee5d6 34px 38px); background-size: 70% 100%; background-position: 40px 30px; background-repeat: no-repeat; border: 2px solid var(--brown); }
       #pTop { background-image: linear-gradient(#efe3cf, #efe3cf), repeating-linear-gradient(180deg, transparent 0 34px, #eee5d6 34px 38px); background-size: 120px 120px, 50% 100%; background-position: 40px 60px, 190px 64px; }
-      #env { position: absolute; border-radius: 14px; background: #fffaf1; border: 2px solid #e2d5c1; box-shadow: 0 30px 60px -20px rgba(28, 24, 21, 0.35); overflow: hidden; }
+      #env { position: absolute; border-radius: 14px; background: #fffaf1; border: 3px solid var(--brown); box-shadow: 0 30px 60px -20px rgba(28, 24, 21, 0.35); overflow: hidden; }
       #env svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
-      #mail { position: absolute; width: 780px; height: 300px; border-radius: 26px; background: #fff; border: 1.5px solid var(--line); box-shadow: 0 40px 80px -20px rgba(28, 24, 21, 0.35); padding: 34px 38px; }
-      #mail .mh { display: flex; align-items: center; gap: 16px; font-size: 30px; font-weight: 700; }
-      #mail .mh .mini { width: 52px; height: 52px; border-radius: 14px; }
-      #mail .mh .mini svg { width: 44px; height: 44px; }
+      #mail { position: absolute; width: 780px; height: 300px; border-radius: 24px; background: #fff; border: 3px solid var(--brown); box-shadow: 0 6px 0 var(--brown), 0 40px 80px -20px rgba(28, 24, 21, 0.35); padding: 32px 38px; }
+      #mail .mh { display: flex; align-items: center; gap: 16px; font-size: 28px; font-weight: 700; }
       #mail .mh em { font-style: normal; font-weight: 500; color: var(--mu); font-size: 28px; margin-left: auto; }
-      #mail .subj { margin-top: 26px; font-family: var(--display); font-weight: 700; font-size: 42px; letter-spacing: -0.02em; font-variation-settings: "opsz" 72; }
-      #mail .prev { margin-top: 12px; font-size: 28px; color: var(--mu); }
-      #newPill { position: absolute; left: 286px; top: 32px; height: 52px; border-radius: 26px; background: #e4ffd9; border: 2px solid #5bdc3a; color: #12360a; font-size: 28px; font-weight: 700; padding: 0 18px; display: flex; align-items: center; gap: 10px; box-shadow: 0 0 22px rgba(57, 255, 20, 0.55); }
-      #newPill i { width: 12px; height: 12px; border-radius: 6px; background: var(--u); box-shadow: 0 0 10px 2px rgba(57, 255, 20, 0.9); }
-      #fresh { position: absolute; width: 540px; height: 600px; border-radius: 26px; background: #fff; border: 1.5px solid var(--line); box-shadow: 0 40px 80px -20px rgba(28, 24, 21, 0.35); overflow: hidden; }
-      #fresh .fimg { position: absolute; left: 0; top: 0; width: 540px; height: 330px; }
+      #mail .subj { margin-top: 30px; font-family: var(--display); font-weight: 700; font-size: 42px; letter-spacing: -0.02em; font-variation-settings: "opsz" 72; white-space: nowrap; }
+      #mail .prev { margin-top: 14px; font-size: 28px; color: var(--mu); }
+      #newPill { position: absolute; left: 370px; top: 28px; height: 44px; border-radius: 22px; background: #f0b35a; color: #1f1b16; font-size: 28px; font-weight: 800; padding: 0 18px; display: flex; align-items: center; }
+      #newPill i { display: none; }
+      #fresh { position: absolute; width: 540px; height: 600px; border-radius: 24px; background: #fff; border: 3px solid var(--brown); box-shadow: 0 8px 0 var(--brown), 0 40px 80px -20px rgba(28, 24, 21, 0.35); overflow: hidden; }
+      #fresh .fimg { position: absolute; left: 0; top: 0; width: 534px; height: 330px; border-bottom: 2px solid #d6ccbe; }
       #fresh .fimg svg { width: 100%; height: 100%; display: block; }
-      #fresh .ft { position: absolute; left: 30px; top: 356px; font-family: var(--display); font-weight: 700; font-size: 44px; line-height: 1.05; letter-spacing: -0.02em; width: 480px; font-variation-settings: "opsz" 72; }
-      #fresh .fm { position: absolute; left: 30px; top: 474px; font-size: 30px; color: var(--mu); }
-      #fresh .fm b { color: var(--ink); font-family: var(--display); font-size: 44px; font-weight: 800; margin-right: 10px; }
-      #fresh .fw { position: absolute; left: 30px; top: 538px; font-size: 28px; color: var(--mu); }
+      #fresh .ft { position: absolute; left: 28px; top: 350px; width: 480px; font-size: 36px; line-height: 1.1; font-weight: 800; text-transform: uppercase; letter-spacing: 0.01em; }
+      #fresh .fm { position: absolute; left: 28px; top: 446px; font-size: 46px; font-weight: 800; color: var(--rust); }
+      #fresh .fw { position: absolute; left: 28px; top: 516px; font-size: 28px; color: var(--mu); }
       /* copy */
       .blk { position: absolute; left: 124px; top: 0; width: 720px; }
       .ln { position: relative; overflow: hidden; padding: 0 0 0.08em; }
@@ -167,67 +185,76 @@
             <div id="shellClip">
               <div id="win">
                 <div class="topbar row" id="rTop">
-                  <div class="mini"><svg viewBox="0 0 100 100"><path class="logoPath" fill="#faf6ee"></path></svg></div>
                   <div class="wm">Prowl</div>
-                  <div class="tabs"><span id="tabH">Hunts</span><span id="tabD">Daily</span><span>Den</span><div id="tabBar"></div></div>
+                  <div class="tbtn"><span><svg viewBox="0 0 24 24" fill="#3d7fd6"><circle cx="12" cy="8" r="4.2"></circle><path d="M3.8 21c.6-4.4 4-6.8 8.2-6.8s7.6 2.4 8.2 6.8z"></path></svg></span><span><svg viewBox="0 0 24 24" fill="none" stroke="#1c1815" stroke-width="2.2" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"></path></svg></span></div>
                 </div>
                 <div class="viewport" id="vp">
                   <div id="scroller">
-                    <div class="row" id="rSearch" style="top: 0; height: 130px">
+                    <div class="row" id="rSearch" style="top: 0; height: 214px">
+                      <div id="h1">Find the prey</div>
                       <div id="search">
-                        <svg class="mag" viewBox="0 0 24 24" fill="none" stroke="#1c1815" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21"></path></svg>
-                        <span id="ph">Search vintage…</span><span id="q"></span><span id="caret"></span>
+                        <span id="ph">ceramic panther, rookwood vase…</span><span id="q"></span><span id="caret"></span>
+                        <svg class="cam" viewBox="0 0 24 24" fill="none" stroke="#c2491f" stroke-width="2" stroke-linejoin="round"><path d="M3.5 8.5h3.2l1.6-2.3h7.4l1.6 2.3h3.2v10.8h-17z"></path><circle cx="12" cy="13.4" r="3.6"></circle></svg>
                       </div>
-                      <div id="huntBtn">Hunt <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#faf6ee" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"></path></svg></div>
+                      <div id="huntBtn">Hunt</div>
                     </div>
-                    <div class="row" id="rChips" style="top: 0; height: 360px">
+                    <div class="row" id="rChips" style="top: 0; height: 400px; transform-origin: 50% 214px">
                       <svg id="huntSvg"><path id="huntGlow" fill="none" stroke="#39ff14" stroke-width="12" stroke-linecap="round" opacity="0.35" style="filter: blur(5px)"></path><path id="huntPath" fill="none" stroke="#2fd10f" stroke-width="4.5" stroke-linecap="round"></path><circle id="huntHead" r="9" fill="#39ff14" style="filter: drop-shadow(0 0 8px #39ff14)"></circle></svg>
-                      <div id="huntLbl"><span style="display: block">Hunting <b>28 marketplaces</b> at once</span></div>
-                      <div class="chips" style="top: 186px"><div class="chip"><i></i>eBay</div><div class="chip"><i></i>Etsy</div><div class="chip"><i></i>ShopGoodwill</div><div class="chip"><i></i>Facebook</div></div>
-                      <div class="chips" style="top: 264px"><div class="chip"><i></i>Ruby Lane</div><div class="chip"><i></i>Chairish</div><div class="chip"><i></i>Craigslist</div><div class="chip"><i></i>+21 more</div></div>
+                      <div id="huntLbl"><span style="display: block">Prowling · 28 marketplaces</span></div>
+                      <div class="chips" style="top: 270px"><div class="chip"><i></i>eBay</div><div class="chip"><i></i>Etsy</div><div class="chip"><i></i>ShopGoodwill</div><div class="chip"><i></i>Facebook</div></div>
+                      <div class="chips" style="top: 342px"><div class="chip"><i></i>Ruby Lane</div><div class="chip"><i></i>Chairish</div><div class="chip"><i></i>Craigslist</div><div class="chip"><i></i>+21 more</div></div>
                     </div>
                     <div id="results"></div>
-                    <div id="dailyHead">Your daily prowl</div>
-                    <div id="dailyNew"><i></i>12 new since yesterday</div>
+                    <div id="dailyHead"><b>Your daily prowl</b><em>12 new</em></div>
                     <div id="daily"></div>
                   </div>
                 </div>
+                <div class="row" id="dock">
+                  <span id="tabH"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20h-5.5v-5.5h-5V20H4z"></path></svg>PROWL</span>
+                  <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V9.5L12 4l8 5.5V20M9 20v-6h6v6"></path></svg>GOODWILL</span>
+                  <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.4"></circle></svg>LOCAL</span>
+                  <span><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9.5c3.2-.4 6.2.2 8.6 2L19.5 5l-3.6 8.2 4.6 1.4-6.8 1.3-3.2 4.1.4-4.4C7.4 14.6 4.6 12.6 3 9.5z"></path></svg>FLOCK</span>
+                  <span id="tabD"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg>DAILY</span>
+                  <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h9"></path></svg>DEN</span>
+                  <div id="dkBar"></div>
+                </div>
                 <div id="vpVeil"></div>
                 <div id="detail">
+                  <div id="dhead">ShopGoodwill<i>✕</i></div>
                   <div class="dimg" id="dimg"></div>
                   <div id="dcol">
-                    <div class="src">ShopGoodwill <span class="live" id="live"><i></i>LIVE</span></div>
+                    <div class="src"><span class="live" id="live"><i></i>LIVE</span></div>
                     <div class="dtitle">Ceramic panther figurine, 1950s</div>
-                    <div class="dprice">$64</div>
-                    <div class="dends">Auction ends in 2d 4h</div>
-                    <div class="dlbl">Condition flags</div>
-                    <div class="flag" id="flag1"><svg viewBox="0 0 24 24" fill="none" stroke="#8a5a00" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3 2.5 20h19L12 3z"></path><path d="M12 10v4.5M12 17.4v.2"></path></svg>Repaired</div>
-                    <div class="flag" id="flag2"><svg viewBox="0 0 24 24" fill="none" stroke="#8a2f1c" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.6M12 16.8v.2"></path></svg>Possible reproduction</div>
-                    <div id="toast"><svg width="28" height="28" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z" fill="#39ff14"></path></svg>Saved to favorites</div>
+                    <div class="dprice">$64.00</div>
+                    <div class="dends">2d 4h left · 7 bids</div>
+                    <div id="flag1"><b>⚠ Mentions a repair and damage</b><q>Left ear was repaired</q><q id="flag2">Small chip on the base</q></div>
+                    <div id="viewBtn">View on ShopGoodwill ↗</div>
                     <div id="ripple"></div>
                     <div class="spark"></div><div class="spark"></div><div class="spark"></div><div class="spark"></div><div class="spark"></div><div class="spark"></div><div class="spark"></div>
-                    <div id="heart"><svg viewBox="0 0 24 24"><path id="heartPath" d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z" fill="none" stroke="#1c1815" stroke-width="2.2" stroke-linejoin="round"></path></svg></div>
+                    <div id="heart"><svg viewBox="0 0 24 24"><path id="heartPath" d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z" fill="none" stroke="#786e65" stroke-width="2" stroke-linejoin="round"></path></svg></div>
                   </div>
                 </div>
+                <div id="toastWrap"><div id="toast">Liked. Flock will show you more like this.</div></div>
                 <div class="paper" id="pTop"></div>
                 <div class="paper" id="pMid"></div>
                 <div class="paper" id="pBot"></div>
-                <div id="env"><svg viewBox="0 0 480 240" preserveAspectRatio="none"><path d="M2 2 240 138 478 2" fill="none" stroke="#d8c8b0" stroke-width="3"></path><path d="M2 238 186 104M478 238 294 104" fill="none" stroke="#e6dac7" stroke-width="2.5"></path></svg></div>
+                <div id="env"><svg viewBox="0 0 480 240" preserveAspectRatio="none"><path d="M2 2 240 138 478 2" fill="none" stroke="#3b1e12" stroke-width="3"></path><path d="M2 238 186 104M478 238 294 104" fill="none" stroke="#3b1e12" stroke-opacity="0.35" stroke-width="2.5"></path></svg></div>
                 <div id="mail">
-                  <div class="mh"><div class="mini"><svg viewBox="0 0 100 100"><path class="logoPath" fill="#faf6ee"></path></svg></div>Prowl<em>7:00 AM</em></div>
-                  <div id="newPill"><i></i>3 new matches</div>
-                  <div class="subj">New finds for “ceramic panther”</div>
-                  <div class="prev">Fresh this morning, all under $60.</div>
+                  <div class="mh">Prowl by Owl &amp; Twig<em>7:00 AM</em></div>
+                  <div id="newPill">3 new</div>
+                  <div class="subj">Prowl: 3 new · ceramic panther (3)</div>
+                  <div class="prev">Fresh this morning on Etsy, eBay and ShopGoodwill.</div>
                 </div>
                 <div id="fresh">
                   <div class="fimg" id="fimg"></div>
-                  <div class="tag" style="left: 20px; top: 20px"><i></i>NEW</div>
+                  <div class="tag" style="left: 18px; top: 18px">NEW</div>
                   <div class="ft">Ceramic panther planter, 1960s</div>
-                  <div class="fm"><b>$38</b>Etsy</div>
-                  <div class="fw">Matched this morning</div>
+                  <div class="fm">$38.00</div>
+                  <div class="fw">Etsy · matched this morning</div>
                 </div>
               </div>
             </div>
+            <div id="shellLine"></div>
             <div id="flood"></div>
             <div id="shellRim"></div>
             </div>
@@ -467,26 +494,28 @@
 
         /* ---------------- build cards ---------------- */
         var RES = [
-          { k: "lamp", t: "Panther TV lamp", p: "$58", s: "ShopGoodwill" },
-          { k: "panther", t: "Ceramic panther", p: "$48", s: "eBay" },
-          { k: "cat", t: "Black cat vase", p: "$32", s: "Etsy" }
+          { k: "lamp", t: "Panther TV lamp", p: "$58.00", s: "ShopGoodwill" },
+          { k: "panther", t: "Ceramic panther", p: "$48.00", s: "eBay" },
+          { k: "cat", t: "Black cat vase", p: "$32.00", s: "Etsy" }
         ];
         var DAY = [
-          { k: "rook", t: "Rookwood vase", p: "$120", s: "Etsy" },
-          { k: "panther", t: "Ceramic panther", p: "$64", s: "ShopGoodwill" },
-          { k: "owl", t: "Brass owl", p: "$42", s: "eBay" },
-          { k: "mug", t: "Fire-King mug", p: "$18", s: "eBay" },
-          { k: "lamp", t: "Panther lamp", p: "$58", s: "Facebook" },
-          { k: "hull", t: "Hull planter", p: "$26", s: "Ruby Lane" }
+          { k: "rook", t: "Rookwood vase", p: "$120.00", s: "Etsy" },
+          { k: "panther", t: "Ceramic panther", p: "$64.00", s: "ShopGoodwill" },
+          { k: "owl", t: "Brass owl", p: "$42.00", s: "eBay" },
+          { k: "mug", t: "Fire-King mug", p: "$18.00", s: "eBay" },
+          { k: "lamp", t: "Panther lamp", p: "$58.00", s: "Facebook" },
+          { k: "hull", t: "Hull planter", p: "$26.00", s: "Ruby Lane" }
         ];
         function cardHtml(d, tag) {
-          return '<div class="img">' + illus(d.k, 286, 180) + "</div>" + (tag ? '<div class="tag"><i></i>NEW</div>' : "") + '<div class="t">' + d.t + '</div><div class="m"><b>' + d.p + "</b>" + d.s + "</div>";
+          return '<div class="img">' + illus(d.k, 280, 124) + "</div>" + (tag ? '<div class="tag">NEW</div>' : "") + '<div class="t">' + d.t + '</div><div class="m"><b>' + d.p + "</b>" + d.s + "</div>";
         }
-        var skelEls = [0, 1, 2].map(function (i) { var el = document.createElement("div"); el.className = "skel"; el.style.left = 40 + i * 307 + "px"; el.style.top = "360px"; el.innerHTML = "<b></b><i></i><i></i>"; $("#results").appendChild(el); return el; });
-        var resEls = RES.map(function (d, i) { var el = document.createElement("div"); el.className = "card"; el.innerHTML = cardHtml(d, false); el.style.left = 40 + i * 307 + "px"; el.style.top = "360px"; $("#results").appendChild(el); return el; });
-        var dayEls = DAY.map(function (d, i) { var el = document.createElement("div"); el.className = "card"; el.innerHTML = cardHtml(d, i < 4); el.style.left = 40 + (i % 3) * 307 + "px"; el.style.top = 806 + Math.floor(i / 3) * 326 + "px"; $("#daily").appendChild(el); return el; });
-        $("#dimg").innerHTML = illus("panther", 380, 584);
-        $("#fimg").innerHTML = illus("planter", 540, 330);
+        // window geometry (the app drawn at about 1.75x): top bar, where the result and Daily cards sit in the page, card size
+        var TOPH = 84, CARD_Y = 412, DAY_Y = 812, CARD = 286, HUNT_SCROLL = 110, DAY_SCROLL = 700;
+        var skelEls = [0, 1, 2].map(function (i) { var el = document.createElement("div"); el.className = "skel"; el.style.left = 40 + i * 307 + "px"; el.style.top = CARD_Y + "px"; el.innerHTML = "<b></b><i></i><i></i>"; $("#results").appendChild(el); return el; });
+        var resEls = RES.map(function (d, i) { var el = document.createElement("div"); el.className = "card"; el.innerHTML = cardHtml(d, false); el.style.left = 40 + i * 307 + "px"; el.style.top = CARD_Y + "px"; $("#results").appendChild(el); return el; });
+        var dayEls = DAY.map(function (d, i) { var el = document.createElement("div"); el.className = "card"; el.innerHTML = cardHtml(d, i < 4); el.style.left = 40 + (i % 3) * 307 + "px"; el.style.top = DAY_Y + Math.floor(i / 3) * 306 + "px"; $("#daily").appendChild(el); return el; });
+        $("#dimg").innerHTML = illus("panther", 328, 504);
+        $("#fimg").innerHTML = illus("planter", 534, 330);
 
         /* ---------------- copy blocks ---------------- */
         var BLOCKS = [
@@ -581,10 +610,10 @@
         var el = {
           far: $("#far"), ring: $("#ring"), specks: $("#specks"), floor: $("#floor"), dark: $("#bgDark"), cam: $("#cam"),
           shell: $("#shell"), win: $("#win"), front: $("#faceFront"), back: $("#faceBack"), flood: $("#flood"), rim: $("#shellRim"),
-          rows: [$("#rTop"), $("#rSearch"), $("#rChips")], scroller: $("#scroller"), vp: $("#vp"), veil: $("#vpVeil"),
+          rows: [$("#rTop"), $("#rSearch"), $("#rChips"), $("#dock")], scroller: $("#scroller"), vp: $("#vp"), veil: $("#vpVeil"), dock: $("#dock"),
           q: $("#q"), ph: $("#ph"), caret: $("#caret"), btn: $("#huntBtn"), lbl: $("#huntLbl > span"),
           hp: $("#huntPath"), hg: $("#huntGlow"), hh: $("#huntHead"),
-          tabBar: $("#tabBar"), tabH: $("#tabH"), tabD: $("#tabD"),
+          tabBar: $("#dkBar"), tabH: $("#tabH"), tabD: $("#tabD"),
           detail: $("#detail"), dimg: $("#dimg"), dcol: $("#dcol"), live: $("#live"), f1: $("#flag1"), f2: $("#flag2"),
           heart: $("#heart"), heartPath: $("#heartPath"), toast: $("#toast"), ripple: $("#ripple"), sparks: $$(".spark"),
           pTop: $("#pTop"), pMid: $("#pMid"), pBot: $("#pBot"), env: $("#env"), mail: $("#mail"), pill: $("#newPill"), fresh: $("#fresh"),
@@ -672,10 +701,10 @@
           // melting: the content sags a little as the ink rises
           el.win.style.transform = "translateY(" + n2(40 * flood * wsc) + "px) scale(" + n2(wsc * 1000) / 1000 + "," + n2(wsc * (1 - 0.12 * flood) * 1000) / 1000 + ")";
           // window rows unfold one after another once the back face is showing
-          var rowT = [2.3, 2.42, 2.54];
+          var rowT = [2.3, 2.42, 2.54, 2.6];
           el.rows.forEach(function (r, i) {
             var u = E.out(seg(t, rowT[i], rowT[i] + 0.55));
-            r.style.transform = "perspective(900px) rotateX(" + n2(-88 * (1 - u)) + "deg)";
+            r.style.transform = "perspective(900px) rotateX(" + n2((i === 3 ? 88 : -88) * (1 - u)) + "deg)";   // the dock unfolds up from the bottom
           });
           // ink rises from the bottom with a soft wave
           if (flood > 0) {
@@ -724,8 +753,10 @@
           var typing = tf >= C.keys[0] - 30 && tf < C.huntPress;
           el.caret.style.opacity = typing ? (nk < C.keys.length ? 1 : (Math.floor((tf - C.keys[0]) / 18) % 2 ? 0.15 : 1)) : 0;
           var pr = seg(tf, C.huntPress - 2, C.huntPress + 10);
-          el.btn.style.transform = "scale(" + n2(1 - 0.08 * Math.sin(Math.PI * pr)) + ")";
-          el.btn.style.background = pr > 0 && pr < 1 ? "#2b231e" : "";
+          // pressed like the app's buttons: it sinks onto its hard shadow
+          var press = Math.sin(Math.PI * pr);
+          el.btn.style.transform = "translateY(" + n2(5 * press) + "px)";
+          el.btn.style.boxShadow = "0 " + n2(6 - 5 * press) + "px 0 #3b1e12";
           var hl = huntLenAt(t);
           el.hp.style.strokeDashoffset = n2(huntLen - hl); el.hg.style.strokeDashoffset = n2(huntLen - hl);
           var hpPt = el.hp.getPointAtLength(Math.max(0.1, hl));
@@ -735,11 +766,10 @@
           el.lbl.style.transform = "translate3d(0," + n2(110 * (1 - lblIn)) + "%,0)";
           chipAt.forEach(function (ca, i) {
             var on = seg(tf, C.chips[i], C.chips[i] + 8), ch = chipEls[ca.chip];
-            ch.style.background = mix("#fbf7f0", "#1c1815", on); ch.style.color = mix("#1c1815", "#faf6ee", on);
-            ch.style.borderColor = mix("#d9cdbb", "#1c1815", on);
+            ch.style.background = mix("#fffbf5", "#c2491f", on); ch.style.color = mix("#4a423b", "#fff6ec", on);
+            ch.style.borderColor = mix("#d9cdbb", "#3b1e12", on);
             var pop = Math.sin(Math.PI * seg(tf, C.chips[i], C.chips[i] + 14));
             ch.style.transform = "translateY(" + n2(-5 * pop) + "px) scale(" + n2(1 + 0.05 * pop) + ")";
-            var dot = ch.querySelector("i"); dot.style.width = n2(12 * on) + "px"; dot.style.marginRight = n2(10 * on) + "px";
           });
           skelEls.forEach(function (sk, i) {
             var land = fs(C.cards[i]);
@@ -751,7 +781,7 @@
           resEls.forEach(function (e, i) {
             var land = fs(C.cards[i]), u = seg(t, land - 0.42, land);
             var src = chipC[[3, 1, 6][i]] || [490, 200];
-            var fx = src[0] - (40 + i * 307 + 143), fyy = src[1] - (360 + 152);
+            var fx = src[0] - (40 + i * 307 + CARD / 2), fyy = src[1] - (CARD_Y + CARD / 2);
             var e1 = E.io(u), arc = -60 * Math.sin(Math.PI * u);
             var settle = t > land ? Math.sin(Math.min(1, (t - land) / 0.3) * Math.PI) * Math.exp(-(t - land) * 6) : 0;
             var sc = lerp(0.18, 1, E.out(u)) - 0.03 * settle;
@@ -761,12 +791,15 @@
 
           /* ---- connect: glide down the day's finds ---- */
           var gl = E.io(seg(t, fs(C.glide[0]), fs(C.glide[1]) - 0.2));
-          var scrollY = -700 * gl - 18 * seg(t, fs(C.glide[1]), fs(C.melt[0]));
+          // after Hunt the page scrolls the heading away to make room for the results, then glides down to Daily
+          var hsU = E.io(seg(t, fs(C.huntPress) + 0.15, fs(C.huntPress) + 0.75));
+          var scrollY = -HUNT_SCROLL * hsU - (DAY_SCROLL - HUNT_SCROLL) * gl - 18 * seg(t, fs(C.glide[1]), fs(C.melt[0]));
           el.scroller.style.transform = "translate3d(0," + n2(scrollY) + "px,0)";
           var tabU = E.io(seg(t, fs(C.glide[0]), fs(C.glide[0]) + 0.5));
           var hx = el.tabH.offsetLeft, hw = el.tabH.offsetWidth, dxx = el.tabD.offsetLeft, dw = el.tabD.offsetWidth;
-          el.tabBar.style.left = n2(lerp(hx, dxx, tabU)) + "px"; el.tabBar.style.width = n2(lerp(hw, dw, tabU)) + "px";
+          el.tabBar.style.left = n2(lerp(hx + hw / 2, dxx + dw / 2, tabU) - 23) + "px";
           el.tabH.style.color = mix("#1c1815", "#786e65", tabU); el.tabD.style.color = mix("#786e65", "#1c1815", tabU);
+          el.tabH.firstChild.style.color = mix("#c2491f", "#786e65", tabU); el.tabD.firstChild.style.color = mix("#786e65", "#c2491f", tabU);
 
           // the card opens
           var o0 = fs(C.open[0]), o1 = fs(C.open[1]);
@@ -775,17 +808,17 @@
           var detailOn = t >= o0 && t < fs(C.fold[0]) + 0.45 * (fs(C.fold[1]) - fs(C.fold[0])) + 0.04;
           show(el.detail, detailOn);
           show(dayEls[1], t < o0 + 0.02);
-          var src = { x: 40 + 307, y: 80 + 806 + scrollY, w: 286, h: 304 };
+          var src = { x: 40 + 307, y: TOPH + DAY_Y + scrollY, w: CARD, h: CARD };
           if (detailOn) {
             // clip from the small card's rect to the full detail
             var cx0 = src.x - 30, cy0 = src.y - 96;
             var ins = [lerp(cy0, 0, op), lerp(920 - (cx0 + src.w), 0, op), lerp(640 - (cy0 + src.h), 0, op), lerp(cx0, 0, op)];
             var fo = E.io(seg(t, foldStart, foldStart + 0.28));
-            el.detail.style.clipPath = "inset(" + ins.map(n2).join("px ") + "px round " + n2(lerp(22, 26, op)) + "px)";
+            el.detail.style.clipPath = "inset(" + ins.map(n2).join("px ") + "px round " + n2(lerp(20, 26, op)) + "px)";
             var lift = Math.sin(Math.PI * seg(t, o0, o1 + 0.2)) * 30;
             el.detail.style.transform = "translateZ(" + n2(lift + 10 * op) + "px) scaleY(" + n2(1 - 0.0 * fo) + ")";
             // image rect morph
-            var ir = { x: lerp(cx0, 28, op), y: lerp(cy0, 28, op), w: lerp(286, 380, op), h: lerp(180, 584, op) };
+            var ir = { x: lerp(cx0, 28, op), y: lerp(cy0, 108, op), w: lerp(280, 328, op), h: lerp(124, 504, op) };
             setRect(el.dimg, ir.x, ir.y, ir.w, ir.h);
             var dc = E.out(seg(op, 0.45, 1));
             el.dcol.style.transform = "translate3d(" + n2(70 * (1 - dc)) + "px,0,0)";
@@ -793,8 +826,8 @@
             el.detail.style.opacity = n2(1 - E.in(seg(t, foldStart + 0.3 * (fs(C.fold[1]) - foldStart), foldStart + 0.46 * (fs(C.fold[1]) - foldStart))));
           }
           var dofU = op * (1 - E.io(seg(t, fs(C.melt[0]) - 0.3, fs(C.melt[0]) + 0.1)));
-          el.vp.style.filter = dofU > 0.01 ? "blur(" + n2(4.5 * dofU) + "px)" : "";
-          el.veil.style.opacity = n2(0.45 * dofU);
+          el.vp.style.filter = el.dock.style.filter = dofU > 0.01 ? "blur(" + n2(4.5 * dofU) + "px)" : "";
+          el.veil.style.opacity = n2(0.35 * dofU);
           // live badge, flags, heart
           function pop(e, f0, amt) {
             var u = seg(tf, f0, f0 + 16), on = tf >= f0;
@@ -807,8 +840,9 @@
           var hs = tf < C.heart - 6 ? 1 : tf < C.heart ? 1 - 0.12 * seg(tf, C.heart - 6, C.heart) : 0.88 + 0.5 * Math.sin(Math.PI * Math.min(1, hu * 1.2)) * (1 - hu) + 0.12 * E.out(hu);
           el.heart.style.transform = "scale(" + n2(hs) + ")";
           var filled = tf >= C.heart;
-          el.heartPath.setAttribute("fill", filled ? "#1c1815" : "none");
-          el.heart.style.boxShadow = filled ? "0 0 " + n2(26 * (1 - hu * 0.6)) + "px rgba(57,255,20," + n2(0.75 * (1 - hu * 0.5)) + ")" : "none";
+          // liked: the app's pink heart (.sgw-lk)
+          el.heartPath.setAttribute("fill", filled ? "#e0245e" : "none"); el.heartPath.setAttribute("stroke", filled ? "#e0245e" : "#786e65");
+          el.heart.style.borderColor = filled ? "#e0245e" : "#e7ded1";
           var rp = seg(tf, C.heart, C.heart + 26);
           el.ripple.style.transform = "scale(" + n2(1 + 1.3 * E.out(rp)) + ")"; el.ripple.style.opacity = n2(rp > 0 && rp < 1 ? 1 - rp : 0);
           el.sparks.forEach(function (sp, i) {
@@ -816,9 +850,10 @@
             sp.style.transform = "translate(" + n2(Math.cos(a) * 80 * u) + "px," + n2(Math.sin(a) * 80 * u) + "px) scale(" + n2(1 - u) + ")";
             sp.style.opacity = n2(u > 0 && u < 1 ? 1 : 0);
           });
-          var tu = E.oexp(seg(tf, C.toast, C.toast + 30));
-          el.toast.style.transform = "translate3d(" + n2(-30 * (1 - tu)) + "px,0,0) scale(" + n2(lerp(0.6, 1, tu)) + ")"; el.toast.style.transformOrigin = "0 50%";
-          el.toast.style.opacity = n2(tu > 0 ? 1 : 0);
+          // the app's toast: rises in at the foot of the screen, gone before the popup folds into a letter
+          var tu = E.oexp(seg(tf, C.toast, C.toast + 30)), tOut = E.in(seg(t, fs(C.fold[0]) - 0.25, fs(C.fold[0])));
+          el.toast.style.transform = "translate3d(0," + n2(18 * (1 - tu) + 10 * tOut) + "px,0) scale(" + n2(lerp(0.9, 1, tu)) + ")";
+          el.toast.style.opacity = n2(tu > 0 ? 1 - tOut : 0);
 
           /* ---- resurface: fold -> envelope -> email -> fresh find ---- */
           // paper: detail squeezes into a letter, the letter folds in thirds

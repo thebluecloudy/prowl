@@ -122,3 +122,23 @@ Render r5 -> `renders/prowl-launch-film.mp4` (not committed; rebuild with `scrip
 - The skinned walk is deliberately small (the mark's legs are merged in the silhouette), so the gait reads as a
   low prowl rather than a full stride, and paws slide slightly during the swing.
 - The sound was judged by measurement (onsets, levels, spectrum, loudness), not by ear.
+
+## Round 6: the owner's artwork
+
+The owner sent the full panther artwork; it replaced the traced icon (`assets/art/prowl-panther.webp`, drawn on WebGL
+through a skinned mesh so the shading, keyline, eye and whiskers bend with each leg). Renders r6-h and r6-v: spec as
+round 5, -13.9 LUFS, -2.3 dBTP, sync 0.00 ms.
+
+## Owner's note after round 6, and round 7
+
+"My app doesn't look like that. It's simpler." The window showed an invented UI (black pills, neon chips, a tab bar).
+It now draws the real Prowl page (`page/prowl.html`, light theme), measured from the page running in Chromium and
+scaled about 1.75x: cream paper with the dot grid, 2-3 px dark-brown outlines (#3b1e12) with a hard drop under them,
+the bar with the wordmark and the account and menu buttons, "Find the prey" in Alfa Slab One, the search box with the
+camera, the orange gradient Hunt button that sinks onto its shadow, rust marketplace chips, result cards with
+uppercase titles and rust prices, the bottom dock (Prowl, Goodwill, Local, Flock, Daily, Den), the orange "Your daily
+prowl" band with yellow NEW badges, and the listing popup with its orange header, green LIVE, the app's real flag
+("Mentions a repair and damage" with the seller's sentences; the app does not flag reproductions, so that flag is
+gone), the pink like heart and the app's toast "Liked. Flock will show you more like this.". The email shows the
+real alert subject ("Prowl: 3 new · ceramic panther (3)") from "Prowl by Owl & Twig". The neon green is kept only for
+the ending. Timing and sound are unchanged.
