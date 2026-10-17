@@ -6,7 +6,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.09 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.09** | 108,894 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.09** | 107,754 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v118** | |
 
 Recently shipped, newest first:
@@ -32,6 +32,13 @@ Recently shipped, newest first:
   has, so Flock now starts under whatever is pinned at the top of the screen that is not Flock (`flClear`, by what is
   drawn there, not the theme's class names; checked again after the morph and on resize). Tried in Chromium against a
   mock sticky header. Test: `__tests__/page/flock-store-header-v709.test.mjs`.
+  Also: **new listings are featured on the home page, and glow** (Matt: "it says 1 new, but it isn't obvious", then
+  "make them glow"). **New since your last look** (`#otp-homeNew`) sits at the top of the home panel with the listings
+  behind the other hunts' "N new" badges: up to 3 a hunt and 8 in all, each tagged New and "for <hunt>", and a button per
+  hunt that opens it. They are not marked seen there; opening the hunt does that, as before. Inside a hunt, listings new
+  since the last look come first in each marketplace (`frontNew`). Those cards and the strip's glow: a steady ring and a
+  breathing light inside the edge (opacity only; steady under reduced motion). The strip shows once the other hunts'
+  listings are in hand (Flock or Daily fetch them), as the badges always did. Test: `__tests__/page/home-new-v709.test.mjs`.
 - **v7.08 + worker v118: Keep it simple, and shelf scan (Matt picked PIE items 18 and 20, 2026-10-16).**
   - **Keep it simple / Show everything** (Den › Settings, new key `prowl.detail`, `all` = everything). Simple is the
     default: in a search the long marketplace list, the Open all bar, the pop-up warnings and the sign-in note fold

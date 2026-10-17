@@ -1037,6 +1037,18 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .dg-blk .sgw-note{padding:0 18px 10px}
 .scout-app-wrapper .dg-tip{margin:12px 18px 0;font-size:14px;color:var(--mu);line-height:1.5}
 .scout-app-wrapper .dg-tip b{color:var(--ink)}
+.scout-app-wrapper .hn{margin:4px 0 14px;padding:12px 0 6px;border:2px solid var(--ac);border-radius:14px;background:var(--ac-soft)}
+.scout-app-wrapper .hn-h{font-family:var(--display);font-size:19px;font-weight:800;margin:0 15px 8px;color:var(--ink)}
+.scout-app-wrapper .hn-h small{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:99px;background:var(--ac);color:var(--onink);font-family:var(--sans);font-size:13px;vertical-align:3px}
+.scout-app-wrapper .hn-grid{padding:0 15px 8px}
+.scout-app-wrapper .hn-acts{display:flex;flex-wrap:wrap;gap:8px;margin:0 15px 8px}
+.scout-app-wrapper .hn-go{min-height:40px;font-size:14px}
+/* v7.09 (Matt: "make them glow"): new listings glow, in the strip and in a hunt. A steady ring outside the card and a
+   breathing light inside its edge; only opacity moves (an animated shadow stalls phones); still under reduced motion. */
+.scout-app-wrapper .hn .sgw-card,.scout-app-wrapper .sgw-cell[data-fresh] .sgw-card{position:relative;box-shadow:0 0 0 2px var(--ac),0 0 16px -2px var(--ac)}
+.scout-app-wrapper .hn .sgw-card:after,.scout-app-wrapper .sgw-cell[data-fresh] .sgw-card:after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 2px var(--ac),inset 0 0 22px var(--ac);opacity:.35;z-index:2}
+@media (prefers-reduced-motion:no-preference){.scout-app-wrapper .hn .sgw-card:after,.scout-app-wrapper .sgw-cell[data-fresh] .sgw-card:after{animation:hnGlow 2.4s ease-in-out infinite}}
+@keyframes hnGlow{0%,100%{opacity:.2}50%{opacity:.8}}
 .scout-app-wrapper .dg-rh h2{font-family:var(--display);font-size:26px}
 .scout-app-wrapper .dg-rh .dg-hunts{margin:6px 0 0;font-size:14px;color:var(--mu);line-height:1.45}
 .scout-app-wrapper .dg-new{padding:16px 0 6px;border-bottom:1px solid var(--ln)}
@@ -4870,8 +4882,11 @@ function exSort(items,t){
   }
   return {ex:ex,near:near};
 }
+/* v7.09 (Matt: "it says 1 new, but it isn't obvious"): listings new since the last look (FRESH) go first */
+function frontNew(a){var f=[],o=[],i;for(i=0;i<a.length;i++)(FRESH[a[i].url]?f:o).push(a[i]);return f.length?f.concat(o):a}
 function exRows(items,t){
   var g=exSort(items,t),rows='',i;
+  g.ex=frontNew(g.ex);g.near=frontNew(g.near);   /* v7.09 */
   for(i=0;i<g.ex.length;i++)rows+=sgwCard(g.ex[i],t);
   if(g.ex.length&&g.near.length)rows+='<p class="sgw-close">Close matches</p>';
   for(i=0;i<g.near.length;i++)rows+=sgwCard(g.near[i],t);
@@ -5900,6 +5915,24 @@ function mailOffLegacy(wasPro){
     },function(){MAIL.busy=false;MAIL.msg='Could not reach Prowl. You are still subscribed. Try again in a minute.';rMail()});
 }
 
+/* v7.09: New since your last look, at the top of the home panel: the listings behind the other hunts' "N new" badges,
+   up to 3 a hunt and 8 in all, each tagged New and naming its hunt, with a button that opens that hunt. They are not
+   marked seen here; opening the hunt does that, as before. */
+var HN_PER=3,HN_MAX=8;
+function homeNew(NEWN){
+  var S=seenLoad(),cards='',btn='',tot=0,shown=0,i,j,x,k,set,its,per;
+  for(i=0;i<sgw.terms.length;i++){
+    if(!NEWN[i])continue;x=sgw.terms[i];k=x.t.toLowerCase();if(!S[k])continue;
+    tot+=NEWN[i];set={};for(j=0;j<S[k].length;j++)set[S[k][j]]=1;
+    its=dgItems(k);per=0;
+    for(j=0;j<its.length&&per<HN_PER&&shown<HN_MAX;j++)if(!set[its[j].url]){
+      cards+=sgwCard(its[j],x.t).replace('<div class="sgw-t">','<div class="sgw-t"><span class="fl-newb">New</span>').replace('<div class="sgw-m">','<div class="sgw-m">for '+esc(x.t)+' · ');per++;shown++}
+    btn+='<button type="button" class="b hn-go" data-sgw="pick" data-i="'+i+'">'+esc(x.t)+' · '+(NEWN[i]>9?'9+':NEWN[i])+' new</button>';
+  }
+  if(!cards)return '';
+  return '<div class="hn" id="otp-homeNew"><h3 class="hn-h">New since your last look <small>'+tot+'</small></h3>'+
+    '<div class="sgw-grid hn-grid">'+cards+'</div><div class="hn-acts">'+btn+'</div></div>';
+}
 function rSGW(){
   var mount=$('#otp-sgw');
   if(!mount)return;
@@ -5929,7 +5962,7 @@ function rSGW(){
   if(hid)html+='<span class="sgw-chip sgw-more" role="button" tabindex="0" data-sgw="more">+'+hid+' more</span>';
   else if(sgw.more&&isNarrow()&&sgw.terms.length>CHIP_FEW+1)html+='<span class="sgw-chip sgw-more" role="button" tabindex="0" data-sgw="less">Show fewer</span>';
   form.insertAdjacentHTML('beforebegin',html);
-  mount.querySelector('.sgw-body').innerHTML=sgwBody();
+  mount.querySelector('.sgw-body').innerHTML=homeNew(NEWN)+sgwBody();   /* v7.09 */
   freshPaint(mount);   /* v6.69 */
   whypPaint();   /* v6.74 */
   mount.querySelector('.sgw-acts').innerHTML=sgwActs();
