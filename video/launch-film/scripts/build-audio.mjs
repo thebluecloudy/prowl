@@ -158,8 +158,8 @@ for (let b = 0; b < 8; b++) {
     mix(music, bass(ROOT[b], 1.05, 0.5), t0, 0.62, 0);
     mix(music, bass(ROOT[b] + (b % 2 ? 7 : 0), 0.8, 0.38), t0 + 2 * BEAT, 0.62, 0);
     // soft kick on 1 and 3, hats on the off-beats, a rim on 2 and 4 from bar 3
-    mix(music, kick(0.55), t0, 0.5, 0);
-    mix(music, kick(0.38), t0 + 2 * BEAT, 0.5, 0);
+    mix(music, kick(0.55), t0, 0.36, 0);
+    mix(music, kick(0.38), t0 + 2 * BEAT, 0.36, 0);
     for (let e = 0; e < 8; e++) if (e % 2) mix(music, hat(0.16 + (e === 3 || e === 7 ? 0.05 : 0)), t0 + e * BEAT / 2, 0.5, 0.35, 0.05);
     if (b >= 2) [1, 3].forEach((bt) => mix(music, rim(0.22), t0 + bt * BEAT, 0.5, -0.25, 0.15));
   }
@@ -171,7 +171,7 @@ for (let b = 0; b < 8; b++) {
   low.forEach((m, i) => mix(music, epiano(m + (m < 40 ? 12 : 0), 1.6, 0.42 * (1 - i * 0.05)), tL + i * 0.018, 0.5, (i - 3) * 0.18, 0.45));
   const [pl, pr] = pad([38, 45, 50, 54, 57, 61], tL - 0.05, 19.55, 0.85, 0.08, 0.9, 1500);
   mix2(music, pl, pr, tL - 0.05, 0.55, 0.45);
-  mix(music, gen(2.1, (t) => Math.sin(TAU * 36.7 * t) * Math.min(1, t / 0.02) * Math.exp(-t / 1.1) * (t > 1.5 ? Math.exp(-(t - 1.5) / 0.12) : 1)), tL, 0.5, 0);
+  mix(music, gen(2.1, (t) => Math.sin(TAU * 36.7 * t) * Math.min(1, t / 0.02) * Math.exp(-t / 1.1) * (t > 1.5 ? Math.exp(-(t - 1.5) / 0.12) : 1)), tL, 0.3, 0);
   // shimmer that hangs over the logo
   [74, 78, 81, 86].forEach((m, i) => mix(music, gen(1.9, (t) => Math.sin(TAU * mtof(m) * t) * (1 + 0.4 * Math.sin(TAU * (3 + i) * t)) * Math.min(1, t / 0.5) * Math.exp(-Math.max(0, t - 1.2) / 0.18) * 0.05), tL + 0.05, 0.6, (i - 1.5) * 0.4, 0.6));
 }
@@ -316,6 +316,12 @@ const L = new Float32Array(N), R = new Float32Array(N);
 for (let i = 0; i < N; i++) {
   L[i] = music[0][i] * 1.0 + sfx[0][i] * 1.0 + rL[i] * 0.55;
   R[i] = music[1][i] * 1.0 + sfx[1][i] * 1.0 + rR[i] * 0.55;
+}
+// master EQ: clear the sub below 30 Hz, lift presence above 2 kHz a little
+{
+  const hl = biquad(biquad(L, "hp", 30, 0.7), "hp", 30, 0.7), hr = biquad(biquad(R, "hp", 30, 0.7), "hp", 30, 0.7);
+  const pl = biquad(hl, "hp", 2200, 0.6), pr = biquad(hr, "hp", 2200, 0.6);
+  for (let i = 0; i < N; i++) { L[i] = hl[i] + 0.35 * pl[i]; R[i] = hr[i] + 0.35 * pr[i]; }
 }
 // gentle fade on the very end so nothing clicks at 20.000 s
 for (let i = 0; i < N; i++) { const t = i / SR; if (t > 19.55) { const g = Math.max(0, 1 - (t - 19.55) / 0.45); L[i] *= g * g; R[i] *= g * g; } if (t < 0.004) { L[i] *= t / 0.004; R[i] *= t / 0.004; } }

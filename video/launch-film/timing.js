@@ -71,9 +71,9 @@
   // share of the walk that moves the panther on screen (the rest is the camera tracking it)
   function screenShare(t) {
     if (t < 1.8) return 1;
-    if (t < 3.0) return 1 + (0.15 - 1) * smooth((t - 1.8) / 1.2);
-    if (t < 16.6) return 0.15;
-    if (t < 17.2) return 0.15 + 0.85 * smooth((t - 16.6) / 0.6);
+    if (t < 3.0) return 1 + (0.28 - 1) * smooth((t - 1.8) / 1.2);
+    if (t < 16.6) return 0.28;
+    if (t < 17.2) return 0.28 + 0.72 * smooth((t - 16.6) / 0.6);
     return 1;
   }
   // integrals with a fixed step so every sub-frame sample is deterministic

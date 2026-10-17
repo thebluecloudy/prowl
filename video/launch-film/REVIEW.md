@@ -33,3 +33,29 @@ Render r1: 1920x1080, 60/1 fps, 1200 frames, 20.000 s, H.264 + AAC 48 kHz. -13.9
 **Still weak**
 - Sync was verified in the stem, not yet in the muxed MP4 (AAC priming could shift it).
 - The walk reads partly "in place" while the camera tracks; depends on the floor specks.
+
+## Round 2
+
+Render r2: spec as round 1, -14.0 LUFS, -2.2 dBTP. New `scripts/sync-check.py` cross-correlates the MP4's audio with
+the stem at eight cues: **0.00 ms offset at every cue**, so sound is frame-exact in the delivered file.
+Checked the fast transitions frame by frame (2.20-2.50, 9.62-9.86, 16.90-17.25) as well as every 0.5 s.
+
+**Found**
+- Round 1 fixes landed: skeleton cards fill the results area, the panther no longer crosses the window, the email
+  holds for 1.2 s and reads, the Resurface copy is gone before the melt.
+- Type: headline swaps still overlap for a moment (old and new lines both half visible in the same mask at 4.0 and
+  13.5 s), which reads as a stutter rather than a roll.
+- Card open (9.62-9.78): the detail's text column shows inside the small card's rect before the card has grown, on
+  top of the neighbouring card.
+- Melt (17.0): the ink starts as a hard black bar along the window's bottom edge before it reads as liquid.
+- Panther: walks well, but from 3 to 16.8 s it barely moves across the screen; it reads as walking on the spot.
+- End copy: "Available now" settles at 19.3 s, a little after the final beat.
+- Sound: the mix is heavy below 120 Hz (sub and kick carry a lot of the loudness) and thin from 2 to 8 kHz.
+
+**Changed**
+- Headline swaps are now sequential: the old line leaves (0.28 s, ease in), the new one enters 0.2 s later
+  (ease out). Tagline and "Available now" enter together and settle on the 19.2 s beat.
+- The detail's text column reveals only after the card is half open.
+- The ink starts earlier with a deeper wave, so it reads as liquid from the first frame.
+- The panther covers about 2.5x more ground across the middle of the film (screen share 0.15 -> 0.28).
+- Audio: high-pass at 30 Hz on the master, softer kick and landing sub, a presence lift above 2 kHz.

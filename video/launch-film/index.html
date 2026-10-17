@@ -481,9 +481,9 @@
         /* ---------------- copy blocks ---------------- */
         var BLOCKS = [
           { id: "hook", top: 282, eyb: "Introducing Prowl", hl: ["28 marketplaces.", "One prowl."], sub: "Vintage sourcing for busy collectors and resellers.", tin: 0.6, tout: 3.6 },
-          { id: "cap", top: 282, eyb: "01 Capture", hl: ["Start a hunt", "in seconds."], sub: "One search runs across every marketplace at once.", tin: 3.6, tout: fs(C.glide[0]) },
-          { id: "con", top: 282, eyb: "02 Connect", hl: ["Look over your", "finds every day."], sub: "Condition flags up front. Save the keepers.", tin: fs(C.glide[0]), tout: fs(C.fold[0]) },
-          { id: "res", top: 282, eyb: "03 Resurface", hl: ["The rare piece", "finds you."], sub: "Prowl emails new matches every morning.", tin: fs(C.fold[0]), tout: fs(C.melt[0]) - 0.45 }
+          { id: "cap", top: 282, eyb: "01 Capture", hl: ["Start a hunt", "in seconds."], sub: "One search runs across every marketplace at once.", tin: 3.8, tout: fs(C.glide[0]) },
+          { id: "con", top: 282, eyb: "02 Connect", hl: ["Look over your", "finds every day."], sub: "Condition flags up front. Save the keepers.", tin: fs(C.glide[0]) + 0.2, tout: fs(C.fold[0]) },
+          { id: "res", top: 282, eyb: "03 Resurface", hl: ["The rare piece", "finds you."], sub: "Prowl emails new matches every morning.", tin: fs(C.fold[0]) + 0.2, tout: fs(C.melt[0]) - 0.45 }
         ];
         BLOCKS.forEach(function (b) {
           var el = document.createElement("div"); el.className = "blk"; el.style.top = b.top + "px";
@@ -494,11 +494,12 @@
           el.innerHTML = h; $("#copy").appendChild(el);
           b.spans = Array.prototype.slice.call(el.querySelectorAll(".ln > span"));
         });
+        // lines rise out of a mask: the old line leaves first, the new one enters after it
         function roll(spans, tin, tout, t, stagger, dur) {
-          stagger = stagger === undefined ? 0.05 : stagger; dur = dur || 0.5;
+          stagger = stagger === undefined ? 0.05 : stagger; dur = dur || 0.55;
           spans.forEach(function (sp, i) {
             var a = tin + i * stagger, b = tout + i * stagger;
-            var y = t < b ? 112 * (1 - E.io(seg(t, a, a + dur))) : -112 * E.io(seg(t, b, b + dur));
+            var y = t < b ? 112 * (1 - E.oexp(seg(t, a, a + dur))) : -112 * E.in(seg(t, b, b + 0.28));
             sp.style.transform = "translate3d(0," + n2(y) + "%,0)";
             sp.style.visibility = y >= 111.9 || y <= -111.9 ? "hidden" : "visible";
           });
@@ -652,7 +653,7 @@
             A = { cx: lerp(WIN.cx, END.cx, mf), cy: lerp(WIN.cy, END.cy, mf), w: lerp(WIN.w, END.s, mf), h: lerp(WIN.h, END.s, mf) };
             ry = lerp(effY - 180, -180, mf); rx = lerp(effX, 0, mf);
             rad = lerp(30, END.s * 0.22, mf);
-            flood = E.io(seg(t, m0 + 0.04, m1 - 0.02));
+            flood = E.sine(seg(t, m0 - 0.06, m1 - 0.04));
           }
           setRect(el.shell, A.cx - A.w / 2, A.cy - A.h / 2, A.w, A.h);
           el.shell.style.borderRadius = n2(rad) + "px";
@@ -668,8 +669,8 @@
           });
           // ink rises from the bottom with a soft wave
           if (flood > 0) {
-            var pts = ["0% 100%", "100% 100%"], lvl = (1 - flood) * (A.h + 60) - 30, amp = 18 * Math.sin(Math.PI * flood);
-            for (var q = 24; q >= 0; q--) pts.push(n2(q / 24 * 100) + "% " + n2(lvl + amp * Math.sin(q / 24 * Math.PI * 3 + t * 9)) + "px");
+            var pts = ["0% 100%", "100% 100%"], lvl = (1 - flood) * (A.h + 60) - 30, amp = 36 * Math.sin(Math.PI * flood) + 6;
+            for (var q = 24; q >= 0; q--) pts.push(n2(q / 24 * 100) + "% " + n2(lvl + amp * Math.sin(q / 24 * Math.PI * 3.4 + t * 9) + 0.45 * amp * Math.sin(q / 24 * Math.PI * 7.3 - t * 6)) + "px");
             el.flood.style.clipPath = "polygon(" + pts.join(",") + ")";
             show(el.flood, true);
           } else show(el.flood, false);
@@ -718,8 +719,8 @@
 
           /* ---- copy ---- */
           BLOCKS.forEach(function (b) { roll(b.spans, b.tin, b.tout, t); });
-          roll([el.wordmark], fs(C.wordmark), 99, t, 0, 0.7);
-          roll([el.tagline, el.avail], fs(C.tagline) - 0.6, 99, t, 0.1, 0.6);
+          roll([el.wordmark], fs(C.wordmark) - 0.1, 99, t, 0, 0.6);
+          roll([el.tagline, el.avail], fs(C.tagline) - 0.32, 99, t, 0, 0.6);
           var glow = 0.55 + 0.25 * Math.sin(Math.max(0, t - 18.4) * 2.6);
           el.wordmark.style.textShadow = "0 0 " + n2(30 + 12 * glow) + "px rgba(57,255,20," + n2(glow) + ")";
 
@@ -793,7 +794,9 @@
             // image rect morph
             var ir = { x: lerp(cx0, 28, op), y: lerp(cy0, 28, op), w: lerp(286, 380, op), h: lerp(180, 584, op) };
             setRect(el.dimg, ir.x, ir.y, ir.w, ir.h);
-            el.dcol.style.transform = "translate3d(" + n2(60 * (1 - op)) + "px,0,0)";
+            var dc = E.out(seg(op, 0.45, 1));
+            el.dcol.style.transform = "translate3d(" + n2(70 * (1 - dc)) + "px,0,0)";
+            el.dcol.style.opacity = n2(dc);
             el.detail.style.opacity = n2(1 - E.in(seg(t, foldStart + 0.3 * (fs(C.fold[1]) - foldStart), foldStart + 0.46 * (fs(C.fold[1]) - foldStart))));
           }
           var dofU = op * (1 - E.io(seg(t, fs(C.melt[0]) - 0.3, fs(C.melt[0]) + 0.1)));
