@@ -59,3 +59,14 @@ Checked the fast transitions frame by frame (2.20-2.50, 9.62-9.86, 16.90-17.25) 
 - The ink starts earlier with a deeper wave, so it reads as liquid from the first frame.
 - The panther covers about 2.5x more ground across the middle of the film (screen share 0.15 -> 0.28).
 - Audio: high-pass at 30 Hz on the master, softer kick and landing sub, a presence lift above 2 kHz.
+
+## Owner's note between rounds 2 and 3
+
+"Make sure you use my panther, don't create a new one." The drawn rig is gone. The panther is now the owner's mark,
+traced from `extension/icons/icon-128.png` (the only full copy reachable here; the original PNG sits on Shopify's
+CDN, which this sandbox cannot reach, and it is not in Drive or Dropbox) into `assets/panther.js`. It walks by
+skinning: the outline stays one shape and the legs, tail and head bend around pivots, so the still pose is the mark
+exactly and every frame of the walk is the same silhouette mid-stride. The same path draws the marks inside the app
+and the ceramic figurines on the cards. The gait is a slow prowl (26 px/s in icon units) after a brisk few steps out
+of the mark; footfall sounds follow the new touchdowns. The round 3 render that had started on the old rig was
+stopped and restarted on the new panther.

@@ -47,23 +47,26 @@
   };
 
   /* Panther locomotion, shared so footfalls can be heard where paws land.
-     Units: rig units (body nose-to-rump about 113). */
-  var WALK = { cycleUnits: 66, duty: 0.62, offsets: { lh: 0, lf: 0.25, rh: 0.5, rf: 0.75 } };
+     Units: the traced mark's icon pixels (the panther is 107 wide). */
+  var WALK = { cycleUnits: 31, offsets: { lh: 0, lf: 0.25, rh: 0.5, rf: 0.75 } };
 
   function clamp(x, a, c) { return x < a ? a : x > c ? c : x; }
   function smooth(x) { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
 
   // walking speed in rig units per second
+  // a brisk few steps out of the mark, then a slow prowl
   function speed(t) {
-    var s = 55;
+    var s = 26, hook = 44;
     if (t < 0.6) return 0;
-    if (t < 1.1) return s * smooth((t - 0.6) / 0.5);
+    if (t < 1.0) return hook * smooth((t - 0.6) / 0.4);
+    if (t < 2.3) return hook;
+    if (t < 3.3) return hook + (s - hook) * smooth((t - 2.3) / 1.0);
     if (t > 17.35) return s * (1 - smooth((t - 17.35) / 0.62));
     return s;
   }
   // px per rig unit
   function scale(t) {
-    var a = 1.98, c = 1.7;
+    var a = 2.81, c = 2.45;
     if (t <= 1.8) return a;
     if (t >= 3.0) return c;
     return a + (c - a) * smooth((t - 1.8) / 1.2);
@@ -93,7 +96,7 @@
     for (var f = 0; f <= 1200; f++) {
       var c = distUnits(f / FPS) / WALK.cycleUnits;
       for (var j = 0; j < legs.length; j++) {
-        var ph = c + 1 - WALK.offsets[legs[j]];
+        var ph = c + 0.75 - WALK.offsets[legs[j]];
         var k = Math.floor(ph);
         if (prev[legs[j]] !== undefined && k > prev[legs[j]] && speed(f / FPS) > 5) out.push({ f: f, leg: legs[j] });
         prev[legs[j]] = k;

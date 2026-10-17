@@ -6,6 +6,7 @@
     <title>Prowl launch film</title>
     <script src="assets/vendor/gsap.min.js"></script>
     <script src="timing.js"></script>
+    <script src="assets/panther.js"></script>
     <style>
       @font-face {
         font-family: "Bricolage Grotesque";
@@ -243,7 +244,7 @@
           </defs>
           <g id="shadows"><ellipse id="shBody" filter="url(#shBlur)" fill="rgba(28,24,21,0.20)"></ellipse><g id="shFeet" filter="url(#shBlur2)"></g></g>
           <g id="panG">
-            <g id="panNorm"><g id="panBody"><path id="pFar" style="fill: var(--f)"></path><path id="pNear" style="fill: var(--n)"></path><path id="pEye" style="fill: var(--e)"></path></g></g>
+            <g id="panNorm"><g id="panBody"><path id="pFar" style="fill: var(--f)"></path><path id="pNear" fill-rule="evenodd" style="fill: var(--n)"></path><path id="pEye" style="fill: var(--e)"></path></g></g>
             <g clip-path="url(#tileClip)"><use id="panCream" href="#panBody"></use></g>
           </g>
         </svg>
@@ -302,132 +303,77 @@
         function rnd(seed) { var s = seed; return function () { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
         function n2(x) { return Math.round(x * 100) / 100; }
 
-        /* ---------------- shape helpers (all subpaths clockwise, so nonzero = union) ---------------- */
-        function circ(x, y, r) { return "M" + n2(x + r) + " " + n2(y) + "A" + n2(r) + " " + n2(r) + " 0 1 1 " + n2(x - r) + " " + n2(y) + "A" + n2(r) + " " + n2(r) + " 0 1 1 " + n2(x + r) + " " + n2(y) + "Z"; }
-        function poly(p) {
-          var a = 0; for (var i = 0; i < p.length; i++) { var q = p[(i + 1) % p.length]; a += p[i][0] * q[1] - q[0] * p[i][1]; }
-          if (a < 0) p = p.slice().reverse();
-          var s = "M" + n2(p[0][0]) + " " + n2(p[0][1]);
-          for (var j = 1; j < p.length; j++) s += "L" + n2(p[j][0]) + " " + n2(p[j][1]);
-          return s + "Z";
+        /* ---------------- the panther: the owner's mark, traced (assets/panther.js), walked by skinning ----------------
+           The outline stays one continuous shape. Each leg, the tail and the head bend around a pivot, weighted by
+           how far along that limb a point of the outline sits, so every frame is the same panther mid-stride and the
+           still pose (w = 0) is the mark exactly. Units are icon pixels, facing left, ground at y = 0. */
+        var PD = window.PROWL_PANTHER, BN = PD.bones, W = T.WALK;
+        var LEGS = { A: "rf", B: "lf", C: "rh", D: "lh" };          // near front, far front, near hind, far hind
+        var AMP = { A: 0.30, B: 0.36, C: 0.34, D: 0.26 }, LIFT = { A: 2.6, B: 2.8, C: 2.6, D: 2.2 };
+        var RAD = { A: [4.2, 7.5], B: [3.8, 7], C: [4.2, 7.5], D: [3.8, 7], T: [4.5, 7.5], H: [7, 11] };
+        var ALONG = { A: [0.2, 0.62], B: [0.25, 0.7], C: [0.25, 0.7], D: [0.2, 0.6], T: [0.1, 0.5], H: [0.15, 0.55] };
+        function along(p, a, b) {
+          var dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+          var u = clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2, 0, 1.2);
+          var qx = a[0] + Math.min(u, 1) * dx, qy = a[1] + Math.min(u, 1) * dy;
+          return { d: Math.sqrt((p[0] - qx) * (p[0] - qx) + (p[1] - qy) * (p[1] - qy)), u: u };
         }
-        function capsule(a, ra, b, rb) {
-          var dx = b[0] - a[0], dy = b[1] - a[1], d = Math.sqrt(dx * dx + dy * dy);
-          var s = circ(a[0], a[1], ra) + circ(b[0], b[1], rb);
-          if (d <= Math.abs(ra - rb) + 0.01) return s;
-          var ph = Math.atan2(dy, dx), al = Math.acos((ra - rb) / d);
-          var P = function (c, r, ang) { return [c[0] + r * Math.cos(ang), c[1] + r * Math.sin(ang)]; };
-          return s + poly([P(a, ra, ph + al), P(b, rb, ph + al), P(b, rb, ph - al), P(a, ra, ph - al)]);
-        }
-        function chain(pts, rs) { var s = ""; for (var i = 0; i < pts.length - 1; i++) s += capsule(pts[i], rs[i], pts[i + 1], rs[i + 1]); return s; }
-        function catmull(pts, per) {
-          var out = [], n = pts.length;
-          for (var i = 0; i < n; i++) {
-            var p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
-            for (var k = 0; k < per; k++) {
-              var u = k / per, u2 = u * u, u3 = u2 * u;
-              out.push([
-                0.5 * (2 * p1[0] + (-p0[0] + p2[0]) * u + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * u2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * u3),
-                0.5 * (2 * p1[1] + (-p0[1] + p2[1]) * u + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * u2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * u3)
-              ]);
-            }
-          }
-          return out;
-        }
-        function ik(root, tgt, a, b, bendSign) {
-          var dx = tgt[0] - root[0], dy = tgt[1] - root[1], d = Math.sqrt(dx * dx + dy * dy);
-          d = clamp(d, Math.abs(a - b) + 0.01, a + b - 0.01);
-          var th = Math.atan2(dy, dx), A = Math.acos(clamp((a * a + d * d - b * b) / (2 * a * d), -1, 1));
-          var j1 = [root[0] + a * Math.cos(th + A), root[1] + a * Math.sin(th + A)];
-          var j2 = [root[0] + a * Math.cos(th - A), root[1] + a * Math.sin(th - A)];
-          var end = [root[0] + d * Math.cos(th), root[1] + d * Math.sin(th)];
-          return { joint: (j1[0] - j2[0]) * bendSign > 0 ? j1 : j2, end: end };
-        }
-
-        /* ---------------- the panther rig (rig units, facing left, ground y = 0) ---------------- */
-        var W = T.WALK, STR = W.cycleUnits * W.duty;
-        var HOME = { f: -24, h: 30 };
-        var POSE = { rf: [-40, 0], lf: [-14, 0], rh: [46, 0], lh: [22, 0] };
-        function footAt(leg, c, w) {
-          var front = leg.charAt(1) === "f";
-          var home = front ? HOME.f : HOME.h, lift = front ? 8.5 : 7.5;
-          var ph = c - W.offsets[leg]; ph = ph - Math.floor(ph);
-          var fx, fy, sw = 0;
-          if (ph < W.duty) { fx = home - STR / 2 + STR * (ph / W.duty); fy = 0; }
-          else { var s = (ph - W.duty) / (1 - W.duty); fx = home + STR / 2 - STR * E.sine(s); sw = Math.sin(Math.PI * s); fy = -lift * sw; }
-          var p = POSE[leg];
-          return { x: lerp(p[0], fx, w), y: lerp(p[1], fy, w), sw: sw * w, stance: ph < W.duty ? Math.sin(Math.PI * ph / W.duty) : 0, ph: ph };
+        // per-point weights, computed once
+        PD.contours.forEach(function (c) {
+          c.w = c.pts.map(function (p) {
+            var w = {}, sum = 0;
+            Object.keys(BN).forEach(function (k) {
+              var g = along(p, BN[k].piv, BN[k].paw);
+              var v = (1 - E.sm(seg(g.d, RAD[k][0], RAD[k][1]))) * E.sm(seg(g.u, ALONG[k][0], ALONG[k][1]));
+              if (v > 0.001) { w[k] = v; sum += v; }
+            });
+            if (sum > 1) Object.keys(w).forEach(function (k) { w[k] /= sum; });
+            return w;
+          });
+        });
+        function rot(p, piv, a) { var c = Math.cos(a), s2 = Math.sin(a), x = p[0] - piv[0], y = p[1] - piv[1]; return [piv[0] + x * c - y * s2, piv[1] + x * s2 + y * c]; }
+        // smooth closed path through the points (quadratic curves through the midpoints)
+        function smoothPath(pts) {
+          var n = pts.length, m = function (i) { var a = pts[(i + n) % n], b = pts[(i + 1 + n) % n]; return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; };
+          var s0 = m(-1), d = "M" + n2(s0[0]) + " " + n2(s0[1]);
+          for (var i = 0; i < n; i++) { var q = m(i); d += "Q" + n2(pts[i][0]) + " " + n2(pts[i][1]) + " " + n2(q[0]) + " " + n2(q[1]); }
+          return d + "Z";
         }
         function rig(st) {
-          var c = st.c, w = st.w, bob = -1.1 * Math.cos(4 * Math.PI * c) * w;
-          var feet = {}, legs = ["lf", "rf", "lh", "rh"];
-          for (var i = 0; i < 4; i++) feet[legs[i]] = footAt(legs[i], c, w);
-          var bumpF = Math.max(feet.lf.stance, feet.rf.stance) * w;
-          var parts = { far: "", near: "", eye: "" };
-          var y0 = bob;
-          // legs
-          function frontLeg(f) {
-            var J = [-18, -43 + y0];
-            var Wt = [f.x + 1, f.y - 5.5];
-            var r = ik(J, Wt, 22, 22, 1);
-            var toeDir = [lerp(-1, 0.45, f.sw), lerp(0.12, 0.9, f.sw)], dl = Math.sqrt(toeDir[0] * toeDir[0] + toeDir[1] * toeDir[1]);
-            var wr = r.end, toe = [wr[0] + 8.5 * toeDir[0] / dl, wr[1] + 8.5 * toeDir[1] / dl + 1.2];
-            return circ(J[0] - 1, J[1] - 3, 14) + chain([J, r.joint, wr, toe], [11.5, 7.6, 5.6, 5.8]) + circ(toe[0] + 1.5, toe[1] - 0.3, 5.6);
-          }
-          function hindLeg(f) {
-            var H = [33, -45 + y0];
-            var hockT = [f.x + 7 + 2 * f.sw, f.y - 14 - 2 * f.sw];
-            var r = ik(H, hockT, 24, 23, -1);
-            var hk = r.end, toeDir = [lerp(-1, 0.3, f.sw), lerp(0.1, 0.95, f.sw)], dl = Math.sqrt(toeDir[0] * toeDir[0] + toeDir[1] * toeDir[1]);
-            var paw = [hk[0] + (f.x - hk[0]) * 0.92, hk[1] + (f.y - 1.6 - hk[1]) * 0.92];
-            var toe = [paw[0] + 6.5 * toeDir[0] / dl, paw[1] + 6.5 * toeDir[1] / dl];
-            return circ(H[0] + 2, H[1] - 1, 16.5) + chain([H, r.joint, hk, paw, toe], [14, 8.6, 5.4, 5.2, 5.6]);
-          }
-          parts.far = frontLeg(feet.lf) + hindLeg(feet.lh);
-          // tail
-          var tb = [50, -47 + y0], tp = [tb], tr = [5.2], N = 22, L = 82 / N, ang = 0;
-          for (var k = 0; k < N; k++) {
-            var s = (k + 0.5) / N;
-            var a = 30 + 58 * E.sm(clamp(s / 0.5, 0, 1)) - st.curl * E.sm(clamp((s - 0.52) / 0.48, 0, 1));
-            a += st.sway * Math.sin(2 * Math.PI * (st.swayPh - 0.85 * s)) * Math.pow(s, 1.2);
-            ang = a * Math.PI / 180;
-            var last = tp[tp.length - 1];
-            tp.push([last[0] + L * Math.cos(ang), last[1] + L * Math.sin(ang)]);
-            tr.push(lerp(5.0, 2.9, s));
-          }
-          var tail = chain(tp, tr);
-          // torso
-          var sh = -58.5 - 3.2 * bumpF;
-          var torso = catmull([
-            [-42, -50], [-30, -56.5], [-16, sh], [-2, -56], [18, -55], [38, -57.5], [52, -52.5], [57, -43],
-            [52, -32], [34, -29], [10, -28], [-12, -23.5], [-28, -26.5], [-39, -32.5], [-46, -37.5]
-          ].map(function (p) { return [p[0], p[1] + y0]; }), 7);
-          var hy = -38.5 + y0 * 0.35 + (st.head || 0), hx = -50, HS = 1.18;
-          var hd = function (p) { return [hx + (p[0] - hx) * HS, hy + (p[1] - hy) * HS]; };
-          var head = catmull([
-            [-41, hy - 9.5], [-48, hy - 11.5], [-56, hy - 9], [-61, hy - 4.2], [-64.2, hy + 0.2], [-63, hy + 3.6],
-            [-57, hy + 6.6], [-48, hy + 7.2], [-40, hy + 4.5], [-37, hy - 3]
-          ].map(hd), 6);
-          var ear = catmull([[-45, hy - 9], [-41.5, hy - 16.5], [-37.5, hy - 8]].map(hd), 4);
-          parts.near = poly(torso) + poly(head) + poly(ear) + tail + frontLeg(feet.rf) + hindLeg(feet.rh);
-          // eye: an almond
-          var ex = hx + (-54.2 - hx) * HS, ey = hy - 3.4 * HS;
-          parts.eye = poly([[ex - 3.4, ey + 0.4], [ex - 1.2, ey - 1.5], [ex + 2.6, ey - 1.3], [ex + 3.4, ey + 0.2], [ex + 1, ey + 1.3], [ex - 2, ey + 1.2]]);
-          parts.feet = feet;
-          parts.tailEnd = tp[tp.length - 1];
-          return parts;
+          var c = st.c, w = st.w, ang = {}, lift = {}, feet = {};
+          Object.keys(LEGS).forEach(function (k) {
+            var ph = 2 * Math.PI * (c - W.offsets[LEGS[k]]);
+            ang[k] = w * AMP[k] * Math.sin(ph);                       // + swings the paw forward (left)
+            var sw = Math.max(0, Math.cos(ph)); lift[k] = w * LIFT[k] * sw * sw;
+          });
+          ang.T = st.tail || 0; ang.H = st.head || 0; lift.T = 0; lift.H = 0;
+          var bob = -0.55 * Math.cos(4 * Math.PI * c) * w;
+          var d = "";
+          PD.contours.forEach(function (con) {
+            var pts = con.pts.map(function (p, i) {
+              var wt = con.w[i], q = p, legness = 0;
+              for (var k in wt) {
+                q = rot(q, BN[k].piv, ang[k] * wt[k]);
+                q = [q[0], q[1] - lift[k] * wt[k]];
+                if (k !== "T" && k !== "H") legness = Math.max(legness, wt[k]);
+              }
+              return [q[0], q[1] + bob * (1 - legness)];
+            });
+            d += smoothPath(pts);
+          });
+          Object.keys(LEGS).forEach(function (k) {
+            var pw = rot(BN[k].paw, BN[k].piv, ang[k]);
+            feet[LEGS[k]] = { x: pw[0], sw: w > 0 ? lift[k] / LIFT[k] : 0 };
+          });
+          return { near: d, far: "M0 0", eye: "M0 0", feet: feet };
         }
-        // the still logo pose, also used for the little marks inside the app
-        var LOGO = rig({ c: 0, w: 0, curl: 205, sway: 0, swayPh: 0 });
-        (function () {
-          // fit the logo pose into a 100x100 box (rig spans x -65..95, y -60..2)
-          var d = LOGO.near + LOGO.far;
-          $$(".logoPath").forEach(function (p) { p.setAttribute("d", d); p.setAttribute("transform", "translate(51 61) scale(0.56)"); });
-        })();
+        // the still mark, also used for the little marks inside the app and the figurines
+        var LOGO = rig({ c: 0, w: 0 });
+        $$(".logoPath").forEach(function (p) { p.setAttribute("d", LOGO.near); p.setAttribute("transform", "translate(50 64) scale(0.86)"); p.setAttribute("fill-rule", "evenodd"); });
 
         /* ---------------- illustrations for the cards ---------------- */
-        var LOGO_D = LOGO.near + LOGO.far;
-        function panFig(x, y, s, fill, extra) { return '<g transform="translate(' + x + " " + y + ") scale(" + s + ')"><path d="' + LOGO_D + '" fill="' + fill + '"></path>' + (extra || "") + "</g>"; }
+        var LOGO_D = LOGO.near;
+        function panFig(x, y, s, fill, extra) { return '<g transform="translate(' + x + " " + y + ") scale(" + s + ')"><path fill-rule="evenodd" d="' + LOGO_D + '" fill="' + fill + '"></path>' + (extra || "") + "</g>"; }
         function illus(kind, w, h) {
           var bg = { panther: "#efe3cf", lamp: "#e4ecdc", vase: "#ebe0d0", cat: "#f1e2d8", rook: "#e6e7d6", owl: "#efe5d3", mug: "#e2efe6", hull: "#f4e4de", planter: "#e9efe1" }[kind];
           var s = '<svg viewBox="0 0 ' + w + " " + h + '" preserveAspectRatio="xMidYMid slice"><rect width="' + w + '" height="' + h + '" fill="' + bg + '"></rect>';
@@ -437,11 +383,11 @@
           s += '<ellipse cx="' + cx + '" cy="' + (by + 2) + '" rx="' + w * 0.3 + '" ry="' + h * 0.035 + '" fill="rgba(28,24,21,0.12)"></ellipse>';
           var sc = portrait ? w / 230 : Math.min(w, h * 1.6) / 286;
           if (kind === "panther" || kind === "planter" || kind === "lamp") {
-            var ps = 1.25 * sc, px = cx - 14 * ps, py = by - 6 * sc;
+            var ps = 1.75 * sc, px = cx, py = by - 6 * sc;
             if (kind === "lamp") s += '<path d="M' + (cx - 46 * sc) + " " + (h * 0.12) + "h" + 92 * sc + "l" + 24 * sc + " " + 58 * sc + "h" + -140 * sc + 'z" fill="#c7a46a"></path><rect x="' + (cx - 3 * sc) + '" y="' + (h * 0.12 + 58 * sc) + '" width="' + 6 * sc + '" height="' + 30 * sc + '" fill="#8b6a3a"></rect>';
             if (kind === "planter") s += '<path d="M' + (cx + 8 * sc) + " " + (by - 70 * sc) + "c" + -20 * sc + " " + -40 * sc + " " + -6 * sc + " " + -70 * sc + " " + 10 * sc + " " + -78 * sc + "c" + 4 * sc + " " + 30 * sc + " " + 10 * sc + " " + 50 * sc + " " + -10 * sc + ' 78z" fill="#5f8f4e"></path><path d="M' + (cx + 22 * sc) + " " + (by - 68 * sc) + "c" + 10 * sc + " " + -34 * sc + " " + 34 * sc + " " + -50 * sc + " " + 50 * sc + " " + -52 * sc + "c" + -8 * sc + " " + 26 * sc + " " + -22 * sc + " " + 44 * sc + " " + -50 * sc + ' 52z" fill="#7aa964"></path><rect x="' + (cx - 30 * sc) + '" y="' + (by - 74 * sc) + '" width="' + 70 * sc + '" height="' + 22 * sc + '" rx="' + 6 * sc + '" fill="#2a2420"></rect>';
             s += '<rect x="' + (cx - 78 * sc) + '" y="' + (by - 8 * sc) + '" width="' + 156 * sc + '" height="' + 10 * sc + '" rx="' + 4 * sc + '" fill="#3a302a"></rect>';
-            s += panFig(px, py, ps, "#1c1815", '<path d="' + "M-30 -54 C -12 -59 12 -58 34 -56" + '" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="3" stroke-linecap="round"></path><path d="M-56 -46 c 3 -3 6 -4 9 -4" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2.4" stroke-linecap="round"></path>');
+            s += panFig(px, py, ps, "#1c1815", '<path d="M-36 -27 C -20 -30.5 4 -29.5 22 -26" fill="none" stroke="rgba(255,255,255,0.32)" stroke-width="1.6" stroke-linecap="round"></path>');
           } else if (kind === "cat") {
             s += '<path d="M' + (cx - 30 * sc) + " " + by + "c" + -14 * sc + " " + -40 * sc + " " + -10 * sc + " " + -80 * sc + " " + 6 * sc + " " + -104 * sc + "l" + -6 * sc + " " + -26 * sc + "l" + 18 * sc + " " + 14 * sc + "h" + 24 * sc + "l" + 18 * sc + " " + -14 * sc + "l" + -6 * sc + " " + 26 * sc + "c" + 16 * sc + " " + 24 * sc + " " + 20 * sc + " " + 64 * sc + " " + 6 * sc + " " + 104 * sc + 'z" fill="#221c18"></path><path d="M' + (cx - 14 * sc) + " " + (by - 92 * sc) + "c" + 6 * sc + " " + -3 * sc + " " + 10 * sc + " " + -3 * sc + " " + 14 * sc + ' 0" stroke="#e9c46a" stroke-width="' + 4 * sc + '" fill="none" stroke-linecap="round"></path><path d="M' + (cx + 4 * sc) + " " + (by - 92 * sc) + "c" + 6 * sc + " " + -3 * sc + " " + 10 * sc + " " + -3 * sc + " " + 14 * sc + ' 0" stroke="#e9c46a" stroke-width="' + 4 * sc + '" fill="none" stroke-linecap="round"></path>';
           } else if (kind === "rook" || kind === "vase" || kind === "hull") {
@@ -560,13 +506,13 @@
         var WIN = { cx: 1330, cy: 452, w: 980, h: 760 };
         var TILE0 = { cx: 1180, cy: 470, s: 360 };
         var GROUND = 985;
-        function groundY(t) { return kf(t, [[1.8, 523], [3.0, GROUND, "io"], [16.8, GROUND], [17.9, 915, "io"]]); }
+        function groundY(t) { return kf(t, [[1.8, TILE0.cy - TILE0.s / 2 + 0.633 * TILE0.s], [3.0, GROUND, "io"], [16.8, GROUND], [17.9, 915, "io"]]); }
         var END = (function () {
           // where the panther stops (t = 18.0) decides where the mark forms
           var t = fs(C.logoLand), k = T.scale(t);
-          var ox = TILE0.cx - 15.5 * T.scale(0) - T.screenTravel(t);
-          var size = 153 * k / 0.84;
-          return { ox: ox, k: k, cx: ox + 15.5 * k, cy: groundY(t) - 0.12 * size, s: size };
+          var ox = TILE0.cx - T.screenTravel(t);
+          var size = 107 * k / 0.836;
+          return { ox: ox, k: k, cx: ox, cy: groundY(t) - 0.133 * size, s: size };
         })();
 
         /* ---------------- render ---------------- */
@@ -605,18 +551,17 @@
 
           /* ---- panther locomotion ---- */
           var k = T.scale(t), dist = T.distUnits(t), c = dist / W.cycleUnits;
-          var ox0 = TILE0.cx - 15.5 * T.scale(0) - T.screenTravel(t);
+          var ox0 = TILE0.cx - T.screenTravel(t);
           var gy = groundY(t);
           var bgScroll = T.distPx(t) - T.screenTravel(t);
           var w = E.sm(seg(t, 0.6, 1.05)) * (1 - E.sm(seg(t, 17.45, 18.0)));
-          var curl = lerp(150, 205, 1 - w);
-          if (t > 17.2) curl = kf(t, [[17.2, curl], [fs(C.logoLand) - 0.05, 300, "io"], [fs(C.logoLand) + 0.25, 285, "out"]]);
-          var idle = t < 0.6 ? 1 : 0;
-          var sway = lerp(5, 11, w);
-          var swayPh = t < 0.6 ? t * 0.5 : c + 0.3;
-          if (t > 18) swayPh = c + 0.3 + (t - 18) * 0.35;
-          var head = idle * -1.5 * Math.sin(t * 3.0);
-          var P = rig({ c: c + 0.0, w: w, curl: curl, sway: sway, swayPh: swayPh, head: head });
+          // tail: hangs a little lower and sways while walking, then curls up into the mark's loop on the landing
+          var tail = w * (0.16 + 0.07 * Math.sin(Math.PI * c + 0.6));
+          if (t < 0.6) tail = 0.05 * Math.sin(t * 5.2) * Math.sin(Math.PI * t / 0.6);
+          if (t > 17.3) tail = kf(t, [[17.3, tail], [fs(C.logoLand) - 0.12, 0.2, "io"], [fs(C.logoLand), -0.07, "out"], [fs(C.logoLand) + 0.35, 0, "io"]]);
+          if (t > fs(C.logoLand) + 0.35) tail = 0.025 * Math.sin((t - 18.35) * 2.4);
+          var head = 0.025 * Math.sin(4 * Math.PI * c) * w + (t < 0.6 ? -0.03 * Math.sin(t * 3.0) : 0);
+          var P = rig({ c: c, w: w, tail: tail, head: head });
           el.pFar.setAttribute("d", P.far); el.pNear.setAttribute("d", P.near); el.pEye.setAttribute("d", P.eye);
           // breathing in the mark at the start
           var breath = 1 + 0.028 * Math.sin(t * Math.PI / 0.6) * (1 - E.sm(seg(t, 0.9, 1.5)));
@@ -624,10 +569,10 @@
           el.body.setAttribute("transform", "translate(" + n2(bx) + " " + n2(byy) + ") scale(" + n2(k * breath * 1000) / 1000 + ")");
           // contact shadows
           var shA = 1 - 0.5 * E.sm(seg(t, 0, 0.1));
-          el.shBody.setAttribute("cx", n2(ox0 + 4 * k)); el.shBody.setAttribute("cy", n2(gy + 2)); el.shBody.setAttribute("rx", n2(64 * k)); el.shBody.setAttribute("ry", n2(5.5 * k));
+          el.shBody.setAttribute("cx", n2(ox0 - 4 * k)); el.shBody.setAttribute("cy", n2(gy + 2)); el.shBody.setAttribute("rx", n2(44 * k)); el.shBody.setAttribute("ry", n2(3.2 * k));
           ["lf", "rf", "lh", "rh"].forEach(function (lg, i) {
             var f = P.feet[lg], e = feetEls[i];
-            e.setAttribute("cx", n2(ox0 + (f.x - 3) * k)); e.setAttribute("cy", n2(gy + 1.2)); e.setAttribute("rx", n2(9 * k * (1 - f.sw * 0.4))); e.setAttribute("ry", n2(2.2 * k));
+            e.setAttribute("cx", n2(ox0 + f.x * k)); e.setAttribute("cy", n2(gy + 0.6)); e.setAttribute("rx", n2(5.5 * k * (1 - f.sw * 0.4))); e.setAttribute("ry", n2(1.3 * k));
             e.setAttribute("opacity", n2(1 - f.sw * 0.85));
           });
 
