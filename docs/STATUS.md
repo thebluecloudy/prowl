@@ -6,7 +6,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.10 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.10** | 107,435 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.10** | 107,644 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v118** | |
 
 Recently shipped, newest first:
@@ -21,6 +21,12 @@ Recently shipped, newest first:
   Prowl, a vintage search tool from Owl & Twig Vintage: owlandtwigvintage.com/prowl" (`SHARE_HOME`). That address is a
   **Shopify URL redirect Matt adds** (Online Store › Navigation › URL redirects: `/prowl` → `/pages/prowl`); it must
   exist before this merges. Not bit.ly: a shortener reads as spam, and its free plan allows a few links a month.
+  Also: **Get the app comes first in How Prowl works** (Matt: "When people first come to it I want them to get to the
+  app version but they don't see it until the end"). How Prowl works opens by itself on a first visit; it now starts
+  with the Get the Prowl app card (`.otp-getapp[data-mode=help]`: Get the app and Open it now, or Install on the app
+  page; hidden in the installed app), and its old step 5 is gone (six steps now). The home page's own app card is often
+  hidden for new visitors, since one promo shows at a time and they get the alerts one. A tap on the card closes the
+  help. The help's Near me and Daily lines now say what v7.09 made them do. Test: `__tests__/page/help-app-v710.test.mjs`.
 - **v7.09: Daily announces itself (Matt, 2026-10-17: "it reads as I tapped DAILY and nothing changed").** Daily is
   its own screen now: the date, **Your daily prowl**, "N hunts · X new since yesterday" and the hunt names; then
   **What's new** at the top, grouped per hunt (up to 6 cards each); then the email card and one block per hunt with

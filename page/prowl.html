@@ -2767,10 +2767,11 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   <div class="md" role="dialog" aria-modal="true" aria-labelledby="otp-mt">
     <h2 id="otp-mt">How Prowl works</h2>
     <p>Prowl builds one search for <b><span data-t>29</span> vintage marketplaces</b> and puts them all on one screen. The basics:</p>
+    <div class="gapp otp-getapp" data-mode="help" hidden></div>
     <div class="mi">
 <u>1</u><div>
 <h3>Search everywhere at once</h3>
-<p>Type what you are hunting and tap <b style="color:var(--ink)">Hunt</b>. Every marketplace lands as a row; tap one to open it, or <b style="color:var(--ink)">Open all</b> (allow pop-ups for this site). <b style="color:var(--ink)">Near me</b> searches Facebook, Craigslist, OfferUp and estate sales around your city.</p>
+<p>Type what you are hunting and tap <b style="color:var(--ink)">Hunt</b>. Every marketplace lands as a row; tap one to open it, or <b style="color:var(--ink)">Open all</b> (allow pop-ups for this site). <b style="color:var(--ink)">Near me</b> opens a map of antique, thrift and vintage shops around you.</p>
 </div>
 </div>
     <div class="mi">
@@ -2782,7 +2783,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <div class="mi">
 <u>3</u><div>
 <h3>DAILY</h3>
-<p><b style="color:var(--ink)">DAILY</b> in the footer runs all your locked hunts in one go, with live listings for each.</p>
+<p><b style="color:var(--ink)">DAILY</b> in the footer runs all your locked hunts in one go: what is new since yesterday first, then live listings for each.</p>
 </div>
 </div>
     <div class="mi">
@@ -2793,18 +2794,12 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 </div>
     <div class="mi">
 <u>5</u><div>
-<h3>Get the app</h3>
-<p>Prowl works best installed. Tap <b style="color:var(--ink)">Get the app</b> (or <b style="color:var(--ink)">Add Prowl to your home screen</b>), then on iPhone use Share › Add to Home Screen; on Android or a computer tap Install. It is also in Den › Settings.</p>
-</div>
-</div>
-    <div class="mi">
-<u>6</u><div>
 <h3>Check a photo</h3>
 <p>At a sale, tap <b style="color:var(--ink)">Photo</b> in the bar at the bottom, then <b style="color:var(--ink)">Take a photo</b>. One free check a day, 25 with Prowl Pro. Prowl names the piece, notes visible flaws and gives a fair price range, with eBay look-alikes.</p>
 </div>
 </div>
     <div class="mi">
-<u>7</u><div>
+<u>6</u><div>
 <h3>Make it yours</h3>
 <p><b style="color:var(--ink)">Aa</b> makes the text bigger. The icon top-right cycles light, dark and <b style="color:var(--ink)">uranium</b>, a retro blacklight mode. <span class="aff-say">Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</span></p>
 </div>
@@ -7607,7 +7602,7 @@ function rGetApp(){
     h='<div class="gapp-top"><h3>\uD83D\uDCF2 Get the Prowl app</h3>'+(mode==='home'?'<button type="button" class="gapp-x" data-ga="x" aria-label="Hide for now">\u00d7</button>':'')+'</div>'+
       '<p>Free. Full screen, quicker, and one tap from your home screen or desktop. Same hunts, same Den.</p>'+
       '<span class="sgw-mf">'+(app?'<button type="button" class="b p" data-ga="install">Install Prowl</button>':'<a class="b p" href="'+APP_PATH+'?install=1">Get the app</a><button type="button" class="b" data-ga="open">Open it now</button>')+'</span>'+
-      (app||mode==='settings'?gaSteps():'');
+      (app||mode==='settings'?gaSteps():'');   /* v7.10: data-mode help, first in How Prowl works (Matt: new visitors did not see the app until the end) */
     if(box._gh!==h){box.innerHTML=h;box._gh=h}
     box.hidden=false;
   }
@@ -7615,6 +7610,7 @@ function rGetApp(){
 document.addEventListener('click',function(e){
   var b=e.target.closest&&e.target.closest('.otp-getapp [data-ga]');if(!b)return;
   var a=b.getAttribute('data-ga');
+  if(b.closest('#otp-ms')&&a!=='x')closeM();   /* v7.10: from How Prowl works, the help steps aside */
   if(a==='install')doInstall();
   else if(a==='open')openApp();
   else if(a==='x'){try{localStorage.setItem(GA_HIDE,String(Date.now()))}catch(err){}rGetApp();toast('Hidden for now. It is always in Den \u203a Settings.',3600)}
