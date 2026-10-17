@@ -1,15 +1,26 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.14 / v120).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.15 / v121).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.14** | 102,930 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
-| Worker | **v120** | |
+| Page | **v7.15** | 101,809 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Worker | **v121** | |
 
 Recently shipped, newest first:
+
+- **v7.15 + worker v121: share a photo into Prowl on Android** (Matt, 2026-10-17: "Android same way" as the Chrome
+  extension's image menu). The installed app shows up in Android's share sheet for images; the photo opens straight
+  in Photo check. How: the theme asset `prowl-manifest.json` has a `share_target` (POST multipart, field `photo`, action
+  `/pages/prowl-app?share-target=1`); the app page registers `/apps/prowl/sw.js` with scope `/pages/prowl-app` (the
+  worker now sends `Service-Worker-Allowed: /pages/prowl-app`; skipped on iPhone, which has no web share target);
+  `worker/sw.js` answers only that POST, keeps the photo in Cache Storage (`prowl-share`) and redirects to `?shared=1`,
+  where the page runs it through `window.prowlPhotoFile`. The photo never leaves the phone until Photo check sends it
+  as before. The app must have been opened once after this update before it can receive a share; Android adds Prowl
+  to the share sheet after it refreshes the installed app's manifest (can take up to a day, or reinstall).
+  Tests: `__tests__/page/share-photo-v715.test.mjs`, `worker/__tests__/share-target.test.mjs`.
 
 - **v7.14: the launch film in How Prowl works** (Matt, 2026-10-17: "add the horizontal video here, we need a help
   section"). The 20-second film (`video/launch-film/`, HyperFrames) sits at the top of How Prowl works as a play card
