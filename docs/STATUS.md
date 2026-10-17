@@ -296,6 +296,7 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `ccr-f12efc66-79vd0e` | Claude | 20 s launch film in `video/launch-film/` (HyperFrames; no page or worker change, takes no version number) | Render / critique rounds in progress, see `video/launch-film/REVIEW.md`. |
 
 Next free numbers: **page v7.11, worker v121**. Claim one here when you start.
 
