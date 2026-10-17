@@ -542,7 +542,7 @@
           var dx = 7 * Math.sin(t * 0.31 + 0.6) + 4 * Math.sin(t * 0.73), dy = 5 * Math.cos(t * 0.27) + 2.5 * Math.sin(t * 0.61 + 1);
           var rot = 0.22 * Math.sin(t * 0.21 + 0.4), zoom = 1.0 + 0.012 * Math.sin(t * 0.17) + 0.008 * t / 20 + 0.05 * (1 - E.out(seg(t, 0, 2.2)));
           // the last move: centre the mark and grow it
-          var finalS = 1.2, tx = (960 - END.cx) * endMove, ty = (392 - END.cy) * endMove, s = lerp(1, finalS, endMove);
+          var finalS = 1.04, tx = (960 - END.cx) * endMove, ty = (366 - END.cy) * endMove, s = lerp(1, finalS, endMove);
           // scale about the mark centre: translate so the mark lands at (960,392)
           var camT = "translate(" + n2(dx + tx) + "px," + n2(dy + ty) + "px) rotate(" + n2(rot) + "deg) ";
           var ox = END.cx - 960, oy = END.cy - 540;
@@ -598,7 +598,7 @@
             A = { cx: lerp(WIN.cx, END.cx, mf), cy: lerp(WIN.cy, END.cy, mf), w: lerp(WIN.w, END.s, mf), h: lerp(WIN.h, END.s, mf) };
             ry = lerp(effY - 180, -180, mf); rx = lerp(effX, 0, mf);
             rad = lerp(30, END.s * 0.22, mf);
-            flood = E.sine(seg(t, m0 - 0.06, m1 - 0.04));
+            flood = E.sine(seg(t, m0 - 0.06, m1 - 0.2));
           }
           setRect(el.shell, A.cx - A.w / 2, A.cy - A.h / 2, A.w, A.h);
           el.shell.style.borderRadius = n2(rad) + "px";
@@ -652,7 +652,7 @@
           if (t > fs(C.wash[0]) - 0.02) {
             show(el.dark, true);
             // centre of the wash follows the mark through the final camera move
-            var mcx = lerp(END.cx, 960, endMove), mcy = lerp(END.cy, 392, endMove);
+            var mcx = lerp(END.cx, 960, endMove), mcy = lerp(END.cy, 366, endMove);
             var R = 2300 * E.iexp(seg(t, fs(C.wash[0]), fs(C.wash[1]) + 0.1)) + 140 * E.out(seg(t, fs(C.wash[0]), fs(C.wash[0]) + 0.3));
             var m = "radial-gradient(circle at " + n2(mcx) + "px " + n2(mcy) + "px, #000 " + n2(R) + "px, rgba(0,0,0,0) " + n2(R + 50) + "px)";
             var ringA = 1 - E.sm(seg(t, fs(C.wash[1]) - 0.1, fs(C.wash[1]) + 0.25));

@@ -89,3 +89,16 @@ Render r3: spec as before, -13.9 LUFS, -2.3 dBTP, sync 0.00 ms at every cue.
 - Incoming headlines start 0.3 s after the old ones begin to leave, so no mask ever holds two lines.
 - Walking scale 2.45 -> 2.7 (about 290 px wide), still clear of the window.
 - End mark lands higher (ground 880 at 17.9 s) so the larger tile stays inside the frame.
+
+## Round 4
+
+Render r4: spec as before, -13.9 LUFS, -2.3 dBTP, sync 0.00 ms. Frame strips at 1.80-2.35 and 16.85-18.65.
+
+**Found**
+- The flip (2.1-2.35) and the panther leaving the mark (1.8-2.1) are clean; the melt reads as ink rising.
+- End lockup: with the larger panther the mark grew to about 414 px and now touches the "Prowl" wordmark.
+- At 17.25 s the ink is still rising when the window reaches tile size, so the mark's top edge looks bitten.
+
+**Changed**
+- Final mark scale 1.2 -> 1.04 and centre raised to y 366, leaving clear space above the wordmark.
+- The ink finishes rising 0.16 s earlier, before the window becomes the tile.
