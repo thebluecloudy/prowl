@@ -1037,6 +1037,28 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .dg-blk .sgw-note{padding:0 18px 10px}
 .scout-app-wrapper .dg-tip{margin:12px 18px 0;font-size:14px;color:var(--mu);line-height:1.5}
 .scout-app-wrapper .dg-tip b{color:var(--ink)}
+.scout-app-wrapper .hn{margin:4px 0 14px;padding:12px 0 6px;border:2px solid var(--ac);border-radius:14px;background:var(--ac-soft)}
+.scout-app-wrapper .hn-h{font-family:var(--display);font-size:19px;font-weight:800;margin:0 15px 8px;color:var(--ink)}
+.scout-app-wrapper .hn-h small{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:99px;background:var(--ac);color:var(--onink);font-family:var(--sans);font-size:13px;vertical-align:3px}
+.scout-app-wrapper .hn-grid{padding:0 15px 8px}
+.scout-app-wrapper .hn-acts{display:flex;flex-wrap:wrap;gap:8px;margin:0 15px 8px}
+.scout-app-wrapper .hn-go{min-height:40px;font-size:14px}
+/* v7.09 (Matt: "make them glow"): new listings glow, in the strip and in a hunt. A steady ring outside the card and a
+   breathing light inside its edge; only opacity moves (an animated shadow stalls phones); still under reduced motion. */
+.scout-app-wrapper .hn .sgw-card,.scout-app-wrapper .sgw-cell[data-fresh] .sgw-card{position:relative;box-shadow:0 0 0 2px var(--ac),0 0 16px -2px var(--ac)}
+.scout-app-wrapper .hn .sgw-card:after,.scout-app-wrapper .sgw-cell[data-fresh] .sgw-card:after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 2px var(--ac),inset 0 0 22px var(--ac);opacity:.35;z-index:2}
+@media (prefers-reduced-motion:no-preference){.scout-app-wrapper .hn .sgw-card:after,.scout-app-wrapper .sgw-cell[data-fresh] .sgw-card:after{animation:hnGlow 2.4s ease-in-out infinite}}
+@keyframes hnGlow{0%,100%{opacity:.2}50%{opacity:.8}}
+.scout-app-wrapper .dg-rh h2{font-family:var(--display);font-size:26px}
+.scout-app-wrapper .dg-rh .dg-hunts{margin:6px 0 0;font-size:14px;color:var(--mu);line-height:1.45}
+.scout-app-wrapper .dg-new{padding:16px 0 6px;border-bottom:1px solid var(--ln)}
+.scout-app-wrapper .dg-new>h3{font-family:var(--display);font-size:20px;font-weight:800;margin:0 18px 6px}
+.scout-app-wrapper .dg-new>h3 small{font-family:inherit;font-size:14px;font-weight:600;color:var(--mu);margin-left:6px}
+.scout-app-wrapper .dg-new .sgw-note{padding:0 18px 10px}
+.scout-app-wrapper .dg-nh h4{margin:10px 18px 8px;font-size:16px;font-weight:800;color:var(--ink)}
+.scout-app-wrapper .dg-nh h4 span{color:var(--ac);margin-left:6px}
+.scout-app-wrapper .dg-new .sgw-grid{padding:0 18px 10px}
+.scout-app-wrapper .dg-nh .dg-more{margin:0 18px 10px;font-size:14px;color:var(--mu)}
 .scout-app-wrapper .sgw-mail{margin:0 15px 10px;font-size:15px;color:var(--i2)}
 .scout-app-wrapper .sgw-mail.mail-card{margin:0;border:2px solid var(--ac);border-radius:14px;padding:14px 16px;background:var(--ac-soft)}
 .scout-app-wrapper .sgw-mail.dg-mail{margin:4px 0 18px}
@@ -1778,8 +1800,10 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .pp-go{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;margin-top:14px;border-radius:99px;text-decoration:none;font-weight:800;font-size:16px}
 .scout-app-wrapper .pp-end{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--cd3);color:var(--ink);font-weight:700}
 @media(prefers-reduced-motion:reduce){.scout-app-wrapper .pp-gal{scroll-behavior:auto}.scout-app-wrapper .pp-heart.on{animation:none}}
-/* v7.04: dock buttons swap the main area with a short morph (View Transitions, class fallback) */
-.scout-app-wrapper main#otp-main{view-transition-name:prowl-main}
+/* v7.04: dock buttons swap the main area with a short morph (View Transitions, class fallback). v7.09: named only
+   while the morph runs: a view-transition-name makes main its own layer, which put Prowl's top bar and the store's
+   header over Flock (fixed inside main) */
+html.otp-vt .scout-app-wrapper main#otp-main{view-transition-name:prowl-main}
 html.otp-vt::view-transition-old(root),html.otp-vt::view-transition-new(root){animation:none}
 html.otp-vt::view-transition-old(prowl-main){animation:otpVtOut 160ms cubic-bezier(.4,0,1,1) both}
 html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezier(0,0,.2,1) both}
@@ -2434,7 +2458,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <nav id="otp-dock" aria-label="Prowl modes">
   <button class="db on" data-m="prowl" aria-label="Prowl home"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path></svg><span>PROWL</span></button>
   <button class="db" data-m="one" id="otp-oneBtn"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11"></path><path d="M9 20v-6h6v6"></path></svg><span id="otp-oneLab">GOODWILL</span></button>
-  <button class="db" data-m="local" id="otp-localBtn" aria-label="Local: search near you, or set your city"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.4"></circle></svg><span>LOCAL</span></button>
+  <button class="db" data-m="local" id="otp-localBtn" aria-label="Local: stores near you on the map, or set your city"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.4"></circle></svg><span>LOCAL</span></button>
   <button class="db" data-m="flock" id="otp-flockBtn" aria-label="Flock: a look across your hunts"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#otp-swallow"></use></svg><span>FLOCK</span><em class="bd" id="otp-flbd" hidden></em></button>
   <button class="db" data-m="daily" aria-label="Daily prowl"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg><span>DAILY</span><em class="bd" id="otp-ds" hidden></em></button>
   <button class="db" data-m="den" id="otp-denBtn" aria-label="Den: hunts and settings"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"></path></svg><span>DEN</span></button>
@@ -2804,7 +2828,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.08';
+var PROWL_VERSION='v7.09';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3697,6 +3721,7 @@ function runProwl(mode,c,scope,label){
   requestAnimationFrame(function(){res.scrollIntoView({behavior:'smooth',block:'start'})});
   /* Nothing opens on its own. Matt wants the choices on screen first: one
      screen, one row per marketplace, open them one at a time or all at once. */
+  if(mode==='daily'){toast('Your daily prowl: <b>'+terms.length+'</b> hunt'+(terms.length===1?'':'s')+', live.',2600);return}   /* v7.09: no rows to open */
   toast(L.length+' search'+(L.length===1?'':'es')+' ready — tap any row to open it, or <b>Open all</b> at the bottom.',5200);
 }
 
@@ -3865,13 +3890,100 @@ function lvRunStrips(r){
 /* v5.50: every locked hunt is 4 Worker calls. A 300-hunt list queued 1,200.
    Rows still cover every hunt; live grids stop at DG_LIVE_MAX. */
 var DG_LIVE_MAX=12;
+/* v7.09 (Matt: tapping DAILY read as "I tapped DAILY and nothing changed"): Daily announces itself. "Your daily
+   prowl" with the hunt count, what is new since the last day's Daily at the top, then one block per hunt with its
+   live listings. No marketplace rows and no Open all (Matt: nobody should open 500 tabs); Run the full hunt still
+   opens one hunt's whole screen. What Daily saw is kept per day in prowl.dailySeen as short hashes of the listing
+   links, at most DG_SEEN_CAP a hunt; on a new day the last day's list becomes the one Daily compares with. */
+var DG_KEY='prowl.dailySeen',DG_SEEN_CAP=200,DG=null;
+var DG_DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],DG_MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function dgToday(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()}
+function dgH(u){var h=5381,i;u=String(u);for(i=0;i<u.length;i++)h=((h*33)^u.charCodeAt(i))>>>0;return h.toString(36)}
+function dgObj(x){return x&&typeof x==='object'&&Object.prototype.toString.call(x)!=='[object Array]'}
+function dgLoad(){
+  var o=DG,t=dgToday();
+  if(!o){try{o=JSON.parse(localStorage.getItem(DG_KEY)||'null')}catch(e){o=null}
+    if(!dgObj(o))o={};if(!dgObj(o.cur))o.cur={};if(!dgObj(o.prev))o.prev={};if(!dgObj(o.cs))o.cs={};if(!dgObj(o.ps))o.ps={}}
+  if(o.d!==t){if(o.d&&Object.keys(o.cur).length){o.pd=o.d;o.prev=o.cur;o.ps=o.cs}o.d=t;o.cur={};o.cs={}}
+  DG=o;return o;
+}
+function dgSince(o){
+  if(!o.pd)return '';
+  var p=String(o.pd).split('-'),d=new Date(+p[0],+p[1]-1,+p[2]),y=new Date(),n;
+  y.setHours(0,0,0,0);n=Math.round((y-d)/864e5);
+  if(n<=1)return 'since yesterday';
+  if(n<7)return 'since '+DG_DAYS[d.getDay()];
+  return 'since '+DG_MON[d.getMonth()]+' '+d.getDate();
+}
+/* every live listing Daily has for hunt k, one per link */
+function dgItems(k){
+  var out=[],seen={},list=[sgw.cache[k]],i,j,c,it;
+  for(i=0;i<LIVE_SRC.length;i++)list.push(lv[LIVE_SRC[i].id]&&lv[LIVE_SRC[i].id].cache[k]);
+  for(i=0;i<list.length;i++){c=list[i];if(!c||c.err||!c.items)continue;
+    for(j=0;j<c.items.length;j++){it=c.items[j];if(it&&it.url&&it.title&&!seen[it.url]){seen[it.url]=1;out.push(it)}}}
+  return out;
+}
+/* cs: the marketplaces that answered for the hunt that day, so one that was down yesterday does not make all of
+   its listings "new" today */
+function dgMark(k){
+  var o=dgLoad(),its=dgItems(k),a=(o.cur[k]||[]).slice(),has={},cs=(o.cs[k]||[]).slice(),ans=seenAnswered(k),i,h,n=0;
+  for(i in ans)if(cs.indexOf(i)<0){cs.push(i);n++}
+  o.cs[k]=cs;
+  for(i=0;i<a.length;i++)has[a[i]]=1;
+  for(i=0;i<its.length;i++){h=dgH(its[i].url);if(!has[h]){has[h]=1;a.push(h);n++}}
+  if(!n)return;
+  if(a.length>DG_SEEN_CAP)a=a.slice(a.length-DG_SEEN_CAP);
+  o.cur[k]=a;try{localStorage.setItem(DG_KEY,JSON.stringify(o))}catch(e){}
+}
+/* listings of hunt k that the last day's Daily did not have; null when that day did not look at this hunt */
+function dgFresh(k){
+  var o=dgLoad(),p=o.prev[k],ps=o.ps[k],has={},i,out=[],its,src;
+  if(!p||!p.length)return null;
+  for(i=0;i<p.length;i++)has[p[i]]=1;
+  its=dgItems(k);
+  for(i=0;i<its.length;i++){src=seenSrc(its[i].url);if(src&&ps&&ps.length&&ps.indexOf(src)<0)continue;if(!has[dgH(its[i].url)])out.push(its[i])}
+  return out;
+}
+var DG_NEW_CARDS=6;
+function dgNew(T){
+  var o=dgLoad(),x={n:0,since:dgSince(o),wait:false,base:false},h='',j,k,f,i,cards;
+  for(j=0;j<T.length;j++){
+    k=T[j].toLowerCase();if(!liveSummary(T[j]).done)x.wait=true;
+    f=dgFresh(k);if(f===null)continue;x.base=true;if(!f.length)continue;x.n+=f.length;cards='';
+    for(i=0;i<f.length&&i<DG_NEW_CARDS;i++)cards+=sgwCard(f[i],T[j]);
+    h+='<div class="dg-nh"><h4>'+esc(T[j])+'<span>'+f.length+' new</span></h4><div class="sgw-grid">'+cards+'</div>'+
+      (f.length>DG_NEW_CARDS?'<p class="dg-more">'+(f.length-DG_NEW_CARDS)+' more in '+esc(T[j])+' below.</p>':'')+'</div>';
+  }
+  var hd='<h3>What\u2019s new'+(x.since?' <small>'+esc(x.since)+'</small>':'')+'</h3>';
+  if(!x.base)h='<p class="sgw-note">This is your first daily prowl on this device. Come back tomorrow and the new listings show up here first.</p>';
+  else if(!x.n)h='<p class="sgw-note">'+(x.wait?'<span class="paws" aria-hidden="true"><i>🐾</i><i>🐾</i><i>🐾</i></span>Checking what is new…':'Nothing new '+esc(x.since)+'. Everything live for each hunt is below.')+'</p>';
+  x.html='<div class="dg-new" id="otp-dgNew">'+hd+h+'</div>';
+  return x;
+}
+function dgSum(n,x){
+  return '<strong>'+n+'</strong> hunt'+(n===1?'':'s')+' \u00b7 '+(!x.base?'first day on this device'
+    :x.n?'<strong>'+x.n+'</strong> new '+esc(x.since):x.wait?'checking what is new':'nothing new '+esc(x.since));
+}
+function dgHead(r,x){
+  var d=new Date();
+  return '<div class="rh dg-rh"><div><p class=eb>'+DG_DAYS[d.getDay()]+', '+DG_MON[d.getMonth()]+' '+d.getDate()+'</p>'+
+    '<h2>Your daily prowl</h2><p class=rs id="otp-dgSum">'+dgSum(r.terms.length,x)+'</p>'+
+    '<p class="dg-hunts">'+esc(r.terms.join(' \u00b7 '))+'</p></div>'+
+    '<div class=rh-acts><button class=gh id=otp-cr type=button>Close</button></div></div>';
+}
+/* the header count and the What's new strip, redrawn only when they change (the photos in it would reload) */
+function dgTop(r){
+  var x=dgNew(dgTerms(r)),el=document.getElementById('otp-dgNew'),sm=document.getElementById('otp-dgSum'),tmp,v;
+  v=dgSum(r.terms.length,x);if(sm&&sm.innerHTML!==v)sm.innerHTML=v;
+  if(el&&el.outerHTML!==x.html){tmp=document.createElement('div');tmp.innerHTML=x.html;el.parentNode.replaceChild(tmp.firstChild,el)}
+}
 function dgTerms(r){
   var out=[],i,t;
   for(i=0;i<r.terms.length&&out.length<DG_LIVE_MAX;i++){t=sgwClean(r.terms[i]);if(t)out.push(t)}
   return out;
 }
 function dgBlock(t,j){
-  var k=t.toLowerCase(),i,s,tot=0,body;
+  var k=t.toLowerCase(),i,s,tot=0,body,fr=dgFresh(k);
   body=liveBlock('ShopGoodwill',t,sgw.cache[k],!sgw.cache[k]);
   tot+=liveCount(sgw.cache[k]);
   for(i=0;i<LIVE_SRC.length;i++){
@@ -3879,15 +3991,16 @@ function dgBlock(t,j){
     body+=liveBlock(s.name,t,lv[s.id].cache[k],!lv[s.id].cache[k]);
     tot+=liveCount(lv[s.id].cache[k]);
   }
+  body=body.split(' The full hunt below still searches everywhere else.').join('').split(' The rows below still search every site directly.').join('');   /* v7.09: Daily has no rows below */
   return '<div class="dg-blk" data-dg="'+j+'"><div class="dg-hd"><h3>'+esc(t)+'</h3>'+
-    '<span class="dg-n">'+(tot?tot+' live now':'')+'</span>'+
+    '<span class="dg-n">'+(fr&&fr.length?fr.length+' new \u00b7 ':'')+(tot?tot+' live now':'')+'</span>'+
     '<button type="button" class="dg-run" data-dh="'+j+'">Run the full hunt</button></div>'+body+'</div>';
 }
-function dgDigest(r){
+function dgDigest(r,x){
   var beta=true;   /* v5.80: Prowl Alerts is for everyone now */
-  var T=dgTerms(r),html='<div class="otp-mail sgw-mail mail-card dg-mail" data-mode="card"'+(beta?'>'+mailBoxHtml('card',true):' hidden>')+'</div>',j;
+  var T=dgTerms(r),html=x.html+'<div class="otp-mail sgw-mail mail-card dg-mail" data-mode="card"'+(beta?'>'+mailBoxHtml('card',true):' hidden>')+'</div>',j;
   for(j=0;j<T.length;j++)html+=dgBlock(T[j],j);
-  if(r.terms.length>DG_LIVE_MAX)html+='<p class="dg-tip">Live listings show for your first <b>'+DG_LIVE_MAX+'</b> locked hunts. The rows below still search all <b>'+r.terms.length+'</b>.</p>';
+  if(r.terms.length>DG_LIVE_MAX)html+='<p class="dg-tip">Daily shows live listings for your first <b>'+DG_LIVE_MAX+'</b> locked hunts. Run the full hunt from the home screen for the other <b>'+(r.terms.length-DG_LIVE_MAX)+'</b>.</p>';
   return html+'<p class="dg-tip">These are your <b>locked hunts</b>. Change the list with the chips on the home screen: <b>+ add a hunt</b> locks a new one, the <b>x</b> takes one off Daily.</p>';
 }
 /* v5.78: when one hunt's listings land, redraw just that hunt's block. Redrawing
@@ -3896,8 +4009,10 @@ function dgPatch(r,t){
   if(st.run!==r||r.phase==='launching')return;
   var T=dgTerms(r),j=-1,i,el,tmp;
   for(i=0;i<T.length;i++)if(T[i]===t){j=i;break}
+  dgMark(t.toLowerCase());   /* v7.09 */
   el=j>-1?res.querySelector('.dg-blk[data-dg="'+j+'"]'):null;
   if(!el){rRes();return}
+  dgTop(r);
   tmp=document.createElement('div');tmp.innerHTML=dgBlock(t,j);
   if(tmp.firstChild&&el.outerHTML!==tmp.innerHTML)el.parentNode.replaceChild(tmp.firstChild,el);
 }
@@ -3971,6 +4086,13 @@ function rRes(){
   if(!r&&st.focus){rFocus();return;}
   if(!r){res.hidden=true;res.innerHTML='';return;}
   var L=r.launches,total=L.length;
+  if(r.mode==='daily'){   /* v7.09: its own screen, live listings only */
+    var dT=dgTerms(r),di;for(di=0;di<dT.length;di++)dgMark(dT[di].toLowerCase());
+    var dx=dgNew(dT);
+    res.innerHTML='<div class="rc dg-rc">'+dgHead(r,dx)+dgDigest(r,dx)+'</div>';
+    var dcr=$('#otp-cr');if(dcr)dcr.addEventListener('click',clearRun);
+    return;
+  }
 
   var head='<div class=rh><div>'+
     '<p class=eb>Prowling · '+esc(modeLabel(r))+'</p>'+
@@ -4032,7 +4154,7 @@ function rRes(){
   }
   rows+='</ul>';
 
-  res.innerHTML='<div class=rc>'+head+huntBlock(r)+(r.mode==='daily'?dgDigest(r):runLive(r))+rows+
+  res.innerHTML='<div class=rc>'+head+huntBlock(r)+runLive(r)+rows+
     '<div class=oabar>'+
       (paused
         ?'<button class="b p" id=otp-next type=button>Open next '+nextN+'</button>'+
@@ -4166,8 +4288,13 @@ function dockGo(m){
 }
 
 /* v6.88: the dock's LOCAL; v6.90: also Near me under the search box, in Facebook USA's old spot (Facebook USA is on the
-   results). With a hunt it searches the city-aware sites; with none it opens Den > Local to set the city. */
-function goLocal(){var lc=chips();if(lc.length)runProwl('local',lc,LOCAL_IDS.filter(mb),ML.local);else{denTab='local';openDen()}}
+   results). v7.09 (Matt: "local is not opening local areas, should be opening the google links"): both always open
+   Den > Local at Stores near you, the links into Google Maps or Apple Maps, with or without a hunt typed. Facebook and
+   Craigslist stay on every search's rows. */
+function goLocal(){
+  denTab='local';openDen();
+  setTimeout(function(){var g=document.getElementById('otp-nearGrid'),b=g&&g.closest('.nearblk');if(b&&b.scrollIntoView)try{b.scrollIntoView({behavior:'smooth',block:'start'})}catch(e){}},60);
+}
 $('#otp-near').addEventListener('click',goLocal);
 $('#otp-sf').addEventListener('submit',function(e){
   e.preventDefault();
@@ -4755,8 +4882,11 @@ function exSort(items,t){
   }
   return {ex:ex,near:near};
 }
+/* v7.09 (Matt: "it says 1 new, but it isn't obvious"): listings new since the last look (FRESH) go first */
+function frontNew(a){var f=[],o=[],i;for(i=0;i<a.length;i++)(FRESH[a[i].url]?f:o).push(a[i]);return f.length?f.concat(o):a}
 function exRows(items,t){
   var g=exSort(items,t),rows='',i;
+  g.ex=frontNew(g.ex);g.near=frontNew(g.near);   /* v7.09 */
   for(i=0;i<g.ex.length;i++)rows+=sgwCard(g.ex[i],t);
   if(g.ex.length&&g.near.length)rows+='<p class="sgw-close">Close matches</p>';
   for(i=0;i<g.near.length;i++)rows+=sgwCard(g.near[i],t);
@@ -5785,6 +5915,24 @@ function mailOffLegacy(wasPro){
     },function(){MAIL.busy=false;MAIL.msg='Could not reach Prowl. You are still subscribed. Try again in a minute.';rMail()});
 }
 
+/* v7.09: New since your last look, at the top of the home panel: the listings behind the other hunts' "N new" badges,
+   up to 3 a hunt and 8 in all, each tagged New and naming its hunt, with a button that opens that hunt. They are not
+   marked seen here; opening the hunt does that, as before. */
+var HN_PER=3,HN_MAX=8;
+function homeNew(NEWN){
+  var S=seenLoad(),cards='',btn='',tot=0,shown=0,i,j,x,k,set,its,per;
+  for(i=0;i<sgw.terms.length;i++){
+    if(!NEWN[i])continue;x=sgw.terms[i];k=x.t.toLowerCase();if(!S[k])continue;
+    tot+=NEWN[i];set={};for(j=0;j<S[k].length;j++)set[S[k][j]]=1;
+    its=dgItems(k);per=0;
+    for(j=0;j<its.length&&per<HN_PER&&shown<HN_MAX;j++)if(!set[its[j].url]){
+      cards+=sgwCard(its[j],x.t).replace('<div class="sgw-t">','<div class="sgw-t"><span class="fl-newb">New</span>').replace('<div class="sgw-m">','<div class="sgw-m">for '+esc(x.t)+' · ');per++;shown++}
+    btn+='<button type="button" class="b hn-go" data-sgw="pick" data-i="'+i+'">'+esc(x.t)+' · '+(NEWN[i]>9?'9+':NEWN[i])+' new</button>';
+  }
+  if(!cards)return '';
+  return '<div class="hn" id="otp-homeNew"><h3 class="hn-h">New since your last look <small>'+tot+'</small></h3>'+
+    '<div class="sgw-grid hn-grid">'+cards+'</div><div class="hn-acts">'+btn+'</div></div>';
+}
 function rSGW(){
   var mount=$('#otp-sgw');
   if(!mount)return;
@@ -5814,7 +5962,7 @@ function rSGW(){
   if(hid)html+='<span class="sgw-chip sgw-more" role="button" tabindex="0" data-sgw="more">+'+hid+' more</span>';
   else if(sgw.more&&isNarrow()&&sgw.terms.length>CHIP_FEW+1)html+='<span class="sgw-chip sgw-more" role="button" tabindex="0" data-sgw="less">Show fewer</span>';
   form.insertAdjacentHTML('beforebegin',html);
-  mount.querySelector('.sgw-body').innerHTML=sgwBody();
+  mount.querySelector('.sgw-body').innerHTML=homeNew(NEWN)+sgwBody();   /* v7.09 */
   freshPaint(mount);   /* v6.69 */
   whypPaint();   /* v6.74 */
   mount.querySelector('.sgw-acts').innerHTML=sgwActs();
@@ -6382,19 +6530,43 @@ function openFlock(){
   FLOCK.prev=st.mode;
   sec.hidden=false;sec.classList.add('as-feed');if(w)w.classList.add('flock-mode');
   try{var dh=dock&&dock.offsetHeight;if(dh)sec.style.bottom=dh+'px'}catch(e){}
+  flClear(sec);setTimeout(function(){if(flockOpen())flClear(sec)},450);   /* again once the dock's morph (v7.04) is over: during a view transition the top of the screen is the transition's own layer */
   st.mode='flock';rDock();flSeg();
   /* v6.47: likes changed since the last pick: pick again on the way in, so they show at once */
   if(FLOCK.view==='feed'&&(!FLOCK.started||FLOCK.key!==flTermsKey()||FLOCK.lv!==LIKE_VER))flockStart();
   else{flockRender();if(FLOCK.view==='feed')flockWarm()}
   var row=$('#otp-flockRow');try{row.focus({preventScroll:true})}catch(e){}
 }
+/* v7.09 (Matt's screenshot: the shop's menu, "Shop · Help and info · The drop list", over the Flock cards on a
+   computer): Flock is fixed from the top of the screen, and on the store page the theme pins its header above it.
+   Start Flock under whatever is pinned at the top that is not Flock, found by looking at what is drawn there, so it
+   does not depend on the theme's class names. The bare app page has no header and keeps top 0. The text-size zoom
+   scales the px, so the gap is divided by it. */
+function flClear(sec){
+  if(!sec)return;
+  sec.style.top='';
+  if(typeof document.elementFromPoint!=='function')return;
+  var top=0,xs=[0.2,0.5,0.8],i,el,a,cs,b,w,z;
+  try{
+    for(i=0;i<xs.length;i++){
+      el=document.elementFromPoint(Math.round(window.innerWidth*xs[i]),4);
+      if(!el||sec.contains(el))continue;
+      for(a=el;a&&a!==document.body&&a!==document.documentElement;a=a.parentElement){
+        cs=window.getComputedStyle(a);
+        if(cs.position==='fixed'||cs.position==='sticky'){b=a.getBoundingClientRect().bottom;if(b>top&&b<window.innerHeight/2)top=b;break}
+      }
+    }
+    if(top){w=sec.closest('.scout-app-wrapper');z=(w&&parseFloat(w.style.zoom))||1;sec.style.top=Math.round(top/z)+'px'}
+  }catch(e){}
+}
+window.addEventListener('resize',function(){var sec=$('#otp-flock');if(sec&&flockOpen())flClear(sec)});
 function closeFlock(){
   if(typeof flyStop==='function')flyStop();   /* v6.56 */
   if(!flockOpen())return;
   flSeenWrite();   /* v6.39 */
   if(sheetOpen())closeSheet();
   var sec=$('#otp-flock'),w=sec.closest('.scout-app-wrapper');
-  sec.classList.remove('as-feed');sec.hidden=true;sec.style.bottom='';if(w)w.classList.remove('flock-mode');
+  sec.classList.remove('as-feed');sec.hidden=true;sec.style.bottom='';sec.style.top='';if(w)w.classList.remove('flock-mode');
   if(st.mode==='flock')st.mode=(FLOCK.prev&&FLOCK.prev!=='flock')?FLOCK.prev:'prowl';
   rDock();
 }
@@ -8373,7 +8545,7 @@ try{promoPick();setTimeout(promoPick,1500);window.addEventListener('focus',promo
   }
   var sf=document.getElementById('otp-sf');
   if(sf)sf.addEventListener('submit',function(){startHunt(sf.querySelector('button[type=submit]'))});
-  ['otp-sa','otp-near','otp-oneBtn','otp-localBtn'].forEach(function(id){var b=document.getElementById(id),dock=id!=='otp-sa';if(b)b.addEventListener('click',function(){var q=document.getElementById('otp-q');if(!dock||(q&&q.value.trim()))startHunt(b)})});   /* v6.88: one-site, LOCAL (v6.90: and Near me) only when a hunt is typed; with none they open a picker, not a run */
+  ['otp-sa','otp-oneBtn'].forEach(function(id){var b=document.getElementById(id),dock=id!=='otp-sa';if(b)b.addEventListener('click',function(){var q=document.getElementById('otp-q');if(!dock||(q&&q.value.trim()))startHunt(b)})});   /* v6.88: one-site only when a hunt is typed; with none it opens a picker, not a run. v7.09: LOCAL and Near me open the Maps links, not a hunt */
   root.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('[data-sgw="pick"]')){unicorns=1;UNI=null}},true);   /* picking a hunt */
   /* the chip sheen: once each time the pointer comes onto a hunt's chip. The chips are redrawn as results come in (the
      old ones removed, so they never see the pointer leave) and a new chip under a resting pointer gets a mouseover:

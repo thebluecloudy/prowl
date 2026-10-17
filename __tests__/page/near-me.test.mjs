@@ -1,5 +1,6 @@
 // Page v6.90: Near me takes Facebook USA's spot under the search box (Hunt · Search All · Near me). It does what the
 // dock's LOCAL does; Facebook USA is still on the results, as "Facebook Marketplace · search X in N cities".
+// v7.09: both open Den > Local's Maps links (stores near you) instead of a marketplace run.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -20,30 +21,22 @@ test('the row under the search box is Hunt and Near me (v7.03: Search All folded
   await p.close();
 });
 
-test('Near me with a hunt searches only the city-aware sites', async () => {
-  const p = loadPage({ storage: DEN });
-  await tick(30);
-  p.$('#otp-q').value = 'Pyrex Butterprint';
-  p.$('#otp-near').click();
-  await tick(30);
-  const h = hosts(p);
-  assert.ok(h.length >= 4, 'rows: ' + h.join(', '));
-  for (const x of h) assert.match(x, /facebook|craigslist|offerup|estatesales|ctbids/, x);
-  assert.ok(p.$('#otp-localBtn').classList.contains('on'), "the dock's LOCAL lights up for its run");
-  assert.deepEqual(p.errors, []);
-  await p.close();
-});
-
-test('Near me with no hunt opens Den > Local', async () => {
-  const p = loadPage({ storage: DEN });
-  await tick(30);
-  p.$('#otp-near').click();
-  await tick(30);
-  assert.equal(p.$('#otp-den').hidden, false);
-  assert.equal(p.$('#otp-denLocal').hidden, false);
-  assert.equal(p.$('#otp-res a.hit'), null, 'no run');
-  assert.deepEqual(p.errors, []);
-  await p.close();
+test('v7.09: Near me and the dock\'s LOCAL open the Maps links for stores near you, with or without a hunt', async () => {
+  for (const [typed, btn] of [['Pyrex Butterprint', '#otp-near'], ['', '#otp-near'], ['Pyrex Butterprint', '#otp-localBtn']]) {
+    const p = loadPage({ storage: DEN });
+    await tick(30);
+    p.$('#otp-q').value = typed;
+    p.$(btn).click();
+    await tick(120);
+    assert.equal(p.$('#otp-den').hidden, false, btn + ' ' + typed);
+    assert.equal(p.$('#otp-denLocal').hidden, false);
+    const links = p.$$('#otp-nearGrid a.nearc');
+    assert.ok(links.length >= 8, 'store types: ' + links.length);
+    for (const a of links) assert.match(a.href, /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=.+near%20me$/, a.href);
+    assert.equal(p.$('#otp-res a.hit'), null, 'no marketplace run');
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  }
 });
 
 test('Facebook USA is still one tap away on the results', async () => {

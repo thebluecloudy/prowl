@@ -1,16 +1,45 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-16 (v7.08 / v118).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.09 / v118).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.08** | 115,184 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.09** | 107,754 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v118** | |
 
 Recently shipped, newest first:
 
+- **v7.09: Daily announces itself (Matt, 2026-10-17: "it reads as I tapped DAILY and nothing changed").** Daily is
+  its own screen now: the date, **Your daily prowl**, "N hunts · X new since yesterday" and the hunt names; then
+  **What's new** at the top, grouped per hunt (up to 6 cards each); then the email card and one block per hunt with
+  its live listings ("3 new · 24 live now"). **Live only:** no marketplace rows and no Open all in Daily (Matt: "no one
+  should open 500 tabs"); Run the full hunt still opens one hunt's whole screen. New key `prowl.dailySeen`
+  (`{d, cur, cs, pd, prev, ps}`): what Daily saw each day as short hashes of the listing links (at most 200 a hunt)
+  plus which marketplaces answered; on a new day the last day's list is what Daily compares with, and a marketplace
+  that did not answer that day is not counted as new. The first Daily on a device says it starts keeping track.
+  The label says "since yesterday", or since the weekday or date of the last Daily. Test:
+  `__tests__/page/daily-screen-v709.test.mjs`.
+  Also: **LOCAL and Near me open the Maps links** (Matt: "local is not opening local areas, should be opening the
+  google links"). Both always open Den › Local at Stores near you (Google Maps, or Apple Maps if picked), with or
+  without a hunt typed; they no longer run Facebook, Craigslist, OfferUp, EstateSales and CTBids, which stay on every
+  search's rows. Tests: `__tests__/page/near-me.test.mjs`, `__tests__/page/vinted-invite.test.mjs`.
+  Also: **the shop's menu no longer draws over Flock** (Matt's screenshot, on a computer: "Shop · Help and info · The
+  drop list" over the cards). Two causes. v7.04 gave `main#otp-main` a `view-transition-name` all the time, which makes
+  main its own layer, so Flock (fixed inside main, z-index 39) fell under Prowl's top bar and the store header; it is
+  now named only while the morph runs (`html.otp-vt`). And the store theme pins its header above any z-index Flock
+  has, so Flock now starts under whatever is pinned at the top of the screen that is not Flock (`flClear`, by what is
+  drawn there, not the theme's class names; checked again after the morph and on resize). Tried in Chromium against a
+  mock sticky header. Test: `__tests__/page/flock-store-header-v709.test.mjs`.
+  Also: **new listings are featured on the home page, and glow** (Matt: "it says 1 new, but it isn't obvious", then
+  "make them glow"). **New since your last look** (`#otp-homeNew`) sits at the top of the home panel with the listings
+  behind the other hunts' "N new" badges: up to 3 a hunt and 8 in all, each tagged New and "for <hunt>", and a button per
+  hunt that opens it. They are not marked seen there; opening the hunt does that, as before. Inside a hunt, listings new
+  since the last look come first in each marketplace (`frontNew`). Those cards and the strip's glow: a steady ring and a
+  breathing light inside the edge (opacity only; steady under reduced motion). The strip shows once the other hunts'
+  listings are in hand (Flock or Daily fetch them), as the badges always did. Test: `__tests__/page/home-new-v709.test.mjs`.
+  Also: CI's time limit is 10 minutes (was 5): the suite takes about 4.5 and runs were being cancelled mid-test.
 - **v7.08 + worker v118: Keep it simple, and shelf scan (Matt picked PIE items 18 and 20, 2026-10-16).**
   - **Keep it simple / Show everything** (Den › Settings, new key `prowl.detail`, `all` = everything). Simple is the
     default: in a search the long marketplace list, the Open all bar, the pop-up warnings and the sign-in note fold
@@ -231,7 +260,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.09, worker v119**. Claim one here when you start.
+Next free numbers: **page v7.10, worker v119**. Claim one here when you start.
 
 ## What's next
 
