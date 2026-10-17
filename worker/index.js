@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v121: 2026-10-17. Android share sheet (Matt): /proxy/sw.js sends Service-Worker-Allowed: /pages/prowl-app so the
+ *        installed app can register sw.js there; sw.js takes the manifest share_target POST and hands the photo to the page.
  *   v120: 2026-10-17. Prowl admin installs as a phone app (Matt): admin-app.js serves /admin/app.webmanifest, home-screen
  *        icons and a pass-through service worker; the admin page links them and registers it. Opens on #members.
  *   v119: 2026-10-17. Sale prices (Matt: an Etsy listing at 20% off showed its full price): eBay's marketingPrice
@@ -411,7 +413,7 @@ import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb6
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-const WORKER_VERSION = "v120";
+const WORKER_VERSION = "v121";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4199,7 +4201,7 @@ function pushAdd(list, s, label, now) {
 }
 function swResponse(env, method) {
   const src = SW_SRC.replace("__PROWL_API__", WORKER_BASE + "/").replace("__PROWL_APP__", PROWL_APP).replace("__PROWL_VAPID__", String((env && env.VAPID_PUBLIC) || ""));
-  return new Response(method === "HEAD" ? null : src, { status: 200, headers: { "Content-Type": "application/javascript; charset=utf-8", "Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff" } });
+  return new Response(method === "HEAD" ? null : src, { status: 200, headers: { "Content-Type": "application/javascript; charset=utf-8", "Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff", "Service-Worker-Allowed": "/pages/prowl-app" } });
 }
 /* send one payload to every phone the member has; a phone the push service says is gone (404/410) is dropped */
 async function pushToMember(env, email, payload) {

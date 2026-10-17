@@ -202,7 +202,7 @@ test("a match's notification: no address or name, under 3 KB, one tag per quarry
   assert.equal(payload.tag, tag, "same quarry, same tag: the newer note replaces the older");
 });
 
-test("the service worker: served from the app proxy as JavaScript, filled in, no fetch handler, kept in step", async () => {
+test("the service worker: served from the app proxy as JavaScript, filled in, kept in step", async () => {
   assert.equal(SW_SRC, SW, "worker/sw-src.js is out of date: run node scripts/build-sw.mjs");
   assert.equal(readFileSync(new URL("../sw-src.js", import.meta.url), "utf8"), swModule(SW));
   const X = fromIndex(["swResponse"], { SW_SRC, WORKER_BASE: "https://prowl.example", PROWL_APP: "https://shop.example/pages/prowl-app" });
@@ -211,7 +211,8 @@ test("the service worker: served from the app proxy as JavaScript, filled in, no
   assert.equal(r.headers.get("Cache-Control"), "no-cache");
   const src = await r.text();
   assert.match(src, /var API = 'https:\/\/prowl\.example\/', APP = 'https:\/\/shop\.example\/pages\/prowl-app', KEY = 'BKEY';/);
-  assert.doesNotMatch(SW, /addEventListener\('fetch'/, "no fetch handler: the pages work as before");
+  assert.equal(r.headers.get("Service-Worker-Allowed"), "/pages/prowl-app", "v121: the app page may register it");
+  assert.equal((SW.match(/addEventListener\('fetch'/g) || []).length, 1, "v121: one fetch handler, for the share sheet only");
   assert.doesNotMatch(SW, /\b(let|const|class)\b|=>/, "ES5");
   for (const ev of ["push", "notificationclick", "pushsubscriptionchange"]) assert.match(SW, new RegExp("addEventListener\\('" + ev + "'"));
   assert.match(SW, /action: 'price', title: 'Check price'/);

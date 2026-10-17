@@ -2388,6 +2388,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   O.addEventListener('click',function(e){var g=e.target.closest('.sh-go');if(!g)return;var q=document.getElementById('otp-q'),sa=document.getElementById('otp-sa'),cl=document.getElementById('otp-photoClose');if(cl)cl.click();if(q&&sa){q.value=g.getAttribute('data-q');setTimeout(function(){sa.click()},250)}});
   var PF=null,F2=document.getElementById('otp-aprF2'),B2=document.getElementById('otp-aprB2');
   if(B2&&F2){B2.addEventListener('click',function(){if(!busy)F2.click();});F2.addEventListener('change',function(){PF=F2.files&&F2.files[0];F2.value='';if(PF){var ev;try{ev=new Event('change');}catch(e){ev=document.createEvent('Event');ev.initEvent('change',true,true);}F.dispatchEvent(ev);}});}
+  window.prowlPhotoFile=function(f){if(!f||busy)return;PF=f;var ev;try{ev=new Event('change');}catch(e){ev=document.createEvent('Event');ev.initEvent('change',true,true);}F.dispatchEvent(ev);};   /* v7.15 shared photo */
   F.addEventListener('change',function(){
     var f=PF||(F.files&&F.files[0]);PF=null;if(!f||busy)return;busy=true;B.disabled=true;B.textContent='Looking\u2026';B.className='b p apr-busy';startT();
     shrink(f,function(data){
@@ -2846,7 +2847,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.14';
+var PROWL_VERSION='v7.15';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3575,6 +3576,21 @@ var phCam=$('#otp-cam');if(phCam)phCam.addEventListener('click',openPhoto);
   function place(){try{if(mq.matches){if(g.previousElementSibling!==sg)sg.parentNode.insertBefore(g,sg.nextSibling)}else if(fm.nextElementSibling!==g)fm.parentNode.insertBefore(g,fm.nextSibling)}catch(e){} }
   place();try{if(mq.addEventListener)mq.addEventListener('change',place);else if(mq.addListener)mq.addListener(place)}catch(e){} })();
 var phX=$('#otp-photoClose');if(phX)phX.addEventListener('click',closePhoto);
+/* v7.15 Android share sheet: the installed app registers the Prowl service worker for /pages/prowl-app (the manifest's
+   share_target posts the photo there); ?shared=1 opens Photo check with the photo the worker kept on the phone */
+(function(){
+  var SK='/__prowl-share';
+  if(location.pathname.indexOf('prowl-app')<0)return;
+  try{if(navigator.serviceWorker&&!/iPad|iPhone|iPod/.test(navigator.userAgent||''))navigator.serviceWorker.register('/apps/prowl/sw.js',{scope:'/pages/prowl-app'})['catch'](function(){});}catch(e){}
+  var m=/[?&]shared=([01])/.exec(location.search);if(!m)return;
+  try{if(history.replaceState)history.replaceState(history.state,'',location.pathname);}catch(e){}
+  function bad(){toast('That photo could not be opened. Try sharing it again.',3000)}
+  if(m[1]!=='1'||!window.caches){bad();return}
+  caches.open('prowl-share').then(function(c){return c.match(SK).then(function(r){if(!r)return null;return r.blob().then(function(b){c['delete'](SK);return b})})}).then(function(b){
+    if(!b||!b.size){bad();return}
+    openPhoto();setTimeout(function(){if(window.prowlPhotoFile)window.prowlPhotoFile(b)},350);
+  })['catch'](bad);
+})();
 /* the photo screen's "Sign in" link (Pro members) */
 document.addEventListener('prowl-signin',function(){closePhoto();setTimeout(openMailSettings,320)});
 $('#otp-denSearch').addEventListener('click',function(){
