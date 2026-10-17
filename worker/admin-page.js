@@ -72,6 +72,10 @@ const MARK = '<svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable
 function head(nonce, title, css) {
   return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta name="color-scheme" content="light dark">' +
+    '<link rel="manifest" href="/admin/app.webmanifest"><link rel="apple-touch-icon" href="/admin/icon-180.png">' +
+    '<meta name="theme-color" content="#C2491F"><meta name="apple-mobile-web-app-capable" content="yes">' +
+    '<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Prowl admin">' +
+    '<meta name="apple-mobile-web-app-status-bar-style" content="default">' +
     "<title>" + esc(title) + '</title><style nonce="' + esc(nonce) + '">' + css + "</style></head>";
 }
 
@@ -355,6 +359,7 @@ fieldset{border:0;padding:0;margin:0;min-width:0}
 /* The dashboard script. String.raw keeps its regexes and \u escapes exactly as written; it must not contain
    backticks or dollar-brace, and it never uses innerHTML. */
 const APP_JS = String.raw`
+try { if ("serviceWorker" in navigator) navigator.serviceWorker.register("/admin/sw.js", { scope: "/admin" }).catch(function () {}); } catch (e) {}
 (() => {
 "use strict";
 const D = document, $ = (s, r) => (r || D).querySelector(s);

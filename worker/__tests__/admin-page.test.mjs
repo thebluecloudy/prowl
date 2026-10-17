@@ -55,7 +55,7 @@ test("no external resources or web fonts; ASCII-only output", () => {
     assert.doesNotMatch(html, /@import|@font-face|url\(\s*["']?https?:/i);
     assert.doesNotMatch(html, /[^\x00-\x7f]/, "non-ASCII character");
   }
-  assert.deepEqual(markupOf(page).match(/href="[^"]*"/g).sort(), ['href="#main"', 'href="/admin"']);
+  assert.deepEqual(markupOf(page).match(/href="[^"]*"/g).sort(), ['href="#main"', 'href="/admin"', 'href="/admin/app.webmanifest"', 'href="/admin/icon-180.png"']);
 });
 
 test("version and nonce are escaped", () => {
