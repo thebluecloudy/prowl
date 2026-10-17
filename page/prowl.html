@@ -7005,12 +7005,16 @@ function flShare(card){
   shareFind({u:card.getAttribute('data-u')||'',t:card.getAttribute('data-t')||card.getAttribute('aria-label')||'',p:card.getAttribute('data-p')||'',img:im?im.getAttribute('src')||'':''});
 }
 /* v6.98: one share for Flock and the listing popup (hunts, Likes, the Den: every card that opens it) */
+/* v7.10 (Matt: "we say found with prowl but no link"): the sign-off links to Prowl on the shop's own domain, a
+   Shopify URL redirect (/prowl to /pages/prowl). Not a bit.ly link: a shortener reads as spam to the people this
+   goes to, which is what the wording was changed for. */
+var SHARE_HOME='owlandtwigvintage.com/prowl';
 function shareFind(o){
   var u=o&&o.u||'',t=o&&o.t||'',p=o&&o.p||'',img=o&&o.img||'',sn=LIVE_NAME[seenSrc(u)]||'';
   if(!u)return;
   /* v6.98 (Matt: people who don't know Prowl may take it for spam or AI): read like a person passing on a find. The
      find and its real marketplace link first, then one plain line saying what Prowl is. No second link. */
-  var said=(sn?'Found this on '+sn:'Found this')+(t||p?': ':'')+t+(t&&p?' · ':'')+p,by='Found with Prowl, a vintage search tool from Owl & Twig Vintage';
+  var said=(sn?'Found this on '+sn:'Found this')+(t||p?': ':'')+t+(t&&p?' · ':'')+p,by='Found with Prowl, a vintage search tool from Owl & Twig Vintage: '+SHARE_HOME;
   t=t||'Vintage find';
   function linkOnly(){
     if(navigator.share){try{navigator.share({title:t,text:said+'\n\n'+by,url:u})['catch'](function(){});return}catch(e){} }

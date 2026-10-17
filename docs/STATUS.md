@@ -6,7 +6,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.10 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.10** | 107,494 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.10** | 107,435 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v118** | |
 
 Recently shipped, newest first:
@@ -17,6 +17,10 @@ Recently shipped, newest first:
   While Prowl's own entries are in use `history.scrollRestoration` is `manual`; once every layer is closed it is
   `auto` again (`ovScroll`). Reproduced in Chromium on v7.09 (2246 px → 0) and fixed (stays at 2246). Test:
   `__tests__/page/back-button.test.mjs`.
+  Also: **a shared find links to Prowl** (Matt: "we say found with prowl but no link"). The sign-off reads "Found with
+  Prowl, a vintage search tool from Owl & Twig Vintage: owlandtwigvintage.com/prowl" (`SHARE_HOME`). That address is a
+  **Shopify URL redirect Matt adds** (Online Store › Navigation › URL redirects: `/prowl` → `/pages/prowl`); it must
+  exist before this merges. Not bit.ly: a shortener reads as spam, and its free plan allows a few links a month.
 - **v7.09: Daily announces itself (Matt, 2026-10-17: "it reads as I tapped DAILY and nothing changed").** Daily is
   its own screen now: the date, **Your daily prowl**, "N hunts · X new since yesterday" and the hunt names; then
   **What's new** at the top, grouped per hunt (up to 6 cards each); then the email card and one block per hunt with

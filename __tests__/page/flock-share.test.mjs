@@ -46,7 +46,7 @@ test('Share sends the photo, with the site, title, price, link and one plain lin
   assert.equal(got[0].files.length, 1);
   assert.equal(got[0].files[0].name, 'prowl-find.jpg');
   assert.equal(got[0].files[0].type, 'image/jpeg');
-  assert.equal(got[0].text, 'Found this on eBay: Royal Haeger panther 26 inch · $450.00\nhttps://www.ebay.com/itm/960012796319\n\nFound with Prowl, a vintage search tool from Owl & Twig Vintage');
+  assert.equal(got[0].text, 'Found this on eBay: Royal Haeger panther 26 inch · $450.00\nhttps://www.ebay.com/itm/960012796319\n\nFound with Prowl, a vintage search tool from Owl & Twig Vintage: owlandtwigvintage.com/prowl');
   assert.doesNotMatch(got[0].text, /via Prowl/, 'v6.98: reads like a person passing on a find, not an ad');
   /* a second share of the same find does not fetch the photo again */
   p.$('#otp-flockRow .fl-card .fl-sh').click();
@@ -65,7 +65,7 @@ test('a phone that cannot share files gets the link, as before', async () => {
   assert.equal(got.length, 1);
   assert.equal(got[0].files, undefined);
   assert.equal(got[0].url, FIND.url);
-  assert.equal(got[0].text, 'Found this on eBay: Royal Haeger panther 26 inch · $450.00\n\nFound with Prowl, a vintage search tool from Owl & Twig Vintage');
+  assert.equal(got[0].text, 'Found this on eBay: Royal Haeger panther 26 inch · $450.00\n\nFound with Prowl, a vintage search tool from Owl & Twig Vintage: owlandtwigvintage.com/prowl');
   await p.close();
 });
 
@@ -107,7 +107,7 @@ test('the listing popup (hunts, Likes, any card that opens it) has Share this fi
   assert.equal(H.calls[0], 'https://prowl.thebluecloud.workers.dev/img?u=' + encodeURIComponent('https://shopgoodwillimages.azureedge.net/g1.jpg'));
   assert.equal(got.length, 1);
   assert.equal(got[0].files.length, 1);
-  assert.equal(got[0].text, 'Found this on ShopGoodwill: Vintage Thermos Garfield Yellow Lunch Box · $12.99\nhttps://shopgoodwill.com/item/246810\n\nFound with Prowl, a vintage search tool from Owl & Twig Vintage');
+  assert.equal(got[0].text, 'Found this on ShopGoodwill: Vintage Thermos Garfield Yellow Lunch Box · $12.99\nhttps://shopgoodwill.com/item/246810\n\nFound with Prowl, a vintage search tool from Owl & Twig Vintage: owlandtwigvintage.com/prowl');
   assert.deepEqual(p.errors, []);
   await p.close();
 });
