@@ -1,16 +1,19 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.12 / v120).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.13 / v120).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.12** | 103,825 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.13** | 103,825 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v120** | |
 
 Recently shipped, newest first:
 
+- **v7.13: the dock's numbers sit beside the icons** (Matt: the Flock count "is blocking the cool bird icon"). The
+  badge (`.db .bd`, Flock and Daily) moved from 50% + 6px, on the icon, to 50% + 14px and 6px from the top, past
+  the 22px icon's edge. Checked in Chromium at 412 px and 1280 px, Uranium. Test: `__tests__/page/dock-badge-v713.test.mjs`.
 - **v7.12: three fixes from the UI/UX brief check** (Matt, 2026-10-17, items 1 to 3 of the audit).
   - **View on <site> stays on screen** in the listing popup: it sits in `.pp-dock`, sticky at the foot of the
     sheet's scrolling body, so it shows over the photos and details and settles above Share and Close at the end.
@@ -313,7 +316,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.13, worker v121**. Claim one here when you start.
+Next free numbers: **page v7.14, worker v121**. Claim one here when you start.
 
 ## What's next
 
