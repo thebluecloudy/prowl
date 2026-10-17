@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v120: 2026-10-17. Prowl admin installs as a phone app (Matt): admin-app.js serves /admin/app.webmanifest, home-screen
+ *        icons and a pass-through service worker; the admin page links them and registers it. Opens on #members.
  *   v119: 2026-10-17. Sale prices (Matt: an Etsy listing at 20% off showed its full price): eBay's marketingPrice
  *         rides along as was/off on search results and /item (ebaySale), and a Pounce note says "on sale, was $X".
  *         Etsy's API gives only the list price, so Etsy sales still cannot be seen.
@@ -409,7 +411,7 @@ import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb6
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-const WORKER_VERSION = "v119";
+const WORKER_VERSION = "v120";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;

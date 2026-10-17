@@ -9,6 +9,7 @@
    Gift Pro: the owner gives free Pro by typing an address once; only a hash of it is kept (gift:<hash>), and
    index.js alPro checks it (giftPro below) before any Shopify call. */
 
+import { appAsset } from "./admin-app.js";
 const COOKIE = "prowl_admin";
 const SESSION_S = 43200;                         // 12 hours
 const BODY_MAX = 8192;
@@ -109,7 +110,7 @@ function redirect(to, cookie) {
   return new Response(null, { status: 303, headers: h });
 }
 function csp(nonce) {
-  return "default-src 'none'; script-src 'nonce-" + nonce + "'; style-src 'nonce-" + nonce + "'; img-src https: data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'";
+  return "default-src 'none'; script-src 'nonce-" + nonce + "'; style-src 'nonce-" + nonce + "'; img-src https: data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'; manifest-src 'self'; worker-src 'self'";
 }
 async function pageLib(H) { return H && H.pages && typeof H.pages.loginPage === "function" ? H.pages : import("./admin-page.js"); }
 async function metricsLib(H) { return H && typeof H.summarize === "function" && typeof H.uptimeFrom === "function" ? H : import("./metrics.js"); }
@@ -1138,6 +1139,8 @@ async function login(c) {
 
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 async function handle(request, env, ctx, H, url, path, isApi) {
+  const asset = appAsset(path, request.method);   // v120: phone app files, no sign-in needed
+  if (asset) return asset;
   const problem = setupProblem(env);
   if (problem) return plain(503, problem);
   const key = adminKey(env);

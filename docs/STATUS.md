@@ -1,16 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.10 / v119).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.10 / v120).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.10** | 105,206 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
-| Worker | **v119** | |
+| Worker | **v120** | |
 
 Recently shipped, newest first:
 
+- **Worker v120: Prowl admin as a phone app** (Matt, 2026-10-17). `/admin` now installs to the home screen: new
+  `worker/admin-app.js` serves `/admin/app.webmanifest` (standalone, opens on `#members`), owl icons (180/192/512,
+  512 maskable) and `/admin/sw.js` (pass-through, offline note only, caches nothing). Both admin pages link them; CSP
+  adds `manifest-src` / `worker-src 'self'`. Install: Android Chrome menu > Install app; iPhone Safari Share > Add to
+  Home Screen. Sign-in is still the 12-hour ADMIN_KEY session. Test `worker/__tests__/admin-app.test.mjs`.
 - **v7.10: Back keeps your place** (Matt, 2026-10-17: in Daily, a card's popup closed with Android's Back and the
   screen jumped to the top, while its X left it where it was). Back steps onto the history entry Prowl pushed when the
   first layer opened (v6.55), and the browser restored the scroll it had saved with that entry: the top of Daily.
@@ -292,7 +297,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.11, worker v120**. Claim one here when you start.
+Next free numbers: **page v7.11, worker v121**. Claim one here when you start.
 
 ## What's next
 
