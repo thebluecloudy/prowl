@@ -70,3 +70,22 @@ exactly and every frame of the walk is the same silhouette mid-stride. The same 
 and the ceramic figurines on the cards. The gait is a slow prowl (26 px/s in icon units) after a brisk few steps out
 of the mark; footfall sounds follow the new touchdowns. The round 3 render that had started on the old rig was
 stopped and restarted on the new panther.
+
+## Round 3 (first render with the owner's panther)
+
+Render r3: spec as before, -13.9 LUFS, -2.3 dBTP, sync 0.00 ms at every cue.
+
+**Found**
+- The traced mark reads as the Prowl panther everywhere: in the tile at the start, stepping out (head in ink outside
+  the tile, body still cream inside), walking under the copy, on the figurines and in the end lockup.
+- The skinned walk is subtle but alive: the reaching front leg and the hind legs swing, the tail sways, motion blur
+  softens the swing; the outline never tears.
+- End: at 18.5 s the "Prowl" wordmark rises before the mark has finished its move and clips its lower edge.
+- Type: at 13.5 s the old and new headline lines still share one mask for about 0.08 s.
+- The walking panther is a touch small for the film's one through-line (about 262 px wide).
+
+**Changed**
+- Wordmark enters at 18.6 s (beat 31), after the mark settles.
+- Incoming headlines start 0.3 s after the old ones begin to leave, so no mask ever holds two lines.
+- Walking scale 2.45 -> 2.7 (about 290 px wide), still clear of the window.
+- End mark lands higher (ground 880 at 17.9 s) so the larger tile stays inside the frame.

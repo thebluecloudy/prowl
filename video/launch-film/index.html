@@ -427,9 +427,9 @@
         /* ---------------- copy blocks ---------------- */
         var BLOCKS = [
           { id: "hook", top: 282, eyb: "Introducing Prowl", hl: ["28 marketplaces.", "One prowl."], sub: "Vintage sourcing for busy collectors and resellers.", tin: 0.6, tout: 3.6 },
-          { id: "cap", top: 282, eyb: "01 Capture", hl: ["Start a hunt", "in seconds."], sub: "One search runs across every marketplace at once.", tin: 3.8, tout: fs(C.glide[0]) },
-          { id: "con", top: 282, eyb: "02 Connect", hl: ["Look over your", "finds every day."], sub: "Condition flags up front. Save the keepers.", tin: fs(C.glide[0]) + 0.2, tout: fs(C.fold[0]) },
-          { id: "res", top: 282, eyb: "03 Resurface", hl: ["The rare piece", "finds you."], sub: "Prowl emails new matches every morning.", tin: fs(C.fold[0]) + 0.2, tout: fs(C.melt[0]) - 0.45 }
+          { id: "cap", top: 282, eyb: "01 Capture", hl: ["Start a hunt", "in seconds."], sub: "One search runs across every marketplace at once.", tin: 3.9, tout: fs(C.glide[0]) },
+          { id: "con", top: 282, eyb: "02 Connect", hl: ["Look over your", "finds every day."], sub: "Condition flags up front. Save the keepers.", tin: fs(C.glide[0]) + 0.3, tout: fs(C.fold[0]) },
+          { id: "res", top: 282, eyb: "03 Resurface", hl: ["The rare piece", "finds you."], sub: "Prowl emails new matches every morning.", tin: fs(C.fold[0]) + 0.3, tout: fs(C.melt[0]) - 0.45 }
         ];
         BLOCKS.forEach(function (b) {
           var el = document.createElement("div"); el.className = "blk"; el.style.top = b.top + "px";
@@ -506,7 +506,7 @@
         var WIN = { cx: 1330, cy: 452, w: 980, h: 760 };
         var TILE0 = { cx: 1180, cy: 470, s: 360 };
         var GROUND = 985;
-        function groundY(t) { return kf(t, [[1.8, TILE0.cy - TILE0.s / 2 + 0.633 * TILE0.s], [3.0, GROUND, "io"], [16.8, GROUND], [17.9, 915, "io"]]); }
+        function groundY(t) { return kf(t, [[1.8, TILE0.cy - TILE0.s / 2 + 0.633 * TILE0.s], [3.0, GROUND, "io"], [16.8, GROUND], [17.9, 880, "io"]]); }
         var END = (function () {
           // where the panther stops (t = 18.0) decides where the mark forms
           var t = fs(C.logoLand), k = T.scale(t);
@@ -664,7 +664,7 @@
 
           /* ---- copy ---- */
           BLOCKS.forEach(function (b) { roll(b.spans, b.tin, b.tout, t); });
-          roll([el.wordmark], fs(C.wordmark) - 0.1, 99, t, 0, 0.6);
+          roll([el.wordmark], fs(C.wordmark), 99, t, 0, 0.6);
           roll([el.tagline, el.avail], fs(C.tagline) - 0.32, 99, t, 0, 0.6);
           var glow = 0.55 + 0.25 * Math.sin(Math.max(0, t - 18.4) * 2.6);
           el.wordmark.style.textShadow = "0 0 " + n2(30 + 12 * glow) + "px rgba(57,255,20," + n2(glow) + ")";

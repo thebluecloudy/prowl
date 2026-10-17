@@ -42,7 +42,7 @@
     melt: [b(28), b(29)],            // 16.8 - 17.4 the card melts back into the mark
     wash: [b(29), b(30)],            // 17.4 - 18.0 background flips to the uranium night
     logoLand: b(30),                 // 18.0 warm low chord + glow swell
-    wordmark: b(30) + 27,
+    wordmark: b(31),             // 18.6, once the mark has settled
     tagline: b(32)                   // 19.2 tagline and Available now settle
   };
 
@@ -66,7 +66,7 @@
   }
   // px per rig unit
   function scale(t) {
-    var a = 2.81, c = 2.45;
+    var a = 2.81, c = 2.7;
     if (t <= 1.8) return a;
     if (t >= 3.0) return c;
     return a + (c - a) * smooth((t - 1.8) / 1.2);
