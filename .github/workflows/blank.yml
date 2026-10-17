@@ -17,7 +17,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10   # the suite runs about 4.5 min and grew past 5 (runs 357, 361, 362 cancelled mid-test)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
