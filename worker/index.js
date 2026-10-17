@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v119: 2026-10-17. Sale prices (Matt: an Etsy listing at 20% off showed its full price): eBay's marketingPrice
+ *         rides along as was/off on search results and /item (ebaySale), and a Pounce note says "on sale, was $X".
+ *         Etsy's API gives only the list price, so Etsy sales still cannot be seen.
  *   v118: 2026-10-16. Shelf scan: /appraise mode "shelf" names up to 3 pieces on a shelf worth a closer look, each
  *         with a fair range and a pay-up-to price (shelfPrompt, shelfParse). Counts as one photo check.
  *   v117: 2026-10-16. GET /hunt?q=: one hunt across every live marketplace plus Craigslist (Hark's "hunt like Hark"):
@@ -406,7 +409,7 @@ import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb6
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-const WORKER_VERSION = "v118";
+const WORKER_VERSION = "v119";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -732,6 +735,15 @@ function ebayMoney(p) {
   return (p.currency && p.currency !== "USD") ? s.slice(1) + " " + p.currency : s;
 }
 
+/* v119: eBay's marketingPrice: the price before a seller's sale, and how much is off. "Was" only when it is higher. */
+function ebaySale(it) {
+  const m = it && it.marketingPrice;
+  if (!m || !m.originalPrice) return null;
+  const was = Number(m.originalPrice.value), now = Number(it.price && it.price.value);
+  if (!(was > 0) || !(now > 0) || was <= now) return null;
+  const pct = Math.round(Number(m.discountPercentage) || (1 - now / was) * 100);
+  return { was: ebayMoney(m.originalPrice), off: pct > 0 && pct < 100 ? pct + "% off" : "" };
+}
 function ebayItem(it) {
   if (!it || !it.title || !it.itemWebUrl) return null;
   const opts = it.buyingOptions || [];
@@ -750,6 +762,8 @@ function ebayItem(it) {
     image: img ? String(img) : "",
     src: "ebay",
   };
+  const sale = auction ? null : ebaySale(it);   /* v119 */
+  if (sale) { out.was = sale.was; if (sale.off) out.off = sale.off; }
   if (auction) {
     out.bids = Number(it.bidCount) || 0;
     const tl = timeLeft(it.itemEndDate);
@@ -1600,6 +1614,8 @@ async function itemEbay(id, env) {
     };
     if (typeof j.itemAffiliateWebUrl === "string" && /^https:\/\/([a-z0-9-]+\.)*ebay\.com\//i.test(j.itemAffiliateWebUrl)) out.affUrl = j.itemAffiliateWebUrl.slice(0, 1000);
     if (auction) { out.bids = Number(j.bidCount) || 0; const tl = timeLeft(j.itemEndDate); if (tl) out.time_left = tl; }
+    const sale = auction ? null : ebaySale(j);   /* v119 */
+    if (sale) { out.was = sale.was; if (sale.off) out.off = sale.off; }
     return out;
   } finally { clearTimeout(timer); }
 }
@@ -4057,7 +4073,7 @@ async function pounceHunt(env, sub, term, items) {
   if (add.length) await kvPut(env, "pj:" + sub.email, (Array.isArray(judged) ? judged : []).concat(add).slice(-POUNCE_JUDGED_CAP));
   if (hits.length) {
     const at = new Date().toISOString(), gm = await kvGet(env, "gm:" + sub.email, []);
-    await kvPut(env, "gm:" + sub.email, hits.map(x => ({ hunt: term, title: x.title, price: x.price, url: x.url, image: x.image, src: x.src, match: x.pounce.match, p: x.pounce.p, reason: x.pounce.reason, at: at }))
+    await kvPut(env, "gm:" + sub.email, hits.map(x => ({ hunt: term, title: x.title, price: x.price, ...(x.was ? { was: x.was, off: x.off || "" } : {}), url: x.url, image: x.image, src: x.src, match: x.pounce.match, p: x.pounce.p, reason: x.pounce.reason, at: at }))
       .concat(Array.isArray(gm) ? gm : []).slice(0, POUNCE_MATCH_CAP));
   }
   return hits;
@@ -4226,7 +4242,7 @@ async function pushMatch(env, sub, x) {
   const title = String(x.title || "").replace(/\s+/g, " ").trim().slice(0, 110);
   const payload = {
     v: 1, title: v.match === "yes" ? "Prowl found a likely match for " + String(x.hunt || "your quarry").slice(0, 40) : "Prowl found a possible match for " + String(x.hunt || "your quarry").slice(0, 40),   /* v115: says who it is from and why, no emoji (Chrome flagged the first test as possible spam) */
-    body: (title + "\n" + [x.price, site ? "on " + site : ""].filter(Boolean).join(" ") + "\nWhy: " + (v.reason || "it fits your description")).slice(0, 400),
+    body: (title + "\n" + [x.price, x.was ? "(on sale, was " + x.was + ")" : "", site ? "on " + site : ""].filter(Boolean).join(" ") + "\nWhy: " + (v.reason || "it fits your description")).slice(0, 400),   /* v119: a sale is worth knowing */
     url: PROWL_APP + "?pounce=" + encodeURIComponent(x.url), img: /^https:\/\//.test(x.image || "") ? x.image : "",
     t: await pushActToken(env, sub.email, x.hunt, x.url), tag: "pounce-" + await pushHash(String(x.hunt || "").toLowerCase(), 4)
   };

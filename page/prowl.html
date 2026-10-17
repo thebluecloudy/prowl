@@ -1043,6 +1043,12 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .hn-grid{padding:0 15px 8px}
 .scout-app-wrapper .hn-acts{display:flex;flex-wrap:wrap;gap:8px;margin:0 15px 8px}
 .scout-app-wrapper .hn-go{min-height:40px;font-size:14px}
+.scout-app-wrapper .sale-was{color:var(--mu);font-weight:600;font-size:.85em}
+.scout-app-wrapper .sale-off{display:inline-block;padding:1px 7px;border-radius:99px;background:#1f7a3a;color:#fff;font-size:.72em;font-weight:800;vertical-align:.12em}
+.scout-app-wrapper .pp-flag{margin:10px 0;padding:10px 12px;border:2px solid #d9541e;border-radius:10px;background:rgba(217,84,30,.1);color:var(--ink);font-size:15px;line-height:1.45}
+.scout-app-wrapper .pp-flag b{display:block;margin-bottom:2px}
+.scout-app-wrapper .pp-flag q{display:block;font-style:italic}
+.scout-app-wrapper .pp-sold{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;margin-top:10px;border-radius:99px;font-weight:800}
 /* v7.09 (Matt: "make them glow"): new listings glow, in the strip and in a hunt. A steady ring outside the card and a
    breathing light inside its edge; only opacity moves (an animated shadow stalls phones); still under reduced motion. */
 .scout-app-wrapper .hn .sgw-card,.scout-app-wrapper .sgw-cell[data-fresh] .sgw-card{position:relative;box-shadow:0 0 0 2px var(--ac),0 0 16px -2px var(--ac)}
@@ -4582,7 +4588,7 @@ function sgwCard(it,hunt,bare){
   var a='<a class="sgw-card" href="'+esc(window.prowlAff(it.url,'prowl-live'))+'" target="_blank" rel="noopener noreferrer">'+
     img+
     '<div class="sgw-t">'+esc(it.title)+'</div>'+
-    '<div class="sgw-p">'+esc(it.price)+'</div>'+
+    '<div class="sgw-p">'+esc(it.price)+(it.was?' <s class="sale-was">'+esc(it.was)+'</s>'+(it.off?' <span class="sale-off">'+esc(it.off)+'</span>':''):'')+'</div>'+   /* v7.10: worker v119's eBay sale */
     '<div class="sgw-m">'+m+'</div></a>';
   /* v5.33 Fair price?: the card stays one link; the button sits under it in
      a wrapper cell, because a button inside a link is invalid and would open
@@ -5384,7 +5390,7 @@ function pncHtml(){
   if(gm.length){h+='<h4>Spotted for you</h4>';
     gm.forEach(function(x,i){if(!x||i>7&&x.url!==PNC.focus||!/^https:\/\//.test(x.url||''))return;
       h+='<div class="sgw-cell pnc-hit'+(PNC.focus===x.url?' pnc-on':'')+'" data-u="'+esc(x.url)+'" data-t="'+esc(x.title||'')+'" data-p="'+esc(x.price||'')+'">'+(/^https:\/\//.test(x.image||'')?'<img src="'+esc(x.image)+'" alt="" loading="lazy">':'')+
-        '<div><b>'+esc(x.title||'')+'</b><br><span class="mail-fine">'+esc([x.price,x.hunt].filter(Boolean).join(' \u00b7 '))+'</span><br>\uD83D\uDC3E '+esc(x.reason||'')+(x.match==='maybe'?' (maybe)':'')+
+        '<div><b>'+esc(x.title||'')+'</b><br><span class="mail-fine">'+esc([x.price,x.was?'on sale, was '+x.was+(x.off?' ('+x.off+')':''):'',x.hunt].filter(Boolean).join(' \u00b7 '))+'</span><br>\uD83D\uDC3E '+esc(x.reason||'')+(x.match==='maybe'?' (maybe)':'')+
         '<span class="sgw-mf"><a class="b p" href="'+esc(x.url)+'" target="_blank" rel="noopener">Open it</a>'+(aiOff()?'':'<button type="button" class="sgw-fp">Fair price?</button>')+'<button type="button" class="b" data-pnc="not" data-h="'+esc(x.hunt||'')+'" data-u="'+esc(x.url)+'">Not it</button></span></div></div>'});
     h+='<p class="mail-fine">An AI check of photo and title. Look closely before you buy.</p>'}
   return h+'</div>';
@@ -6680,6 +6686,25 @@ function popOpen(card){
 }
 /* v6.50: what the popup knows goes to Fair price too: bids and time left (so an auction is priced as one), the item
    details and the start of the description (the worker strips $ amounts and instructions from it) */
+/* v7.10 (Matt, on an Etsy figurine whose description said "One arm has a repair."): a listing that mentions a repair or
+   damage says so above the fold, quoting the seller, and the Fair price check is told first (its details are cut at
+   600 characters, and the line may sit at the end). A sentence that says there is none ("no chips, cracks or repairs")
+   is not a flag. */
+var FLAG_REP=/\b(repair(?:ed|s)?|restor(?:ed|ation)|re-?glued|glued|touch(?:ed)?[- ]?ups?|re-?painted|over-?painted)\b/i,
+  FLAG_DMG=/\b(chip(?:ped|s)?|crack(?:ed|s)?|hairlines?|craz(?:ed|ing)|broken|damaged?|missing|flea ?bites?|as[- ]is)\b/i,
+  FLAG_NO=/\b(no|not|never|without|free of|zero|none)\b/i;
+function popFlags(title,d){
+  var txt=popUnEnt(String(d.description||'').replace(/<br\s*\/?>/gi,'. ').replace(/<\/(p|li|div)>/gi,'. ').replace(/<[^>]*>/g,' ')),parts=(String(title||'')+'. '+String(d.condition||'')+'. '+txt).split(/[.!?]+(?:\s+|$)|\n+/),rep=[],dmg=[],i,x;
+  for(i=0;i<parts.length;i++){x=parts[i].replace(/\s+/g,' ').trim();if(!x||x.length>220||FLAG_NO.test(x))continue;
+    if(FLAG_REP.test(x)){if(rep.length<2&&rep.indexOf(x)<0)rep.push(x)}else if(FLAG_DMG.test(x)&&dmg.length<2&&dmg.indexOf(x)<0)dmg.push(x)}
+  if(!rep.length&&!dmg.length)return null;
+  var head=rep.length?(dmg.length?'Mentions a repair and damage':'Mentions a repair'):'Mentions damage',qs=rep.concat(dmg).slice(0,2);
+  return {html:'<div class="pp-flag" role="note"><b>\u26a0 '+head+'</b>'+qs.map(function(z){return '<q>'+esc(z)+'</q>'}).join('')+'</div>',
+    note:head+': '+qs.join('; ')+'.'};
+}
+/* v7.10 (Matt: "what if I want to look at sold listings of this item from here"): eBay's sold listings for the cleaned
+   title, in a new tab (Prowl cannot show sold results itself yet) */
+function popSold(t){return window.prowlAff('https://www.ebay.com/sch/i.html?_nkw='+E(String(t||'').slice(0,90))+'&LH_Sold=1&LH_Complete=1','prowl-sold')}
 function popDetails(meta,d){
   var t=meta.join(' · '),i;
   if(d.aspects&&d.aspects.length){var a=[];for(i=0;i<d.aspects.length&&i<6;i++)a.push(d.aspects[i].n+': '+d.aspects[i].v);t+=(t?'. ':'')+a.join('; ')}
@@ -6703,13 +6728,15 @@ function popPaint(d){
     if(imgs.length>1){h+='<div class="pp-thumbs">';for(i=0;i<imgs.length;i++)h+='<button type="button" data-pi="'+i+'" aria-label="Photo '+(i+1)+'"'+(i?'':' aria-current="true"')+'><img src="'+esc(imgs[i])+'" alt="" loading="lazy"></button>';h+='</div>'}
   }
   h+='<h3 class="pp-t">'+esc(title)+'</h3>';
-  if(price)h+='<p class="pp-p">'+esc(price)+'</p>';
+  if(price)h+='<p class="pp-p">'+esc(price)+(d.was?' <s class="sale-was">'+esc(d.was)+'</s>'+(d.off?' <span class="sale-off">'+esc(d.off)+'</span>':''):'')+'</p>';   /* v7.10 */
+  var flags=popFlags(title,d);if(flags)h+=flags.html;
   if(meta.length)h+='<p class="pp-m">'+esc(meta.join(' · '))+'</p>';
   if(d.gone)h+='<p class="pp-end">This listing ended.</p>';
   P.term=popTerm(title,d.aspects);if(P.term)h+='<button type="button" class="pp-hunt" data-pphunt="1" aria-label="Search this on Prowl: '+esc(P.term)+'">\ud83d\udd0d Search this on Prowl</button>';   /* v6.99 */
   if(d.aspects&&d.aspects.length){h+='<dl class="pp-asp">';for(i=0;i<d.aspects.length&&i<6;i++)h+='<dt>'+esc(popUnEnt(d.aspects[i].n))+'</dt><dd>'+esc(popUnEnt(d.aspects[i].v))+'</dd>';h+='</dl>'}
   if(desc)h+='<div class="pp-d clip" id="otp-ppd"></div><button type="button" class="pp-more" data-ppmore="1" aria-controls="otp-ppd" aria-expanded="false">Read more</button>';
-  if(price&&!d.gone&&!aiOff())h+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'" data-d="'+esc(popDetails(meta,d))+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
+  if(price&&!d.gone&&!aiOff())h+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'" data-d="'+esc((d.was?'On sale, was '+d.was+(d.off?' ('+d.off+')':'')+'. ':'')+(flags?flags.note+' ':'')+popDetails(meta,d))+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
+  if(price||P.term)h+='<a class="b pp-sold" href="'+esc(popSold(P.term||title))+'" target="_blank" rel="noopener noreferrer">What it sold for on eBay \u2197</a>';   /* v7.10 */
   var go=window.prowlAff(d.url||P.u,'prowl-popup',d.affUrl);
   if(go!=='#')h+='<a class="b p pp-go" href="'+esc(go)+'" target="_blank" rel="noopener noreferrer">View on '+esc(POP_NAME[P.src])+' ↗</a>';
   P.share={u:d.url||P.u,t:title,p:price,img:imgs[0]||''};h+='<button type="button" class="b pp-share" data-ppshare="1">Share this find</button>';   /* v6.98 */
@@ -8017,11 +8044,19 @@ function svPaint(u){
     b.title=on?'Saved':'Save find';b.textContent=on?'★':'☆';
   });
 }
-function svToggle(u){
+/* v7.10: SVI is emptied past 400 listings, and a star whose listing had been dropped did nothing at all. The card
+   carries what a save keeps, so it is read from there, and a save that still cannot be made says so. (Looked at for
+   Matt's "In flock the star doesn't work when tapped"; not shown to be that case.) */
+function svFromCell(u,b){
+  var c=b&&b.closest&&b.closest('.sgw-cell'),img;if(!c)return null;
+  img=c.querySelector('.sgw-card img');
+  return {title:c.getAttribute('data-t')||c.getAttribute('aria-label')||'',price:c.getAttribute('data-p')||'',url:u,image:img?img.getAttribute('src')||'':'',src:c.getAttribute('data-s')||'shopgoodwill',hunt:c.getAttribute('data-h')||''};
+}
+function svToggle(u,b){
   var a=findsGet(),i=findIdx(u),it,f;
   if(i>-1){a.splice(i,1);findsPut(a);toast('Removed from saved finds.',1800)}
   else{
-    it=SVI[u];if(!it)return;
+    it=SVI[u]||svFromCell(u,b);if(!it||!it.title){toast('Could not save this one. Open it and try again.',2600);return}
     f=findClean({title:it.title,price:it.price,url:it.url,image:it.image,src:it.src,hunt:it.hunt,at:Date.now()});if(!f)return;
     a.unshift(f);
     if(a.length>FINDS_MAX)toast('Saved. Your oldest saved find made room for it.',3200);
@@ -8164,9 +8199,9 @@ function rDenStats(){
    come back signed in. FLIN: the store says this visitor is signed in (asked once on load). */
 var FLIN=false,PEND_KEY='prowl.pendStar';
 function flSignedIn(){return !!mGet('alertTok')||FLIN}
-function svTap(u){
-  if(findIdx(u)>-1||flSignedIn()){svToggle(u);return}
-  var it=SVI[u];if(!it)return;
+function svTap(u,b){
+  if(findIdx(u)>-1||flSignedIn()){svToggle(u,b);return}
+  var it=SVI[u]||svFromCell(u,b);if(!it||!it.title)return;
   try{sessionStorage.setItem(PEND_KEY,JSON.stringify({title:it.title,price:it.price,url:it.url,image:it.image,src:it.src,hunt:it.hunt,at:Date.now()}))}catch(e){}
   MAIL.after=null;MAIL.open=true;MAIL.msg='Sign in to save it. It is held for you meanwhile.';openMailSettings();rMail();   /* v6.86: the in-app code sign-in, not the store */
 }
@@ -8222,7 +8257,7 @@ function xImport(o){
 
 document.addEventListener('click',function(e){
   var t=e.target,b=t&&t.closest&&t.closest('.scout-app-wrapper .sgw-sv');
-  if(b){e.preventDefault();e.stopPropagation();svTap(b.getAttribute('data-sv'));return}
+  if(b){e.preventDefault();e.stopPropagation();svTap(b.getAttribute('data-sv'),b);return}
   if((b=t&&t.closest&&t.closest('.scout-app-wrapper .sgw-lk'))){e.preventDefault();e.stopPropagation();likeToggle(b.closest('.sgw-cell'));return}   /* v6.54 */
   if(!den||!t||!t.closest||!den.contains(t))return;
   var x;
