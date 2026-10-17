@@ -17,16 +17,15 @@ test('dock LOCAL with no hunt opens Den > Local', async () => {
   await p.close();
 });
 
-test('dock LOCAL with a hunt searches only the city-aware sites', async () => {
+test('v7.09: dock LOCAL with a hunt opens the Maps links for stores near you, not a run', async () => {
   const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [] } } });
   await tick(30);
   p.$('#otp-q').value = 'Pyrex Butterprint';
   p.$('#otp-localBtn').click();
-  await tick(30);
-  const hosts = p.$$('#otp-res a.hit').map((a) => new URL(a.href).hostname.replace(/^www\./, ''));
-  assert.ok(hosts.length >= 4, 'rows: ' + hosts.join(', '));
-  for (const h of hosts) assert.match(h, /facebook|craigslist|offerup|estatesales|ctbids/, h);
-  assert.ok(p.$('#otp-localBtn').classList.contains('on'), 'LOCAL lights up while its run shows');
+  await tick(120);
+  assert.equal(p.$('#otp-denLocal').hidden, false);
+  assert.ok(p.$$('#otp-nearGrid a.nearc').length >= 8);
+  assert.equal(p.$('#otp-res a.hit'), null, 'no marketplace run');
   assert.deepEqual(p.errors, []);
   await p.close();
 });
