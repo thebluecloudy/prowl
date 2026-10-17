@@ -1,16 +1,28 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.11 / v120).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.12 / v120).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.11** | 105,086 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.12** | 103,825 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v120** | |
 
 Recently shipped, newest first:
 
+- **v7.12: three fixes from the UI/UX brief check** (Matt, 2026-10-17, items 1 to 3 of the audit).
+  - **View on <site> stays on screen** in the listing popup: it sits in `.pp-dock`, sticky at the foot of the
+    sheet's scrolling body, so it shows over the photos and details and settles above Share and Close at the end.
+    Checked in Chromium at 390 px and 1280 px.
+  - **Undo** on "Hunt removed." (Den) and "Removed from saved finds." (any star), 5 seconds. The hunt goes back in
+    its place with its tick and lock (`HUNT_UNDO`, `unmap`); a hunt typed in again meanwhile is not doubled. The
+    find goes back in its place with its first saved time (`FIND_UNDO`). One toast listener (`#otp-unhunt`,
+    `#otp-unfind`); Flock's discard Undo is unchanged.
+  - **44 px tap areas** for the favorite hunt chip's ×, the Likes chips' ×, a result card's star, heart and Fair
+    price, Flock's Feed/Saved switch and the toast's Undo: an invisible `::after` 44 px across, so nothing looks
+    different. The chip's × reaches a few pixels into the chip's own label.
+  Test: `__tests__/page/undo-tap-v712.test.mjs`. No localStorage keys changed.
 - **v7.11: How Prowl works starts at step 1** (Matt, 2026-10-17: a new visitor's help jumped to step 6). `openM`
   focused Got it, which sits under step 6, so the browser scrolled the help to its end. Now it focuses with
   `preventScroll` and sets the dialog's `scrollTop` to 0 (older Safari ignores `preventScroll`). Test:
@@ -301,7 +313,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.11, worker v121**. Claim one here when you start.
+Next free numbers: **page v7.13, worker v121**. Claim one here when you start.
 
 ## What's next
 
