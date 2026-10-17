@@ -10,10 +10,12 @@ for i in $(seq 0 40); do
     -vf "drawtext=text='$t s':x=24:y=24:fontsize=40:fontcolor=white:box=1:boxcolor=black@0.6:boxborderw=10" \
     "$out/f-$(printf %02d "$i").png"
 done
-# 3 x 3 sheets of 640x360 tiles
+# sheets of 9 tiles: 3 x 3 at 640x360 for landscape, 9 x 1 at 360x640 for portrait
+w=$(ffprobe -v error -select_streams v -show_entries stream=width -of csv=p=0 "$in")
+h=$(ffprobe -v error -select_streams v -show_entries stream=height -of csv=p=0 "$in")
+if [ "$h" -gt "$w" ]; then vf="scale=300:534,tile=9x1:padding=6:color=black"; else vf="scale=640:360,tile=3x3:padding=6:color=black"; fi
 n=0; for start in 0 9 18 27 36; do
-  ffmpeg -loglevel error -y -start_number "$start" -i "$out/f-%02d.png" -frames:v 1 \
-    -vf "scale=640:360,tile=3x3:padding=6:color=black" "$out/sheet-$n.jpg" || true
+  ffmpeg -loglevel error -y -start_number "$start" -i "$out/f-%02d.png" -frames:v 1 -vf "$vf" "$out/sheet-$n.jpg" || true
   n=$((n+1))
 done
 echo "--- spec"

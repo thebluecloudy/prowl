@@ -4,6 +4,7 @@
 // executeRenderJob) and adds it to the job config.
 //
 //   HF_DIR=<dir with node_modules/hyperframes> node scripts/render.mjs [out.mp4] [--samples=8] [--shutter=180] [--draft]
+//     [--project=../launch-film-vertical]   (the 1080x1920 cut; default this project, 1920x1080)
 //
 // Every output frame is the average of `samples` screenshots spread over the
 // shutter window (180 deg = half a frame, centred on the frame time).
@@ -20,7 +21,7 @@ const out = resolve(args.find((a) => !a.startsWith("--")) || "renders/prowl-laun
 const samples = Number(flag("samples", "8"));
 const shutter = Number(flag("shutter", "180"));
 const draft = args.includes("--draft");
-const projectDir = resolve(new URL("..", import.meta.url).pathname);
+const projectDir = flag("project") ? resolve(flag("project")) : resolve(new URL("..", import.meta.url).pathname);
 
 const hfDist = join(process.env.HF_DIR || resolve(projectDir, "node_modules"), "node_modules/hyperframes/dist");
 // The producer loader lives in a hashed chunk; find it by its export.
