@@ -2828,7 +2828,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.09';
+var PROWL_VERSION='v7.10';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4514,18 +4514,24 @@ function ovApp(){
 }
 function ovRootArm(){
   if(OVR.on||OV.guard||Date.now()<OVR.wait||!ovApp()||!window.history||typeof history.pushState!=='function')return;
-  try{history.pushState({prowlRoot:1},'',location.href);OVR.on=true}catch(e){}
+  ovScroll('manual');try{history.pushState({prowlRoot:1},'',location.href);OVR.on=true}catch(e){}
 }
 document.addEventListener('pointerdown',ovRootArm,true);
 document.addEventListener('keydown',ovRootArm,true);
+/* v7.10 (Matt: in Daily, a card's popup closed with Back and the screen jumped to the top, while its X left it where
+   it was): stepping back onto the entry this page pushed let the browser restore the scroll it had when the entry was
+   made (the top of Daily). While Prowl's own entries are in use the browser does not restore scroll; once they are
+   gone it goes back to doing so, for the shop's other pages. */
+function ovScroll(m){try{if('scrollRestoration' in history)history.scrollRestoration=m}catch(e){}}
 function ovSync(){
   if(!window.history||typeof history.pushState!=='function')return;
   var any=ovAny();
-  if(any&&!OV.guard){try{history.pushState({prowlOv:1},'',location.href);OV.guard=true}catch(e){} }
+  if(any&&!OV.guard){ovScroll('manual');try{history.pushState({prowlOv:1},'',location.href);OV.guard=true}catch(e){} }
+  else if(!any&&!OV.guard&&!OV.skip&&!OVR.on)ovScroll('auto');
   else if(!any&&OV.guard){OV.guard=false;OV.skip++;try{history.back()}catch(e){OV.skip--} }
 }
 window.addEventListener('popstate',function(){
-  if(OV.skip){OV.skip--;return}
+  if(OV.skip){OV.skip--;if(!OV.skip)setTimeout(ovSync,0);return}
   if(!OV.guard){
     if(OVR.on){OVR.on=false;OVR.wait=Date.now()+2500;toast('Press <b>Back</b> again to close Prowl.',2500)}
     return;

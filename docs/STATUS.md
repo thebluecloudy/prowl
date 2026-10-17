@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.09 / v118).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.10 / v118).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.09** | 107,754 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.10** | 107,494 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v118** | |
 
 Recently shipped, newest first:
 
+- **v7.10: Back keeps your place** (Matt, 2026-10-17: in Daily, a card's popup closed with Android's Back and the
+  screen jumped to the top, while its X left it where it was). Back steps onto the history entry Prowl pushed when the
+  first layer opened (v6.55), and the browser restored the scroll it had saved with that entry: the top of Daily.
+  While Prowl's own entries are in use `history.scrollRestoration` is `manual`; once every layer is closed it is
+  `auto` again (`ovScroll`). Reproduced in Chromium on v7.09 (2246 px → 0) and fixed (stays at 2246). Test:
+  `__tests__/page/back-button.test.mjs`.
 - **v7.09: Daily announces itself (Matt, 2026-10-17: "it reads as I tapped DAILY and nothing changed").** Daily is
   its own screen now: the date, **Your daily prowl**, "N hunts · X new since yesterday" and the hunt names; then
   **What's new** at the top, grouped per hunt (up to 6 cards each); then the email card and one block per hunt with
@@ -260,7 +266,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.10, worker v119**. Claim one here when you start.
+Next free numbers: **page v7.11, worker v119**. Claim one here when you start.
 
 ## What's next
 
