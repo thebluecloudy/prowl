@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Prowl launch film</title>
+    <script src="assets/vendor/gsap.min.js"></script>
+    <script src="timing.js"></script>
+    <style>
+      @font-face {
+        font-family: "Bricolage Grotesque";
+        src: url("assets/fonts/BricolageGrotesque-latin.woff2") format("woff2");
+        font-weight: 500 800;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "Space Grotesk";
+        src: url("assets/fonts/SpaceGrotesk-latin.woff2") format("woff2");
+        font-weight: 400 700;
+        font-display: block;
+      }
+      :root {
+        --cream: #faf6ee;
+        --ink: #1c1815;
+        --ink2: #4a423b;
+        --mu: #786e65;
+        --line: #e7ded1;
+        --u: #39ff14;
+        --mint: #8affb8;
+        --night: #040414;
+        --display: "Bricolage Grotesque", sans-serif;
+        --sans: "Space Grotesk", sans-serif;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--cream); }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: var(--sans); color: var(--ink); }
+      .full { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+      #bg { background: radial-gradient(120% 90% at 50% 38%, #fffdf8 0%, #faf6ee 48%, #f1e9dc 100%); }
+      #floor { position: absolute; left: -200px; width: 2320px; height: 900px; background: linear-gradient(rgba(239, 230, 215, 0) 0%, #efe6d7 4%, rgba(239, 230, 215, 0) 70%); opacity: 0.6; }
+      #far { filter: blur(10px); }
+      #far svg, #specks svg { position: absolute; left: 0; top: 0; overflow: visible; }
+      #bgDark { background: radial-gradient(60% 70% at var(--gx, 50%) var(--gy, 40%), rgba(57, 255, 20, 0.30) 0%, rgba(57, 255, 20, 0.10) 32%, rgba(57, 255, 20, 0) 62%), linear-gradient(180deg, #0a0e2e 0%, #040414 70%); }
+      #cam { transform-origin: 960px 540px; }
+      #persp { perspective: 2400px; perspective-origin: 1300px 520px; }
+      /* ---------- app window ---------- */
+      #shell { position: absolute; border-radius: 28px; transform-style: preserve-3d; }
+      .face { position: absolute; inset: 0; border-radius: inherit; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+      #faceBack { background: #fffdf8; transform: rotateY(180deg); box-shadow: 0 2px 0 rgba(28, 24, 21, 0.04), 0 30px 60px -10px rgba(28, 24, 21, 0.20), 0 70px 120px -40px rgba(28, 24, 21, 0.28); }
+      #faceFront { background: #fffdf8; border: 2px solid #e7ded1; box-shadow: 0 30px 60px -16px rgba(28, 24, 21, 0.28), 0 8px 18px -6px rgba(28, 24, 21, 0.18); }
+      #flood { position: absolute; inset: 0; border-radius: inherit; background: var(--ink); }
+      #shellClip { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; }
+      #win { position: absolute; left: 50%; top: 50%; width: 980px; height: 760px; margin: -380px 0 0 -490px; transform-origin: 50% 50%; }
+      #shellRim { position: absolute; inset: -2px; border-radius: inherit; border: 3px solid var(--u); opacity: 0; box-shadow: 0 0 40px rgba(57, 255, 20, 0.55), inset 0 0 30px rgba(57, 255, 20, 0.25); }
+      .topbar { position: absolute; left: 0; top: 0; width: 980px; height: 80px; display: flex; align-items: center; padding: 0 34px; border-bottom: 1.5px solid #efe7da; transform-origin: 50% 0; }
+      .mini { width: 44px; height: 44px; border-radius: 12px; background: var(--ink); display: flex; align-items: center; justify-content: center; flex: none; }
+      .mini svg { width: 38px; height: 38px; }
+      .wm { font-family: var(--display); font-weight: 700; font-size: 34px; letter-spacing: -0.02em; margin-left: 14px; font-variation-settings: "opsz" 48; }
+      .tabs { margin-left: auto; display: flex; gap: 34px; font-size: 28px; font-weight: 500; color: var(--mu); position: relative; }
+      .tabs span { position: relative; }
+      #tabBar { position: absolute; bottom: -24px; height: 4px; border-radius: 2px; background: var(--ink); }
+      .viewport { position: absolute; left: 0; top: 80px; width: 980px; height: 680px; overflow: hidden; }
+      #scroller { position: absolute; left: 0; top: 0; width: 980px; height: 1500px; }
+      .row { position: absolute; left: 0; width: 980px; transform-origin: 50% 0; }
+      #search { position: absolute; left: 40px; top: 28px; width: 716px; height: 86px; border-radius: 43px; border: 2.5px solid var(--ink); background: #fff; display: flex; align-items: center; padding-left: 74px; font-size: 36px; font-weight: 500; }
+      #search .mag { position: absolute; left: 26px; top: 23px; width: 36px; height: 36px; }
+      #q { white-space: pre; }
+      #caret { display: inline-block; width: 3px; height: 40px; background: var(--ink); margin-left: 3px; vertical-align: -6px; }
+      #ph { color: #a89d92; position: absolute; left: 74px; }
+      #huntBtn { position: absolute; left: 776px; top: 28px; width: 164px; height: 86px; border-radius: 43px; background: var(--ink); color: var(--cream); font-size: 32px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; }
+      #huntLbl { position: absolute; left: 40px; top: 134px; height: 40px; overflow: hidden; font-size: 28px; color: var(--mu); font-weight: 500; }
+      #huntLbl b { color: var(--ink); font-weight: 600; }
+      .chips { position: absolute; left: 40px; height: 60px; display: flex; gap: 16px; }
+      .chip { position: relative; height: 60px; border-radius: 30px; border: 2px solid #d9cdbb; background: #fbf7f0; font-size: 28px; font-weight: 500; display: flex; align-items: center; padding: 0 24px; white-space: nowrap; }
+      .chip i { display: inline-block; width: 12px; height: 12px; border-radius: 6px; background: var(--u); margin-right: 0; width: 0; box-shadow: 0 0 10px 2px rgba(57, 255, 20, 0.8); }
+      #huntSvg { position: absolute; left: 0; top: 0; width: 980px; height: 400px; overflow: visible; }
+      .card { position: absolute; width: 286px; height: 304px; border-radius: 22px; background: #fff; border: 1.5px solid var(--line); box-shadow: 0 12px 26px -12px rgba(28, 24, 21, 0.25); overflow: hidden; }
+      .skel { position: absolute; width: 286px; height: 304px; border-radius: 22px; border: 2px dashed #e4d9c8; background: #fbf8f2; overflow: hidden; }
+      .skel b { position: absolute; left: 14px; top: 14px; right: 14px; height: 152px; border-radius: 14px; background: #f1e9dc; }
+      .skel i { position: absolute; left: 18px; height: 22px; border-radius: 11px; background: #efe6d8; }
+      .skel i:nth-of-type(1) { top: 196px; width: 190px; } .skel i:nth-of-type(2) { top: 242px; width: 120px; }
+      .card .img { position: absolute; left: 0; top: 0; width: 286px; height: 180px; }
+      .card .img svg { width: 100%; height: 100%; display: block; }
+      .card .t { position: absolute; left: 18px; top: 194px; font-size: 28px; font-weight: 600; white-space: nowrap; letter-spacing: -0.01em; }
+      .card .m { position: absolute; left: 18px; top: 240px; font-size: 28px; color: var(--mu); white-space: nowrap; }
+      .card .m b { color: var(--ink); font-weight: 700; font-size: 30px; margin-right: 6px; }
+      .tag { position: absolute; left: 14px; top: 14px; height: 40px; border-radius: 20px; padding: 0 14px; background: var(--ink); color: var(--mint); font-size: 28px; font-weight: 700; display: flex; align-items: center; gap: 8px; letter-spacing: 0.02em; }
+      .tag i { width: 10px; height: 10px; border-radius: 5px; background: var(--u); box-shadow: 0 0 8px 2px rgba(57, 255, 20, 0.8); }
+      #dailyHead { position: absolute; left: 40px; top: 726px; font-family: var(--display); font-weight: 700; font-size: 46px; letter-spacing: -0.02em; font-variation-settings: "opsz" 72; }
+      #dailyNew { position: absolute; right: 40px; top: 738px; font-size: 28px; color: var(--mu); font-weight: 500; display: flex; align-items: center; gap: 10px; }
+      #dailyNew i { width: 12px; height: 12px; border-radius: 6px; background: var(--u); box-shadow: 0 0 10px 2px rgba(57, 255, 20, 0.7); }
+      #vpVeil { position: absolute; left: 0; top: 80px; width: 980px; height: 680px; background: #f3ecdf; opacity: 0; }
+      /* detail card */
+      #detail { position: absolute; left: 30px; top: 96px; width: 920px; height: 640px; background: #fff; border-radius: 26px; box-shadow: 0 40px 80px -20px rgba(28, 24, 21, 0.35); }
+      #detail .dimg { position: absolute; border-radius: 18px; overflow: hidden; }
+      #detail .dimg svg { width: 100%; height: 100%; display: block; }
+      #dcol { position: absolute; left: 440px; top: 0; width: 460px; height: 640px; }
+      .src { position: absolute; left: 0; top: 40px; display: flex; align-items: center; gap: 14px; font-size: 28px; font-weight: 600; }
+      .live { height: 44px; border-radius: 22px; background: var(--ink); color: var(--mint); font-weight: 700; font-size: 28px; display: flex; align-items: center; gap: 10px; padding: 0 18px 0 14px; letter-spacing: 0.04em; }
+      .live i { width: 14px; height: 14px; border-radius: 7px; background: var(--u); box-shadow: 0 0 12px 3px rgba(57, 255, 20, 0.9); }
+      .dtitle { position: absolute; left: 0; top: 104px; width: 460px; font-family: var(--display); font-weight: 700; font-size: 50px; line-height: 1.04; letter-spacing: -0.025em; font-variation-settings: "opsz" 72; }
+      .dprice { position: absolute; left: 0; top: 230px; font-family: var(--display); font-weight: 800; font-size: 58px; letter-spacing: -0.02em; }
+      .dends { position: absolute; left: 132px; top: 252px; font-size: 28px; color: var(--mu); }
+      .dlbl { position: absolute; left: 0; top: 340px; font-size: 28px; color: var(--mu); font-weight: 500; }
+      .flag { position: absolute; left: 0; height: 56px; border-radius: 28px; font-size: 28px; font-weight: 600; display: flex; align-items: center; gap: 10px; padding: 0 22px 0 16px; white-space: nowrap; }
+      .flag svg { width: 28px; height: 28px; }
+      #flag1 { top: 388px; background: #fbe9c8; border: 2px solid #e2b765; }
+      #flag2 { top: 458px; background: #f8ddd4; border: 2px solid #dc9a86; }
+      #heart { position: absolute; left: 368px; top: 548px; width: 76px; height: 76px; border-radius: 38px; border: 2.5px solid var(--ink); background: #fff; display: flex; align-items: center; justify-content: center; }
+      #heart svg { width: 40px; height: 40px; overflow: visible; }
+      #toast { position: absolute; left: 0; top: 556px; height: 60px; border-radius: 30px; background: var(--ink); color: var(--cream); font-size: 28px; font-weight: 600; display: flex; align-items: center; padding: 0 24px; gap: 10px; white-space: nowrap; }
+      #ripple { position: absolute; width: 76px; height: 76px; border-radius: 38px; border: 3px solid var(--u); left: 368px; top: 548px; box-shadow: 0 0 16px rgba(57, 255, 20, 0.7); }
+      .spark { position: absolute; width: 10px; height: 10px; border-radius: 5px; background: var(--u); box-shadow: 0 0 10px 2px rgba(57, 255, 20, 0.8); left: 401px; top: 581px; }
+      /* paper, envelope, mail, fresh find */
+      .paper { position: absolute; background-color: #fffdf9; background-image: repeating-linear-gradient(180deg, transparent 0 34px, #eee5d6 34px 38px); background-size: 70% 100%; background-position: 40px 30px; background-repeat: no-repeat; border: 1.5px solid #eadfcf; transform-origin: 50% 50%; backface-visibility: hidden; }
+      #pTop { background-image: linear-gradient(#efe3cf, #efe3cf), repeating-linear-gradient(180deg, transparent 0 34px, #eee5d6 34px 38px); background-size: 120px 120px, 50% 100%; background-position: 40px 60px, 190px 64px; }
+      #env { position: absolute; border-radius: 14px; background: #fffaf1; border: 2px solid #e2d5c1; box-shadow: 0 30px 60px -20px rgba(28, 24, 21, 0.35); overflow: hidden; }
+      #env svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+      #mail { position: absolute; width: 780px; height: 300px; border-radius: 26px; background: #fff; border: 1.5px solid var(--line); box-shadow: 0 40px 80px -20px rgba(28, 24, 21, 0.35); padding: 34px 38px; }
+      #mail .mh { display: flex; align-items: center; gap: 16px; font-size: 30px; font-weight: 700; }
+      #mail .mh .mini { width: 52px; height: 52px; border-radius: 14px; }
+      #mail .mh .mini svg { width: 44px; height: 44px; }
+      #mail .mh em { font-style: normal; font-weight: 500; color: var(--mu); font-size: 28px; margin-left: auto; }
+      #mail .subj { margin-top: 26px; font-family: var(--display); font-weight: 700; font-size: 42px; letter-spacing: -0.02em; font-variation-settings: "opsz" 72; }
+      #mail .prev { margin-top: 12px; font-size: 28px; color: var(--mu); }
+      #newPill { position: absolute; left: 286px; top: 32px; height: 52px; border-radius: 26px; background: #e4ffd9; border: 2px solid #5bdc3a; color: #12360a; font-size: 28px; font-weight: 700; padding: 0 18px; display: flex; align-items: center; gap: 10px; box-shadow: 0 0 22px rgba(57, 255, 20, 0.55); }
+      #newPill i { width: 12px; height: 12px; border-radius: 6px; background: var(--u); box-shadow: 0 0 10px 2px rgba(57, 255, 20, 0.9); }
+      #fresh { position: absolute; width: 540px; height: 600px; border-radius: 26px; background: #fff; border: 1.5px solid var(--line); box-shadow: 0 40px 80px -20px rgba(28, 24, 21, 0.35); overflow: hidden; }
+      #fresh .fimg { position: absolute; left: 0; top: 0; width: 540px; height: 330px; }
+      #fresh .fimg svg { width: 100%; height: 100%; display: block; }
+      #fresh .ft { position: absolute; left: 30px; top: 356px; font-family: var(--display); font-weight: 700; font-size: 44px; line-height: 1.05; letter-spacing: -0.02em; width: 480px; font-variation-settings: "opsz" 72; }
+      #fresh .fm { position: absolute; left: 30px; top: 474px; font-size: 30px; color: var(--mu); }
+      #fresh .fm b { color: var(--ink); font-family: var(--display); font-size: 44px; font-weight: 800; margin-right: 10px; }
+      #fresh .fw { position: absolute; left: 30px; top: 538px; font-size: 28px; color: var(--mu); }
+      /* copy */
+      .blk { position: absolute; left: 124px; top: 0; width: 720px; }
+      .ln { position: relative; overflow: hidden; padding: 0 0 0.08em; }
+      .ln > span { display: block; will-change: transform; }
+      .eyb { font-size: 28px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--mu); display: flex; align-items: center; gap: 14px; }
+      .eyb i { width: 12px; height: 12px; border-radius: 6px; background: var(--u); box-shadow: 0 0 10px 2px rgba(57, 255, 20, 0.6); display: inline-block; }
+      .hl { font-family: var(--display); font-weight: 700; font-size: 90px; line-height: 1.0; letter-spacing: -0.035em; font-variation-settings: "opsz" 96; white-space: nowrap; }
+      .sub { font-size: 34px; line-height: 1.32; color: var(--ink2); font-weight: 400; width: 600px; }
+      #pan { position: absolute; left: 0; top: 0; overflow: visible; }
+      #panCanvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+      #endc { text-align: center; }
+      #endc .ln { position: absolute; left: 0; width: 1920px; }
+      #wordmark { top: 590px; font-family: var(--display); font-weight: 800; font-size: 124px; letter-spacing: -0.04em; color: var(--mint); text-shadow: 0 0 34px rgba(57, 255, 20, 0.55); font-variation-settings: "opsz" 96; line-height: 1.05; }
+      #tagline { top: 742px; font-family: var(--display); font-weight: 600; font-size: 54px; letter-spacing: -0.02em; color: #d8ffe6; font-variation-settings: "opsz" 72; }
+      #avail { top: 832px; }
+      #avail span { display: inline-flex !important; align-items: center; gap: 12px; height: 56px; padding: 0 26px; border-radius: 28px; border: 2px solid rgba(57, 255, 20, 0.7); color: var(--mint); font-size: 28px; font-weight: 600; letter-spacing: 0.06em; box-shadow: 0 0 24px rgba(57, 255, 20, 0.35), inset 0 0 16px rgba(57, 255, 20, 0.15); }
+      #avail i { width: 12px; height: 12px; border-radius: 6px; background: var(--u); box-shadow: 0 0 10px 3px rgba(57, 255, 20, 0.9); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="20" data-fps="60" data-width="1920" data-height="1080">
+      <div id="bg" class="full"></div>
+      <div id="floor"></div>
+      <div id="far" class="full"><svg id="farSvg" width="5200" height="1080"></svg></div>
+      <div id="specks" class="full"><svg id="speckSvg" width="6000" height="1080"></svg></div>
+      <div id="bgDark" class="full"></div>
+      <div id="ring" class="full"></div>
+
+      <div id="cam" class="full">
+        <div id="persp" class="full">
+          <div id="shell">
+            <div class="face" id="faceFront"></div>
+            <div class="face" id="faceBack">
+            <div id="shellClip">
+              <div id="win">
+                <div class="topbar row" id="rTop">
+                  <div class="mini"><svg viewBox="0 0 100 100"><path class="logoPath" fill="#faf6ee"></path></svg></div>
+                  <div class="wm">Prowl</div>
+                  <div class="tabs"><span id="tabH">Hunts</span><span id="tabD">Daily</span><span>Den</span><div id="tabBar"></div></div>
+                </div>
+                <div class="viewport" id="vp">
+                  <div id="scroller">
+                    <div class="row" id="rSearch" style="top: 0; height: 130px">
+                      <div id="search">
+                        <svg class="mag" viewBox="0 0 24 24" fill="none" stroke="#1c1815" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21"></path></svg>
+                        <span id="ph">Search vintage…</span><span id="q"></span><span id="caret"></span>
+                      </div>
+                      <div id="huntBtn">Hunt <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#faf6ee" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"></path></svg></div>
+                    </div>
+                    <div class="row" id="rChips" style="top: 0; height: 360px">
+                      <svg id="huntSvg"><path id="huntGlow" fill="none" stroke="#39ff14" stroke-width="12" stroke-linecap="round" opacity="0.35" style="filter: blur(5px)"></path><path id="huntPath" fill="none" stroke="#2fd10f" stroke-width="4.5" stroke-linecap="round"></path><circle id="huntHead" r="9" fill="#39ff14" style="filter: drop-shadow(0 0 8px #39ff14)"></circle></svg>
+                      <div id="huntLbl"><span style="display: block">Hunting <b>28 marketplaces</b> at once</span></div>
+                      <div class="chips" style="top: 186px"><div class="chip"><i></i>eBay</div><div class="chip"><i></i>Etsy</div><div class="chip"><i></i>ShopGoodwill</div><div class="chip"><i></i>Facebook</div></div>
+                      <div class="chips" style="top: 264px"><div class="chip"><i></i>Ruby Lane</div><div class="chip"><i></i>Chairish</div><div class="chip"><i></i>Craigslist</div><div class="chip"><i></i>+21 more</div></div>
+                    </div>
+                    <div id="results"></div>
+                    <div id="dailyHead">Your daily prowl</div>
+                    <div id="dailyNew"><i></i>12 new since yesterday</div>
+                    <div id="daily"></div>
+                  </div>
+                </div>
+                <div id="vpVeil"></div>
+                <div id="detail">
+                  <div class="dimg" id="dimg"></div>
+                  <div id="dcol">
+                    <div class="src">ShopGoodwill <span class="live" id="live"><i></i>LIVE</span></div>
+                    <div class="dtitle">Ceramic panther figurine, 1950s</div>
+                    <div class="dprice">$64</div>
+                    <div class="dends">Auction ends in 2d 4h</div>
+                    <div class="dlbl">Condition flags</div>
+                    <div class="flag" id="flag1"><svg viewBox="0 0 24 24" fill="none" stroke="#8a5a00" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3 2.5 20h19L12 3z"></path><path d="M12 10v4.5M12 17.4v.2"></path></svg>Repaired</div>
+                    <div class="flag" id="flag2"><svg viewBox="0 0 24 24" fill="none" stroke="#8a2f1c" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.6M12 16.8v.2"></path></svg>Possible reproduction</div>
+                    <div id="toast"><svg width="28" height="28" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z" fill="#39ff14"></path></svg>Saved to favorites</div>
+                    <div id="ripple"></div>
+                    <div class="spark"></div><div class="spark"></div><div class="spark"></div><div class="spark"></div><div class="spark"></div><div class="spark"></div><div class="spark"></div>
+                    <div id="heart"><svg viewBox="0 0 24 24"><path id="heartPath" d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z" fill="none" stroke="#1c1815" stroke-width="2.2" stroke-linejoin="round"></path></svg></div>
+                  </div>
+                </div>
+                <div class="paper" id="pTop"></div>
+                <div class="paper" id="pMid"></div>
+                <div class="paper" id="pBot"></div>
+                <div id="env"><svg viewBox="0 0 480 240" preserveAspectRatio="none"><path d="M2 2 240 138 478 2" fill="none" stroke="#d8c8b0" stroke-width="3"></path><path d="M2 238 186 104M478 238 294 104" fill="none" stroke="#e6dac7" stroke-width="2.5"></path></svg></div>
+                <div id="mail">
+                  <div class="mh"><div class="mini"><svg viewBox="0 0 100 100"><path class="logoPath" fill="#faf6ee"></path></svg></div>Prowl<em>7:00 AM</em></div>
+                  <div id="newPill"><i></i>3 new matches</div>
+                  <div class="subj">New finds for “ceramic panther”</div>
+                  <div class="prev">Fresh this morning, all under $60.</div>
+                </div>
+                <div id="fresh">
+                  <div class="fimg" id="fimg"></div>
+                  <div class="tag" style="left: 20px; top: 20px"><i></i>NEW</div>
+                  <div class="ft">Ceramic panther planter, 1960s</div>
+                  <div class="fm"><b>$38</b>Etsy</div>
+                  <div class="fw">Matched this morning</div>
+                </div>
+              </div>
+            </div>
+            <div id="flood"></div>
+            <div id="shellRim"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="copy" class="full"></div>
+
+        <svg id="pan" width="1920" height="1080" viewBox="0 0 1920 1080">
+          <defs>
+            <filter id="shBlur" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="7"></feGaussianBlur></filter>
+            <filter id="shBlur2" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="2.4"></feGaussianBlur></filter>
+          </defs>
+          <g id="shadows"><ellipse id="shBody" filter="url(#shBlur)" fill="rgba(28,24,21,0.20)"></ellipse><g id="shFeet" filter="url(#shBlur2)"></g></g>
+        </svg>
+        <canvas id="panCanvas"></canvas>
+      </div>
+
+      <div id="endc" class="full">
+        <div class="ln" id="wordmark"><span>Prowl</span></div>
+        <div class="ln" id="tagline"><span>The hunt comes to you.</span></div>
+        <div class="ln" id="avail"><span><i></i>Available now</span></div>
+      </div>
+
+      <audio id="soundtrack" src="assets/soundtrack.wav" data-start="0" data-duration="20" data-track-index="1"></audio>
+    </div>
+
+    <script>
+      (function () {
+        var T = window.PROWL_TIMING, C = T.cues, F = T.FPS;
+        // One film, two frames. vertical.html (generated by scripts/build-vertical.mjs) sets PROWL_FORMAT.
+        var PORTRAIT = window.PROWL_FORMAT === "portrait";
+        var VW = PORTRAIT ? 1080 : 1920, VH = PORTRAIT ? 1920 : 1080;
+        var LAYOUT = PORTRAIT ? {
+          win: { cx: 540, cy: 1060, w: 960, h: 745 }, tile0: { cx: 640, cy: 960, s: 360 }, ground: 1660, endGround: 1480,
+          copyTop: 236, end: [540, 790], tilt: 7, perspOrigin: "540px 1060px", farY: 820, midShare: 0.32
+        } : {
+          win: { cx: 1330, cy: 452, w: 980, h: 760 }, tile0: { cx: 1180, cy: 470, s: 360 }, ground: 985, endGround: 880,
+          copyTop: 282, end: [960, 366], tilt: 17, perspOrigin: "1300px 520px", farY: 0, midShare: 1
+        };
+        // how far the panther has moved across the screen (the rest of its walk is the camera tracking it)
+        function travel(t) { var a = T.screenTravel(Math.min(t, 3)); return t <= 3 ? a : a + LAYOUT.midShare * (T.screenTravel(t) - a); }
+        var $ = function (s) { return document.querySelector(s); };
+        var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+        var fs = function (f) { return f / F; }; // frames -> seconds
+
+        /* ---------------- math ---------------- */
+        function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
+        function lerp(a, b, u) { return a + (b - a) * u; }
+        function seg(t, a, b) { return clamp((t - a) / (b - a), 0, 1); }
+        var E = {
+          lin: function (x) { return x; },
+          io: function (x) { return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; },
+          out: function (x) { return 1 - Math.pow(1 - x, 3); },
+          in: function (x) { return x * x * x; },
+          o5: function (x) { return 1 - Math.pow(1 - x, 5); },
+          oexp: function (x) { return x >= 1 ? 1 : 1 - Math.pow(2, -10 * x); },
+          iexp: function (x) { return x <= 0 ? 0 : Math.pow(2, 10 * x - 10); },
+          ioexp: function (x) { return x <= 0 ? 0 : x >= 1 ? 1 : x < 0.5 ? Math.pow(2, 20 * x - 10) / 2 : (2 - Math.pow(2, -20 * x + 10)) / 2; },
+          back: function (x) { var c1 = 1.5, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); },
+          sm: function (x) { return x * x * (3 - 2 * x); },
+          sine: function (x) { return -(Math.cos(Math.PI * x) - 1) / 2; }
+        };
+        // keyframes: [[t, v, ease?], ...] ease applies to the segment ending at that key
+        function kf(t, keys) {
+          if (t <= keys[0][0]) return keys[0][1];
+          for (var i = 1; i < keys.length; i++) {
+            if (t <= keys[i][0]) {
+              var u = (t - keys[i - 1][0]) / (keys[i][0] - keys[i - 1][0]);
+              var e = E[keys[i][2] || "io"];
+              var a = keys[i - 1][1], b = keys[i][1];
+              if (typeof a === "number") return lerp(a, b, e(u));
+              var o = []; for (var j = 0; j < a.length; j++) o.push(lerp(a[j], b[j], e(u))); return o;
+            }
+          }
+          return keys[keys.length - 1][1];
+        }
+        function hex(c) { return typeof c === "string" ? [parseInt(c.substr(1, 2), 16), parseInt(c.substr(3, 2), 16), parseInt(c.substr(5, 2), 16)] : c; }
+        function mixA(c1, c2, u) { var a = hex(c1), b = hex(c2); return [lerp(a[0], b[0], u), lerp(a[1], b[1], u), lerp(a[2], b[2], u)]; }
+        function mix(c1, c2, u) { var m = mixA(c1, c2, u); return "rgb(" + Math.round(m[0]) + "," + Math.round(m[1]) + "," + Math.round(m[2]) + ")"; }
+        function rnd(seed) { var s = seed; return function () { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
+        function n2(x) { return Math.round(x * 100) / 100; }
+
+        /* ---------------- the panther: the owner's artwork (assets/art/prowl-panther.webp), walked by mesh warp ----------------
+           The illustration is drawn on a WebGL canvas through a fine mesh. Each leg, the tail and the head bend around a
+           pivot, weighted by how far along that limb a point of the picture sits, so the shading, keyline, eye and
+           whiskers bend with the limb and nothing is cut. The still pose (w = 0) is the artwork exactly.
+           Units: 0.0622 per art pixel (the art is 107 units wide, like the icon), origin at its centre on the ground. */
+        var ART = { src: "assets/art/prowl-panther.webp", w: 2000, h: 898, cx: 1003.5, gy: 665, u: 0.0622 };
+        function au(x, y) { return [(x - ART.cx) * ART.u, (y - ART.gy) * ART.u]; }
+        var BN = {
+          A: { piv: au(540, 385), paw: au(225, 625) },   // near front, reaching
+          B: { piv: au(770, 360), paw: au(650, 628) },   // far front
+          C: { piv: au(1235, 400), paw: au(1115, 625) }, // near hind
+          D: { piv: au(1425, 385), paw: au(1665, 635) }, // far hind, stretched back
+          T: { piv: au(1545, 350), paw: au(1830, 430) }, // tail
+          H: { piv: au(470, 270), paw: au(190, 330) }    // head
+        };
+        var W = T.WALK;
+        var LEGS = { A: "rf", B: "lf", C: "rh", D: "lh" };
+        var AMP = { A: 0.26, B: 0.32, C: 0.30, D: 0.22 }, LIFT = { A: 2.4, B: 2.6, C: 2.4, D: 2.0 };
+        var RAD = { A: [4.0, 7.0], B: [3.8, 6.8], C: [4.4, 7.6], D: [3.2, 5.8], T: [3.6, 6.4], H: [8, 12] };
+        var ALONG = { A: [0.18, 0.6], B: [0.22, 0.66], C: [0.25, 0.7], D: [0.22, 0.62], T: [0.12, 0.5], H: [0.12, 0.5] };
+        function along(p, a, b) {
+          var dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+          var u = clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2, 0, 1.25);
+          var qx = a[0] + Math.min(u, 1) * dx, qy = a[1] + Math.min(u, 1) * dy;
+          return { d: Math.sqrt((p[0] - qx) * (p[0] - qx) + (p[1] - qy) * (p[1] - qy)), u: u };
+        }
+        function rot(p, piv, a) { var c = Math.cos(a), s2 = Math.sin(a), x = p[0] - piv[0], y = p[1] - piv[1]; return [piv[0] + x * c - y * s2, piv[1] + x * s2 + y * c]; }
+        // the mesh over the artwork, with skin weights computed once
+        var MESH = (function () {
+          var NX = 110, NY = 34, x0 = 120, x1 = 1890, y0 = 150, y1 = 690, pts = [], uv = [], wts = [], idx = [];
+          for (var j = 0; j <= NY; j++) for (var i = 0; i <= NX; i++) {
+            var px = x0 + (x1 - x0) * i / NX, py = y0 + (y1 - y0) * j / NY, p = au(px, py);
+            pts.push(p); uv.push(px / ART.w, py / ART.h);
+            var w = {}, sum = 0;
+            Object.keys(BN).forEach(function (k) {
+              var g = along(p, BN[k].piv, BN[k].paw);
+              var v = (1 - E.sm(seg(g.d, RAD[k][0], RAD[k][1]))) * E.sm(seg(g.u, ALONG[k][0], ALONG[k][1]));
+              if (v > 0.001) { w[k] = v; sum += v; }
+            });
+            if (sum > 1) Object.keys(w).forEach(function (k) { w[k] /= sum; });
+            wts.push(w);
+          }
+          for (var jj = 0; jj < NY; jj++) for (var ii = 0; ii < NX; ii++) {
+            var q = jj * (NX + 1) + ii;
+            idx.push(q, q + 1, q + NX + 1, q + 1, q + NX + 2, q + NX + 1);
+          }
+          return { pts: pts, uv: new Float32Array(uv), wts: wts, idx: new Uint16Array(idx), n: pts.length };
+        })();
+        function rig(st) {
+          var c = st.c, w = st.w, ang = {}, lift = {}, feet = {};
+          Object.keys(LEGS).forEach(function (k) {
+            var ph = 2 * Math.PI * (c - W.offsets[LEGS[k]]);
+            ang[k] = w * AMP[k] * Math.sin(ph);                       // + swings the paw forward (left)
+            var sw = Math.max(0, Math.cos(ph)); lift[k] = w * LIFT[k] * sw * sw;
+          });
+          ang.T = st.tail || 0; ang.H = st.head || 0; lift.T = 0; lift.H = 0;
+          var bob = -0.55 * Math.cos(4 * Math.PI * c) * w;
+          var out = new Float32Array(MESH.n * 2);
+          for (var i = 0; i < MESH.n; i++) {
+            var wt = MESH.wts[i], q = MESH.pts[i], legness = 0;
+            for (var k in wt) {
+              q = rot(q, BN[k].piv, ang[k] * wt[k]);
+              q = [q[0], q[1] - lift[k] * wt[k]];
+              if (k !== "T" && k !== "H") legness = Math.max(legness, wt[k]);
+            }
+            out[2 * i] = q[0]; out[2 * i + 1] = q[1] + bob * (1 - legness);
+          }
+          Object.keys(LEGS).forEach(function (k) {
+            var pw = rot(BN[k].paw, BN[k].piv, ang[k]);
+            feet[LEGS[k]] = { x: pw[0], sw: w > 0 ? lift[k] / LIFT[k] : 0 };
+          });
+          return { mesh: out, feet: feet };
+        }
+        // WebGL: one textured mesh, drawn into a small canvas that travels with the panther
+        var PV = { cw: 680, ch: 280, base: 214, dpr: 2 };
+        var GLP = (function () {
+          var cv = $("#panCanvas");
+          cv.width = PV.cw * PV.dpr; cv.height = PV.ch * PV.dpr; cv.style.width = PV.cw + "px"; cv.style.height = PV.ch + "px";
+          var gl = cv.getContext("webgl2", { premultipliedAlpha: true, alpha: true, preserveDrawingBuffer: true, antialias: true });
+          function sh(type, src) { var o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; }
+          var pr = gl.createProgram();
+          gl.attachShader(pr, sh(gl.VERTEX_SHADER, "#version 300 es\nin vec2 aPos; in vec2 aUv; uniform vec2 uRes; out vec2 vUv;\nvoid main(){ vUv = aUv; vec2 c = aPos / uRes * 2.0 - 1.0; gl_Position = vec4(c.x, -c.y, 0.0, 1.0); }"));
+          gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, "#version 300 es\nprecision highp float; in vec2 vUv; uniform sampler2D uTex; uniform float uMint; out vec4 o;\nvoid main(){ vec4 c = texture(uTex, vUv); vec3 rgb = c.a > 0.0 ? c.rgb / c.a : vec3(0.0);\n float l = dot(rgb, vec3(0.2126, 0.7152, 0.0722));\n vec3 m = mix(vec3(0.10, 0.36, 0.20), vec3(0.70, 1.0, 0.80), smoothstep(0.0, 0.7, l));\n rgb = mix(rgb, m, uMint); o = vec4(rgb * c.a, c.a); }"));
+          gl.linkProgram(pr); gl.useProgram(pr);
+          var bPos = gl.createBuffer(), bUv = gl.createBuffer(), bIdx = gl.createBuffer();
+          var lPos = gl.getAttribLocation(pr, "aPos"), lUv = gl.getAttribLocation(pr, "aUv");
+          gl.bindBuffer(gl.ARRAY_BUFFER, bUv); gl.bufferData(gl.ARRAY_BUFFER, MESH.uv, gl.STATIC_DRAW);
+          gl.enableVertexAttribArray(lUv); gl.vertexAttribPointer(lUv, 2, gl.FLOAT, false, 0, 0);
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bIdx); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, MESH.idx, gl.STATIC_DRAW);
+          gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+          var uRes = gl.getUniformLocation(pr, "uRes"), uMint = gl.getUniformLocation(pr, "uMint");
+          var pos = new Float32Array(MESH.n * 2), ready = false;
+          return {
+            load: function () {
+              var img = new Image(); img.src = ART.src;
+              return img.decode().then(function () {
+                var tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+                gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                gl.generateMipmap(gl.TEXTURE_2D);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                ready = true;
+              });
+            },
+            // mesh in units -> canvas pixels: x * k + cw/2, y * k + base
+            draw: function (mesh, k, mint) {
+              if (!ready) return;
+              for (var i = 0; i < MESH.n; i++) { pos[2 * i] = (mesh[2 * i] * k + PV.cw / 2) * PV.dpr; pos[2 * i + 1] = (mesh[2 * i + 1] * k + PV.base) * PV.dpr; }
+              gl.viewport(0, 0, cv.width, cv.height); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+              gl.bindBuffer(gl.ARRAY_BUFFER, bPos); gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
+              gl.enableVertexAttribArray(lPos); gl.vertexAttribPointer(lPos, 2, gl.FLOAT, false, 0, 0);
+              gl.uniform2f(uRes, cv.width, cv.height); gl.uniform1f(uMint, mint);
+              gl.drawElements(gl.TRIANGLES, MESH.idx.length, gl.UNSIGNED_SHORT, 0);
+            },
+            el: cv
+          };
+        })();
+        // the still artwork for the little marks inside the app and the ceramic figurines (same placement as the mesh)
+        function artImage(extraAttrs) {
+          return '<image href="' + ART.src + '" x="' + n2(-ART.cx * ART.u) + '" y="' + n2(-ART.gy * ART.u) + '" width="' + n2(ART.w * ART.u) + '" height="' + n2(ART.h * ART.u) + '"' + (extraAttrs || "") + "></image>";
+        }
+        $$(".mini svg").forEach(function (sv) { sv.innerHTML = '<g transform="translate(50 64) scale(0.86)">' + artImage() + "</g>"; });
+
+        /* ---------------- illustrations for the cards ---------------- */
+        function panFig(x, y, s) { return '<g transform="translate(' + x + " " + y + ") scale(" + s + ')">' + artImage() + "</g>"; }
+        function illus(kind, w, h) {
+          var bg = { panther: "#efe3cf", lamp: "#e4ecdc", vase: "#ebe0d0", cat: "#f1e2d8", rook: "#e6e7d6", owl: "#efe5d3", mug: "#e2efe6", hull: "#f4e4de", planter: "#e9efe1" }[kind];
+          var s = '<svg viewBox="0 0 ' + w + " " + h + '" preserveAspectRatio="xMidYMid slice"><rect width="' + w + '" height="' + h + '" fill="' + bg + '"></rect>';
+          var portrait = h > w * 1.2;
+          var cx = w / 2, by = portrait ? h * 0.6 : h * 0.86;
+          if (portrait) s += '<circle cx="' + cx + '" cy="' + h * 0.44 + '" r="' + w * 0.42 + '" fill="rgba(255,255,255,0.45)"></circle><rect x="' + w * 0.12 + '" y="' + (by + 4) + '" width="' + w * 0.76 + '" height="' + h * 0.4 + '" fill="rgba(28,24,21,0.06)"></rect><rect x="' + w * 0.12 + '" y="' + (by + 4) + '" width="' + w * 0.76 + '" height="6" fill="rgba(28,24,21,0.10)"></rect>';
+          s += '<ellipse cx="' + cx + '" cy="' + (by + 2) + '" rx="' + w * 0.3 + '" ry="' + h * 0.035 + '" fill="rgba(28,24,21,0.12)"></ellipse>';
+          var sc = portrait ? w / 230 : Math.min(w, h * 1.6) / 286;
+          if (kind === "panther" || kind === "planter" || kind === "lamp") {
+            var ps = 1.75 * sc, px = cx, py = by - 6 * sc;
+            if (kind === "lamp") s += '<path d="M' + (cx - 46 * sc) + " " + (h * 0.12) + "h" + 92 * sc + "l" + 24 * sc + " " + 58 * sc + "h" + -140 * sc + 'z" fill="#c7a46a"></path><rect x="' + (cx - 3 * sc) + '" y="' + (h * 0.12 + 58 * sc) + '" width="' + 6 * sc + '" height="' + 30 * sc + '" fill="#8b6a3a"></rect>';
+            if (kind === "planter") s += '<path d="M' + (cx + 8 * sc) + " " + (by - 70 * sc) + "c" + -20 * sc + " " + -40 * sc + " " + -6 * sc + " " + -70 * sc + " " + 10 * sc + " " + -78 * sc + "c" + 4 * sc + " " + 30 * sc + " " + 10 * sc + " " + 50 * sc + " " + -10 * sc + ' 78z" fill="#5f8f4e"></path><path d="M' + (cx + 22 * sc) + " " + (by - 68 * sc) + "c" + 10 * sc + " " + -34 * sc + " " + 34 * sc + " " + -50 * sc + " " + 50 * sc + " " + -52 * sc + "c" + -8 * sc + " " + 26 * sc + " " + -22 * sc + " " + 44 * sc + " " + -50 * sc + ' 52z" fill="#7aa964"></path><rect x="' + (cx - 30 * sc) + '" y="' + (by - 74 * sc) + '" width="' + 70 * sc + '" height="' + 22 * sc + '" rx="' + 6 * sc + '" fill="#2a2420"></rect>';
+            s += '<rect x="' + (cx - 78 * sc) + '" y="' + (by - 8 * sc) + '" width="' + 156 * sc + '" height="' + 10 * sc + '" rx="' + 4 * sc + '" fill="#3a302a"></rect>';
+            s += panFig(px, py, ps);
+          } else if (kind === "cat") {
+            s += '<path d="M' + (cx - 30 * sc) + " " + by + "c" + -14 * sc + " " + -40 * sc + " " + -10 * sc + " " + -80 * sc + " " + 6 * sc + " " + -104 * sc + "l" + -6 * sc + " " + -26 * sc + "l" + 18 * sc + " " + 14 * sc + "h" + 24 * sc + "l" + 18 * sc + " " + -14 * sc + "l" + -6 * sc + " " + 26 * sc + "c" + 16 * sc + " " + 24 * sc + " " + 20 * sc + " " + 64 * sc + " " + 6 * sc + " " + 104 * sc + 'z" fill="#221c18"></path><path d="M' + (cx - 14 * sc) + " " + (by - 92 * sc) + "c" + 6 * sc + " " + -3 * sc + " " + 10 * sc + " " + -3 * sc + " " + 14 * sc + ' 0" stroke="#e9c46a" stroke-width="' + 4 * sc + '" fill="none" stroke-linecap="round"></path><path d="M' + (cx + 4 * sc) + " " + (by - 92 * sc) + "c" + 6 * sc + " " + -3 * sc + " " + 10 * sc + " " + -3 * sc + " " + 14 * sc + ' 0" stroke="#e9c46a" stroke-width="' + 4 * sc + '" fill="none" stroke-linecap="round"></path>';
+          } else if (kind === "rook" || kind === "vase" || kind === "hull") {
+            var col = { rook: "#6f8f63", vase: "#b9663e", hull: "#d98e86" }[kind];
+            s += '<path d="M' + (cx - 18 * sc) + " " + (by - 130 * sc) + "h" + 36 * sc + "c0 " + 22 * sc + " " + 34 * sc + " " + 40 * sc + " " + 34 * sc + " " + 80 * sc + "c0 " + 30 * sc + " " + -12 * sc + " " + 44 * sc + " " + -18 * sc + " " + 50 * sc + "h" + -68 * sc + "c" + -6 * sc + " " + -6 * sc + " " + -18 * sc + " " + -20 * sc + " " + -18 * sc + " " + -50 * sc + "c0 " + -40 * sc + " " + 34 * sc + " " + -58 * sc + " " + 34 * sc + ' -80z" fill="' + col + '"></path><path d="M' + (cx - 22 * sc) + " " + (by - 70 * sc) + "c" + 8 * sc + " " + -18 * sc + " " + 10 * sc + " " + -30 * sc + " " + 10 * sc + " " + -40 * sc + '" stroke="rgba(255,255,255,0.35)" stroke-width="' + 6 * sc + '" fill="none" stroke-linecap="round"></path>';
+          } else if (kind === "owl") {
+            s += '<path d="M' + (cx - 40 * sc) + " " + by + "c" + -8 * sc + " " + -60 * sc + " " + 0 + " " + -100 * sc + " " + 10 * sc + " " + -116 * sc + "l" + 4 * sc + " " + -18 * sc + "l" + 16 * sc + " " + 14 * sc + "h" + 20 * sc + "l" + 16 * sc + " " + -14 * sc + "l" + 4 * sc + " " + 18 * sc + "c" + 10 * sc + " " + 16 * sc + " " + 18 * sc + " " + 56 * sc + " " + 10 * sc + " " + 116 * sc + 'z" fill="#b88a3e"></path><circle cx="' + (cx - 14 * sc) + '" cy="' + (by - 92 * sc) + '" r="' + 12 * sc + '" fill="#f6e7c8"></circle><circle cx="' + (cx + 14 * sc) + '" cy="' + (by - 92 * sc) + '" r="' + 12 * sc + '" fill="#f6e7c8"></circle><circle cx="' + (cx - 14 * sc) + '" cy="' + (by - 92 * sc) + '" r="' + 5 * sc + '" fill="#2a2018"></circle><circle cx="' + (cx + 14 * sc) + '" cy="' + (by - 92 * sc) + '" r="' + 5 * sc + '" fill="#2a2018"></circle>';
+          } else if (kind === "mug") {
+            s += '<path d="M' + (cx - 44 * sc) + " " + (by - 92 * sc) + "h" + 80 * sc + "l" + -6 * sc + " " + 88 * sc + "c" + -2 * sc + " " + 4 * sc + " " + -4 * sc + " " + 4 * sc + " " + -8 * sc + " " + 4 * sc + "h" + -52 * sc + "c" + -4 * sc + " 0 " + -6 * sc + " 0 " + -8 * sc + " " + -4 * sc + 'z" fill="#9fcfb0"></path><path d="M' + (cx + 34 * sc) + " " + (by - 74 * sc) + "c" + 30 * sc + " 0 " + 30 * sc + " " + 44 * sc + " " + -2 * sc + " " + 44 * sc + '" stroke="#9fcfb0" stroke-width="' + 10 * sc + '" fill="none"></path>';
+          }
+          return s + "</svg>";
+        }
+
+        /* ---------------- build cards ---------------- */
+        var RES = [
+          { k: "lamp", t: "Panther TV lamp", p: "$58", s: "ShopGoodwill" },
+          { k: "panther", t: "Ceramic panther", p: "$48", s: "eBay" },
+          { k: "cat", t: "Black cat vase", p: "$32", s: "Etsy" }
+        ];
+        var DAY = [
+          { k: "rook", t: "Rookwood vase", p: "$120", s: "Etsy" },
+          { k: "panther", t: "Ceramic panther", p: "$64", s: "ShopGoodwill" },
+          { k: "owl", t: "Brass owl", p: "$42", s: "eBay" },
+          { k: "mug", t: "Fire-King mug", p: "$18", s: "eBay" },
+          { k: "lamp", t: "Panther lamp", p: "$58", s: "Facebook" },
+          { k: "hull", t: "Hull planter", p: "$26", s: "Ruby Lane" }
+        ];
+        function cardHtml(d, tag) {
+          return '<div class="img">' + illus(d.k, 286, 180) + "</div>" + (tag ? '<div class="tag"><i></i>NEW</div>' : "") + '<div class="t">' + d.t + '</div><div class="m"><b>' + d.p + "</b>" + d.s + "</div>";
+        }
+        var skelEls = [0, 1, 2].map(function (i) { var el = document.createElement("div"); el.className = "skel"; el.style.left = 40 + i * 307 + "px"; el.style.top = "360px"; el.innerHTML = "<b></b><i></i><i></i>"; $("#results").appendChild(el); return el; });
+        var resEls = RES.map(function (d, i) { var el = document.createElement("div"); el.className = "card"; el.innerHTML = cardHtml(d, false); el.style.left = 40 + i * 307 + "px"; el.style.top = "360px"; $("#results").appendChild(el); return el; });
+        var dayEls = DAY.map(function (d, i) { var el = document.createElement("div"); el.className = "card"; el.innerHTML = cardHtml(d, i < 4); el.style.left = 40 + (i % 3) * 307 + "px"; el.style.top = 806 + Math.floor(i / 3) * 326 + "px"; $("#daily").appendChild(el); return el; });
+        $("#dimg").innerHTML = illus("panther", 380, 584);
+        $("#fimg").innerHTML = illus("planter", 540, 330);
+
+        /* ---------------- copy blocks ---------------- */
+        var BLOCKS = [
+          { id: "hook", top: LAYOUT.copyTop, eyb: "Introducing Prowl", hl: ["28 marketplaces.", "One prowl."], sub: "Vintage sourcing for busy collectors and resellers.", tin: 0.6, tout: 3.6 },
+          { id: "cap", top: LAYOUT.copyTop, eyb: "01 Capture", hl: ["Start a hunt", "in seconds."], sub: "One search runs across every marketplace at once.", tin: 3.9, tout: fs(C.glide[0]) },
+          { id: "con", top: LAYOUT.copyTop, eyb: "02 Connect", hl: ["Look over your", "finds every day."], sub: "Condition flags up front. Save the keepers.", tin: fs(C.glide[0]) + 0.3, tout: fs(C.fold[0]) },
+          { id: "res", top: LAYOUT.copyTop, eyb: "03 Resurface", hl: ["The rare piece", "finds you."], sub: "Prowl emails new matches every morning.", tin: fs(C.fold[0]) + 0.3, tout: fs(C.melt[0]) - 0.45 }
+        ];
+        BLOCKS.forEach(function (b) {
+          var el = document.createElement("div"); el.className = "blk"; el.style.top = b.top + "px";
+          var h = "";
+          if (b.eyb) h += '<div class="ln eyb-ln" style="margin-bottom:22px"><span class="eyb"><i></i>' + b.eyb + "</span></div>";
+          b.hl.forEach(function (l) { h += '<div class="ln"><span class="hl">' + l + "</span></div>"; });
+          h += '<div class="ln" style="margin-top:26px"><span class="sub">' + b.sub + "</span></div>";
+          el.innerHTML = h; $("#copy").appendChild(el);
+          b.spans = Array.prototype.slice.call(el.querySelectorAll(".ln > span"));
+        });
+        // lines rise out of a mask: the old line leaves first, the new one enters after it
+        function roll(spans, tin, tout, t, stagger, dur) {
+          stagger = stagger === undefined ? 0.05 : stagger; dur = dur || 0.55;
+          spans.forEach(function (sp, i) {
+            var a = tin + i * stagger, b = tout + i * stagger;
+            var y = t < b ? 112 * (1 - E.oexp(seg(t, a, a + dur))) : -112 * E.in(seg(t, b, b + 0.28));
+            sp.style.transform = "translate3d(0," + n2(y) + "%,0)";
+            sp.style.visibility = y >= 111.9 || y <= -111.9 ? "hidden" : "visible";
+          });
+        }
+
+        /* ---------------- far scenery + ground specks ---------------- */
+        (function () {
+          var r = rnd(7), s = "", shapes = [
+            "M0 0 h44 l26 70 h-96z M18 70 h8 v120 h-8z M-14 190 h72 v12 h-72z", // lamp
+            "M10 0 h40 c0 30 40 50 40 110 c0 50 -30 70 -60 70 c-30 0 -60 -20 -60 -70 c0 -60 40 -80 40 -110z", // vase
+            "M0 60 h90 v14 h-90z M6 74 h10 v90 h-10z M74 74 h10 v90 h-10z M0 0 h16 v60 h-16z", // chair
+            "M40 0 a40 40 0 1 1 -0.1 0z M36 80 h8 v70 h-8z M10 150 h60 v10 h-60z", // clock
+            "M0 120 c0 -60 20 -100 40 -120 c20 20 40 60 40 120z", // bottle
+            "M0 40 h120 v10 h-120z M10 50 h10 v100 h-10z M100 50 h10 v100 h-10z M20 0 h30 v40 h-30z M70 10 h24 v30 h-24z" // shelf with things
+          ];
+          for (var i = 0; i < 16; i++) {
+            var x = 120 + i * 320 + r() * 140, sc = 1.1 + r() * 1.3, k = Math.floor(r() * shapes.length);
+            var y = 560 - sc * 120 + r() * 60;
+            s += '<path d="' + shapes[k] + '" transform="translate(' + n2(x) + " " + n2(y) + ") scale(" + n2(sc) + ')" fill="' + (r() > 0.5 ? "#e9dfcf" : "#e3d7c4") + '"></path>';
+          }
+          $("#farSvg").innerHTML = s;
+          var r2 = rnd(11), g = "";
+          for (var j = 0; j < 220; j++) {
+            var gx = r2() * 6000, gy = 6 + Math.pow(r2(), 1.6) * 120, rr = 1 + gy * 0.018 + r2() * 1.2;
+            g += '<ellipse cx="' + n2(gx) + '" cy="' + n2(gy) + '" rx="' + n2(rr * 1.8) + '" ry="' + n2(rr * 0.7) + '" fill="rgba(60,48,36,' + n2(0.05 + r2() * 0.06) + ')"></ellipse>';
+          }
+          $("#speckSvg").innerHTML = g;
+        })();
+
+        /* ---------------- hunt line geometry ---------------- */
+        var chipEls = $$(".chip"), chipC = [], huntLen = 0, chipAt = [];
+        function measure() {
+          chipC = chipEls.map(function (c) { return [c.parentNode.offsetLeft + c.offsetLeft + c.offsetWidth / 2, c.parentNode.offsetTop + c.offsetTop + c.offsetHeight / 2]; });
+          // serpentine: row one left to right, round the end, row two right to left
+          var r1 = chipC.slice(0, 4), r2 = chipC.slice(4, 8);
+          var y1 = r1[0][1], y2 = r2[0][1], xs = 22, xe = 958;
+          var d = "M" + xs + " " + y1 + " L" + (r1[3][0] + 60) + " " + y1 + " C" + (xe + 10) + " " + y1 + " " + (xe + 10) + " " + y2 + " " + (r2[3][0] + 70) + " " + y2 + " L" + 22 + " " + y2;
+          $("#huntPath").setAttribute("d", d); $("#huntGlow").setAttribute("d", d);
+          var path = $("#huntPath"); huntLen = path.getTotalLength();
+          // arc length at which the line passes each chip, in lighting order
+          var order = [0, 1, 2, 3, 7, 6, 5, 4];
+          chipAt = order.map(function (ci) {
+            var best = 0, bd = 1e9;
+            for (var L = 0; L <= huntLen; L += 2) { var p = path.getPointAtLength(L), dd = Math.abs(p.x - chipC[ci][0]) + Math.abs(p.y - chipC[ci][1]); if (dd < bd) { bd = dd; best = L; } }
+            return { chip: ci, L: best };
+          });
+          $("#huntPath").style.strokeDasharray = huntLen; $("#huntGlow").style.strokeDasharray = huntLen;
+        }
+        function huntLenAt(t) {
+          var t0 = fs(C.huntLine[0]), t1 = fs(C.huntLine[1]);
+          var keys = [[t0, 0]];
+          chipAt.forEach(function (c, i) { keys.push([fs(C.chips[i]), c.L, "sine"]); });
+          keys.push([t1 + 0.1, huntLen, "out"]);
+          return kf(t, keys);
+        }
+
+        /* ---------------- scene geometry ---------------- */
+        var WIN = LAYOUT.win, TILE0 = LAYOUT.tile0, GROUND = LAYOUT.ground;
+        function groundY(t) { return kf(t, [[1.8, TILE0.cy - TILE0.s / 2 + 0.633 * TILE0.s], [3.0, GROUND, "io"], [16.8, GROUND], [17.9, LAYOUT.endGround, "io"]]); }
+        var END = (function () {
+          // where the panther stops (t = 18.0) decides where the mark forms
+          var t = fs(C.logoLand), k = T.scale(t);
+          var ox = TILE0.cx - travel(t);
+          var size = 107 * k / 0.836;
+          return { ox: ox, k: k, cx: ox, cy: groundY(t) - 0.133 * size, s: size };
+        })();
+
+        /* ---------------- render ---------------- */
+        var el = {
+          far: $("#far"), ring: $("#ring"), specks: $("#specks"), floor: $("#floor"), dark: $("#bgDark"), cam: $("#cam"),
+          shell: $("#shell"), win: $("#win"), front: $("#faceFront"), back: $("#faceBack"), flood: $("#flood"), rim: $("#shellRim"),
+          rows: [$("#rTop"), $("#rSearch"), $("#rChips")], scroller: $("#scroller"), vp: $("#vp"), veil: $("#vpVeil"),
+          q: $("#q"), ph: $("#ph"), caret: $("#caret"), btn: $("#huntBtn"), lbl: $("#huntLbl > span"),
+          hp: $("#huntPath"), hg: $("#huntGlow"), hh: $("#huntHead"),
+          tabBar: $("#tabBar"), tabH: $("#tabH"), tabD: $("#tabD"),
+          detail: $("#detail"), dimg: $("#dimg"), dcol: $("#dcol"), live: $("#live"), f1: $("#flag1"), f2: $("#flag2"),
+          heart: $("#heart"), heartPath: $("#heartPath"), toast: $("#toast"), ripple: $("#ripple"), sparks: $$(".spark"),
+          pTop: $("#pTop"), pMid: $("#pMid"), pBot: $("#pBot"), env: $("#env"), mail: $("#mail"), pill: $("#newPill"), fresh: $("#fresh"),
+          pan: $("#panCanvas"),
+          shBody: $("#shBody"), shFeet: $("#shFeet"),
+          wordmark: $("#wordmark > span"), tagline: $("#tagline > span"), avail: $("#avail > span")
+        };
+        $("#cam").style.transformOrigin = VW / 2 + "px " + VH / 2 + "px";
+        $("#persp").style.perspectiveOrigin = LAYOUT.perspOrigin;
+        $("#pan").setAttribute("width", VW); $("#pan").setAttribute("height", VH); $("#pan").setAttribute("viewBox", "0 0 " + VW + " " + VH);
+        var feetEls = [0, 1, 2, 3].map(function () { var e = document.createElementNS("http://www.w3.org/2000/svg", "ellipse"); e.setAttribute("fill", "rgba(28,24,21,0.22)"); el.shFeet.appendChild(e); return e; });
+
+        function setRect(e, x, y, w, h) { e.style.left = n2(x) + "px"; e.style.top = n2(y) + "px"; e.style.width = n2(w) + "px"; e.style.height = n2(h) + "px"; }
+        function show(e, on) { e.style.visibility = on ? "visible" : "hidden"; }
+
+        function render(t) {
+          var tf = t * F;
+          /* ---- camera drift (never still) ---- */
+          var endMove = E.ioexp(seg(t, fs(C.logoLand), fs(C.logoLand) + 0.8));
+          var dx = 7 * Math.sin(t * 0.31 + 0.6) + 4 * Math.sin(t * 0.73), dy = 5 * Math.cos(t * 0.27) + 2.5 * Math.sin(t * 0.61 + 1);
+          var rot = 0.22 * Math.sin(t * 0.21 + 0.4), zoom = 1.0 + 0.012 * Math.sin(t * 0.17) + 0.008 * t / 20 + 0.05 * (1 - E.out(seg(t, 0, 2.2)));
+          // the last move: centre the mark and grow it
+          var finalS = 1.04, tx = (LAYOUT.end[0] - END.cx) * endMove, ty = (LAYOUT.end[1] - END.cy) * endMove, s = lerp(1, finalS, endMove);
+          // scale about the mark centre: translate so the mark lands at LAYOUT.end
+          var camT = "translate(" + n2(dx + tx) + "px," + n2(dy + ty) + "px) rotate(" + n2(rot) + "deg) ";
+          var ox = END.cx - VW / 2, oy = END.cy - VH / 2;
+          camT += "translate(" + n2(ox) + "px," + n2(oy) + "px) scale(" + n2(zoom * s * 1000) / 1000 + ") translate(" + n2(-ox) + "px," + n2(-oy) + "px)";
+          el.cam.style.transform = camT;
+
+          /* ---- panther locomotion ---- */
+          var k = T.scale(t), dist = T.distUnits(t), c = dist / W.cycleUnits;
+          var ox0 = TILE0.cx - travel(t);
+          var gy = groundY(t);
+          var bgScroll = T.distPx(t) - travel(t);
+          var w = E.sm(seg(t, 0.6, 1.05)) * (1 - E.sm(seg(t, 17.45, 18.0)));
+          // tail: hangs a little lower and sways while walking, then curls up into the mark's loop on the landing
+          var tail = w * (0.16 + 0.07 * Math.sin(Math.PI * c + 0.6));
+          if (t < 0.6) tail = 0.05 * Math.sin(t * 5.2) * Math.sin(Math.PI * t / 0.6);
+          if (t > 17.3) tail = kf(t, [[17.3, tail], [fs(C.logoLand) - 0.12, 0.2, "io"], [fs(C.logoLand), -0.07, "out"], [fs(C.logoLand) + 0.35, 0, "io"]]);
+          if (t > fs(C.logoLand) + 0.35) tail = 0.025 * Math.sin((t - 18.35) * 2.4);
+          var head = 0.025 * Math.sin(4 * Math.PI * c) * w + (t < 0.6 ? -0.03 * Math.sin(t * 3.0) : 0);
+          var P = rig({ c: c, w: w, tail: tail, head: head });
+          // breathing in the mark at the start
+          var breath = 1 + 0.028 * Math.sin(t * Math.PI / 0.6) * (1 - E.sm(seg(t, 0.9, 1.5)));
+          var bx = TILE0.cx + (ox0 - TILE0.cx) * breath, byy = TILE0.cy + (gy - TILE0.cy) * breath;
+          el.pan.style.transform = "translate(" + n2(bx - PV.cw / 2) + "px," + n2(byy - PV.base) + "px)";
+          var panK = k * breath;
+          // contact shadows
+          var shA = 1 - 0.5 * E.sm(seg(t, 0, 0.1));
+          el.shBody.setAttribute("cx", n2(ox0 - 4 * k)); el.shBody.setAttribute("cy", n2(gy + 2)); el.shBody.setAttribute("rx", n2(44 * k)); el.shBody.setAttribute("ry", n2(3.2 * k));
+          ["lf", "rf", "lh", "rh"].forEach(function (lg, i) {
+            var f = P.feet[lg], e = feetEls[i];
+            e.setAttribute("cx", n2(ox0 + f.x * k)); e.setAttribute("cy", n2(gy + 0.6)); e.setAttribute("rx", n2(5.5 * k * (1 - f.sw * 0.4))); e.setAttribute("ry", n2(1.3 * k));
+            e.setAttribute("opacity", n2(1 - f.sw * 0.85));
+          });
+
+          /* ---- background layers ---- */
+          el.far.style.transform = "translate3d(" + n2(-260 + bgScroll * 0.32 + dx * -0.4) + "px," + n2(LAYOUT.farY + (gy - GROUND) * 0.45 + dy * -0.3) + "px,0)";
+          el.specks.style.transform = "translate3d(" + n2(-3200 + bgScroll * 1.0) + "px," + n2(gy) + "px,0)";
+          el.floor.style.top = n2(gy - 30) + "px";
+
+          /* ---- the shell: mark -> (flip) window -> (ink melt) mark ---- */
+          var u0 = fs(C.unfold[0]), u1 = fs(C.unfold[1]), m0 = fs(C.melt[0]), m1 = fs(C.melt[1]);
+          var uf = E.ioexp(seg(t, u0, u1 - 0.05));
+          var flipU = E.io(seg(t, u0 + 0.02, u1 - 0.12));
+          var mf = E.ioexp(seg(t, m0, m1));
+          var tile = { cx: TILE0.cx, cy: TILE0.cy, s: TILE0.s * breath };
+          var A, ry, rx, rad, flood = 0;
+          var conTurn = E.io(seg(t, fs(C.glide[0]), fs(C.glide[0]) + 1.2)) * (1 - E.io(seg(t, m0 - 0.6, m0)));
+          var effY = LAYOUT.tilt + 2.2 * Math.sin(t * 0.37) - 6 * conTurn, effX = 4 + 1.6 * Math.sin(t * 0.29 + 1);
+          if (t < m0) {
+            A = { cx: lerp(tile.cx, WIN.cx, uf), cy: lerp(tile.cy, WIN.cy, uf), w: lerp(tile.s, WIN.w, uf), h: lerp(tile.s, WIN.h, uf) };
+            ry = lerp(0, effY - 180, flipU); rx = effX * flipU;
+            rad = lerp(tile.s * 0.22, 30, uf);
+          } else {
+            A = { cx: lerp(WIN.cx, END.cx, mf), cy: lerp(WIN.cy, END.cy, mf), w: lerp(WIN.w, END.s, mf), h: lerp(WIN.h, END.s, mf) };
+            ry = lerp(effY - 180, -180, mf); rx = lerp(effX, 0, mf);
+            rad = lerp(30, END.s * 0.22, mf);
+            flood = E.sine(seg(t, m0 - 0.06, m1 - 0.2));
+          }
+          setRect(el.shell, A.cx - A.w / 2, A.cy - A.h / 2, A.w, A.h);
+          el.shell.style.borderRadius = n2(rad) + "px";
+          el.shell.style.transform = "rotateY(" + n2(ry) + "deg) rotateX(" + n2(rx) + "deg)";
+          var wsc = Math.min(A.w / WIN.w, A.h / WIN.h);
+          // melting: the content sags a little as the ink rises
+          el.win.style.transform = "translateY(" + n2(40 * flood * wsc) + "px) scale(" + n2(wsc * 1000) / 1000 + "," + n2(wsc * (1 - 0.12 * flood) * 1000) / 1000 + ")";
+          // window rows unfold one after another once the back face is showing
+          var rowT = [2.3, 2.42, 2.54];
+          el.rows.forEach(function (r, i) {
+            var u = E.out(seg(t, rowT[i], rowT[i] + 0.55));
+            r.style.transform = "perspective(900px) rotateX(" + n2(-88 * (1 - u)) + "deg)";
+          });
+          // ink rises from the bottom with a soft wave
+          if (flood > 0) {
+            var pts = ["0% 100%", "100% 100%"], lvl = (1 - flood) * (A.h + 60) - 30, amp = 36 * Math.sin(Math.PI * flood) + 6;
+            for (var q = 24; q >= 0; q--) pts.push(n2(q / 24 * 100) + "% " + n2(lvl + amp * Math.sin(q / 24 * Math.PI * 3.4 + t * 9) + 0.45 * amp * Math.sin(q / 24 * Math.PI * 7.3 - t * 6)) + "px");
+            el.flood.style.clipPath = "polygon(" + pts.join(",") + ")";
+            show(el.flood, true);
+          } else show(el.flood, false);
+          // end: the mark turns into the uranium mark
+          var wash = E.sm(seg(t, fs(C.wash[0]), fs(C.wash[1])));
+          el.flood.style.background = mix("#1c1815", "#070b20", wash);
+          el.rim.style.opacity = n2(wash * (0.85 + 0.15 * Math.sin(Math.max(0, t - 18) * 3)));
+          el.back.style.boxShadow = wash > 0 ? "0 0 " + n2(70 * wash) + "px " + n2(12 * wash) + "px rgba(57,255,20," + n2(0.32 * wash) + ")" : "";
+
+          // panther: the artwork itself, turning uranium as the night washes in
+          var endM = E.sm(seg(t, fs(C.wash[0]) + 0.1, fs(C.logoLand)));
+          GLP.draw(P.mesh, panK, endM);
+          el.pan.style.filter = endM > 0 ? "drop-shadow(0 0 " + n2(12 * endM) + "px rgba(57,255,20," + n2(0.55 * endM) + "))" : "";
+          $("#shadows").style.opacity = n2(E.sm(seg(t, 1.0, 1.9)) * (1 - E.sm(seg(t, 17.2, 17.7))));
+
+          /* ---- dark wash ---- */
+          if (t > fs(C.wash[0]) - 0.02) {
+            show(el.dark, true);
+            // centre of the wash follows the mark through the final camera move
+            var mcx = lerp(END.cx, LAYOUT.end[0], endMove), mcy = lerp(END.cy, LAYOUT.end[1], endMove);
+            var R = 2300 * E.iexp(seg(t, fs(C.wash[0]), fs(C.wash[1]) + 0.1)) + 140 * E.out(seg(t, fs(C.wash[0]), fs(C.wash[0]) + 0.3));
+            var m = "radial-gradient(circle at " + n2(mcx) + "px " + n2(mcy) + "px, #000 " + n2(R) + "px, rgba(0,0,0,0) " + n2(R + 50) + "px)";
+            var ringA = 1 - E.sm(seg(t, fs(C.wash[1]) - 0.1, fs(C.wash[1]) + 0.25));
+            el.ring.style.background = "radial-gradient(circle at " + n2(mcx) + "px " + n2(mcy) + "px, rgba(57,255,20,0) " + n2(R - 60) + "px, rgba(57,255,20," + n2(0.55 * ringA) + ") " + n2(R + 18) + "px, rgba(138,255,184," + n2(0.25 * ringA) + ") " + n2(R + 40) + "px, rgba(57,255,20,0) " + n2(R + 140) + "px)";
+            show(el.ring, ringA > 0.01);
+            el.dark.style.webkitMaskImage = m; el.dark.style.maskImage = m;
+            el.dark.style.setProperty("--gx", n2(mcx / VW * 100) + "%"); el.dark.style.setProperty("--gy", n2(mcy / VH * 100) + "%");
+          } else { show(el.dark, false); show(el.ring, false); }
+
+          /* ---- copy ---- */
+          BLOCKS.forEach(function (b) { roll(b.spans, b.tin, b.tout, t); });
+          roll([el.wordmark], fs(C.wordmark), 99, t, 0, 0.6);
+          roll([el.tagline, el.avail], fs(C.tagline) - 0.32, 99, t, 0, 0.6);
+          var glow = 0.55 + 0.25 * Math.sin(Math.max(0, t - 18.4) * 2.6);
+          el.wordmark.style.textShadow = "0 0 " + n2(30 + 12 * glow) + "px rgba(57,255,20," + n2(glow) + ")";
+
+          /* ---- capture: typing, hunt, results ---- */
+          var nk = 0; for (var i = 0; i < C.keys.length; i++) if (tf >= C.keys[i]) nk = i + 1;
+          el.q.textContent = T.query.slice(0, nk);
+          show(el.ph, nk === 0);
+          var typing = tf >= C.keys[0] - 30 && tf < C.huntPress;
+          el.caret.style.opacity = typing ? (nk < C.keys.length ? 1 : (Math.floor((tf - C.keys[0]) / 18) % 2 ? 0.15 : 1)) : 0;
+          var pr = seg(tf, C.huntPress - 2, C.huntPress + 10);
+          el.btn.style.transform = "scale(" + n2(1 - 0.08 * Math.sin(Math.PI * pr)) + ")";
+          el.btn.style.background = pr > 0 && pr < 1 ? "#2b231e" : "";
+          var hl = huntLenAt(t);
+          el.hp.style.strokeDashoffset = n2(huntLen - hl); el.hg.style.strokeDashoffset = n2(huntLen - hl);
+          var hpPt = el.hp.getPointAtLength(Math.max(0.1, hl));
+          el.hh.setAttribute("cx", n2(hpPt.x)); el.hh.setAttribute("cy", n2(hpPt.y));
+          el.hh.setAttribute("opacity", hl > 0.5 && hl < huntLen - 1 ? 1 : 0);
+          var lblIn = E.oexp(seg(tf, C.huntPress, C.huntPress + 40));
+          el.lbl.style.transform = "translate3d(0," + n2(110 * (1 - lblIn)) + "%,0)";
+          chipAt.forEach(function (ca, i) {
+            var on = seg(tf, C.chips[i], C.chips[i] + 8), ch = chipEls[ca.chip];
+            ch.style.background = mix("#fbf7f0", "#1c1815", on); ch.style.color = mix("#1c1815", "#faf6ee", on);
+            ch.style.borderColor = mix("#d9cdbb", "#1c1815", on);
+            var pop = Math.sin(Math.PI * seg(tf, C.chips[i], C.chips[i] + 14));
+            ch.style.transform = "translateY(" + n2(-5 * pop) + "px) scale(" + n2(1 + 0.05 * pop) + ")";
+            var dot = ch.querySelector("i"); dot.style.width = n2(12 * on) + "px"; dot.style.marginRight = n2(10 * on) + "px";
+          });
+          skelEls.forEach(function (sk, i) {
+            var land = fs(C.cards[i]);
+            var sh = 0.5 + 0.5 * Math.sin(t * 5 - i * 0.9);
+            sk.style.background = t > fs(C.huntPress) ? mix("#fbf8f2", "#f3ebde", sh) : "#fbf8f2";
+            show(sk, t < land + 0.02);
+          });
+          // result cards pour out of the chips
+          resEls.forEach(function (e, i) {
+            var land = fs(C.cards[i]), u = seg(t, land - 0.42, land);
+            var src = chipC[[3, 1, 6][i]] || [490, 200];
+            var fx = src[0] - (40 + i * 307 + 143), fyy = src[1] - (360 + 152);
+            var e1 = E.io(u), arc = -60 * Math.sin(Math.PI * u);
+            var settle = t > land ? Math.sin(Math.min(1, (t - land) / 0.3) * Math.PI) * Math.exp(-(t - land) * 6) : 0;
+            var sc = lerp(0.18, 1, E.out(u)) - 0.03 * settle;
+            e.style.transform = "translate3d(" + n2(fx * (1 - e1)) + "px," + n2(fyy * (1 - e1) + arc + 4 * settle) + "px,0) scale(" + n2(sc) + ") rotate(" + n2(lerp([-8, 5, 9][i], 0, E.out(u))) + "deg)";
+            show(e, t > land - 0.42);
+          });
+
+          /* ---- connect: glide down the day's finds ---- */
+          var gl = E.io(seg(t, fs(C.glide[0]), fs(C.glide[1]) - 0.2));
+          var scrollY = -700 * gl - 18 * seg(t, fs(C.glide[1]), fs(C.melt[0]));
+          el.scroller.style.transform = "translate3d(0," + n2(scrollY) + "px,0)";
+          var tabU = E.io(seg(t, fs(C.glide[0]), fs(C.glide[0]) + 0.5));
+          var hx = el.tabH.offsetLeft, hw = el.tabH.offsetWidth, dxx = el.tabD.offsetLeft, dw = el.tabD.offsetWidth;
+          el.tabBar.style.left = n2(lerp(hx, dxx, tabU)) + "px"; el.tabBar.style.width = n2(lerp(hw, dw, tabU)) + "px";
+          el.tabH.style.color = mix("#1c1815", "#786e65", tabU); el.tabD.style.color = mix("#786e65", "#1c1815", tabU);
+
+          // the card opens
+          var o0 = fs(C.open[0]), o1 = fs(C.open[1]);
+          var op = E.ioexp(seg(t, o0, o1));
+          var foldStart = fs(C.fold[0]);
+          var detailOn = t >= o0 && t < fs(C.fold[0]) + 0.45 * (fs(C.fold[1]) - fs(C.fold[0])) + 0.04;
+          show(el.detail, detailOn);
+          show(dayEls[1], t < o0 + 0.02);
+          var src = { x: 40 + 307, y: 80 + 806 + scrollY, w: 286, h: 304 };
+          if (detailOn) {
+            // clip from the small card's rect to the full detail
+            var cx0 = src.x - 30, cy0 = src.y - 96;
+            var ins = [lerp(cy0, 0, op), lerp(920 - (cx0 + src.w), 0, op), lerp(640 - (cy0 + src.h), 0, op), lerp(cx0, 0, op)];
+            var fo = E.io(seg(t, foldStart, foldStart + 0.28));
+            el.detail.style.clipPath = "inset(" + ins.map(n2).join("px ") + "px round " + n2(lerp(22, 26, op)) + "px)";
+            var lift = Math.sin(Math.PI * seg(t, o0, o1 + 0.2)) * 30;
+            el.detail.style.transform = "translateZ(" + n2(lift + 10 * op) + "px) scaleY(" + n2(1 - 0.0 * fo) + ")";
+            // image rect morph
+            var ir = { x: lerp(cx0, 28, op), y: lerp(cy0, 28, op), w: lerp(286, 380, op), h: lerp(180, 584, op) };
+            setRect(el.dimg, ir.x, ir.y, ir.w, ir.h);
+            var dc = E.out(seg(op, 0.45, 1));
+            el.dcol.style.transform = "translate3d(" + n2(70 * (1 - dc)) + "px,0,0)";
+            el.dcol.style.opacity = n2(dc);
+            el.detail.style.opacity = n2(1 - E.in(seg(t, foldStart + 0.3 * (fs(C.fold[1]) - foldStart), foldStart + 0.46 * (fs(C.fold[1]) - foldStart))));
+          }
+          var dofU = op * (1 - E.io(seg(t, fs(C.melt[0]) - 0.3, fs(C.melt[0]) + 0.1)));
+          el.vp.style.filter = dofU > 0.01 ? "blur(" + n2(4.5 * dofU) + "px)" : "";
+          el.veil.style.opacity = n2(0.45 * dofU);
+          // live badge, flags, heart
+          function pop(e, f0, amt) {
+            var u = seg(tf, f0, f0 + 16), on = tf >= f0;
+            e.style.transform = "scale(" + n2(on ? E.back(u) : 0.001) + ")";
+            e.style.transformOrigin = "0 50%";
+          }
+          pop(el.live, C.live); pop(el.f1, C.flags[0]); pop(el.f2, C.flags[1]);
+          el.live.querySelector("i").style.opacity = n2(0.55 + 0.45 * Math.sin(t * 6));
+          var hu = seg(tf, C.heart, C.heart + 20);
+          var hs = tf < C.heart - 6 ? 1 : tf < C.heart ? 1 - 0.12 * seg(tf, C.heart - 6, C.heart) : 0.88 + 0.5 * Math.sin(Math.PI * Math.min(1, hu * 1.2)) * (1 - hu) + 0.12 * E.out(hu);
+          el.heart.style.transform = "scale(" + n2(hs) + ")";
+          var filled = tf >= C.heart;
+          el.heartPath.setAttribute("fill", filled ? "#1c1815" : "none");
+          el.heart.style.boxShadow = filled ? "0 0 " + n2(26 * (1 - hu * 0.6)) + "px rgba(57,255,20," + n2(0.75 * (1 - hu * 0.5)) + ")" : "none";
+          var rp = seg(tf, C.heart, C.heart + 26);
+          el.ripple.style.transform = "scale(" + n2(1 + 1.3 * E.out(rp)) + ")"; el.ripple.style.opacity = n2(rp > 0 && rp < 1 ? 1 - rp : 0);
+          el.sparks.forEach(function (sp, i) {
+            var a = (i / el.sparks.length) * Math.PI * 2 - Math.PI / 2, u = E.out(seg(tf, C.heart, C.heart + 30));
+            sp.style.transform = "translate(" + n2(Math.cos(a) * 80 * u) + "px," + n2(Math.sin(a) * 80 * u) + "px) scale(" + n2(1 - u) + ")";
+            sp.style.opacity = n2(u > 0 && u < 1 ? 1 : 0);
+          });
+          var tu = E.oexp(seg(tf, C.toast, C.toast + 30));
+          el.toast.style.transform = "translate3d(" + n2(-30 * (1 - tu)) + "px,0,0) scale(" + n2(lerp(0.6, 1, tu)) + ")"; el.toast.style.transformOrigin = "0 50%";
+          el.toast.style.opacity = n2(tu > 0 ? 1 : 0);
+
+          /* ---- resurface: fold -> envelope -> email -> fresh find ---- */
+          // paper: detail squeezes into a letter, the letter folds in thirds
+          var PW = 480, PH = 720, pcx = 490, pcy = 392;
+          var FD = fs(C.fold[1]) - foldStart;
+          var paperOn = t >= foldStart + 0.42 * FD && t < fs(C.fold[1]) + 0.02;
+          [el.pTop, el.pMid, el.pBot].forEach(function (p) { show(p, paperOn); });
+          if (detailOn && t > foldStart) {
+            var sq = E.io(seg(t, foldStart, foldStart + 0.45 * FD));
+            // the detail's own clip narrows to the letter
+            var lx = pcx - PW / 2 - 30, ly = pcy - PH / 2 - 96;
+            var ins2 = [lerp(0, ly, sq), lerp(0, 920 - (lx + PW), sq), lerp(0, 640 - (ly + PH), sq), lerp(0, lx, sq)];
+            el.detail.style.clipPath = "inset(" + ins2.map(n2).join("px ") + "px round " + n2(lerp(26, 6, sq)) + "px)";
+            el.dimg.style.transform = "scale(" + n2(1 - 0.3 * sq) + ")"; el.dcol.style.transform = "translate3d(" + n2(-200 * sq) + "px,0,0)";
+          } else { el.dimg.style.transform = ""; }
+          if (paperOn) {
+            var f1 = E.io(seg(t, foldStart + 0.45 * FD, foldStart + 0.78 * FD)), f2 = E.io(seg(t, foldStart + 0.62 * FD, fs(C.fold[1])));
+            var h3 = PH / 3;
+            setRect(el.pMid, pcx - PW / 2, pcy - h3 / 2, PW, h3);
+            setRect(el.pTop, pcx - PW / 2, pcy - h3 / 2 - h3, PW, h3); el.pTop.style.transformOrigin = "50% 100%";
+            setRect(el.pBot, pcx - PW / 2, pcy + h3 / 2, PW, h3); el.pBot.style.transformOrigin = "50% 0%";
+            el.pTop.style.transform = "rotateX(" + n2(-178 * f1) + "deg)"; el.pBot.style.transform = "rotateX(" + n2(178 * f2) + "deg)";
+            el.pTop.style.backgroundColor = mix("#fffdf9", "#efe4d2", Math.sin(Math.PI * f1) * 0.8);
+            el.pBot.style.backgroundColor = mix("#fffdf9", "#efe4d2", Math.sin(Math.PI * f2) * 0.8);
+            el.pTop.style.backfaceVisibility = "visible"; el.pBot.style.backfaceVisibility = "visible";
+          }
+          // envelope flight: arcs out and lands where the email sits
+          var fl0 = fs(C.fly[0]), fl1 = fs(C.fly[1]);
+          var envOn = t >= fs(C.fold[1]) && t < fl1 + 0.12;
+          show(el.env, envOn);
+          var MAIL = { x: 100, y: 230, w: 780, h: 300 };
+          if (envOn) {
+            var fu = E.io(seg(t, fl0, fl1));
+            var ex = lerp(pcx, MAIL.x + MAIL.w / 2, fu) + 330 * Math.sin(Math.PI * fu), ey = lerp(pcy, MAIL.y + MAIL.h / 2, fu) - 260 * Math.sin(Math.PI * fu);
+            var es = 1 + 0.25 * Math.sin(Math.PI * fu);
+            var flip = E.io(seg(t, fl1 - 0.1, fl1 + 0.12));
+            var ew = lerp(PW, MAIL.w, flip), eh = lerp(240, MAIL.h, flip);
+            setRect(el.env, ex - ew / 2, ey - eh / 2, ew, eh);
+            el.env.style.transform = "translateZ(" + n2(140 * Math.sin(Math.PI * fu)) + "px) rotate(" + n2(-10 * Math.sin(Math.PI * fu * 1.2)) + "deg) scale(" + n2(es) + ") rotateY(" + n2(180 * flip) + "deg)";
+            show(el.env, flip < 0.5 && envOn);
+          }
+          // the email (back face of the flip), then it unfolds into a fresh find
+          var mOn = t >= fl1 - 0.0 && t < fs(C.unfoldMail[0]) + 0.31;
+          show(el.mail, mOn);
+          var un = E.io(seg(t, fs(C.unfoldMail[0]), fs(C.unfoldMail[1])));
+          var FR = { x: 220, y: 90, w: 540, h: 600 };
+          if (mOn) {
+            var fl2 = E.io(seg(t, fl1 - 0.1, fl1 + 0.12));
+            var mw = lerp(PW, MAIL.w, fl2), mh = lerp(240, MAIL.h, fl2);
+            var sc2 = Math.min(mw / MAIL.w, mh / MAIL.h);
+            el.mail.style.left = MAIL.x + "px"; el.mail.style.top = MAIL.y + "px";
+            var rx2 = 180 * un;
+            el.mail.style.transform = "rotateY(" + n2(180 * fl2 - 180) + "deg) scale(" + n2(sc2) + ") rotateX(" + n2(rx2) + "deg) translateZ(" + n2(20) + "px)";
+            show(el.mail, mOn && rx2 < 90 && fl2 > 0.5);
+          }
+          var pillU = seg(tf, C.newPill, C.newPill + 16);
+          el.pill.style.transform = "scale(" + n2(tf >= C.newPill ? E.back(pillU) : 0.001) + ")"; el.pill.style.transformOrigin = "0 50%";
+          var frOn = t >= fs(C.unfoldMail[0]) + 0.3 && t < fs(C.melt[1]) + 0.05;
+          show(el.fresh, frOn);
+          if (frOn) {
+            var gx = lerp(MAIL.x, FR.x, un), gyy = lerp(MAIL.y, FR.y, un), gw = lerp(MAIL.w, FR.w, un), gh = lerp(MAIL.h, FR.h, un);
+            var fsx = gw / FR.w, fsy = gh / FR.h;
+            el.fresh.style.left = FR.x + "px"; el.fresh.style.top = FR.y + "px";
+            el.fresh.style.transformOrigin = "0 0";
+            var settleF = t > fs(C.unfoldMail[1]) ? Math.sin(Math.min(1, (t - fs(C.unfoldMail[1])) / 0.3) * Math.PI) * Math.exp(-(t - fs(C.unfoldMail[1])) * 6) : 0;
+            el.fresh.style.transform = "translate(" + n2(gx - FR.x) + "px," + n2(gyy - FR.y + 6 * settleF) + "px) rotateX(" + n2(180 * un - 180) + "deg) scale(" + n2(fsx) + "," + n2(fsy) + ")";
+            show(el.fresh, frOn && 180 * un - 180 > -90);
+          }
+        }
+
+        /* ---------------- clock: one tween whose setter renders the frame ---------------- */
+        var clock = { _t: 0, t: function (v) { if (v === undefined) return this._t; this._t = v; render(v); } };
+        var tl = gsap.timeline({ paused: true });
+        tl.to(clock, { t: 20, duration: 20, ease: "none" }, 0);
+        function boot() { GLP.load().then(function () { measure(); render(0); window.__timelines["main"] = tl; }); }
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(boot); else boot();
+        window.__prowlRender = render;
+      })();
+    </script>
+  </body>
+</html>
