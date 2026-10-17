@@ -1,16 +1,48 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.09 / v118).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.10 / v119).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.09** | 107,754 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
-| Worker | **v118** | |
+| Page | **v7.10** | 105,206 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Worker | **v119** | |
 
 Recently shipped, newest first:
 
+- **v7.10: Back keeps your place** (Matt, 2026-10-17: in Daily, a card's popup closed with Android's Back and the
+  screen jumped to the top, while its X left it where it was). Back steps onto the history entry Prowl pushed when the
+  first layer opened (v6.55), and the browser restored the scroll it had saved with that entry: the top of Daily.
+  While Prowl's own entries are in use `history.scrollRestoration` is `manual`; once every layer is closed it is
+  `auto` again (`ovScroll`). Reproduced in Chromium on v7.09 (2246 px → 0) and fixed (stays at 2246). Test:
+  `__tests__/page/back-button.test.mjs`.
+  Also: **a shared find links to Prowl** (Matt: "we say found with prowl but no link"). The sign-off reads "Found with
+  Prowl, a vintage search tool from Owl & Twig Vintage: owlandtwigvintage.com/prowl" (`SHARE_HOME`). That address is a
+  **Shopify URL redirect Matt adds** (Online Store › Navigation › URL redirects: `/prowl` → `/pages/prowl`); it must
+  exist before this merges. Not bit.ly: a shortener reads as spam, and its free plan allows a few links a month.
+  Also: **Get the app comes first in How Prowl works** (Matt: "When people first come to it I want them to get to the
+  app version but they don't see it until the end"). How Prowl works opens by itself on a first visit; it now starts
+  with the Get the Prowl app card (`.otp-getapp[data-mode=help]`: Get the app and Open it now, or Install on the app
+  page; hidden in the installed app), and its old step 5 is gone (six steps now). The home page's own app card is often
+  hidden for new visitors, since one promo shows at a time and they get the alerts one. A tap on the card closes the
+  help. The help's Near me and Daily lines now say what v7.09 made them do. Test: `__tests__/page/help-app-v710.test.mjs`.
+  Also, **worker v119 + the listing popup** (Matt, on an Etsy astronaut figurine at 20% off that showed full price and
+  said "One arm has a repair."):
+  - **Sales:** eBay's `marketingPrice` rides along as `was`/`off` on search results and `/item` (`ebaySale`; not for
+    auctions, only when the old price is higher). The popup and result cards show "$358.40 ~~$448.00~~ 20% off";
+    Pounce keeps it with a match ("on sale, was $X" on the Den card and in the phone note). **Etsy sales cannot be
+    seen:** Etsy's Open API gives the list price only, so an Etsy listing on sale still shows its full price.
+  - **Repair and damage flags:** a sentence in the title, condition or description that mentions a repair
+    (repaired, restored, glued, touch-up, repainted) or damage (chip, crack, hairline, crazing, broken, missing, as is)
+    shows above the fold as "⚠ Mentions a repair" with the seller's words (`popFlags`); a sentence with no/not/without
+    ("No chips, cracks or repairs") is not a flag. Fair price is told the flag and the sale first (its details are cut
+    at 600 characters).
+  - **What it sold for on eBay ↗** in the popup: eBay's sold listings for the cleaned title, in a new tab (`popSold`).
+  - The star reads its card if Prowl's 400-listing memory (`SVI`) has dropped the listing, and says so when a save
+    cannot be made, instead of doing nothing. Matt's "In flock the star doesn't work" was **not reproduced** (it saved
+    in jsdom and in Chromium with a real tap); this only closes a silent failure.
+  Tests: `__tests__/page/popup-flags-v710.test.mjs`, `worker/__tests__/ebay-sale.test.mjs`.
 - **v7.09: Daily announces itself (Matt, 2026-10-17: "it reads as I tapped DAILY and nothing changed").** Daily is
   its own screen now: the date, **Your daily prowl**, "N hunts · X new since yesterday" and the hunt names; then
   **What's new** at the top, grouped per hunt (up to 6 cards each); then the email card and one block per hunt with
@@ -260,7 +292,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.10, worker v119**. Claim one here when you start.
+Next free numbers: **page v7.11, worker v120**. Claim one here when you start.
 
 ## What's next
 

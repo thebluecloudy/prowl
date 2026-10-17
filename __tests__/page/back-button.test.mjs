@@ -13,7 +13,9 @@ function setup() {
     if (u.pathname === '/item') return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(ITEM) });
     return base.impl(url, o);
   };
-  return loadPage({ fetchImpl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'], 'prowl.finds': finds, 'prowl.v36': { seen: true, hunts: [] } } });
+  /* jsdom has no history.scrollRestoration; give it the browser's, starting at the default */
+  const beforeLoad = (win) => { let v = 'auto'; Object.defineProperty(win.history, 'scrollRestoration', { get: () => v, set: (x) => { v = x; }, configurable: true }); };
+  return loadPage({ fetchImpl, beforeLoad, storage: { owlTwigSgwTerms: ['panther', 'pyrex'], 'prowl.finds': finds, 'prowl.v36': { seen: true, hunts: [] } } });
 }
 const sheetOn = (p) => p.$('#otp-sheet').classList.contains('on');
 const flockOn = (p) => p.$('#otp-flock').classList.contains('as-feed');
@@ -66,5 +68,32 @@ test('nothing open: no extra entry', async () => {
   const n = p.win.history.length;
   await tick(150);
   assert.equal(p.win.history.length, n);
+  await p.close();
+});
+
+// v7.10 (Matt: in Daily, Back from a card's popup sent the screen to the top; its X did not): while Prowl's own
+// history entries are in use the browser must not restore the scroll it saved with them.
+test('Back keeps the scroll: no browser scroll restoration while Prowl has layers open, and it comes back after', async () => {
+  const p = setup();
+  await tick(60);
+  assert.notEqual(p.win.history.scrollRestoration, 'manual', 'nothing open: the browser restores as usual');
+  await openPopupInFlock(p);
+  assert.equal(p.win.history.scrollRestoration, 'manual', 'a layer is open');
+  await back(p);
+  assert.ok(!sheetOn(p) && flockOn(p));
+  assert.equal(p.win.history.scrollRestoration, 'manual', 'still a layer open under it');
+  await back(p);
+  await tick(30);
+  assert.ok(!flockOn(p));
+  assert.equal(p.win.history.scrollRestoration, 'auto', 'all closed: back to the browser default');
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test('closing the last layer with its own button also hands scroll restoration back', async () => {
+  const p = setup();
+  await openPopupInFlock(p);
+  p.$('#otp-dock .db[data-m="prowl"]').click();   /* closes the popup and Flock without Back */
+  await waitFor(() => p.win.history.scrollRestoration === 'auto', { timeout: 3000 });
   await p.close();
 });
