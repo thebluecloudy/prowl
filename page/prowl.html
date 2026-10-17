@@ -574,7 +574,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .mo{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--scrim);opacity:0;pointer-events:none;transition:.22s}
 .scout-app-wrapper .mo.on{opacity:1;pointer-events:auto}
 .scout-app-wrapper .md{background:var(--modal-bg);border-radius:20px;width:100%;max-width:540px;max-height:88vh;max-height:calc(88vh / var(--tz,1));overflow:auto;padding:28px;box-shadow:0 30px 70px -28px var(--shadow-lg);transform:translateY(14px);transition:.28s;border:1px solid var(--ln)}
-.scout-app-wrapper .hfilm{position:relative;margin:14px 0 6px;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:#040414}   /* v7.11: the launch film */
+.scout-app-wrapper .hfilm{position:relative;margin:14px 0 6px;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:#040414}   /* v7.14: the launch film */
 .scout-app-wrapper .hfilm video{display:block;width:100%;height:100%;background:#040414}
 .scout-app-wrapper .hfilm-go{all:unset;box-sizing:border-box;cursor:pointer;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:14px;padding:16px;color:#8affb8;font:inherit;background:radial-gradient(70% 90% at 50% 45%,rgba(57,255,20,.22),rgba(57,255,20,0) 70%),linear-gradient(#0a0e2e,#040414)}
 .scout-app-wrapper .hfilm-go i{flex:none;position:relative;width:52px;height:52px;border-radius:50%;border:2px solid #39ff14;box-shadow:0 0 18px rgba(57,255,20,.55)}
@@ -970,7 +970,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .shl{text-align:right}
 .scout-app-wrapper .whyp p b{font-weight:800!important}
 @media(max-width:380px){.scout-app-wrapper #otp-dock .db>span{font-size:12.5px!important;letter-spacing:0!important}}
-.scout-app-wrapper .db .bd{position:absolute;top:9px;left:calc(50% + 6px);min-width:17px;height:17px;padding:0 5px;border-radius:99px;background:var(--ac);color:var(--onink);font-size:12.5px;font-weight:800;font-style:normal;display:flex;align-items:center;justify-content:center}
+.scout-app-wrapper .db .bd{position:absolute;top:6px;left:calc(50% + 14px);min-width:17px;height:17px;padding:0 5px;border-radius:99px;background:var(--ac);color:var(--onink);font-size:12.5px;font-weight:800;font-style:normal;display:flex;align-items:center;justify-content:center}
 .scout-app-wrapper .db.on{color:var(--ac)}
 .scout-app-wrapper .db.on>span:first-of-type{color:var(--ink)}
 .scout-app-wrapper .db.on::before{width:36px;height:3px}
@@ -1866,6 +1866,13 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .sh-card small{font-size:13px;color:var(--mu)}
 .scout-app-wrapper .sh-card p{margin:0;font-size:15px;color:var(--ac);font-weight:700}
 .scout-app-wrapper .sh-go{align-self:flex-start;margin-top:4px}
+/* v7.12: the popup's View on <site> stays at the foot of the sheet while the photos and details scroll */
+.scout-app-wrapper .pp-dock{position:-webkit-sticky;position:sticky;bottom:calc(-20px - env(safe-area-inset-bottom));z-index:2;margin:14px -18px 0;padding:10px 18px calc(10px + env(safe-area-inset-bottom));background:var(--bg);box-shadow:0 -8px 12px -10px rgba(0,0,0,.35)}
+[data-theme=uranium] .scout-app-wrapper .pp-dock{background:#0a0a1e}
+.scout-app-wrapper .pp-dock .pp-go{margin-top:0}
+/* v7.12: small controls keep their look but take a tap 44px across */
+.scout-app-wrapper .sgw-chip .sgw-x,.scout-app-wrapper .lk-chip button,.scout-app-wrapper .sgw-cbar .sgw-sv,.scout-app-wrapper .sgw-cbar .sgw-lk,.scout-app-wrapper .sgw-cbar .sgw-fp,.scout-app-wrapper .fl-seg button,.scout-app-wrapper #otp-toast .gh{position:relative}
+.scout-app-wrapper .sgw-chip .sgw-x::after,.scout-app-wrapper .lk-chip button::after,.scout-app-wrapper .sgw-cbar .sgw-sv::after,.scout-app-wrapper .sgw-cbar .sgw-lk::after,.scout-app-wrapper .sgw-cbar .sgw-fp::after,.scout-app-wrapper .fl-seg button::after,.scout-app-wrapper #otp-toast .gh::after{content:'';position:absolute;top:50%;left:50%;width:100%;min-width:44px;height:44px;min-height:100%;transform:translate(-50%,-50%)}
 </style>
 
 <div class="scout-app-wrapper ot-r k2">
@@ -2839,7 +2846,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.11';
+var PROWL_VERSION='v7.14';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3121,6 +3128,12 @@ function remap(set,removed){
   set.forEach(function(i){ if(i===removed)return; out.add(i>removed?i-1:i); });
   return out;
 }
+/* v7.12: the reverse, for a hunt put back at index `added` */
+function unmap(set,added){
+  var out=new Set();
+  set.forEach(function(i){ out.add(i>=added?i+1:i); });
+  return out;
+}
 function mb(id){for(var i=0;i<M.length;i++)if(M[i].id===id)return M[i];return null}
 
 /* The live v3.x Prowl keeps its list in owlTwigSearches. This build uses its own
@@ -3242,6 +3255,32 @@ function rDenHunts(){
   $('#otp-denFoot').hidden=n<2||denTab!=='hunts';
   $('#otp-denSearch').textContent='Run '+n+' selected hunts';
 }
+/* v7.12: Undo on "Hunt removed." puts the hunt back where it was, with its tick and lock. A hunt typed in again
+   meanwhile is left as it is. */
+var HUNT_UNDO=null,FIND_UNDO=null;
+function toastOff(){var e=$('#otp-toast');if(e){clearTimeout(tT);e.classList.remove('on');e.classList.remove('act')}}
+function huntUndo(){
+  var U=HUNT_UNDO,i;HUNT_UNDO=null;toastOff();
+  if(!U||huntIndex(U.t)>-1)return;
+  i=Math.min(U.i,st.hunts.length);
+  st.hunts.splice(i,0,U.t);
+  st.sel=unmap(st.sel,i);st.lock=unmap(st.lock,i);
+  if(U.s)st.sel.add(i);
+  if(U.l)st.lock.add(i);
+  save();rDenHunts();rQuick();rDock();
+}
+/* v7.12: Undo on "Removed from saved finds." puts the find back in its place, with the time it was first saved */
+function findUndo(){
+  var U=FIND_UNDO,a;FIND_UNDO=null;toastOff();
+  if(!U||findIdx(U.f.url)>-1)return;
+  a=findsGet();a.splice(Math.min(U.i,a.length),0,U.f);findsPut(a);
+  svPaint(U.f.url);flSavedChanged();rDenStats();
+}
+$('#otp-toast').addEventListener('click',function(e){
+  var t=e.target&&e.target.closest?e.target:null;if(!t)return;
+  if(t.closest('#otp-unhunt'))huntUndo();
+  else if(t.closest('#otp-unfind'))findUndo();
+});
 $('#otp-denList').addEventListener('click',function(e){
   if(e.target.closest('#otp-denStart')){var ni=document.getElementById('otp-newTerm');if(ni)ni.focus();return;}   /* v7.05 */
   var ck=e.target.closest('.ck');
@@ -3249,9 +3288,10 @@ $('#otp-denList').addEventListener('click',function(e){
   var rm=e.target.closest('.rm');
   if(rm){
     var ri=+rm.dataset.r;
+    HUNT_UNDO={t:st.hunts[ri],i:ri,s:st.sel.has(ri),l:st.lock.has(ri)};   /* v7.12 */
     st.hunts.splice(ri,1);
     st.sel=remap(st.sel,ri);st.lock=remap(st.lock,ri);
-    save();rDenHunts();rQuick();rDock();toast('Hunt removed.',2000);return;
+    save();rDenHunts();rQuick();rDock();toast('Hunt removed. <button type="button" class="gh" id="otp-unhunt">Undo</button>',5000);return;
   }
   var sb=e.target.closest('.sb');
   if(sb){var j=+sb.dataset.l;
@@ -4484,9 +4524,9 @@ $('#otp-clearBtn').addEventListener('click',function(){
 });
 
 /* ---------- WELCOME ---------- */
-function openM(){ms.classList.add('on');$('#otp-mok').focus();}
+function openM(){ms.classList.add('on');var mok=$('#otp-mok'),md=ms.querySelector('.md');try{mok.focus({preventScroll:true})}catch(e){mok.focus()}if(md)md.scrollTop=0;ms.scrollTop=0;}   /* v7.11: open at the top; focusing Got it (under step 6) scrolled the help to its end */
 function closeM(){ms.classList.remove('on');filmStop();if(!st.seen){st.seen=true;save();}}
-/* v7.11: the launch film at the top of How Prowl works (Matt, 2026-10-17). Nothing loads until it is tapped; the
+/* v7.14: the launch film at the top of How Prowl works (Matt, 2026-10-17). Nothing loads until it is tapped; the
    video then plays from Shopify's CDN (the page itself has no room for it) and pauses when the help closes. */
 function filmPlay(){
   var f=$('#otp-film');if(!f)return;
@@ -6759,7 +6799,7 @@ function popPaint(d){
   if(price&&!d.gone&&!aiOff())h+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'" data-d="'+esc((d.was?'On sale, was '+d.was+(d.off?' ('+d.off+')':'')+'. ':'')+(flags?flags.note+' ':'')+popDetails(meta,d))+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
   if(price||P.term)h+='<a class="b pp-sold" href="'+esc(popSold(P.term||title))+'" target="_blank" rel="noopener noreferrer">What it sold for on eBay \u2197</a>';   /* v7.10 */
   var go=window.prowlAff(d.url||P.u,'prowl-popup',d.affUrl);
-  if(go!=='#')h+='<a class="b p pp-go" href="'+esc(go)+'" target="_blank" rel="noopener noreferrer">View on '+esc(POP_NAME[P.src])+' ↗</a>';
+  if(go!=='#')h+='<div class="pp-dock"><a class="b p pp-go" href="'+esc(go)+'" target="_blank" rel="noopener noreferrer">View on '+esc(POP_NAME[P.src])+' ↗</a></div>';   /* v7.12: pinned to the sheet's foot */
   P.share={u:d.url||P.u,t:title,p:price,img:imgs[0]||''};h+='<button type="button" class="b pp-share" data-ppshare="1">Share this find</button>';   /* v6.98 */
   h+='<button type="button" class="b pp-close" data-ppclose="1">Close</button>';   /* v6.99: a way out at the bottom too */
   b.innerHTML=h;
@@ -8075,7 +8115,7 @@ function svFromCell(u,b){
 }
 function svToggle(u,b){
   var a=findsGet(),i=findIdx(u),it,f;
-  if(i>-1){a.splice(i,1);findsPut(a);toast('Removed from saved finds.',1800)}
+  if(i>-1){FIND_UNDO={f:a[i],i:i};a.splice(i,1);findsPut(a);toast('Removed from saved finds. <button type="button" class="gh" id="otp-unfind">Undo</button>',5000)}   /* v7.12 */
   else{
     it=SVI[u]||svFromCell(u,b);if(!it||!it.title){toast('Could not save this one. Open it and try again.',2600);return}
     f=findClean({title:it.title,price:it.price,url:it.url,image:it.image,src:it.src,hunt:it.hunt,at:Date.now()});if(!f)return;

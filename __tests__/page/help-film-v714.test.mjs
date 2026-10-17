@@ -1,4 +1,4 @@
-// Page v7.11 (Matt, 2026-10-17: "add the horizontal video here, we need a help section"): the 20-second launch film
+// Page v7.14 (Matt, 2026-10-17: "add the horizontal video here, we need a help section"): the 20-second launch film
 // sits at the top of How Prowl works. Nothing loads until it is tapped; it plays from Shopify's CDN and pauses when
 // the help closes.
 import { test } from 'node:test';

@@ -1,22 +1,41 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.11 / v120).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.14 / v120).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.11** | 104,311 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.14** | 102,930 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v120** | |
 
 Recently shipped, newest first:
 
-- **v7.11: the launch film in How Prowl works** (Matt, 2026-10-17: "add the horizontal video here, we need a help
+- **v7.14: the launch film in How Prowl works** (Matt, 2026-10-17: "add the horizontal video here, we need a help
   section"). The 20-second film (`video/launch-film/`, HyperFrames) sits at the top of How Prowl works as a play card
-  (`#otp-film`); nothing loads until it is tapped, then a `<video>` plays it from Shopify's CDN (Content › Files) and it
+  (`#otp-film`; the vertical 1080x1920 cut is generated into `video/launch-film-vertical/`); nothing loads until it is tapped, then a `<video>` plays it from Shopify's CDN (Content › Files) and it
   pauses when the help closes. The film's address is the card's `data-src`; to swap the film, upload the new MP4 to
   Shopify Files and change that one URL. Note the film says "28 marketplaces"; the page counts 29.
-  Test: `__tests__/page/help-film-v711.test.mjs`.
+  Test: `__tests__/page/help-film-v714.test.mjs`.
+- **v7.13: the dock's numbers sit beside the icons** (Matt: the Flock count "is blocking the cool bird icon"). The
+  badge (`.db .bd`, Flock and Daily) moved from 50% + 6px, on the icon, to 50% + 14px and 6px from the top, past
+  the 22px icon's edge. Checked in Chromium at 412 px and 1280 px, Uranium. Test: `__tests__/page/dock-badge-v713.test.mjs`.
+- **v7.12: three fixes from the UI/UX brief check** (Matt, 2026-10-17, items 1 to 3 of the audit).
+  - **View on <site> stays on screen** in the listing popup: it sits in `.pp-dock`, sticky at the foot of the
+    sheet's scrolling body, so it shows over the photos and details and settles above Share and Close at the end.
+    Checked in Chromium at 390 px and 1280 px.
+  - **Undo** on "Hunt removed." (Den) and "Removed from saved finds." (any star), 5 seconds. The hunt goes back in
+    its place with its tick and lock (`HUNT_UNDO`, `unmap`); a hunt typed in again meanwhile is not doubled. The
+    find goes back in its place with its first saved time (`FIND_UNDO`). One toast listener (`#otp-unhunt`,
+    `#otp-unfind`); Flock's discard Undo is unchanged.
+  - **44 px tap areas** for the favorite hunt chip's ×, the Likes chips' ×, a result card's star, heart and Fair
+    price, Flock's Feed/Saved switch and the toast's Undo: an invisible `::after` 44 px across, so nothing looks
+    different. The chip's × reaches a few pixels into the chip's own label.
+  Test: `__tests__/page/undo-tap-v712.test.mjs`. No localStorage keys changed.
+- **v7.11: How Prowl works starts at step 1** (Matt, 2026-10-17: a new visitor's help jumped to step 6). `openM`
+  focused Got it, which sits under step 6, so the browser scrolled the help to its end. Now it focuses with
+  `preventScroll` and sets the dialog's `scrollTop` to 0 (older Safari ignores `preventScroll`). Test:
+  `__tests__/page/help-top-v711.test.mjs` (fails on v7.10).
 - **Worker v120: Prowl admin as a phone app** (Matt, 2026-10-17). `/admin` now installs to the home screen: new
   `worker/admin-app.js` serves `/admin/app.webmanifest` (standalone, opens on `#members`), owl icons (180/192/512,
   512 maskable) and `/admin/sw.js` (pass-through, offline note only, caches nothing). Both admin pages link them; CSP
@@ -302,9 +321,8 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `ccr-f12efc66-79vd0e` | Claude | Launch film, 1920x1080 (`video/launch-film/`) and 1080x1920 (`video/launch-film-vertical/`, generated), with the owner's panther artwork; page v7.11 puts it in How Prowl works | MP4s are built locally, not committed (the page plays the one in Shopify Files). No PR yet. |
 
-Next free numbers: **page v7.12, worker v121**. Claim one here when you start.
+Next free numbers: **page v7.15, worker v121**. Claim one here when you start.
 
 ## What's next
 
