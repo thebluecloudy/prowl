@@ -574,6 +574,15 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .mo{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--scrim);opacity:0;pointer-events:none;transition:.22s}
 .scout-app-wrapper .mo.on{opacity:1;pointer-events:auto}
 .scout-app-wrapper .md{background:var(--modal-bg);border-radius:20px;width:100%;max-width:540px;max-height:88vh;max-height:calc(88vh / var(--tz,1));overflow:auto;padding:28px;box-shadow:0 30px 70px -28px var(--shadow-lg);transform:translateY(14px);transition:.28s;border:1px solid var(--ln)}
+.scout-app-wrapper .hfilm{position:relative;margin:14px 0 6px;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:#040414}   /* v7.11: the launch film */
+.scout-app-wrapper .hfilm video{display:block;width:100%;height:100%;background:#040414}
+.scout-app-wrapper .hfilm-go{all:unset;box-sizing:border-box;cursor:pointer;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:14px;padding:16px;color:#8affb8;font:inherit;background:radial-gradient(70% 90% at 50% 45%,rgba(57,255,20,.22),rgba(57,255,20,0) 70%),linear-gradient(#0a0e2e,#040414)}
+.scout-app-wrapper .hfilm-go i{flex:none;position:relative;width:52px;height:52px;border-radius:50%;border:2px solid #39ff14;box-shadow:0 0 18px rgba(57,255,20,.55)}
+.scout-app-wrapper .hfilm-go i:after{content:'';position:absolute;left:19px;top:14px;border-left:16px solid #8affb8;border-top:10px solid transparent;border-bottom:10px solid transparent}
+.scout-app-wrapper .hfilm-go span{display:flex;flex-direction:column;text-align:left;gap:2px}
+.scout-app-wrapper .hfilm-go b{font-family:var(--display);font-size:20px;line-height:1.15;color:#d8ffe6}
+.scout-app-wrapper .hfilm-go em{font-style:normal;font-size:14px;opacity:.85}
+.scout-app-wrapper .hfilm-go:focus-visible{outline:3px solid #39ff14;outline-offset:-3px}
 [data-theme=uranium] .scout-app-wrapper .md{box-shadow:0 0 60px rgba(57,255,20,.2),0 30px 70px -28px rgba(0,0,0,.9)}
 .scout-app-wrapper .mo.on .md{transform:none}
 .scout-app-wrapper .md h2{font-family:var(--display);font-size:26px;font-weight:800;margin:0 0 8px;letter-spacing:-.025em}
@@ -2773,6 +2782,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   <div class="md" role="dialog" aria-modal="true" aria-labelledby="otp-mt">
     <h2 id="otp-mt">How Prowl works</h2>
     <p>Prowl builds one search for <b><span data-t>29</span> vintage marketplaces</b> and puts them all on one screen. The basics:</p>
+    <div class="hfilm" id="otp-film" data-src="https://cdn.shopify.com/videos/c/o/v/d4feab8145c0437eacb682b71d649729.mp4"><button class="hfilm-go" id="otp-filmGo" type="button"><i aria-hidden="true"></i><span><b>Watch Prowl in 20 seconds</b><em>The tour, sound on</em></span></button></div>
     <div class="gapp otp-getapp" data-mode="help" hidden></div>
     <div class="mi">
 <u>1</u><div>
@@ -2829,7 +2839,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.10';
+var PROWL_VERSION='v7.11';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4475,7 +4485,18 @@ $('#otp-clearBtn').addEventListener('click',function(){
 
 /* ---------- WELCOME ---------- */
 function openM(){ms.classList.add('on');$('#otp-mok').focus();}
-function closeM(){ms.classList.remove('on');if(!st.seen){st.seen=true;save();}}
+function closeM(){ms.classList.remove('on');filmStop();if(!st.seen){st.seen=true;save();}}
+/* v7.11: the launch film at the top of How Prowl works (Matt, 2026-10-17). Nothing loads until it is tapped; the
+   video then plays from Shopify's CDN (the page itself has no room for it) and pauses when the help closes. */
+function filmPlay(){
+  var f=$('#otp-film');if(!f)return;
+  var v=f.querySelector('video');
+  if(!v){v=document.createElement('video');v.src=f.getAttribute('data-src');v.controls=true;v.preload='auto';
+    v.setAttribute('playsinline','');v.setAttribute('aria-label','Prowl in 20 seconds');f.innerHTML='';f.appendChild(v);f.className='hfilm on';}
+  try{var r=v.play();if(r&&r.catch)r.catch(function(){});}catch(e){}
+}
+function filmStop(){var v=$('#otp-film video');if(v&&!v.paused){try{v.pause();}catch(e){}}}
+(function(){var g=$('#otp-filmGo');if(g)g.addEventListener('click',filmPlay);})();
 $('#otp-mok').addEventListener('click',closeM);
 $('#otp-how').addEventListener('click',openM);
 var whyB=$('#otp-whyBtn');if(whyB)whyB.addEventListener('click',function(){openDen();setDenTab('about')});

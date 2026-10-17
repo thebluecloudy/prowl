@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.10 / v120).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.11 / v120).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.10** | 105,206 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.11** | 104,311 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v120** | |
 
 Recently shipped, newest first:
 
+- **v7.11: the launch film in How Prowl works** (Matt, 2026-10-17: "add the horizontal video here, we need a help
+  section"). The 20-second film (`video/launch-film/`, HyperFrames) sits at the top of How Prowl works as a play card
+  (`#otp-film`); nothing loads until it is tapped, then a `<video>` plays it from Shopify's CDN (Content › Files) and it
+  pauses when the help closes. The film's address is the card's `data-src`; to swap the film, upload the new MP4 to
+  Shopify Files and change that one URL. Note the film says "28 marketplaces"; the page counts 29.
+  Test: `__tests__/page/help-film-v711.test.mjs`.
 - **Worker v120: Prowl admin as a phone app** (Matt, 2026-10-17). `/admin` now installs to the home screen: new
   `worker/admin-app.js` serves `/admin/app.webmanifest` (standalone, opens on `#members`), owl icons (180/192/512,
   512 maskable) and `/admin/sw.js` (pass-through, offline note only, caches nothing). Both admin pages link them; CSP
@@ -296,9 +302,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `ccr-f12efc66-79vd0e` | Claude | 20 s launch film in `video/launch-film/` (HyperFrames; no page or worker change, takes no version number). Uses the owner's panther traced from the extension icon | Five render / critique rounds done (`video/launch-film/REVIEW.md`); MP4 is built locally, not committed. No PR yet. |
+| `ccr-f12efc66-79vd0e` | Claude | Launch film, 1920x1080 (`video/launch-film/`) and 1080x1920 (`video/launch-film-vertical/`, generated), with the owner's panther artwork; page v7.11 puts it in How Prowl works | MP4s are built locally, not committed (the page plays the one in Shopify Files). No PR yet. |
 
-Next free numbers: **page v7.11, worker v121**. Claim one here when you start.
+Next free numbers: **page v7.12, worker v121**. Claim one here when you start.
 
 ## What's next
 
