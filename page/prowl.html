@@ -961,7 +961,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .shl{text-align:right}
 .scout-app-wrapper .whyp p b{font-weight:800!important}
 @media(max-width:380px){.scout-app-wrapper #otp-dock .db>span{font-size:12.5px!important;letter-spacing:0!important}}
-.scout-app-wrapper .db .bd{position:absolute;top:9px;left:calc(50% + 6px);min-width:17px;height:17px;padding:0 5px;border-radius:99px;background:var(--ac);color:var(--onink);font-size:12.5px;font-weight:800;font-style:normal;display:flex;align-items:center;justify-content:center}
+.scout-app-wrapper .db .bd{position:absolute;top:6px;left:calc(50% + 14px);min-width:17px;height:17px;padding:0 5px;border-radius:99px;background:var(--ac);color:var(--onink);font-size:12.5px;font-weight:800;font-style:normal;display:flex;align-items:center;justify-content:center}
 .scout-app-wrapper .db.on{color:var(--ac)}
 .scout-app-wrapper .db.on>span:first-of-type{color:var(--ink)}
 .scout-app-wrapper .db.on::before{width:36px;height:3px}
@@ -2836,7 +2836,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.12';
+var PROWL_VERSION='v7.13';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
