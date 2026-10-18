@@ -1,16 +1,35 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.18 / v121).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.19 / v122).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.18** | 100,577 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
-| Worker | **v121** | |
+| Page | **v7.19** | 97,834 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Worker | **v122** | |
 
 Recently shipped, newest first:
 
+- **v7.19 + worker v122: Pounce with no form, a price range, and two ideas from the UX spec** (Matt, 2026-10-18).
+  - **One-tap Pounce** (Matt: "why do I need to fill out the form for Pounce, why can't it just find the items?"):
+    each hunt in Den › Settings › Pounce has **🐾 Pounce** (and Describe it). One tap saves a quarry with no
+    description, `any: 1`; the worker judges new listings as "any genuine example of what the hunt names" (not a
+    thing that only shares a word, a reproduction or a mixed lot). The row reads "Any Padilla it finds"; Edit narrows
+    it. The description is optional now (the "Describe the piece in a few words first" check is gone); an empty one
+    saves as any. Stop stalking still removes it.
+  - **Price range on a quarry** (Matt: "if we are doing max min inches we should have max price/min price too"): Min
+    price $ / Max price $ (`lo`, `hi`, whole dollars, 0 = any). The worker's free pre-filter drops a listing whose
+    shown price is outside it ("under $40" / "over $300"); a listing with no price goes to the judge.
+  - **An ended listing offers to watch for the next one** (the spec's "it just slipped away"): the popup's grey "This
+    listing ended." is now "This one got away. Prowl can watch for the next one." with **Watch for the next one**,
+    which makes the cleaned title (`popTerm`, as Search this on Prowl) a favorite hunt through `sgwAdd` (a full Den
+    says so). On an ended listing View on <site> is no longer pinned. Max price "10% above" from the spec is left out.
+  - **A Pounce note opens the find** (the spec's "Alert Match" screen): `?pounce=<url>` still opens Den › Settings at
+    the match, and now opens that find's listing popup over it with "🐾 Pounce match for <hunt>", Pounce's reason and
+    Not it (`pncPop`, `pncPopNot`). &fp=1 runs Fair price in the popup.
+  Tests: `__tests__/page/pounce-popup-v719.test.mjs`, `worker/__tests__/pounce.test.mjs` (any + price range).
+  No localStorage keys changed. Free is still 1 quarry, Pro 5.
 - **v7.18: a Best picks card opens the listing popup** (Matt: "fix the best picks popup it should have same
   behaviour"; built as v7.17, renumbered when v7.17 merged first). `.pk-card` now carries data-u/t/p/s, and the result-card tap handler opens it with `popOpen` like any
   other card: photos, Fair price?, What it sold for, Share, View on. Picks the popup cannot show (Craigslist,
@@ -353,7 +372,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.19, worker v122**. Claim one here when you start.
+Next free numbers: **page v7.20, worker v123**. Claim one here when you start.
 
 ## What's next
 
