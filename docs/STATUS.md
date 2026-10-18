@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.24 / v125).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.25 / v125).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.24** | 402,971 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.25** | 402,942 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v125** | |
 
 Recently shipped, newest first:
 
+- **v7.25: Blue hour in the Classic look** (the owner: "The blue hour is missing now. Only three themes. But there are
+  4 modes. I'm in classic mode"). Classic's dark (labelled Blue hour) and Midnight were the same near-black `#070706`
+  since v6.37; only the New look had Blue hour's navy. Classic Blue hour now has the same navy palette (selector
+  `[data-theme=dark]:not([data-dark=midnight]) .scout-app-wrapper:not(.k2)`) with Classic's amber accents. Settings and
+  How Prowl works now name all four modes (they said "all three"). Checked in Chromium, both looks, all four modes.
+  Test: `__tests__/page/blue-hour-classic-v725.test.mjs`.
 - **v7.24: a firefly field in the dark themes** (the owner, on GhostNode's starfield: "it has a glow to it and it moves
   with the cursor, I wanted this with fireflies instead"). In Dark, Midnight and Uranium, 12 to 36 fireflies (by screen
   size) drift over the page, each blinking on its own beat; nearer ones are bigger and move more with the mouse, a soft
@@ -441,7 +447,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.25, worker v126**. Claim one here when you start.
+Next free numbers: **page v7.26, worker v126**. Claim one here when you start.
 
 ## What's next
 

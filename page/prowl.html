@@ -1571,6 +1571,14 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
   --bar-bg:rgba(11,20,48,.9);--dock-bg:rgba(11,20,48,.95);--modal-bg:#0F1B3F;--body-glow:none;
   --k2-ln:#9DB7EA;--k2-band:linear-gradient(90deg,#E8743A 0%,#F2A743 100%);--k2-bandink:#1A0E06;--k2-card:#12204A;--k2-dot:rgba(157,183,234,.10);--k2-lab:#F2A743}
 [data-theme=dark]:not([data-dark=midnight]) .scout-app-wrapper.k2{background-color:#0B1430}
+/* v7.25: Blue hour in the Classic look too (the owner: "The blue hour is missing now. Only three themes"). Classic's dark
+   and Midnight were both near-black (#070706), so two of the four modes looked the same. Blue hour gets the New look's
+   navy here as well; Classic keeps its amber accents. */
+[data-theme=dark]:not([data-dark=midnight]) .scout-app-wrapper:not(.k2){
+  --bg:#0B1430;--cd:#12204A;--cd2:#15254F;--cd3:#1B2D5C;--ln:#2C4478;--l2:#4A68A6;
+  --ink:#F1F4FB;--i2:#D2DBEE;--i3:#A3B3D6;--mu:#8D9FC6;--mu2:#7C90BA;--hover:#1B2D5C;--chip:#15254F;
+  --bar-bg:rgba(11,20,48,.9);--dock-bg:rgba(11,20,48,.95);--modal-bg:#0F1B3F;--scrim:rgba(5,10,26,.78);
+  --body-glow:radial-gradient(900px 500px at 50% -10%,rgba(157,183,234,.10),transparent 60%);background-color:#0B1430}
 [data-theme=uranium] .scout-app-wrapper.k2{--k2-slab:'Alfa Slab One',var(--display)}
 .scout-app-wrapper.k2 #otp-sgw>.sgw-head,.scout-app-wrapper.k2 .found-title,.scout-app-wrapper.k2 .flock-head,
 .scout-app-wrapper.k2 .gd>h2,.scout-app-wrapper.k2 .alrt>h2,.scout-app-wrapper.k2 .b.p,.scout-app-wrapper.k2 a.b.p{background:var(--k2-band)}
@@ -2777,7 +2785,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <div class="setrow">
         <div>
 <h3>Appearance</h3>
-<p>Light, dark, or uranium — a retro blacklight mode. Cycles through all three.</p>
+<p>Light, Blue hour, Midnight, or Uranium — a retro blacklight mode. Cycles through all four.</p>
 </div>
         <button class="gh" id="otp-themeBtn2" type="button">Light</button>
       </div>
@@ -2907,7 +2915,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <div class="mi">
 <u>6</u><div>
 <h3>Make it yours</h3>
-<p><b style="color:var(--ink)">Aa</b> makes the text bigger. The icon top-right cycles light, dark and <b style="color:var(--ink)">uranium</b>, a retro blacklight mode. <span class="aff-say">Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</span></p>
+<p><b style="color:var(--ink)">Aa</b> makes the text bigger. The icon top-right cycles Light, Blue hour, Midnight and <b style="color:var(--ink)">Uranium</b>, a retro blacklight mode. <span class="aff-say">Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</span></p>
 </div>
 </div>
     <details class="gloss"><summary>Prowl's words</summary>
@@ -2959,7 +2967,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.24';
+var PROWL_VERSION='v7.25';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
