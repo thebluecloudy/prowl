@@ -6,15 +6,18 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.16 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.16** | 101,752 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.16** | 101,809 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v121** | |
 
 Recently shipped, newest first:
 
-- **v7.16: the launch film with Matt's panther artwork** (Matt, 2026-10-17). The help's film card (`#otp-film`)
-  now plays the re-rendered cut, whose panther is Matt's own artwork (`video/launch-film/assets/art/prowl-panther.webp`)
-  instead of the traced icon. Only the card's `data-src` changed: Shopify's 480p rendition (`.../c/vp/86e709e3...
-  SD-480p-1.2Mbps...mp4`), as Matt sent it. The film says "28 marketplaces" and the page counts 29; Matt: "doesn't matter", leave both.
+- **v7.16: the launch film, redrawn as the real app** (Matt, 2026-10-17/18: "use my panther", then "my app doesn't
+  look like that"). The help's film card (`#otp-film`) plays the new cut: Matt's own panther artwork
+  (`video/launch-film/assets/art/prowl-panther.webp`) and an app window drawn from the real page (dotted cream, brown
+  outlines, Find the prey, the orange Hunt button, result cards, the dock, the listing popup with the real repair and
+  damage flag). Only the card's `data-src` changed, to the original upload in Shopify Files
+  (`cdn.shopify.com/videos/c/o/v/e051336a...mp4`, Video `46547634979070`, uploaded through the Admin API). Matt takes
+  the older uploads down. The film says "28 marketplaces" and the page counts 29; Matt: "doesn't matter", leave both.
 
 - **v7.15 + worker v121: share a photo into Prowl on Android** (Matt, 2026-10-17: "Android same way" as the Chrome
   extension's image menu). The installed app shows up in Android's share sheet for images; the photo opens straight
