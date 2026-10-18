@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v123: 2026-10-18. eBay listing age (Matt: "is there a way to show ebay aging?"): search results and /item carry
+ *        listed (YYYY-MM-DD, eBay's itemOriginDate, else itemCreationDate) and relisted (the creation date, when it is a
+ *        day or more after the origin). Phone alerts (Matt: "could not reach this phone", it used to work): a push test
+ *        or subscribe answers codes, the push service's status for each phone that did not take it.
  *   v122: 2026-10-18. Pounce without a form (Matt: "why do I need to fill out the form, why can't it just find the
  *        items?"): a quarry with any: 1 and no description watches for any genuine example of the hunt. A quarry can
  *        carry a price range in whole dollars (lo, hi, 0 = any); the free pre-filter drops listings outside it.
@@ -416,7 +420,7 @@ import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb6
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-const WORKER_VERSION = "v122";
+const WORKER_VERSION = "v123";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -751,6 +755,19 @@ function ebaySale(it) {
   const pct = Math.round(Number(m.discountPercentage) || (1 - now / was) * 100);
   return { was: ebayMoney(m.originalPrice), off: pct > 0 && pct < 100 ? pct + "% off" : "" };
 }
+/* v123: how long an eBay listing has been up. itemOriginDate (eBay, 2025) is when the piece was first listed,
+   itemCreationDate when this listing was made: a creation a day or more later means it was relisted. Dates in the
+   future (eBay sometimes sends them) are ignored. UTC days, YYYY-MM-DD. */
+function ebayAge(it, now) {
+  const lim = (now || Date.now()) + 864e5;
+  const at = (v) => { const t = Date.parse(String(v || "")); return isFinite(t) && t > 0 && t <= lim ? t : NaN; };
+  const o = at(it && it.itemOriginDate), c = at(it && it.itemCreationDate);
+  const first = isFinite(o) ? (isFinite(c) ? Math.min(o, c) : o) : c;
+  if (!isFinite(first)) return null;
+  const out = { listed: new Date(first).toISOString().slice(0, 10) };
+  if (isFinite(o) && isFinite(c) && c - o >= 864e5) out.relisted = new Date(c).toISOString().slice(0, 10);
+  return out;
+}
 function ebayItem(it) {
   if (!it || !it.title || !it.itemWebUrl) return null;
   const opts = it.buyingOptions || [];
@@ -771,6 +788,8 @@ function ebayItem(it) {
   };
   const sale = auction ? null : ebaySale(it);   /* v119 */
   if (sale) { out.was = sale.was; if (sale.off) out.off = sale.off; }
+  const age = ebayAge(it);   /* v123 */
+  if (age) { out.listed = age.listed; if (age.relisted) out.relisted = age.relisted; }
   if (auction) {
     out.bids = Number(it.bidCount) || 0;
     const tl = timeLeft(it.itemEndDate);
@@ -1623,6 +1642,8 @@ async function itemEbay(id, env) {
     if (auction) { out.bids = Number(j.bidCount) || 0; const tl = timeLeft(j.itemEndDate); if (tl) out.time_left = tl; }
     const sale = auction ? null : ebaySale(j);   /* v119 */
     if (sale) { out.was = sale.was; if (sale.off) out.off = sale.off; }
+    const age = ebayAge(j);   /* v123 */
+    if (age) { out.listed = age.listed; if (age.relisted) out.relisted = age.relisted; }
     return out;
   } finally { clearTimeout(timer); }
 }
@@ -4218,9 +4239,10 @@ function swResponse(env, method) {
 }
 /* send one payload to every phone the member has; a phone the push service says is gone (404/410) is dropped */
 async function pushToMember(env, email, payload) {
-  const pid = await pushId(env, email), list = await pushList(env, pid), keep = [], out = { ok: 0, retry: 0, gone: 0, n: list.length };
+  const pid = await pushId(env, email), list = await pushList(env, pid), keep = [], out = { ok: 0, retry: 0, gone: 0, n: list.length, codes: [] };
   for (const s of list) {
     const r = await pushSend(env, s, payload);
+    if (!r.ok) out.codes.push(Number(r.status) || 0);   /* v123: what the push service said, for the page */
     if (r.gone) { out.gone++; try { await env.PROWL_ALERTS.delete("pushep:" + await pushHash(s.endpoint, 16)); } catch (e) {} continue; }
     if (r.ok) { out.ok++; s.lastOk = new Date().toISOString(); } else if (r.retry) out.retry++;
     keep.push(s);
@@ -4304,7 +4326,7 @@ async function pushRoute(request, env, url, origin) {
     await kvPut(env, "pushep:" + await pushHash(s.endpoint, 16), { k: pid });
     sub.phone = "prowl"; await alMerge(env, sub, ["phone"]);   /* the default: Prowl's own alerts first */
     const t = await pushToMember(env, sub.email, PUSH_TEST);
-    return json({ ok: true, n: r.list.length, test: t.ok > 0 }, 200, origin);
+    return json({ ok: true, n: r.list.length, test: t.ok > 0, codes: t.codes.slice(0, 5) }, 200, origin);
   }
   if (path === "/push/unsubscribe") {
     const ep = String(b.endpoint || ""), list = await pushList(env, pid), rest = list.filter(x => x.endpoint !== ep);
@@ -4316,7 +4338,7 @@ async function pushRoute(request, env, url, origin) {
   if (path === "/push/test") {
     if (!(await vCount("pushtest:" + pid, 10))) return json({ error: "That is enough tests for today." }, 429, origin);
     const t = await pushToMember(env, sub.email, PUSH_TEST);
-    return json({ ok: true, sent: t.ok, n: t.n - t.gone }, 200, origin);
+    return json({ ok: true, sent: t.ok, n: t.n - t.gone, codes: t.codes.slice(0, 5) }, 200, origin);
   }
   return json({ error: "not found" }, 404, origin);
 }

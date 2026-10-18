@@ -149,7 +149,7 @@ test("a phone the push service says is gone (410) is dropped; a busy one (429) i
   const sent = [];
   const X = fromIndex(["pushHash", "pushId", "pushList", "pushToMember"], {
     kvGet: kv.get, kvPut: kv.put,
-    pushSend: async (env, s) => { sent.push(s.endpoint); return { "https://fcm.googleapis.com/gone": { gone: true }, "https://fcm.googleapis.com/busy": { retry: true }, "https://fcm.googleapis.com/ok": { ok: true } }[s.endpoint]; },
+    pushSend: async (env, s) => { sent.push(s.endpoint); return { "https://fcm.googleapis.com/gone": { gone: true, status: 410 }, "https://fcm.googleapis.com/busy": { retry: true, status: 429 }, "https://fcm.googleapis.com/ok": { ok: true, status: 201 } }[s.endpoint]; },
   });
   const env = { MEMBER_ID_SALT: "salt", PROWL_ALERTS: kv.PROWL_ALERTS };
   const pid = await X.pushId(env, "Matt@x.com");
@@ -157,7 +157,7 @@ test("a phone the push service says is gone (410) is dropped; a busy one (429) i
   assert.doesNotMatch(pid, /matt|@/, "no address in the key");
   await kv.put(env, "push:" + pid, ["gone", "busy", "ok"].map((k) => ({ endpoint: "https://fcm.googleapis.com/" + k })));
   const out = await X.pushToMember(env, "matt@x.com", { v: 1 });
-  assert.deepEqual(out, { ok: 1, retry: 1, gone: 1, n: 3 });
+  assert.deepEqual(out, { ok: 1, retry: 1, gone: 1, n: 3, codes: [410, 429] }, "v123: the codes of the phones that did not take it");
   const left = JSON.parse(kv.m.get("push:" + pid));
   assert.deepEqual(left.map((x) => x.endpoint.slice(-4)), ["busy", "m/ok"]);
   assert.ok(left[1].lastOk, "the one that took it is marked");
