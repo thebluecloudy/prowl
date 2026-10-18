@@ -1944,6 +1944,10 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v6.89: Uranium only, a swarm of fireflies crosses the screen when a hunt starts */
 .pm-ff{position:fixed;left:0;width:5px;height:5px;margin:-2px;border-radius:50%;background:#d8ff6b;box-shadow:0 0 6px 2px #39ff14,0 0 14px 4px rgba(57,255,20,.45);pointer-events:none;z-index:2147482990;opacity:0;animation:pmFF var(--t) cubic-bezier(.45,.1,.55,.9) var(--d) forwards}
 @keyframes pmFF{0%{opacity:0;transform:translate3d(-4vw,0,0)}10%{opacity:1}30%{opacity:.35;transform:translate3d(28vw,var(--y),0)}45%{opacity:1}60%{opacity:.5;transform:translate3d(60vw,calc(var(--y)*-1),0)}80%{opacity:1}100%{opacity:0;transform:translate3d(106vw,var(--y),0)}}
+/* v7.24: the firefly field (dark themes): lights on body under the bar, dock and drawers; the script moves them */
+.pm-fly{position:fixed;top:0;left:0;right:0;bottom:0;z-index:1;pointer-events:none;overflow:hidden;mix-blend-mode:screen}
+.pm-fly i{position:absolute;left:0;top:0;width:4px;height:4px;margin:-2px;border-radius:50%;background:rgb(var(--fc));box-shadow:0 0 5px 2px rgba(var(--fg),.85),0 0 16px 6px rgba(var(--fg),.3);opacity:0;will-change:transform,opacity}
+.pm-fly b{position:absolute;left:0;top:0;width:340px;height:340px;margin:-170px;border-radius:50%;background:radial-gradient(closest-side,rgba(var(--fg),.12),rgba(var(--fg),0));opacity:0;transition:opacity .6s;will-change:transform}
 }
 </style>
 
@@ -2955,7 +2959,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.23';
+var PROWL_VERSION='v7.24';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -9070,6 +9074,70 @@ try{promoPick();setTimeout(promoPick,1500);window.addEventListener('focus',promo
     for(var i=0;i<muts.length;i++){var a=muts[i].addedNodes;for(var j=0;j<a.length;j++)collect(a[j],h)}
     if(queue.length&&!queued){queued=true;requestAnimationFrame(decorate)}
   }).observe(root,{childList:true,subtree:true});
+})();
+/* v7.24 (the owner, on GhostNode's starfield: "it has a glow to it and it moves with the cursor, I wanted this with
+   fireflies instead"): in the dark themes a field of fireflies drifts over the page. Each blinks on its own beat; the
+   nearer ones are bigger and move more with the cursor; a soft glow follows the mouse and fireflies close to it drift
+   in and brighten. Lights on body (like the swarm, outside the text-size zoom), under the bar, dock and drawers,
+   pointer-events none. Never in Light or under reduced motion, paused while the tab is hidden, and prowl.fireflies
+   '0' (new key) turns it off. Transform and opacity only. */
+(function(){
+  if(!window.requestAnimationFrame||!document.body)return;
+  var de=document.documentElement,box=null,glow=null,F=[],raf=0,last=0,W=0,H=0,mx=.5,my=.5,tx=.5,ty=.5,seen=0;
+  var COL={dark:['255,246,176','255,206,72'],midnight:['232,255,186','160,232,84'],uranium:['216,255,107','57,255,20']};
+  function kind(){
+    var t=de.getAttribute('data-theme')||'';
+    if(t==='dark'&&de.getAttribute('data-dark')==='midnight')t='midnight';
+    if(!COL[t])return '';
+    try{if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return ''}catch(e){return ''}
+    try{if(localStorage.getItem('prowl.fireflies')==='0')return ''}catch(e){}
+    return t;
+  }
+  function size(){W=window.innerWidth||de.clientWidth||360;H=window.innerHeight||de.clientHeight||640}
+  function build(t){
+    size();box=document.createElement('div');box.className='pm-fly';box.setAttribute('aria-hidden','true');
+    glow=document.createElement('b');box.appendChild(glow);
+    var n=Math.max(12,Math.min(36,Math.round(W*H/30000))),i,z,f;
+    for(i=0;i<n;i++){
+      z=.35+Math.random()*.65;
+      f={x:Math.random()*W,y:Math.random()*H,z:z,k:(.6+z*.9).toFixed(2),a:Math.random()*6.283,v:6+Math.random()*14,
+        p:Math.random()*6.283,T:2.6+Math.random()*3.4,t:0,el:document.createElement('i')};
+      box.appendChild(f.el);F.push(f);
+    }
+    paint(t);document.body.appendChild(box);
+  }
+  function paint(t){box.setAttribute('data-k',t);box.style.setProperty('--fc',COL[t][0]);box.style.setProperty('--fg',COL[t][1])}
+  function drop(){if(raf)cancelAnimationFrame(raf);raf=0;last=0;if(box&&box.parentNode)box.parentNode.removeChild(box);box=glow=null;F=[]}
+  function frame(now){
+    raf=0;if(!box)return;
+    var dt=Math.min(.05,last?(now-last)/1000:0),on=seen&&now-seen<4000,e=Math.min(1,dt*2.5),gx,gy,i,f,px,py,dx,dy,d,b,o;
+    last=now;mx+=(tx-mx)*e;my+=(ty-my)*e;gx=mx*W;gy=my*H;
+    glow.style.opacity=on?'1':'0';glow.style.transform='translate3d('+gx.toFixed(1)+'px,'+gy.toFixed(1)+'px,0)';
+    for(i=0;i<F.length;i++){
+      f=F[i];f.t+=dt;f.a+=(Math.random()-.5)*dt*1.6;
+      f.x+=Math.cos(f.a)*f.v*dt;f.y+=Math.sin(f.a)*f.v*dt-3*f.z*dt;
+      if(f.x<-40)f.x=W+40;else if(f.x>W+40)f.x=-40;
+      if(f.y<-40)f.y=H+40;else if(f.y>H+40)f.y=-40;
+      px=f.x+(mx-.5)*56*f.z;py=f.y+(my-.5)*56*f.z;b=0;
+      if(on){dx=gx-px;dy=gy-py;d=Math.sqrt(dx*dx+dy*dy);if(d<170){b=1-d/170;f.x+=dx*dt*.35*b;f.y+=dy*dt*.35*b}}
+      o=(.1+.9*Math.pow(Math.max(0,Math.sin(f.p+f.t*6.283/f.T)),3))*(.45+.55*f.z);
+      f.el.style.opacity=Math.min(1,o+b*.6).toFixed(2);
+      f.el.style.transform='translate3d('+px.toFixed(1)+'px,'+py.toFixed(1)+'px,0) scale('+f.k+')';
+    }
+    if(!document.hidden)raf=requestAnimationFrame(frame);
+  }
+  function sync(){
+    var t=kind();
+    if(!t){if(box)drop();return}
+    if(!box)build(t);else if(box.getAttribute('data-k')!==t)paint(t);
+    if(!raf&&!document.hidden){last=0;raf=requestAnimationFrame(frame)}
+  }
+  window.addEventListener('pointermove',function(e){if(!box||e.pointerType==='touch')return;tx=e.clientX/(W||1);ty=e.clientY/(H||1);seen=window.performance&&performance.now?performance.now():Date.now()},{passive:true});
+  document.addEventListener('mouseout',function(e){if(!e.relatedTarget)seen=0});
+  window.addEventListener('resize',function(){if(box)size()});
+  document.addEventListener('visibilitychange',sync);
+  if(window.MutationObserver)new MutationObserver(sync).observe(de,{attributes:true,attributeFilter:['data-theme','data-dark']});
+  sync();
 })();
 </script>
 <!-- Cloudflare Web Analytics --><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "38a4d29ec73843c1a55a0e2094ae6ae2"}'></script><!-- End Cloudflare Web Analytics -->

@@ -1,16 +1,25 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.23 / v125).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.24 / v125).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.23** | 406,487 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.24** | 402,971 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v125** | |
 
 Recently shipped, newest first:
 
+- **v7.24: a firefly field in the dark themes** (the owner, on GhostNode's starfield: "it has a glow to it and it moves
+  with the cursor, I wanted this with fireflies instead"). In Dark, Midnight and Uranium, 12 to 36 fireflies (by screen
+  size) drift over the page, each blinking on its own beat; nearer ones are bigger and move more with the mouse, a soft
+  glow follows it, and fireflies near it drift in and brighten. Lights on body (`.pm-fly`, like the hunt swarm), z-index
+  1 so under the bar, dock and drawers, pointer-events none, `mix-blend-mode:screen`. Transform and opacity only, paused
+  while the tab is hidden; never in Light or under reduced motion. New key `prowl.fireflies` = `'0'` turns it off (no
+  switch in Settings yet). Touch does not move it. Our own code, not GhostNode's. Checked in Chromium (Uranium 1280 px,
+  Dark 390 px). It lives in the page's second script (not served by the worker), about 3.5 KB of the page body.
+  Test: `__tests__/page/fireflies-field-v724.test.mjs`.
 - **v7.23: from the eBay teardown, in the panther's words** (Matt, 2026-10-18: "keep the panther related terms",
   "keep Den", "keep locked on", "keep it crash free").
   - **On the lookout:** Hunt with an empty box no longer silently re-runs the ticked hunts. It opens "What are we
@@ -432,9 +441,15 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.24, worker v126**. Claim one here when you start.
+Next free numbers: **page v7.25, worker v126**. Claim one here when you start.
 
 ## What's next
+
+- **ShopGoodwill sniper: parked, waiting on ShopGoodwill's written consent.** Built and tested (worker part), not
+  deployed. ShopGoodwill's Terms of Use (01/22/2025) forbid third-party apps that interact with the site "without our
+  prior written consent" and "any ... script ... or other automated means", license the site for "private,
+  non-commercial purposes" only, and say not to share passwords. The patch, the plan (owner-only test, then a Pro +
+  Sniper tier) and a draft email asking ShopGoodwill are in `docs/sniper/README.md`. Do not ship it without that consent.
 
 The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Pounce, then the two-photo photo check
 (the piece, then its mark or back), then community-lite.
