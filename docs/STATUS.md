@@ -439,6 +439,9 @@ Next free numbers: **page v7.24, worker v126**. Claim one here when you start.
 The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Pounce, then the two-photo photo check
 (the piece, then its mark or back), then community-lite.
 
+Bigger ideas, not planned yet (2026-10-18): a listing service for antique dealers, and auto-sniping for auctions.
+See `docs/IDEAS.md`.
+
 ## Waiting on Matt
 
 - **Turn on Prowl's own notifications:** in Cloudflare > Workers > prowl > Settings > Variables and secrets, add
