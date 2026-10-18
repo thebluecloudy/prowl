@@ -585,6 +585,7 @@ test('the chip sheen plays once each time the pointer comes onto a hunt, not aga
 
 test('starting a hunt sparkles at the button and the panther pounces; no panther walks across (v6.80); all of it is cleared away', async () => {
   const p = await results();
+  p.$('#otp-q').value = 'pyrex';   /* v7.23: an empty box hunts nothing (it offers chips), so no sparkle */
   p.$('#otp-sf').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   assert.equal(p.$$('body > .pm-spark').length, 12, 'on body, outside the text-size zoom');
   assert.ok(p.$('#otp-pan').classList.contains('pm-pounce'));

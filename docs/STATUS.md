@@ -1,16 +1,36 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.22 / v125).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.23 / v125).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.22** | 407,993 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.23** | 406,500 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v125** | |
 
 Recently shipped, newest first:
 
+- **v7.23: from the eBay teardown, in the panther's words** (Matt, 2026-10-18: "keep the panther related terms",
+  "keep Den", "keep locked on", "keep it crash free").
+  - **On the lookout:** Hunt with an empty box no longer silently re-runs the ticked hunts. It opens "What are we
+    hunting?" (`#otp-bolo`): your hunts, locked-on first, then **On the lookout**, BOLO's old auto-filled starter
+    terms (`OLD_DEF`) less the ones already yours, 8 each. A chip runs that one hunt (`boloRun`); typing puts them
+    away. The hunt sparkle only plays when there is a term. The BOLO marketplace tab is unchanged.
+  - **Related hunts on an empty search:** under "Email me when it shows up", "Or try": the hunt with a word fewer,
+    then your hunts and On the lookout terms that share a word (`relTerms`, at most 5). Any `[data-bolo]` chip in the
+    app runs its hunt.
+  - **Got away:** when a popup finds a listing ended, its URL goes in `prowl.gotAway` (new key, newest 300) and every
+    card of it, anywhere, gets a "Got away" tag and a grey photo (`.is-gone`, a MutationObserver on the app). It still
+    opens, to Watch for the next one. Not `goneGet`: that name was already the un-liked list (v6.48).
+  - **Locked on / Hiding:** the Den's lock reads "Locked on" or "Hiding" (aria-pressed), with a 🔔 instead of ◉ when
+    the member's alerts watch that hunt (signed in, emails on, within the plan's count: `denBell`). Toasts: "Locked on
+    X." / "X is hiding in your Den."
+  - **Prowl's words:** a glossary at the end of How Prowl works (Prowl, Hunt, Den, Locked on, Hiding, Daily, Flock,
+    On the lookout, Best picks, Pounce, Quarry, Got away, Paw prints).
+  - Checked in Chromium at 390 px. Already there, so not rebuilt: Keep in the results header, How Prowl works on a
+    first visit, the Daily header, "N new" on Den hunts. "Prowling" stays (Matt: panther words).
+  Test: `__tests__/page/lookout-v723.test.mjs`; `motion.test.mjs` (a hunt needs a term to sparkle).
 - **v7.22 + worker v125: Den › STATS holds every analytic and graph** (Matt: "I'd like this and any other analytics and
   graphs in the menu area", and "can it show me how someone came to the site?"). New tab between ABOUT and SETTINGS:
   "Your hunting" (this device: searches per day for 14 days from `prowl.runs`, finds saved per week for 8 weeks from
@@ -409,7 +429,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.23, worker v126**. Claim one here when you start.
+Next free numbers: **page v7.24, worker v126**. Claim one here when you start.
 
 ## What's next
 
