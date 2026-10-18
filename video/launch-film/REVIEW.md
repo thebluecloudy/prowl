@@ -142,3 +142,13 @@ prowl" band with yellow NEW badges, and the listing popup with its orange header
 gone), the pink like heart and the app's toast "Liked. Flock will show you more like this.". The email shows the
 real alert subject ("Prowl: 3 new · ceramic panther (3)") from "Prowl by Owl & Twig". The neon green is kept only for
 the ending. Timing and sound are unchanged.
+
+## Owner's note after round 7, and round 8
+
+"The panther walking looks weird." The artwork is one side view with the legs drawn into the body, so the skinned
+walk could only swing them a little, and the paws slid. The panther is now treated as what it looks like, a glossy
+ceramic figurine: it keeps the artwork's pose exactly (no leg, head or tail motion while it travels) and glides, a
+hair off the floor, with a slow bob and rock tied to the distance covered; its paw shadows lighten as it lifts. The
+tail still curls into the mark at the end. The footfall sounds are gone from the score (`scripts/build-audio.mjs`);
+the soundtrack was re-mastered to -13.9 LUFS. The rig (`rig()`, the mesh weights) stays, at walk weight 0, so a
+proper hand-drawn walk can come back later.

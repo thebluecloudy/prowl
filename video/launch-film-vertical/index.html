@@ -661,18 +661,21 @@
           var ox0 = TILE0.cx - travel(t);
           var gy = groundY(t);
           var bgScroll = T.distPx(t) - travel(t);
-          var w = E.sm(seg(t, 0.6, 1.05)) * (1 - E.sm(seg(t, 17.45, 18.0)));
-          // tail: hangs a little lower and sways while walking, then curls up into the mark's loop on the landing
-          var tail = w * (0.16 + 0.07 * Math.sin(Math.PI * c + 0.6));
-          if (t < 0.6) tail = 0.05 * Math.sin(t * 5.2) * Math.sin(Math.PI * t / 0.6);
+          // the panther is a ceramic figurine: it never steps (legs, head and tail hold the artwork's pose) and glides
+          // instead, with a slow bob and rock while it moves (the owner: the bent-leg walk looked fake)
+          var w = 0, moving = E.sm(seg(t, 0.6, 1.05)) * (1 - E.sm(seg(t, 17.45, 18.0)));
+          var tail = 0;
           if (t > 17.3) tail = kf(t, [[17.3, tail], [fs(C.logoLand) - 0.12, 0.2, "io"], [fs(C.logoLand), -0.07, "out"], [fs(C.logoLand) + 0.35, 0, "io"]]);
           if (t > fs(C.logoLand) + 0.35) tail = 0.025 * Math.sin((t - 18.35) * 2.4);
-          var head = 0.025 * Math.sin(4 * Math.PI * c) * w + (t < 0.6 ? -0.03 * Math.sin(t * 3.0) : 0);
+          var head = 0;
           var P = rig({ c: c, w: w, tail: tail, head: head });
+          // glide: lifts a hair off the floor and rocks gently with the distance covered, like a figurine carried along
+          var glideY = -moving * (1.2 + 0.7 * Math.sin(2 * Math.PI * c / 1.5)) * k, glideR = moving * 0.9 * Math.sin(2 * Math.PI * c / 1.5 + 1.1);
           // breathing in the mark at the start
           var breath = 1 + 0.028 * Math.sin(t * Math.PI / 0.6) * (1 - E.sm(seg(t, 0.9, 1.5)));
           var bx = TILE0.cx + (ox0 - TILE0.cx) * breath, byy = TILE0.cy + (gy - TILE0.cy) * breath;
-          el.pan.style.transform = "translate(" + n2(bx - PV.cw / 2) + "px," + n2(byy - PV.base) + "px)";
+          el.pan.style.transformOrigin = PV.cw / 2 + "px " + PV.base + "px";
+          el.pan.style.transform = "translate(" + n2(bx - PV.cw / 2) + "px," + n2(byy - PV.base + glideY) + "px) rotate(" + n2(glideR) + "deg)";
           var panK = k * breath;
           // contact shadows
           var shA = 1 - 0.5 * E.sm(seg(t, 0, 0.1));
@@ -680,7 +683,7 @@
           ["lf", "rf", "lh", "rh"].forEach(function (lg, i) {
             var f = P.feet[lg], e = feetEls[i];
             e.setAttribute("cx", n2(ox0 + f.x * k)); e.setAttribute("cy", n2(gy + 0.6)); e.setAttribute("rx", n2(5.5 * k * (1 - f.sw * 0.4))); e.setAttribute("ry", n2(1.3 * k));
-            e.setAttribute("opacity", n2(1 - f.sw * 0.85));
+            e.setAttribute("opacity", n2((1 - f.sw * 0.85) * (1 + glideY / (6 * k))));   // paws a hair off the floor: lighter contact
           });
 
           /* ---- background layers ---- */

@@ -180,11 +180,7 @@ for (let b = 0; b < 8; b++) {
 const SFX = (arr, f, gain, pan = 0, rev = 0.12) => mix(sfx, arr, fr(f), gain, pan, rev);
 // the mark breathes (two soft air swells)
 [0, 36].forEach((f) => SFX(biquad(gen(0.9, (t) => white() * Math.sin(Math.PI * Math.min(1, t / 0.9)) ** 2), "bp", 700, 0.7), f, 0.07, 0, 0.2));
-// soft footfalls where the paws land (felt pads)
-TM.footfalls().forEach(({ f, leg }) => {
-  const near = leg.charAt(0) === "r", g = (near ? 0.11 : 0.07) * (f < 180 ? 1.2 : 0.8) * (f > 1050 ? 0.6 : 1);
-  SFX(biquad(gen(0.09, (t) => (white() * 0.7 + Math.sin(TAU * 95 * t)) * Math.exp(-t / 0.022)), "lp", 900, 0.7), f, g, -0.35, 0.05);
-});
+// no footfalls: the panther is a ceramic figurine that glides (owner, round 8), so there are no steps to hear
 // the mark unfolds into the window: a paper flip whoomp and a little crackle
 {
   const a = C.unfold[0], b = C.unfold[1], len = fr(b - a) + 0.3, mid = 0.55;
