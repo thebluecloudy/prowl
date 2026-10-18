@@ -19,7 +19,7 @@ function indexConst(name) {
   assert.ok(m, name);
   return m[0];
 }
-const FNS = ["vClean", "alWords", "alExWords", "scrubListingText", "shareLinks", "pounceMax", "pounceDayCap", "pounceNum", "pounceClean", "pounceQuarries", "pounceInches", "pounceSkip",
+const FNS = ["vClean", "alWords", "alExWords", "scrubListingText", "shareLinks", "pounceMax", "pounceDayCap", "pounceNum", "pounceMoney", "alPrice", "pounceClean", "pounceQuarries", "pounceInches", "pounceSkip",
   "pouncePrompt", "pounceParse", "pounceKeep", "pjKey", "pjOf", "pounceForget", "pounceHunt", "pounceKey", "pounceSeal", "pounceOpen",
   "pounceHasPhone", "pounceNotify", "pounceSlim", "pounceHold", "pounceRetry", "pounceRun", "pounceCarry", "alPendAdd", "alPendCap", "alCheck"];
 const CONSTS = ["POUNCE_STOP"];
@@ -87,6 +87,30 @@ test("a quarry is cleaned: size range in order, https photo only, skip words as 
   assert.deepEqual([g.min, g.max], [22, 30]);
   assert.equal(g.photo, "");
   assert.deepEqual(g.not, ["a thing"], "prices are scrubbed from listing text");
+});
+
+test("v122: a quarry with no description watches for any genuine example; a price range is kept in order", () => {
+  const { P } = load();
+  assert.equal(P.pounceClean({ spec: "", any: 0 }), null, "no description and no any: no quarry");
+  const g = P.pounceClean({ spec: "", any: 1, lo: 300, hi: 40 });
+  assert.equal(g.any, 1);
+  assert.equal(g.spec, "");
+  assert.deepEqual([g.lo, g.hi], [40, 300]);
+  assert.equal(P.pounceClean({ spec: "black panther, 26 inch", any: 1 }).any, 0, "a description wins over any");
+  assert.deepEqual([P.pounceClean({ spec: "", any: 1, lo: -5, hi: "abc" }).lo, P.pounceClean({ spec: "", any: 1, hi: 2e6 }).hi], [0, 0]);
+  const p = P.pouncePrompt("padilla", g, { title: "Padilla studio pottery vase", price: "$85", src: "ebay" });
+  assert.match(p, /QUARRY: any genuine example of what the hunt names/);
+  assert.doesNotMatch(p, /binding/);
+});
+
+test("v122: the pre-filter drops listings outside the quarry's price range", () => {
+  const { P } = load();
+  const g = P.pounceClean({ spec: "", any: 1, lo: 40, hi: 300 });
+  assert.equal(P.pounceSkip("padilla", g, { title: "Padilla vase", price: "$25.00" }), "under $40");
+  assert.equal(P.pounceSkip("padilla", g, { title: "Padilla vase", price: "$1,250.00" }), "over $300");
+  assert.equal(P.pounceSkip("padilla", g, { title: "Padilla vase", price: "$120.00" }), null);
+  assert.equal(P.pounceSkip("padilla", g, { title: "Padilla vase" }), null, "no price shown: the judge decides");
+  assert.equal(P.pounceSkip("padilla", P.pounceClean({ spec: "", any: 1 }), { title: "Padilla vase", price: "$5" }), null, "no range: any price");
 });
 
 test("free members run one quarry, Pro five, only on hunts the alerts cover", () => {
@@ -297,7 +321,7 @@ test("a full waiting list keeps Pounce matches: they go first and replace a plai
 
 test("saving: a quarry on a deleted hunt is dropped and can be removed; one on a muted hunt does not hold the slot", () => {
   const src = indexFn("pounceSave");
-  assert.match(src, /const removing = !b\.notUrl && !String\(b\.spec \|\| ""\)\.trim\(\);/);
+  assert.match(src, /const removing = !b\.notUrl && !String\(b\.spec \|\| ""\)\.trim\(\) && !b\.any;/, "v122: a one-tap (any) quarry is a save, not a removal");
   assert.match(src, /\(!removing && mine\.indexOf\(k\) === -1\)/);
   assert.match(src, /if \(mine\.indexOf\(h\) === -1 \|\| !pounceClean\(gs\[h\]\)\) delete gs\[h\]/);
   assert.match(src, /h !== k && live\.indexOf\(h\) !== -1/);

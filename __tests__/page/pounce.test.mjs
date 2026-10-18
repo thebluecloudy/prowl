@@ -50,7 +50,7 @@ test('Den > Settings shows the quarry and what Pounce spotted, with Open it and 
   await p.close();
 });
 
-test('editing a quarry posts the member\'s words to the worker, and a too-short one is refused on the page', async () => {
+test('editing a quarry posts the member\'s words to the worker; v7.19: an empty description means any genuine one', async () => {
   const calls = [];
   const p = loadPage({ storage: base({ 'prowl.pounceSeen': MATCH.at }), fetchImpl: worker(calls) });
   const sec = await openSettings(p);
@@ -58,12 +58,6 @@ test('editing a quarry posts the member\'s words to the worker, and a too-short 
   await tick(30);
   const ta = p.$('#otp-pncSpec');
   assert.ok(ta, 'the editor opens');
-  ta.value = 'short';
-  ta.dispatchEvent(new p.win.Event('input', { bubbles: true }));
-  p.$('#otp-denSettings [data-pnc="save"]').click();
-  await tick(30);
-  assert.match(p.$('#otp-denSettings .pnc').textContent, /Describe the piece in a few words first\./);
-  assert.equal(calls.filter((c) => /alerts\/quarry/.test(c.url)).length, 0, 'nothing sent');
   p.$('#otp-pncSpec').value = 'Royal Haeger R-495 panther, 26 inches, flat tail. Not the TV lamp.';
   p.$('#otp-pncSpec').dispatchEvent(new p.win.Event('input', { bubbles: true }));
   p.$('#otp-denSettings [data-pnc="save"]').click();

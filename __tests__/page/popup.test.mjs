@@ -94,12 +94,12 @@ test('ShopGoodwill opens the popup with a clean outbound link', async () => {
   await p.close();
 });
 
-test('an ended listing says so and keeps its photos', async () => {
+test('an ended listing says so, offers to watch for the next one, and keeps its photos', async () => {
   const p = setup({ item: { ...EBAY_ITEM, gone: true } });
   await openSaved(p);
   tapBody(p, card(p, 'ebay.com'));
   await waitFor(() => p.$('#otp-sheetB .pp-end'));
-  assert.equal(p.$('#otp-sheetB .pp-end').textContent, 'This listing ended.');
+  assert.match(p.$('#otp-sheetB .pp-end').textContent, /This one got away\.Prowl can watch for the next one\.Watch for the next one/);   // v7.19
   assert.equal(p.$('#otp-sheetB .pp-fp'), null, 'no price check on an ended listing');
   assert.equal(p.$$('#otp-sheetB .pp-gal img').length, 3);
   await p.close();

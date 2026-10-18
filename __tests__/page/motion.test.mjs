@@ -606,7 +606,8 @@ test('reduced motion: no rising cards, no glow, no sparks, no pounce', async () 
 });
 
 test('every motion style is inside prefers-reduced-motion: no-preference, and cards rise with fill backwards', () => {
-  const block = /<!-- v6\.\d+ Prowl magic[\s\S]*?<style>([\s\S]*?)<\/style>/.exec(PAGE)[1].replace(/\/\*[\s\S]*?\*\//g, '').trim();
+  /* v7.19: the block closes the main stylesheet (served by the worker) instead of sitting in its own <style> */
+  const block = /\/\* v6\.\d+ Prowl magic[\s\S]*?\*\/([\s\S]*?)<\/style>/.exec(PAGE)[1].replace(/\/\*[\s\S]*?\*\//g, '').trim();
   const head = '@media (prefers-reduced-motion:no-preference){';
   assert.ok(block.startsWith(head), 'one media block');
   let depth = 0, end = -1;

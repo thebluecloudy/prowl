@@ -1813,7 +1813,11 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .pp-fp{margin-top:14px}
 .scout-app-wrapper .pp-share{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;margin-top:10px;border-radius:99px;font-weight:800;font-size:16px}
 .scout-app-wrapper .pp-go{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;margin-top:14px;border-radius:99px;text-decoration:none;font-weight:800;font-size:16px}
-.scout-app-wrapper .pp-end{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--cd3);color:var(--ink);font-weight:700}
+.scout-app-wrapper .pp-end,.scout-app-wrapper .pp-pnc{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin:10px 0 0;padding:12px 14px;border-radius:12px;background:var(--cd3);color:var(--ink)}
+.scout-app-wrapper .pp-end b,.scout-app-wrapper .pp-pnc b{font-weight:800}
+.scout-app-wrapper .pnc-bt{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.scout-app-wrapper .pp-end span,.scout-app-wrapper .pp-pnc span,.scout-app-wrapper .pp-pnc em{font-size:15px;color:var(--mu)}
+.scout-app-wrapper .pp-end .b,.scout-app-wrapper .pp-pnc .b{margin-top:6px;min-height:44px}
 @media(prefers-reduced-motion:reduce){.scout-app-wrapper .pp-gal{scroll-behavior:auto}.scout-app-wrapper .pp-heart.on{animation:none}}
 /* v7.04: dock buttons swap the main area with a short morph (View Transitions, class fallback). v7.09: named only
    while the morph runs: a view-transition-name makes main its own layer, which put Prowl's top bar and the store's
@@ -1873,6 +1877,43 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v7.12: small controls keep their look but take a tap 44px across */
 .scout-app-wrapper .sgw-chip .sgw-x,.scout-app-wrapper .lk-chip button,.scout-app-wrapper .sgw-cbar .sgw-sv,.scout-app-wrapper .sgw-cbar .sgw-lk,.scout-app-wrapper .sgw-cbar .sgw-fp,.scout-app-wrapper .fl-seg button,.scout-app-wrapper #otp-toast .gh{position:relative}
 .scout-app-wrapper .sgw-chip .sgw-x::after,.scout-app-wrapper .lk-chip button::after,.scout-app-wrapper .sgw-cbar .sgw-sv::after,.scout-app-wrapper .sgw-cbar .sgw-lk::after,.scout-app-wrapper .sgw-cbar .sgw-fp::after,.scout-app-wrapper .fl-seg button::after,.scout-app-wrapper #otp-toast .gh::after{content:'';position:absolute;top:50%;left:50%;width:100%;min-width:44px;height:44px;min-height:100%;transform:translate(-50%,-50%)}
+/* v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
+     shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
+     under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing.
+   v7.19: moved here from its own <style> block so the worker serves it (room under Shopify's limit). */
+@media (prefers-reduced-motion:no-preference){
+/* backwards, not both: once a card has risen in, its own hover lift (a transform) works again */
+.scout-app-wrapper .pm-in{animation:pmIn .55s cubic-bezier(.2,.8,.2,1) backwards}
+@keyframes pmIn{0%{opacity:0;transform:translateY(10px) scale(.97)}60%{opacity:1}100%{opacity:1;transform:none}}
+.scout-app-wrapper .sgw-cell[data-fresh] .sgw-card{position:relative}
+/* the card clips its corners (overflow:hidden), so the glow is drawn inside its edge */
+.scout-app-wrapper .pm-halo{position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 1.5px var(--ac),inset 0 0 16px var(--ac);opacity:0;animation:pmHalo 2.6s ease-in-out 2;z-index:2}
+@keyframes pmHalo{0%{opacity:0}35%{opacity:.75}100%{opacity:0}}
+.scout-app-wrapper .pm-uni{position:absolute;top:4px;right:6px;font-size:18px;line-height:1;pointer-events:none;z-index:3;opacity:0;animation:pmUni 2.2s ease-out forwards}
+@keyframes pmUni{0%{opacity:0;transform:translateY(8px) rotate(-12deg) scale(.6)}25%{opacity:1;transform:translateY(-4px) rotate(6deg) scale(1.1)}70%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-14px)}}
+/* sparks are on body, outside the text-size zoom, so they land where the tap was */
+.pm-spark{position:fixed;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;pointer-events:none;z-index:2147483000;opacity:0;animation:pmSpark .8s ease-out forwards}
+.pm-spark.u{background:linear-gradient(135deg,#ffb3e6,#b5a8ff 50%,#9ff3ff)!important}
+@keyframes pmSpark{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.2)}}
+.scout-app-wrapper #otp-pan.pm-pounce img{animation:pmPounce .7s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pmPounce{0%{transform:none}30%{transform:translateY(4px) scale(.96,1.03)}60%{transform:translateY(-6px) scale(1.04,.98)}100%{transform:none}}
+/* a sheen across a hunt chip as the pointer comes onto it (Hark drew it for the old quick-search chips); a moving
+   background, so nothing is clipped or moved. Played once per hover by the script, not on :hover, which would start it
+   again each time the panel redraws under a resting pointer */
+.scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.4) 50%,transparent 70%);background-size:250% 100%;background-repeat:no-repeat;animation:pmSheen .8s ease-out}
+[data-theme=uranium] .scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(57,255,20,.35) 50%,transparent 70%)}
+@keyframes pmSheen{0%{background-position:130% 0}100%{background-position:-30% 0}}
+/* v6.88: taps answer (dock icons, rows, buttons press in), and a sweep line names the sites as a hunt's rows rise */
+.scout-app-wrapper .db svg,.scout-app-wrapper .hit{transition:transform .14s ease-out,background .15s}
+.scout-app-wrapper .db:active svg{transform:scale(.86)}
+.scout-app-wrapper .hit:active{transform:scale(.985)}
+.scout-app-wrapper .b:active{transform:scale(.97)}
+.scout-app-wrapper .pm-sw{margin:8px 0 0;font-size:13px;font-weight:600;color:var(--mu);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;animation:rise .3s ease-out}
+.scout-app-wrapper .pm-sw b{color:var(--ac)}
+/* v6.89: Uranium only, a swarm of fireflies crosses the screen when a hunt starts */
+.pm-ff{position:fixed;left:0;width:5px;height:5px;margin:-2px;border-radius:50%;background:#d8ff6b;box-shadow:0 0 6px 2px #39ff14,0 0 14px 4px rgba(57,255,20,.45);pointer-events:none;z-index:2147482990;opacity:0;animation:pmFF var(--t) cubic-bezier(.45,.1,.55,.9) var(--d) forwards}
+@keyframes pmFF{0%{opacity:0;transform:translate3d(-4vw,0,0)}10%{opacity:1}30%{opacity:.35;transform:translate3d(28vw,var(--y),0)}45%{opacity:1}60%{opacity:.5;transform:translate3d(60vw,calc(var(--y)*-1),0)}80%{opacity:1}100%{opacity:0;transform:translate3d(106vw,var(--y),0)}}
+}
 </style>
 
 <div class="scout-app-wrapper ot-r k2">
@@ -2847,7 +2888,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.18';
+var PROWL_VERSION='v7.19';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -5447,27 +5488,36 @@ function prefsHtml(on,em,n){
    Hark's branch (page v6.77), brought up to date on main by Claude. */
 var PNC={edit:'',d:null,busy:0,msg:'',mk:'',focus:'',fp:0};   /* v6.95: mk = the hunt a message is about */
 function pncQ(){return MAIL.quarries||{} }
-function pncD(k){var q=pncQ()[k]||{};return {spec:q.spec||'',avoid:(q.avoid||[]).join(', '),min:q.min||'',max:q.max||'',photo:q.photo||'',maybe:q.maybe?1:0} }
+function pncD(k){var q=pncQ()[k]||{};return {spec:q.spec||'',avoid:(q.avoid||[]).join(', '),min:q.min||'',max:q.max||'',lo:q.lo||'',hi:q.hi||'',photo:q.photo||'',maybe:q.maybe?1:0} }
+/* v7.19 (Matt: "why do I need to fill out the form for Pounce, why can't it just find the items?"): a quarry needs no
+   description now. One tap on Pounce watches for any genuine example of the hunt (worker v122, any: 1); Edit narrows it
+   with words, a size range or a price range. */
+function pncOn(g){return !!g&&!!(g.spec||g.any)}
+function pncSum(g,hunt){
+  var r=g.lo&&g.hi?'$'+g.lo+' to $'+g.hi:g.lo?'from $'+g.lo:g.hi?'up to $'+g.hi:'';
+  return (g.spec?g.spec.slice(0,90):'Any '+hunt+' it finds')+(r?' \u00b7 '+r:'');
+}
 function pncIn(k,ph,v,t){return '<input type="'+(t||'text')+'" data-pk="'+k+'" placeholder="'+ph+'" aria-label="'+ph+'" value="'+esc(v)+'">'}
 function pncHtml(){
   var hs=mailHunts(),act=prefsActive(),q=pncQ(),n=0,h,i,k,g,d,gm=MAIL.gm||[];
-  for(k in q)if(act[k]&&q[k].spec)n++;
-  h='<div class="mail-sec pnc"><h4>\uD83D\uDC3E Pounce<small>'+n+' of '+(MAIL.quarryMax||1)+'</small></h4><p class="mail-fine">Describe the exact piece you are stalking. Prowl looks at every new listing\u2019s photo and title, and you only hear about the ones that fit.</p>'+
+  for(k in q)if(act[k]&&pncOn(q[k]))n++;
+  h='<div class="mail-sec pnc"><h4>\uD83D\uDC3E Pounce<small>'+n+' of '+(MAIL.quarryMax||1)+'</small></h4><p class="mail-fine">Tap Pounce on a hunt and Prowl looks at every new listing\u2019s photo and title for you, and you only hear about the real thing. Edit narrows it to the exact piece or a price.</p>'+
     (wpLine()||'<p class="mail-fine">Finds wait at the top of your Prowl email.</p>');
   /* v6.95: a message shows where it is about: under the hunt being saved, or here for phone alerts. It used to show
      only below every hunt, off the screen, so a refused save looked like nothing happened (Matt, 2026-10-13) */
   if(PNC.msg&&!PNC.mk)h+=pncMsg();
   for(i=0;i<hs.length;i++){
     k=hs[i].toLowerCase();if(!act[k])continue;g=q[k];
-    h+='<div class="mail-row'+(g&&g.spec?' on':'')+'"><span class="nm">'+esc(hs[i])+(g&&g.spec?'<small class="pnc-sp">'+esc(g.spec.slice(0,90))+'</small>':'')+'</span><button type="button" class="tg" data-pnc="edit" data-h="'+esc(k)+'">'+(g&&g.spec?'Edit':'Set your quarry')+'</button></div>';
+    h+='<div class="mail-row'+(pncOn(g)?' on':'')+'"><span class="nm">'+esc(hs[i])+(pncOn(g)?'<small class="pnc-sp">'+esc(pncSum(g,hs[i]))+'</small>':'')+'</span>'+
+      (pncOn(g)?'<button type="button" class="tg" data-pnc="edit" data-h="'+esc(k)+'">Edit</button>':'<span class="pnc-bt"><button type="button" class="tg" data-pnc="edit" data-h="'+esc(k)+'">Describe it</button><button type="button" class="tg" data-pnc="quick" data-h="'+esc(k)+'"'+(PNC.busy?' disabled':'')+'>\uD83D\uDC3E Pounce</button></span>')+'</div>';
     if(PNC.edit===k){d=PNC.d||pncD(k);
-      h+='<div class="pnc-ed"><textarea id="otp-pncSpec" data-pk="spec" maxlength="600" rows="4" aria-label="The exact piece" placeholder="Must have: size, shape, era. Not: other versions, lamps, repros.">'+esc(d.spec)+'</textarea>'+
-        '<div class="mail-in">'+pncIn('avoid','Skip words: lamp, planter',d.avoid)+'</div><div class="mail-in">'+pncIn('min','Min inches',d.min,'number')+pncIn('max','Max inches',d.max,'number')+'</div><div class="mail-in">'+pncIn('photo','Reference photo link',d.photo,'url')+'</div>'+
+      h+='<div class="pnc-ed"><textarea id="otp-pncSpec" data-pk="spec" maxlength="600" rows="4" aria-label="The exact piece (optional)" placeholder="Optional. Must have: size, shape, era. Not: other versions, lamps, repros. Leave it empty for any genuine one.">'+esc(d.spec)+'</textarea>'+
+        '<div class="mail-in">'+pncIn('avoid','Skip words: lamp, planter',d.avoid)+'</div><div class="mail-in">'+pncIn('lo','Min price $',d.lo,'number')+pncIn('hi','Max price $',d.hi,'number')+'</div><div class="mail-in">'+pncIn('min','Min inches',d.min,'number')+pncIn('max','Max inches',d.max,'number')+'</div><div class="mail-in">'+pncIn('photo','Reference photo link',d.photo,'url')+'</div>'+
         '<label class="sgw-mc"><input type="checkbox" data-pnc="maybe"'+(d.maybe?' checked':'')+'><span class="cbx" aria-hidden="true"></span> Strong maybes too</label>'+
-        '<span class="sgw-mf"><button type="button" class="b p" data-pnc="save"'+(PNC.busy?' disabled':'')+'>Save quarry</button>'+(g&&g.spec?'<button type="button" class="b" data-pnc="del">Stop stalking</button>':'')+'<button type="button" class="b" data-pnc="edit" data-h="'+esc(k)+'">Cancel</button></span></div>'}
+        '<span class="sgw-mf"><button type="button" class="b p" data-pnc="save"'+(PNC.busy?' disabled':'')+'>Save quarry</button>'+(pncOn(g)?'<button type="button" class="b" data-pnc="del">Stop stalking</button>':'')+'<button type="button" class="b" data-pnc="edit" data-h="'+esc(k)+'">Cancel</button></span></div>'}
     if(PNC.msg&&PNC.mk===k)h+=pncMsg();
   }
-  for(k in q)if(!act[k]&&q[k]&&q[k].spec)h+='<div class="mail-row"><span class="nm">'+esc(k)+' (paused)</span><button type="button" class="tg" data-pnc="del" data-h="'+esc(k)+'">Stop stalking</button></div>';
+  for(k in q)if(!act[k]&&pncOn(q[k]))h+='<div class="mail-row"><span class="nm">'+esc(k)+' (paused)</span><button type="button" class="tg" data-pnc="del" data-h="'+esc(k)+'">Stop stalking</button></div>';
   if(PNC.msg&&PNC.mk&&!act[PNC.mk])h+=pncMsg();
   if(gm.length){h+='<h4>Spotted for you</h4>';
     gm.forEach(function(x,i){if(!x||i>7&&x.url!==PNC.focus||!/^https:\/\//.test(x.url||''))return;
@@ -5544,10 +5594,14 @@ document.addEventListener('click',function(e){
   if(a==='edit'){PNC.edit=PNC.edit===hh?'':hh;PNC.d=null;PNC.msg='';PNC.mk='';rMail();return}
   if(a==='save'||a==='del'){
     if(hh)PNC.edit=hh;d=PNC.d||pncD(PNC.edit);PNC.mk=PNC.edit;
-    if(a==='save'&&String(d.spec).trim().length<8){PNC.msg='Describe the piece in a few words first.';rMail();return}
     PNC.busy=1;PNC.msg=a==='save'?'Saving\u2026':'Stopping\u2026';rMail();
-    pncPost('alerts/quarry',a==='del'?{hunt:PNC.edit,spec:''}:{hunt:PNC.edit,spec:d.spec,avoid:String(d.avoid).toLowerCase().split(/[,;]+/),min:parseInt(d.min,10)||0,max:parseInt(d.max,10)||0,photo:String(d.photo).trim(),maybe:d.maybe},
+    pncPost('alerts/quarry',a==='del'?{hunt:PNC.edit,spec:''}:{hunt:PNC.edit,spec:d.spec,any:String(d.spec).trim()?0:1,avoid:String(d.avoid).toLowerCase().split(/[,;]+/),min:parseInt(d.min,10)||0,max:parseInt(d.max,10)||0,lo:parseInt(d.lo,10)||0,hi:parseInt(d.hi,10)||0,photo:String(d.photo).trim(),maybe:d.maybe},
       function(j){if(j&&j.ok){PNC.edit='';PNC.d=null}pncSay(j,a==='save'?'Saved. Pounce is stalking it.':'Stopped.')});
+    return;
+  }
+  if(a==='quick'){   /* v7.19: one tap, no form */
+    PNC.edit='';PNC.d=null;PNC.mk=hh;PNC.busy=1;PNC.msg='Saving\u2026';rMail();
+    pncPost('alerts/quarry',{hunt:hh,spec:'',any:1},function(j){pncSay(j,'Pounce is watching every new listing for this hunt. Edit narrows it.')});
     return;
   }
   if(a==='wpon'){wpOn();return}
@@ -5562,10 +5616,28 @@ try{var pnm=/[?&]pounce=([^&#]+)/.exec(location.search);if(pnm){
   var pnt=0;(function go(){
     if(!pnt)openMailSettings();
     var c=null;[].forEach.call(document.querySelectorAll('.pnc-hit'),function(x){if(x.getAttribute('data-u')===PNC.focus)c=x});
-    if(c){try{c.scrollIntoView({block:'center'})}catch(e3){}if(PNC.fp&&c.querySelector('.sgw-fp'))fpAsk(c.querySelector('.sgw-fp'));PNC.fp=0;return}
+    if(c){try{c.scrollIntoView({block:'center'})}catch(e3){}
+      if(pncPop(c)){var pf=PNC.fp&&$('#otp-sheetB .sgw-fp');if(pf)fpAsk(pf)}   /* v7.19: the find itself, over the Den */
+      else if(PNC.fp&&c.querySelector('.sgw-fp'))fpAsk(c.querySelector('.sgw-fp'));
+      PNC.fp=0;return}
     if(++pnt<20)setTimeout(go,500);
   })();
 } }catch(e){}
+/* v7.19 (the UX spec's "Alert Match" screen): a tap on a Pounce note opens that find in the listing popup, with which
+   hunt it is for and Pounce's reason, and Not it right there. Closing it leaves Den > Settings at the match. */
+function pncPop(c){
+  var u=c.getAttribute('data-u'),x=null,i,gm=MAIL.gm||[];
+  for(i=0;i<gm.length;i++)if(gm[i]&&gm[i].url===u){x=gm[i];break}
+  if(!x||!popOpen(c))return false;
+  POP.pnc={hunt:x.hunt||'',reason:x.reason||'',maybe:x.match==='maybe'};
+  popPaint(ITEMC[u]||null);
+  return true;
+}
+function pncPopNot(){
+  var P=POP;if(!P||!P.pnc||P.pnc.done)return;
+  P.pnc.done=1;popPaint(ITEMC[P.u]||null);
+  pncPost('alerts/quarry',{hunt:P.pnc.hunt,notUrl:P.u},function(j){pncSay(j,'Not it. I will skip listings like that.');toast(j&&j.ok?'Not it. Pounce will skip listings like that.':'Could not reach Prowl. Try again in a minute.',2600)});
+}
 function openMailSettings(){denTab='settings';if(den&&den.hidden)openDen();else setDenTab('settings');}
 /* v5.80: plan and billing, in plain view. Free users see the price and terms
    before they buy; Pro users see what they pay, when it renews, the receipt
@@ -6813,14 +6885,19 @@ function popPaint(d){
   if(price)h+='<p class="pp-p">'+esc(price)+(d.was?' <s class="sale-was">'+esc(d.was)+'</s>'+(d.off?' <span class="sale-off">'+esc(d.off)+'</span>':''):'')+'</p>';   /* v7.10 */
   var flags=popFlags(title,d);if(flags)h+=flags.html;
   if(meta.length)h+='<p class="pp-m">'+esc(meta.join(' · '))+'</p>';
-  if(d.gone)h+='<p class="pp-end">This listing ended.</p>';
-  P.term=popTerm(title,d.aspects);if(P.term)h+='<button type="button" class="pp-hunt" data-pphunt="1" aria-label="Search this on Prowl: '+esc(P.term)+'">\ud83d\udd0d Search this on Prowl</button>';   /* v6.99 */
+  if(P.pnc)h+='<div class="pp-pnc" role="note"><b>\uD83D\uDC3E Pounce '+(P.pnc.maybe?'thinks this may be':'match')+' for '+esc(P.pnc.hunt)+'</b>'+(P.pnc.reason?'<span>'+esc(P.pnc.reason)+'</span>':'')+
+    (P.pnc.done?'<em>Marked not it.</em>':'<button type="button" class="b" data-ppnot="1">Not it</button>')+'</div>';   /* v7.19 */
+  P.term=popTerm(title,d.aspects);
+  /* v7.19 (the UX spec's "it just slipped away"): an ended listing offers to watch for the next one */
+  if(d.gone)h+='<div class="pp-end" role="note"><b>This one got away.</b><span>Prowl can watch for the next one.</span>'+
+    ((P.term||title)?'<button type="button" class="b p" data-ppwatch="1"'+(P.watched?' disabled':'')+'>'+(P.watched?'\u2713 Watching for it':'Watch for the next one')+'</button>':'')+'</div>';
+  if(P.term)h+='<button type="button" class="pp-hunt" data-pphunt="1" aria-label="Search this on Prowl: '+esc(P.term)+'">\ud83d\udd0d Search this on Prowl</button>';   /* v6.99 */
   if(d.aspects&&d.aspects.length){h+='<dl class="pp-asp">';for(i=0;i<d.aspects.length&&i<6;i++)h+='<dt>'+esc(popUnEnt(d.aspects[i].n))+'</dt><dd>'+esc(popUnEnt(d.aspects[i].v))+'</dd>';h+='</dl>'}
   if(desc)h+='<div class="pp-d clip" id="otp-ppd"></div><button type="button" class="pp-more" data-ppmore="1" aria-controls="otp-ppd" aria-expanded="false">Read more</button>';
   if(price&&!d.gone&&!aiOff())h+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'" data-d="'+esc((d.was?'On sale, was '+d.was+(d.off?' ('+d.off+')':'')+'. ':'')+(flags?flags.note+' ':'')+popDetails(meta,d))+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
   if(price||P.term)h+='<a class="b pp-sold" href="'+esc(popSold(P.term||title))+'" target="_blank" rel="noopener noreferrer">What it sold for on eBay \u2197</a>';   /* v7.10 */
   var go=window.prowlAff(d.url||P.u,'prowl-popup',d.affUrl);
-  if(go!=='#')h+='<div class="pp-dock"><a class="b p pp-go" href="'+esc(go)+'" target="_blank" rel="noopener noreferrer">View on '+esc(POP_NAME[P.src])+' ↗</a></div>';   /* v7.12: pinned to the sheet's foot */
+  if(go!=='#')h+=(d.gone?'<div>':'<div class="pp-dock">')+'<a class="b'+(d.gone?'':' p')+' pp-go" href="'+esc(go)+'" target="_blank" rel="noopener noreferrer">View on '+esc(POP_NAME[P.src])+' ↗</a></div>';   /* v7.19: an ended listing's link is not pinned; Watch for the next one leads */   /* v7.12: pinned to the sheet's foot */
   P.share={u:d.url||P.u,t:title,p:price,img:imgs[0]||''};h+='<button type="button" class="b pp-share" data-ppshare="1">Share this find</button>';   /* v6.98 */
   h+='<button type="button" class="b pp-close" data-ppclose="1">Close</button>';   /* v6.99: a way out at the bottom too */
   b.innerHTML=h;
@@ -6835,6 +6912,14 @@ function popLike(){
   var S=P.share||{},l=likeClean({u:P.u,t:S.t||P.t,p:S.p||P.p,s:P.s||P.src,i:S.img||P.img,h:'',at:Date.now()});if(!l)return;
   var a=likesGet();a.unshift(l);likesPut(a);likePaint(P.u);rDenLikes();
   toast('\u2665 Liked. Flock will show you more like this.',2400);
+}
+/* v7.19: Watch for the next one: the cleaned title becomes a favorite hunt (Daily, the home page's new finds and, for a
+   member, the Prowl email cover it). A full Den says so through sgwAdd and nothing changes. */
+function popWatch(){
+  var P=POP,t;if(!P||P.watched)return;
+  t=P.term||sgwClean(P.t);if(!t||!sgwAdd(t))return;
+  P.watched=1;popPaint(ITEMC[P.u]||null);
+  toast('\u25c9 Watching for <b>'+esc(t)+'</b>. New ones show on your home page'+(mGet('alertTok')?' and in your Prowl email.':' and in Daily.'),3600);
 }
 /* v6.99: Search this on Prowl closes the popup and runs the cleaned title across every marketplace */
 function popHunt(){
@@ -7982,6 +8067,8 @@ function flyStep(){
     if(e.target.closest&&e.target.closest('[data-ppshare]')){if(POP&&POP.share)shareFind(POP.share);return}   /* v6.98 */
     if(e.target.closest&&e.target.closest('[data-ppclose]')){closeSheet();return}   /* v6.99 */
     if(e.target.closest&&e.target.closest('[data-pphunt]')){popHunt();return}
+    if(e.target.closest&&e.target.closest('[data-ppwatch]')){popWatch();return}   /* v7.19 */
+    if(e.target.closest&&e.target.closest('[data-ppnot]')){pncPopNot();return}   /* v7.19 */
     if(e.target.closest&&e.target.closest('.pp-gal')){var nt=Date.now();if(nt-popTap<320){popTap=0;popLike()}else popTap=nt;return}
     if((b=e.target.closest&&e.target.closest('[data-pi]'))){var g=sb.querySelector('.pp-gal'),k=+b.getAttribute('data-pi');if(g){try{g.scrollTo({left:k*g.clientWidth,behavior:flReduced()?'auto':'smooth'})}catch(er){g.scrollLeft=k*g.clientWidth}}
       $$('#otp-sheet [data-pi]').forEach(function(x){x.setAttribute('aria-current',String(x===b))});return}
@@ -8586,44 +8673,6 @@ try{promoPick();setTimeout(promoPick,1500);window.addEventListener('focus',promo
 })();
 </script>
 
-<!-- v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
-     shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
-     under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing. -->
-<style>
-@media (prefers-reduced-motion:no-preference){
-/* backwards, not both: once a card has risen in, its own hover lift (a transform) works again */
-.scout-app-wrapper .pm-in{animation:pmIn .55s cubic-bezier(.2,.8,.2,1) backwards}
-@keyframes pmIn{0%{opacity:0;transform:translateY(10px) scale(.97)}60%{opacity:1}100%{opacity:1;transform:none}}
-.scout-app-wrapper .sgw-cell[data-fresh] .sgw-card{position:relative}
-/* the card clips its corners (overflow:hidden), so the glow is drawn inside its edge */
-.scout-app-wrapper .pm-halo{position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 1.5px var(--ac),inset 0 0 16px var(--ac);opacity:0;animation:pmHalo 2.6s ease-in-out 2;z-index:2}
-@keyframes pmHalo{0%{opacity:0}35%{opacity:.75}100%{opacity:0}}
-.scout-app-wrapper .pm-uni{position:absolute;top:4px;right:6px;font-size:18px;line-height:1;pointer-events:none;z-index:3;opacity:0;animation:pmUni 2.2s ease-out forwards}
-@keyframes pmUni{0%{opacity:0;transform:translateY(8px) rotate(-12deg) scale(.6)}25%{opacity:1;transform:translateY(-4px) rotate(6deg) scale(1.1)}70%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-14px)}}
-/* sparks are on body, outside the text-size zoom, so they land where the tap was */
-.pm-spark{position:fixed;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;pointer-events:none;z-index:2147483000;opacity:0;animation:pmSpark .8s ease-out forwards}
-.pm-spark.u{background:linear-gradient(135deg,#ffb3e6,#b5a8ff 50%,#9ff3ff)!important}
-@keyframes pmSpark{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.2)}}
-.scout-app-wrapper #otp-pan.pm-pounce img{animation:pmPounce .7s cubic-bezier(.3,1.6,.5,1)}
-@keyframes pmPounce{0%{transform:none}30%{transform:translateY(4px) scale(.96,1.03)}60%{transform:translateY(-6px) scale(1.04,.98)}100%{transform:none}}
-/* a sheen across a hunt chip as the pointer comes onto it (Hark drew it for the old quick-search chips); a moving
-   background, so nothing is clipped or moved. Played once per hover by the script, not on :hover, which would start it
-   again each time the panel redraws under a resting pointer */
-.scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.4) 50%,transparent 70%);background-size:250% 100%;background-repeat:no-repeat;animation:pmSheen .8s ease-out}
-[data-theme=uranium] .scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(57,255,20,.35) 50%,transparent 70%)}
-@keyframes pmSheen{0%{background-position:130% 0}100%{background-position:-30% 0}}
-/* v6.88: taps answer (dock icons, rows, buttons press in), and a sweep line names the sites as a hunt's rows rise */
-.scout-app-wrapper .db svg,.scout-app-wrapper .hit{transition:transform .14s ease-out,background .15s}
-.scout-app-wrapper .db:active svg{transform:scale(.86)}
-.scout-app-wrapper .hit:active{transform:scale(.985)}
-.scout-app-wrapper .b:active{transform:scale(.97)}
-.scout-app-wrapper .pm-sw{margin:8px 0 0;font-size:13px;font-weight:600;color:var(--mu);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;animation:rise .3s ease-out}
-.scout-app-wrapper .pm-sw b{color:var(--ac)}
-/* v6.89: Uranium only, a swarm of fireflies crosses the screen when a hunt starts */
-.pm-ff{position:fixed;left:0;width:5px;height:5px;margin:-2px;border-radius:50%;background:#d8ff6b;box-shadow:0 0 6px 2px #39ff14,0 0 14px 4px rgba(57,255,20,.45);pointer-events:none;z-index:2147482990;opacity:0;animation:pmFF var(--t) cubic-bezier(.45,.1,.55,.9) var(--d) forwards}
-@keyframes pmFF{0%{opacity:0;transform:translate3d(-4vw,0,0)}10%{opacity:1}30%{opacity:.35;transform:translate3d(28vw,var(--y),0)}45%{opacity:1}60%{opacity:.5;transform:translate3d(60vw,calc(var(--y)*-1),0)}80%{opacity:1}100%{opacity:0;transform:translate3d(106vw,var(--y),0)}}
-}
-</style>
 <script>
 /* v6.69 Prowl magic (Hark's idea). Read-only on the page: it watches for new result cards and lets each listing rise in
    the first time it appears this visit (the panel redraws as each marketplace answers; a card redrawn mid-rise carries
