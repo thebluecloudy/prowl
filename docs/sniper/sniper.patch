@@ -1,0 +1,683 @@
+--- a/page/prowl.html
++++ b/page/prowl.html
+@@ -1826,6 +1826,23 @@
+ .scout-app-wrapper .pp-fp{margin-top:14px}
+ .scout-app-wrapper .pp-share{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;margin-top:10px;border-radius:99px;font-weight:800;font-size:16px}
+ .scout-app-wrapper .pp-go{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;margin-top:14px;border-radius:99px;text-decoration:none;font-weight:800;font-size:16px}
++/* v7.24: the sniper (owner only while tested): the popup's Snipe it box and Den › Settings › Sniper */
++.scout-app-wrapper .pp-snp{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin:10px 0 0;padding:12px 14px;border-radius:12px;background:var(--cd3);color:var(--ink)}
++.scout-app-wrapper .pp-snp b{font-weight:800}
++.scout-app-wrapper .pp-snp span,.scout-app-wrapper .pp-snp em,.scout-app-wrapper .snp small{font-size:15px;color:var(--mu)}
++.scout-app-wrapper .snp{padding:16px 0;border-bottom:1px solid var(--ln)}
++.scout-app-wrapper .snp h3 small{font-size:12px;font-weight:600;color:var(--mu);margin-left:6px}
++.scout-app-wrapper .snp-f{display:flex;flex-wrap:wrap;align-items:center;gap:8px;width:100%;margin:6px 0}
++.scout-app-wrapper .snp-f input{-webkit-appearance:none;appearance:none;flex:1 1 180px;min-width:0;min-height:44px;padding:8px 12px;border:1px solid var(--ln);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;font-size:16px}
++.scout-app-wrapper .snp-f label{display:flex;align-items:center;gap:6px;flex:1 1 180px;font-weight:700}
++.scout-app-wrapper .snp-f label input{flex:1 1 auto}
++.scout-app-wrapper .snp-f .b{min-height:44px}
++.scout-app-wrapper .snp-l{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
++.scout-app-wrapper .snp-l li{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px 12px;border-radius:10px;background:var(--cd3)}
++.scout-app-wrapper .snp-l a{font-weight:700;color:var(--ink)}
++.scout-app-wrapper .snp-l span{font-size:14px;color:var(--mu)}
++.scout-app-wrapper .snp-l code{display:block;max-width:100%;overflow-wrap:anywhere;white-space:pre-wrap;font-size:12px}
++.scout-app-wrapper .snp-on .gh,.scout-app-wrapper .snp-l .gh{margin-left:6px}
+ .scout-app-wrapper .pp-end,.scout-app-wrapper .pp-pnc{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin:10px 0 0;padding:12px 14px;border-radius:12px;background:var(--cd3);color:var(--ink)}
+ .scout-app-wrapper .pp-end b,.scout-app-wrapper .pp-pnc b{font-weight:800}
+ .scout-app-wrapper .pnc-bt{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+@@ -2774,6 +2791,7 @@
+       <div class="setrow" id="otp-hiDen" hidden></div>
+       <div class="otp-mail sgw-mail mail-card" data-mode="card" hidden></div>
+       <div class="gapp otp-getapp" data-mode="settings" hidden></div>
++      <div class="snp" id="otp-snipe" hidden></div>
+       <div class="setrow">
+         <div>
+ <h3>Appearance</h3>
+@@ -3681,7 +3699,7 @@
+   $('#otp-denFoot').hidden=t!=='hunts'||st.sel.size<2;
+   /* the marquee only animates once it has been laid out, so kick it here */
+   if(t==='about')loadFoundStrip();
+-  if(t==='settings'){rMail();rGetApp();}
++  if(t==='settings'){rMail();rGetApp();rSnipe();}   /* v7.24: rSnipe */
+   if(t==='likes')rDenLikes();
+   if(t==='stats'){rDenStats();rDenMine();rDenOwn()}
+ }
+@@ -7055,6 +7073,7 @@
+   if(d.gone)awayAdd(P.u);   /* v7.23 */
+   if(d.gone)h+='<div class="pp-end" role="note"><b>This one got away.</b><span>Prowl can watch for the next one.</span>'+
+     ((P.term||title)?'<button type="button" class="b p" data-ppwatch="1"'+(P.watched?' disabled':'')+'>'+(P.watched?'\u2713 Watching for it':'Watch for the next one')+'</button>':'')+'</div>';
++  if(P.src==='shopgoodwill'&&!d.gone&&typeof d.bids==='number'&&fbOwnerKey())h+='<div class="pp-snp" id="otp-ppSnp"></div>';   /* v7.24: the sniper */
+   if(P.term)h+='<button type="button" class="pp-hunt" data-pphunt="1" aria-label="Search this on Prowl: '+esc(P.term)+'">\ud83d\udd0d Search this on Prowl</button>';   /* v6.99 */
+   if(d.aspects&&d.aspects.length){h+='<dl class="pp-asp">';for(i=0;i<d.aspects.length&&i<6;i++)h+='<dt>'+esc(popUnEnt(d.aspects[i].n))+'</dt><dd>'+esc(popUnEnt(d.aspects[i].v))+'</dd>';h+='</dl>'}
+   if(desc)h+='<div class="pp-d clip" id="otp-ppd"></div><button type="button" class="pp-more" data-ppmore="1" aria-controls="otp-ppd" aria-expanded="false">Read more</button>';
+@@ -7067,7 +7086,80 @@
+   b.innerHTML=h;
+   if(desc){var box=$('#otp-ppd');box.appendChild(popDesc(desc));
+     if(box.scrollHeight<=box.clientHeight+2){box.classList.remove('clip');var mb=b.querySelector('[data-ppmore]');if(mb)mb.parentNode.removeChild(mb)}}
++  if($('#otp-ppSnp'))snpPop();   /* v7.24 */
+ }
++/* v7.24 (the owner: "can we add a sniper to my prowl, and charge them more for it?"): the ShopGoodwill sniper (worker
++   v126). Owner key only while bidding is tested on real lots. A ShopGoodwill auction's popup has Snipe it: a max, and
++   the worker bids it from the owner's own ShopGoodwill account six seconds before the close. Den › Settings › Sniper
++   connects ShopGoodwill (the worker keeps only ShopGoodwill's sign-in token, sealed; the password goes to ShopGoodwill
++   once and is never kept) and lists every snipe with what ShopGoodwill answered. Nothing is kept on the device. */
++var SNP=null,SNP_ST={queued:'Waiting',placed:'Bid placed',lost:'Lost',ended:'Ended',failed:'Did not bid'};
++function snpId(u){var m=/shopgoodwill\.com\/item\/(\d{3,15})(?:[/?#]|$)/i.exec(String(u||''));return m?m[1]:''}
++function snpCall(path,body,cb){
++  var k=fbOwnerKey();if(!k||typeof fetch!=='function')return;
++  var h={'X-Prowl-Owner':k};if(body)h['Content-Type']='application/json';
++  fetch(SGW_API+'snipe'+path,body?{method:'POST',headers:h,body:JSON.stringify(body),cache:'no-store'}:{headers:h,cache:'no-store'})
++    .then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j||{}}},function(){return {ok:false,j:{}}})})
++    .then(function(x){if(x.ok&&x.j.on)SNP=x.j;if(cb)cb(x.ok,x.j)})
++    ['catch'](function(){if(cb)cb(false,{error:'Prowl could not reach the sniper. Try again.'})});
++}
++function snpFind(id){var a=(SNP&&SNP.snipes)||[],i;for(i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null}
++function snpUsd(n){return '$'+Number(n||0).toFixed(2)}
++function snpWhen(t){try{return new Date(t).toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}catch(e){return ''}}
++function snpConnectHtml(){
++  return '<form class="snp-f" data-snpform="connect"><input type="text" name="user" autocomplete="username" maxlength="120" placeholder="ShopGoodwill username or email" aria-label="ShopGoodwill username or email" required>'+
++    '<input type="password" name="pass" autocomplete="current-password" maxlength="200" placeholder="ShopGoodwill password" aria-label="ShopGoodwill password" required>'+
++    '<button type="submit" class="b p">Connect ShopGoodwill</button></form>'+
++    '<small>Prowl signs in to ShopGoodwill once and keeps only its sign-in pass, sealed. Your password is never kept.</small>';
++}
++function snpPop(msg){
++  var box=$('#otp-ppSnp');if(!box||!POP)return;
++  var id=snpId(POP.u),s=snpFind(id),h='<b>🎯 Snipe it</b>';
++  if(!SNP){box.innerHTML=h+'<span>Loading the sniper…</span>';snpCall('',null,function(ok,j){if(POP&&snpId(POP.u)===id)snpPop(ok?'':j.error)});return}
++  if(s&&s.st==='queued')h+='<span>Prowl bids <strong>'+esc(snpUsd(s.max))+'</strong> six seconds before it ends, '+esc(snpWhen(s.end))+'.</span><button type="button" class="b" data-snp="cancel" data-id="'+esc(id)+'">Cancel snipe</button>';
++  else if(s)h+='<span>'+esc(SNP_ST[s.st]||s.st)+'. '+esc(s.msg)+'</span>';
++  else if(!SNP.connected)h+='<span>Connect your ShopGoodwill account and Prowl bids your max in the last seconds.</span>'+snpConnectHtml();
++  else h+='<span>The most you would pay. Prowl bids it six seconds before the close, from your ShopGoodwill account.</span>'+
++    '<form class="snp-f" data-snpform="add" data-id="'+esc(id)+'"><label>Your max $<input type="number" name="max" min="1" max="50000" step="0.01" inputmode="decimal" required></label><button type="submit" class="b p">Snipe it</button></form>';
++  if(msg)h+='<em role="status">'+esc(msg)+'</em>';
++  box.innerHTML=h;
++}
++function rSnipe(msg){
++  var box=$('#otp-snipe');if(!box)return;
++  if(!fbOwnerKey()){box.hidden=true;return}
++  box.hidden=false;
++  var h='<h3>🎯 Sniper <small>testing, owner only</small></h3>',a,i,s;
++  if(!SNP){box.innerHTML=h+'<p>Loading…</p>';snpCall('',null,function(ok,j){rSnipe(ok?'':j.error||'The sniper did not answer.')});return}
++  h+='<p>Open a ShopGoodwill auction and tap Snipe it. Prowl bids your max six seconds before the close.</p>';
++  h+=SNP.connected?'<p class="snp-on">✓ ShopGoodwill connected. <button type="button" class="gh" data-snp="disconnect">Disconnect</button></p>':snpConnectHtml();
++  a=SNP.snipes||[];
++  if(a.length){h+='<ul class="snp-l">';for(i=0;i<a.length;i++){s=a[i];
++    h+='<li><a href="https://shopgoodwill.com/item/'+esc(s.id)+'" target="_blank" rel="noopener noreferrer">'+esc(s.title||('Lot '+s.id))+'</a>'+
++      '<span><b>'+esc(SNP_ST[s.st]||s.st)+'</b> · max '+esc(snpUsd(s.max))+' · ends '+esc(snpWhen(s.end))+'</span><span>'+esc(s.msg)+'</span>'+
++      (s.raw?'<details><summary>What ShopGoodwill answered</summary><code>'+esc(s.raw)+'</code></details>':'')+
++      (s.st==='queued'?'<button type="button" class="gh" data-snp="cancel" data-id="'+esc(s.id)+'">Cancel</button>':'')+'</li>'}
++    h+='</ul>'}
++  if(msg)h+='<p class="snp-m" role="status">'+esc(msg)+'</p>';
++  box.innerHTML=h;
++}
++function snpShow(msg){var d=$('#otp-snipe');if(d&&!d.hidden)rSnipe(msg);if($('#otp-ppSnp'))snpPop(msg)}
++document.addEventListener('submit',function(e){
++  var f=e.target&&e.target.closest&&e.target.closest('[data-snpform]');if(!f)return;
++  e.preventDefault();var btn=f.querySelector('button[type=submit]');if(btn)btn.disabled=true;
++  if(f.getAttribute('data-snpform')==='connect'){
++    var u=f.elements.user.value.trim(),p=f.elements.pass.value;f.elements.pass.value='';
++    snpCall('/connect',{user:u,pass:p},function(ok,j){snpShow(ok?'Connected.':j.error||'ShopGoodwill did not sign you in.')});
++    return;
++  }
++  var mx=parseFloat(f.elements.max.value);
++  snpCall('/add',{id:f.getAttribute('data-id'),max:mx},function(ok,j){snpShow(ok?'Snipe set: '+snpUsd(mx)+'.':j.error||'Prowl could not set that snipe.');if(ok)toast('🎯 Snipe set. Prowl bids '+esc(snpUsd(mx))+' in the last seconds.',3200)});
++});
++document.addEventListener('click',function(e){
++  var b=e.target&&e.target.closest&&e.target.closest('[data-snp]');if(!b)return;
++  var w=b.getAttribute('data-snp');b.disabled=true;
++  if(w==='cancel')snpCall('/cancel',{id:b.getAttribute('data-id')},function(ok,j){snpShow(ok?'Snipe cancelled.':j.error)});
++  else if(w==='disconnect')snpCall('/disconnect',{},function(ok,j){snpShow(ok?'ShopGoodwill disconnected.':j.error)});
++});
+ /* v7.23 (the eBay teardown: "no watchlist card leads to a dead listing"): a listing Prowl has seen end (its popup said
+    so) is kept by URL in prowl.gotAway (new key, newest 300; not goneGet, which is the un-liked list) and every card of it, wherever it shows, gets a Got away tag
+    (.is-gone, a MutationObserver on the app). It still opens: the popup offers Watch for the next one. */
+--- a/worker/index.js
++++ b/worker/index.js
+@@ -19,6 +19,10 @@
+  *       so it is not wired to the page. /__hibidtest shows the current answer.
+  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
+  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
++ *   v126: 2026-10-18. The ShopGoodwill sniper, owner key only while it is tested (the owner: "can we add a sniper to my
++ *         prowl, and charge them more for it?"): /snipe, /snipe/connect, /snipe/add, /snipe/cancel. A few seconds before
++ *         the close the Sniper Durable Object places the member's max as one bid from their own ShopGoodwill account.
++ *         Only ShopGoodwill's token is kept, sealed; never the password. Logic in snipe.js.
+  *   v125: 2026-10-18. Owner stats for the page's Den › Stats tab (Matt): GET /owner-stats (owner key only) answers 14 days of
+  *         people searching (distinct searchers per day, new "u" stat kind ticked once per search on /ebay), searches and terms,
+  *         plus the week's top terms; stats DO op "days".
+@@ -427,7 +431,9 @@
+ import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
+ import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
+ import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
+-const WORKER_VERSION = "v125";
++import { snipeRoute, Sniper } from "./snipe.js";   /* v126 */
++export { Sniper };
++const WORKER_VERSION = "v126";
+ 
+ const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
+ const PAGE_SIZE = 40;
+@@ -6332,6 +6338,7 @@
+     }
+     if (url.pathname === "/hunt") return huntRoute(request, env, url, origin);   /* v117 */
+     if (url.pathname === "/owner-stats") return ownerStats(request, env, origin);   /* v125 */
++    if (url.pathname === "/snipe" || url.pathname.indexOf("/snipe/") === 0) return snipeRoute(request, env, url, origin, { json: json, isOwner: isOwner, sgwMs: sgwMs });   /* v126 */
+     if (url.pathname === "/hunt-check") {
+       return huntCheck(env, url, origin, request);
+     }
+--- a/worker/wrangler.toml
++++ b/worker/wrangler.toml
+@@ -24,6 +24,16 @@
+ tag = "v1"
+ new_sqlite_classes = ["Caps"]
+ 
++# v126: the ShopGoodwill sniper. One object per member keeps their sealed ShopGoodwill token and their snipes, and its
++# alarm places each bid a few seconds before the close (snipe.js). The seal key is the secret SNIPE_SEAL_KEY.
++[[durable_objects.bindings]]
++name = "SNIPER"
++class_name = "Sniper"
++
++[[migrations]]
++tag = "v2"
++new_sqlite_classes = ["Sniper"]
++
+ # Every 5 minutes: the Prowl Alerts clock. "2 * * * *" (v78): the hourly uptime test searches for the admin
+ # dashboard, in their own run so they never use the alert clock's budget of outside calls. index.js PROBE_CRON
+ # must match the second entry.
+--- /dev/null
++++ b/worker/snipe.js
+@@ -0,0 +1,289 @@
++/* ---------- v126: the ShopGoodwill sniper ----------
++   A member (for now only the owner key, while it is tested on real lots) picks a ShopGoodwill auction and a max bid.
++   A few seconds before the close, Prowl places that max as one bid from the member's own ShopGoodwill account.
++   ShopGoodwill has a hard close (no soft-close extension), and it bids for the high bidder up to their max, so one
++   late bid of the max is the whole snipe.
++
++     GET  /snipe                        -> { on, connected, since, snipes: [view] }
++     POST /snipe/connect  { user, pass } -> signs in to ShopGoodwill once; keeps only ShopGoodwill's access token,
++                                           sealed (AES-GCM). The password is never stored, logged or sent anywhere else.
++     POST /snipe/disconnect              -> forgets the token
++     POST /snipe/add      { id, max }    -> queues a snipe on lot <id> for <max> dollars
++     POST /snipe/cancel   { id }         -> takes a queued snipe off
++
++   The timing lives in a Durable Object (binding SNIPER, class Sniper), one per member: its alarm wakes SNIPE_WAKE_MS
++   before the earliest fire time, rechecks the lot (which also opens the connection), waits to the second, then bids.
++   SNIPE_CHECK_MS after the close it reads the final price and says whether the max was beaten.
++
++   ShopGoodwill's sign-in and bid calls are the ones its own site makes (buyerapi.shopgoodwill.com: SignIn/Login with
++   the username and password AES-CBC encrypted by the site's public key, then ItemBid/PlaceBid with the Bearer token).
++   They are not a published API, so the bid's answer is kept (raw, cut short) on the snipe for the owner's test runs.
++   The seal key: SNIPE_SEAL_KEY (secret), else MEMBER_ID_SALT, else ADMIN_KEY. None set: connect is refused. */
++export const SGW_API_ROOT = "https://buyerapi.shopgoodwill.com/api/";
++const SGW_LOGIN_KEY = "6696D2E6F042FEC4D6E3F32AD541143B", SGW_LOGIN_IV = "0000000000000000";
++const SGW_HDR = {
++  "Accept": "application/json", "Origin": "https://shopgoodwill.com", "Referer": "https://shopgoodwill.com/",
++  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
++};
++export const SNIPE_LEAD_MS = 6000;        /* the bid goes out this long before the close */
++export const SNIPE_WAKE_MS = 2500;        /* the alarm wakes this much earlier, to recheck the lot and warm the line */
++export const SNIPE_AHEAD_MS = 30000;      /* a snipe needs at least this long left when it is queued */
++export const SNIPE_CHECK_MS = 90000;      /* the final price is read this long after the close */
++export const SNIPE_MAX = 25;              /* queued at once, per member */
++const SNIPE_KEEP_MS = 14 * 86400000;      /* finished snipes are kept two weeks */
++const SNIPE_TIMEOUT_MS = 8000, RAW_MAX = 400, BODY_MAX = 4096;
++
++const enc = new TextEncoder();
++function b64(bytes) { let s = ""; for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]); return btoa(s); }
++function b64u(bytes) { return b64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
++function unb64u(s) { return Uint8Array.from(atob(String(s).replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0)); }
++
++/* ShopGoodwill's sign-in form encrypts both fields with AES-CBC (PKCS7) under a key that ships in its own page,
++   then sends them base64 and URL-encoded. Not secrecy (the key is public), just the format its API expects. */
++export async function sgwEnc(v) {
++  const k = await crypto.subtle.importKey("raw", enc.encode(SGW_LOGIN_KEY), "AES-CBC", false, ["encrypt"]);
++  const c = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-CBC", iv: enc.encode(SGW_LOGIN_IV) }, k, enc.encode(String(v))));
++  return encodeURIComponent(b64(c));
++}
++async function sgwFetch(f, path, init) {
++  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), SNIPE_TIMEOUT_MS);
++  try {
++    const r = await f(SGW_API_ROOT + path, Object.assign({ signal: ctl.signal }, init));
++    const text = await r.text();
++    let j = null; try { j = JSON.parse(text); } catch (e) {}
++    return { status: r.status, text: text, j: j };
++  } finally { clearTimeout(timer); }
++}
++function sgwMsg(j, text) {
++  if (j && typeof j === "object") for (const k of ["message", "Message", "statusMessage", "errorMessage", "error", "title"]) if (typeof j[k] === "string" && j[k].trim()) return j[k].trim().slice(0, 200);
++  if (typeof j === "string") return j.slice(0, 200);
++  return String(text || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
++}
++
++/* -> { tok } or { error, status } */
++export async function sgwLogin(user, pass, f) {
++  const body = { browser: "chrome", remember: false, clientIpAddress: "0.0.0.4", appVersion: "00099a1be3bb023ff17d",
++    username: await sgwEnc(user), password: await sgwEnc(pass) };
++  let r;
++  try { r = await sgwFetch(f || fetch, "SignIn/Login", { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, SGW_HDR), body: JSON.stringify(body) }); }
++  catch (e) { return { error: "ShopGoodwill did not answer. Try again in a minute.", status: 502 }; }
++  const tok = r.j && (r.j.accessToken || r.j.AccessToken || (r.j.data && r.j.data.accessToken));
++  if (r.status === 200 && typeof tok === "string" && tok.length > 20) return { tok: tok };
++  const m = sgwMsg(r.j, r.status === 200 ? "" : r.text);
++  return { error: m ? "ShopGoodwill said: " + m : "ShopGoodwill did not sign you in (" + r.status + "). Check the username and password.", status: r.status >= 500 ? 502 : 401 };
++}
++
++/* one lot, read the way the popup reads it; endMs from the caller's clock reader (ShopGoodwill sends Pacific time) */
++export async function sgwLot(id, f, endMs) {
++  let r;
++  try { r = await sgwFetch(f || fetch, "ItemDetail/GetItemDetailModelByItemId/" + encodeURIComponent(id), { headers: SGW_HDR }); }
++  catch (e) { return { error: "ShopGoodwill did not answer" }; }
++  if (r.status === 404 || (r.status === 200 && (!r.j || !r.j.itemId))) return { error: "That lot is not on ShopGoodwill any more", gone: true };
++  if (r.status !== 200 || !r.j) return { error: "ShopGoodwill " + r.status };
++  const j = r.j, end = endMs ? endMs(j.endTime || "") : Date.parse(j.endTime || "");
++  const img = String(j.imageUrlString || "").split(";")[0].trim().replace(/\\/g, "/").replace(/^\/+/, "");
++  const server = /^https:\/\//.test(String(j.imageServer || "")) ? String(j.imageServer).replace(/\/?$/, "/") : "https://shopgoodwillimages.azureedge.net/production/";
++  return {
++    id: String(j.itemId), title: String(j.title || "").slice(0, 160), img: img ? server + img.split("/").map(encodeURIComponent).join("/") : "",
++    end: isFinite(end) ? end : 0, seller: Number(j.sellerId) || 0, cur: Number(j.currentPrice) || 0, min: Number(j.minimumBid) || 0,
++    bids: Number(j.numberOfBids) || 0, auction: j.isAuction !== false, ended: j.isItemEndTimeExpire === true
++  };
++}
++
++/* -> { ok, status, msg, raw }; ok means ShopGoodwill took the bid, not that it is winning */
++export async function sgwBid(tok, lot, max, f) {
++  const body = { itemId: Number(lot.id), quantity: 1, sellerId: lot.seller, bidAmount: max.toFixed(2) };
++  const r = await sgwFetch(f || fetch, "ItemBid/PlaceBid", { method: "POST",
++    headers: Object.assign({ "Content-Type": "application/json", "Authorization": "Bearer " + tok }, SGW_HDR), body: JSON.stringify(body) });
++  const msg = sgwMsg(r.j, r.text), raw = String(r.text || "").slice(0, RAW_MAX);
++  if (r.status === 401 || r.status === 403) return { ok: false, out: true, status: r.status, msg: "ShopGoodwill signed Prowl out. Connect ShopGoodwill again.", raw: raw };
++  const said = r.j && typeof r.j === "object" && (r.j.status === false || r.j.isSuccess === false || r.j.success === false);
++  const ok = r.status === 200 && !said && !/\b(error|fail(ed)?|invalid|not allowed|must be|too low|lower than|closed|ended)\b/i.test(msg);
++  return { ok: ok, status: r.status, msg: msg || (ok ? "Bid placed." : "ShopGoodwill " + r.status), raw: raw };
++}
++
++/* the seal for the member's ShopGoodwill token */
++async function sealKey(env) {
++  const s = String((env && (env.SNIPE_SEAL_KEY || env.MEMBER_ID_SALT || env.ADMIN_KEY)) || "");
++  if (s.length < 12) return null;
++  const d = await crypto.subtle.digest("SHA-256", enc.encode("snipe-seal|" + s));
++  return crypto.subtle.importKey("raw", d, "AES-GCM", false, ["encrypt", "decrypt"]);
++}
++export async function snipeSeal(env, text) {
++  const k = await sealKey(env);
++  if (!k) return "";
++  const iv = crypto.getRandomValues(new Uint8Array(12)), c = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, k, enc.encode(text)));
++  const all = new Uint8Array(12 + c.length); all.set(iv); all.set(c, 12);
++  return b64u(all);
++}
++export async function snipeOpen(env, sealed) {
++  try {
++    const k = await sealKey(env);
++    if (!k || !sealed) return "";
++    const b = unb64u(sealed);
++    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: b.slice(0, 12) }, k, b.slice(12)));
++  } catch (e) { return ""; }
++}
++
++/* what the page sees of a snipe: never the token */
++export function snipeView(s) {
++  return { id: s.id, title: s.title, img: s.img, max: s.max, end: s.end, fire: s.fire, st: s.st, msg: s.msg || "", final: s.final || 0, at: s.at || 0, raw: s.raw || "" };
++}
++const money = n => "$" + Number(n || 0).toFixed(2);
++
++/* who may snipe. v126: the owner key only, while bidding is tested on real lots. */
++function snipeWho(request, env, d) { return d.isOwner(request, env) ? "owner" : ""; }
++function snipeStub(env, who) { return env.SNIPER.get(env.SNIPER.idFromName("snipe:" + who)); }
++async function snipeCall(env, who, op, body) {
++  const r = await snipeStub(env, who).fetch("https://sniper/" + op, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
++  let j = null; try { j = await r.json(); } catch (e) {}
++  return { status: r.status, j: j || { error: "sniper unreadable" } };
++}
++async function readBody(request) {
++  const n = Number(request.headers.get("Content-Length") || 0);
++  if (n > BODY_MAX) return null;
++  try { const t = await request.text(); return t.length > BODY_MAX ? null : JSON.parse(t || "{}"); } catch (e) { return null; }
++}
++
++/* the /snipe routes. d = { json, isOwner, sgwMs, fetch? } from index.js */
++export async function snipeRoute(request, env, url, origin, d) {
++  const hdr = { "Cache-Control": "private, no-store", "Vary": "X-Prowl-Owner, Authorization" };
++  const J = (b, s) => d.json(b, s || 200, origin, hdr);
++  const who = snipeWho(request, env, d);
++  if (!who) return J({ error: "The sniper is being tested. It is not open yet." }, 403);
++  if (!env.SNIPER || typeof env.SNIPER.idFromName !== "function") return J({ error: "The sniper is not set up on the worker" }, 503);
++  const op = url.pathname.replace(/^\/snipe\/?/, "");
++  if (request.method === "GET" && op === "") { const r = await snipeCall(env, who, "state"); return J(r.j, r.status); }
++  if (request.method !== "POST") return J({ error: "POST only" }, 405);
++  const b = await readBody(request);
++  if (!b || typeof b !== "object") return J({ error: "bad body" }, 400);
++  const f = d.fetch || fetch;
++  if (op === "connect") {
++    const user = String(b.user || "").trim(), pass = String(b.pass || "");
++    if (!user || user.length > 120 || !pass || pass.length > 200) return J({ error: "Enter your ShopGoodwill username or email and password" }, 400);
++    if (!(await sealKey(env))) return J({ error: "The worker has no seal key (SNIPE_SEAL_KEY)" }, 503);
++    const s = await sgwLogin(user, pass, f);
++    if (!s.tok) return J({ error: s.error }, s.status || 401);
++    const r = await snipeCall(env, who, "connect", { tok: s.tok });
++    return J(r.j, r.status);
++  }
++  if (op === "disconnect") { const r = await snipeCall(env, who, "disconnect"); return J(r.j, r.status); }
++  if (op === "cancel") {
++    const id = String(b.id || "");
++    if (!/^\d{3,15}$/.test(id)) return J({ error: "bad lot" }, 400);
++    const r = await snipeCall(env, who, "cancel", { id: id });
++    return J(r.j, r.status);
++  }
++  if (op === "add") {
++    const id = String(b.id || ""), max = Math.round(Number(b.max) * 100) / 100;
++    if (!/^\d{3,15}$/.test(id)) return J({ error: "bad lot" }, 400);
++    if (!(max >= 1 && max <= 50000)) return J({ error: "Set a max bid between $1 and $50,000" }, 400);
++    const lot = await sgwLot(id, f, d.sgwMs);
++    if (lot.error) return J({ error: lot.error }, lot.gone ? 404 : 502);
++    if (!lot.auction) return J({ error: "That lot is Buy It Now, not an auction" }, 400);
++    const now = Date.now();
++    if (lot.ended || !(lot.end > now)) return J({ error: "That auction has ended" }, 400);
++    if (lot.end - now < SNIPE_AHEAD_MS) return J({ error: "Too close to the end to snipe. Bid on ShopGoodwill directly." }, 400);
++    if (!lot.seller) return J({ error: "ShopGoodwill did not say who the seller is, so Prowl cannot bid" }, 502);
++    if (lot.bids ? max <= lot.cur : max < lot.min) return J({ error: "Your max has to beat " + money(lot.bids ? lot.cur : lot.min) + (lot.bids ? ", the current bid" : ", the starting bid") }, 400);
++    const r = await snipeCall(env, who, "add", { lot: lot, max: max });
++    return J(r.j, r.status);
++  }
++  return J({ error: "no such snipe call" }, 404);
++}
++
++/* one per member: their sealed ShopGoodwill token and their snipes. Keys: sess = { tok, at }; s:<lot id> = a snipe. */
++export class Sniper {
++  constructor(state, env) { this.s = state.storage; this.env = env; this.q = Promise.resolve(); this.f = null; }
++  async fetch(request) {
++    const op = new URL(request.url).pathname.slice(1);
++    let b = {}; try { b = await request.json(); } catch (e) {}
++    const run = this.q.then(() => this.op(op, b));
++    this.q = run.catch(() => {});
++    return run;
++  }
++  J(o, st) { return new Response(JSON.stringify(o), { status: st || 200, headers: { "Content-Type": "application/json" } }); }
++  async list() { const m = await this.s.list({ prefix: "s:" }); return Array.from(m.values()); }
++  async state() {
++    const sess = await this.s.get("sess"), all = await this.list();
++    all.sort((a, b) => (a.st === "queued" ? 0 : 1) - (b.st === "queued" ? 0 : 1) || (a.st === "queued" ? a.end - b.end : b.end - a.end));
++    return { on: true, connected: !!(sess && sess.tok), since: (sess && sess.at) || 0, snipes: all.map(snipeView) };
++  }
++  async op(op, b) {
++    if (op === "state") return this.J(await this.state());
++    if (op === "connect") {
++      const tok = await snipeSeal(this.env, String(b.tok || ""));
++      if (!tok) return this.J({ error: "The worker has no seal key (SNIPE_SEAL_KEY)" }, 503);
++      await this.s.put("sess", { tok: tok, at: Date.now() });
++      return this.J(await this.state());
++    }
++    if (op === "disconnect") { await this.s.delete("sess"); return this.J(await this.state()); }
++    if (op === "cancel") {
++      const k = "s:" + String(b.id || ""), s = await this.s.get(k);
++      if (!s) return this.J({ error: "No snipe on that lot" }, 404);
++      if (s.st !== "queued") return this.J({ error: "That snipe has already gone out" }, 409);
++      await this.s.delete(k); await this.arm();
++      return this.J(await this.state());
++    }
++    if (op === "add") {
++      const lot = b.lot || {}, max = Number(b.max) || 0, sess = await this.s.get("sess");
++      if (!sess || !sess.tok) return this.J({ error: "Connect ShopGoodwill first" }, 409);
++      const all = await this.list(), k = "s:" + lot.id, had = await this.s.get(k);
++      if (!had && all.filter(x => x.st === "queued").length >= SNIPE_MAX) return this.J({ error: "You have " + SNIPE_MAX + " snipes waiting. Cancel one first." }, 429);
++      if (had && had.st !== "queued") return this.J({ error: "Prowl has already bid on that lot" }, 409);
++      await this.s.put(k, { id: lot.id, title: lot.title, img: lot.img, seller: lot.seller, max: max, end: lot.end, fire: lot.end - SNIPE_LEAD_MS,
++        st: "queued", msg: "Prowl bids " + money(max) + " six seconds before the close.", at: Date.now() });
++      await this.arm();
++      return this.J(await this.state());
++    }
++    return this.J({ error: "bad op" }, 400);
++  }
++  /* the next wake: the earliest bid (a little early) or after-close check; old finished snipes are dropped here */
++  async arm() {
++    const now = Date.now(), all = await this.list();
++    let next = 0;
++    for (const s of all) {
++      if (s.st !== "queued" && s.st !== "placed" && s.end + SNIPE_KEEP_MS < now) { await this.s.delete("s:" + s.id); continue; }
++      const t = s.st === "queued" ? s.fire - SNIPE_WAKE_MS : s.st === "placed" ? s.end + SNIPE_CHECK_MS : 0;
++      if (t && (!next || t < next)) next = t;
++    }
++    if (next) await this.s.setAlarm(Math.max(next, now + 50)); else await this.s.deleteAlarm();
++  }
++  async alarm() {
++    const f = this.f || fetch, now = Date.now(), all = await this.list();
++    const due = all.filter(s => s.st === "queued" && s.fire - SNIPE_WAKE_MS <= now + 250);
++    const done = all.filter(s => s.st === "placed" && s.end + SNIPE_CHECK_MS <= now + 250);
++    const sess = await this.s.get("sess"), tok = sess && sess.tok ? await snipeOpen(this.env, sess.tok) : "";
++    await Promise.all(due.map(s => this.fire(s, tok, f)));
++    for (const s of done) await this.settle(s, f);
++    await this.arm();
++  }
++  async fire(s, tok, f) {
++    const put = (st, msg, more) => this.s.put("s:" + s.id, Object.assign(s, { st: st, msg: msg, at: Date.now() }, more || {}));
++    if (!tok) return put("failed", "ShopGoodwill is not connected, so Prowl could not bid.");
++    if (Date.now() > s.end) return put("failed", "Prowl woke up too late to bid (" + Math.round((Date.now() - s.end) / 1000) + " s after the close).");
++    const lot = await sgwLot(s.id, f).catch(() => ({ error: "ShopGoodwill did not answer" }));
++    if (!lot.error) {
++      if (lot.ended) return put("lost", "The auction ended before Prowl's bid.", { final: lot.cur });
++      if (lot.bids && lot.cur >= s.max) return put("lost", "Already at " + money(lot.cur) + ", past your " + money(s.max) + " max. Prowl did not bid.", { final: lot.cur });
++      if (lot.seller) s.seller = lot.seller;
++    }
++    const wait = s.fire - Date.now();
++    if (wait > 0) await new Promise(r => setTimeout(r, wait));
++    let r = null;
++    for (let i = 0; i < 2 && !r; i++) {
++      try { r = await sgwBid(tok, s, Number(s.max), f); }
++      catch (e) { if (Date.now() > s.end - 1500) break; }
++    }
++    if (!r) return put("failed", "ShopGoodwill did not answer the bid in time.");
++    if (r.out) await this.s.delete("sess");
++    return put(r.ok ? "placed" : "failed", r.ok ? "Bid of " + money(s.max) + " placed. ShopGoodwill said: " + r.msg : r.msg, { raw: r.raw });
++  }
++  async settle(s, f) {
++    const lot = await sgwLot(s.id, f).catch(() => ({ error: "x" }));
++    const put = (st, msg, more) => this.s.put("s:" + s.id, Object.assign(s, { st: st, msg: msg, at: Date.now() }, more || {}));
++    if (lot.error) return put("ended", "Ended. Check ShopGoodwill to see whether you won.");
++    if (lot.cur > s.max) return put("lost", "Went for " + money(lot.cur) + ", past your " + money(s.max) + " max.", { final: lot.cur });
++    return put("ended", "Ended at " + money(lot.cur) + ", within your " + money(s.max) + " max. Check ShopGoodwill to see whether you won.", { final: lot.cur });
++  }
++}
+--- /dev/null
++++ b/worker/__tests__/snipe.test.mjs
+@@ -0,0 +1,205 @@
++/* v126: the ShopGoodwill sniper (snipe.js): sign-in format, the /snipe routes, and the Durable Object that bids.
++   Run: node --test worker/__tests__/snipe.test.mjs */
++import { test } from "node:test";
++import assert from "node:assert/strict";
++import { createCipheriv } from "node:crypto";
++import { sgwEnc, sgwLogin, sgwBid, snipeRoute, snipeOpen, Sniper, SNIPE_LEAD_MS, SNIPE_MAX } from "../snipe.js";
++
++const ENV0 = { OWNER_KEY: "owner-key-123456", SNIPE_SEAL_KEY: "seal-key-for-tests-0123456789" };
++const isOwner = (req, env) => req.headers.get("X-Prowl-Owner") === env.OWNER_KEY;
++const json = (b, s, o, h) => new Response(JSON.stringify(b), { status: s || 200, headers: Object.assign({ "Content-Type": "application/json" }, h || {}) });
++
++class FakeStorage {
++  constructor() { this.m = new Map(); this.alarm = null; }
++  async get(k) { return this.m.has(k) ? structuredClone(this.m.get(k)) : undefined; }
++  async put(k, v) { this.m.set(k, structuredClone(v)); }
++  async delete(k) { return this.m.delete(k); }
++  async list({ prefix }) { const o = new Map(); for (const [k, v] of [...this.m].sort()) if (k.startsWith(prefix)) o.set(k, structuredClone(v)); return o; }
++  async setAlarm(t) { this.alarm = t; }
++  async getAlarm() { return this.alarm; }
++  async deleteAlarm() { this.alarm = null; }
++}
++/* a fake SNIPER namespace with one real Sniper per name */
++function world(over) {
++  const objs = new Map(), env = Object.assign({}, ENV0, over);
++  env.SNIPER = {
++    idFromName: (n) => n,
++    get: (id) => {
++      if (!objs.has(id)) objs.set(id, new Sniper({ storage: new FakeStorage() }, env));
++      const o = objs.get(id);
++      return { fetch: (u, init) => o.fetch(new Request(u, init)) };
++    }
++  };
++  return { env, obj: () => objs.get("snipe:owner") };
++}
++const PT = (ms) => ms;   /* tests send end times as ms already parsed */
++function lotJson(over) {
++  return Object.assign({ itemId: 123456, title: "Fire-King jadeite mug", imageServer: "https://img.example/", imageUrlString: "a/b.jpg;c.jpg",
++    endTime: new Date(Date.now() + 3600000).toISOString(), sellerId: 77, currentPrice: 12.5, minimumBid: 5, numberOfBids: 3, isAuction: true, isItemEndTimeExpire: false }, over);
++}
++/* a fake ShopGoodwill: records calls; lot, login and bid answers can be swapped */
++function fakeSgw(o = {}) {
++  const calls = [];
++  const f = async (url, init = {}) => {
++    calls.push({ url: String(url), init: init });
++    if (/SignIn\/Login/.test(url)) return o.login ? o.login(init) : new Response(JSON.stringify({ accessToken: "sgw-access-token-abcdefghijklmnop" }), { status: 200 });
++    if (/ItemBid\/PlaceBid/.test(url)) return o.bid ? o.bid(init) : new Response(JSON.stringify({ status: true, message: "You are the high bidder" }), { status: 200 });
++    if (/GetItemDetailModelByItemId/.test(url)) return new Response(JSON.stringify(o.lot ? o.lot() : lotJson()), { status: 200 });
++    return new Response("nope", { status: 404 });
++  };
++  return { f, calls };
++}
++function call(env, path, body, opts = {}) {
++  const headers = { "Content-Type": "application/json" };
++  if (opts.owner !== false) headers["X-Prowl-Owner"] = ENV0.OWNER_KEY;
++  const req = new Request("https://w.example" + path, body === undefined ? { headers } : { method: "POST", headers, body: JSON.stringify(body) });
++  return snipeRoute(req, env, new URL(req.url), "https://o.example", { json, isOwner, sgwMs: (s) => Date.parse(s), fetch: opts.f }).then(async (r) => ({ status: r.status, j: await r.json(), r }));
++}
++
++test("sign-in fields are AES-CBC under ShopGoodwill's page key, base64 then URL-encoded", async () => {
++  const c = createCipheriv("aes-256-cbc", Buffer.from("6696D2E6F042FEC4D6E3F32AD541143B"), Buffer.from("0000000000000000"));
++  const want = encodeURIComponent(Buffer.concat([c.update("me@example.com"), c.final()]).toString("base64"));
++  assert.equal(await sgwEnc("me@example.com"), want);
++});
++
++test("sgwLogin sends the encrypted fields and keeps only the access token", async () => {
++  const s = fakeSgw();
++  const r = await sgwLogin("me@example.com", "hunter2", s.f);
++  assert.equal(r.tok, "sgw-access-token-abcdefghijklmnop");
++  const body = JSON.parse(s.calls[0].init.body);
++  assert.equal(body.password, await sgwEnc("hunter2"));
++  assert.ok(!JSON.stringify(body).includes("hunter2"));
++  const bad = await sgwLogin("me", "x", fakeSgw({ login: () => new Response(JSON.stringify({ message: "Invalid username or password" }), { status: 400 }) }).f);
++  assert.equal(bad.tok, undefined);
++  assert.match(bad.error, /Invalid username or password/);
++});
++
++test("owner key only, and the binding must be there", async () => {
++  const { env } = world();
++  assert.equal((await call(env, "/snipe", undefined, { owner: false })).status, 403);
++  const noBind = Object.assign({}, ENV0);
++  assert.equal((await call(noBind, "/snipe")).status, 503);
++});
++
++test("connect keeps the token sealed and never the password; disconnect forgets it", async () => {
++  const { env, obj } = world(), s = fakeSgw();
++  let r = await call(env, "/snipe/connect", { user: "me@example.com", pass: "hunter2" }, { f: s.f });
++  assert.equal(r.status, 200);
++  assert.equal(r.j.connected, true);
++  const sess = await obj().s.get("sess");
++  assert.ok(sess.tok && !sess.tok.includes("sgw-access-token"), "sealed");
++  assert.equal(await snipeOpen(env, sess.tok), "sgw-access-token-abcdefghijklmnop");
++  assert.ok(![...obj().s.m.values()].some((v) => JSON.stringify(v).includes("hunter2")));
++  assert.ok(!JSON.stringify(r.j).includes("sgw-access-token"), "the page never sees the token");
++  r = await call(env, "/snipe/disconnect", {});
++  assert.equal(r.j.connected, false);
++  const noKey = world({ SNIPE_SEAL_KEY: "", MEMBER_ID_SALT: "", ADMIN_KEY: "" });
++  assert.equal((await call(noKey.env, "/snipe/connect", { user: "a", pass: "b" }, { f: s.f })).status, 503);
++});
++
++test("add checks the lot: connected, auction, time left, max beats the bid", async () => {
++  const { env } = world();
++  const end = Date.now() + 3600000;
++  const lotF = (over) => fakeSgw({ lot: () => lotJson(Object.assign({ endTime: new Date(end).toISOString() }, over)) }).f;
++  let r = await call(env, "/snipe/add", { id: "123456", max: 40 }, { f: lotF() });
++  assert.equal(r.status, 409, "not connected yet");
++  await call(env, "/snipe/connect", { user: "me", pass: "pw" }, { f: fakeSgw().f });
++  assert.equal((await call(env, "/snipe/add", { id: "12x", max: 40 }, { f: lotF() })).status, 400);
++  assert.equal((await call(env, "/snipe/add", { id: "123456", max: 0 }, { f: lotF() })).status, 400);
++  assert.match((await call(env, "/snipe/add", { id: "123456", max: 40 }, { f: lotF({ isAuction: false }) })).j.error, /Buy It Now/);
++  assert.match((await call(env, "/snipe/add", { id: "123456", max: 40 }, { f: lotF({ isItemEndTimeExpire: true }) })).j.error, /ended/);
++  assert.match((await call(env, "/snipe/add", { id: "123456", max: 40 }, { f: lotF({ endTime: new Date(Date.now() + 10000).toISOString() }) })).j.error, /Too close/);
++  assert.match((await call(env, "/snipe/add", { id: "123456", max: 12 }, { f: lotF() })).j.error, /beat \$12\.50, the current bid/);
++  assert.match((await call(env, "/snipe/add", { id: "123456", max: 4 }, { f: lotF({ numberOfBids: 0 }) })).j.error, /starting bid/);
++  r = await call(env, "/snipe/add", { id: "123456", max: 40 }, { f: lotF() });
++  assert.equal(r.status, 200);
++  const sn = r.j.snipes[0];
++  assert.equal(sn.st, "queued");
++  assert.equal(sn.max, 40);
++  assert.equal(sn.fire, end - SNIPE_LEAD_MS);
++  assert.equal(sn.img, "https://img.example/a/b.jpg");
++  r = await call(env, "/snipe/cancel", { id: "123456" });
++  assert.equal(r.j.snipes.length, 0);
++});
++
++test("at most SNIPE_MAX waiting", async () => {
++  const { env } = world();
++  await call(env, "/snipe/connect", { user: "me", pass: "pw" }, { f: fakeSgw().f });
++  for (let i = 0; i < SNIPE_MAX; i++) await call(env, "/snipe/add", { id: String(100000 + i), max: 40 }, { f: fakeSgw({ lot: () => lotJson({ itemId: 100000 + i }) }).f });
++  const r = await call(env, "/snipe/add", { id: "999999", max: 40 }, { f: fakeSgw({ lot: () => lotJson({ itemId: 999999 }) }).f });
++  assert.equal(r.status, 429);
++});
++
++/* queue one snipe, then move its close to just ahead so the alarm fires now */
++async function queued(over = {}, sgw) {
++  const w = world();
++  await call(w.env, "/snipe/connect", { user: "me", pass: "pw" }, { f: fakeSgw().f });
++  await call(w.env, "/snipe/add", { id: "123456", max: 40 }, { f: fakeSgw().f });
++  const o = w.obj(), s = await o.s.get("s:123456");
++  s.end = Date.now() + SNIPE_LEAD_MS + 30; s.fire = s.end - SNIPE_LEAD_MS;
++  await o.s.put("s:123456", s);
++  o.f = (sgw || fakeSgw(over)).f;
++  return { w, o };
++}
++
++test("the alarm bids the max from the member's token, at the fire time", async () => {
++  const sgw = fakeSgw();
++  const { o } = await queued({}, sgw);
++  const t0 = Date.now(), fire = (await o.s.get("s:123456")).fire;
++  await o.alarm();
++  const bid = sgw.calls.find((c) => /PlaceBid/.test(c.url));
++  assert.ok(bid, "bid placed");
++  assert.ok(Date.now() >= fire - 5 && Date.now() - t0 < 2000);
++  assert.equal(bid.init.headers.Authorization, "Bearer sgw-access-token-abcdefghijklmnop");
++  assert.deepEqual(JSON.parse(bid.init.body), { itemId: 123456, quantity: 1, sellerId: 77, bidAmount: "40.00" });
++  const s = await o.s.get("s:123456");
++  assert.equal(s.st, "placed");
++  assert.match(s.msg, /high bidder/);
++  assert.ok(o.s.alarm >= s.end, "a check after the close is armed");
++});
++
++test("no bid when the price is already past the max; failed and signed out on a 401", async () => {
++  let sgw = fakeSgw({ lot: () => lotJson({ currentPrice: 55 }) });
++  let { o } = await queued({}, sgw);
++  await o.alarm();
++  assert.ok(!sgw.calls.some((c) => /PlaceBid/.test(c.url)));
++  assert.equal((await o.s.get("s:123456")).st, "lost");
++
++  sgw = fakeSgw({ bid: () => new Response("", { status: 401 }) });
++  ({ o } = await queued({}, sgw));
++  await o.alarm();
++  const s = await o.s.get("s:123456");
++  assert.equal(s.st, "failed");
++  assert.match(s.msg, /Connect ShopGoodwill again/);
++  assert.equal(await o.s.get("sess"), undefined, "the dead token is dropped");
++
++  sgw = fakeSgw({ bid: () => new Response(JSON.stringify({ status: false, message: "Bid must be higher than the current bid" }), { status: 200 }) });
++  ({ o } = await queued({}, sgw));
++  await o.alarm();
++  assert.equal((await o.s.get("s:123456")).st, "failed");
++});
++
++test("after the close: lost when it went past the max, ended otherwise", async () => {
++  const { o } = await queued();
++  await o.alarm();
++  const s = await o.s.get("s:123456");
++  s.end = Date.now() - 100000; await o.s.put("s:123456", s);
++  o.f = fakeSgw({ lot: () => lotJson({ currentPrice: 61, isItemEndTimeExpire: true }) }).f;
++  await o.alarm();
++  let d = await o.s.get("s:123456");
++  assert.equal(d.st, "lost");
++  assert.equal(d.final, 61);
++  d.st = "placed"; await o.s.put("s:123456", d);
++  o.f = fakeSgw({ lot: () => lotJson({ currentPrice: 31, isItemEndTimeExpire: true }) }).f;
++  await o.alarm();
++  d = await o.s.get("s:123456");
++  assert.equal(d.st, "ended");
++  assert.match(d.msg, /Ended at \$31\.00, within your \$40\.00 max/);
++  assert.equal(o.s.alarm, null, "nothing left to wake for");
++});
++
++test("sgwBid reads a refusal in the message as not placed", async () => {
++  const lot = { id: "5", seller: 1 };
++  const r = await sgwBid("t", lot, 10, async () => new Response(JSON.stringify({ message: "Auction has ended" }), { status: 200 }));
++  assert.equal(r.ok, false);
++});
