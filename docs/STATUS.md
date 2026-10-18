@@ -1,16 +1,32 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.19 / v122).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.20 / v123).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.19** | 97,834 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
-| Worker | **v122** | |
+| Page | **v7.20** | 100,030 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Worker | **v123** | |
 
 Recently shipped, newest first:
 
+- **v7.20 + worker v123: eBay listing age, and phone alerts that say why they failed** (Matt, 2026-10-18).
+  - **Listing age** ("is there a way to show ebay aging? how many times it has been listed"): eBay search results and
+    `/item` carry `listed` (eBay's itemOriginDate, the first listing, else itemCreationDate) and `relisted` (the
+    creation date when it is a day or more later); `ebayAge`, future dates ignored. The popup's detail line reads
+    "Listed 12 days ago", or "Listed Mar 2 (7 months ago), relisted Oct 8" (`popAge`, calendar days, UTC). Search
+    items keep them in `SVI` (ls/rl) for a popup whose `/item` lacks them. **eBay gives no relist count.**
+  - **Phone alerts** (Matt: "Prowl could not reach this phone", it used to work): Send test now goes the way Alert
+    this phone does (re-registers this phone, then the worker tests it), so a lost or renewed address is mended.
+    `/push/subscribe` and `/push/test` answer `codes` (the push service's status per phone that did not take it); a
+    refused key (401/403) or expired address (404/410) gets one fresh subscription; a failure says why (`wpWhy`).
+    Not found from here: why it stopped. Phones are stored under a key made with MEMBER_ID_SALT, else ADMIN_KEY, so
+    **changing ADMIN_KEY without MEMBER_ID_SALT set disconnects every phone** (re-registering mends it).
+  - Pounce's intro says what a quarry is ("the piece you stalk, the way a panther stalks its prey").
+  - **Room: 100,030 bytes, 30 over the 100 KB guard** (`page-css.test.mjs`). The next page change must trim first.
+  Tests: `__tests__/page/ebay-age-v720.test.mjs`, `__tests__/page/push-button.test.mjs`, `worker/__tests__/ebay-age.test.mjs`,
+  `worker/__tests__/push.test.mjs`.
 - **v7.19 + worker v122: Pounce with no form, a price range, and two ideas from the UX spec** (Matt, 2026-10-18).
   - **One-tap Pounce** (Matt: "why do I need to fill out the form for Pounce, why can't it just find the items?"):
     each hunt in Den › Settings › Pounce has **🐾 Pounce** (and Describe it). One tap saves a quarry with no
@@ -372,7 +388,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.20, worker v123**. Claim one here when you start.
+Next free numbers: **page v7.21, worker v124**. Claim one here when you start.
 
 ## What's next
 

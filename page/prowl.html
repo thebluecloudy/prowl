@@ -2888,7 +2888,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.19';
+var PROWL_VERSION='v7.20';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -5501,7 +5501,7 @@ function pncIn(k,ph,v,t){return '<input type="'+(t||'text')+'" data-pk="'+k+'" p
 function pncHtml(){
   var hs=mailHunts(),act=prefsActive(),q=pncQ(),n=0,h,i,k,g,d,gm=MAIL.gm||[];
   for(k in q)if(act[k]&&pncOn(q[k]))n++;
-  h='<div class="mail-sec pnc"><h4>\uD83D\uDC3E Pounce<small>'+n+' of '+(MAIL.quarryMax||1)+'</small></h4><p class="mail-fine">Tap Pounce on a hunt and Prowl looks at every new listing\u2019s photo and title for you, and you only hear about the real thing. Edit narrows it to the exact piece or a price.</p>'+
+  h='<div class="mail-sec pnc"><h4>\uD83D\uDC3E Pounce<small>'+n+' of '+(MAIL.quarryMax||1)+'</small></h4><p class="mail-fine">Your quarry is the piece you stalk, the way a panther stalks its prey. Tap Pounce and Prowl checks every new listing\u2019s photo and title; you hear only about the real thing. Edit narrows it.</p>'+
     (wpLine()||'<p class="mail-fine">Finds wait at the top of your Prowl email.</p>');
   /* v6.95: a message shows where it is about: under the hunt being saved, or here for phone alerts. It used to show
      only below every hunt, off the screen, so a refused save looked like nothing happened (Matt, 2026-10-13) */
@@ -5552,15 +5552,33 @@ function wpReady(reg){return new Promise(function(ok,no){
   w.addEventListener('statechange',function(){if(w.state==='activated'){clearTimeout(t);ok(reg)} });
 })}
 function wpFail(er){PNC.busy=0;PNC.msg=er&&er.message==='blocked'?'Notifications are blocked for this site. Allow them in your browser settings, then try again.':er&&er.message==='dismissed'?'Alerts stay off. Tap Alert this phone again when you are ready.':'Could not turn on alerts here ('+((er&&er.message)||'unknown')+'). Finds still come in your Prowl email.';rMail()}
-function wpOn(){
-  var p;PNC.mk='';PNC.busy=1;PNC.msg='Turning on alerts…';
+/* v7.20 (Matt: "Prowl could not reach this phone", after it had worked): Send test now goes the same way as Alert this
+   phone, so the worker always has this phone's current address (it may have lost it, or the browser may have renewed
+   it), and a test that fails says why (worker v123 answers the push service's codes). A refused key (401/403) or an
+   expired address (404/410) gets one fresh subscription before giving up. */
+function wpWhy(c){
+  c=c||[];
+  if(c.indexOf(401)>-1||c.indexOf(403)>-1)return 'the phone\u2019s alert service turned Prowl\u2019s key away';
+  if(c.indexOf(404)>-1||c.indexOf(410)>-1)return 'this phone\u2019s alert address had expired';
+  if(c.length&&(c[0]===0||c[0]===429||c[0]>=500))return 'the phone\u2019s alert service was busy. Try again in a minute';
+  return c.length?'code '+c[0]:'Prowl has no address for this phone';
+}
+function wpOn(fresh){
+  var p;PNC.mk='';PNC.busy=1;PNC.msg=fresh===1?'Trying a fresh address for this phone\u2026':'Turning on alerts\u2026';
   try{p=Notification.requestPermission()}catch(e){p=null}   /* first, inside the tap */
   rMail();
   Promise.resolve(p).then(function(perm){perm=perm||Notification.permission;if(perm!=='granted')throw new Error(perm==='denied'?'blocked':'dismissed');
     return navigator.serviceWorker.register(WP_SW,{scope:WP_SCOPE})})
   .then(wpReady)
-  .then(function(reg){return reg.pushManager.getSubscription().then(function(s){return s||reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:wpKey(MAIL.wpush.key)})})})
-  .then(function(s){pncPost('push/subscribe',{sub:s.toJSON(),label:wpLabel()},function(j){if(j&&j.ok){mSet('wpushOn','1');MAIL.phone='prowl'}pncSay(j,j&&j.test?'Alerts on this phone. A test note is on its way. If Chrome marks it \u201cPossible spam\u201d, tap Show notification.':'Alerts are on, but the test did not get through. Tap Send test.')})})
+  .then(function(reg){return reg.pushManager.getSubscription().then(function(s){
+    function sub(){return reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:wpKey(MAIL.wpush.key)})}
+    if(s&&fresh===1)return s.unsubscribe().then(sub,sub);   /* v7.20 */
+    return s||sub()})})
+  .then(function(s){pncPost('push/subscribe',{sub:s.toJSON(),label:wpLabel()},function(j){
+    if(j&&j.ok){mSet('wpushOn','1');MAIL.phone='prowl'}
+    var c=(j&&j.codes)||[];
+    if(j&&j.ok&&!j.test&&fresh!==1&&(c.indexOf(401)>-1||c.indexOf(403)>-1||c.indexOf(404)>-1||c.indexOf(410)>-1)){wpOn(1);return}
+    pncSay(j,j&&j.test?'Alerts on this phone. A test note is on its way. If Chrome marks it \u201cPossible spam\u201d, tap Show notification.':'Alerts are on, but the test did not get through: '+wpWhy(c)+'.')})})
   ['catch'](wpFail);
 }
 function wpOff(){
@@ -5606,7 +5624,7 @@ document.addEventListener('click',function(e){
   }
   if(a==='wpon'){wpOn();return}
   if(a==='wpoff'){wpOff();return}
-  if(a==='wptest'){PNC.mk='';PNC.busy=1;rMail();pncPost('push/test',{},function(j){pncSay(j,j&&j.sent?'Test sent. It should arrive in a few seconds. If Chrome marks it \u201cPossible spam\u201d, tap Show notification.':'Prowl could not reach this phone. Turn alerts off and on again.')});return}
+  if(a==='wptest'){wpOn();return}   /* v7.20: re-register this phone, then the worker sends the test */
   if(a==='not'){PNC.mk='';b.disabled=true;pncPost('alerts/quarry',{hunt:hh,notUrl:b.getAttribute('data-u')},function(j){pncSay(j,'Not it. I will skip listings like that.')});return}
 });
 /* ?pounce=<listing> (the phone note) opens Den > Settings at that match; &fp=1 runs Fair price? on it */
@@ -6865,6 +6883,17 @@ function popDetails(meta,d){
   if(d.description)t+=(t?'. ':'')+'Description: '+String(d.description).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
   return t.slice(0,600);
 }
+/* v7.20 (Matt: "is there a way to show ebay aging? how many times it has been listed"): when the eBay listing went
+   up (worker v123: eBay's first-listed date) and, when eBay made this listing later, that it was relisted. eBay gives
+   no relist count. Days are UTC, read at noon so no time zone moves them. */
+function popDay(v,y){try{return new Date(v+'T12:00:00Z').toLocaleDateString(undefined,y?{month:'short',day:'numeric',year:'numeric'}:{month:'short',day:'numeric'})}catch(e){return v} }
+function popAge(l,r){
+  var t=Date.parse(String(l||'')+'T12:00:00Z'),n,y,s;if(!isFinite(t))return '';
+  n=Math.max(0,Math.round((Date.parse(new Date().toISOString().slice(0,10)+'T12:00:00Z')-t)/864e5));   /* calendar days */y=new Date(t).getUTCFullYear()!==new Date().getUTCFullYear();
+  s=n<1?'Listed today':n===1?'Listed yesterday':n<45?'Listed '+n+' days ago':'Listed '+popDay(l,y)+' ('+(n<365?Math.round(n/30.4)+' months':Math.floor(n/365)+(n<730?' year':' years'))+' ago)';
+  if(r&&isFinite(Date.parse(r+'T12:00:00Z')))s+=', relisted '+popDay(r,y);
+  return s;
+}
 function popPaint(d){
   var P=POP,b=$('#otp-sheetB');if(!P||!b)return;
   d=d||{};
@@ -6874,6 +6903,7 @@ function popPaint(d){
   if(typeof d.bids==='number'){meta.push(d.time_left?d.time_left+' left':'');meta.push(d.bids+' bid'+(d.bids===1?'':'s'))}
   else if(P.auc&&!d.title)meta.push(P.auc);
   if(d.condition)meta.push(d.condition);
+  var sv=SVI[P.u]||{};meta.push(popAge(d.listed||sv.ls,d.relisted||sv.rl));   /* v7.20: eBay listing age */
   meta=meta.filter(Boolean);
   if(imgs.length){
     h+='<div class="pp-galw"><div class="pp-gal" role="region" aria-label="Photos, '+imgs.length+'. Double-tap to like" tabindex="0">';
@@ -8228,7 +8258,7 @@ function svBtn(it,hunt){
   if(!it||typeof it.url!=='string'||!/^https:\/\//i.test(it.url)||!it.title)return '';
   if(SVN>400){SVI={};SVN=0}
   if(!SVI[it.url])SVN++;
-  SVI[it.url]={title:it.title,price:it.price,url:it.url,image:it.image,src:it.src||'shopgoodwill',hunt:hunt||''};
+  SVI[it.url]={title:it.title,price:it.price,url:it.url,image:it.image,src:it.src||'shopgoodwill',hunt:hunt||'',ls:it.listed||'',rl:it.relisted||''};   /* v7.20: ls/rl, eBay listing age */
   var on=findIdx(it.url)>-1;
   return '<button type="button" class="sgw-sv'+(on?' on':'')+'" data-sv="'+esc(it.url)+'" aria-pressed="'+on+'" aria-label="'+(on?'Saved find. Tap to remove':'Save this find')+'" title="'+(on?'Saved':'Save find')+'">'+(on?'★':'☆')+'</button>';
 }

@@ -79,11 +79,14 @@ test('the tap: permission, the service worker at /apps/prowl/, a subscription wi
   assert.match(p.$('#otp-denSettings .pnc').textContent, /Alerts on this phone ✓/);
   assert.match(p.$('#otp-denSettings .pnc').textContent, /A test note is on its way\. If Chrome marks it “Possible spam”, tap Show notification\./);
   assert.equal(p.win.localStorage.getItem('prowl.wpushOn'), '1');
-  /* Send test and Turn off */
+  /* Send test (v7.20: re-registers this phone, so the worker has its current address, and the worker sends the test) */
   p.$('#otp-denSettings [data-pnc="wptest"]').click();
-  await tick(40);
-  assert.equal(calls.filter((c) => /push\/test/.test(c.url)).length, 1);
-  assert.match(p.$('#otp-denSettings .pnc').textContent, /Test sent/);
+  await tick(80);
+  const again = calls.filter((c) => /push\/subscribe/.test(c.url));
+  assert.equal(again.length, 2, 'Send test sends this phone\'s address again');
+  assert.equal(JSON.parse(again[1].body).sub.endpoint, ENDPOINT);
+  assert.match(p.$('#otp-denSettings .pnc').textContent, /A test note is on its way/);
+  /* Turn off */
   p.$('#otp-denSettings [data-pnc="wpoff"]').click();
   await tick(60);
   assert.equal(B.unsub, 1);
@@ -102,8 +105,35 @@ test('v6.98: when the worker could not deliver the test, the page says so instea
   const sec = await settings(p);
   sec.querySelector('[data-pnc="wpon"]').click();
   await tick(80);
-  assert.match(p.$('#otp-denSettings .pnc').textContent, /Alerts are on, but the test did not get through\. Tap Send test\./);
+  assert.match(p.$('#otp-denSettings .pnc').textContent, /Alerts are on, but the test did not get through: Prowl has no address for this phone\./);
   assert.doesNotMatch(p.$('#otp-denSettings .pnc').textContent, /on its way/);
+  await p.close();
+});
+
+test('v7.20: a refused key or an expired address gets one fresh address, and a failure says why', async () => {
+  const B = {}, calls = [];
+  const base = worker(calls);
+  let answers = [{ ok: true, n: 1, test: false, codes: [403] }, { ok: true, n: 1, test: true, codes: [] }];
+  const fetchImpl = (u, o) => /push\/subscribe/.test(String(u)) ? (calls.push({ url: String(u), body: (o && o.body) || '' }), Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(answers.shift()) })) : base(u, o);
+  const p = loadPage({ storage: storage(), fetchImpl, beforeLoad: browser(B) });
+  const sec = await settings(p);
+  sec.querySelector('[data-pnc="wpon"]').click();
+  await tick(160);
+  assert.equal(calls.filter((c) => /push\/subscribe/.test(c.url)).length, 2, 'tried once more');
+  assert.equal(B.unsub, 1, 'with a fresh subscription');
+  assert.match(p.$('#otp-denSettings .pnc').textContent, /A test note is on its way/);
+  /* still refused after the fresh one: says why, and stops */
+  answers = [{ ok: true, n: 1, test: false, codes: [403] }, { ok: true, n: 1, test: false, codes: [403] }];
+  p.$('#otp-denSettings [data-pnc="wptest"]').click();
+  await tick(160);
+  assert.equal(calls.filter((c) => /push\/subscribe/.test(c.url)).length, 4, 'one retry, no more');
+  assert.match(p.$('#otp-denSettings .pnc').textContent, /the test did not get through: the phone’s alert service turned Prowl’s key away\./);
+  answers = [{ ok: true, n: 1, test: false, codes: [503] }];
+  p.$('#otp-denSettings [data-pnc="wptest"]').click();
+  await tick(120);
+  assert.equal(calls.filter((c) => /push\/subscribe/.test(c.url)).length, 5, 'busy: no fresh address');
+  assert.match(p.$('#otp-denSettings .pnc').textContent, /was busy\. Try again in a minute\./);
+  assert.deepEqual(p.errors, []);
   await p.close();
 });
 
