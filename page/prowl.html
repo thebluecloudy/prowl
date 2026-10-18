@@ -1385,6 +1385,19 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .dx-bf{background:var(--go) }
 .scout-app-wrapper .dx-bo{background:var(--l2) }
 .scout-app-wrapper .dx-stats .dx-clear{margin:6px 0 0 }
+.scout-app-wrapper .dx-gl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px;margin:12px 0 6px }
+.scout-app-wrapper .dx-gl small,.scout-app-wrapper .dx-tag{color:var(--mu);font-size:12.5px;font-weight:400 }
+.scout-app-wrapper .dx-cols{display:flex;align-items:flex-end;gap:3px;height:64px;padding-bottom:2px;border-bottom:1px solid var(--ln) }
+.scout-app-wrapper .dx-col{flex:1;min-width:0;height:100%;display:flex;align-items:flex-end }
+.scout-app-wrapper .dx-col i{display:block;width:100%;border-radius:3px 3px 0 0 }
+.scout-app-wrapper .dx-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 2px }
+.scout-app-wrapper .dx-kpi span{display:flex;flex-direction:column;font-size:12.5px;color:var(--mu);background:var(--cd3);border-radius:10px;padding:8px 10px }
+.scout-app-wrapper .dx-kpi b{font-size:20px;color:inherit;color:var(--tx,currentColor) }
+.scout-app-wrapper ol.dx-top{margin:0;padding:0 0 0 20px;font-size:14px }
+.scout-app-wrapper ol.dx-top li{padding:3px 0 }
+.scout-app-wrapper ol.dx-top li small{float:right;color:var(--mu) }
+.scout-app-wrapper .dx-sub{margin-top:12px!important }
+@media (max-width:480px){.scout-app-wrapper #otp-den .tabs{flex-wrap:wrap;row-gap:6px}.scout-app-wrapper #otp-den .tab{flex:1 1 30%}}
 .scout-app-wrapper .drawer.dragging{transition:none }
 @media (max-width:640px){
   .scout-app-wrapper .drawer{width:100%;border-left:0 }
@@ -2559,6 +2572,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <button class="tab" id="otp-denT5" role="tab">LIKES</button>
     <button class="tab" id="otp-denT2" role="tab">LOCAL</button>
     <button class="tab" id="otp-denT4" role="tab">ABOUT</button>
+    <button class="tab" id="otp-denT6" role="tab">STATS</button>
     <button class="tab" id="otp-denT3" role="tab">SETTINGS</button>
   </div>
   <div id="otp-denBody">
@@ -2785,7 +2799,6 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
         <select id="otp-oneSel"></select>
         <p class="setnote">The second button in the bar at the bottom searches this one marketplace. Goodwill to start with — change it to whichever single site you check most.</p>
       </div>
-      <div class="dx-wrap" id="otp-denStats"></div>
       <div class="setrow">
         <div>
 <h3>Export a backup</h3>
@@ -2820,6 +2833,11 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 </div>
       </div>
       </details>
+    </div>
+    <div class="denPane" id="otp-denStatsP" hidden>
+      <div class="dx-wrap" id="otp-denOwn" hidden></div>
+      <div class="dx-wrap" id="otp-denMine"></div>
+      <div class="dx-wrap" id="otp-denStats"></div>
     </div>
   </div>
   <div class="den-foot" id="otp-denFoot" hidden>
@@ -2888,7 +2906,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.21';
+var PROWL_VERSION='v7.22';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3583,6 +3601,8 @@ function setDenTab(t){
   $('#otp-denT4').classList.toggle('on',t==='about');
   $('#otp-denT3').classList.toggle('on',t==='settings');
   $('#otp-denT5').classList.toggle('on',t==='likes');   /* v6.47 */
+  $('#otp-denT6').classList.toggle('on',t==='stats');   /* v7.22 */
+  $('#otp-denStatsP').hidden=t!=='stats';
   $('#otp-denLikes').hidden=t!=='likes';
   $('#otp-denTerms').hidden=t!=='hunts';
   $('#otp-denLocal').hidden=t!=='local';
@@ -3593,12 +3613,14 @@ function setDenTab(t){
   if(t==='about')loadFoundStrip();
   if(t==='settings'){rMail();rGetApp();}
   if(t==='likes')rDenLikes();
+  if(t==='stats'){rDenStats();rDenMine();rDenOwn()}
 }
 $('#otp-denT1').addEventListener('click',function(){setDenTab('hunts')});
 $('#otp-denT2').addEventListener('click',function(){setDenTab('local')});
 $('#otp-denT4').addEventListener('click',function(){setDenTab('about')});
 $('#otp-denT3').addEventListener('click',function(){setDenTab('settings')});
 $('#otp-denT5').addEventListener('click',function(){setDenTab('likes')});   /* v6.47 */
+$('#otp-denT6').addEventListener('click',function(){setDenTab('stats')});   /* v7.22 */
 
 var lf=null;
 function openDen(){lf=document.activeElement;den.hidden=false;rDenHunts();rDenLocal();rDenX();setDenTab(denTab);requestAnimationFrame(function(){sc.classList.add('on');den.classList.add('on')});$('#otp-denClose').focus();}
@@ -8419,6 +8441,71 @@ function rDenStats(){
       '<span class="dx-bar"><i class="dx-bo" style="width:'+Math.round(v.o/mo*100)+'%"></i></span></li>';
   });
   h+='</ul><button type="button" class="sgw-ml dx-clear" data-stc="1">Reset these numbers</button></div>';
+  box.innerHTML=h;
+}
+/* v7.22: Den › Stats. Every analytic and graph lives on this tab: "Your hunting" (this device: searches run per day
+   from prowl.runs, saved finds per week from prowl.finds), Your marketplaces (above), and for the owner (prowl.owner key)
+   the worker's /owner-stats: people searching per day, searches, and the week's top terms. Columns are plain divs. */
+function dxCols(vals,labs,cls){
+  var mx=1,i,h='<div class="dx-cols" role="img" aria-label="'+esc(labs.join(', '))+'">';
+  for(i=0;i<vals.length;i++)mx=Math.max(mx,vals[i]);
+  for(i=0;i<vals.length;i++)h+='<span class="dx-col" title="'+esc(labs[i])+'"><i class="'+cls+'" style="height:'+(vals[i]?Math.max(4,Math.round(vals[i]/mx*100)):0)+'%"></i></span>';
+  return h+'</div>';
+}
+function dxDay(t){var d=new Date(t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()}
+function dxShort(t){var d=new Date(t);return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate()}
+function rDenMine(){
+  var box=$('#otp-denMine');if(!box)return;
+  var now=Date.now(),D=86400000,runs=runsGet(),finds=findsGet(),rv=[],rl=[],fv=[],fl=[],i,j,k,n,tr=0,tf=0;
+  for(i=13;i>=0;i--){
+    k=dxDay(now-i*D);n=0;
+    for(j=0;j<runs.length;j++)if(runs[j].at&&dxDay(runs[j].at)===k)n++;
+    rv.push(n);rl.push(dxShort(now-i*D)+': '+n+(n===1?' search':' searches'));tr+=n;
+  }
+  for(i=7;i>=0;i--){
+    n=0;
+    for(j=0;j<finds.length;j++){var a=now-finds[j].at;if(finds[j].at&&a>=i*7*D&&a<(i+1)*7*D)n++}
+    fv.push(n);fl.push('Week of '+dxShort(now-(i+1)*7*D+D)+': '+n+' saved');tf+=n;
+  }
+  box.innerHTML='<div class="dx-stats"><h3>Your hunting</h3><p>On this device only. Recent searches keeps your last 25 runs.</p>'+
+    '<div class="dx-gl"><b>Searches, last 14 days</b><small>'+tr+'</small></div>'+dxCols(rv,rl,'dx-bo')+
+    '<div class="dx-gl"><b>Finds saved, last 8 weeks</b><small>'+tf+'</small></div>'+dxCols(fv,fl,'dx-bf')+'</div>';
+}
+var OWN={j:null,at:0,busy:false,err:''};
+function rDenOwn(){
+  var box=$('#otp-denOwn');if(!box)return;
+  var k=fbOwnerKey();box.hidden=!k;if(!k)return;
+  if(!OWN.busy&&Date.now()-OWN.at>(OWN.err?60000:300000)){
+    OWN.busy=true;OWN.err='';
+    fetch(SGW_API+'owner-stats',{headers:{'X-Prowl-Owner':k},cache:'no-store'}).then(function(r){
+      if(!r.ok)throw new Error(r.status===403?'The owner key on this device was not accepted.':'Stats could not be read ('+r.status+').');return r.json();
+    }).then(function(j){OWN.j=j;OWN.at=Date.now()}).catch(function(e){OWN.err=String(e&&e.message||'Stats could not be read.');OWN.at=Date.now()}).then(function(){OWN.busy=false;rDenOwn()});
+  }
+  var h='<div class="dx-stats dx-own"><h3>Prowl usage <small class="dx-tag">owner</small></h3>',j=OWN.j;
+  if(!j){box.innerHTML=h+'<p>'+(OWN.err?esc(OWN.err):'Loading…')+'</p></div>';return}
+  var d=Array.isArray(j.days)?j.days:[],pv=[],pl=[],sv=[],sl=[],w=0,ws=0,i,x;
+  for(i=0;i<d.length;i++){
+    x=d[i]||{};var lab=String(x.day||'').slice(5);
+    pv.push(+x.people||0);pl.push(lab+': '+(+x.people||0)+' people');sv.push(+x.searches||0);sl.push(lab+': '+(+x.searches||0)+' searches');
+    if(i>=d.length-7){w+=+x.people||0;ws+=+x.searches||0}
+  }
+  h+='<p>Everyone who searched Prowl, counted once a day per person (no names, no addresses). Days are UTC.'+(OWN.err?' '+esc(OWN.err):'')+'</p>'+
+    '<div class="dx-kpi"><span><b>'+w+'</b>people-days this week</span><span><b>'+ws+'</b>searches this week</span><span><b>'+(d.length?+d[d.length-1].people||0:0)+'</b>today</span></div>'+
+    '<div class="dx-gl"><b>People searching, 14 days</b></div>'+dxCols(pv,pl,'dx-bf')+
+    '<div class="dx-gl"><b>Searches, 14 days</b></div>'+dxCols(sv,sl,'dx-bo');
+  var t=Array.isArray(j.top)?j.top:[];
+  if(t.length){h+='<div class="dx-gl"><b>Top searches this week</b><small>people</small></div><ol class="dx-top">';t.forEach(function(r){h+='<li><span>'+esc(r.term)+'</span><small>'+(+r.people||0)+'</small></li>'});h+='</ol>'}
+  var rf=j.refs||{};
+  if(rf.off)h+='<div class="dx-gl"><b>Where visitors came from</b></div><p>Not connected yet. Add CF_API_TOKEN, CF_ACCOUNT_ID and CF_SITE_TAG to the worker in Cloudflare.</p>';
+  else if(rf.error)h+='<div class="dx-gl"><b>Where visitors came from</b></div><p>'+esc(rf.error)+'</p>';
+  else if(Array.isArray(rf.list)){
+    var mr=1;rf.list.forEach(function(x){mr=Math.max(mr,+x.views||0)});
+    h+='<div class="dx-gl"><b>Where visitors came from, 7 days</b><small>page views</small></div><ul class="dx-bars">';
+    if(!rf.list.length)h+='<li><small>No page views recorded yet.</small></li>';
+    rf.list.forEach(function(x){var v=+x.views||0;h+='<li><div class="dx-bl"><b>'+esc(x.host||'Direct or app')+'</b><small>'+v+'</small></div><span class="dx-bar"><i class="dx-bf" style="width:'+Math.round(v/mr*100)+'%"></i></span></li>'});
+    h+='</ul>';
+  }
+  h+='<p class="dx-sub">Counting people started with worker v125, so earlier days show 0. <a href="https://prowl.thebluecloud.workers.dev/admin" target="_blank" rel="noopener">Open the full admin</a></p></div>';
   box.innerHTML=h;
 }
 /* v6.39: saving a find needs the store sign-in (login gates saved finds); removing one never does. Logged out, the

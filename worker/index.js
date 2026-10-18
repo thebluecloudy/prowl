@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v125: 2026-10-18. Owner stats for the page's Den › Stats tab (Matt): GET /owner-stats (owner key only) answers 14 days of
+ *         people searching (distinct searchers per day, new "u" stat kind ticked once per search on /ebay), searches and terms,
+ *         plus the week's top terms; stats DO op "days".
  *   v124: 2026-10-18. The page's main script (Matt: "why is there a limit?"): served at /js/prowl.<hash>.js from
  *        page-js.js (written by scripts/build-page-css.mjs from the page's <script id="prowl-js">), the way v111 serves
  *        the stylesheet; the Shopify page body drops from about 424 KB to about 115 KB.
@@ -424,7 +427,7 @@ import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-const WORKER_VERSION = "v124";
+const WORKER_VERSION = "v125";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -2221,7 +2224,7 @@ export class Caps {
        m:<kind>:<day> counts the day's distinct terms so a flood cannot grow storage without bound. */
     if (op === "tick") {
       const kind = String(q.kind || "t"), day = String(q.day || ""), term = String(q.term || ""), h = String(q.h || "");
-      if (!/^[tg]$/.test(kind) || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !term || term.length > 60) return J({ error: "bad tick" }, 400);
+      if (!/^[tgu]$/.test(kind) || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !term || term.length > 60) return J({ error: "bad tick" }, 400);
       const nk = "n:" + kind + ":" + day + ":" + term;
       let cur = await this.s.get(nk);
       if (!cur) {
@@ -2235,6 +2238,19 @@ export class Caps {
       await this.s.put(nk, cur);
       await this.arm(86400000);
       return J({ ok: true });
+    }
+    /* v125: per-day totals for one kind (the owner's Den › Stats): distinct visitors, calls and terms per UTC day */
+    if (op === "days") {
+      const kind = String(q.kind || "t"), from = String(q.from || ""), to = String(q.to || "");
+      if (!/^[tgu]$/.test(kind) || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return J({ error: "bad days" }, 400);
+      const rows = await this.s.list({ prefix: "n:" + kind + ":", start: "n:" + kind + ":" + from, end: "n:" + kind + ":" + to + "~" });
+      const by = {};
+      for (const [k, v] of rows) {
+        const day = k.slice(("n:" + kind + ":").length, ("n:" + kind + ":").length + 10);
+        const d = by[day] || (by[day] = { v: 0, r: 0, n: 0 });
+        d.v += (v && v.v) || 0; d.r += (v && v.r) || 0; d.n += 1;
+      }
+      return J({ days: by });
     }
     if (op === "top") {
       const kind = String(q.kind || "t"), from = String(q.from || ""), to = String(q.to || ""), lim = Math.min(Number(q.limit) || 40, 200);
@@ -2293,6 +2309,61 @@ function statTerm(raw) {
   let t = String(raw == null ? "" : raw).toLowerCase().replace(/[^a-z0-9'& ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
   if (t.length < 2 || /@|https?|www|\.com/.test(String(raw)) || /\d{6,}/.test(t)) return "";
   return t;
+}
+/* v125: GET /owner-stats, the owner's numbers for the page's Den › Stats tab. Owner key only (X-Prowl-Owner).
+   people = distinct searchers per UTC day (a daily-salted IP hash, never stored raw); searches = calls to eBay
+   (one per search); terms = distinct search terms that day. top = the week's most searched terms. Nothing personal. */
+export async function ownerStats(request, env, origin) {
+  const hdr = { "Cache-Control": "private, no-store", "Vary": "X-Prowl-Owner" };
+  if (!isOwner(request, env)) return json({ error: "owner only" }, 403, origin, hdr);
+  const now = Date.now(), dayOf = t => new Date(t).toISOString().slice(0, 10), DAYMS = 86400000;
+  const days = []; for (let i = 13; i >= 0; i--) days.push(dayOf(now - i * DAYMS));
+  const from = days[0], to = days[13], wk = days[7];
+  let U = null, T = null, top = null;
+  try {
+    [U, T, top] = await Promise.all([
+      capsCall("stats", "days", { kind: "u", from: from, to: to }),
+      capsCall("stats", "days", { kind: "t", from: from, to: to }),
+      capsCall("stats", "top", { kind: "t", from: wk, to: to, limit: 10 })
+    ]);
+  } catch (e) { return json({ error: "stats unavailable" }, 503, origin, hdr); }
+  const u = (U && U.days) || {}, t = (T && T.days) || {};
+  const out = days.map(d => ({ day: d, people: (u[d] && u[d].v) || 0, searches: (u[d] && u[d].r) || 0, terms: (t[d] && t[d].n) || 0 }));
+  const list = (top && Array.isArray(top.top) ? top.top : []).filter(x => x && x.term && !looksPersonal(x.term))
+    .map(x => ({ term: String(x.term).slice(0, 60), people: x.visitorDays || 0 }));
+  const refs = await cfReferrers(env, wk, to);
+  return json({ v: WORKER_VERSION, since: from, days: out, top: list, refs: refs }, 200, origin, hdr);
+}
+/* v125: where visitors came from, read from Cloudflare Web Analytics (the page's beacon) through the GraphQL Analytics
+   API. Needs three worker secrets: CF_API_TOKEN (a token with Account Analytics: Read), CF_ACCOUNT_ID and CF_SITE_TAG
+   (the Web Analytics site tag). Missing any = { off: true }. Answers page views per referring host for the days given;
+   an empty host means people typed the address or came from an app that hides it ("Direct"). Cached 15 minutes. */
+let REFS = { k: "", at: 0, v: null };
+export async function cfReferrers(env, from, to) {
+  const tok = env && env.CF_API_TOKEN, acct = env && env.CF_ACCOUNT_ID, site = env && env.CF_SITE_TAG;
+  if (!tok || !acct || !site) return { off: true };
+  const key = from + "|" + to;
+  if (REFS.k === key && Date.now() - REFS.at < 900000 && REFS.v) return REFS.v;
+  const query = "query R($a: string!, $s: string!, $f: Date!, $t: Date!) { viewer { accounts(filter: { accountTag: $a }) { " +
+    "rumPageloadEventsAdaptiveGroups(filter: { siteTag: $s, date_geq: $f, date_leq: $t }, limit: 12, orderBy: [count_DESC]) { count dimensions { refererHost } } } } }";
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 6000);
+  try {
+    const r = await fetch("https://api.cloudflare.com/client/v4/graphql", { method: "POST", signal: ctl.signal,
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + tok },
+      body: JSON.stringify({ query: query, variables: { a: String(acct), s: String(site), f: from, t: to } }) });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || (j.errors && j.errors.length)) {
+      const msg = j && j.errors && j.errors[0] && j.errors[0].message ? String(j.errors[0].message).slice(0, 160) : "status " + r.status;
+      return { error: "Cloudflare analytics: " + msg };
+    }
+    const acc = j.data && j.data.viewer && j.data.viewer.accounts && j.data.viewer.accounts[0];
+    const rows = (acc && acc.rumPageloadEventsAdaptiveGroups) || [];
+    const list = rows.map(x => ({ host: String((x.dimensions && x.dimensions.refererHost) || "").toLowerCase().slice(0, 80), views: Number(x.count) || 0 }));
+    const v = { from: from, to: to, list: list };
+    REFS = { k: key, at: Date.now(), v: v };
+    return v;
+  } catch (e) { return { error: "Cloudflare analytics could not be reached." }; }
+  finally { clearTimeout(timer); }
 }
 async function statTick(request, env, kind, rawTerm) {
   try {
@@ -6260,6 +6331,7 @@ async function handleFetch(request, env, ctx) {
       return shopPicks(env, url, origin, request);
     }
     if (url.pathname === "/hunt") return huntRoute(request, env, url, origin);   /* v117 */
+    if (url.pathname === "/owner-stats") return ownerStats(request, env, origin);   /* v125 */
     if (url.pathname === "/hunt-check") {
       return huntCheck(env, url, origin, request);
     }
@@ -6812,6 +6884,7 @@ async function handleFetch(request, env, ctx) {
     if (!source) return json({ error: "not found" }, 404, origin);
     const isEbay = source === "ebay", isHibid = source === "hibid", isChairish = source === "chairish", isEtsy = source === "etsy";
     if (source !== "poshsold") ctx.waitUntil(statTick(request, env, "t", term));   /* v67 */
+    if (source === "ebay") ctx.waitUntil(statTick(request, env, "u", "searchers"));   /* v125: one tick per search (every search asks eBay), so people per day can be counted */
     const isPosh = source === "poshmark" || source === "poshsold", poshSold = source === "poshsold", isDepop = source === "depop", isVinted = source === "vinted", isGrailed = source === "grailed", isSalvation = source === "salvation";
 
     const cache = PCACHE;
