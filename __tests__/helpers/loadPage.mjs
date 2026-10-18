@@ -2,11 +2,20 @@
 // APIs the page touches stubbed, so behaviour can be tested without a browser.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { JSDOM, VirtualConsole } from 'jsdom';
+import { JSDOM, VirtualConsole, ResourceLoader } from 'jsdom';
 
 const PAGE = fileURLToPath(new URL('../../page/prowl.html', import.meta.url));
 
-export function loadPage({ url = 'https://www.owlandtwigvintage.com/pages/prowl', storage = {}, fetchImpl, reducedMotion = false, beforeLoad, html } = {}) {
+// scripts: { url: code } serves those external scripts (page v7.21: the main script is a src= in what the deploy sends);
+// any other URL jsdom would fetch (the stylesheet link, images) is skipped. A url mapped to null fails to load.
+class Scripts extends ResourceLoader {
+  constructor(map) { super(); this.map = map; }
+  fetch(url, opts) {
+    if (Object.prototype.hasOwnProperty.call(this.map, url)) return this.map[url] == null ? Promise.reject(new Error('offline')) : Promise.resolve(Buffer.from(this.map[url]));
+    return null;
+  }
+}
+export function loadPage({ url = 'https://www.owlandtwigvintage.com/pages/prowl', storage = {}, fetchImpl, reducedMotion = false, beforeLoad, html, scripts } = {}) {
   const body = html == null ? readFileSync(PAGE, 'utf8') : html;   // html: another copy of the page, e.g. what the deploy sends
   const errors = [];
   const vc = new VirtualConsole();
@@ -17,6 +26,7 @@ export function loadPage({ url = 'https://www.owlandtwigvintage.com/pages/prowl'
     url,
     runScripts: 'dangerously',
     pretendToBeVisual: true,
+    ...(scripts ? { resources: new Scripts(scripts) } : {}),
     virtualConsole: vc,
     beforeParse(win) {
       for (const k of Object.keys(storage)) win.localStorage.setItem(k, typeof storage[k] === 'string' ? storage[k] : JSON.stringify(storage[k]));
