@@ -15,9 +15,10 @@ Recently shipped, newest first:
   look like that"). The help's film card (`#otp-film`) plays the new cut: Matt's own panther artwork
   (`video/launch-film/assets/art/prowl-panther.webp`) and an app window drawn from the real page (dotted cream, brown
   outlines, Find the prey, the orange Hunt button, result cards, the dock, the listing popup with the real repair and
-  damage flag). Only the card's `data-src` changed, to the original upload in Shopify Files
-  (`cdn.shopify.com/videos/c/o/v/e051336a...mp4`, Video `46547634979070`, uploaded through the Admin API). Matt takes
-  the older uploads down. The film says "28 marketplaces" and the page counts 29; Matt: "doesn't matter", leave both.
+  damage flag). The panther glides as a ceramic figurine instead of walking (Matt: "the panther walking looks
+  weird"). Only the card's `data-src` changed, to the original upload in Shopify Files
+  (`cdn.shopify.com/videos/c/o/v/767c569b...mp4`, Video `46547817005310`, uploaded through the Admin API). Matt takes
+  the older uploads down (including Video `46547634979070`, the walking cut). The film says "28 marketplaces" and the page counts 29; Matt: "doesn't matter", leave both.
 
 - **v7.15 + worker v121: share a photo into Prowl on Android** (Matt, 2026-10-17: "Android same way" as the Chrome
   extension's image menu). The installed app shows up in Android's share sheet for images; the photo opens straight
