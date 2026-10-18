@@ -1,16 +1,20 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.16 / v121).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.17 / v121).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.16** | 101,809 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.17** | 101,559 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v121** | |
 
 Recently shipped, newest first:
 
+- **v7.17: a Best picks card opens the listing popup** (Matt: "fix the best picks popup it should have same
+  behaviour"). `.pk-card` now carries data-u/t/p/s, and the result-card tap handler opens it with `popOpen` like any
+  other card: photos, Fair price?, What it sold for, Share, View on. Picks the popup cannot show (Craigslist,
+  Poshmark…) still open in their own tab. Test: `__tests__/page/picks-popup-v717.test.mjs`.
 - **v7.16: the launch film, redrawn as the real app** (Matt, 2026-10-17/18: "use my panther", then "my app doesn't
   look like that"). The help's film card (`#otp-film`) plays the new cut: Matt's own panther artwork
   (`video/launch-film/assets/art/prowl-panther.webp`) and an app window drawn from the real page (dotted cream, brown
@@ -342,7 +346,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.17, worker v122**. Claim one here when you start.
+Next free numbers: **page v7.18, worker v122**. Claim one here when you start.
 
 ## What's next
 

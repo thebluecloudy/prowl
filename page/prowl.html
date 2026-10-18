@@ -2847,7 +2847,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.16';
+var PROWL_VERSION='v7.17';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4124,7 +4124,7 @@ function huntInner(t){
   if(d.fail||!d.picks||!d.picks.length)return '';
   h+='<h3 class="pk-h">Best picks'+(d.median?' <small>typical price '+esc(d.median)+'</small>':'')+'</h3><div class="pk-row">';
   for(i=0;i<d.picks.length;i++){it=d.picks[i];
-    h+='<a class="pk-card" href="'+esc(huntLink(it))+'" target="_blank" rel="noopener noreferrer">'+
+    h+='<a class="pk-card" href="'+esc(huntLink(it))+'" target="_blank" rel="noopener noreferrer" data-u="'+esc(it.url||'')+'" data-t="'+esc(it.title||'')+'" data-p="'+esc(it.price||'')+'" data-s="'+esc(it.src||'')+'">'+   /* v7.17: data for the popup */
       (it.image?'<img loading="lazy" src="'+esc(it.image)+'" alt="">':'<span class="pk-noimg"></span>')+
       '<b>'+esc(it.price||'—')+'</b><span class="pk-t">'+esc(it.title)+'</span>'+
       '<small>'+esc(huntSite(it.src))+(it.time_left?' · '+esc(it.time_left)+' left':'')+(it.where?' · '+esc(it.where):'')+'</small></a>'}
@@ -4749,7 +4749,11 @@ document.addEventListener('click',function(e){
   /* v6.45: a plain tap on any eBay, ShopGoodwill or Salvation Army result card (home, hunts, Daily) opens the
      listing popup with all its photos, as Flock does; Flock cards keep their own handler, other sites link out */
   var c=t&&t.closest?t.closest('.sgw-cell .sgw-card'):null,cell;
-  if(!c||e.defaultPrevented||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button===1)return;
+  if(e.defaultPrevented||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button===1)return;
+  /* v7.17 (Matt: "fix the best picks popup it should have same behaviour"): a Best picks card opens the same popup;
+     a site the popup cannot show (Craigslist, Poshmark...) still links out */
+  if(!c&&t&&t.closest&&(c=t.closest('.pk-card'))){if(popOpen(c))e.preventDefault();return}
+  if(!c)return;
   cell=c.closest('.sgw-cell');if(!cell||cell.closest('.fl-card'))return;
   if(popOpen(cell))e.preventDefault();
 });
@@ -6747,7 +6751,7 @@ function popShown(){return !!(sh&&!sh.hidden&&sh.classList.contains('pop'))}
 function popAuc(card){var m=card.querySelector('.sgw-m'),t=m?String(m.textContent||''):'';return /\bbids?\b|\bleft\b/.test(t)?t.replace(/\s+/g,' ').trim():''}
 function popOpen(card){
   var u=card.getAttribute('data-u')||'',src=popSrc(u);if(!src)return false;
-  var img=card.querySelector('.sgw-card img');
+  var img=card.querySelector('.sgw-card img')||card.querySelector('img');   /* v7.17: a Best picks card's photo */
   POP={u:u,src:src,t:card.getAttribute('data-t')||card.getAttribute('aria-label')||'',p:card.getAttribute('data-p')||'',
     s:card.getAttribute('data-s')||src,img:img?img.getAttribute('src')||'':'',auc:((card.querySelector('.fl-auc')||{}).textContent)||popAuc(card)};
   openSheet(POP_NAME[src],'');
