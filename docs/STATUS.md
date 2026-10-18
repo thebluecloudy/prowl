@@ -1,15 +1,26 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.21 / v124).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.22 / v125).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.21** | 408,229 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v124** | |
+| Page | **v7.22** | 407,993 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v125** | |
 
 Recently shipped, newest first:
+
+- **v7.22 + worker v125: Den › STATS holds every analytic and graph** (Matt: "I'd like this and any other analytics and
+  graphs in the menu area", and "can it show me how someone came to the site?"). New tab between ABOUT and SETTINGS:
+  "Your hunting" (this device: searches per day for 14 days from `prowl.runs`, finds saved per week for 8 weeks from
+  `prowl.finds`), then Your marketplaces (moved out of Settings). With the owner key (`prowl.owner`) it also shows
+  "Prowl usage" from the new `GET /owner-stats` (owner only, 403 otherwise): people searching per day (new stat kind
+  `u`, ticked once per search on `/ebay`, distinct daily-salted IP hashes, so it starts at 0 on v125), searches, the
+  week's top terms, and **where visitors came from** (Cloudflare Web Analytics referrers via the GraphQL Analytics API,
+  `cfReferrers`). Referrers need three worker secrets: **CF_API_TOKEN** (Account Analytics: Read), **CF_ACCOUNT_ID**,
+  **CF_SITE_TAG**; without them the panel says "Not connected yet". No new localStorage keys. Tests:
+  `__tests__/page/den-stats-v722.test.mjs`, `worker/__tests__/owner-stats.test.mjs`.
 
 - **v7.21 + worker v124: the page's main script is served by the worker** (Matt: "why is there a limit??"). The
   Shopify page body went from 100,030 bytes under the 512 KB cap to 408,229, the way v6.92 moved the stylesheet. The
@@ -398,7 +409,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.22, worker v125**. Claim one here when you start.
+Next free numbers: **page v7.23, worker v126**. Claim one here when you start.
 
 ## What's next
 
