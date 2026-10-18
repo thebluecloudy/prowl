@@ -1890,6 +1890,24 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v7.12: small controls keep their look but take a tap 44px across */
 .scout-app-wrapper .sgw-chip .sgw-x,.scout-app-wrapper .lk-chip button,.scout-app-wrapper .sgw-cbar .sgw-sv,.scout-app-wrapper .sgw-cbar .sgw-lk,.scout-app-wrapper .sgw-cbar .sgw-fp,.scout-app-wrapper .fl-seg button,.scout-app-wrapper #otp-toast .gh{position:relative}
 .scout-app-wrapper .sgw-chip .sgw-x::after,.scout-app-wrapper .lk-chip button::after,.scout-app-wrapper .sgw-cbar .sgw-sv::after,.scout-app-wrapper .sgw-cbar .sgw-lk::after,.scout-app-wrapper .sgw-cbar .sgw-fp::after,.scout-app-wrapper .fl-seg button::after,.scout-app-wrapper #otp-toast .gh::after{content:'';position:absolute;top:50%;left:50%;width:100%;min-width:44px;height:44px;min-height:100%;transform:translate(-50%,-50%)}
+/* v7.23: On the lookout chips, related chips, Got away, Locked on / Hiding, Prowl's words */
+.scout-app-wrapper .bolo{margin:10px 0 4px;padding:14px 16px;border:1px solid var(--l2);border-radius:14px;background:var(--cd)}
+.scout-app-wrapper .bolo-h{margin:0;font-size:18px;font-weight:800;color:var(--ink)}
+.scout-app-wrapper .bolo-s{margin:2px 0 6px;font-size:15px;color:var(--mu)}
+.scout-app-wrapper .bolo-l,.scout-app-wrapper .sgw-rel-h{margin:10px 0 6px;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mu)}
+.scout-app-wrapper .bolo-r{display:flex;flex-wrap:wrap;gap:8px}
+.scout-app-wrapper .bolo-c{-webkit-appearance:none;appearance:none;min-height:44px;padding:8px 14px;border:1px solid var(--l2);border-radius:999px;background:var(--cd2);color:var(--ink);font:700 15px/1.2 var(--sans);text-align:left;cursor:pointer}
+.scout-app-wrapper .bolo-c:hover{border-color:var(--ac)}
+.scout-app-wrapper .bolo-c:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.scout-app-wrapper .is-gone .sgw-card{position:relative}
+.scout-app-wrapper .is-gone .sgw-card img{filter:grayscale(.85);opacity:.7}
+.scout-app-wrapper .is-gone .sgw-card::before{content:'Got away';position:absolute;top:8px;left:8px;z-index:2;padding:3px 9px;border-radius:999px;background:var(--ink);color:var(--bg);font:800 12.5px/1.4 var(--sans);letter-spacing:.04em;text-transform:uppercase}
+.scout-app-wrapper .sb.bell i{color:var(--go)}
+.scout-app-wrapper .gloss{margin:14px 0 4px;border-top:1px solid var(--ln);padding-top:10px}
+.scout-app-wrapper .gloss summary{cursor:pointer;font-weight:800;color:var(--ink);font-size:16px;min-height:44px;display:flex;align-items:center}
+.scout-app-wrapper .gloss dl{margin:6px 0 0;display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:15px}
+.scout-app-wrapper .gloss dt{font-weight:800;color:var(--ink)}
+.scout-app-wrapper .gloss dd{margin:0;color:var(--i2)}
 /* v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
      shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
      under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing.
@@ -1974,6 +1992,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <button class="b" id="otp-sa" type="button" hidden>Search All</button>
     <button class="b near-chip" id="otp-near" type="button">⌖ Near me</button>
   </form>
+  <div class="bolo" id="otp-bolo" role="region" aria-label="Ideas to hunt" hidden></div>
 
   <div class="gapp otp-getapp" data-mode="home" hidden></div>
 
@@ -2887,6 +2906,23 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <p><b style="color:var(--ink)">Aa</b> makes the text bigger. The icon top-right cycles light, dark and <b style="color:var(--ink)">uranium</b>, a retro blacklight mode. <span class="aff-say">Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</span></p>
 </div>
 </div>
+    <details class="gloss"><summary>Prowl's words</summary>
+<dl>
+<dt>Prowl</dt><dd>One search across every marketplace at once.</dd>
+<dt>Hunt</dt><dd>Something you are after, like Pyrex Butterprint. Your hunts live in your Den.</dd>
+<dt>Den</dt><dd>Your lair: your hunts, likes, settings and alerts.</dd>
+<dt>Locked on</dt><dd>An active hunt. It shows in Daily and on your home page. A bell means your alerts watch it too.</dd>
+<dt>Hiding</dt><dd>A hunt you keep in the Den but are not stalking right now. Tap it to lock on again.</dd>
+<dt>Daily</dt><dd>Your daily prowl: what is new since yesterday for the hunts you are locked on.</dd>
+<dt>Flock</dt><dd>A feed of finds drawn from your hunts and likes. Like what you love; pass on the rest.</dd>
+<dt>On the lookout</dt><dd>Ideas to hunt, offered when the search box is empty.</dd>
+<dt>Best picks</dt><dd>The few listings that stand out in a hunt: under the usual price, a quiet auction, a lot.</dd>
+<dt>Pounce</dt><dd>Prowl watches a hunt for you and taps your phone when the real thing turns up.</dd>
+<dt>Quarry</dt><dd>The exact piece you stalk, the way a panther stalks its prey.</dd>
+<dt>Got away</dt><dd>A listing that ended or sold before you reached it. Prowl can watch for the next one.</dd>
+<dt>Paw prints</dt><dd>Prowl is still looking.</dd>
+</dl>
+</details>
     <div class="ma"><button class="b p" id="otp-mok">Got it</button></div>
   </div>
 </div>
@@ -2906,7 +2942,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.22';
+var PROWL_VERSION='v7.23';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3300,6 +3336,23 @@ function rQuick(){
 /* v6.74: the Den's hunts say how many finds are new since you last looked, like the home panel's chips (seenNew:
    only for hunts this visit has fetched, and only once you have opened the hunt before) */
 function denNew(x){var n=0;try{n=seenNew(sgwClean(x).toLowerCase())}catch(e){}return n?' <em class="sgw-new" aria-label="'+n+' new">'+(n>9?'9+':n)+' new</em>':''}
+/* v7.23 (Matt: "keep locked on as these are active hunts. The panther locking on a prey and when not locked on it
+   is hiding"): a locked-on hunt is in Daily, on the home page and, for a member, in the Prowl email; a hidden one waits
+   in the Den. The bell shows when the alerts cover it (the first hunts in alert order, up to the plan's count). */
+function denBell(x){
+  try{
+    if(!flSignedIn()||MAIL.mail==='off')return false;
+    var hs=mailHunts(),k=sgwClean(x).toLowerCase(),cap=mailPro()?25:(MAIL.free||1),i;
+    for(i=0;i<hs.length&&i<cap;i++)if(hs[i].toLowerCase()===k)return true;
+  }catch(e){}
+  return false;
+}
+function denLock(x,i,f){
+  var bell=f&&denBell(x);
+  return '<button class="sb'+(f?' on':'')+(bell?' bell':'')+'" type=button data-l='+i+' aria-pressed='+f+' title="'+
+    (f?'Locked on: in Daily and on your home page'+(bell?', and your alerts watch it':'')+'. Tap to let it hide.':'Hiding: kept in your Den, out of Daily and your alerts. Tap to lock on.')+'">'+
+    '<i>'+(f?(bell?'\uD83D\uDD14':'◉'):'◎')+'</i><b>'+(f?'Locked on':'Hiding')+'</b></button>';
+}
 function rDenHunts(){
   setTimeout(function(){try{flockHunts()}catch(e){}},0);   /* v6.61: Flock follows the whole Den */
   $('#otp-denList').innerHTML=st.hunts.map(function(x,i){
@@ -3307,7 +3360,7 @@ function rDenHunts(){
     return '<li class="term'+(s?' on':'')+'">'+
       '<button class=ck type=button data-c='+i+' aria-pressed='+s+'>'+(s?'✓':'')+'</button>'+
       '<button class=tb type=button data-i='+i+'><span class=tt>'+esc(x)+denNew(x)+'</span></button>'+
-      '<button class="sb'+(f?' on':'')+'" type=button data-l='+i+' title="'+(f?'Unlock':'Lock on')+'"><i>'+(f?'◉':'◎')+'</i><b>'+(f?'Locked':'Lock')+'</b></button>'+
+      denLock(x,i,f)+
       '<button class=rm type=button data-r='+i+' aria-label="Remove">✕</button></li>';
   }).join('');
   if(!st.hunts.length)$('#otp-denList').innerHTML='<li class="den-empty"><b>No hunts saved yet.</b><span>Add what you collect in the box above, like pyrex butterprint or brad keeler. Prowl checks the live sites for it.</span><button type="button" class="b p" id="otp-denStart">Add my first hunt</button></li>';   /* v7.05 */
@@ -3356,8 +3409,8 @@ $('#otp-denList').addEventListener('click',function(e){
   }
   var sb=e.target.closest('.sb');
   if(sb){var j=+sb.dataset.l;
-    if(st.lock.has(j)){st.lock.delete(j);toast('◎ '+esc(st.hunts[j])+' unlocked.',2000);}
-    else{st.lock.add(j);toast('◉ '+esc(st.hunts[j])+' locked on.',2400);}
+    if(st.lock.has(j)){st.lock.delete(j);toast('◎ <b>'+esc(st.hunts[j])+'</b> is hiding in your Den.',2400);}   /* v7.23 */
+    else{st.lock.add(j);toast('◉ Locked on <b>'+esc(st.hunts[j])+'</b>.',2400);}
     save();rDenHunts();rQuick();rDock();return;
   }
   var b=e.target.closest('.tb');
@@ -4429,8 +4482,37 @@ function goLocal(){
 $('#otp-near').addEventListener('click',goLocal);
 $('#otp-sf').addEventListener('submit',function(e){
   e.preventDefault();
+  if(!q.value.trim()){boloShow();return}   /* v7.23: an empty box offers hunts to pick, never a silent re-run */
+  boloHide();
   runProwl('prowl',chips(),st.mkt.size?Array.from(st.mkt):ALL);
 });
+/* v7.23 (the eBay teardown: "tapping search with an empty box shows chips; tapping a chip runs it"). Your hunts,
+   locked-on ones first, then On the lookout: the starter hunts early Prowl filled in for everyone (OLD_DEF, BOLO's
+   old job), less the ones already yours. A chip runs that one hunt. */
+function boloChip(t){return '<button type="button" class="bolo-c" data-bolo="'+esc(t)+'">'+esc(t)+'</button>'}
+function boloShow(){
+  var el=$('#otp-bolo');if(!el)return;
+  var mine=[],seen=Object.create(null),look=[],i,t,k;
+  function add(a,v){t=sgwClean(v);k=t.toLowerCase();if(t&&!seen[k]){seen[k]=1;a.push(t)}}
+  for(i=0;i<st.hunts.length&&mine.length<8;i++)if(st.lock.has(i))add(mine,st.hunts[i]);
+  for(i=0;i<st.hunts.length&&mine.length<8;i++)add(mine,st.hunts[i]);
+  for(i=0;i<OLD_DEF.length&&look.length<8;i++)add(look,OLD_DEF[i]);
+  el.innerHTML='<p class="bolo-h">What are we hunting?</p><p class="bolo-s">Type it above, or tap one.</p>'+
+    (mine.length?'<p class="bolo-l">Your hunts</p><div class="bolo-r">'+mine.map(boloChip).join('')+'</div>':'')+
+    (look.length?'<p class="bolo-l">On the lookout</p><div class="bolo-r">'+look.map(boloChip).join('')+'</div>':'');
+  el.hidden=false;
+}
+function boloHide(){var el=$('#otp-bolo');if(el)el.hidden=true}
+function boloRun(t){
+  t=sgwClean(t);if(!t)return;
+  boloHide();q.value=t;
+  runProwl('prowl',[t],st.mkt.size?Array.from(st.mkt):ALL);
+}
+document.addEventListener('click',function(e){   /* the empty box's chips, and the related ones on an empty search */
+  var b=e.target&&e.target.closest&&e.target.closest('.scout-app-wrapper [data-bolo]');
+  if(b){e.preventDefault();boloRun(b.getAttribute('data-bolo'))}
+});
+q.addEventListener('input',function(){if(q.value.trim())boloHide()});
 $('#otp-sa').addEventListener('click',function(){
   runProwl('all',chips(),ALL);
 });
@@ -5055,12 +5137,24 @@ function liveErrNote(name,c){
 /* v6.33: every live source answered and none had anything. One card instead of eight "nothing" lines:
    keep watching by email, or try the sites Prowl can only link to. */
 var EMPTY_LINKS=['facebook','heritage','liveauction','hibid','mercari','mercarijp','rubylane','ebaysold'];
+/* v7.23 (the eBay teardown: an empty search always offers a next step): the hunt with fewer words, then your hunts
+   and the On the lookout list that share a word with it. At most 5. */
+function relTerms(t){
+  var w=sgwClean(t).split(/\s+/).filter(Boolean),out=[],seen=Object.create(null),i,k,pool,lw;
+  function add(v){v=sgwClean(v);k=v.toLowerCase();if(v&&k!==sgwClean(t).toLowerCase()&&!seen[k]&&out.length<5){seen[k]=1;out.push(v)}}
+  if(w.length>1){for(i=w.length-1;i>=0;i--)if(w[i].length>2)add(w.slice(0,i).concat(w.slice(i+1)).join(' '))}
+  lw=w.map(function(x){return x.toLowerCase()}).filter(function(x){return x.length>2});
+  pool=st.hunts.concat(OLD_DEF);
+  for(i=0;i<pool.length;i++)if(lw.some(function(x){return (' '+String(pool[i]).toLowerCase()+' ').indexOf(' '+x+' ')>-1}))add(pool[i]);
+  return out;
+}
 function liveEmptyCard(t,fb){
   var links='',i,m,u;
   for(i=0;i<EMPTY_LINKS.length;i++){if(fb&&EMPTY_LINKS[i]==='facebook')continue;m=mb(EMPTY_LINKS[i]);if(!m)continue;   /* v6.65: fb, the Facebook strip is above */try{u=m.u(t)}catch(e){u=''}if(!/^https:\/\//.test(u)&&u.charAt(0)!=='/')continue;links+=(links?' · ':'')+'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(m.n)+'</a>'}
   return '<div class="sgw-empty"><p class="sgw-empty-h">'+(fb?'Nothing on Goodwill or the other live sites yet for':'Nothing live yet for')+' <b>“'+esc(t)+'”</b>.</p>'+
     '<p>Rare pieces come and go. Prowl can keep watching and email you when one is listed.</p>'+
     '<button type="button" class="b p" data-empty="watch" data-t="'+esc(t)+'">Email me when it shows up</button>'+
+    (relTerms(t).length?'<p class="sgw-rel-h">Or try</p><div class="bolo-r">'+relTerms(t).map(boloChip).join('')+'</div>':'')+   /* v7.23 */
     (links?'<details class="sgw-morep"><summary>More places to look</summary><p class="sgw-empty-l">'+links+'</p></details>':'')+'</div>';   /* v7.03 */
 }
 /* v6.33: one look across ShopGoodwill and every live source for a term. */
@@ -6941,6 +7035,7 @@ function popPaint(d){
     (P.pnc.done?'<em>Marked not it.</em>':'<button type="button" class="b" data-ppnot="1">Not it</button>')+'</div>';   /* v7.19 */
   P.term=popTerm(title,d.aspects);
   /* v7.19 (the UX spec's "it just slipped away"): an ended listing offers to watch for the next one */
+  if(d.gone)awayAdd(P.u);   /* v7.23 */
   if(d.gone)h+='<div class="pp-end" role="note"><b>This one got away.</b><span>Prowl can watch for the next one.</span>'+
     ((P.term||title)?'<button type="button" class="b p" data-ppwatch="1"'+(P.watched?' disabled':'')+'>'+(P.watched?'\u2713 Watching for it':'Watch for the next one')+'</button>':'')+'</div>';
   if(P.term)h+='<button type="button" class="pp-hunt" data-pphunt="1" aria-label="Search this on Prowl: '+esc(P.term)+'">\ud83d\udd0d Search this on Prowl</button>';   /* v6.99 */
@@ -6956,6 +7051,32 @@ function popPaint(d){
   if(desc){var box=$('#otp-ppd');box.appendChild(popDesc(desc));
     if(box.scrollHeight<=box.clientHeight+2){box.classList.remove('clip');var mb=b.querySelector('[data-ppmore]');if(mb)mb.parentNode.removeChild(mb)}}
 }
+/* v7.23 (the eBay teardown: "no watchlist card leads to a dead listing"): a listing Prowl has seen end (its popup said
+   so) is kept by URL in prowl.gotAway (new key, newest 300; not goneGet, which is the un-liked list) and every card of it, wherever it shows, gets a Got away tag
+   (.is-gone, a MutationObserver on the app). It still opens: the popup offers Watch for the next one. */
+var AWAY_KEY='prowl.gotAway',AWAY=null;
+function awayGet(){if(AWAY)return AWAY;AWAY=Object.create(null);try{var a=JSON.parse(localStorage.getItem(AWAY_KEY)||'[]');if(Array.isArray(a))a.forEach(function(u){if(typeof u==='string')AWAY[u]=1})}catch(e){}return AWAY}
+function awayAdd(u){
+  if(!u||awayGet()[u])return;
+  AWAY[u]=1;
+  try{var a=JSON.parse(localStorage.getItem(AWAY_KEY)||'[]');if(!Array.isArray(a))a=[];a.unshift(u);localStorage.setItem(AWAY_KEY,JSON.stringify(a.slice(0,300)))}catch(e){}
+  awayMark(document);
+}
+function awayMark(root){
+  try{
+    var g=awayGet(),els=[],i;
+    if(root.getAttribute&&root.getAttribute('data-u'))els.push(root);
+    if(root.querySelectorAll)els=els.concat([].slice.call(root.querySelectorAll('[data-u]')));
+    for(i=0;i<els.length;i++)if(g[els[i].getAttribute('data-u')]&&!els[i].classList.contains('is-gone'))els[i].classList.add('is-gone');
+  }catch(e){}
+}
+try{
+  if(window.MutationObserver){
+    var awayMo=new MutationObserver(function(ms){var i,j,n;for(i=0;i<ms.length;i++)for(j=0;j<ms[i].addedNodes.length;j++){n=ms[i].addedNodes[j];if(n.nodeType===1)awayMark(n)}});
+    [].forEach.call(document.querySelectorAll('.scout-app-wrapper'),function(w){awayMo.observe(w,{childList:true,subtree:true})});
+  }
+  awayMark(document);
+}catch(e){}
 /* v6.99: double-tap the photo to like the listing. It only adds a like; un-liking stays on the heart button. */
 function popLike(){
   var P=POP;if(!P)return;
@@ -8861,7 +8982,7 @@ try{promoPick();setTimeout(promoPick,1500);window.addEventListener('focus',promo
     },60);
   }
   var sf=document.getElementById('otp-sf');
-  if(sf)sf.addEventListener('submit',function(){startHunt(sf.querySelector('button[type=submit]'))});
+  if(sf)sf.addEventListener('submit',function(){var qq=document.getElementById('otp-q');if(qq&&!qq.value.replace(/\s+/g,''))return;startHunt(sf.querySelector('button[type=submit]'))});   /* v7.23: an empty box hunts nothing */
   ['otp-sa','otp-oneBtn'].forEach(function(id){var b=document.getElementById(id),dock=id!=='otp-sa';if(b)b.addEventListener('click',function(){var q=document.getElementById('otp-q');if(!dock||(q&&q.value.trim()))startHunt(b)})});   /* v6.88: one-site only when a hunt is typed; with none it opens a picker, not a run. v7.09: LOCAL and Near me open the Maps links, not a hunt */
   root.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('[data-sgw="pick"]')){unicorns=1;UNI=null}},true);   /* picking a hunt */
   /* the chip sheen: once each time the pointer comes onto a hunt's chip. The chips are redrawn as results come in (the
