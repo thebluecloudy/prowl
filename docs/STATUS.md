@@ -6,7 +6,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.23 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.23** | 406,500 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.23** | 406,487 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v125** | |
 
 Recently shipped, newest first:
@@ -30,6 +30,9 @@ Recently shipped, newest first:
     On the lookout, Best picks, Pounce, Quarry, Got away, Paw prints).
   - Checked in Chromium at 390 px. Already there, so not rebuilt: Keep in the results header, How Prowl works on a
     first visit, the Daily header, "N new" on Den hunts. "Prowling" stays (Matt: panther words).
+  - **Deploy fix (same version):** the first deploy sent v7.23 but failed its md5 check, because Shopify saves a
+    `<dd>` that follows `</dt>` on its own line. The glossary is now written that way, and a test fails if body
+    markup has `</dt><dd>` again. Markup built inside the scripts is not affected.
   Test: `__tests__/page/lookout-v723.test.mjs`; `motion.test.mjs` (a hunt needs a term to sparkle).
 - **v7.22 + worker v125: Den › STATS holds every analytic and graph** (Matt: "I'd like this and any other analytics and
   graphs in the menu area", and "can it show me how someone came to the site?"). New tab between ABOUT and SETTINGS:

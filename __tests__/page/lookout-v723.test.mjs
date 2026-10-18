@@ -4,6 +4,7 @@
 // a Den hunt is Locked on or Hiding, with a bell when the alerts watch it; How Prowl works has Prowl's words.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
 import { liveFetch, waitFor } from '../helpers/flockFixture.mjs';
 
@@ -142,4 +143,12 @@ test('How Prowl works has Prowl\'s words', async () => {
   const words = [...g.querySelectorAll('dt')].map((d) => d.textContent);
   for (const w of ['Prowl', 'Hunt', 'Den', 'Locked on', 'Hiding', 'Daily', 'Flock', 'On the lookout', 'Pounce', 'Quarry', 'Got away']) assert.ok(words.includes(w), w);
   await p.close();
+});
+
+test('the glossary markup is written the way Shopify saves it, so the deploy\'s md5 check matches', () => {
+  // Shopify puts a <dd> that follows </dt> on its own line; written on one line, the live page never matches the file
+  const html = readFileSync(new URL('../../page/prowl.html', import.meta.url), 'utf8');
+  const body = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, '');
+  assert.ok(/<details class="gloss">/.test(body));
+  assert.doesNotMatch(body, /<\/dt><dd>/);
 });
