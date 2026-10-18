@@ -8,7 +8,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { slimPage, SHOPIFY_MAX_BYTES } from '../../scripts/slim-page.mjs';
-import { pageCss, cssHash, cssUrl, externalize, deployBody, waitForCss } from '../../scripts/page-css.mjs';
+import { pageCss, cssHash, cssUrl, externalize, deployBody, waitForCss, jsUrl } from '../../scripts/page-css.mjs';
+import { PAGE_JS, PAGE_JS_HASH } from '../../worker/page-js.js';
 import { workerModule } from '../../scripts/build-page-css.mjs';
 import { PAGE_CSS, PAGE_CSS_HASH } from '../../worker/page-css.js';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
@@ -41,7 +42,9 @@ test('what is sent: the stylesheet as a link with its hash, a small safety scrip
   assert.equal(sent.url, 'https://prowl.thebluecloud.workers.dev/css/prowl.' + PAGE_CSS_HASH + '.css');
   assert.doesNotMatch(sent.body, /<style id="prowl-css">/);
   assert.equal((sent.body.match(/<link rel="stylesheet" id="prowl-css" href="[^"]+">/g) || []).length, 1);
-  assert.equal(sent.body.replace(/<link rel="stylesheet" id="prowl-css"[\s\S]*?<\/script>/, '@@'), slim.replace(/<style id="prowl-css">[\s\S]*?<\/style>/, '@@'), 'only the stylesheet block changed');
+  /* v7.21: the main script goes as a link too (__tests__/page/page-js.test.mjs) */
+  const noJs = (h) => h.replace(/<script id="prowl-js" src="[^"]+"><\/script><script>\(function\(\)\{if\(window\.PROWL_JS\)[\s\S]*?<\/script>/, '##').replace(/<script id="prowl-js">[\s\S]*?<\/script>/, '##');
+  assert.equal(noJs(sent.body).replace(/<link rel="stylesheet" id="prowl-css"[\s\S]*?<\/script>/, '@@'), noJs(slim).replace(/<style id="prowl-css">[\s\S]*?<\/style>/, '@@'), 'only the stylesheet and main script blocks changed');
   const safety = /<link rel="stylesheet" id="prowl-css"[^>]*><script>([\s\S]*?)<\/script>/.exec(sent.body)[1];
   assert.doesNotThrow(() => new vm.Script(safety));
   assert.doesNotMatch(safety, /\{\{|\{%|\/\*/,'no Liquid opener or comment in it');
@@ -49,12 +52,12 @@ test('what is sent: the stylesheet as a link with its hash, a small safety scrip
   assert.ok(bytes < SHOPIFY_MAX_BYTES - 100000, 'at least 100 KB to spare (' + (SHOPIFY_MAX_BYTES - bytes) + ')');
   /* an older page file without the marked stylesheet goes as it is */
   const old = PAGE.replace('<style id="prowl-css">', '<style>');
-  assert.deepEqual(await deployBody(old), { body: slimPage(old), hash: null, url: null, css: '' });
+  assert.deepEqual(await deployBody(old), { body: slimPage(old), hash: null, url: null, css: '', jsHash: null, jsUrl: null, js: '' });
 });
 
 test('the page as sent works: no errors, hunts, Flock cards and a like, with the stylesheet a link', async () => {
   const sent = (await deployBody(PAGE)).body, f = liveFetch();
-  const p = loadPage({ html: sent, fetchImpl: f.impl, storage: { 'prowl.v36': { seen: true, hunts: ['pyrex', 'fiesta'], lock: [0] }, owlTwigSgwTerms: [] } });
+  const p = loadPage({ html: sent, scripts: { [jsUrl(PAGE_JS_HASH)]: PAGE_JS }, fetchImpl: f.impl, storage: { 'prowl.v36': { seen: true, hunts: ['pyrex', 'fiesta'], lock: [0] }, owlTwigSgwTerms: [] } });
   await waitFor(() => p.$$('.sgw-chip[data-sgw="pick"]').length >= 1);
   assert.equal(p.$('#prowl-css').tagName, 'LINK');
   assert.equal(p.$('#prowl-css').getAttribute('href'), cssUrl(PAGE_CSS_HASH));

@@ -179,6 +179,30 @@ now goes as a link to the worker, which leaves 144 KB of room. Nothing changes i
 - If the worker is down the page loads unstyled, where before it would have loaded styled but without live results.
 - `node scripts/slim-page.mjs page/prowl.html` prints what is sent and the room left.
 
+## Main script on the worker (page v7.21, worker v124)
+
+At v7.20 the page body sent to Shopify was 100,030 bytes under the 512 KB cap, 30 bytes over the 100 KB margin a test
+keeps. The page's main script (about 310 KB without comments) now goes the way the stylesheet did at v6.92, and the
+body sent drops to about 116 KB:
+
+- The repo page keeps it inline in `<script id="prowl-js">` (the one script with that id; the curtain's, the New look
+  switch, the shop strip and Prowl magic stay inline everywhere). Tests load the page with it inline, as before.
+- After changing it, run `node scripts/build-page-css.mjs`. It writes `worker/page-js.js` too: the script without
+  comments, starting with `window.PROWL_JS=1;`, one line of the script per line of the file (so a change diffs as the
+  lines it touched), and a 12-character hash. `__tests__/page/page-js.test.mjs` fails until they match. After merging
+  main into a branch, the hash line conflicts: take either side and run the build again.
+- The worker serves it at `/js/prowl.<hash>.js` (`jsResponse`): its own hash cached for a year (`immutable`), any
+  other hash the same script with `no-store`, and `X-Prowl-Js` naming the hash it has.
+- The deploy swaps the block for `<script id="prowl-js" src="…/js/prowl.<hash>.js">`, a classic blocking script, so
+  it runs at the same point as before: after the markup above it, before the scripts below it. It then waits (up to
+  10 minutes) until the worker answers with that hash before sending the page, as it does for the stylesheet.
+- A few lines after it cover a failure: if `window.PROWL_JS` is not set (the worker did not answer, or a sanitizer took
+  the `src` out), they load the script once more (`?r=1`); if that fails too, a note above the app says "Prowl could
+  not load. Tap to try again". The curtain lifts by itself after 9 seconds, so the note is never left under it.
+- **If the worker is down, Prowl does not run** (the page shows the note); before v7.21 it ran without live results.
+  The browser keeps the script for a year once it has it, so this only bites a visitor whose cache is empty.
+- The deploy's size checks count the linked stylesheet and script as part of the page.
+
 ## Pounce (page v6.93, worker v112)
 
 Hark's quarry hunt, brought onto main. In Den > Settings > Pounce, a member picks one of their alert hunts and

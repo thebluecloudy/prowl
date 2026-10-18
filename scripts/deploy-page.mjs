@@ -1,7 +1,7 @@
 // Prowl page deploy: sends page/prowl.html to the Shopify page body, then checks it landed. What is sent is the page
 // without its comments (scripts/slim-page.mjs): Shopify caps a page body at 512 KB, and the repo copy keeps them.
 // Since page v6.92 the main stylesheet goes as a link to the worker (scripts/page-css.mjs), and the deploy waits until
-// the worker serves that exact stylesheet before it sends the page.
+// the worker serves that exact stylesheet before it sends the page. Since page v7.21 the main script goes the same way.
 // Runs in GitHub Actions. Needs SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET (Dev Dashboard app,
 // scopes read_online_store_pages + write_online_store_pages, installed on the store).
 // Never prints the secret or the token.
@@ -13,15 +13,16 @@ import { deployBody, waitForCss } from "./page-css.mjs";
 export const SHOP = process.env.SHOPIFY_SHOP || "tz7xkc-du.myshopify.com";
 export const PAGE_ID = "gid://shopify/Page/137091285246";
 export const API = "2026-07";
-export const MIN_BYTES = 200000;      // the real page is ~350 KB; anything this small is a broken file
+export const MIN_BYTES = 200000;      // the real page is ~430 KB with what it links; anything this small is a broken file
 export const MIN_RATIO = 0.7;         // refuse to replace the live page with something much smaller
 
 const md5 = (s) => createHash("md5").update(s, "utf8").digest("hex");
 const trimEnd = (s) => s.replace(/\s+$/, "");
 
-export function checkBody(body) {
+/* linked: the bytes of the stylesheet and main script the page links to (v6.92, v7.21), counted toward the minimum */
+export function checkBody(body, linked) {
   const errs = [];
-  const bytes = Buffer.byteLength(body, "utf8");
+  const bytes = Buffer.byteLength(body, "utf8") + (linked || 0);
   if (bytes < MIN_BYTES) errs.push("file is only " + bytes + " bytes (minimum " + MIN_BYTES + ")");
   if (body.indexOf("{{") !== -1) errs.push("file contains {{ (Shopify would read it as Liquid)");
   if (body.indexOf("{%") !== -1) errs.push("file contains {% (Shopify would read it as Liquid)");
@@ -62,7 +63,8 @@ export async function deploy({ fetchFn, file, id, secret, force, backupDir, log,
   const raw = readFileSync(file, "utf8");
   const built = await deployBody(raw);
   const body = trimEnd(built.body);
-  const errs = checkBody(body);
+  const linked = Buffer.byteLength(built.css, "utf8") + Buffer.byteLength(built.js || "", "utf8");
+  const errs = checkBody(body, linked);
   const size = Buffer.byteLength(body, "utf8");
   if (size > SHOPIFY_MAX_BYTES) errs.push("without its comments the page is " + size + " bytes, over Shopify's " + SHOPIFY_MAX_BYTES + " (512 KB); make it smaller");
   if (errs.length) throw new Error("Refusing to deploy:\n- " + errs.join("\n- "));
@@ -84,8 +86,15 @@ export async function deploy({ fetchFn, file, id, secret, force, backupDir, log,
   if (built.hash && !(await waitForCss(fetchFn, built.hash, Object.assign({ log }, cssWait || {})))) {
     throw new Error("Refusing to deploy: the worker does not serve stylesheet " + built.hash + " (" + built.url + "). Check that the worker deployed, and that worker/page-css.js was rebuilt (node scripts/build-page-css.mjs).");
   }
-  /* the guard against a broken file counts the linked stylesheet as part of the page, as it was before v6.92 */
-  if (!force && Buffer.byteLength(body, "utf8") + Buffer.byteLength(built.css, "utf8") < liveBytes * MIN_RATIO) {
+  if (built.jsHash && !(await waitForCss(fetchFn, built.jsHash, Object.assign({ log, js: true }, cssWait || {})))) {   /* v7.21 */
+    throw new Error("Refusing to deploy: the worker does not serve main script " + built.jsHash + " (" + built.jsUrl + "). Check that the worker deployed, and that worker/page-js.js was rebuilt (node scripts/build-page-css.mjs).");
+  }
+  /* the guard against a broken file counts the linked stylesheet and script as part of the page, as they were before
+     v6.92 and v7.21, and compares with the live page plus what that page itself links (the first deploy of v7.21
+     replaces a live page that still holds its script inline). */
+  const liveLinked = (/<link rel="stylesheet" id="prowl-css"/.test(liveBody) ? Buffer.byteLength(built.css, "utf8") : 0) +
+    (/<script id="prowl-js" src=/.test(liveBody) ? Buffer.byteLength(built.js || "", "utf8") : 0);
+  if (!force && Buffer.byteLength(body, "utf8") + linked < (liveBytes + liveLinked) * MIN_RATIO) {
     throw new Error("Refusing to deploy: the file is less than " + Math.round(MIN_RATIO * 100) + "% of the live page size. Run the workflow by hand with force on if this is intended.");
   }
 

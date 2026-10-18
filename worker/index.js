@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v124: 2026-10-18. The page's main script (Matt: "why is there a limit?"): served at /js/prowl.<hash>.js from
+ *        page-js.js (written by scripts/build-page-css.mjs from the page's <script id="prowl-js">), the way v111 serves
+ *        the stylesheet; the Shopify page body drops from about 424 KB to about 115 KB.
  *   v123: 2026-10-18. eBay listing age (Matt: "is there a way to show ebay aging?"): search results and /item carry
  *        listed (YYYY-MM-DD, eBay's itemOriginDate, else itemCreationDate) and relisted (the creation date, when it is a
  *        day or more after the origin). Phone alerts (Matt: "could not reach this phone", it used to work): a push test
@@ -419,8 +422,9 @@ import { artResponse } from "./art.js";   /* v97 */
 import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb64u } from "./push.js";   /* v114 */
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
+import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-const WORKER_VERSION = "v123";
+const WORKER_VERSION = "v124";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6118,6 +6122,19 @@ function cssResponse(name, method) {
     "Access-Control-Allow-Origin": "*", "Access-Control-Expose-Headers": "X-Prowl-Css",
     "Cross-Origin-Resource-Policy": "cross-origin", "X-Content-Type-Options": "nosniff", "X-Prowl-Css": PAGE_CSS_HASH } });
 }
+/* v124: the page's main script, the same way as its stylesheet: its own hash a year in the browser's cache, any
+   other hash the same script uncached, and X-Prowl-Js names the hash this worker has (the page deploy waits for it) */
+function jsResponse(name, method) {
+  const m = String(method || "GET").toUpperCase();
+  if (m !== "GET" && m !== "HEAD") return new Response("method not allowed", { status: 405, headers: { "Allow": "GET, HEAD", "Content-Type": "text/plain; charset=utf-8" } });
+  const k = /^prowl\.([0-9a-f]{12})\.js$/.exec(String(name || ""));
+  if (!k) return new Response("not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=300", "X-Prowl-Js": PAGE_JS_HASH } });
+  return new Response(m === "HEAD" ? null : PAGE_JS, { status: 200, headers: {
+    "Content-Type": "text/javascript; charset=utf-8",
+    "Cache-Control": k[1] === PAGE_JS_HASH ? "public, max-age=31536000, immutable" : "no-store",
+    "Access-Control-Allow-Origin": "*", "Access-Control-Expose-Headers": "X-Prowl-Js",
+    "Cross-Origin-Resource-Policy": "cross-origin", "X-Content-Type-Options": "nosniff", "X-Prowl-Js": PAGE_JS_HASH } });
+}
 async function handleFetch(request, env, ctx) {
     G_ENV = env;
     const url = new URL(request.url);
@@ -6125,6 +6142,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname.startsWith("/art/")) return artResponse(url.pathname.slice(5), request.method);
     /* v111: the page's main stylesheet (worker/page-css.js), the same way */
     if (url.pathname.startsWith("/css/")) return cssResponse(url.pathname.slice(5), request.method);
+    if (url.pathname.startsWith("/js/")) return jsResponse(url.pathname.slice(4), request.method);   /* v124: its main script */
     try { await affLoad(env); } catch (e) {}   /* v89: affiliate switches for every link built below */
     const origin = request.headers.get("Origin") || "";
 

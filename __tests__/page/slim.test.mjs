@@ -68,10 +68,11 @@ test('CSS: comments go; strings and url() that hold comment-like text stay', () 
 
 test('the page sent to Shopify fits its 512 KB, with every script parsing and the rest untouched', async () => {
   /* v6.92: what is sent carries the main stylesheet as a link (scripts/page-css.mjs, __tests__/page/page-css.test.mjs) */
-  const SENT = (await deployBody(PAGE)).body;
+  const D = await deployBody(PAGE), SENT = D.body;
   const bytes = Buffer.byteLength(SENT.trimEnd(), 'utf8');
   assert.ok(bytes <= SHOPIFY_MAX_BYTES, 'the page sent is ' + bytes + ' bytes, over ' + SHOPIFY_MAX_BYTES);
-  assert.deepEqual(checkBody(SENT.trimEnd()), []);
+  assert.deepEqual(checkBody(SENT.trimEnd(), Buffer.byteLength(D.css + D.js, 'utf8')), [], 'v7.21: with what it links, a whole page');
+  assert.ok(checkBody(SENT.trimEnd()).some((e) => /only \d+ bytes/.test(e)), 'without them it is too small to be the page');
   const before = scripts(PAGE), after = scripts(SLIM);
   assert.equal(after.length, before.length);
   after.forEach((s, i) => {
@@ -108,6 +109,7 @@ test('deploy sends the slim page, verifies it, and refuses one over 512 KB befor
     calls.push(String(url));
     if (/access_token/.test(url)) return new Response(JSON.stringify({ access_token: 'tok' }));
     if (/\/css\/prowl\./.test(url)) return new Response(null, { headers: { 'X-Prowl-Css': SENT.hash } });   /* the worker has the stylesheet */
+    if (/\/js\/prowl\./.test(url)) return new Response(null, { headers: { 'X-Prowl-Js': SENT.jsHash } });   /* v7.21: and the main script */
     const b = JSON.parse(o.body);
     if (/pageUpdate/.test(b.query)) { sent = b.variables.body; live = sent; return new Response(JSON.stringify({ data: { pageUpdate: { page: { id: 'p', updatedAt: 'now' }, userErrors: [] } } })); }
     return new Response(JSON.stringify({ data: { page: { id: 'p', updatedAt: 'before', body: live } } }));

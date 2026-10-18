@@ -1,16 +1,26 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.20 / v123).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.21 / v124).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.20** | 100,030 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
-| Worker | **v123** | |
+| Page | **v7.21** | 408,229 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v124** | |
 
 Recently shipped, newest first:
 
+- **v7.21 + worker v124: the page's main script is served by the worker** (Matt: "why is there a limit??"). The
+  Shopify page body went from 100,030 bytes under the 512 KB cap to 408,229, the way v6.92 moved the stylesheet. The
+  repo page keeps the script inline in `<script id="prowl-js">`; **after any change to it run
+  `node scripts/build-page-css.mjs`** (it now writes `worker/page-js.js` too, and a test fails until you do; after
+  merging main, rebuild). The deploy sends `<script src="…/js/prowl.<hash>.js">` in its place (blocking, so it runs
+  where it did) and waits for the worker to serve that hash. If it does not load, the page asks once more, then shows
+  "Prowl could not load. Tap to try again". **If the worker is down, Prowl does not run** (before, it ran without live
+  results); the browser keeps the script a year. Checked in Chromium: runs, a missed first load retries and runs, a down
+  worker shows the note over the styled page. See `page/README.md`, Main script on the worker. Tests:
+  `__tests__/page/page-js.test.mjs`; `page-css.test.mjs` and `slim.test.mjs` updated.
 - **v7.20 + worker v123: eBay listing age, and phone alerts that say why they failed** (Matt, 2026-10-18).
   - **Listing age** ("is there a way to show ebay aging? how many times it has been listed"): eBay search results and
     `/item` carry `listed` (eBay's itemOriginDate, the first listing, else itemCreationDate) and `relisted` (the
@@ -388,7 +398,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.21, worker v124**. Claim one here when you start.
+Next free numbers: **page v7.22, worker v125**. Claim one here when you start.
 
 ## What's next
 
