@@ -1,15 +1,24 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.15 / v121).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-17 (v7.16 / v121).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.15** | 101,809 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.16** | 101,809 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v121** | |
 
 Recently shipped, newest first:
+
+- **v7.16: the launch film, redrawn as the real app** (Matt, 2026-10-17/18: "use my panther", then "my app doesn't
+  look like that"). The help's film card (`#otp-film`) plays the new cut: Matt's own panther artwork
+  (`video/launch-film/assets/art/prowl-panther.webp`) and an app window drawn from the real page (dotted cream, brown
+  outlines, Find the prey, the orange Hunt button, result cards, the dock, the listing popup with the real repair and
+  damage flag). The panther glides as a ceramic figurine instead of walking (Matt: "the panther walking looks
+  weird"). Only the card's `data-src` changed, to the original upload in Shopify Files
+  (`cdn.shopify.com/videos/c/o/v/767c569b...mp4`, Video `46547817005310`, uploaded through the Admin API). Matt takes
+  the older uploads down (including Video `46547634979070`, the walking cut). The film says "28 marketplaces" and the page counts 29; Matt: "doesn't matter", leave both.
 
 - **v7.15 + worker v121: share a photo into Prowl on Android** (Matt, 2026-10-17: "Android same way" as the Chrome
   extension's image menu). The installed app shows up in Android's share sheet for images; the photo opens straight
@@ -333,7 +342,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.15, worker v121**. Claim one here when you start.
+Next free numbers: **page v7.17, worker v122**. Claim one here when you start.
 
 ## What's next
 
