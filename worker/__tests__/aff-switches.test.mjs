@@ -116,8 +116,9 @@ test("eBay off: no campaign on eBay links; both off: no commission line at all",
 });
 
 test("wired in: every request and cron run loads the switches; /aff answers them; footers use affNote", () => {
-  /* v97: the page's art (a static drawing, no links in it) is answered first (v111: then its stylesheet); every other request loads the switches */
-  assert.match(INDEX, /async function handleFetch\(request, env, ctx\) \{\n    G_ENV = env;\n    const url = new URL\(request\.url\);\n    \/\*[^\n]*\*\/\n    if \(url\.pathname\.startsWith\("\/art\/"\)\) return artResponse\(url\.pathname\.slice\(5\), request\.method\);\n(?:    \/\*[^\n]*\*\/\n    if \(url\.pathname\.startsWith\("\/css\/"\)\) return cssResponse\(url\.pathname\.slice\(5\), request\.method\);\n)?    try \{ await affLoad\(env\); \} catch \(e\) \{\}/);
+  /* v97: the page's art (a static drawing, no links in it) is answered first (v111: then its stylesheet; v124: its main
+     script); every other request loads the switches */
+  assert.match(INDEX, /async function handleFetch\(request, env, ctx\) \{\n    G_ENV = env;\n    const url = new URL\(request\.url\);\n    \/\*[^\n]*\*\/\n    if \(url\.pathname\.startsWith\("\/art\/"\)\) return artResponse\(url\.pathname\.slice\(5\), request\.method\);\n(?:    \/\*[^\n]*\*\/\n    if \(url\.pathname\.startsWith\("\/css\/"\)\) return cssResponse\(url\.pathname\.slice\(5\), request\.method\);\n)?(?:    if \(url\.pathname\.startsWith\("\/js\/"\)\) return jsResponse\(url\.pathname\.slice\(4\), request\.method\);[^\n]*\n)?    try \{ await affLoad\(env\); \} catch \(e\) \{\}/);
   assert.match(INDEX, /async scheduled\(event, env, ctx\) \{\n    G_ENV = env;\n    try \{ await affLoad\(env\); \} catch \(e\) \{\}/);
   assert.match(INDEX, /if \(url\.pathname === "\/aff" && request\.method === "GET"\) return json\(\{ on: AFF_ON, ids: AFF_IDS \}, 200, origin, \{ "Cache-Control": "public, max-age=300" \}\);/);
   assert.match(INDEX, /\(affNote\(\) \? alEsc\(affNote\(\)\) \+ '<br>' : ''\)/);
