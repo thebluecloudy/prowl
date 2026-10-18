@@ -1,4 +1,4 @@
-// Page v7.17 (Matt, 2026-10-18: "fix the best picks popup it should have same behaviour"): a Best picks card opens the
+// Page v7.18 (Matt, 2026-10-18: "fix the best picks popup it should have same behaviour"): a Best picks card opens the
 // same listing popup as every other result card; a site the popup cannot show still opens in its own tab.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

@@ -2847,7 +2847,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.17';
+var PROWL_VERSION='v7.18';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3281,6 +3281,7 @@ $('#otp-toast').addEventListener('click',function(e){
   var t=e.target&&e.target.closest?e.target:null;if(!t)return;
   if(t.closest('#otp-unhunt'))huntUndo();
   else if(t.closest('#otp-unfind'))findUndo();
+  else if(t.closest('#otp-unchip'))chipUndo();   /* v7.17 */
 });
 $('#otp-denList').addEventListener('click',function(e){
   if(e.target.closest('#otp-denStart')){var ni=document.getElementById('otp-newTerm');if(ni)ni.focus();return;}   /* v7.05 */
@@ -4124,7 +4125,7 @@ function huntInner(t){
   if(d.fail||!d.picks||!d.picks.length)return '';
   h+='<h3 class="pk-h">Best picks'+(d.median?' <small>typical price '+esc(d.median)+'</small>':'')+'</h3><div class="pk-row">';
   for(i=0;i<d.picks.length;i++){it=d.picks[i];
-    h+='<a class="pk-card" href="'+esc(huntLink(it))+'" target="_blank" rel="noopener noreferrer" data-u="'+esc(it.url||'')+'" data-t="'+esc(it.title||'')+'" data-p="'+esc(it.price||'')+'" data-s="'+esc(it.src||'')+'">'+   /* v7.17: data for the popup */
+    h+='<a class="pk-card" href="'+esc(huntLink(it))+'" target="_blank" rel="noopener noreferrer" data-u="'+esc(it.url||'')+'" data-t="'+esc(it.title||'')+'" data-p="'+esc(it.price||'')+'" data-s="'+esc(it.src||'')+'">'+   /* v7.18: data for the popup */
       (it.image?'<img loading="lazy" src="'+esc(it.image)+'" alt="">':'<span class="pk-noimg"></span>')+
       '<b>'+esc(it.price||'—')+'</b><span class="pk-t">'+esc(it.title)+'</span>'+
       '<small>'+esc(huntSite(it.src))+(it.time_left?' · '+esc(it.time_left)+' left':'')+(it.where?' · '+esc(it.where):'')+'</small></a>'}
@@ -4750,7 +4751,7 @@ document.addEventListener('click',function(e){
      listing popup with all its photos, as Flock does; Flock cards keep their own handler, other sites link out */
   var c=t&&t.closest?t.closest('.sgw-cell .sgw-card'):null,cell;
   if(e.defaultPrevented||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button===1)return;
-  /* v7.17 (Matt: "fix the best picks popup it should have same behaviour"): a Best picks card opens the same popup;
+  /* v7.18 (Matt: "fix the best picks popup it should have same behaviour"): a Best picks card opens the same popup;
      a site the popup cannot show (Craigslist, Poshmark...) still links out */
   if(!c&&t&&t.closest&&(c=t.closest('.pk-card'))){if(popOpen(c))e.preventDefault();return}
   if(!c)return;
@@ -6751,7 +6752,7 @@ function popShown(){return !!(sh&&!sh.hidden&&sh.classList.contains('pop'))}
 function popAuc(card){var m=card.querySelector('.sgw-m'),t=m?String(m.textContent||''):'';return /\bbids?\b|\bleft\b/.test(t)?t.replace(/\s+/g,' ').trim():''}
 function popOpen(card){
   var u=card.getAttribute('data-u')||'',src=popSrc(u);if(!src)return false;
-  var img=card.querySelector('.sgw-card img')||card.querySelector('img');   /* v7.17: a Best picks card's photo */
+  var img=card.querySelector('.sgw-card img')||card.querySelector('img');   /* v7.18: a Best picks card's photo */
   POP={u:u,src:src,t:card.getAttribute('data-t')||card.getAttribute('aria-label')||'',p:card.getAttribute('data-p')||'',
     s:card.getAttribute('data-s')||src,img:img?img.getAttribute('src')||'':'',auc:((card.querySelector('.fl-auc')||{}).textContent)||popAuc(card)};
   openSheet(POP_NAME[src],'');
@@ -7369,22 +7370,50 @@ function sgwUseSug(i){
   sgwAdd(nw);
 }
 
+/* v7.17: every × on a favorite chip can be undone (CHIP_UNDO): a locked hunt is locked again, the sample chips come
+   back, and a favorite goes back in its place. */
+var CHIP_UNDO=null,CHIP_UNDO_BTN=' <button type="button" class="gh" id="otp-unchip">Undo</button>';
 function sgwDel(i){
   var x=sgw.terms[i];if(!x)return;
-  var k=x.t.toLowerCase(),j;
+  var k=x.t.toLowerCase(),j,at=-1;
+  CHIP_UNDO={t:x.t,cur:sgw.cur===k};
   if(x.hunt>-1&&st.lock.has(x.hunt)&&sgwClean(st.hunts[x.hunt]).toLowerCase()===k){
     st.lock.delete(x.hunt);save();
     rDenHunts();rDock();
-    toast('◎ <b>'+esc(x.t)+'</b> moved back to your Den. Lock it there to bring it back.',2800);
+    CHIP_UNDO.lock=x.hunt;
+    toast('◎ <b>'+esc(x.t)+'</b> moved back to your Den.'+CHIP_UNDO_BTN,5000);
   }else if(sgw.seeded){
     /* v5.87 (B8): the chips were only first-visit samples; clear them
        without saving, so they never become permanent Goodwill chips. */
+    CHIP_UNDO.seed=sgw.extra.slice();
     sgw.extra=[];sgw.seeded=false;
+    toast('Sample hunts cleared.'+CHIP_UNDO_BTN,5000);
   }else{
-    for(j=sgw.extra.length-1;j>=0;j--)if(sgw.extra[j].toLowerCase()===k)sgw.extra.splice(j,1);
+    for(j=sgw.extra.length-1;j>=0;j--)if(sgw.extra[j].toLowerCase()===k){sgw.extra.splice(j,1);at=j}
     sgwSaveExtra();
+    CHIP_UNDO.at=at;
+    toast('<b>'+esc(x.t)+'</b> removed from your favorites.'+CHIP_UNDO_BTN,5000);
   }
   if(sgw.cur===k)sgw.cur='';
+  sgwSync();rSGW();loadPicks();
+  liveFetch(sgwCurTerm());
+}
+function chipUndo(){
+  var U=CHIP_UNDO,k;CHIP_UNDO=null;toastOff();
+  if(!U)return;
+  k=U.t.toLowerCase();
+  if(U.lock!=null){
+    if(st.hunts[U.lock]==null||sgwClean(st.hunts[U.lock]).toLowerCase()!==k)return;   /* the Den changed meanwhile */
+    st.lock.add(U.lock);save();rDenHunts();rDock();
+  }else if(U.seed){
+    if(sgw.extra.length)return;   /* a favorite of their own came in meanwhile */
+    sgw.extra=U.seed;sgw.seeded=true;
+  }else{
+    if(sgwFind(k))return;
+    sgw.extra.splice(U.at>-1?Math.min(U.at,sgw.extra.length):sgw.extra.length,0,U.t);
+    sgwSaveExtra();
+  }
+  if(U.cur)sgw.cur=k;
   sgwSync();rSGW();loadPicks();
   liveFetch(sgwCurTerm());
 }

@@ -1,20 +1,27 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.17 / v121).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.18 / v121).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.17** | 101,559 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
+| Page | **v7.18** | 100,577 bytes under Shopify's 512 KB (slimmed, main stylesheet sent as a link). Under 2 KB: trim before adding anything |
 | Worker | **v121** | |
 
 Recently shipped, newest first:
 
-- **v7.17: a Best picks card opens the listing popup** (Matt: "fix the best picks popup it should have same
-  behaviour"). `.pk-card` now carries data-u/t/p/s, and the result-card tap handler opens it with `popOpen` like any
+- **v7.18: a Best picks card opens the listing popup** (Matt: "fix the best picks popup it should have same
+  behaviour"; built as v7.17, renumbered when v7.17 merged first). `.pk-card` now carries data-u/t/p/s, and the result-card tap handler opens it with `popOpen` like any
   other card: photos, Fair price?, What it sold for, Share, View on. Picks the popup cannot show (Craigslist,
-  Poshmark…) still open in their own tab. Test: `__tests__/page/picks-popup-v717.test.mjs`.
+  Poshmark…) still open in their own tab. Test: `__tests__/page/picks-popup-v718.test.mjs`.
+- **v7.17: Undo on a favorite hunt chip's ×** (Matt, 2026-10-17, the gap left after v7.12 made that × a 44 px tap;
+  built as v7.13, renumbered when v7.13 to v7.16 merged first). All three things the × does now say so and offer
+  Undo for 5 seconds (`CHIP_UNDO`, `chipUndo`, `#otp-unchip`): a locked Den hunt goes back to the Den ("moved back to
+  your Den", Undo locks it again if the Den still has it in the same place); the first-visit sample chips are cleared
+  ("Sample hunts cleared", Undo brings them back, still not saved); a favorite of your own is removed ("removed from
+  your favorites", Undo puts it back in its place in `owlTwigSgwTerms`). Test: `__tests__/page/chip-undo-v717.test.mjs`.
+  No localStorage keys changed.
 - **v7.16: the launch film, redrawn as the real app** (Matt, 2026-10-17/18: "use my panther", then "my app doesn't
   look like that"). The help's film card (`#otp-film`) plays the new cut: Matt's own panther artwork
   (`video/launch-film/assets/art/prowl-panther.webp`) and an app window drawn from the real page (dotted cream, brown
@@ -346,7 +353,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.18, worker v122**. Claim one here when you start.
+Next free numbers: **page v7.19, worker v122**. Claim one here when you start.
 
 ## What's next
 
