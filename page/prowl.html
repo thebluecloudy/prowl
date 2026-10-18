@@ -1877,6 +1877,43 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v7.12: small controls keep their look but take a tap 44px across */
 .scout-app-wrapper .sgw-chip .sgw-x,.scout-app-wrapper .lk-chip button,.scout-app-wrapper .sgw-cbar .sgw-sv,.scout-app-wrapper .sgw-cbar .sgw-lk,.scout-app-wrapper .sgw-cbar .sgw-fp,.scout-app-wrapper .fl-seg button,.scout-app-wrapper #otp-toast .gh{position:relative}
 .scout-app-wrapper .sgw-chip .sgw-x::after,.scout-app-wrapper .lk-chip button::after,.scout-app-wrapper .sgw-cbar .sgw-sv::after,.scout-app-wrapper .sgw-cbar .sgw-lk::after,.scout-app-wrapper .sgw-cbar .sgw-fp::after,.scout-app-wrapper .fl-seg button::after,.scout-app-wrapper #otp-toast .gh::after{content:'';position:absolute;top:50%;left:50%;width:100%;min-width:44px;height:44px;min-height:100%;transform:translate(-50%,-50%)}
+/* v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
+     shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
+     under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing.
+   v7.19: moved here from its own <style> block so the worker serves it (room under Shopify's limit). */
+@media (prefers-reduced-motion:no-preference){
+/* backwards, not both: once a card has risen in, its own hover lift (a transform) works again */
+.scout-app-wrapper .pm-in{animation:pmIn .55s cubic-bezier(.2,.8,.2,1) backwards}
+@keyframes pmIn{0%{opacity:0;transform:translateY(10px) scale(.97)}60%{opacity:1}100%{opacity:1;transform:none}}
+.scout-app-wrapper .sgw-cell[data-fresh] .sgw-card{position:relative}
+/* the card clips its corners (overflow:hidden), so the glow is drawn inside its edge */
+.scout-app-wrapper .pm-halo{position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 1.5px var(--ac),inset 0 0 16px var(--ac);opacity:0;animation:pmHalo 2.6s ease-in-out 2;z-index:2}
+@keyframes pmHalo{0%{opacity:0}35%{opacity:.75}100%{opacity:0}}
+.scout-app-wrapper .pm-uni{position:absolute;top:4px;right:6px;font-size:18px;line-height:1;pointer-events:none;z-index:3;opacity:0;animation:pmUni 2.2s ease-out forwards}
+@keyframes pmUni{0%{opacity:0;transform:translateY(8px) rotate(-12deg) scale(.6)}25%{opacity:1;transform:translateY(-4px) rotate(6deg) scale(1.1)}70%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-14px)}}
+/* sparks are on body, outside the text-size zoom, so they land where the tap was */
+.pm-spark{position:fixed;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;pointer-events:none;z-index:2147483000;opacity:0;animation:pmSpark .8s ease-out forwards}
+.pm-spark.u{background:linear-gradient(135deg,#ffb3e6,#b5a8ff 50%,#9ff3ff)!important}
+@keyframes pmSpark{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.2)}}
+.scout-app-wrapper #otp-pan.pm-pounce img{animation:pmPounce .7s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pmPounce{0%{transform:none}30%{transform:translateY(4px) scale(.96,1.03)}60%{transform:translateY(-6px) scale(1.04,.98)}100%{transform:none}}
+/* a sheen across a hunt chip as the pointer comes onto it (Hark drew it for the old quick-search chips); a moving
+   background, so nothing is clipped or moved. Played once per hover by the script, not on :hover, which would start it
+   again each time the panel redraws under a resting pointer */
+.scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.4) 50%,transparent 70%);background-size:250% 100%;background-repeat:no-repeat;animation:pmSheen .8s ease-out}
+[data-theme=uranium] .scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(57,255,20,.35) 50%,transparent 70%)}
+@keyframes pmSheen{0%{background-position:130% 0}100%{background-position:-30% 0}}
+/* v6.88: taps answer (dock icons, rows, buttons press in), and a sweep line names the sites as a hunt's rows rise */
+.scout-app-wrapper .db svg,.scout-app-wrapper .hit{transition:transform .14s ease-out,background .15s}
+.scout-app-wrapper .db:active svg{transform:scale(.86)}
+.scout-app-wrapper .hit:active{transform:scale(.985)}
+.scout-app-wrapper .b:active{transform:scale(.97)}
+.scout-app-wrapper .pm-sw{margin:8px 0 0;font-size:13px;font-weight:600;color:var(--mu);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;animation:rise .3s ease-out}
+.scout-app-wrapper .pm-sw b{color:var(--ac)}
+/* v6.89: Uranium only, a swarm of fireflies crosses the screen when a hunt starts */
+.pm-ff{position:fixed;left:0;width:5px;height:5px;margin:-2px;border-radius:50%;background:#d8ff6b;box-shadow:0 0 6px 2px #39ff14,0 0 14px 4px rgba(57,255,20,.45);pointer-events:none;z-index:2147482990;opacity:0;animation:pmFF var(--t) cubic-bezier(.45,.1,.55,.9) var(--d) forwards}
+@keyframes pmFF{0%{opacity:0;transform:translate3d(-4vw,0,0)}10%{opacity:1}30%{opacity:.35;transform:translate3d(28vw,var(--y),0)}45%{opacity:1}60%{opacity:.5;transform:translate3d(60vw,calc(var(--y)*-1),0)}80%{opacity:1}100%{opacity:0;transform:translate3d(106vw,var(--y),0)}}
+}
 </style>
 
 <div class="scout-app-wrapper ot-r k2">
@@ -8636,44 +8673,6 @@ try{promoPick();setTimeout(promoPick,1500);window.addEventListener('focus',promo
 })();
 </script>
 
-<!-- v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
-     shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
-     under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing. -->
-<style>
-@media (prefers-reduced-motion:no-preference){
-/* backwards, not both: once a card has risen in, its own hover lift (a transform) works again */
-.scout-app-wrapper .pm-in{animation:pmIn .55s cubic-bezier(.2,.8,.2,1) backwards}
-@keyframes pmIn{0%{opacity:0;transform:translateY(10px) scale(.97)}60%{opacity:1}100%{opacity:1;transform:none}}
-.scout-app-wrapper .sgw-cell[data-fresh] .sgw-card{position:relative}
-/* the card clips its corners (overflow:hidden), so the glow is drawn inside its edge */
-.scout-app-wrapper .pm-halo{position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 1.5px var(--ac),inset 0 0 16px var(--ac);opacity:0;animation:pmHalo 2.6s ease-in-out 2;z-index:2}
-@keyframes pmHalo{0%{opacity:0}35%{opacity:.75}100%{opacity:0}}
-.scout-app-wrapper .pm-uni{position:absolute;top:4px;right:6px;font-size:18px;line-height:1;pointer-events:none;z-index:3;opacity:0;animation:pmUni 2.2s ease-out forwards}
-@keyframes pmUni{0%{opacity:0;transform:translateY(8px) rotate(-12deg) scale(.6)}25%{opacity:1;transform:translateY(-4px) rotate(6deg) scale(1.1)}70%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-14px)}}
-/* sparks are on body, outside the text-size zoom, so they land where the tap was */
-.pm-spark{position:fixed;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;pointer-events:none;z-index:2147483000;opacity:0;animation:pmSpark .8s ease-out forwards}
-.pm-spark.u{background:linear-gradient(135deg,#ffb3e6,#b5a8ff 50%,#9ff3ff)!important}
-@keyframes pmSpark{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.2)}}
-.scout-app-wrapper #otp-pan.pm-pounce img{animation:pmPounce .7s cubic-bezier(.3,1.6,.5,1)}
-@keyframes pmPounce{0%{transform:none}30%{transform:translateY(4px) scale(.96,1.03)}60%{transform:translateY(-6px) scale(1.04,.98)}100%{transform:none}}
-/* a sheen across a hunt chip as the pointer comes onto it (Hark drew it for the old quick-search chips); a moving
-   background, so nothing is clipped or moved. Played once per hover by the script, not on :hover, which would start it
-   again each time the panel redraws under a resting pointer */
-.scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.4) 50%,transparent 70%);background-size:250% 100%;background-repeat:no-repeat;animation:pmSheen .8s ease-out}
-[data-theme=uranium] .scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(57,255,20,.35) 50%,transparent 70%)}
-@keyframes pmSheen{0%{background-position:130% 0}100%{background-position:-30% 0}}
-/* v6.88: taps answer (dock icons, rows, buttons press in), and a sweep line names the sites as a hunt's rows rise */
-.scout-app-wrapper .db svg,.scout-app-wrapper .hit{transition:transform .14s ease-out,background .15s}
-.scout-app-wrapper .db:active svg{transform:scale(.86)}
-.scout-app-wrapper .hit:active{transform:scale(.985)}
-.scout-app-wrapper .b:active{transform:scale(.97)}
-.scout-app-wrapper .pm-sw{margin:8px 0 0;font-size:13px;font-weight:600;color:var(--mu);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;animation:rise .3s ease-out}
-.scout-app-wrapper .pm-sw b{color:var(--ac)}
-/* v6.89: Uranium only, a swarm of fireflies crosses the screen when a hunt starts */
-.pm-ff{position:fixed;left:0;width:5px;height:5px;margin:-2px;border-radius:50%;background:#d8ff6b;box-shadow:0 0 6px 2px #39ff14,0 0 14px 4px rgba(57,255,20,.45);pointer-events:none;z-index:2147482990;opacity:0;animation:pmFF var(--t) cubic-bezier(.45,.1,.55,.9) var(--d) forwards}
-@keyframes pmFF{0%{opacity:0;transform:translate3d(-4vw,0,0)}10%{opacity:1}30%{opacity:.35;transform:translate3d(28vw,var(--y),0)}45%{opacity:1}60%{opacity:.5;transform:translate3d(60vw,calc(var(--y)*-1),0)}80%{opacity:1}100%{opacity:0;transform:translate3d(106vw,var(--y),0)}}
-}
-</style>
 <script>
 /* v6.69 Prowl magic (Hark's idea). Read-only on the page: it watches for new result cards and lets each listing rise in
    the first time it appears this visit (the panel redraws as each marketplace answers; a card redrawn mid-rise carries
