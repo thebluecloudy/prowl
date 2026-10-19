@@ -1,4 +1,4 @@
-// Page v7.25 (Matt, 2026-10-18, from Jellycat's shop): calm result cards, outlined tags with a Best pick tag on
+// Page v7.26 (Matt, 2026-10-18, from Jellycat's shop): calm result cards, outlined tags with a Best pick tag on
 // results that are one of a hunt's Best picks, the seller's stars under the price (worker v126: eBay feedback, Etsy
 // shop reviews, never the seller's name), and the popup's item details and price check under + / − headings.
 import { test } from 'node:test';
@@ -127,5 +127,5 @@ test('the look: calm card titles, outlined tags, Best pick and the sections are 
   assert.match(css, /\.fl-newb,[^{]*\.sale-off\{background:transparent;border:1\.5px solid var\(--ac\)/);
   assert.match(css, /\.is-pick:not\(\.fl-card\):not\(\.lk-cell\)::before\{content:'Best pick'/);
   assert.match(css, /\.pp-sec\[open\]>summary::after\{content:'\\2212'\}/);
-  assert.match(HTML, /var PROWL_VERSION='v7\.25';/);
+  assert.match(HTML, /var PROWL_VERSION='v7\.26';/);
 });
