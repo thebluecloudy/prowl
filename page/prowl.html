@@ -1916,6 +1916,40 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .gloss dl{margin:6px 0 0;display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:15px}
 .scout-app-wrapper .gloss dt{font-weight:800;color:var(--ink)}
 .scout-app-wrapper .gloss dd{margin:0;color:var(--i2)}
+/* ==== v7.26 (Matt, from Jellycat's shop): calm result cards (title in normal case, centred, price under it), outlined
+   tags like their "Best Seller" box, seller stars, and the popup's details folding under + / − headings. Flock and the
+   Likes grid keep their own cards. ==== */
+.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card{position:relative;border:1px solid var(--ln);border-radius:12px;box-shadow:none;text-align:center}
+.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card img{border-bottom:0}
+.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card .sgw-t{margin:10px 10px 2px;font-size:15px;font-weight:600;line-height:1.3;letter-spacing:0;text-transform:none;-webkit-line-clamp:2;max-height:calc(2 * 1.3em)}
+.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card .sgw-p{padding:4px 10px 0;font-size:17px;font-weight:600;color:var(--ink)}
+.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card .sgw-m{padding:3px 10px 12px;font-size:13px}
+.scout-app-wrapper .hn .sgw-card,.scout-app-wrapper .sgw-cell[data-fresh]>.sgw-card{box-shadow:0 0 0 2px var(--ac),0 0 16px -2px var(--ac)}
+.scout-app-wrapper .fl-newb,.scout-app-wrapper .sgw-new,.scout-app-wrapper .sgw-repro,.scout-app-wrapper .sale-off{background:transparent;border:1.5px solid var(--ac);border-radius:3px;color:var(--ink);font-weight:600;letter-spacing:.01em}
+.scout-app-wrapper .sgw-repro{border-color:#D98C1F}
+.scout-app-wrapper .sale-off{border-color:#1F7A3A}
+.scout-app-wrapper .is-gone .sgw-card::before,.scout-app-wrapper .sgw-cell.is-pick:not(.fl-card):not(.lk-cell)::before{padding:2px 8px;border:1.5px solid var(--ink);border-radius:3px;background:var(--cd);color:var(--ink);font:600 12.5px/1.4 var(--sans);letter-spacing:.01em;text-transform:none}
+.scout-app-wrapper .sgw-cell.is-pick:not(.fl-card):not(.lk-cell)::before{content:'Best pick';position:absolute;top:9px;left:9px;z-index:2;border-color:var(--ac);pointer-events:none}
+.scout-app-wrapper .sgw-cell.is-pick.is-gone:not(.fl-card):not(.lk-cell)::before{content:none}
+.scout-app-wrapper .slr{font-size:13.5px;line-height:1.4;color:var(--i2)}
+.scout-app-wrapper .sgw-r{padding:3px 10px 0}
+.scout-app-wrapper .slr-1{color:#F07C00}
+.scout-app-wrapper .slr-s{position:relative;display:inline-block;color:var(--l2);letter-spacing:1px}
+.scout-app-wrapper .slr-s i{position:absolute;left:0;top:0;overflow:hidden;white-space:nowrap;font-style:normal;color:#F07C00}
+.scout-app-wrapper .slr-n{color:var(--mu)}
+.scout-app-wrapper .pp-t,.scout-app-wrapper .pp-p,.scout-app-wrapper .pp-m{text-align:center}
+.scout-app-wrapper .pp-r{margin:4px 0 0;font-size:15px;text-align:center}
+.scout-app-wrapper .pp-hunt{display:flex;width:-moz-fit-content;width:fit-content;margin-left:auto;margin-right:auto}
+.scout-app-wrapper .pp-sec{margin:18px 0 0;border-top:1px solid var(--ln)}
+.scout-app-wrapper .pp-sec+.pp-sec{margin-top:0}
+.scout-app-wrapper .pp-sec:last-of-type{border-bottom:1px solid var(--ln)}
+.scout-app-wrapper .pp-sec>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:54px;list-style:none;cursor:pointer;font:700 15px/1.2 var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+.scout-app-wrapper .pp-sec>summary::-webkit-details-marker{display:none}
+.scout-app-wrapper .pp-sec>summary::after{content:'+';flex:none;font-size:26px;font-weight:300;line-height:1}
+.scout-app-wrapper .pp-sec[open]>summary::after{content:'\2212'}
+.scout-app-wrapper .pp-sec>summary:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.scout-app-wrapper .pp-secb{padding:0 0 16px}
+.scout-app-wrapper .pp-secb>.pp-asp:first-child,.scout-app-wrapper .pp-secb>.pp-fp:first-child{margin-top:0}
 /* v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
      shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
      under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing.
@@ -1957,39 +1991,6 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .pm-fly i{position:absolute;left:0;top:0;width:4px;height:4px;margin:-2px;border-radius:50%;background:rgb(var(--fc));box-shadow:0 0 5px 2px rgba(var(--fg),.85),0 0 16px 6px rgba(var(--fg),.3);opacity:0;will-change:transform,opacity}
 .pm-fly b{position:absolute;left:0;top:0;width:340px;height:340px;margin:-170px;border-radius:50%;background:radial-gradient(closest-side,rgba(var(--fg),.12),rgba(var(--fg),0));opacity:0;transition:opacity .6s;will-change:transform}
 }
-/* ==== v7.26 (Matt, from Jellycat's shop): calm result cards (title in normal case, centred, price under it), outlined
-   tags like their "Best Seller" box, seller stars, and the popup's details folding under + / − headings. Flock and the
-   Likes grid keep their own cards. ==== */
-.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card{position:relative;border:1px solid var(--ln);border-radius:12px;box-shadow:none;text-align:center}
-.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card img{border-bottom:0}
-.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card .sgw-t{margin:10px 10px 2px;font-size:15px;font-weight:600;line-height:1.3;letter-spacing:0;text-transform:none;-webkit-line-clamp:2;max-height:calc(2 * 1.3em)}
-.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card .sgw-p{padding:4px 10px 0;font-size:17px;font-weight:600;color:var(--ink)}
-.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card .sgw-m{padding:3px 10px 12px;font-size:13px}
-.scout-app-wrapper .hn .sgw-card,.scout-app-wrapper .sgw-cell[data-fresh]>.sgw-card{box-shadow:0 0 0 2px var(--ac),0 0 16px -2px var(--ac)}
-.scout-app-wrapper .fl-newb,.scout-app-wrapper .sgw-new,.scout-app-wrapper .sgw-repro,.scout-app-wrapper .sale-off{background:transparent;border:1.5px solid var(--ac);border-radius:3px;color:var(--ink);font-weight:600;letter-spacing:.01em}
-.scout-app-wrapper .sgw-repro{border-color:#D98C1F}
-.scout-app-wrapper .sale-off{border-color:#1F7A3A}
-.scout-app-wrapper .is-gone .sgw-card::before,.scout-app-wrapper .sgw-cell.is-pick:not(.fl-card):not(.lk-cell)::before{padding:2px 8px;border:1.5px solid var(--ink);border-radius:3px;background:var(--cd);color:var(--ink);font:600 12.5px/1.4 var(--sans);letter-spacing:.01em;text-transform:none}
-.scout-app-wrapper .sgw-cell.is-pick:not(.fl-card):not(.lk-cell)::before{content:'Best pick';position:absolute;top:9px;left:9px;z-index:2;border-color:var(--ac);pointer-events:none}
-.scout-app-wrapper .sgw-cell.is-pick.is-gone:not(.fl-card):not(.lk-cell)::before{content:none}
-.scout-app-wrapper .slr{font-size:13.5px;line-height:1.4;color:var(--i2)}
-.scout-app-wrapper .sgw-r{padding:3px 10px 0}
-.scout-app-wrapper .slr-1{color:#F07C00}
-.scout-app-wrapper .slr-s{position:relative;display:inline-block;color:var(--l2);letter-spacing:1px}
-.scout-app-wrapper .slr-s i{position:absolute;left:0;top:0;overflow:hidden;white-space:nowrap;font-style:normal;color:#F07C00}
-.scout-app-wrapper .slr-n{color:var(--mu)}
-.scout-app-wrapper .pp-t,.scout-app-wrapper .pp-p,.scout-app-wrapper .pp-m{text-align:center}
-.scout-app-wrapper .pp-r{margin:4px 0 0;font-size:15px;text-align:center}
-.scout-app-wrapper .pp-sec{margin:18px 0 0;border-top:1px solid var(--ln)}
-.scout-app-wrapper .pp-sec+.pp-sec{margin-top:0}
-.scout-app-wrapper .pp-sec:last-of-type{border-bottom:1px solid var(--ln)}
-.scout-app-wrapper .pp-sec>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:54px;list-style:none;cursor:pointer;font:700 15px/1.2 var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
-.scout-app-wrapper .pp-sec>summary::-webkit-details-marker{display:none}
-.scout-app-wrapper .pp-sec>summary::after{content:'+';flex:none;font-size:26px;font-weight:300;line-height:1}
-.scout-app-wrapper .pp-sec[open]>summary::after{content:'\2212'}
-.scout-app-wrapper .pp-sec>summary:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
-.scout-app-wrapper .pp-secb{padding:0 0 16px}
-.scout-app-wrapper .pp-secb>.pp-asp:first-child,.scout-app-wrapper .pp-secb>.pp-fp:first-child{margin-top:0}
 </style>
 
 <div class="scout-app-wrapper ot-r k2">

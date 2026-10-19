@@ -19,7 +19,7 @@ const constLine = (name) => { const m = new RegExp("^const " + name + " = [^\\n]
 function load(deps = {}, nowIso = "2026-10-07T19:36:00Z") {
   const RealDate = Date, fixed = RealDate.parse(nowIso);
   class FakeDate extends RealDate { constructor(...a) { super(...(a.length ? a : [fixed])); } static now() { return fixed; } }
-  const names = ["hibidText", "money", "ebayMoney", "ebaySale", "ebayAge", "ptOff", "sgwMs", "timeLeft", "salvationEnd", "itemRef", "itemDesc", "itemImages", "itemEbay", "itemSgw", "salvationItem", "itemRoute"];
+  const names = ["hibidText", "money", "ebayMoney", "ebaySale", "ebayAge", "ebaySeller", "ptOff", "sgwMs", "timeLeft", "salvationEnd", "itemRef", "itemDesc", "itemImages", "itemEbay", "itemSgw", "salvationItem", "itemRoute"];
   const src = [
     constLine("ITEM_TAGS"), constLine("PT_FMT"), "const itemImg = " + /const itemImg = ([^\n]+)/.exec(INDEX)[1],
     'const SALVATION_BASE = "https://shopthesalvationarmy.com";',
