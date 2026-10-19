@@ -130,11 +130,11 @@ function fn(name) {
 function build(c, inDen) {
   const dom = new JSDOM('<div id="o"></div>', { runScripts: 'outside-only' });
   const w = dom.window;
-  w.eval(`var FP=null,LIVE_NAME={ebay:'eBay',shopgoodwill:'ShopGoodwill'};window.prowlAff=function(u){return u};
+  w.eval(`var FP=null,SLR={},LIVE_NAME={ebay:'eBay',shopgoodwill:'ShopGoodwill'};window.prowlAff=function(u){return u};
     function svBtn(it){return '<button type="button" class="sgw-sv" data-sv="'+esc(it.url)+'" aria-pressed="false" aria-label="Save this find" title="Save find">☆</button>'}
     function lkBtn(){return '<button type="button" class="sgw-lk" aria-pressed="false">♡</button>'}
     function likeHas(){return false} function flInDen(){return ${inDen ? 'true' : 'false'}} function sgwFind(){return false} function fpHtml(){return ''}
-    ` + ['esc', 'sgwCard', 'flAddBtn', 'flockCardHtml'].map(fn).join('\n'));
+    ` + ['esc', 'slrN', 'slrHtml', 'sgwCard', 'flAddBtn', 'flockCardHtml'].map(fn).join('\n'));
   w.C = c;
   w.document.getElementById('o').innerHTML = w.eval('flockCardHtml(C)');
   return w.document.getElementById('o').firstElementChild;

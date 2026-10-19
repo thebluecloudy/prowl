@@ -1,16 +1,41 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-18 (v7.25 / v125).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-19 (v7.26 / v126).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.25** | 402,942 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v125** | |
+| Page | **v7.26** | 402,942 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v126** | |
 
 Recently shipped, newest first:
 
+- **v7.26 + worker v126: from Jellycat's shop** (the owner sent us.jellycat.com product screenshots "for inspiration" and
+  picked four ideas). Checked in Chromium at 390 px, Light and Blue hour, with stubbed results (beside main's).
+  - **Calm result cards:** a result card's title is in normal case and centred, at most 2 lines (was UPPERCASE, 3
+    lines), with the price under it in ink (was the accent colour). The border is a thin line, with no offset shadow
+    in the New look. Only the results grids change: Flock and the Likes grid keep their own cards, and the "new" glow stays.
+  - **Outlined tags:** New, Possible reproduction and "% off" are outlined boxes now, like Jellycat's "Best Seller",
+    and Got away is outlined too. **Best pick:** a result that is one of its hunt's Best picks gets an outlined
+    "Best pick" tag on the photo (`.is-pick`, `pickMark`, on the same MutationObserver as Got away; only for this
+    visit). It stays off Flock and Likes cards.
+  - **Seller stars** under the price, on cards and in the popup (`slrHtml`). eBay shows one star and the seller's
+    positive feedback, "★ 99.8% (12k)" (`seller { pct, n }` from eBay's feedbackPercentage and feedbackScore, in search
+    results and `/item`). Etsy's `/item` shows five stars filled to the shop's review average, with the review count
+    (`seller { stars, n }`). Numbers only: the worker never sends the seller's name. `cleanItems` keeps them through
+    `slrClean`.
+  - **Popup sections:** under + / − headings like Jellycat's PRODUCT DETAILS. **Item details** (specifics and
+    description) starts open. **Price check** (Fair price? and What it sold for on eBay) starts closed unless a verdict
+    is already in hand. The title, price, stars and Search this on Prowl are centred, and View on eBay stays pinned at the foot. A repaint
+    (the details arriving) keeps the sections as the visitor left them.
+  - No new localStorage keys. No change to page room (CSS and JS are on the worker).
+  - Tests: `__tests__/page/jellycat-v726.test.mjs`, `worker/__tests__/seller-stars.test.mjs`, plus an Etsy case in
+    `item-etsy.test.mjs`. `popup-v699` and `flock-bar` were updated for the new markup.
+  - Seen in passing: `cleanItems` also drops the worker's `was`/`off`/`listed`/`relisted`. So the sale tag and the
+    listing age only show in the popup (from `/item`), never on a results card.
+  - **Next, waiting on the owner's OK:** Prowl points, a rewards idea from Jellycat Purrks. The plan is in
+    `docs/prowl-points-plan.md`.
 - **v7.25: Blue hour in the Classic look** (the owner: "The blue hour is missing now. Only three themes. But there are
   4 modes. I'm in classic mode"). Classic's dark (labelled Blue hour) and Midnight were the same near-black `#070706`
   since v6.37; only the New look had Blue hour's navy. Classic Blue hour now has the same navy palette (selector
@@ -447,7 +472,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.26, worker v126**. Claim one here when you start.
+Next free numbers: **page v7.27, worker v127**. Claim one here when you start.
 
 ## What's next
 

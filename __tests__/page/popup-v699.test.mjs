@@ -45,7 +45,7 @@ test('the pill sits under the price and holds a cleaned title', async () => {
   assert.match(b.textContent, /Search this on Prowl/);
   const kids = [...p.$('#otp-sheetB').children];
   assert.ok(kids.indexOf(b) > kids.indexOf(p.$('#otp-sheetB .pp-p')), 'below the price');
-  assert.ok(kids.indexOf(b) < kids.indexOf(p.$('#otp-sheetB .pp-asp')), 'above the details');
+  assert.ok(kids.indexOf(b) < kids.indexOf(p.$('#otp-sheetB .pp-asp').closest('details')), 'above the details (v7.26: in the Item details section)');
   assert.equal(b.getAttribute('aria-label'), 'Search this on Prowl: Haeger Pumpkin Jack O Lantern Pottery Halloween');
   await p.close();
 });
