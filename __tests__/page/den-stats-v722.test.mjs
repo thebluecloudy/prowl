@@ -1,14 +1,11 @@
 // Page v7.22 (Matt, 2026-10-18: "I'd like this and any other analytics and graphs in the menu area"): every analytic
-// lives on Den › STATS. Everyone sees their own hunting and Your marketplaces; the owner (prowl.owner key) also sees
-// worker /owner-stats: people searching per day, searches, top terms and where visitors came from.
+// lives on Den › STATS. Everyone sees their own hunting and Your marketplaces. The owner's Prowl usage moved to the admin
+// in v7.27 (worker v127); the owner key's devices see a link to it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
 
 const OWNER = 'abcdefghijklmnop';
-const day = (i) => new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
-const STATS = { days: Array.from({ length: 14 }, (_, i) => ({ day: day(13 - i), people: i, searches: i * 3, terms: i })),
-  top: [{ term: 'pyrex <b>butterprint</b>', people: 9 }], refs: { list: [{ host: 'instagram.com', views: 40 }, { host: '', views: 12 }] } };
 
 function open(p) { p.$('#otp-denBtn').click(); p.$('#otp-denT6').click(); }
 
@@ -30,43 +27,20 @@ test('Stats tab holds the graphs; Settings no longer does', async () => {
   await p.close();
 });
 
-test('owner sees usage, top terms (escaped) and referrers', async () => {
+test('v7.27: the owner gets a link to the admin, and nothing is fetched for it', async () => {
   const calls = [];
-  const p = loadPage({ storage: { 'prowl.owner': OWNER }, fetchImpl: (u, o) => {
-    if (String(u).indexOf('owner-stats') > -1) { calls.push(o && o.headers); return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(STATS) }); }
+  const p = loadPage({ storage: { 'prowl.owner': OWNER }, fetchImpl: (u) => {
+    calls.push(String(u));
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ items: [] }), text: () => Promise.resolve('') });
   } });
   await tick(300);
   open(p);
   await tick(50);
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0]['X-Prowl-Owner'], OWNER);
   const own = p.$('#otp-denOwn');
   assert.equal(own.hidden, false);
-  assert.match(own.textContent, /People searching, 14 days/);
-  assert.match(own.textContent, /instagram\.com\s*40/);
-  assert.match(own.textContent, /Direct or app\s*12/);
-  assert.ok(!own.querySelector('b b'), 'term HTML is escaped');
-  assert.match(own.textContent, /pyrex <b>butterprint<\/b>/);
-  assert.match(own.querySelector('.dx-kpi').textContent, /^(\d+)people-days/);
+  assert.match(own.textContent, /in the admin, on its Searches tab/);
+  assert.equal(own.querySelector('a').getAttribute('href'), 'https://prowl.thebluecloud.workers.dev/admin#searches');
+  assert.ok(!calls.some((u) => /owner-stats/.test(u)), 'the page no longer asks for owner stats');
+  assert.deepEqual(p.errors, []);
   await p.close();
-});
-
-test('owner panel says when referrers are not connected or the key is refused', async () => {
-  let status = 200;
-  const p = loadPage({ storage: { 'prowl.owner': OWNER }, fetchImpl: (u) => String(u).indexOf('owner-stats') > -1
-    ? Promise.resolve({ ok: status === 200, status, json: () => Promise.resolve(Object.assign({}, STATS, { refs: { off: true } })) })
-    : Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ items: [] }), text: () => Promise.resolve('') }) });
-  await tick(300);
-  open(p); await tick(50);
-  assert.match(p.$('#otp-denOwn').textContent, /Not connected yet/);
-  await p.close();
-  status = 403;
-  const q = loadPage({ storage: { 'prowl.owner': OWNER }, fetchImpl: (u) => String(u).indexOf('owner-stats') > -1
-    ? Promise.resolve({ ok: false, status: 403, json: () => Promise.resolve({}) })
-    : Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ items: [] }), text: () => Promise.resolve('') }) });
-  await tick(300);
-  open(q); await tick(50);
-  assert.match(q.$('#otp-denOwn').textContent, /owner key on this device was not accepted/);
-  await q.close();
 });

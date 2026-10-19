@@ -3001,7 +3001,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.26';
+var PROWL_VERSION='v7.27';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -8669,8 +8669,8 @@ function rDenStats(){
   box.innerHTML=h;
 }
 /* v7.22: Den › Stats. Every analytic and graph lives on this tab: "Your hunting" (this device: searches run per day
-   from prowl.runs, saved finds per week from prowl.finds), Your marketplaces (above), and for the owner (prowl.owner key)
-   the worker's /owner-stats: people searching per day, searches, and the week's top terms. Columns are plain divs. */
+   from prowl.runs, saved finds per week from prowl.finds) and Your marketplaces (above). The owner's numbers are in the
+   admin since v7.27. Columns are plain divs. */
 function dxCols(vals,labs,cls){
   var mx=1,i,h='<div class="dx-cols" role="img" aria-label="'+esc(labs.join(', '))+'">';
   for(i=0;i<vals.length;i++)mx=Math.max(mx,vals[i]);
@@ -8696,42 +8696,12 @@ function rDenMine(){
     '<div class="dx-gl"><b>Searches, last 14 days</b><small>'+tr+'</small></div>'+dxCols(rv,rl,'dx-bo')+
     '<div class="dx-gl"><b>Finds saved, last 8 weeks</b><small>'+tf+'</small></div>'+dxCols(fv,fl,'dx-bf')+'</div>';
 }
-var OWN={j:null,at:0,busy:false,err:''};
+/* v7.27 (the owner: "shouldn't this be on admin only?"): Prowl usage and where visitors came from moved to the admin
+   (Searches tab, worker v127; GET /owner-stats is gone). The owner key's devices get only a link to it here. */
 function rDenOwn(){
   var box=$('#otp-denOwn');if(!box)return;
   var k=fbOwnerKey();box.hidden=!k;if(!k)return;
-  if(!OWN.busy&&Date.now()-OWN.at>(OWN.err?60000:300000)){
-    OWN.busy=true;OWN.err='';
-    fetch(SGW_API+'owner-stats',{headers:{'X-Prowl-Owner':k},cache:'no-store'}).then(function(r){
-      if(!r.ok)throw new Error(r.status===403?'The owner key on this device was not accepted.':'Stats could not be read ('+r.status+').');return r.json();
-    }).then(function(j){OWN.j=j;OWN.at=Date.now()}).catch(function(e){OWN.err=String(e&&e.message||'Stats could not be read.');OWN.at=Date.now()}).then(function(){OWN.busy=false;rDenOwn()});
-  }
-  var h='<div class="dx-stats dx-own"><h3>Prowl usage <small class="dx-tag">owner</small></h3>',j=OWN.j;
-  if(!j){box.innerHTML=h+'<p>'+(OWN.err?esc(OWN.err):'Loading…')+'</p></div>';return}
-  var d=Array.isArray(j.days)?j.days:[],pv=[],pl=[],sv=[],sl=[],w=0,ws=0,i,x;
-  for(i=0;i<d.length;i++){
-    x=d[i]||{};var lab=String(x.day||'').slice(5);
-    pv.push(+x.people||0);pl.push(lab+': '+(+x.people||0)+' people');sv.push(+x.searches||0);sl.push(lab+': '+(+x.searches||0)+' searches');
-    if(i>=d.length-7){w+=+x.people||0;ws+=+x.searches||0}
-  }
-  h+='<p>Everyone who searched Prowl, counted once a day per person (no names, no addresses). Days are UTC.'+(OWN.err?' '+esc(OWN.err):'')+'</p>'+
-    '<div class="dx-kpi"><span><b>'+w+'</b>people-days this week</span><span><b>'+ws+'</b>searches this week</span><span><b>'+(d.length?+d[d.length-1].people||0:0)+'</b>today</span></div>'+
-    '<div class="dx-gl"><b>People searching, 14 days</b></div>'+dxCols(pv,pl,'dx-bf')+
-    '<div class="dx-gl"><b>Searches, 14 days</b></div>'+dxCols(sv,sl,'dx-bo');
-  var t=Array.isArray(j.top)?j.top:[];
-  if(t.length){h+='<div class="dx-gl"><b>Top searches this week</b><small>people</small></div><ol class="dx-top">';t.forEach(function(r){h+='<li><span>'+esc(r.term)+'</span><small>'+(+r.people||0)+'</small></li>'});h+='</ol>'}
-  var rf=j.refs||{};
-  if(rf.off)h+='<div class="dx-gl"><b>Where visitors came from</b></div><p>Not connected yet. Add CF_API_TOKEN, CF_ACCOUNT_ID and CF_SITE_TAG to the worker in Cloudflare.</p>';
-  else if(rf.error)h+='<div class="dx-gl"><b>Where visitors came from</b></div><p>'+esc(rf.error)+'</p>';
-  else if(Array.isArray(rf.list)){
-    var mr=1;rf.list.forEach(function(x){mr=Math.max(mr,+x.views||0)});
-    h+='<div class="dx-gl"><b>Where visitors came from, 7 days</b><small>page views</small></div><ul class="dx-bars">';
-    if(!rf.list.length)h+='<li><small>No page views recorded yet.</small></li>';
-    rf.list.forEach(function(x){var v=+x.views||0;h+='<li><div class="dx-bl"><b>'+esc(x.host||'Direct or app')+'</b><small>'+v+'</small></div><span class="dx-bar"><i class="dx-bf" style="width:'+Math.round(v/mr*100)+'%"></i></span></li>'});
-    h+='</ul>';
-  }
-  h+='<p class="dx-sub">Counting people started with worker v125, so earlier days show 0. <a href="https://prowl.thebluecloud.workers.dev/admin" target="_blank" rel="noopener">Open the full admin</a></p></div>';
-  box.innerHTML=h;
+  box.innerHTML='<div class="dx-stats dx-own"><h3>Prowl usage <small class="dx-tag">owner</small></h3><p class="dx-sub">Visitors, searches and where people came from are in the admin, on its Searches tab. <a href="https://prowl.thebluecloud.workers.dev/admin#searches" target="_blank" rel="noopener">Open the admin</a></p></div>';
 }
 /* v6.39: saving a find needs the store sign-in (login gates saved finds); removing one never does. Logged out, the
    star sends you to Shopify's sign-in with the find held in sessionStorage, and the save goes through when you

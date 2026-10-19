@@ -929,6 +929,30 @@ test("salescheck asks the garage-sale sites, says which a Worker can read, scrub
   assert.equal((await apiPost(env, H, "/admin/api/salescheck", {})).status, 429);
 });
 
+test("v127: usage gives 14 days of people and searches and the referrers, admin only", async () => {
+  const H = makeH(), env = makeEnv(), today = new Date().toISOString().slice(0, 10);
+  assert.equal((await call(env, H, "GET", "/admin/api/usage", { cookie: false })).status, 401);
+  H.capsData["stats days"] = (b) => b.kind === "u" ? { days: { [today]: { v: 5, r: 17, n: 1 } } } : { days: { [today]: { v: 9, r: 40, n: 6 } } };
+  let refArgs = null;
+  H.cfReferrers = async (e, from, to) => { refArgs = [from, to]; return { from, to, list: [{ host: "instagram.com", views: 40 }, { host: "", views: 12 }] }; };
+  let j = await (await call(env, H, "GET", "/admin/api/usage")).json();
+  assert.equal(j.days.length, 14);
+  assert.deepEqual(j.days[13], { day: today, people: 5, searches: 17, terms: 6 });
+  assert.equal(j.days[0].day, new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10));
+  assert.deepEqual(j.refs, { list: [{ host: "instagram.com", views: 40 }, { host: "", views: 12 }] });
+  assert.deepEqual(refArgs, [new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10), today]);
+  H.cfReferrers = async () => ({ off: true });
+  j = await (await call(env, H, "GET", "/admin/api/usage")).json();
+  assert.deepEqual(j.refs, { off: true });
+  H.cfReferrers = async () => ({ error: "Cloudflare analytics: not authorized for jane@example.com" });
+  j = await (await call(env, H, "GET", "/admin/api/usage")).json();
+  assert.ok(/not authorized/.test(j.refs.error) && !/jane@example\.com/.test(j.refs.error), "the error is cleaned");
+  H.capsFail.add("stats days");
+  j = await (await call(env, H, "GET", "/admin/api/usage")).json();
+  assert.equal(j.days, null);
+  assert.ok(j.issues.length > 0);
+});
+
 test("errors and searches endpoints clamp their inputs", async () => {
   const H = makeH(), env = makeEnv();
   metricsData(H, Date.now());
