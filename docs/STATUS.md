@@ -1,15 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-19 (v7.27 / v127).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-19 (v7.28 / v127).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.27** | 402,942 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.28** | 402,942 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v127** | |
 
 Recently shipped, newest first:
+
+- **v7.28: Found on the Prowl shows only vintage** (the owner: it "is showing new parts it should only show the vintage
+  stuff"). `isVintageProduct` was a block list (studio types and tags), so Printify's Scented Soy Candle and Skull Castle
+  Woven Blanket (type Home Decor) showed in the Den › About strip. Now a product must be tagged **Vintage** or **Estate**
+  (every real find is) and not come from vendor **Printify**; the old block lists still apply. Page only. Test:
+  `__tests__/page/found-strip-vintage-v728.test.mjs` (fails on v7.27).
 
 - **v7.27 + worker v127: Prowl usage moves to the admin** (the owner, on Den › Stats' "Prowl usage": "shouldn't this be on
   admin only?"). The admin's Searches tab has a new **Visitors** card: people searching and searches per UTC day for 14
@@ -479,7 +485,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.28, worker v128**. Claim one here when you start.
+Next free numbers: **page v7.29, worker v128**. Claim one here when you start.
 
 ## What's next
 

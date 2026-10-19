@@ -3001,7 +3001,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.27';
+var PROWL_VERSION='v7.28';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4844,12 +4844,18 @@ var studioTags=['3d printed','ap design','tee','apparel','shirt','keychain','dig
    new vintage categories show up on their own. The studioTags tag check below
    stays as a second gate. */
 var studioTypes=['t-shirt','long-sleeve','hoodie','keychains','digital download','paper products'];
+/* v7.28 (the owner: Found on the Prowl "is showing new parts it should only show the vintage stuff"): a product must
+   be tagged Vintage or Estate (every real find is) and not come from the print-on-demand vendor. Before, anything not
+   on the block lists got through, so Printify's candle and blanket (type Home Decor) showed. */
+var vintageTags=['vintage','estate'],studioVendors=['printify'];
 function isVintageProduct(pr){
   var ty=(pr.product_type||'').toLowerCase().trim();
   if(ty&&studioTypes.indexOf(ty)!==-1)return false;
-  var tags=(pr.tags||[]).map(function(t){return String(t).toLowerCase().trim()});
+  if(studioVendors.indexOf(String(pr.vendor||'').toLowerCase().trim())!==-1)return false;
+  var tags=(Array.isArray(pr.tags)?pr.tags:String(pr.tags||'').split(',')).map(function(t){return String(t).toLowerCase().trim()});
   for(var i=0;i<studioTags.length;i++){if(tags.indexOf(studioTags[i])!==-1)return false}
-  return true;
+  for(i=0;i<vintageTags.length;i++){if(tags.indexOf(vintageTags[i])!==-1)return true}
+  return false;
 }
 var foundLoaded=false;
 /* ---------- GOODWILL CARDS ----------
