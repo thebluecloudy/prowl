@@ -41,8 +41,8 @@ Recently shipped, newest first:
     `item-etsy.test.mjs`. `popup-v699` and `flock-bar` were updated for the new markup.
   - Seen in passing: `cleanItems` also drops the worker's `was`/`off`/`listed`/`relisted`. So the sale tag and the
     listing age only show in the popup (from `/item`), never on a results card.
-  - **Next, waiting on the owner's OK:** Prowl points, a rewards idea from Jellycat Purrks. The plan is in
-    `docs/prowl-points-plan.md`.
+  - Prowl points (a rewards idea from Jellycat Purrks) was planned, then **cancelled by the owner on 2026-10-19**.
+    Don't build it unless the owner asks again.
 - **v7.25: Blue hour in the Classic look** (the owner: "The blue hour is missing now. Only three themes. But there are
   4 modes. I'm in classic mode"). Classic's dark (labelled Blue hour) and Midnight were the same near-black `#070706`
   since v6.37; only the New look had Blue hour's navy. Classic Blue hour now has the same navy palette (selector
