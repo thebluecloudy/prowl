@@ -1,4 +1,4 @@
-/* v125: GET /owner-stats for the page's Den › Stats (owner key only) and Cloudflare Web Analytics referrers. */
+/* v125: where visitors came from (Cloudflare Web Analytics referrers), read for the admin's Visitors card since v127. */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -12,29 +12,8 @@ function build(over) {
   const deps = Object.assign({ WORKER_VERSION: "v125", looksPersonal: (t) => /\d{3}-\d{4}/.test(t),
     json: (b, s) => ({ body: b, status: s }), capsCall: async () => ({}), fetch: async () => { throw new Error("no net"); } }, over);
   const k = Object.keys(deps);
-  return new Function(...k, "let REFS = { k: '', at: 0, v: null };\n" + fn("isOwner") + fn("cfReferrers") + fn("ownerStats") + "\nreturn { ownerStats, cfReferrers };")(...k.map((x) => deps[x]));
+  return new Function(...k, "let REFS = { k: '', at: 0, v: null };\n" + fn("cfReferrers") + "\nreturn { cfReferrers };")(...k.map((x) => deps[x]));
 }
-const req = (key) => ({ headers: { get: (h) => (h === "X-Prowl-Owner" ? key : null) } });
-const ENV = { OWNER_KEY: "owner-key-123456" };
-
-test("refuses without the owner key", async () => {
-  const { ownerStats } = build();
-  assert.equal((await ownerStats(req(""), ENV, "o")).status, 403);
-  assert.equal((await ownerStats(req("owner-key-123457"), ENV, "o")).status, 403);
-});
-
-test("14 days of people and searches, top terms without personal ones, referrers off without secrets", async () => {
-  const today = new Date().toISOString().slice(0, 10);
-  const { ownerStats } = build({ capsCall: async (n, op, q) => op === "days"
-    ? (q.kind === "u" ? { days: { [today]: { v: 5, r: 17, n: 1 } } } : { days: { [today]: { v: 9, r: 40, n: 6 } } })
-    : { top: [{ term: "mccoy", visitorDays: 4 }, { term: "call 555-1234", visitorDays: 1 }] } });
-  const r = await ownerStats(req(ENV.OWNER_KEY), ENV, "o");
-  assert.equal(r.status, 200);
-  assert.equal(r.body.days.length, 14);
-  assert.deepEqual(r.body.days[13], { day: today, people: 5, searches: 17, terms: 6 });
-  assert.deepEqual(r.body.top, [{ term: "mccoy", people: 4 }]);
-  assert.deepEqual(r.body.refs, { off: true });
-});
 
 test("referrers come from the GraphQL Analytics API", async () => {
   let sent = null;

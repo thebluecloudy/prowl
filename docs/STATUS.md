@@ -1,16 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-19 (v7.26 / v126).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-19 (v7.27 / v127).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.26** | 402,942 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v126** | |
+| Page | **v7.27** | 402,942 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v127** | |
 
 Recently shipped, newest first:
 
+- **v7.27 + worker v127: Prowl usage moves to the admin** (the owner, on Den › Stats' "Prowl usage": "shouldn't this be on
+  admin only?"). The admin's Searches tab has a new **Visitors** card: people searching and searches per UTC day for 14
+  days and where the page's visitors came from for 7 days (`GET /admin/api/usage`, admin sign-in; read when the tab opens,
+  at most every 5 minutes, not on the overview's refresh). `GET /owner-stats` is gone; the Den shows owner-key devices only
+  a link to `/admin#searches`. Where visitors came from needs the worker secrets **CF_API_TOKEN** (Account Analytics: Read),
+  **CF_ACCOUNT_ID** and **CF_SITE_TAG**; the owner added them on 2026-10-19. Tests: `worker/__tests__/admin.test.mjs`
+  (usage), `worker/__tests__/referrers.test.mjs` (was owner-stats), `__tests__/page/den-stats-v722.test.mjs`.
 - **v7.26 + worker v126: from Jellycat's shop** (the owner sent us.jellycat.com product screenshots "for inspiration" and
   picked four ideas). Checked in Chromium at 390 px, Light and Blue hour, with stubbed results (beside main's).
   - **Calm result cards:** a result card's title is in normal case and centred, at most 2 lines (was UPPERCASE, 3
@@ -472,7 +479,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.27, worker v127**. Claim one here when you start.
+Next free numbers: **page v7.28, worker v128**. Claim one here when you start.
 
 ## What's next
 

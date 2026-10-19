@@ -46,6 +46,6 @@ test("/item carries them for eBay and Etsy", () => {
   assert.match(etsy, /out\.seller = \{ stars: Math\.round\(ra \* 10\) \/ 10, n: Math\.floor\(rc\) \}/);
 });
 
-test("the version is v126", () => {
-  assert.match(INDEX, /const WORKER_VERSION = "v126";/);
+test("the version is v126 or later", () => {
+  assert.ok(Number(/const WORKER_VERSION = "v(\d+)";/.exec(INDEX)[1]) >= 126);
 });

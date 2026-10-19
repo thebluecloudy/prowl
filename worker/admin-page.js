@@ -94,6 +94,7 @@ export function loginPage(nonce, message) {
 
 /* ---------- dashboard ---------- */
 const APP_CSS = String.raw`
+.ukpi{font-weight:700;margin:0 0 10px}.ubh{font-size:16px;margin:18px 0 8px}
 .wrap{max-width:1100px;margin:0 auto;padding:0 16px}
 .top{padding-top:12px}
 .top-in{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap}
@@ -370,7 +371,7 @@ const SS = {
 const TABS = ["overview", "members", "diagnose", "errors", "searches", "affiliates"];
 const S = { tab: "", aData: null, ov: null, ovAt: 0, ovSeq: 0, out: false, health: null, sales: null, routesAll: false, top: "today",
   mFilter: "all", mSort: "created", mData: null, mAt: 0, mSeq: 0, member: null, memberId: "", pushed: false, lastMsg: null,
-  late: null, diag: null, dSel: null, diagRes: null, diagShow: "all", diagSeq: 0, errSeq: 0, sDays: 7, sSeq: 0, toastT: 0,
+  late: null, diag: null, dSel: null, diagRes: null, diagShow: "all", diagSeq: 0, errSeq: 0, sDays: 7, sSeq: 0, uSeq: 0, uAt: 0, toastT: 0,
   gData: null, gAt: 0, gSeq: 0, giftsAll: false, glen: null };
 
 /* ---------- DOM: API data only ever lands in textContent or vetted https attributes ---------- */
@@ -579,7 +580,7 @@ function selectTab(tab, detail) {
   if (tab === "overview" && (!S.ov || Date.now() - S.ovAt > 60000)) loadOverview();
   if (tab === "diagnose") prepDiag();
   if (tab === "errors") loadErrors();
-  if (tab === "searches") loadSearches();
+  if (tab === "searches") { loadSearches(); if (!S.uAt || Date.now() - S.uAt > 300000) loadUsage(); }
   if (tab === "affiliates") loadAff();
 }
 function go(tab) { history.replaceState(null, "", "#" + tab); selectTab(tab); }
@@ -607,7 +608,7 @@ $("#refresh").addEventListener("click", () => {
   if (S.tab === "overview") loadOverview();
   else if (S.tab === "members") { if (S.memberId) openMember(S.memberId, true); else { loadMembers(true); loadGifts(); } }
   else if (S.tab === "errors") loadErrors();
-  else if (S.tab === "searches") loadSearches();
+  else if (S.tab === "searches") { loadSearches(); loadUsage(); }
   else if (S.tab === "diagnose") { if (!S.ov) loadOverview(); stamp(); }
   else if (S.tab === "affiliates") loadAff();
 });
@@ -1553,6 +1554,36 @@ D.querySelectorAll("[data-days]").forEach(b => b.addEventListener("click", () =>
   D.querySelectorAll("[data-days]").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
   loadSearches();
 }));
+/* v127: Visitors (moved here from the page's Den, where the owner key showed it): people searching and searches per UTC
+   day for 14 days, and where the page's visitors came from (Cloudflare Web Analytics, last 7 days). */
+const USE_COLS = [{ t: "Day (UTC)" }, { t: "People", num: 1 }, { t: "Searches", num: 1 }];
+const REF_COLS = [{ t: "Came from" }, { t: "Page views", num: 1 }];
+async function loadUsage() {
+  const box = $("#ubox"), seq = ++S.uSeq;
+  if (!box.firstChild) fill(box, loading());
+  box.classList.add("busy");
+  try {
+    const j = await api("/admin/api/usage");
+    if (seq !== S.uSeq) return;
+    const d = Array.isArray(j.days) ? j.days : null, r = j.refs || {}, out = [];
+    if (d) {
+      const wk = d.slice(-7), sum = k => wk.reduce((a, x) => a + (Number(x[k]) || 0), 0);
+      out.push(h("p", { class: "ukpi", text: num(sum("people")) + " people-days and " + num(sum("searches")) + " searches in the last 7 days" }));
+      out.push(tableOf(USE_COLS, d.slice().reverse().map(x => [x.day, num(x.people), num(x.searches)]), "People and searches per day", true));
+    } else out.push(note("warn", "People and searches could not be loaded right now."));
+    out.push(h("h3", { class: "ubh", text: "Where visitors came from, last 7 days" }));
+    if (r.off) out.push(h("p", { class: "empty", text: "Not connected yet. Add CF_API_TOKEN, CF_ACCOUNT_ID and CF_SITE_TAG to the worker in Cloudflare." }));
+    else if (r.error) out.push(note("warn", r.error));
+    else {
+      const L = Array.isArray(r.list) ? r.list : [];
+      out.push(L.length ? tableOf(REF_COLS, L.map(x => [x.host || "Direct, or an app that hides it", num(x.views)]), "Where visitors came from")
+        : h("p", { class: "empty", text: "No visits recorded in the last 7 days yet." }));
+    }
+    fill(box, out);
+    S.uAt = Date.now(); stamp();
+  } catch (e) { if (e.status !== 401 && seq === S.uSeq) fill(box, note("bad", "Could not load visitors. " + e.message, loadUsage)); }
+  finally { if (seq === S.uSeq) box.classList.remove("busy"); }
+}
 async function loadSearches() {
   const box = $("#sbox"), seq = ++S.sSeq;
   if (!box.firstChild) fill(box, loading());
@@ -1627,6 +1658,7 @@ function appBody() {
       '<section class="card"><div class="ch"><h2>Errors</h2></div><p class="sub">Server errors from the last 30 days, newest first. Email addresses and long numbers are removed from the messages.</p>' +
       '<div id="errbox"></div></section>') +
     panel("searches",
+      '<section class="card"><div class="ch"><h2>Visitors</h2></div><p class="sub">People who searched Prowl, each counted once a day (no names or addresses), and the sites that sent visitors to the Prowl page.</p><div id="ubox"></div></section>' +
       '<section class="card"><div class="ch"><h2>Top searches</h2><div class="seg" role="group" aria-label="Period">' + day(1, "Today") + day(7, "7 days") + day(30, "30 days") + "</div></div>" +
       '<p class="sub">What people search for on Prowl. Visitors count each person once a day. Searches that look personal are never recorded.</p><div id="sbox"></div></section>') +
     panel("affiliates",

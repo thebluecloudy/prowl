@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v127: 2026-10-19. Visitors move to the admin (the owner: "shouldn't this be on admin only?"): GET /admin/api/usage answers
+ *         14 days of people searching and searches plus where visitors came from (cfReferrers); GET /owner-stats is gone.
  *   v126: 2026-10-18. Seller stars (Matt, from Jellycat's stars and review count): eBay search results and /item carry
  *        seller { pct, n } (eBay's feedbackPercentage and feedbackScore; numbers only, never the seller's name); Etsy's
  *        /item carries seller { stars, n } (the shop's review_average and review_count).
@@ -430,7 +432,7 @@ import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-const WORKER_VERSION = "v126";
+const WORKER_VERSION = "v127";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -2327,30 +2329,6 @@ function statTerm(raw) {
   let t = String(raw == null ? "" : raw).toLowerCase().replace(/[^a-z0-9'& ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
   if (t.length < 2 || /@|https?|www|\.com/.test(String(raw)) || /\d{6,}/.test(t)) return "";
   return t;
-}
-/* v125: GET /owner-stats, the owner's numbers for the page's Den › Stats tab. Owner key only (X-Prowl-Owner).
-   people = distinct searchers per UTC day (a daily-salted IP hash, never stored raw); searches = calls to eBay
-   (one per search); terms = distinct search terms that day. top = the week's most searched terms. Nothing personal. */
-export async function ownerStats(request, env, origin) {
-  const hdr = { "Cache-Control": "private, no-store", "Vary": "X-Prowl-Owner" };
-  if (!isOwner(request, env)) return json({ error: "owner only" }, 403, origin, hdr);
-  const now = Date.now(), dayOf = t => new Date(t).toISOString().slice(0, 10), DAYMS = 86400000;
-  const days = []; for (let i = 13; i >= 0; i--) days.push(dayOf(now - i * DAYMS));
-  const from = days[0], to = days[13], wk = days[7];
-  let U = null, T = null, top = null;
-  try {
-    [U, T, top] = await Promise.all([
-      capsCall("stats", "days", { kind: "u", from: from, to: to }),
-      capsCall("stats", "days", { kind: "t", from: from, to: to }),
-      capsCall("stats", "top", { kind: "t", from: wk, to: to, limit: 10 })
-    ]);
-  } catch (e) { return json({ error: "stats unavailable" }, 503, origin, hdr); }
-  const u = (U && U.days) || {}, t = (T && T.days) || {};
-  const out = days.map(d => ({ day: d, people: (u[d] && u[d].v) || 0, searches: (u[d] && u[d].r) || 0, terms: (t[d] && t[d].n) || 0 }));
-  const list = (top && Array.isArray(top.top) ? top.top : []).filter(x => x && x.term && !looksPersonal(x.term))
-    .map(x => ({ term: String(x.term).slice(0, 60), people: x.visitorDays || 0 }));
-  const refs = await cfReferrers(env, wk, to);
-  return json({ v: WORKER_VERSION, since: from, days: out, top: list, refs: refs }, 200, origin, hdr);
 }
 /* v125: where visitors came from, read from Cloudflare Web Analytics (the page's beacon) through the GraphQL Analytics
    API. Needs three worker secrets: CF_API_TOKEN (a token with Account Analytics: Read), CF_ACCOUNT_ID and CF_SITE_TAG
@@ -6052,6 +6030,7 @@ const ADMIN_H = {
   giftHash, alEmail, proListHas, proListCount, alSendGift, alPurge,   /* v83: alPurge */
   jevResultsMode, liveFetchLocal, alTitleKey,   /* v78: Diagnose follows what alerts really do */
   affLoad, AFF_PROGRAMS, AFF_KEY, AFF_IDS_KEY, affIdsClean, affReady,   /* v89: affiliate switches; v90: their IDs */
+  cfReferrers,   /* v127: Visitors in the admin */
   WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, AL_PEND_CAP, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE
 };
 
@@ -6349,7 +6328,6 @@ async function handleFetch(request, env, ctx) {
       return shopPicks(env, url, origin, request);
     }
     if (url.pathname === "/hunt") return huntRoute(request, env, url, origin);   /* v117 */
-    if (url.pathname === "/owner-stats") return ownerStats(request, env, origin);   /* v125 */
     if (url.pathname === "/hunt-check") {
       return huntCheck(env, url, origin, request);
     }

@@ -1025,6 +1025,24 @@ async function apiSearches(c) {
   catch (e) { return jerr(503, "Search counts are not available right now."); }
   return jres({ top: topView(c, j), days: days });
 }
+/* v127: Visitors (moved here from the page's Den › Stats, which showed it to the owner key: admin only now). 14 UTC days of
+   people searching (distinct daily-salted address hashes, never stored raw) and searches, and where the page's visitors
+   came from for the last 7 days (Cloudflare Web Analytics through H.cfReferrers; { off } until its three secrets are set).
+   Read when the Searches tab opens, not on the overview's 60-second refresh: each read lists Durable Object rows. */
+async function apiUsage(c) {
+  const H = c.H, issues = [], days = [];
+  for (let i = 13; i >= 0; i--) days.push(utcDay(c.nowMs - i * 86400000));
+  const grab = async (what, fn) => { try { return await fn(); } catch (e) { if (issues.indexOf(what) === -1) issues.push(what); return null; } };
+  const [U, T, R] = await Promise.all([
+    grab(MSG_SEARCH, () => capsJson(c, "stats", "days", { kind: "u", from: days[0], to: days[13] })),
+    grab(MSG_SEARCH, () => capsJson(c, "stats", "days", { kind: "t", from: days[0], to: days[13] })),
+    typeof H.cfReferrers === "function" ? H.cfReferrers(c.env, days[7], days[13]).catch(() => ({ error: "Cloudflare analytics could not be reached." })) : { off: true }]);
+  const u = (U && U.days) || {}, t = (T && T.days) || {};
+  const per = U || T ? days.map(d => ({ day: d, people: num(u[d] && u[d].v), searches: num(u[d] && u[d].r), terms: num(t[d] && t[d].n) })) : null;
+  const refs = R && R.off ? { off: true } : R && R.error ? { error: clean(R.error, 200) }
+    : { list: arr(R && R.list).slice(0, 12).map(x => ({ host: word(x && x.host, 80), views: num(x && x.views) })) };
+  return jres({ days: per, refs: refs, issues: issues });
+}
 
 /* ---------- affiliates (v89) ----------
    One switch per affiliate program. index.js keeps the list (AFF_PROGRAMS) and reads KV aff:on before building any
@@ -1086,7 +1104,7 @@ async function apiAffiliateIds(c) {
   return jres({ ok: true, message: msg, programs: await affView(c) });
 }
 
-const GETS = { overview: apiOverview, members: apiMembers, member: apiMember, errors: apiErrors, searches: apiSearches, gifts: apiGifts, affiliates: apiAffiliates };
+const GETS = { overview: apiOverview, members: apiMembers, member: apiMember, errors: apiErrors, searches: apiSearches, usage: apiUsage, gifts: apiGifts, affiliates: apiAffiliates };
 const POSTS = { find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, salescheck: apiSalesCheck, gift: apiGiftAdd, "gift/remove": apiGiftRemove, affiliate: apiAffiliateSet, "affiliate/ids": apiAffiliateIds };
 
 /* ---------- sign in / out ---------- */
