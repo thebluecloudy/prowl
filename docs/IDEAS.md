@@ -69,6 +69,24 @@ Salvation Army and HiBid auctions, and Pounce already finds the right listings.
   Bidding to the second needs something like Cloudflare Durable Object alarms.
 - **Fees and liability:** a missed or wrong bid is real money, so the terms of service need to cover it.
 
+**How AuctionBotPro does it** (auctionbotpro.com, read 2026-10-19; the owner wants Prowl's own version, not theirs):
+- **ShopGoodwill only.** It logs in as the user, with their own ShopGoodwill email and password stored as secrets
+  (`SGW_USERNAME`, `SGW_PASSWORD`, encrypted, sessions renewed every 7 days), and places the bid as that user.
+- **Built like Prowl:** a Cloudflare Worker with D1, put up with `wrangler deploy`.
+- **Timing:** the bot sleeps until the snipe time and bids in the last 3–120 seconds, set per snipe. It updates the
+  prices of active snipes every 15 minutes.
+- **Its API:** `POST /api/search`, `GET /api/snipes/item/{id}`, `POST /api/snipes` (create a snipe),
+  `POST /api/snipes/test-bid`, `GET /api/history`, `POST /api/research`. Callers use an API key or pay per call in USDC
+  (about $1 a snipe).
+
+**Prowl's own version, in steps.**
+1. **For the owner only:** the owner's ShopGoodwill login as worker secrets, behind `isOwner()`. Snipes are kept in
+   a Durable Object, and an alarm wakes it a few seconds before the end. Prowl already uses ShopGoodwill's buyer API
+   (`buyerapi.shopgoodwill.com`, Search and ItemDetail). The login and bid calls still need to be found, from the
+   browser's network tab while bidding by hand.
+2. **For members,** only after step 1 works and ShopGoodwill's terms have been read. It means holding members'
+   passwords, so it needs encryption at rest, deleting them on request, and a privacy policy update.
+
 **A safe first version: snipe reminders.** No credentials and no bidding by Prowl. A phone alert about 2 minutes
 before the end, carrying the member's max price, with one tap to the listing's bid page. It reuses push and Pounce,
 and shows whether members want real sniping before any of the above is built.
