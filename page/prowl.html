@@ -1949,6 +1949,39 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .pm-fly i{position:absolute;left:0;top:0;width:4px;height:4px;margin:-2px;border-radius:50%;background:rgb(var(--fc));box-shadow:0 0 5px 2px rgba(var(--fg),.85),0 0 16px 6px rgba(var(--fg),.3);opacity:0;will-change:transform,opacity}
 .pm-fly b{position:absolute;left:0;top:0;width:340px;height:340px;margin:-170px;border-radius:50%;background:radial-gradient(closest-side,rgba(var(--fg),.12),rgba(var(--fg),0));opacity:0;transition:opacity .6s;will-change:transform}
 }
+/* ==== v7.25 (Matt, from Jellycat's shop): calm result cards (title in normal case, centred, price under it), outlined
+   tags like their "Best Seller" box, seller stars, and the popup's details folding under + / − headings. Flock and the
+   Likes grid keep their own cards. ==== */
+.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card{position:relative;border:1px solid var(--ln);border-radius:12px;box-shadow:none;text-align:center}
+.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card img{border-bottom:0}
+.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card .sgw-t{margin:10px 10px 2px;font-size:15px;font-weight:600;line-height:1.3;letter-spacing:0;text-transform:none;-webkit-line-clamp:2;max-height:calc(2 * 1.3em)}
+.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card .sgw-p{padding:4px 10px 0;font-size:17px;font-weight:600;color:var(--ink)}
+.scout-app-wrapper .sgw-cell:not(.lk-cell)>.sgw-card .sgw-m{padding:3px 10px 12px;font-size:13px}
+.scout-app-wrapper .hn .sgw-card,.scout-app-wrapper .sgw-cell[data-fresh]>.sgw-card{box-shadow:0 0 0 2px var(--ac),0 0 16px -2px var(--ac)}
+.scout-app-wrapper .fl-newb,.scout-app-wrapper .sgw-new,.scout-app-wrapper .sgw-repro,.scout-app-wrapper .sale-off{background:transparent;border:1.5px solid var(--ac);border-radius:3px;color:var(--ink);font-weight:600;letter-spacing:.01em}
+.scout-app-wrapper .sgw-repro{border-color:#D98C1F}
+.scout-app-wrapper .sale-off{border-color:#1F7A3A}
+.scout-app-wrapper .is-gone .sgw-card::before,.scout-app-wrapper .sgw-cell.is-pick:not(.fl-card):not(.lk-cell)::before{padding:2px 8px;border:1.5px solid var(--ink);border-radius:3px;background:var(--cd);color:var(--ink);font:600 12.5px/1.4 var(--sans);letter-spacing:.01em;text-transform:none}
+.scout-app-wrapper .sgw-cell.is-pick:not(.fl-card):not(.lk-cell)::before{content:'Best pick';position:absolute;top:9px;left:9px;z-index:2;border-color:var(--ac);pointer-events:none}
+.scout-app-wrapper .sgw-cell.is-pick.is-gone:not(.fl-card):not(.lk-cell)::before{content:none}
+.scout-app-wrapper .slr{font-size:13.5px;line-height:1.4;color:var(--i2)}
+.scout-app-wrapper .sgw-r{padding:3px 10px 0}
+.scout-app-wrapper .slr-1{color:#F07C00}
+.scout-app-wrapper .slr-s{position:relative;display:inline-block;color:var(--l2);letter-spacing:1px}
+.scout-app-wrapper .slr-s i{position:absolute;left:0;top:0;overflow:hidden;white-space:nowrap;font-style:normal;color:#F07C00}
+.scout-app-wrapper .slr-n{color:var(--mu)}
+.scout-app-wrapper .pp-t,.scout-app-wrapper .pp-p,.scout-app-wrapper .pp-m{text-align:center}
+.scout-app-wrapper .pp-r{margin:4px 0 0;font-size:15px;text-align:center}
+.scout-app-wrapper .pp-sec{margin:18px 0 0;border-top:1px solid var(--ln)}
+.scout-app-wrapper .pp-sec+.pp-sec{margin-top:0}
+.scout-app-wrapper .pp-sec:last-of-type{border-bottom:1px solid var(--ln)}
+.scout-app-wrapper .pp-sec>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:54px;list-style:none;cursor:pointer;font:700 15px/1.2 var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+.scout-app-wrapper .pp-sec>summary::-webkit-details-marker{display:none}
+.scout-app-wrapper .pp-sec>summary::after{content:'+';flex:none;font-size:26px;font-weight:300;line-height:1}
+.scout-app-wrapper .pp-sec[open]>summary::after{content:'\2212'}
+.scout-app-wrapper .pp-sec>summary:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.scout-app-wrapper .pp-secb{padding:0 0 16px}
+.scout-app-wrapper .pp-secb>.pp-asp:first-child,.scout-app-wrapper .pp-secb>.pp-fp:first-child{margin-top:0}
 </style>
 
 <div class="scout-app-wrapper ot-r k2">
@@ -2959,7 +2992,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.24';
+var PROWL_VERSION='v7.25';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4248,7 +4281,7 @@ function huntFetch(t,cb){
   if(HUNT.go[k]||typeof fetch!=='function')return;
   HUNT.go[k]=1;
   fetch(SGW_API+'hunt?q='+encodeURIComponent(t)).then(function(x){return x.ok?x.json():null}).then(function(d){
-    HUNT.c[k]=(d&&d.rows)?d:{fail:1};delete HUNT.go[k];if(cb)cb();
+    HUNT.c[k]=(d&&d.rows)?d:{fail:1};delete HUNT.go[k];pickAdd(d);if(cb)cb();
   }).catch(function(){HUNT.c[k]={fail:1};delete HUNT.go[k];if(cb)cb()});
 }
 function huntLink(it){var u=String(it.url||'');if(it.src==='ebay'&&window.prowlEpn)u=window.prowlEpn(u,'prowl-picks');return /^https:\/\//.test(u)?u:'#'}
@@ -4815,6 +4848,20 @@ var foundLoaded=false;
    daily-digest file address: nothing has read it since the panel moved to
    the Worker in v5.4. */
 
+/* v7.25 (Matt, from Jellycat's stars and review count): the seller's feedback under the price, from worker v126. eBay
+   gives a percentage (one star, "99.8% (12.3k)"); Etsy gives the shop's review average (five stars, filled to it). No
+   seller name. SLR keeps it by URL for the popup. */
+var SLR={};
+function slrN(n){n=Math.floor(Number(n)||0);return n>=1e6?(Math.round(n/1e5)/10)+'m':n>=1e4?Math.round(n/1e3)+'k':n>=1e3?(Math.round(n/100)/10)+'k':String(n)}
+function slrHtml(s,cls){
+  if(!s)return '';
+  var n=Math.floor(Number(s.n)||0),st=Number(s.stars),pc=Number(s.pct),cnt=n?' <span class="slr-n">('+slrN(n)+')</span>':'';
+  if(st>0&&st<=5)return '<div class="slr '+cls+'" role="img" aria-label="Shop rated '+st+' out of 5'+(n?' from '+n+' review'+(n===1?'':'s'):'')+'">'+
+    '<span class="slr-s" aria-hidden="true"><i style="width:'+Math.round(st/5*100)+'%">★★★★★</i>★★★★★</span>'+cnt+'</div>';
+  if(pc>=0&&pc<=100&&isFinite(pc)&&s.pct!==''&&s.pct!==null)return '<div class="slr '+cls+'" role="img" aria-label="Seller '+pc+'% positive'+(n?' from '+n+' rating'+(n===1?'':'s'):'')+'">'+
+    '<span class="slr-1" aria-hidden="true">★</span> '+pc+'%'+cnt+'</div>';
+  return '';
+}
 function sgwCard(it,hunt,bare){
   /* no loading="lazy" here: on the live page it left some cards with an empty
      box even once scrolled into view. A handful of thumbnails is cheap. */
@@ -4829,7 +4876,9 @@ function sgwCard(it,hunt,bare){
     img+
     '<div class="sgw-t">'+esc(it.title)+'</div>'+
     '<div class="sgw-p">'+esc(it.price)+(it.was?' <s class="sale-was">'+esc(it.was)+'</s>'+(it.off?' <span class="sale-off">'+esc(it.off)+'</span>':''):'')+'</div>'+   /* v7.10: worker v119's eBay sale */
+    slrHtml(it.seller,'sgw-r')+   /* v7.25 */
     '<div class="sgw-m">'+m+'</div></a>';
+  if(it.seller&&it.url)SLR[it.url]=it.seller;
   /* v5.33 Fair price?: the card stays one link; the button sits under it in
      a wrapper cell, because a button inside a link is invalid and would open
      the listing. Cells carry title/price/source so comps can be read back
@@ -4971,9 +5020,17 @@ function cleanItems(a){
       image:(typeof x.image==='string'&&/^https:\/\//i.test(x.image))?x.image:'',
       src:typeof x.src==='string'?x.src:'',bids:typeof x.bids==='number'?x.bids:undefined,
       time_left:x.time_left?String(x.time_left).slice(0,24):'',
-      repro:x.jev==='reproduction'&&Number(x.jevp)>=0.6});
+      repro:x.jev==='reproduction'&&Number(x.jevp)>=0.6,seller:slrClean(x.seller)});   /* v7.25 */
   }
   return out;
+}
+/* v7.25: worker v126's seller feedback, numbers only: eBay { pct, n } or Etsy { stars, n } */
+function slrClean(v){
+  if(!v||typeof v!=='object')return undefined;
+  var n=Math.max(0,Math.floor(Number(v.n)||0)),st=Number(v.stars),pc=Number(v.pct);
+  if(st>0&&st<=5)return {stars:st,n:n};
+  if(typeof v.pct==='number'&&pc>=0&&pc<=100)return {pct:pc,n:n};
+  return undefined;
 }
 function sgwClean(v){return String(v||'').replace(/\s+/g,' ').slice(0,SGW_MAXLEN).replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g,'$1').trim()}   /* v6.61: never half an emoji (it cannot go in a URL) */
 function huntIndex(t){
@@ -7027,9 +7084,14 @@ function popAge(l,r){
   if(r&&isFinite(Date.parse(r+'T12:00:00Z')))s+=', relisted '+popDay(r,y);
   return s;
 }
+/* v7.25 (Matt, from Jellycat's PRODUCT DETAILS / SAFETY & CARE): the item details and the price check fold away under
+   headings with + and −, so the photo, title, price and View on eBay come first. Item details start open; Price check
+   starts closed unless a verdict is in hand. A repaint (the details arriving) keeps what the visitor opened or closed. */
+function popSec(k,t,body,on){return '<details class="pp-sec" data-sec="'+k+'"'+(on?' open':'')+'><summary>'+t+'</summary><div class="pp-secb">'+body+'</div></details>'}
 function popPaint(d){
   var P=POP,b=$('#otp-sheetB');if(!P||!b)return;
   d=d||{};
+  var was={};if(b.getAttribute('data-ppu')===P.u)[].forEach.call(b.querySelectorAll('details[data-sec]'),function(x){was[x.getAttribute('data-sec')]=x.open});
   var imgs=(d.images&&d.images.length)?d.images:(P.img?[P.img]:[]);
   var title=popUnEnt(d.title||P.t),price=d.price||P.p,meta=[],i,h='';
   var desc=d.description&&popPlain(d.description)!==popPlain(title)?d.description:'';   /* v6.99: a description that only repeats the title is left out */
@@ -7046,6 +7108,7 @@ function popPaint(d){
   }
   h+='<h3 class="pp-t">'+esc(title)+'</h3>';
   if(price)h+='<p class="pp-p">'+esc(price)+(d.was?' <s class="sale-was">'+esc(d.was)+'</s>'+(d.off?' <span class="sale-off">'+esc(d.off)+'</span>':''):'')+'</p>';   /* v7.10 */
+  h+=slrHtml(d.seller||SLR[P.u],'pp-r');   /* v7.25 */
   var flags=popFlags(title,d);if(flags)h+=flags.html;
   if(meta.length)h+='<p class="pp-m">'+esc(meta.join(' · '))+'</p>';
   if(P.pnc)h+='<div class="pp-pnc" role="note"><b>\uD83D\uDC3E Pounce '+(P.pnc.maybe?'thinks this may be':'match')+' for '+esc(P.pnc.hunt)+'</b>'+(P.pnc.reason?'<span>'+esc(P.pnc.reason)+'</span>':'')+
@@ -7056,17 +7119,20 @@ function popPaint(d){
   if(d.gone)h+='<div class="pp-end" role="note"><b>This one got away.</b><span>Prowl can watch for the next one.</span>'+
     ((P.term||title)?'<button type="button" class="b p" data-ppwatch="1"'+(P.watched?' disabled':'')+'>'+(P.watched?'\u2713 Watching for it':'Watch for the next one')+'</button>':'')+'</div>';
   if(P.term)h+='<button type="button" class="pp-hunt" data-pphunt="1" aria-label="Search this on Prowl: '+esc(P.term)+'">\ud83d\udd0d Search this on Prowl</button>';   /* v6.99 */
-  if(d.aspects&&d.aspects.length){h+='<dl class="pp-asp">';for(i=0;i<d.aspects.length&&i<6;i++)h+='<dt>'+esc(popUnEnt(d.aspects[i].n))+'</dt><dd>'+esc(popUnEnt(d.aspects[i].v))+'</dd>';h+='</dl>'}
-  if(desc)h+='<div class="pp-d clip" id="otp-ppd"></div><button type="button" class="pp-more" data-ppmore="1" aria-controls="otp-ppd" aria-expanded="false">Read more</button>';
-  if(price&&!d.gone&&!aiOff())h+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'" data-d="'+esc((d.was?'On sale, was '+d.was+(d.off?' ('+d.off+')':'')+'. ':'')+(flags?flags.note+' ':'')+popDetails(meta,d))+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
-  if(price||P.term)h+='<a class="b pp-sold" href="'+esc(popSold(P.term||title))+'" target="_blank" rel="noopener noreferrer">What it sold for on eBay \u2197</a>';   /* v7.10 */
+  var det='',pc='';
+  if(d.aspects&&d.aspects.length){det+='<dl class="pp-asp">';for(i=0;i<d.aspects.length&&i<6;i++)det+='<dt>'+esc(popUnEnt(d.aspects[i].n))+'</dt><dd>'+esc(popUnEnt(d.aspects[i].v))+'</dd>';det+='</dl>'}
+  if(desc)det+='<div class="pp-d clip" id="otp-ppd"></div><button type="button" class="pp-more" data-ppmore="1" aria-controls="otp-ppd" aria-expanded="false">Read more</button>';
+  if(det)h+=popSec('det','Item details',det,'det' in was?was.det:true);
+  if(price&&!d.gone&&!aiOff())pc+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'" data-d="'+esc((d.was?'On sale, was '+d.was+(d.off?' ('+d.off+')':'')+'. ':'')+(flags?flags.note+' ':'')+popDetails(meta,d))+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
+  if(price||P.term)pc+='<a class="b pp-sold" href="'+esc(popSold(P.term||title))+'" target="_blank" rel="noopener noreferrer">What it sold for on eBay \u2197</a>';   /* v7.10 */
+  if(pc)h+=popSec('price','Price check',pc,'price' in was?was.price:!!(FP&&FP[P.u]));
   var go=window.prowlAff(d.url||P.u,'prowl-popup',d.affUrl);
   if(go!=='#')h+=(d.gone?'<div>':'<div class="pp-dock">')+'<a class="b'+(d.gone?'':' p')+' pp-go" href="'+esc(go)+'" target="_blank" rel="noopener noreferrer">View on '+esc(POP_NAME[P.src])+' ↗</a></div>';   /* v7.19: an ended listing's link is not pinned; Watch for the next one leads */   /* v7.12: pinned to the sheet's foot */
   P.share={u:d.url||P.u,t:title,p:price,img:imgs[0]||''};h+='<button type="button" class="b pp-share" data-ppshare="1">Share this find</button>';   /* v6.98 */
   h+='<button type="button" class="b pp-close" data-ppclose="1">Close</button>';   /* v6.99: a way out at the bottom too */
-  b.innerHTML=h;
-  if(desc){var box=$('#otp-ppd');box.appendChild(popDesc(desc));
-    if(box.scrollHeight<=box.clientHeight+2){box.classList.remove('clip');var mb=b.querySelector('[data-ppmore]');if(mb)mb.parentNode.removeChild(mb)}}
+  b.innerHTML=h;b.setAttribute('data-ppu',P.u);
+  if(desc){var box=$('#otp-ppd'),bs=box.parentNode&&box.parentNode.parentNode;box.appendChild(popDesc(desc));
+    if((!bs||!('open' in bs)||bs.open)&&box.scrollHeight<=box.clientHeight+2){box.classList.remove('clip');var mb=b.querySelector('[data-ppmore]');if(mb)mb.parentNode.removeChild(mb)}}
 }
 /* v7.23 (the eBay teardown: "no watchlist card leads to a dead listing"): a listing Prowl has seen end (its popup said
    so) is kept by URL in prowl.gotAway (new key, newest 300; not goneGet, which is the un-liked list) and every card of it, wherever it shows, gets a Got away tag
@@ -7079,6 +7145,18 @@ function awayAdd(u){
   try{var a=JSON.parse(localStorage.getItem(AWAY_KEY)||'[]');if(!Array.isArray(a))a=[];a.unshift(u);localStorage.setItem(AWAY_KEY,JSON.stringify(a.slice(0,300)))}catch(e){}
   awayMark(document);
 }
+/* v7.25 (Matt, from Jellycat's outlined "Best Seller" box): a result that is one of a hunt's Best picks says so on its
+   photo (.is-pick), wherever its card shows. Kept for this visit only. */
+var PICK=Object.create(null);
+function pickAdd(d){var i;if(!d||!d.picks)return;for(i=0;i<d.picks.length;i++)if(d.picks[i]&&d.picks[i].url)PICK[d.picks[i].url]=1;pickMark(document)}
+function pickMark(root){
+  try{
+    var els=[],i;
+    if(root.getAttribute&&root.getAttribute('data-u'))els.push(root);
+    if(root.querySelectorAll)els=els.concat([].slice.call(root.querySelectorAll('.sgw-cell[data-u]')));
+    for(i=0;i<els.length;i++)if(PICK[els[i].getAttribute('data-u')]&&!els[i].classList.contains('is-pick'))els[i].classList.add('is-pick');
+  }catch(e){}
+}
 function awayMark(root){
   try{
     var g=awayGet(),els=[],i;
@@ -7089,7 +7167,7 @@ function awayMark(root){
 }
 try{
   if(window.MutationObserver){
-    var awayMo=new MutationObserver(function(ms){var i,j,n;for(i=0;i<ms.length;i++)for(j=0;j<ms[i].addedNodes.length;j++){n=ms[i].addedNodes[j];if(n.nodeType===1)awayMark(n)}});
+    var awayMo=new MutationObserver(function(ms){var i,j,n;for(i=0;i<ms.length;i++)for(j=0;j<ms[i].addedNodes.length;j++){n=ms[i].addedNodes[j];if(n.nodeType===1){awayMark(n);pickMark(n)}}});
     [].forEach.call(document.querySelectorAll('.scout-app-wrapper'),function(w){awayMo.observe(w,{childList:true,subtree:true})});
   }
   awayMark(document);

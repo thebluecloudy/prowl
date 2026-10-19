@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v126: 2026-10-18. Seller stars (Matt, from Jellycat's stars and review count): eBay search results and /item carry
+ *        seller { pct, n } (eBay's feedbackPercentage and feedbackScore; numbers only, never the seller's name); Etsy's
+ *        /item carries seller { stars, n } (the shop's review_average and review_count).
  *   v125: 2026-10-18. Owner stats for the page's Den › Stats tab (Matt): GET /owner-stats (owner key only) answers 14 days of
  *         people searching (distinct searchers per day, new "u" stat kind ticked once per search on /ebay), searches and terms,
  *         plus the week's top terms; stats DO op "days".
@@ -427,7 +430,7 @@ import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-const WORKER_VERSION = "v125";
+const WORKER_VERSION = "v126";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -775,6 +778,15 @@ function ebayAge(it, now) {
   if (isFinite(o) && isFinite(c) && c - o >= 864e5) out.relisted = new Date(c).toISOString().slice(0, 10);
   return out;
 }
+/* v126: the seller's feedback, as numbers only (the seller's name stays out). eBay sends feedbackPercentage as a string
+   ("99.8") and feedbackScore as a count; either can be missing. */
+function ebaySeller(it) {
+  const s = it && it.seller;
+  if (!s) return null;
+  const pct = Number(s.feedbackPercentage), n = Number(s.feedbackScore);
+  if (!(pct >= 0 && pct <= 100) || s.feedbackPercentage === "" || s.feedbackPercentage == null) return null;
+  return { pct: Math.round(pct * 10) / 10, n: n >= 0 && isFinite(n) ? Math.floor(n) : 0 };
+}
 function ebayItem(it) {
   if (!it || !it.title || !it.itemWebUrl) return null;
   const opts = it.buyingOptions || [];
@@ -797,6 +809,8 @@ function ebayItem(it) {
   if (sale) { out.was = sale.was; if (sale.off) out.off = sale.off; }
   const age = ebayAge(it);   /* v123 */
   if (age) { out.listed = age.listed; if (age.relisted) out.relisted = age.relisted; }
+  const sel = ebaySeller(it);   /* v126 */
+  if (sel) out.seller = sel;
   if (auction) {
     out.bids = Number(it.bidCount) || 0;
     const tl = timeLeft(it.itemEndDate);
@@ -1651,6 +1665,8 @@ async function itemEbay(id, env) {
     if (sale) { out.was = sale.was; if (sale.off) out.off = sale.off; }
     const age = ebayAge(j);   /* v123 */
     if (age) { out.listed = age.listed; if (age.relisted) out.relisted = age.relisted; }
+    const sel = ebaySeller(j);   /* v126 */
+    if (sel) out.seller = sel;
     return out;
   } finally { clearTimeout(timer); }
 }
@@ -1689,6 +1705,8 @@ async function itemEtsy(id, env) {
     url: "https://www.etsy.com/listing/" + id,
   };
   if (j.state && j.state !== "active") out.gone = true;
+  const ra = j.shop ? Number(j.shop.review_average) : NaN, rc = j.shop ? Number(j.shop.review_count) : NaN;   /* v126 */
+  if (ra > 0 && ra <= 5 && rc > 0) out.seller = { stars: Math.round(ra * 10) / 10, n: Math.floor(rc) };
   return out;
 }
 async function itemSgw(id) {

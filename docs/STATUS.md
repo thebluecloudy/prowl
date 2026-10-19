@@ -440,8 +440,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `ccr-6eac07f4-ysl5io` | Claude | **Page v7.25 + worker v126**: Jellycat-style cards, outlined tags, popup sections, seller stars | Building. |
 
-Next free numbers: **page v7.25, worker v126**. Claim one here when you start.
+Next free numbers: **page v7.26, worker v127**. Claim one here when you start.
 
 ## What's next
 

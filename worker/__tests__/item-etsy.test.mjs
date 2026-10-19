@@ -90,3 +90,10 @@ test("/item sends Etsy to the Etsy reader; no Etsy keys means a plain 502", asyn
   assert.equal(r.status, 502); assert.equal(r.body.error, "upstream unreachable");
   assert.match(INDEX, /const WORKER_VERSION = "v(8[89]|9\d|[1-9]\d{2})";/);
 });
+
+test("v126: the shop's review average and count come along as seller stars", async () => {
+  const withStars = await load(async () => ok({ ...LISTING, shop: { shop_name: "OwlFinds", review_average: 4.8571, review_count: 312 } })).itemEtsy("1234567890", {});
+  assert.deepEqual(withStars.seller, { stars: 4.9, n: 312 });
+  const none = await load(async () => ok({ ...LISTING, shop: { shop_name: "OwlFinds", review_average: null, review_count: 0 } })).itemEtsy("1234567890", {});
+  assert.equal("seller" in none, false, "a shop with no reviews shows none");
+});
