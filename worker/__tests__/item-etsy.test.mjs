@@ -16,7 +16,7 @@ const constLine = (name) => { const m = new RegExp("^const " + name + " = [^\\n]
 
 function load(etsyGet) {
   const asked = [];
-  const names = ["hibidText", "money", "itemRef", "itemDesc", "itemImages", "etsyMade", "etsyEnglish", "itemEtsy", "itemRoute"];
+  const names = ["hibidText", "money", "itemRef", "itemDesc", "itemImages", "etsyMade", "itemFrom", "etsyEnglish", "itemEtsy", "itemRoute"];
   const src = [constLine("ITEM_TAGS"), "const itemImg = " + /const itemImg = ([^\n]+)/.exec(INDEX)[1],
     "const ITEM_CACHE_SECONDS = 86400, ITEM_PER_IP = 300, ITEM_IMAGES = 24, ITEM_DESC_MAX = 20000;"].concat(names.map(indexFn)).join("\n");
   const deps = {
@@ -140,4 +140,13 @@ test("an English shop's listing asks Etsy once, no translation call", async () =
     await L.itemEtsy("1234567890", {});
     assert.deepEqual(L.asked, ["listings/1234567890?includes=Images,Shop"], String(language));
   }
+});
+
+test("an Etsy shop outside the US says where it ships from; a US shop does not", async () => {
+  const L = load(etsyBy({ "listings/4596549900?includes=Images,Shop": ok({ ...DE, shop: { shop_name: "Weimahporzellan", shop_location_country_iso: "DE" } }) }));
+  assert.deepEqual((await L.itemEtsy("4596549900", {})).from, { cc: "DE", name: "Germany" });
+  const U = load(async () => ok({ ...LISTING, shop: { shop_name: "OwlFinds", shop_location_country_iso: "US" } }));
+  assert.equal("from" in (await U.itemEtsy("1234567890", {})), false);
+  const N = load(async () => ok(LISTING));
+  assert.equal("from" in (await N.itemEtsy("1234567890", {})), false);
 });

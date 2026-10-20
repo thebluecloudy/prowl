@@ -70,3 +70,69 @@ test('What it sold for on eBay opens eBay sold listings for the cleaned title', 
   assert.equal(a.getAttribute('target'), '_blank');
   await p.close();
 });
+
+// v7.29 (the owner, on a "Brad Keeler Style" flamingo): the card's Possible reproduction tag shows in the popup, with why
+async function reproPopup(item, tagged) {
+  const fetchImpl = (u) => /\/item\?url=/.test(String(u))
+    ? Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(item) })
+    : Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ items: [] }), text: () => Promise.resolve('') });
+  const p = loadPage({ fetchImpl, storage: { 'prowl.v36': { seen: true, hunts: [] } } });
+  await tick(60);
+  const cell = p.doc.createElement('div');
+  cell.className = 'sgw-cell';
+  cell.setAttribute('data-u', item.url);
+  cell.innerHTML = '<a class="sgw-card" href="#"><img alt=""><div class="sgw-m">eBay' + (tagged ? '<br><span class="sgw-repro">Possible reproduction</span>' : '') + '</div></a>';
+  p.$('.scout-app-wrapper').appendChild(cell);
+  cell.querySelector('a').click();
+  await tick(80);
+  return p;
+}
+const FLAMINGO = { title: 'Vtg 1950s Ceramic Brad Keeler Style Pink Flamingo Figurine 10” MCM Beachy FL', price: '$50.00', images: [],
+  description: '', condition: 'Used', aspects: [{ n: 'Type', v: 'Figurine' }], url: 'https://www.ebay.com/itm/123456789012' };
+
+test('a card tagged Possible reproduction says so in the popup, with the title words that make it one, and tells Fair price', async () => {
+  const p = await reproPopup(FLAMINGO, true);
+  const f = p.$('#otp-sheetB .pp-repro');
+  assert.ok(f, 'shown');
+  assert.match(f.querySelector('b').textContent, /Possible reproduction/);
+  assert.match(f.textContent, /“Brad Keeler Style” for a piece made to look like a maker’s work, usually not by them/);
+  assert.match(f.textContent, /maker’s mark in the photos/);
+  assert.match(p.$('#otp-sheetB .pp-fp').getAttribute('data-d'), /^Possible reproduction: Sellers use/);
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test('the reason quotes "reproduction" or "reissue" when the title says it, and falls back to what the check looks for', async () => {
+  let p = await reproPopup({ ...FLAMINGO, title: 'Shawnee corn king pitcher reissue' }, true);
+  assert.match(p.$('#otp-sheetB .pp-repro').textContent, /The title says “reissue”: not an original/);
+  await p.close();
+  p = await reproPopup({ ...FLAMINGO, title: 'McCoy pink flamingo planter' }, true);
+  assert.match(p.$('#otp-sheetB .pp-repro').textContent, /reads like a reproduction, a reissue or a lookalike/);
+  await p.close();
+});
+
+test('an untagged card has no reproduction note', async () => {
+  const p = await reproPopup(FLAMINGO, false);
+  assert.equal(p.$('#otp-sheetB .pp-repro'), null);
+  await p.close();
+});
+
+// v7.29 (the owner: "flag that it is international / german so that you know this before thinking about bidding")
+test('a listing from outside the US says where it ships from, and Fair price is told', async () => {
+  const p = await reproPopup({ ...FLAMINGO, from: { cc: 'DE', name: 'Germany' } }, false);
+  const f = p.$('#otp-sheetB .pp-intl');
+  assert.ok(f, 'shown');
+  assert.match(f.querySelector('b').textContent, /Ships from Germany/);
+  assert.match(f.textContent, /customs and import fees/);
+  assert.match(p.$('#otp-sheetB .pp-fp').getAttribute('data-d'), /^Ships from Germany \(international\)\. /);
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test('a US listing, or one with no country, has no ships-from note', async () => {
+  for (const from of [{ cc: 'US', name: 'United States' }, undefined, { cc: 'Germany' }]) {
+    const p = await reproPopup({ ...FLAMINGO, from }, false);
+    assert.equal(p.$('#otp-sheetB .pp-intl'), null, JSON.stringify(from));
+    await p.close();
+  }
+});

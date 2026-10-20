@@ -21,6 +21,7 @@
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
  *   v128: 2026-10-20. Etsy listing details in English when the seller wrote an English translation (the owner: a German
  *         shop's panther "is in english on etsy but shows up in german in the prowl app"); otherwise the shop's own text.
+ *         Etsy and eBay listing details carry from: { cc, name } when the shop or item is outside the US.
  *   v127: 2026-10-19. Visitors move to the admin (the owner: "shouldn't this be on admin only?"): GET /admin/api/usage answers
  *         14 days of people searching and searches plus where visitors came from (cfReferrers); GET /owner-stats is gone.
  *   v126: 2026-10-18. Seller stars (Matt, from Jellycat's stars and review count): eBay search results and /item carry
@@ -1671,6 +1672,8 @@ async function itemEbay(id, env) {
     if (age) { out.listed = age.listed; if (age.relisted) out.relisted = age.relisted; }
     const sel = ebaySeller(j);   /* v126 */
     if (sel) out.seller = sel;
+    const from = itemFrom(j.itemLocation && j.itemLocation.country);   /* v128 */
+    if (from) out.from = from;
     return out;
   } finally { clearTimeout(timer); }
 }
@@ -1681,6 +1684,15 @@ function etsyMade(w) {
   if (!w) return "";
   if (w === "made_to_order") return "made to order";
   return w.replace(/^before_/, "before ").replace(/_/g, "\u2013");
+}
+/* v128 (the owner, on a German Etsy shop: "flag that it is international / german so that you know this before thinking
+   about bidding"): where a listing ships from when that is outside the US, as { cc, name }. */
+function itemFrom(cc) {
+  cc = String(cc || "").trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(cc) || cc === "US") return null;
+  let name = cc;
+  try { name = new Intl.DisplayNames(["en"], { type: "region" }).of(cc) || cc; } catch (e) {}
+  return { cc: cc, name: String(name).slice(0, 60) };
 }
 async function etsyEnglish(j, env) {
   const lang = String(j.language || "");
@@ -1728,6 +1740,8 @@ async function itemEtsy(id, env) {
   if (j.state && j.state !== "active") out.gone = true;
   const ra = j.shop ? Number(j.shop.review_average) : NaN, rc = j.shop ? Number(j.shop.review_count) : NaN;   /* v126 */
   if (ra > 0 && ra <= 5 && rc > 0) out.seller = { stars: Math.round(ra * 10) / 10, n: Math.floor(rc) };
+  const from = itemFrom(j.shop && j.shop.shop_location_country_iso);   /* v128 */
+  if (from) out.from = from;
   return out;
 }
 async function itemSgw(id) {
