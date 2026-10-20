@@ -1,15 +1,26 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.33 / v129).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.34 / v130).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.33** | 402,502 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v129** | |
+| Page | **v7.34** | 402,502 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v130** | |
 
 Recently shipped, newest first:
+
+- **v7.34 / v130: one piece on several sites, with each site's price** (the owner, on a Rookwood owl at $190 on Etsy,
+  $211 on Poshmark and on eBay: "show that it is listed in 2 other places, and they have different prices. say someone
+  doesn't trust poshmark, but would buy from etsy, or if lowest price need to include the shipping").
+  - Worker `hunt.js`: a long title (4+ meaningful words) on two sites is the same piece up to 60% apart
+    (`HUNT_XPOST_GAP`); short titles still need 6%. Copies are grouped, the cheapest leads (one Best pick spot, not
+    three), and every copy carries `also`: the other sites with price and link. eBay listings carry `ship` (free or
+    $X, from eBay's search; the other sites do not say). `/hunt` cache key v=2.
+  - Page: a card says "Also on eBay $205.00 + $12.50 shipping · Poshmark $211.00"; the popup lists each site with its
+    price, shipping when known and a View link ("Shipping is extra unless shown"); Fair price is told.
+  - Tests: `worker/__tests__/hunt.test.mjs`, `ebay-ship.test.mjs`, `__tests__/page/cross-post-v734.test.mjs`.
 
 - **v7.33: the popup's Price check, readable and untagged** (the owner, on an Etsy Rookwood vase: "Best pick is
   overlapping price check ... font for price check seems different and too small to read on phone"). The price check
@@ -571,7 +582,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.34, worker v130**. Claim one here when you start.
+Next free numbers: **page v7.35, worker v131**. Claim one here when you start.
 
 ## What's next
 

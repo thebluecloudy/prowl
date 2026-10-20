@@ -13,7 +13,7 @@ function indexFn(name) {
 }
 const deps = { EBAY_ITEM_URL: "https://www.ebay.com/itm/", timeLeft: () => "" };
 const keys = Object.keys(deps);
-const { ebaySeller, ebayItem } = new Function(...keys, ["money", "ebayMoney", "ebaySale", "ebayAge", "ebaySeller", "ebayItem"].map(indexFn).join("") +
+const { ebaySeller, ebayItem } = new Function(...keys, ["money", "ebayMoney", "ebaySale", "ebayAge", "ebaySeller", "ebayShip", "ebayItem"].map(indexFn).join("") +
   "\nreturn { ebaySeller, ebayItem };")(...keys.map((k) => deps[k]));
 const BASE = { title: "Haeger panther planter", itemWebUrl: "https://www.ebay.com/itm/1", legacyItemId: "123456789012", price: { value: "40.00", currency: "USD" }, buyingOptions: ["FIXED_PRICE"] };
 

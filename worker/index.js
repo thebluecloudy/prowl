@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v130: 2026-10-20. Cross-posts (the owner: one Rookwood owl at $190 on Etsy, $211 on Poshmark, and on eBay): a long
+ *         title on two sites is one piece up to 60% apart; every copy in /hunt carries also: the other sites with their
+ *         price, and eBay listings carry ship (free or $X). /hunt cache key v=2.
  *   v129: 2026-10-20. ShopGoodwill listings keep only titles with every word of the hunt (the owner: "Brookwood" came up
  *         for Rookwood); see sgwExact.
  *   v128: 2026-10-20. Etsy listing details in English when the seller wrote an English translation (the owner: a German
@@ -437,7 +440,7 @@ import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-const WORKER_VERSION = "v129";
+const WORKER_VERSION = "v130";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -794,6 +797,16 @@ function ebaySeller(it) {
   if (!(pct >= 0 && pct <= 100) || s.feedbackPercentage === "" || s.feedbackPercentage == null) return null;
   return { pct: Math.round(pct * 10) / 10, n: n >= 0 && isFinite(n) ? Math.floor(n) : 0 };
 }
+/* v130 (the owner: "if lowest price need to include the shipping"): eBay's search says what shipping costs; the other
+   marketplaces do not, so only eBay listings carry it. "free", "$12.50", or "" when eBay does not say. */
+function ebayShip(it) {
+  const o = it && Array.isArray(it.shippingOptions) ? it.shippingOptions[0] : null;
+  if (!o) return "";
+  if (o.shippingCostType === "CALCULATED" && !o.shippingCost) return "";
+  const v = o.shippingCost ? Number(o.shippingCost.value) : NaN;
+  if (v === 0) return "free";
+  return v > 0 && isFinite(v) && (!o.shippingCost.currency || o.shippingCost.currency === "USD") ? "$" + v.toFixed(2) : "";
+}
 function ebayItem(it) {
   if (!it || !it.title || !it.itemWebUrl) return null;
   const opts = it.buyingOptions || [];
@@ -818,6 +831,8 @@ function ebayItem(it) {
   if (age) { out.listed = age.listed; if (age.relisted) out.relisted = age.relisted; }
   const sel = ebaySeller(it);   /* v126 */
   if (sel) out.seller = sel;
+  const ship = ebayShip(it);   /* v130 */
+  if (ship) out.ship = ship;
   if (auction) {
     out.bids = Number(it.bidCount) || 0;
     const tl = timeLeft(it.itemEndDate);
@@ -5835,7 +5850,7 @@ async function huntOne(env, source, term, cl) {
       else row.items = (items || []).slice(0, HUNT_PER_SOURCE).filter(x => x && /^https:\/\//.test(x.url || "")).map(x => ({
         title: String(x.title || "").slice(0, 160), price: String(x.price || ""), priceN: huntPriceN(x.price), url: x.url,
         image: /^https:\/\//.test(x.image || "") ? x.image : "", src: source, bids: Number(x.bids) || 0,
-        time_left: String(x.time_left || ""), where: String(x.where || "").slice(0, 60) }));
+        time_left: String(x.time_left || ""), where: String(x.where || "").slice(0, 60), ship: String(x.ship || "").slice(0, 24) }));   /* v130: ship */
     }
   } catch (e) { row.note = "unreachable"; }
   row.ms = Date.now() - t0;
@@ -5845,7 +5860,7 @@ async function huntRoute(request, env, url, origin) {
   const term = String(url.searchParams.get("q") || "").replace(/\s+/g, " ").trim().slice(0, 80);
   if (term.length < 2) return json({ error: "q required" }, 400, origin);
   const cl = String(url.searchParams.get("cl") || "").toLowerCase().replace(/[^a-z]/g, "").slice(0, 20);
-  const key = url.origin + "/hunt?q=" + encodeURIComponent(term.toLowerCase()) + "&cl=" + cl + "&v=1";
+  const key = url.origin + "/hunt?q=" + encodeURIComponent(term.toLowerCase()) + "&cl=" + cl + "&v=2";   /* v130: also, ship */
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("hu:" + ipKey(request.headers.get("CF-Connecting-IP")), HUNT_PER_IP))) return json({ error: "slow down" }, 429, origin);

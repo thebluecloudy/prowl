@@ -72,3 +72,47 @@ test("index.js wires /hunt with a fixed Craigslist host, a per-visitor cap and a
   assert.match(INDEX, /HUNT_CACHE_SECONDS = 900/);
   assert.match(INDEX, /coolUntil\(source\)\) row\.note/);
 });
+
+/* v130 (the owner: one Rookwood owl at $190 on Etsy, $211 on Poshmark and on eBay: "show that it is listed in 2 other
+   places, and they have different prices ... if lowest price need to include the shipping") */
+test("one piece on three sites at different prices is one group: the cheapest leads, every copy lists the others", () => {
+  const O = "Rookwood Pottery ceramic owl Trinket pin ashtray", title = 'Rookwood Pottery ceramic owl Trinket pin ashtray 6" Cream';
+  const rows = [
+    { source: "etsy", status: 200, note: "", items: [it("etsy", title, "$190.00")] },
+    { source: "poshmark", status: 200, note: "", items: [it("poshmark", title, "$211.00")] },
+    { source: "ebay", status: 200, note: "", items: [it("ebay", "Rookwood Pottery Ceramic Owl Trinket Pin Ashtray Cream 6 in", "$205.00", { ship: "$12.50" })] }
+  ];
+  const out = huntCombine(rows, O);
+  const all = out.rows.flatMap(r => r.items);
+  const etsy = all.find(x => x.src === "etsy"), posh = all.find(x => x.src === "poshmark"), ebay = all.find(x => x.src === "ebay");
+  assert.equal(out.picks.length, 1, "the same owl takes one Best pick spot, not three");
+  assert.equal(out.picks[0].src, "etsy", "the cheapest copy leads");
+  assert.equal(posh.dupeOf, etsy.url);
+  assert.equal(ebay.dupeOf, etsy.url);
+  assert.equal(out.dupes.length, 2);
+  assert.deepEqual(etsy.also.map(a => [a.src, a.price, a.ship || ""]), [["ebay", "$205.00", "$12.50"], ["poshmark", "$211.00", ""]], "cheapest first, eBay's shipping kept");
+  assert.deepEqual(posh.also.map(a => a.src), ["etsy", "ebay"]);
+  assert.ok(posh.also.every(a => /^https:\/\//.test(a.url)));
+});
+
+test("a short, generic title only counts as a cross-post when the prices are within 6%", () => {
+  const rows = [
+    { source: "etsy", status: 200, note: "", items: [it("etsy", "Ceramic panther", "$20.00")] },
+    { source: "ebay", status: 200, note: "", items: [it("ebay", "Ceramic panther", "$30.00")] },
+    { source: "poshmark", status: 200, note: "", items: [it("poshmark", "Ceramic panther", "$20.50")] }
+  ];
+  const out = huntCombine(rows, T);
+  const ebay = out.rows.flatMap(r => r.items).find(x => x.src === "ebay");
+  assert.equal(ebay.dupeOf, undefined, "$30 is a different panther");
+  assert.equal(ebay.also, undefined);
+  assert.equal(out.dupes.length, 1, "$20 and $20.50 are the same one");
+});
+
+test("a long title more than 60% apart is not the same piece", () => {
+  const title = "Royal Haeger black ceramic panther TV lamp planter";
+  const rows = [
+    { source: "etsy", status: 200, note: "", items: [it("etsy", title, "$40.00")] },
+    { source: "ebay", status: 200, note: "", items: [it("ebay", title, "$90.00")] }
+  ];
+  assert.equal(huntCombine(rows, T).dupes.length, 0);
+});

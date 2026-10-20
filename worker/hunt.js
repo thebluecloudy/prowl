@@ -3,10 +3,15 @@
      huntCombine(rows, term) -> { median, picks, rows, dupes }
    1. Relevance: every meaningful query word (or a synonym, plurals folded) must be in the title, and no noise phrase.
    2. Cross-posts: the same title words (80%) on two different sites with prices within 6%; the dearer one is marked.
+      v130 (the owner, on a Rookwood owl at $190 on Etsy and $211 on Poshmark): sellers price each site for its fees,
+      so a long title (4+ meaningful words) is the same piece up to 60% apart. Copies are grouped, the cheapest leads,
+      and every copy carries `also`: the other sites with their price (and shipping when the site says), so a buyer
+      can pick the site they trust or the lowest total.
    3. Best picks: top 3 by cheap-vs-median, a quiet live auction, a lot or pair, a photo.
    4. Every source keeps a row with a note, and the login-only sites are listed as gated, so a hunt reads complete. */
 
 export const HUNT_PICKS = 3;
+export const HUNT_XPOST_GAP = 1.6;   /* v130: a long title on two sites is one piece up to 60% apart */
 
 /* Sites Prowl can't read without the visitor's own login. Shown as a row, never fetched. */
 export const HUNT_GATED = {
@@ -100,17 +105,31 @@ export function huntCombine(rows, term) {
     r.items.forEach((it) => { it.key = huntKey(it.title); all.push(it); });
   });
 
-  const dupes = [];
+  const dupes = [], up = all.map((_, i) => i);
+  const root = (i) => { while (up[i] !== i) i = up[i] = up[up[i]]; return i; };
   for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
     const a = all[i], b = all[j];
     if (a.src === b.src || !a.priceN || !b.priceN) continue;
-    if (Math.abs(a.priceN - b.priceN) / Math.max(a.priceN, b.priceN) > 0.06) continue;
     if (!huntSimilar(a.key, b.key)) continue;
-    const dear = a.priceN > b.priceN ? a : b, cheap = dear === a ? b : a;
-    if (dear.dupeOf) continue;
-    dear.dupeOf = cheap.url;
-    dupes.push([cheap.url, dear.url]);
+    const gap = Math.max(a.priceN, b.priceN) / Math.min(a.priceN, b.priceN);
+    if (gap > 1.06 && !(gap <= HUNT_XPOST_GAP && Math.min(a.key.split(" ").length, b.key.split(" ").length) >= 4)) continue;
+    up[root(j)] = root(i);
   }
+  const groups = {};
+  all.forEach((it, i) => { const r = root(i); (groups[r] = groups[r] || []).push(it); });
+  Object.keys(groups).forEach((g) => {
+    const m = groups[g];
+    if (m.length < 2) return;
+    m.sort((x, y) => x.priceN - y.priceN);
+    m.forEach((it, k) => {
+      if (k) { it.dupeOf = m[0].url; dupes.push([m[0].url, it.url]); }
+      it.also = m.filter((o) => o !== it).slice(0, 4).map((o) => {
+        const a = { src: o.src, price: o.price, url: o.url };
+        if (o.ship) a.ship = o.ship;
+        return a;
+      });
+    });
+  });
 
   const prices = all.map((x) => x.priceN).filter((n) => n > 0).sort((x, y) => x - y);
   const median = prices.length ? prices[Math.floor(prices.length / 2)] : 0;
