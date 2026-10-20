@@ -503,8 +503,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.30**: five tabs (Hunt, Daily, Flock, Near me, Den; Goodwill becomes a pill in Hunt), Near me opens the map, Daily shows only what is new | Building. |
 
-Next free numbers: **page v7.30, worker v129**. Claim one here when you start.
+Next free numbers: **page v7.31, worker v129**. Claim one here when you start.
 
 ## What's next
 
