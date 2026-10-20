@@ -111,7 +111,7 @@ test('Around you: the shops around the phone, with OPEN NOW / CLOSED worked out 
   assert.equal(cards[0].href, PLACES[0].url, 'one tap opens Google Maps');
   assert.equal(cards[0].target, '_blank');
   assert.equal(cards[1].querySelector('.nr-st').textContent, 'CLOSED');
-  assert.equal(cards[1].querySelector('.nr-h').textContent, 'Closed');
+  assert.match(cards[1].querySelector('.nr-h').textContent, /^Closed today · opens (Sun|Mon|Tue|Wed|Thu|Fri|Sat) 10 AM$/, 'v7.49: when it opens next');
   assert.equal(cards[2].querySelector('.nr-st'), null, 'no hours, no claim');
   assert.equal(cards[2].querySelector('.nr-h').textContent, 'Hours not listed');
   assert.ok(cards[2].querySelector('.nr-ph.nr-nop'), 'a placeholder where there is no photo');

@@ -1,16 +1,24 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.48 / v153).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.49 / v153).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.48** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.49** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v153** | |
 
 Recently shipped, newest first:
 
+- **v7.49: NEAR ME for the road** (the owner: "1-4" of the Near me suggestions). Around you shows how far each shop
+  is ("1.4 mi", "< 0.1 mi" next door) with a **Biggest first / Closest first** switch, remembered in the new key
+  `prowl.nearSort`; the map numbers its pins in the order shown. On a road trip for today each stop is open or closed
+  for when you would get there, driving straight from the phone's spot ("Get there ~11:40 AM · closed by then"),
+  estimated on the page from straight-line miles x 1.25 at the trip's own average speed; other days keep that day's
+  hours. Every Around-you row, every stop and the final stop has a bold **Directions** button (Skip sits under it).
+  Today's hours read at a glance: "Open until 6 PM", "Opens 10 AM", "Opens tomorrow 11 AM", "Closed today · opens Fri
+  10 AM" (`nrNext`, `nrNextText`). Page only, no worker change. Tests: `__tests__/page/near-road-v749.test.mjs`.
 - **v7.48 / v153: the shop you stand in is always asked for** (the owner, back in Maumee Antique Mall with Antiques on:
   still missing). Asked fresh at the mall's own spot, Google's relevance answer to "antique stores and antique malls"
   had the mall on some asks and not others (antiques + flea: first; antiques + records, or the usual three: missing),
@@ -841,7 +849,6 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `ccr-0de21c46-yzs839` | Claude | **v7.49**: NEAR ME for the road: miles on Around you with Biggest/Closest, open or closed when you get there on today's trip, a Go button on every stop, hours as "Open until 6 PM" | Building. |
 
 Next free numbers: **page v7.50, worker v154**. Claim one here when you start.
 
