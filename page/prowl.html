@@ -2029,6 +2029,12 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper #otp-nrAround>#otp-denLocal>.nearblk:first-of-type{margin-top:0;padding-top:0;border-top:0}
 .scout-app-wrapper .nr-live:not(:empty){margin-bottom:18px;padding-bottom:4px;border-bottom:1px solid var(--ln)}
 .scout-app-wrapper .nr-refresh{margin-left:auto;min-height:30px;padding:6px 11px;font-size:12.5px}
+.scout-app-wrapper .nr-cats{margin:0 0 4px}
+.scout-app-wrapper .nr-cats .hubc{min-height:32px;padding:7px 11px;font-size:12.5px}
+.scout-app-wrapper .nr-row{display:flex;align-items:stretch;gap:6px}
+.scout-app-wrapper .nr-row .nr-card{flex:1 1 auto;min-width:0}
+.scout-app-wrapper .nr-skip{flex:0 0 auto;border:1px solid var(--l2);background:transparent;color:var(--mu);border-radius:10px;padding:0 9px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
+.scout-app-wrapper .nr-skipped{margin:0 0 10px;font-size:13px;color:var(--mu)}
 .scout-app-wrapper .nr-foot .b{padding-left:8px;padding-right:8px;font-size:13px}
 .scout-app-wrapper .nr-list,.scout-app-wrapper .nr-nest,.scout-app-wrapper .nr-findlist,.scout-app-wrapper .nr-triplist{display:flex;flex-direction:column;gap:8px}
 .scout-app-wrapper .nr-card{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--l2);border-radius:12px;background:var(--cd2);color:var(--ink);text-decoration:none;min-height:64px;position:relative}
@@ -3006,6 +3012,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   </div>
   <div id="otp-nearBody">
     <div class="denPane" id="otp-nrAround">
+      <div class="hubbar nr-cats" id="otp-nrCatsA" role="group" aria-label="What to look for"></div>
       <div class="nr-live" id="otp-nrLive"></div>
       <div class="denPane" id="otp-denLocal">
       <details class="lochelp" id="otp-locHelp">
@@ -3054,6 +3061,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <div class="denPane" id="otp-nrTrip" hidden>
       <h3 class="nearh">Road trip</h3>
       <p class="nearp">Where are you headed? Prowl maps the drive from where you are and lists the antique, vintage and thrift shops worth a stop on the way, in order, with their hours for the day. Nobody sees where you started from, only the town.</p>
+      <div class="hubbar nr-cats" id="otp-nrCats" role="group" aria-label="What to look for"></div>
       <form class="addrow" id="otp-nrForm">
         <input id="otp-nrTo" type="text" placeholder="Where to? A town, a shop or an address" aria-label="Destination" autocomplete="off" enterkeyhint="go">
         <button type="submit" id="otp-nrGo">Build trip</button>
@@ -3163,7 +3171,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.37';
+var PROWL_VERSION='v7.38';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -9291,7 +9299,40 @@ var near=$('#otp-near'),NR={mode:'around',pos:null,posAt:0,day:'',built:null,vie
 var TRIP_KEY='prowl.trip';   /* v7.36: the shared trip you are on, {id,name,day,stops}: new key, outside the backup */
 function nrTripGet(){try{var v=JSON.parse(localStorage.getItem(TRIP_KEY)||'null');return v&&v.id?v:null}catch(e){return null}}
 function nrTripSet(t){try{if(t)localStorage.setItem(TRIP_KEY,JSON.stringify(t));else localStorage.removeItem(TRIP_KEY)}catch(e){}}
-function nrH(){var h={},k=fbOwnerKey();if(k)h['X-Prowl-Owner']=k;return window.prowlAuth?window.prowlAuth(h):h}
+/* v7.38 (the owner: "maybe someone wants to see records, toys, antique or thrift stores"; "let me at least discard
+   ones i don't want to go to"): the kinds to look for are chips on both tabs (prowl.nearCats, the spec's three by
+   default), and every stop has Skip: a skipped place (prowl.nearSkip, by place id, so it stays skipped on later trips)
+   leaves the list and the Maps link; the next shop in its town steps up as the anchor. Both keys are new and outside
+   the backup. */
+var NR_CATS=[['antiques','Antiques'],['vintage','Vintage'],['thrift','Thrift'],['records','Records'],['books','Books'],['toys','Toys'],['flea','Flea markets']],NR_CATS_DEF=['antiques','vintage','thrift'];
+var CATS_KEY='prowl.nearCats',SKIP_KEY='prowl.nearSkip';
+function nrCatsGet(){var v=null,out=[],i;try{v=JSON.parse(localStorage.getItem(CATS_KEY)||'null')}catch(e){}if(v&&v.length)for(i=0;i<NR_CATS.length;i++)if(v.indexOf(NR_CATS[i][0])!==-1)out.push(NR_CATS[i][0]);return out.length?out:NR_CATS_DEF.slice()}
+function nrCatsSet(a){try{localStorage.setItem(CATS_KEY,JSON.stringify(a))}catch(e){}}
+function nrCatsQ(){return nrCatsGet().join(',')}
+function rNrCats(){var on=nrCatsGet(),a=$('#otp-nrCats'),b=$('#otp-nrCatsA'),h=NR_CATS.map(function(c){var o=on.indexOf(c[0])!==-1;return '<button type="button" class="hubc'+(o?' on':'')+'" data-nrcat="'+c[0]+'" aria-pressed="'+o+'">'+c[1]+'</button>'}).join('');if(a)a.innerHTML=h;if(b)b.innerHTML=h}
+function nrCatToggle(k){var on=nrCatsGet(),i=on.indexOf(k);if(i===-1)on.push(k);else if(on.length>1)on.splice(i,1);else{toast('Keep at least one kind.',2000);return}nrCatsSet(on);rNrCats();if(NR.mode==='around'){NR.around=null;nrAroundLoad(true)}else if(NR.built&&NR.built.to)nrBuild(NR.built.to)}
+function nrSkipGet(){var v=null;try{v=JSON.parse(localStorage.getItem(SKIP_KEY)||'null')}catch(e){}return v&&typeof v==='object'&&!v.length?v:{}}
+function nrSkipSet(o){try{localStorage.setItem(SKIP_KEY,JSON.stringify(o))}catch(e){}}
+function nrSkip(id){var o=nrSkipGet(),k=Object.keys(o);if(!id)return;if(k.length>=300)delete o[k[0]];o[id]=1;nrSkipSet(o);nrRedraw()}
+function nrUnskipAll(){nrSkipSet({});nrRedraw()}
+function nrRedraw(){if(NR.view)nrOpenTrip(NR.view,false);else if(NR.built)nrDrawTrip(NR.built,{})}
+function nrCopy(o){var r={},k;for(k in o)if(Object.prototype.hasOwnProperty.call(o,k))r[k]=o[k];return r}
+/* the stops left after the skips: a skipped anchor hands its town to the next shop there */
+function nrVisible(t){
+  var sk=nrSkipGet(),out=[],hid=0,i,j,a,list,keep,o;
+  for(i=0;i<(t.stops||[]).length;i++){
+    a=t.stops[i];list=[a].concat(a.nested||[]);keep=[];
+    for(j=0;j<list.length;j++){if(list[j]&&sk[list[j].id])hid++;else if(list[j])keep.push(list[j])}
+    if(!keep.length)continue;
+    o=nrCopy(keep[0]);o.nested=keep.slice(1);out.push(o);
+  }
+  return {stops:out,hidden:hid};
+}
+function nrMapsUrl(from,anchors,dest){var wp=anchors.slice(0,9).map(function(a){return a.name+(a.town?', '+a.town:'')}).join('|');return 'https://www.google.com/maps/dir/?api=1&travelmode=driving&origin='+E(from||'')+'&destination='+E(dest||'')+(wp?'&waypoints='+E(wp):'')}
+function nrMapsFor(t){if(!t)return '';var d=t.dest||{};if(!d.name)return t.maps||'';var from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||'');return nrMapsUrl(from,nrVisible(t).stops,d.name+(d.town?', '+d.town:''))}
+function nrH(){var h={},k=fbOwnerKey(),em=mGet('alertEmail'),tk=mGet('alertTok');if(k)h['X-Prowl-Owner']=k;if(em&&tk){h['X-Prowl-Email']=em;h['X-Prowl-Tok']=tk}return window.prowlAuth?window.prowlAuth(h):h}   /* v7.38: the alerts member too */
+/* v7.38 (the owner: "it took me to the den and tried to make me sign in, but i am pro"): a Prowl Alerts sign-in is a sign-in */
+function nrSigned(){return !!((window.prowlSess&&window.prowlSess())||(mGet('alertTok')&&mGet('alertEmail')))}
 function nrFetch(path,opt){
   opt=opt||{};var h=nrH(),init={method:opt.method||'GET',headers:h,cache:'no-store'};
   if(opt.body){h['Content-Type']='application/json';init.body=JSON.stringify(opt.body)}
@@ -9357,7 +9398,7 @@ function nrAroundLoad(force){
   el.innerHTML='<p class="nearp">Finding the shops around you…</p>';
   nrPos(function(pos,err){
     if(!pos){el.innerHTML='<p class="nearp">'+(err==='denied'?'Location is off for this site, so the shops around you cannot be listed. The map searches below still work.':'Your location could not be read just now. The map searches below still work.')+' '+nrRefreshBtn()+'</p>';return}
-    nrFetch('/near?lat='+pos.lat.toFixed(4)+'&lng='+pos.lng.toFixed(4)).then(function(r){
+    nrFetch('/near?lat='+pos.lat.toFixed(4)+'&lng='+pos.lng.toFixed(4)+'&cats='+E(nrCatsQ())).then(function(r){
       if(r.status===503){el.innerHTML='';return}   /* not switched on yet: the map searches below carry it */
       if(!r.ok){el.innerHTML='<p class="nearp">The shops around you could not be listed just now. The map searches below still work.</p>';return}
       NR.aroundAt=Date.now();NR.around=r.j.places||[];nrAroundDraw();
@@ -9379,7 +9420,7 @@ function nrBuild(to){
   out.innerHTML='<p class="nearp nr-wait">Mapping the drive to <b>'+esc(to)+'</b> and the shops along it…</p>';nrFoot(null);
   nrPos(function(pos,err){
     if(!pos){NR.busy=false;out.innerHTML='<p class="nearp">'+(err==='denied'?'Location is off for this site, so the trip has no starting point. Turn it on and try again.':'Your location could not be read just now, so the trip has no starting point. Try again in a moment.')+'</p>';return}
-    nrFetch('/trip?to='+E(to)+'&lat='+pos.lat.toFixed(4)+'&lng='+pos.lng.toFixed(4)+'&day='+E(NR.day)).then(function(r){
+    nrFetch('/trip?to='+E(to)+'&lat='+pos.lat.toFixed(4)+'&lng='+pos.lng.toFixed(4)+'&day='+E(NR.day)+'&cats='+E(nrCatsQ())).then(function(r){
       NR.busy=false;
       if(r.status===503){out.innerHTML='<p class="nearp">Road trips are not switched on yet. For now, search the map there: <a class="b" href="'+esc('https://www.google.com/maps/search/?api=1&query='+E('antique stores near '+to))+'" target="_blank" rel="noopener noreferrer">Antique stores near '+esc(to)+'</a></p>';return}
       if(r.status===404){out.innerHTML='<p class="nearp">No driving route to <b>'+esc(to)+'</b> could be found. Try the town’s name, or a street address.</p>';return}
@@ -9390,13 +9431,15 @@ function nrBuild(to){
 }
 /* the stop list, in drive order: anchors numbered, the rest of each town nested, the destination last */
 function nrDrawTrip(t,o){
-  var out=$('#otp-nrOut'),h='',i,a,wd=nrWeekday(t.day),day=t.day||'',from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),dest=t.dest||{};
+  var out=$('#otp-nrOut'),h='',i,a,wd=nrWeekday(t.day),day=t.day||'',from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),dest=t.dest||{},vis=nrVisible(t),stops=vis.stops;
+  function row(p,cls){return '<div class="nr-row">'+nrCard(p,day,cls)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'">Skip</button></div>'}
   h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):'')+'</p>'+
      '<p class="nearp">'+(t.route&&t.route.km?nrMiles(t.route.km)+' mi · '+nrDur(t.route.min||0)+' of driving · ':'')+'Trip day '+NR_DAYS[wd]+'<span id="otp-nrMembers">'+(o.members?' · '+o.members+' on this trip':'')+'</span></p></div>';
-  if(!t.stops||!t.stops.length)h+='<p class="nearp nr-empty">No antique, vintage or thrift shops worth a stop sit inside this route’s corridor. The drive itself is ready: open it in Maps below.</p>';
+  if(vis.hidden)h+='<p class="nr-skipped">'+vis.hidden+' skipped · <button type="button" class="sgw-ml" id="otp-nrUnskip">Show them again</button></p>';
+  if(!stops.length)h+='<p class="nearp nr-empty">'+(vis.hidden?'Every stop on this route is skipped.':'No shops of the kinds you picked are worth a stop inside this route’s corridor.')+' The drive itself is ready: open it in Maps below.</p>';
   else{
     h+='<ol class="nr-stops">';
-    for(i=0;i<t.stops.length;i++){a=t.stops[i];h+='<li class="nr-stop">'+nrCard(a,day,'nr-anchor')+(a.nested&&a.nested.length?'<div class="nr-nest"><p class="nr-nesth">Also in '+esc((a.town||'town').split(',')[0])+'</p>'+a.nested.map(function(n){return nrCard(n,day,'nr-sub')}).join('')+'</div>':'')+'</li>'}
+    for(i=0;i<stops.length;i++){a=stops[i];h+='<li class="nr-stop">'+row(a,'nr-anchor')+(a.nested&&a.nested.length?'<div class="nr-nest"><p class="nr-nesth">Also in '+esc((a.town||'town').split(',')[0])+'</p>'+a.nested.map(function(n){return row(n,'nr-sub')}).join('')+'</div>':'')+'</li>'}
     h+='</ol>';
   }
   if(dest.name)h+='<div class="nr-dest"><p class="nr-nesth">Final stop</p>'+nrCard(dest,day,'nr-anchor')+'</div>';
@@ -9407,7 +9450,7 @@ function nrFoot(t){
   var f=$('#otp-nrFoot'),m=$('#otp-nrMaps'),s=$('#otp-nrShare'),hb=$('#otp-nrHere');if(!f||!m||!s)return;
   if(hb)hb.hidden=!t||!t.dest||!t.dest.name;
   if(!t||!t.maps||NR.mode!=='trip'){f.hidden=true;return}
-  f.hidden=false;m.href=t.maps;
+  f.hidden=false;m.href=nrMapsFor(t)||t.maps;
   if(NR.view){s.hidden=!NR.view.org;s.textContent='SHARE'}else{s.hidden=false;s.textContent='SHARE'}
 }
 /* v7.37 (the owner: "each time i visit a location, i may want to rebuild"): FROM HERE reads where you stand now and
@@ -9434,10 +9477,10 @@ function nrHere(){
 function nrSignin(){var e2;try{e2=new Event('prowl-signin')}catch(x){e2=document.createEvent('Event');e2.initEvent('prowl-signin',true,true)}closeNear();document.dispatchEvent(e2)}
 /* SHARE: on a built trip, keep it for the group (a store sign-in; Pro is the worker's call); on your own kept trip, add a member */
 function nrShare(){
-  if(!window.prowlSess||!window.prowlSess()){toast('Sign in to your Owl & Twig account to share a trip with your group.',3600);nrSignin();return}
+  if(!nrSigned()){toast('Sign in to Prowl to share a trip with your group.',3600);nrSignin();return}
   if(NR.view){var row=$('#otp-nrShareRow');if(row){row.hidden=!row.hidden;if(!row.hidden){var inp=$('#otp-nrEmail');if(inp)try{inp.focus()}catch(e){}}}return}
   var b=NR.built;if(!b||NR.busy||!NR.pos)return;NR.busy=true;
-  nrFetch('/trips',{method:'POST',body:{to:b.to,lat:NR.pos.lat,lng:NR.pos.lng,day:NR.day}}).then(function(r){
+  nrFetch('/trips',{method:'POST',body:{to:b.to,lat:NR.pos.lat,lng:NR.pos.lng,day:NR.day,cats:nrCatsQ()}}).then(function(r){
     NR.busy=false;
     if(r.status===401){toast('Sign in to your Owl & Twig account to share a trip.',3600);nrSignin();return}
     if(r.status===403){toast('Group trips come with Prowl Pro. <a href="/products/prowl-pro">Try it free for a month</a>',5200);return}
@@ -9460,7 +9503,7 @@ function nrOpenTrip(v,fresh){
 }
 function nrTripsLoad(){
   var el=$('#otp-nrTrips');if(!el)return;
-  if(!window.prowlSess||!window.prowlSess()){el.innerHTML='';return}
+  if(!nrSigned()){el.innerHTML='';return}
   if(NR.trips){nrTripsDraw();return}
   nrFetch('/trips').then(function(r){if(!r.ok){el.innerHTML='';return}NR.trips=r.j.trips||[];nrTripsDraw()});
 }
@@ -9529,7 +9572,7 @@ function nrMode(m){
 function openNear(){
   if(!near||near.classList.contains('on'))return;
   if(den.classList.contains('on'))closeDen();if(dw.classList.contains('on'))closeDw();if(pho&&pho.classList.contains('on'))closePhoto();
-  NR.lf=document.activeElement;near.hidden=false;rDenLocal();nrMode(NR.mode);
+  NR.lf=document.activeElement;near.hidden=false;rDenLocal();rNrCats();nrMode(NR.mode);
   requestAnimationFrame(function(){sc.classList.add('on');near.classList.add('on')});
   var c=$('#otp-nearClose');if(c)c.focus();
 }
@@ -9545,6 +9588,9 @@ if(near){
   $('#otp-nrHere').addEventListener('click',nrHere);
   near.addEventListener('click',function(e){
     if(e.target.closest&&e.target.closest('#otp-nrRefresh')){NR.pos=null;NR.around=null;nrAroundLoad(true);return}   /* v7.37 */
+    var cat=e.target.closest&&e.target.closest('[data-nrcat]');if(cat){nrCatToggle(cat.getAttribute('data-nrcat'));return}   /* v7.38 */
+    var sk=e.target.closest&&e.target.closest('[data-nrskip]');if(sk){e.preventDefault();nrSkip(sk.getAttribute('data-nrskip'));return}
+    if(e.target.closest&&e.target.closest('#otp-nrUnskip')){nrUnskipAll();return}
     var b=e.target.closest&&e.target.closest('[data-nrtrip]');
     if(b){var id=b.getAttribute('data-nrtrip');if(NR.busy)return;NR.busy=true;b.disabled=true;nrFetch('/trips/'+E(id)).then(function(r){NR.busy=false;b.disabled=false;if(!r.ok){toast('That trip could not be opened just now.',2800);return}nrOpenTrip(r.j,false)});return}
     var ad=e.target.closest&&e.target.closest('#otp-nrAdd');

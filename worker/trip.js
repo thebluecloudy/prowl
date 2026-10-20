@@ -17,8 +17,21 @@ export const TRIP_DAYS_MAX = 14;         /* a trip day may be at most this far a
 export const CLUSTER_WALK_KM = 0.6;      /* shops this close are one walkable cluster even across a town line */
 export const CORRIDOR_STEP_KM = 50;      /* the corridor is searched in circles this far apart ... */
 export const CORRIDOR_RADIUS_M = 30000;  /* ... each this wide (Google's circle bias caps at 50 km); one search a circle */
-export const TRIP_QUERY = "antique malls, antique stores, vintage stores and thrift stores";
-export const NEAR_QUERIES = ["antique stores and antique malls", "vintage stores and thrift stores"];
+/* v135 (the owner: "maybe someone wants to see records, toys, antique or thrift stores"): what to look for, as the
+   chips on the page. The default is the spec's three. One Google text query a circle carries every picked kind. */
+export const CATS = { antiques: "antique stores and antique malls", vintage: "vintage stores", thrift: "thrift stores", records: "record stores", books: "used book stores", toys: "vintage toy and collectibles shops", flea: "flea markets" };
+export const CATS_DEFAULT = ["antiques", "vintage", "thrift"];
+export function catsParse(s) {
+  const want = String(s || "").toLowerCase().split(/[\s,]+/).filter(Boolean), out = Object.keys(CATS).filter((k) => want.indexOf(k) !== -1);
+  return out.length ? out : CATS_DEFAULT.slice();
+}
+/* the picked kinds as n query strings (Around You asks twice, a trip circle once) */
+export function catsQueries(cats, n) {
+  const phrases = catsParse(cats.join ? cats.join(",") : cats).map((k) => CATS[k]), out = [];
+  n = Math.max(1, Math.min(n || 1, phrases.length));
+  for (let i = 0; i < n; i++) out.push(phrases.filter((p, j) => j % n === i).join(", "));
+  return out;
+}
 export const NEAR_RADIUS_M = 15000, NEAR_KEEP_KM = 40, CORRIDOR_CENTERS_MAX = 24;   /* Around You: Google answers beyond the circle; keep only what is really near */
 export const TRIP_STOPS_MAX = 40, TRIP_NESTED_MAX = 6, NEAR_MAX = 24;
 export const FIND_IMG_MAX = 600 * 1024;  /* a find photo arrives already downscaled by the page; refuse anything bigger */
@@ -144,8 +157,9 @@ export function normalizePlace(p) {
   const town = t.town || townFromAddress(p.formattedAddress || p.shortFormattedAddress).split(",")[0] || "";
   const hours = p.regularOpeningHours || null;
   const photo = Array.isArray(p.photos) && p.photos[0] && p.photos[0].name ? String(p.photos[0].name) : "";
-  const kind = /antique/i.test(String(p.primaryTypeDisplayName && p.primaryTypeDisplayName.text || "") + " " + (p.displayName && p.displayName.text || "")) ? "Antiques"
-    : /thrift/i.test(String(p.primaryType || "") + " " + (p.displayName && p.displayName.text || "")) ? "Thrift" : /vintage/i.test(String(p.displayName && p.displayName.text || "")) ? "Vintage" : String(p.primaryTypeDisplayName && p.primaryTypeDisplayName.text || "");
+  const label = String(p.primaryTypeDisplayName && p.primaryTypeDisplayName.text || "") + " " + String(p.primaryType || "") + " " + String(p.displayName && p.displayName.text || "");
+  const kind = /antique/i.test(label) ? "Antiques" : /thrift|goodwill|salvation/i.test(label) ? "Thrift" : /record|vinyl/i.test(label) ? "Records" : /\bbook/i.test(label) ? "Books"
+    : /\btoy/i.test(label) ? "Toys" : /flea/i.test(label) ? "Flea market" : /vintage/i.test(label) ? "Vintage" : String(p.primaryTypeDisplayName && p.primaryTypeDisplayName.text || "");
   return {
     id: String(p.id), name: String(p.displayName && p.displayName.text || "").slice(0, 120),
     town: town, state: t.state || (townFromAddress(p.formattedAddress).split(", ")[1] || ""),
@@ -260,7 +274,7 @@ export function tripExpired(trip, now) { return !!trip && Date.parse(trip.expire
    stops in drive order. Never a street for the origin. */
 export function tripRecord(id, org, built, day, now) {
   const stops = (built.stops || []).slice(0, TRIP_STOPS_MAX).map((a) => stopRef(a));
-  return { id: id, org: String(org), members: [String(org)], created: new Date(now || Date.now()).toISOString(),
+  return { id: id, org: String(org), members: [String(org)], created: new Date(now || Date.now()).toISOString(), cats: catsParse((built.cats || []).join(",")),
     day: day, closes: tripCloses(day), expires: tripExpires(tripCloses(day)),
     origin: String(built.origin && built.origin.town || "").slice(0, 80), dest: { name: String(built.dest && built.dest.name || "").slice(0, 120), town: String(built.dest && built.dest.town || "").slice(0, 80), id: String(built.dest && built.dest.id || "") },
     route: built.route || null, stops: stops };
@@ -273,7 +287,7 @@ export function tripMember(trip, cid) { return !!trip && Array.isArray(trip.memb
 /* the trip as the page gets it: the record, plus the hours now known for each stop (hoursById: id -> hours) */
 export function tripView(trip, hoursById) {
   const h = (p) => Object.assign({}, p, { hours: (hoursById && hoursById[p.id]) || null });
-  return { id: trip.id, mine: false, org: false, day: trip.day, closes: trip.closes, origin: trip.origin, dest: trip.dest, route: trip.route, members: trip.members.length,
+  return { id: trip.id, mine: false, org: false, day: trip.day, closes: trip.closes, origin: trip.origin, dest: trip.dest, route: trip.route, members: trip.members.length, cats: trip.cats || CATS_DEFAULT.slice(),
     stops: trip.stops.map((a) => Object.assign(h(a), { nested: (a.nested || []).map(h) })),
     maps: mapsDirUrl(trip.origin, trip.stops, trip.dest.name + (trip.dest.town ? ", " + trip.dest.town : "")) };
 }

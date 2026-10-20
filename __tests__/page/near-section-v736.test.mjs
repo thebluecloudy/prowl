@@ -1,4 +1,4 @@
-// Page v7.37 / worker v132 (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). NEAR ME is its own screen
+// Page v7.38 / worker v132 (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). NEAR ME is its own screen
 // with two tabs: Around you (the shops around the phone, OPEN NOW / CLOSED worked out when the card is drawn) and Road
 // trip (one box, where to; the stops in drive order, one anchor a town with the rest nested, hours for the trip's day,
 // OPEN IN MAPS pinned, SHARE for the group, the Finds feed). The photo check gets SHARE THIS FIND while a trip is on.
@@ -99,7 +99,7 @@ test('Around you: the shops around the phone, with OPEN NOW / CLOSED worked out 
   p.$('#otp-localBtn').click();
   await tick(120);
   const c = calls.find((x) => /\/near\?/.test(x.url));
-  assert.ok(c, 'asked the worker'); assert.match(c.url, /\/near\?lat=42\.4806&lng=-83\.4755$/);
+  assert.ok(c, 'asked the worker'); assert.match(c.url, /\/near\?lat=42\.4806&lng=-83\.4755&cats=antiques%2Cvintage%2Cthrift$/);
   const cards = p.$$('#otp-nrLive .nr-card');
   assert.equal(cards.length, 3);
   assert.equal(cards[0].querySelector('.nr-n').textContent, 'Always Open Antiques');
@@ -151,10 +151,10 @@ test('Road trip: one box, the stops in drive order with the town\'s others neste
   await tick(120);
   const c = calls.find((x) => /\/trip\?/.test(x.url));
   assert.ok(c, 'one submit, straight to the worker');
-  assert.match(c.url, new RegExp('/trip\\?to=Blenko%20Glass%20Company%2C%20Milton%2C%20WV&lat=42\\.4806&lng=-83\\.4755&day=' + today() + '$'));
+  assert.match(c.url, new RegExp('/trip\\?to=Blenko%20Glass%20Company%2C%20Milton%2C%20WV&lat=42\\.4806&lng=-83\\.4755&day=' + today() + '&cats=antiques%2Cvintage%2Cthrift$'));
   assert.equal(p.$('#otp-nrOut .nr-route').textContent, 'Novi, MI → Blenko Glass Company, Milton, WV');
   assert.match(p.$('#otp-nrOut .nr-head .nearp').textContent, /^398 mi · 6 h 30 min of driving · Trip day /);
-  const anchors = p.$$('#otp-nrOut .nr-stops > .nr-stop > a.nr-anchor .nr-n').map((e) => e.textContent);
+  const anchors = p.$$('#otp-nrOut .nr-stops > .nr-stop > .nr-row > a.nr-anchor .nr-n').map((e) => e.textContent);
   assert.deepEqual(anchors, ['Maumee Antique Mall', 'Chillicothe Antique Emporium', 'Central City Antiques']);
   const nested = p.$$('#otp-nrOut .nr-stop:nth-child(3) .nr-nest .nr-sub .nr-n').map((e) => e.textContent);
   assert.deepEqual(nested, ['Olde Central City Vintage', '14th Street Collectibles']);
@@ -188,7 +188,7 @@ test('Road trip on a Monday: Chillicothe renders CLOSED and Blenko shows its Mon
   await tick(120);
   assert.equal(p.$('#otp-nrDays .hubc.on').getAttribute('data-nrday'), monday.getAttribute('data-nrday'), 'the day pill sticks');
   const c = calls.filter((x) => /\/trip\?/.test(x.url)).pop();
-  assert.match(c.url, new RegExp('&day=' + monday.getAttribute('data-nrday') + '$'), 'rebuilt for that day');
+  assert.match(c.url, new RegExp('&day=' + monday.getAttribute('data-nrday') + '&cats='), 'rebuilt for that day');
   assert.match(p.$('#otp-nrOut .nr-head .nearp').textContent, /Trip day Monday/);
   const emporium = p.$$('#otp-nrOut a.nr-anchor').find((a) => /Chillicothe/.test(a.textContent));
   assert.equal(emporium.querySelector('.nr-st').textContent, 'CLOSED');
@@ -200,7 +200,7 @@ test('Road trip on a Monday: Chillicothe renders CLOSED and Blenko shows its Mon
   p.$('#otp-nrTo').value = 'nowhere';
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
-  assert.match(p.$('#otp-nrOut .nr-empty').textContent, /No antique, vintage or thrift shops worth a stop sit inside this route/);
+  assert.match(p.$('#otp-nrOut .nr-empty').textContent, /No shops of the kinds you picked are worth a stop inside this route/);
   assert.equal(p.$('#otp-nrOut .nr-stop'), null);
   assert.equal(p.$('#otp-nrFoot').hidden, false, 'the route is still offered');
   assert.deepEqual(p.errors, []);
@@ -217,7 +217,7 @@ test('SHARE: signed out it asks for the store sign-in; signed in it keeps the tr
   await tick(120);
   out.$('#otp-nrShare').click();
   await tick(400);
-  assert.match(out.$('#otp-toast').textContent, /Sign in to your Owl & Twig account to share a trip/);
+  assert.match(out.$('#otp-toast').textContent, /Sign in to Prowl to share a trip/);
   assert.equal(out.$('#otp-den').hidden, false, 'the sign-in lives in Den > Settings');
   await out.close();
   const calls = [];
@@ -235,7 +235,7 @@ test('SHARE: signed out it asks for the store sign-in; signed in it keeps the tr
   await tick(150);
   const post = calls.find((x) => /\/trips$/.test(x.url) && x.o.method === 'POST');
   assert.ok(post, 'one tap keeps the trip');
-  assert.deepEqual(JSON.parse(post.o.body), { to: 'Blenko Glass Company, Milton, WV', lat: 42.4806, lng: -83.4755, day: today() });
+  assert.deepEqual(JSON.parse(post.o.body), { to: 'Blenko Glass Company, Milton, WV', lat: 42.4806, lng: -83.4755, day: today(), cats: 'antiques,vintage,thrift' });
   assert.match(post.o.headers.Authorization, /^Bearer /);
   assert.equal(p.$('#otp-nrShareRow').hidden, false, 'the add-member row is open');
   assert.match(p.$('#otp-nrMembers').textContent, /1 on this trip/);
@@ -299,7 +299,7 @@ test('the photo check: SHARE THIS FIND while a trip is on, one tap to the trip\'
   await none.close(); await old.close();
 });
 
-test('v7.37: FROM HERE rebuilds from where the phone is now; on your kept trip the worker saves it; Refresh re-reads Around you', async () => {
+test('v7.38: FROM HERE rebuilds from where the phone is now; on your kept trip the worker saves it; Refresh re-reads Around you', async () => {
   const calls = [];
   const p = loadPage({ storage: Object.assign({}, DEN, { 'prowl.session': sess() }), fetchImpl: nearFetch(calls), beforeLoad: (w) => phone(w) });
   await tick(30);
@@ -321,7 +321,7 @@ test('v7.37: FROM HERE rebuilds from where the phone is now; on your kept trip t
   const trips = calls.filter((x) => /\/trip\?/.test(x.url));
   assert.equal(trips.length, 2); assert.match(trips[1].url, /to=Blenko%20Glass%20Company%2C%20Milton%2C%20WV&lat=38\.4192&lng=-82\.4452/);
   assert.equal(p.$('#otp-nrOut .nr-route').textContent, 'Huntington, WV → Blenko Glass Company, Milton, WV');
-  assert.deepEqual(p.$$('#otp-nrOut .nr-stops > .nr-stop > a.nr-anchor .nr-n').map((e) => e.textContent), ['Central City Antiques'], 'the stops behind are gone');
+  assert.deepEqual(p.$$('#otp-nrOut .nr-stops > .nr-stop > .nr-row > a.nr-anchor .nr-n').map((e) => e.textContent), ['Central City Antiques'], 'the stops behind are gone');
   /* a kept trip of your own: the worker rebuilds it for the whole group */
   p.$('#otp-nrShare').click();
   await tick(150);
@@ -337,9 +337,84 @@ test('v7.37: FROM HERE rebuilds from where the phone is now; on your kept trip t
   await p.close();
 });
 
-test('the page says v7.37, and keeps every old localStorage key (prowl.trip is the one new one)', () => {
-  assert.match(PAGE, /var PROWL_VERSION='v7\.37'/);
+test('v7.38: a Prowl Alerts sign-in (email code) shares trips too, with its email and token on the call', async () => {
+  const calls = [];
+  const p = loadPage({ storage: Object.assign({}, DEN, { 'prowl.alertTok': 'tok-0123456789abcdef', 'prowl.alertEmail': 'matt@example.com', 'prowl.alertPro': '1' }), fetchImpl: nearFetch(calls), beforeLoad: (w) => phone(w) });
+  await tick(60);
+  p.$('#otp-localBtn').click(); await tick(60);
+  p.$('#otp-nrT2').click(); await tick(60);
+  assert.ok(p.$('#otp-nrTrips .nr-tripb'), 'your trips are listed for an alerts member');
+  const list = calls.find((x) => /\/trips$/.test(x.url));
+  assert.equal(list.o.headers['X-Prowl-Email'], 'matt@example.com'); assert.equal(list.o.headers['X-Prowl-Tok'], 'tok-0123456789abcdef');
+  p.$('#otp-nrTo').value = 'Blenko Glass Company, Milton, WV';
+  p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
+  await tick(120);
+  p.$('#otp-nrShare').click();
+  await tick(150);
+  const post = calls.find((x) => /\/trips$/.test(x.url) && x.o.method === 'POST');
+  assert.ok(post, 'kept without a store sign-in');
+  assert.equal(post.o.headers['X-Prowl-Email'], 'matt@example.com');
+  assert.equal(p.$('#otp-den').hidden, true, 'not sent to the Den');
+  assert.ok(p.$('#otp-nrShareRow'), 'the add-member row');
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test('v7.38: the kinds to look for are chips on both tabs, and Skip takes a stop out of the list and the Maps link', async () => {
+  const calls = [];
+  const p1 = loadPage({ storage: DEN, fetchImpl: nearFetch(calls), beforeLoad: (w) => phone(w) });
+  await tick(30);
+  p1.$('#otp-localBtn').click(); await tick(120);
+  assert.deepEqual(p1.$$('#otp-nrCatsA .hubc').map((b) => b.textContent), ['Antiques', 'Vintage', 'Thrift', 'Records', 'Books', 'Toys', 'Flea markets']);
+  assert.deepEqual(p1.$$('#otp-nrCatsA .hubc.on').map((b) => b.textContent), ['Antiques', 'Vintage', 'Thrift'], 'the spec\'s three by default');
+  p1.$('#otp-nrCatsA [data-nrcat="records"]').click();
+  await tick(120);
+  assert.match(calls.filter((x) => /\/near\?/.test(x.url)).pop().url, /&cats=antiques%2Cvintage%2Cthrift%2Crecords$/, 'Around you looks again with records');
+  assert.deepEqual(JSON.parse(p1.win.localStorage.getItem('prowl.nearCats')), ['antiques', 'vintage', 'thrift', 'records'], 'kept on this phone');
+  p1.$('#otp-nrT2').click();
+  assert.deepEqual(p1.$$('#otp-nrCats .hubc.on').map((b) => b.textContent), ['Antiques', 'Vintage', 'Thrift', 'Records'], 'the same chips on Road trip');
+  await p1.close();
+  /* a fresh page (the stub phone moves after a fresh fix): the chips are remembered, Thrift goes off, a trip is built */
+  const p2 = loadPage({ storage: Object.assign({}, DEN, { 'prowl.nearCats': ['antiques', 'vintage', 'thrift', 'records'] }), fetchImpl: nearFetch(calls), beforeLoad: (w) => phone(w) });
+  await tick(30);
+  p2.$('#otp-localBtn').click(); await tick(60);
+  p2.$('#otp-nrT2').click();
+  const p = p2;
+  p.$('#otp-nrCats [data-nrcat="thrift"]').click();
+  p.$('#otp-nrTo').value = 'Blenko Glass Company, Milton, WV';
+  p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
+  await tick(120);
+  assert.match(calls.filter((x) => /\/trip\?/.test(x.url)).pop().url, /&cats=antiques%2Cvintage%2Crecords$/);
+  assert.equal(p.$$('#otp-nrOut .nr-stops > .nr-stop').length, 3);
+  assert.equal(p.$$('#otp-nrOut .nr-skip').length, 5, 'Skip on every anchor and nested stop; the final stop has none');
+  /* skip Chillicothe: gone from the list and from the Maps link */
+  p.$('#otp-nrOut [data-nrskip="S2"]').click();
+  await tick(30);
+  assert.deepEqual(p.$$('#otp-nrOut .nr-stops > .nr-stop > .nr-row > a.nr-anchor .nr-n').map((e) => e.textContent), ['Maumee Antique Mall', 'Central City Antiques']);
+  let wp = new URL(p.$('#otp-nrMaps').href).searchParams.get('waypoints').split('|');
+  assert.deepEqual(wp, ['Maumee Antique Mall, Maumee, OH', 'Central City Antiques, Huntington, WV']);
+  assert.match(p.$('#otp-nrOut .nr-skipped').textContent, /^1 skipped/);
+  /* skip the Huntington anchor: the next shop in town steps up */
+  p.$('#otp-nrOut [data-nrskip="S3"]').click();
+  await tick(30);
+  assert.deepEqual(p.$$('#otp-nrOut .nr-stops > .nr-stop > .nr-row > a.nr-anchor .nr-n').map((e) => e.textContent), ['Maumee Antique Mall', 'Olde Central City Vintage']);
+  assert.deepEqual(p.$$('#otp-nrOut .nr-nest .nr-n').map((e) => e.textContent), ['14th Street Collectibles']);
+  wp = new URL(p.$('#otp-nrMaps').href).searchParams.get('waypoints').split('|');
+  assert.deepEqual(wp, ['Maumee Antique Mall, Maumee, OH', 'Olde Central City Vintage, Huntington, WV']);
+  assert.deepEqual(Object.keys(JSON.parse(p.win.localStorage.getItem('prowl.nearSkip'))), ['S2', 'S3'], 'skips stay on this phone, by place');
+  p.$('#otp-nrUnskip').click();
+  await tick(30);
+  assert.equal(p.$$('#otp-nrOut .nr-stops > .nr-stop').length, 3, 'all back');
+  assert.equal(p.$('#otp-nrOut .nr-skipped'), null);
+  assert.equal(p.$('#otp-nrMaps').href, MAPS, 'the full link again');
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test('the page says v7.38, and keeps every old localStorage key (prowl.trip is the one new one)', () => {
+  assert.match(PAGE, /var PROWL_VERSION='v7\.38'/);
   assert.match(PAGE, /var TRIP_KEY='prowl\.trip'/);
+  assert.match(PAGE, /var CATS_KEY='prowl\.nearCats',SKIP_KEY='prowl\.nearSkip'/);
   for (const k of ['prowl.v36', 'owlTwigSearches', 'prowl.likes', 'prowl.maps', 'prowl.salesPlace', 'prowl.session']) assert.ok(PAGE.includes("'" + k + "'") || PAGE.includes(k), k);
   assert.doesNotMatch(PAGE, /\{\{|\{%/, 'no Liquid openers');
 });

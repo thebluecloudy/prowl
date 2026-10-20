@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v135: 2026-10-20. Trips for Prowl Alerts members too (the owner: "it took me to the den and tried to make me sign
+ *         in, but i am pro"): the email and token the page keeps (X-Prowl-Email / X-Prowl-Tok) name a member on /trips as
+ *         a store session does, as their customer id when linked, else e + a hash of the address; their Pro counts, and
+ *         so does the owner key. Sharing to an address that is an alerts member adds them at once (tripWho, tripPro).
  *   v134: 2026-10-20. POST /trips/<id>/rebuild { lat, lng } (the owner: "each time i visit a location, i may want to
  *         rebuild"): the organizer rebuilds a kept trip from where they stand to the same destination; the stops
  *         behind them drop, the origin becomes that town, and every member sees the new list.
@@ -458,8 +462,8 @@ import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
 import { decodePolyline, haversineKm, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
-  DETOUR_MIN, NEAR_MAX, NEAR_QUERIES, NEAR_RADIUS_M, NEAR_KEEP_KM, TRIP_QUERY, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v134";
+  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_KM, catsParse, catsQueries, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
+const WORKER_VERSION = "v135";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -587,7 +591,7 @@ const ALLOW_ORIGINS = [
 function cors(origin) {
   const h = {
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, X-Prowl-Owner, Authorization",   /* v82: Authorization */
+    "Access-Control-Allow-Headers": "Content-Type, X-Prowl-Owner, Authorization, X-Prowl-Email, X-Prowl-Tok",   /* v82: Authorization; v135: the alerts member on /trips */
     "Access-Control-Expose-Headers": "X-Prowl-Cache",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
@@ -5278,6 +5282,7 @@ async function alVerify(request, env, origin) {
     if (again && again.tok) sub = again; else await kvPut(env, "sub:" + email, sub);
     await env.PROWL_ALERTS.delete("conf:" + email);
   }
+  try { await tripAcctLink(env, await tripMemberIdFor(sub, email), email); } catch (e) { console.error("acct link", String(e && e.message || e)); }   /* v135: trips shared to this address */
   return json({ ok: true, member: true, email: sub.email, tok: sub.tok, pro: !!sub.pro, free: alFree(env, sub), hunts: sub.hunts, active: alActive(env, sub).length, session: sub.cid ? await sessMint(env, sub.cid) : "" }, 200, origin);
 }
 /* v78: a one-time sign-in link by email (the member's own request, or the owner from the admin page) */
@@ -6270,11 +6275,11 @@ async function fbFinds(request, env, url, origin) {
    The in-person prowl (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). The logic is in trip.js (pure);
    this part talks to Google and the stores. Everything needs the secret GOOGLE_MAPS_KEY (Places API (New), Routes API
    and Geocoding API enabled on it); without it /near and /trip answer 503 "not set up" and the page keeps its Maps links.
-     GET  /near?lat&lng                 Around You: the antique, vintage and thrift shops around a point, ranked (size,
+     GET  /near?lat&lng[&cats]          Around You: the antique, vintage and thrift shops around a point, ranked (size,
                                         then rating weighted by reviews, then distance), with each one's weekly hours
                                         and UTC offset so the page prints OPEN NOW / CLOSED when it draws the card.
                                         Kept 10 minutes per ~1 km cell; NEAR_PER_IP a day.
-     GET  /trip?to&lat&lng[&day]        Road Trip: the route from the point (its town only is ever kept or shown) to the
+     GET  /trip?to&lat&lng[&day&cats]   Road Trip (cats, v135: antiques,vintage,thrift,records,books,toys,flea; trip.js CATS): the route from the point (its town only is ever kept or shown) to the
                                         destination, the shops inside DETOUR_MIN of it, one anchor per town with the
                                         rest nested, in drive order, hours for the trip's day, and the one Maps link
                                         (origin town, anchors, destination). Kept an hour per origin town, destination
@@ -6358,12 +6363,13 @@ async function nearRoute(request, env, url, origin) {
   const lat = nearNum(url.searchParams.get("lat"), -90, 90), lng = nearNum(url.searchParams.get("lng"), -180, 180);
   if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, places: [] }, 503, origin);
-  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&v=1";
+  const cats = catsParse(url.searchParams.get("cats"));
+  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=1";
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("near:" + ipKey(request.headers.get("CF-Connecting-IP")), NEAR_PER_IP))) return json({ error: "slow down" }, 429, origin);
   const here = { lat: lat, lng: lng };
-  const lists = await Promise.all(NEAR_QUERIES.map((q) => gPlacesText(env, q, here, NEAR_RADIUS_M, 20)));
+  const lists = await Promise.all(catsQueries(cats, 2).map((q) => gPlacesText(env, q, here, NEAR_RADIUS_M, 20)));
   const seen = Object.create(null), all = [];
   for (const p of [].concat(...lists)) { if (seen[p.id]) continue; seen[p.id] = 1; p.near = Math.round(haversineKm(here, p) * 10) / 10; if (p.near <= NEAR_KEEP_KM) all.push(p); }   /* v133: Google answers past the circle */
   const places = rankPlaces(all).slice(0, NEAR_MAX).map((p) => placeCard(p));
@@ -6372,19 +6378,20 @@ async function nearRoute(request, env, url, origin) {
   return res;
 }
 /* build the trip: origin town, destination, route, the corridor's shops clustered in drive order */
-async function tripBuild(env, from, toText, day) {
+async function tripBuild(env, from, toText, day, cats) {
+  cats = catsParse((cats || []).join ? (cats || []).join(",") : cats);
   const [town, destList] = await Promise.all([gTown(env, from.lat, from.lng), gPlacesText(env, toText, null, 0, 1)]);
   const dest = destList[0] || null;
   const route = await gRoute(env, from, dest && Number.isFinite(dest.lat) ? { lat: dest.lat, lng: dest.lng } : toText);
   if (!route || route.pts.length < 2) return null;
   const centers = corridorCenters(route.pts).slice(0, CORRIDOR_CENTERS_MAX);
-  const lists = await Promise.all(centers.map((c) => gPlacesText(env, TRIP_QUERY, c, CORRIDOR_RADIUS_M, 20)));
+  const lists = await Promise.all(centers.map((c) => gPlacesText(env, catsQueries(cats, 1)[0], c, CORRIDOR_RADIUS_M, 20)));
   const seen = Object.create(null), all = [];
   for (const p of [].concat(...lists)) { if (seen[p.id] || (dest && p.id === dest.id)) continue; seen[p.id] = 1; all.push(p); }
   const stops = clusterStops(alongRoute(all, route.pts, DETOUR_MIN));
   const destCard = dest ? placeCard(dest) : { id: "", name: vClean(toText, 120), town: "", why: "", hours: null, url: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(toText) };
   const destLabel = destCard.name + (destCard.town ? ", " + destCard.town : "");
-  return { origin: { town: town }, dest: destCard, route: { km: route.km, min: route.min }, day: day, weekday: weekdayOf(day), stops: stops, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.length };
+  return { origin: { town: town }, dest: destCard, route: { km: route.km, min: route.min }, day: day, weekday: weekdayOf(day), cats: cats, stops: stops, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.length };
 }
 async function tripRoute(request, env, url, origin) {
   const lat = nearNum(url.searchParams.get("lat"), -90, 90), lng = nearNum(url.searchParams.get("lng"), -180, 180);
@@ -6392,12 +6399,12 @@ async function tripRoute(request, env, url, origin) {
   if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
   if (to.length < 2) return json({ error: "to required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, stops: [] }, 503, origin);
-  const day = tripDay(url.searchParams.get("day"));
-  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&v=1";
+  const day = tripDay(url.searchParams.get("day")), cats = catsParse(url.searchParams.get("cats"));
+  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=1";
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("trip:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIP_PER_IP))) return json({ error: "slow down" }, 429, origin);
-  const built = await tripBuild(env, { lat: lat, lng: lng }, to, day);
+  const built = await tripBuild(env, { lat: lat, lng: lng }, to, day, cats);
   if (!built) return json({ error: "no route", empty: true, stops: [] }, 404, origin);
   const res = json(built, 200, origin, { "Cache-Control": "private, max-age=" + TRIP_CACHE_SECONDS });
   try { await PCACHE.put(key, res.clone()); } catch (e) {}
@@ -6417,12 +6424,32 @@ async function ppRoute(request, env, url) {
 }
 /* ---- group trips ---- */
 function proCids(env) { return String((env && env.PRO_CIDS) || "").split(/[\s,]+/).filter((x) => /^\d{1,20}$/.test(x)); }
-/* Pro for the trip features, decided here: the comp list, a linked member's Pro, or the customer's own paid orders */
-async function tripPro(env, request, cid) {
-  if (proCids(env).indexOf(String(cid)) !== -1) return true;
+/* v135: who is asking for a trip. A store session (Bearer) names the customer id. A Prowl Alerts member (the email and
+   token the page keeps, sent as X-Prowl-Email / X-Prowl-Tok) names their customer id when the account is linked, else
+   "e" + a hash of the address, so a member who signed in by email code shares trips too. null = nobody. */
+function tripIdOk(id) { return /^\d{1,20}$/.test(String(id || "")) || /^e[0-9a-f]{16}$/.test(String(id || "")); }
+async function tripMemberIdFor(sub, email) { return sub && /^\d{1,20}$/.test(String(sub.cid || "")) ? String(sub.cid) : "e" + await acctHash(email); }
+async function tripWho(request, env) {
+  const cid = await sessVerify(request, env);
+  if (cid) return { id: cid, sub: null };
+  const email = alEmail(request.headers.get("X-Prowl-Email") || ""), t = String(request.headers.get("X-Prowl-Tok") || "");
+  if (!email || !t || !env.PROWL_ALERTS) return null;
+  const sub = await kvGet(env, "sub:" + email, null);
+  if (!sub || !alSame(t, sub.tok)) return null;
+  const id = await tripMemberIdFor(sub, email);
+  try { await kvPut(env, "acct:" + await acctHash(email), { cid: id }); } catch (e) {}   /* so a share to this address finds them */
+  return { id: id, sub: sub };
+}
+/* Pro for the trip features, decided here: the owner key, the comp list, the member's own Pro (alerts or linked), or
+   the customer's own paid orders */
+async function tripPro(env, request, who) {
+  if (isOwner(request, env)) return true;
+  if (proCids(env).indexOf(String(who.id)) !== -1) return true;
+  if (who.sub && who.sub.pro) return true;
   const s = await sessMember(request, env);
   if (s && s.pro) return true;
-  const r = await alProShop(env, "", await kvGet(env, "pro:cid:" + cid, null), cid);
+  if (!/^\d{1,20}$/.test(String(who.id))) return false;
+  const r = await alProShop(env, "", await kvGet(env, "pro:cid:" + who.id, null), who.id);
   return !!r.pro;
 }
 function tripId() { const a = new Uint8Array(9); crypto.getRandomValues(a); return "t" + Array.from(a, (x) => "abcdefghijklmnopqrstuvwxyz0123456789"[x % 36]).join(""); }
@@ -6445,7 +6472,7 @@ function tripSummary(trip, cid) { return { id: trip.id, day: trip.day, origin: t
 async function acctHash(email) { return sha16("acct:" + String(email || "").trim().toLowerCase()); }
 /* at every store sign-in: the account's hash points at its customer id, and any trip invitations waiting for it join */
 async function tripAcctLink(env, cid, email) {
-  if (!env || !env.PROWL_ALERTS || !/^\d{1,20}$/.test(String(cid || "")) || !email) return;
+  if (!env || !env.PROWL_ALERTS || !tripIdOk(cid) || !email) return;
   const h = await acctHash(email);
   await kvPut(env, "acct:" + h, { cid: String(cid) });
   const inv = await kvGet(env, "tripinv:" + h, null);
@@ -6457,8 +6484,9 @@ async function findSig(env, trip, find, exp) { return (await pxHmac(sessKey(env)
 async function findUrl(env, trip, find) { const exp = Math.floor(Date.now() / 1000) + FIND_SIG_SECONDS; return "/finds/" + trip + "/" + find + ".jpg?e=" + exp + "&s=" + await findSig(env, trip, find, exp); }
 async function tripsRoute(request, env, url, origin) {
   if (!env.PROWL_ALERTS) return json({ error: "no store" }, 503, origin);
-  const cid = await sessVerify(request, env);
-  if (!cid) return json({ error: "Sign in to your Owl & Twig account to share trips.", signin: true }, 401, origin);
+  const who = await tripWho(request, env);   /* v135: a store session or a Prowl Alerts member */
+  if (!who) return json({ error: "Sign in to Prowl to share trips.", signin: true }, 401, origin);
+  const cid = who.id;
   if (!(await vCount("trips:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIPS_PER_IP))) return json({ error: "slow down" }, 429, origin);
   const m = /^\/trips(?:\/(t[a-z0-9]{9})(?:\/(share|close|finds|rebuild))?)?$/.exec(url.pathname);
   if (!m) return json({ error: "not found" }, 404, origin);
@@ -6469,12 +6497,12 @@ async function tripsRoute(request, env, url, origin) {
       for (const tid of ids.slice(0, 20)) { const t = await tripGet(env, tid); if (t && tripMember(t, cid) && !tripExpired(t)) out.push(tripSummary(t, cid)); }
       return nearAnswer({ trips: out }, 200, origin);
     }
-    if (!(await tripPro(env, request, cid))) return json({ error: "Group trips come with Prowl Pro.", pro: false }, 403, origin);
+    if (!(await tripPro(env, request, who))) return json({ error: "Group trips come with Prowl Pro.", pro: false }, 403, origin);
     if (!gKey(env)) return json({ error: "not set up" }, 503, origin);
     const b = await readJson(request, 4096);
     const lat = nearNum(b.lat, -90, 90), lng = nearNum(b.lng, -180, 180), to = vClean(b.to, 160);
     if (lat == null || lng == null || to.length < 2) return json({ error: "where to?" }, 400, origin);
-    const day = tripDay(b.day), built = await tripBuild(env, { lat: lat, lng: lng }, to, day);
+    const day = tripDay(b.day), built = await tripBuild(env, { lat: lat, lng: lng }, to, day, catsParse(String(b.cats || "")));
     if (!built) return json({ error: "no route" }, 404, origin);
     const trip = tripRecord(tripId(), cid, built, day);
     await tripPut(env, trip);
@@ -6494,12 +6522,14 @@ async function tripsRoute(request, env, url, origin) {
   }
   if (act === "share") {
     if (!post || !org) return json({ error: "Only the organizer adds members." }, 403, origin);
-    if (!(await tripPro(env, request, cid))) return json({ error: "Group trips come with Prowl Pro.", pro: false }, 403, origin);
+    if (!(await tripPro(env, request, who))) return json({ error: "Group trips come with Prowl Pro.", pro: false }, 403, origin);
     const b = await readJson(request, 2048), email = alEmail(b.email);
     if (!email) return json({ error: "That email does not look right." }, 400, origin);
     if (trip.members.length >= TRIP_MEMBERS_MAX) return json({ error: "This trip is full." }, 409, origin);
     const h = await acctHash(email), acct = await kvGet(env, "acct:" + h, null);
-    if (acct && /^\d{1,20}$/.test(String(acct.cid || ""))) { await tripJoin(env, trip, acct.cid); return nearAnswer({ ok: true, added: true, pending: false, members: trip.members.length }, 200, origin); }
+    let mid = acct && tripIdOk(acct.cid) ? String(acct.cid) : "";
+    if (!mid) { const ms = await kvGet(env, "sub:" + email, null); if (ms) mid = await tripMemberIdFor(ms, email); }   /* v135: an alerts member who never signed in to the store */
+    if (mid) { await tripJoin(env, trip, mid); return nearAnswer({ ok: true, added: true, pending: false, members: trip.members.length }, 200, origin); }
     const inv = await kvGet(env, "tripinv:" + h, { ids: [] });
     if (inv.ids.indexOf(id) === -1) inv.ids.push(id);
     await env.PROWL_ALERTS.put("tripinv:" + h, JSON.stringify({ ids: inv.ids.slice(-20) }), { expirationTtl: TRIPINV_TTL });
@@ -6513,12 +6543,12 @@ async function tripsRoute(request, env, url, origin) {
   }
   if (act === "rebuild") {   /* v134 */
     if (!post || !org) return json({ error: "Only the organizer rebuilds a trip." }, 403, origin);
-    if (!(await tripPro(env, request, cid))) return json({ error: "Group trips come with Prowl Pro.", pro: false }, 403, origin);
+    if (!(await tripPro(env, request, who))) return json({ error: "Group trips come with Prowl Pro.", pro: false }, 403, origin);
     if (!gKey(env)) return json({ error: "not set up" }, 503, origin);
     if (Date.parse(trip.closes) <= Date.now()) return json({ error: "This trip is over." }, 409, origin);
     const b = await readJson(request, 2048), lat = nearNum(b.lat, -90, 90), lng = nearNum(b.lng, -180, 180);
     if (lat == null || lng == null) return json({ error: "where are you?" }, 400, origin);
-    const built = await tripBuild(env, { lat: lat, lng: lng }, trip.dest.name + (trip.dest.town ? ", " + trip.dest.town : ""), trip.day);
+    const built = await tripBuild(env, { lat: lat, lng: lng }, trip.dest.name + (trip.dest.town ? ", " + trip.dest.town : ""), trip.day, trip.cats || []);
     if (!built) return json({ error: "no route" }, 404, origin);
     const fresh = tripRecord(trip.id, trip.org, built, trip.day);
     trip.origin = fresh.origin; trip.route = fresh.route; trip.stops = fresh.stops; trip.rebuilt = new Date().toISOString();
@@ -6533,7 +6563,7 @@ async function tripsRoute(request, env, url, origin) {
     return nearAnswer({ finds: out, expires: trip.expires }, 200, origin);
   }
   if (!env.PROWL_FINDS) return json({ error: "Trip finds are not set up yet." }, 503, origin);
-  if (!(await tripPro(env, request, cid))) return json({ error: "Trip finds come with Prowl Pro.", pro: false }, 403, origin);
+  if (!(await tripPro(env, request, who))) return json({ error: "Trip finds come with Prowl Pro.", pro: false }, 403, origin);
   if (Date.parse(trip.closes) <= Date.now()) return json({ error: "This trip is over." }, 409, origin);
   const b = await readJson(request, FIND_BODY_MAX);
   if (b.big) return json({ error: "too large" }, 413, origin);

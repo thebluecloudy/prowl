@@ -84,7 +84,7 @@ test("wired in: login answers carry the session, status and AI routes accept it,
   assert.equal((INDEX.match(/session: await sessMint\(env, id\)/g) || []).length, 2, "member and non-member sign-in answers");
   assert.equal((INDEX.match(/await proMember\(env, b, request\)/g) || []).length, 4, "Fair price, photo check, guide, and the photo price step (v93)");
   assert.match(INDEX, /const ss = await sessMember\(request, env\);/);
-  assert.match(INDEX, /"Access-Control-Allow-Headers": "Content-Type, X-Prowl-Owner, Authorization"/);
+  assert.match(INDEX, /"Access-Control-Allow-Headers": "Content-Type, X-Prowl-Owner, Authorization, X-Prowl-Email, X-Prowl-Tok"/);   /* v135: the alerts member on \/trips */
 });
 
 /* the shop side: alProSet with KV and Shopify stubbed (same harness shape as admin.test.mjs) */

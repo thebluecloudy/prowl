@@ -6,8 +6,19 @@ import {
   haversineKm, decodePolyline, nearestOnRoute, detourMinutes, corridorCenters, sizeTier, differentiator, ratingScore, rankPlaces,
   townOf, townFromAddress, normalizePlace, placeCard, hoursForDay, openAt, alongRoute, clusterStops, mapsDirUrl, hasStreet,
   tripDay, weekdayOf, tripCloses, tripExpires, tripExpired, tripRecord, tripMember, tripView, findRecord,
-  DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS,
+  DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS, CATS, CATS_DEFAULT, catsParse, catsQueries,
 } from "../trip.js";
+
+test("v135: the kinds to look for: the spec's three by default, any of the seven, as one or two query strings", () => {
+  assert.deepEqual(catsParse(""), ["antiques", "vintage", "thrift"]);
+  assert.deepEqual(catsParse("records,toys,garbage"), ["records", "toys"]);
+  assert.deepEqual(catsParse("garbage"), CATS_DEFAULT);
+  assert.deepEqual(catsQueries(["antiques", "records"], 1), ["antique stores and antique malls, record stores"]);
+  assert.deepEqual(catsQueries(CATS_DEFAULT, 2), ["antique stores and antique malls, thrift stores", "vintage stores"]);
+  assert.deepEqual(catsQueries(["toys"], 2), [CATS.toys], "never more queries than kinds");
+  assert.equal(normalizePlace({ id: "r1", displayName: { text: "Flipside Records" }, location: {} }).kind, "Records");
+  assert.equal(normalizePlace({ id: "t1", displayName: { text: "Toy Barn" }, primaryType: "toy_store", location: {} }).kind, "Toys");
+});
 
 /* ---- the reference route (the spec, §9.2): Novi, MI to Blenko Glass, Milton, WV ---- */
 const WAY = [

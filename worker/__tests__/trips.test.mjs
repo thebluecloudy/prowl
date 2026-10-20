@@ -89,20 +89,20 @@ function fakeGoogle(u, init) {
 const SECRET = "s".repeat(40);
 const PRO = {};   /* cid -> paid Pro, the fake shop */
 const names = ["gKey", "gFetch", "gPlacesText", "gPlaceHours", "gRoute", "gTown", "nearNum", "tripCell", "nearAnswer", "nearRoute", "tripBuild", "tripRoute", "ppRoute",
-  "proCids", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep",
+  "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep",
   "b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessVerify", "sessMember", "pxHmac", "alSame", "alEmail", "sha16", "kvGet", "kvPut", "readJson", "vClean", "scrubPII", "ipKey", "ip6Parts", "cors", "json"];
 const pre = [constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
-const W = fromIndex(names, Object.assign({ fetch: fakeGoogle, PCACHE, vCount: async () => true, alProShop: async (env, email, c, cid) => ({ pro: !!PRO[cid] }), console: { error() {} } }, TRIP), pre);
+const W = fromIndex(names, Object.assign({ fetch: fakeGoogle, PCACHE, vCount: async () => true, isOwner: (r) => r.headers.get("x-prowl-owner") === "owner-key-0123456789", alProShop: async (env, email, c, cid) => ({ pro: !!PRO[cid] }), console: { error() {} } }, TRIP), pre);
 
 function envWith(o) { return Object.assign({ PROWL_ALERTS: new FakeKV(), PROWL_SESSION_SECRET: SECRET, GOOGLE_MAPS_KEY: "k".repeat(30) }, o || {}); }
 const ORIGIN = "https://www.owlandtwigvintage.com";
-async function req(env, method, path, body, cid) {
+async function req(env, method, path, body, cid, hdr) {
   const tok = cid ? await W.sessMint(env, cid) : "";
-  const headers = { origin: ORIGIN, authorization: tok ? "Bearer " + tok : "", "content-length": body ? String(JSON.stringify(body).length) : "0", "cf-connecting-ip": "1.2.3.4" };
+  const headers = Object.assign({ origin: ORIGIN, authorization: tok ? "Bearer " + tok : "", "content-length": body ? String(JSON.stringify(body).length) : "0", "cf-connecting-ip": "1.2.3.4" }, hdr || {});
   return { method, url: "https://prowl.thebluecloud.workers.dev" + path, headers: { get: (h) => headers[h.toLowerCase()] || null }, text: async () => (body ? JSON.stringify(body) : "") };
 }
-async function call(env, method, path, body, cid) {
-  const r = await req(env, method, path, body, cid), url = new URL(r.url);
+async function call(env, method, path, body, cid, hdr) {
+  const r = await req(env, method, path, body, cid, hdr), url = new URL(r.url);
   const res = path.startsWith("/near") ? await W.nearRoute(r, env, url, ORIGIN) : path.startsWith("/trip?") ? await W.tripRoute(r, env, url, ORIGIN)
     : path.startsWith("/trips") ? await W.tripsRoute(r, env, url, ORIGIN) : path.startsWith("/finds/") ? await W.findPhotoRoute(r, env, url) : await W.ppRoute(r, env, url);
   const type = res.headers.get("Content-Type") || "";
@@ -129,6 +129,11 @@ test("/near: without the key a plain 'not set up'; with it the shops around a po
   assert.equal(c.town, "Huntington, WV"); assert.equal(c.why, "60 dealers"); assert.equal(c.photo, "/pp?n=places%2FChIJCentralCityAntiques%2Fphotos%2FP1");
   assert.equal(c.hours.offset, -240); assert.equal(c.hours.periods.length, 7); assert.equal(typeof c.near, "number");
   assert.equal(TRIP.openAt(c.hours, Date.parse("2026-10-26T16:00:00Z")), true, "the page can say OPEN NOW from what it got");
+  /* v135: the kinds asked for go into the query and the cache key */
+  const recs = await call(env, "GET", "/near?lat=38.4191&lng=-82.4451&cats=records,toys");
+  assert.equal(recs.res.headers.get("X-Prowl-Cache"), null, "another kind is another answer");
+  const q = CALLS.filter((u) => /searchText/.test(u)).length;
+  assert.ok(q >= 3, "it asked Google again");
   const again = await call(env, "GET", "/near?lat=38.4191&lng=-82.4451");
   assert.equal(again.res.headers.get("X-Prowl-Cache"), "hit", "the same ~1 km cell within 10 minutes");
   assert.equal(again.body.places[0].name, "Central City Antiques");
@@ -198,7 +203,7 @@ test("group trips: a sign-in is needed, Pro is decided on the worker, the organi
   assert.match(t.id, /^t[a-z0-9]{9}$/); assert.equal(t.org, true); assert.equal(t.mine, true); assert.equal(t.members, 1);
   assert.equal(t.origin, "Novi, MI"); assert.equal(t.stops.length, 7);
   const kept = JSON.parse(env.PROWL_ALERTS.m.get("trip:" + t.id));
-  assert.deepEqual(kept.members, ["1001"]); assert.equal(kept.origin, "Novi, MI");
+  assert.deepEqual(kept.members, ["1001"]); assert.equal(kept.origin, "Novi, MI"); assert.deepEqual(kept.cats, ["antiques", "vintage", "thrift"]);
   assert.ok(!/42\.48|-83\.4755/.test(JSON.stringify(kept)), "the stored trip has no origin point, only its town");
   assert.ok(!TRIP.hasStreet(JSON.stringify(kept).replace(/1 Main St/g, "")));
   const mine = await call(env, "GET", "/trips", null, "1001");
@@ -236,6 +241,28 @@ test("group trips: a sign-in is needed, Pro is decided on the worker, the organi
   const closed = await call(env, "POST", "/trips/" + t.id + "/close", null, "1001");
   assert.equal(closed.status, 200);
   assert.equal(Date.parse(closed.body.expires) - Date.parse(closed.body.closes), TRIP.FINDS_GRACE_DAYS * 86400000);
+});
+
+test("v135: a Prowl Alerts member (email and token) keeps and shares trips without a store sign-in; the owner key is Pro; a share to an alerts member lands at once", async () => {
+  const env = envWith({}); PCACHE.m.clear();
+  env.PROWL_ALERTS.m.set("sub:matt@example.com", JSON.stringify({ email: "matt@example.com", tok: "tok-matt-0123456789", pro: true, hunts: [] }));
+  env.PROWL_ALERTS.m.set("sub:hark@example.com", JSON.stringify({ email: "hark@example.com", tok: "tok-hark-0123456789", pro: false, hunts: [] }));
+  const MATT = { "x-prowl-email": "Matt@Example.com", "x-prowl-tok": "tok-matt-0123456789" }, HARK = { "x-prowl-email": "hark@example.com", "x-prowl-tok": "tok-hark-0123456789" };
+  assert.equal((await call(env, "GET", "/trips", null, "", { "x-prowl-email": "matt@example.com", "x-prowl-tok": "wrong" })).status, 401, "a wrong token is nobody");
+  assert.equal((await call(env, "GET", "/trips", null, "", MATT)).status, 200);
+  const made = await call(env, "POST", "/trips", { to: "Blenko Glass Company, Milton, WV", lat: 42.4806, lng: -83.4755, day: "2026-10-26" }, "", MATT);
+  assert.equal(made.status, 200, "an alerts member's Pro counts");
+  const kept = JSON.parse(env.PROWL_ALERTS.m.get("trip:" + made.body.id));
+  assert.match(kept.org, /^e[0-9a-f]{16}$/, "a hash of the address, never the address");
+  assert.ok(!JSON.stringify([...env.PROWL_ALERTS.m.keys()].filter((k) => !k.startsWith("sub:"))).includes("matt@example.com"), "no address in a trip key");
+  assert.equal((await call(env, "GET", "/trips", null, "", MATT)).body.trips[0].org, true);
+  const shared = await call(env, "POST", "/trips/" + made.body.id + "/share", { email: "hark@example.com" }, "", MATT);
+  assert.deepEqual(shared.body, { ok: true, added: true, pending: false, members: 2 }, "an alerts member who never signed in to the store joins at once");
+  const theirs = await call(env, "GET", "/trips/" + made.body.id, null, "", HARK);
+  assert.equal(theirs.status, 200); assert.equal(theirs.body.org, false); assert.equal(theirs.body.stops.length, 7);
+  assert.equal((await call(env, "POST", "/trips", { to: "Blenko Glass Company, Milton, WV", lat: 42.4806, lng: -83.4755 }, "", HARK)).status, 403, "no Pro, no trip of their own");
+  const owner = await call(env, "POST", "/trips", { to: "Blenko Glass Company, Milton, WV", lat: 42.4806, lng: -83.4755 }, "3003", { "x-prowl-owner": "owner-key-0123456789" });
+  assert.equal(owner.status, 200, "the owner key is Pro");
 });
 
 const JPEG = (() => { const a = new Uint8Array(1200); a[0] = 0xff; a[1] = 0xd8; a[2] = 0xff; a[3] = 0xe0; return "data:image/jpeg;base64," + Buffer.from(a).toString("base64"); })();
@@ -290,6 +317,6 @@ test("the worker's own guards: routes are wired, the login links the account, th
   assert.match(INDEX, /url\.pathname\.startsWith\("\/finds\/"\) && request\.method === "GET"\) return findPhotoRoute/);
   assert.match(INDEX, /await tripAcctLink\(env, id, email\)/);
   assert.match(INDEX, /await tripSweep\(env\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v134"/);
+  assert.match(INDEX, /const WORKER_VERSION = "v135"/);
   for (const name of ["nearRoute", "tripRoute", "tripsRoute", "tripBuild"]) assert.ok(!/GOOGLE_MAPS_KEY|gKey\(env\)\s*\}/.test(indexFn(name).replace(/gKey\(env\)\)/g, "").replace(/!gKey\(env\)/g, "")), name + " only tests for the key");
 });
