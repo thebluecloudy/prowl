@@ -3049,7 +3049,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.31';
+var PROWL_VERSION='v7.32';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4951,10 +4951,15 @@ function slrHtml(s,cls){
     '<span class="slr-1" aria-hidden="true">★</span> '+pc+'%'+cnt+'</div>';
   return '';
 }
+/* v7.31 (the owner, on a ShopGoodwill camo backpack in Daily: the card had no picture, the popup had it): a card whose
+   photo is missing or does not load takes the listing's first photo from /item (the popup's own call, kept in ITEMC).
+   PHOTO keeps it by URL so a redraw shows it straight away. */
+var PHOTO=Object.create(null),PHOTO_Q=Object.create(null);
 function sgwCard(it,hunt,bare){
   /* no loading="lazy" here: on the live page it left some cards with an empty
      box even once scrolled into view. A handful of thumbnails is cheap. */
-  var img=it.image?'<img src="'+esc(it.image)+'" alt="" decoding="async">':'<img alt="">';
+  var ph=(typeof PHOTO!=='undefined'&&PHOTO[it.url])||it.image;
+  var img=ph?'<img src="'+esc(ph)+'" alt="" decoding="async">':'<img alt="" data-np="1">';
   var m=LIVE_NAME[it.src]||'ShopGoodwill';
   if(typeof it.bids==='number')m+=' · '+esc(String(it.bids))+' bid'+(it.bids===1?'':'s');
   if(it.time_left)m+=' · '+esc(it.time_left)+' left';
@@ -7288,12 +7293,38 @@ function awayMark(root){
     for(i=0;i<els.length;i++)if(g[els[i].getAttribute('data-u')]&&!els[i].classList.contains('is-gone'))els[i].classList.add('is-gone');
   }catch(e){}
 }
+/* v7.31: see PHOTO above sgwCard */
+function photoCell(el){while(el&&el.getAttribute&&!el.getAttribute('data-u'))el=el.parentNode;return el&&el.getAttribute?el:null}
+function photoPut(u,s){
+  PHOTO[u]=s;
+  [].forEach.call(document.querySelectorAll('.sgw-cell[data-u]'),function(x){
+    if(x.getAttribute('data-u')!==u)return;var im=x.querySelector('.sgw-card img');
+    if(im&&(im.getAttribute('data-np')||im.getAttribute('data-bad'))&&im.getAttribute('src')!==s){im.removeAttribute('data-np');im.src=s}});
+}
+function photoFix(img){
+  var c=photoCell(img),u=c&&c.getAttribute('data-u');if(!u||!popSrc(u))return;
+  if(PHOTO[u]){if(img.getAttribute('src')!==PHOTO[u]){img.removeAttribute('data-np');img.src=PHOTO[u]}return}
+  if(PHOTO_Q[u])return;PHOTO_Q[u]=1;
+  var use=function(j){var s=j&&j.images&&j.images[0];if(typeof s==='string'&&/^https:\/\//.test(s))photoPut(u,s)};
+  if(ITEMC[u]&&!ITEMC[u].failed){use(ITEMC[u]);return}
+  if(typeof fetch!=='function')return;
+  fetch(ITEM_API+encodeURIComponent(u)).then(function(r){return r.json().then(function(j){if(r.ok&&j&&!j.error){ITEMC[u]=j;use(j)}})})['catch'](function(){});
+}
+function photoMark(root){
+  try{var els=root.matches&&root.matches('.sgw-card img[data-np]')?[root]:[];
+    if(root.querySelectorAll)els=els.concat([].slice.call(root.querySelectorAll('.sgw-card img[data-np]')));
+    for(var i=0;i<els.length;i++)photoFix(els[i])}catch(e){}
+}
+document.addEventListener('error',function(e){
+  var t=e.target;
+  if(t&&t.tagName==='IMG'&&t.parentNode&&/(^|\s)sgw-card(\s|$)/.test(t.parentNode.className||'')){t.setAttribute('data-bad','1');photoFix(t)}
+},true);
 try{
   if(window.MutationObserver){
-    var awayMo=new MutationObserver(function(ms){var i,j,n;for(i=0;i<ms.length;i++)for(j=0;j<ms[i].addedNodes.length;j++){n=ms[i].addedNodes[j];if(n.nodeType===1){awayMark(n);pickMark(n)}}});
+    var awayMo=new MutationObserver(function(ms){var i,j,n;for(i=0;i<ms.length;i++)for(j=0;j<ms[i].addedNodes.length;j++){n=ms[i].addedNodes[j];if(n.nodeType===1){awayMark(n);pickMark(n);photoMark(n)}}});
     [].forEach.call(document.querySelectorAll('.scout-app-wrapper'),function(w){awayMo.observe(w,{childList:true,subtree:true})});
   }
-  awayMark(document);
+  awayMark(document);photoMark(document);
 }catch(e){}
 /* v6.99: double-tap the photo to like the listing. It only adds a like; un-liking stays on the heart button. */
 function popLike(){
