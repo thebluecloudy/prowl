@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v129: 2026-10-20. ShopGoodwill listings keep only titles with every word of the hunt (the owner: "Brookwood" came up
+ *         for Rookwood); see sgwExact.
  *   v128: 2026-10-20. Etsy listing details in English when the seller wrote an English translation (the owner: a German
  *         shop's panther "is in english on etsy but shows up in german in the prowl app"); otherwise the shop's own text.
  *         Etsy and eBay listing details carry from: { cc, name } when the shop or item is outside the US.
@@ -435,7 +437,7 @@ import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-const WORKER_VERSION = "v128";
+const WORKER_VERSION = "v129";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4013,7 +4015,7 @@ async function alSearch(env, source, term, filter) {
   if (!up || up.status !== 200) return [];
   let items = source === "ebay" ? ebayNormalize(up.text) : source === "etsy" ? etsyNormalize(up.text)
             : source === "chairish" ? chairishNormalize(up.text) : source === "poshmark" ? poshmarkNormalize(up.text, false, term)
-            : source === "depop" ? depopNormalize(up.text) : source === "vinted" ? vintedNormalize(up.text) : source === "grailed" ? grailedNormalize(up.text) : normalize(up.text);   /* v58: poshmark, v59: depop, v61: vinted, v66: grailed */
+            : source === "depop" ? depopNormalize(up.text) : source === "vinted" ? vintedNormalize(up.text) : source === "grailed" ? grailedNormalize(up.text) : sgwExact(normalize(up.text), term);   /* v58: poshmark, v59: depop, v61: vinted, v66: grailed; v129: sgwExact */
   if (!items || !items.length) return [];
   items = items.slice(0, AL_PER_SITE);
   return items.filter(x => x && /^https:\/\//.test(x.url || "")).map(x => ({
@@ -4046,6 +4048,28 @@ async function alHunt(env, term, sub) {
 function alExWords(v) {
   return String(v || "").toLowerCase().replace(/[\u2019']/g, "").replace(/[^a-z0-9\u00c0-\uffff]+/g, " ").split(" ").filter(Boolean)
     .map(w => (w.length > 3 ? (/ss$/.test(w) ? w : w.replace(/s$/, "")).replace(/(.{3,})e$/, "$1") : w));
+}
+/* v129 (the owner: a "Brookwood USA Camouflage Backpack" came up for the Rookwood hunt): ShopGoodwill's search is
+   loose, so its listings keep only titles that carry every word of the hunt as a whole word (alExWords: plurals and
+   a final e allowed). Filler words (vintage, vtg, antique...) are not required. Spellings run together or split also
+   count, on whole-word edges: "M.C. Escher" for mc escher, "Midcentury" for mid century, "Fire-King" for fireking,
+   but never "Brookwood" for rookwood. Unlike alExact there is no fallback: nothing is better than the wrong thing. */
+function sgwExact(items, term) {
+  const SOFT = { vintage: 1, vtg: 1, antique: 1, retro: 1, old: 1, rare: 1, mcm: 1, the: 1, and: 1, of: 1, a: 1, an: 1 };
+  const words = v => String(v || "").toLowerCase().replace(/[\u2018\u2019'.]/g, "").replace(/[^a-z0-9\u00c0-\u1fff\u2c00-\uffff]+/g, " ").split(" ").filter(Boolean);
+  const stem = w => alExWords(w)[0] || w;
+  const need = words(term).filter(w => !SOFT[w]);
+  if (!need.length || !Array.isArray(items)) return items;
+  const needS = need.map(stem), squash = need.join("");
+  return items.filter(x => {
+    const tw = words(x && x.title), have = " " + tw.map(stem).join(" ") + " ";
+    if (needS.every(w => have.indexOf(" " + w + " ") !== -1)) return true;
+    const starts = {}, ends = {};
+    let run = "";
+    tw.forEach(w => { starts[run.length] = 1; run += w; ends[run.length] = 1; });
+    for (let i = run.indexOf(squash); i !== -1; i = run.indexOf(squash, i + 1)) if (starts[i] && ends[i + squash.length]) return true;
+    return false;
+  });
 }
 function alExact(items, term) {
   const need = alExWords(term);
@@ -5755,7 +5779,7 @@ async function liveSpare(stale, source, why, retryMs, origin) {
   return json({ error: "busy", source: source, why: why, retryIn: sec }, 429, origin, { "Retry-After": String(sec), "Cache-Control": "no-store" });
 }
 const LIVE_CALLS = {
-  shopgoodwill: [(t) => callUpstream(t), (x) => normalize(x)],
+  shopgoodwill: [(t) => callUpstream(t), (x, t) => sgwExact(normalize(x), t)],   /* v129 */
   ebay: [(t, env) => ebayCall(t, env), (x) => ebayNormalize(x)],
   etsy: [(t, env) => etsyCall(t, env), (x) => etsyNormalize(x)],
   chairish: [(t) => chairishCall(t), (x) => chairishNormalize(x)],
@@ -6972,7 +6996,7 @@ async function handleFetch(request, env, ctx) {
               : isVinted ? vintedNormalize(up.text)
               : isGrailed ? grailedNormalize(up.text)
               : isSalvation ? salvationNormalize(up.text)
-              : normalize(up.text);
+              : sgwExact(normalize(up.text), term);   /* v129 */
     if (isHibid && items && items.length > HIBID_LIMIT) items = items.slice(0, HIBID_LIMIT);
     if (isDepop && items && items.length > DEPOP_LIMIT) items = items.slice(0, DEPOP_LIMIT);
     if (isVinted && items && items.length > VINTED_LIMIT) items = items.slice(0, VINTED_LIMIT);

@@ -20,7 +20,9 @@ const STORE = {
   'prowl.seenUrls': { pyrex: seenBefore('pyrex') },
 };
 
-test('the home panel features what is new for the other hunts, tagged New, with a way into that hunt', async () => {
+// v7.32 (the owner, on opening MC Escher: "it shows new since last look, best picks and then MC Escher"): with a hunt
+// open, the other hunts' new listings are one line naming each hunt with its count, not a block of cards above the hunt
+test('with a hunt open, the other hunts\' new listings are one line; in a hunt its new ones come first', async () => {
   const f = liveFetch({ perSource: 3 });
   const p = loadPage({ fetchImpl: f.impl, storage: STORE });
   await tick(50);
@@ -28,25 +30,32 @@ test('the home panel features what is new for the other hunts, tagged New, with 
   p.$('#otp-dock .db[data-m="daily"]').click();
   await tick(5000);
   p.$('#otp-cr').click();
-  const box = await waitFor(() => p.$('#otp-homeNew'), { timeout: 12000 });
-  assert.match(box.querySelector('.hn-h').textContent, /New since your last look/);
-  const cells = [...box.querySelectorAll('.sgw-cell[data-u]')];
-  assert.ok(cells.length > 0 && cells.length <= 3, 'up to 3 for the hunt: ' + cells.length);
-  for (const c of cells) {
-    assert.match(c.getAttribute('data-u'), /pyrex-2$/);
-    assert.equal(c.querySelector('.fl-newb').textContent, 'New');
-    assert.match(c.querySelector('.sgw-m').textContent, /^for pyrex · /);
-  }
-  const go = box.querySelector('.hn-go');
-  assert.match(go.textContent, /^pyrex · \d+ new$/);
-  go.click();
-  await tick(60);
+  const line = await waitFor(() => p.$('#otp-sgw .hn-line'), { timeout: 12000 });
+  assert.match(line.textContent, /^New in your other hunts:\s*pyrex \d+$/);
+  assert.equal(p.$('#otp-homeNew'), null, 'no block of cards above the hunt');
   /* in the hunt, its new listings are first in each marketplace and say New */
+  const chip = [...p.$$('#otp-sgw .sgw-chip[data-i]')].find((c) => /pyrex/.test(c.textContent));
+  chip.click();
   await waitFor(() => p.$('#otp-sgw .sgw-chip.on') && /pyrex/.test(p.$('#otp-sgw .sgw-chip.on').textContent));
-  const first = p.$('#otp-sgw .sgw-body .sgw-grid .sgw-cell[data-u]');
+  const first = await waitFor(() => p.$('#otp-sgw .sgw-body .sgw-grid .sgw-cell[data-u]'));
   assert.match(first.getAttribute('data-u'), /pyrex-2$/, 'new first');
   assert.ok(first.querySelector('.fl-newb'), 'tagged New');
-  assert.equal(p.$('#otp-homeNew'), null, 'seen now, so the strip has nothing left to feature');
+  assert.equal(p.$('#otp-sgw .hn-line'), null, 'seen now, nothing new left in the other hunts');
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test('tapping a hunt on that line opens that hunt, the one its count is for', async () => {
+  const f = liveFetch({ perSource: 3 });
+  const p = loadPage({ fetchImpl: f.impl, storage: STORE });
+  await tick(50);
+  p.$('#otp-dock .db[data-m="daily"]').click();
+  await tick(5000);
+  p.$('#otp-cr').click();
+  const pick = await waitFor(() => p.$('#otp-sgw .hn-line .hn-pick'), { timeout: 12000 });
+  assert.match(pick.textContent, /^pyrex \d+$/);
+  pick.click();
+  await waitFor(() => p.$('#otp-sgw .sgw-chip.on') && /pyrex/.test(p.$('#otp-sgw .sgw-chip.on').textContent));
   assert.deepEqual(p.errors, []);
   await p.close();
 });

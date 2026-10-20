@@ -136,3 +136,27 @@ test('a US listing, or one with no country, has no ships-from note', async () =>
     await p.close();
   }
 });
+
+// v7.32 (the owner, on a Rookwood cat: flagged a repair, "but it missed the context of it's free from repairs")
+test('"free from chips, cracks and repairs" and other ways of saying none are not flags', async () => {
+  for (const d of ['Original condition piece -- free from chips, cracks and repairs.', 'It has never been repaired.',
+    'Neither chipped nor cracked.', "There isn't any damage or restoration.", 'Absent of repairs.',
+    "It doesn't have any chips or cracks.", 'There aren\u2019t any repairs.']) {
+    const p = await popup(Object.assign({}, ETSY, { description: d }), ETSY.url);
+    assert.equal(p.$('#otp-sheetB .pp-flag'), null, d);
+    await p.close();
+  }
+  const p = await popup(Object.assign({}, ETSY, { description: 'Free shipping. The tail was repaired.' }), ETSY.url);
+  assert.match(p.$('#otp-sheetB .pp-flag q').textContent, /The tail was repaired/, 'a real repair after a "free" sentence still flags');
+  await p.close();
+});
+
+// the review of v7.32: a "n't" elsewhere in the sentence does not hide real damage
+test('"small chip, doesn\'t affect display" and the like still flag', async () => {
+  for (const d of ["Small chip on the rim, doesn't affect display.", "Sold as-is, can't test it.", "Crack on base but it won't leak.",
+    "Hairline crack, isn't visible from front."]) {
+    const p = await popup(Object.assign({}, ETSY, { description: d }), ETSY.url);
+    assert.ok(p.$('#otp-sheetB .pp-flag'), d);
+    await p.close();
+  }
+});

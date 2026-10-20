@@ -1056,6 +1056,12 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .hn-grid{padding:0 15px 8px}
 .scout-app-wrapper .hn-acts{display:flex;flex-wrap:wrap;gap:8px;margin:0 15px 8px}
 .scout-app-wrapper .hn-go{min-height:40px;font-size:14px}
+.scout-app-wrapper .hn-line{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;margin:0 0 12px;font-size:14px;color:var(--mu)}
+.scout-app-wrapper .hn-pick{-webkit-appearance:none;appearance:none;max-width:100%;min-height:40px;padding:0;border:0;background:none;color:var(--ac);font:inherit;font-weight:700;text-align:left;overflow-wrap:anywhere;cursor:pointer}
+.scout-app-wrapper .hn-pick b{color:var(--ink)}
+/* v7.32 (the owner: "the words fall out of pills sometimes"): the home panel's hunt buttons wrap onto two lines
+   instead of running out of the pill */
+.scout-app-wrapper .hn-go{height:auto;min-height:40px;padding:8px 16px;white-space:normal;overflow-wrap:anywhere;text-align:left;line-height:1.3}
 .scout-app-wrapper .sale-was{color:var(--mu);font-weight:600;font-size:.85em}
 .scout-app-wrapper .sale-off{display:inline-block;padding:1px 7px;border-radius:99px;background:#1f7a3a;color:#fff;font-size:.72em;font-weight:800;vertical-align:.12em}
 .scout-app-wrapper .pp-flag{margin:10px 0;padding:10px 12px;border:2px solid #d9541e;border-radius:10px;background:rgba(217,84,30,.1);color:var(--ink);font-size:15px;line-height:1.45}
@@ -3049,7 +3055,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.31';
+var PROWL_VERSION='v7.32';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4951,10 +4957,15 @@ function slrHtml(s,cls){
     '<span class="slr-1" aria-hidden="true">★</span> '+pc+'%'+cnt+'</div>';
   return '';
 }
+/* v7.32 (the owner, on a ShopGoodwill camo backpack in Daily: the card had no picture, the popup had it): a card whose
+   photo is missing or does not load takes the listing's first photo from /item (the popup's own call, kept in ITEMC).
+   PHOTO keeps it by URL so a redraw shows it straight away. */
+var PHOTO=Object.create(null),PHOTO_Q=Object.create(null);
 function sgwCard(it,hunt,bare){
   /* no loading="lazy" here: on the live page it left some cards with an empty
      box even once scrolled into view. A handful of thumbnails is cheap. */
-  var img=it.image?'<img src="'+esc(it.image)+'" alt="" decoding="async">':'<img alt="">';
+  var ph=(typeof PHOTO!=='undefined'&&PHOTO[it.url])||it.image;
+  var img=ph?'<img src="'+esc(ph)+'" alt="" decoding="async">':'<img alt="" data-np="1">';
   var m=LIVE_NAME[it.src]||'ShopGoodwill';
   if(typeof it.bids==='number')m+=' · '+esc(String(it.bids))+' bid'+(it.bids===1?'':'s');
   if(it.time_left)m+=' · '+esc(it.time_left)+' left';
@@ -5420,9 +5431,13 @@ function sgwBody0(t){
   var sm=liveSummary(t);
   if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return fbHas(t)?fbBlock(t)+liveEmptyCard(t,1):liveEmptyCard(t)+fbBlock(t);   /* v6.33; v6.65: Facebook finds first when there are some */
   if(sm.done&&!sm.n&&sm.err1===sm.count)return '<div class="sgw-empty"><p class="sgw-empty-h">Prowl\u2019s live results are not reaching you.</p><p>Check your connection. If you use a content or ad blocker, allow <b>prowl.thebluecloud.workers.dev</b>. More places to look still searches every site directly.</p></div>';
-  var k=t.toLowerCase(),html=liveBlock('ShopGoodwill',t,sgw.cache[k],sgw.busy===t)+fbBlock(t),i,s;   /* v6.65: Facebook under Goodwill */
-  for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];html+=liveBlock(s.name,t,lv[s.id].cache[k],lvBusy(s.id,t))}
-  return html;
+  /* v7.32 (the owner: "MC Escher ... needs to get to the hunt faster"): marketplaces with listings come first, the
+     ones with nothing (or still asking) after them, so "Nothing live on ShopGoodwill" no longer sits on top */
+  var k=t.toLowerCase(),html='',quiet='',i,s,b;
+  b=liveBlock('ShopGoodwill',t,sgw.cache[k],sgw.busy===t)+fbBlock(t);   /* v6.65: Facebook under Goodwill */
+  if(liveCount(sgw.cache[k])||fbHas(t))html+=b;else quiet+=b;
+  for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];b=liveBlock(s.name,t,lv[s.id].cache[k],lvBusy(s.id,t));if(liveCount(lv[s.id].cache[k]))html+=b;else quiet+=b}
+  return html+quiet;
 }
 
 /* v6.74: "Run the full hunt" moved to the foot of the live listings as "Continue the full hunt" (sgwCont) */
@@ -6394,6 +6409,16 @@ function homeNew(NEWN){
   return '<div class="hn" id="otp-homeNew"><h3 class="hn-h">New since your last look <small>'+tot+'</small></h3>'+
     '<div class="sgw-grid hn-grid">'+cards+'</div><div class="hn-acts">'+btn+'</div></div>';
 }
+/* v7.32 (the owner, on opening MC Escher: "it shows new since last look, best picks and then MC Escher"): with a hunt
+   open, the other hunts' new listings are one line that opens Daily (Daily is only what is new since v7.30), not a
+   block of cards and buttons above the hunt. With no hunt open, homeNew stays. */
+function homeNewLine(NEWN){
+  var n=0,h='',i;
+  for(i=0;i<NEWN.length&&i<sgw.terms.length;i++)if(NEWN[i]){n+=NEWN[i];
+    h+='<button type="button" class="hn-pick" data-sgw="pick" data-i="'+i+'">'+esc(sgw.terms[i].t)+' <b>'+(NEWN[i]>9?'9+':NEWN[i])+'</b></button>'}
+  if(!n)return '';
+  return '<p class="hn-line"><span>New in your other hunts:</span>'+h+'</p>';
+}
 function rSGW(){
   var mount=$('#otp-sgw');
   if(!mount)return;
@@ -6423,7 +6448,7 @@ function rSGW(){
   if(hid)html+='<span class="sgw-chip sgw-more" role="button" tabindex="0" data-sgw="more">+'+hid+' more</span>';
   else if(sgw.more&&isNarrow()&&sgw.terms.length>CHIP_FEW+1)html+='<span class="sgw-chip sgw-more" role="button" tabindex="0" data-sgw="less">Show fewer</span>';
   form.insertAdjacentHTML('beforebegin',html);
-  mount.querySelector('.sgw-body').innerHTML=homeNew(NEWN)+sgwBody();   /* v7.09 */
+  mount.querySelector('.sgw-body').innerHTML=(sgw.cur?homeNewLine(NEWN):homeNew(NEWN))+sgwBody();   /* v7.09; v7.32 */
   freshPaint(mount);   /* v6.69 */
   whypPaint();   /* v6.74 */
   mount.querySelector('.sgw-acts').innerHTML=sgwActs();
@@ -7151,10 +7176,12 @@ function popOpen(card,lite){
    is not a flag. */
 var FLAG_REP=/\b(repair(?:ed|s)?|restor(?:ed|ation)|re-?glued|glued|touch(?:ed)?[- ]?ups?|re-?painted|over-?painted)\b/i,
   FLAG_DMG=/\b(chip(?:ped|s)?|crack(?:ed|s)?|hairlines?|craz(?:ed|ing)|broken|damaged?|missing|flea ?bites?|as[- ]is)\b/i,
-  FLAG_NO=/\b(no|not|never|without|free of|zero|none)\b/i;
+  FLAG_NO=/\b(no|not|never|without|free (?:of|from)|zero|none|nor|neither|absent|devoid of)\b/i,   /* v7.32: "free from chips, cracks and repairs" */
+  /* v7.32: "doesn't have any chips" says none, "small chip, doesn't affect display" does not: n't counts only right before the damage word */
+  FLAG_NT=/n['\u2019]t\s+(?:\w+\s+){0,3}?(?:chip|crack|hairline|craz|broken|damage|repair|restor|glued|flaw|issue|problem)/i;
 function popFlags(title,d){
   var txt=popUnEnt(String(d.description||'').replace(/<br\s*\/?>/gi,'. ').replace(/<\/(p|li|div)>/gi,'. ').replace(/<[^>]*>/g,' ')),parts=(String(title||'')+'. '+String(d.condition||'')+'. '+txt).split(/[.!?]+(?:\s+|$)|\n+/),rep=[],dmg=[],i,x;
-  for(i=0;i<parts.length;i++){x=parts[i].replace(/\s+/g,' ').trim();if(!x||x.length>220||FLAG_NO.test(x))continue;
+  for(i=0;i<parts.length;i++){x=parts[i].replace(/\s+/g,' ').trim();if(!x||x.length>220||FLAG_NO.test(x)||FLAG_NT.test(x))continue;
     if(FLAG_REP.test(x)){if(rep.length<2&&rep.indexOf(x)<0)rep.push(x)}else if(FLAG_DMG.test(x)&&dmg.length<2&&dmg.indexOf(x)<0)dmg.push(x)}
   if(!rep.length&&!dmg.length)return null;
   var head=rep.length?(dmg.length?'Mentions a repair and damage':'Mentions a repair'):'Mentions damage',qs=rep.concat(dmg).slice(0,2);
@@ -7288,12 +7315,38 @@ function awayMark(root){
     for(i=0;i<els.length;i++)if(g[els[i].getAttribute('data-u')]&&!els[i].classList.contains('is-gone'))els[i].classList.add('is-gone');
   }catch(e){}
 }
+/* v7.32: see PHOTO above sgwCard */
+function photoCell(el){while(el&&el.getAttribute&&!el.getAttribute('data-u'))el=el.parentNode;return el&&el.getAttribute?el:null}
+function photoPut(u,s){
+  PHOTO[u]=s;
+  [].forEach.call(document.querySelectorAll('.sgw-cell[data-u]'),function(x){
+    if(x.getAttribute('data-u')!==u)return;var im=x.querySelector('.sgw-card img');
+    if(im&&(im.getAttribute('data-np')||im.getAttribute('data-bad'))&&im.getAttribute('src')!==s){im.removeAttribute('data-np');im.src=s}});
+}
+function photoFix(img){
+  var c=photoCell(img),u=c&&c.getAttribute('data-u');if(!u||!popSrc(u))return;
+  if(PHOTO[u]){if(img.getAttribute('src')!==PHOTO[u]){img.removeAttribute('data-np');img.src=PHOTO[u]}return}
+  if(PHOTO_Q[u])return;PHOTO_Q[u]=1;
+  var use=function(j){var s=j&&j.images&&j.images[0];if(typeof s==='string'&&/^https:\/\//.test(s))photoPut(u,s)};
+  if(ITEMC[u]&&!ITEMC[u].failed){use(ITEMC[u]);return}
+  if(typeof fetch!=='function')return;
+  fetch(ITEM_API+encodeURIComponent(u)).then(function(r){return r.json().then(function(j){if(r.ok&&j&&!j.error){ITEMC[u]=j;use(j)}})})['catch'](function(){});
+}
+function photoMark(root){
+  try{var els=root.matches&&root.matches('.sgw-card img[data-np]')?[root]:[];
+    if(root.querySelectorAll)els=els.concat([].slice.call(root.querySelectorAll('.sgw-card img[data-np]')));
+    for(var i=0;i<els.length;i++)photoFix(els[i])}catch(e){}
+}
+document.addEventListener('error',function(e){
+  var t=e.target;
+  if(t&&t.tagName==='IMG'&&t.parentNode&&/(^|\s)sgw-card(\s|$)/.test(t.parentNode.className||'')){t.setAttribute('data-bad','1');photoFix(t)}
+},true);
 try{
   if(window.MutationObserver){
-    var awayMo=new MutationObserver(function(ms){var i,j,n;for(i=0;i<ms.length;i++)for(j=0;j<ms[i].addedNodes.length;j++){n=ms[i].addedNodes[j];if(n.nodeType===1){awayMark(n);pickMark(n)}}});
+    var awayMo=new MutationObserver(function(ms){var i,j,n;for(i=0;i<ms.length;i++)for(j=0;j<ms[i].addedNodes.length;j++){n=ms[i].addedNodes[j];if(n.nodeType===1){awayMark(n);pickMark(n);photoMark(n)}}});
     [].forEach.call(document.querySelectorAll('.scout-app-wrapper'),function(w){awayMo.observe(w,{childList:true,subtree:true})});
   }
-  awayMark(document);
+  awayMark(document);photoMark(document);
 }catch(e){}
 /* v6.99: double-tap the photo to like the listing. It only adds a like; un-liking stays on the heart button. */
 function popLike(){

@@ -1,15 +1,37 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.31 / v128).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.32 / v129).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.31** | 402,502 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v128** | |
+| Page | **v7.32** | 402,502 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v129** | |
 
 Recently shipped, newest first:
+
+- **v7.32 / v129: the owner's error list of 2026-10-20.**
+  - **A card with no photo gets the listing's own** (a ShopGoodwill camo backpack was blank in Daily, its popup had
+    the photos). A missing photo, or one that fails to load, is filled from `/item` (the popup's call, cached in
+    ITEMC), one call per listing, kept in PHOTO for redraws, no loop if that photo fails too.
+  - **No repair flag for "free from chips, cracks and repairs"** (a Rookwood cat). FLAG_NO also reads "free from",
+    "nor", "neither", "absent" and "devoid of"; "n't" counts only right before the damage word (FLAG_NT), so "small
+    chip, doesn't affect display" still flags.
+  - **A hunt shows its own results first** (opening MC Escher showed New since your last look, the other hunts'
+    buttons and Best picks before MC Escher). With a hunt open, the other hunts' new listings are one line, "New in your
+    other hunts: Rookwood 9+ · porcelain panther 3", each opening its hunt (`homeNewLine`; Daily counts from another
+    baseline, so it is not the target); the New since your last look cards stay only with no hunt open.
+    Marketplaces with listings come before the empty ones ("Nothing live on ShopGoodwill" moved down).
+  - **"Brookwood" no longer matches the Rookwood hunt** (worker v129). ShopGoodwill's search is loose, so its
+    listings keep only titles with every word of the hunt (`sgwExact`: plurals and a final e allowed; filler words such
+    as vintage, vtg, antique not required; "M.C. Escher", "Midcentury", "Fire-King" match mc escher, mid century,
+    fireking on whole-word edges), in the live search, alerts and liveFetch. No fallback.
+  - **Words stay inside the hunt pills** ("the words fall out of pills sometimes"): the home panel's hunt buttons
+    (`.hn-go`) wrap onto two lines instead of running out. (A rule on every `.b` was tried and dropped: it cut "Open
+    first N of M" off on phones.)
+  - Tests: `__tests__/page/card-photo-v732.test.mjs`, `hunt-order-v732.test.mjs`, `popup-flags-v710.test.mjs`,
+    `home-new-v709.test.mjs` (now the one-line behaviour), `worker/__tests__/sgw-exact.test.mjs`.
 
 - **v7.31: the first visit, and the extras out of the way** (Matt, 2026-10-20: "yes, do them all, they are good
   ideas"; step 2 of the simplification).
@@ -543,7 +565,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.32, worker v129**. Claim one here when you start.
+Next free numbers: **page v7.33, worker v130**. Claim one here when you start.
 
 ## What's next
 
