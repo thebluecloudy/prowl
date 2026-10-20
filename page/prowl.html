@@ -3241,7 +3241,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.41';
+var PROWL_VERSION='v7.42';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -9749,7 +9749,7 @@ function nrAroundDraw(){
 /* ---- Road trip ---- */
 function nrDays(){var out=[],i,d,t=Date.now();for(i=0;i<7;i++){d=new Date(t+i*86400000);out.push({day:nrLocalDay(d),label:i===0?'Today':NR_D3[d.getDay()]})}return out}
 function rNrDays(){var el=$('#otp-nrDays');if(!el)return;var D=nrDays();if(!NR.day||NR.day<D[0].day)NR.day=D[0].day;el.innerHTML=D.map(function(x){return '<button type="button" class="hubc'+(x.day===NR.day?' on':'')+'" data-nrday="'+x.day+'" aria-pressed="'+(x.day===NR.day)+'">'+x.label+'</button>'}).join('')}
-function nrMiles(r){return Math.round(r.mi!=null?r.mi:(r.km||0)*0.621371)}   /* v7.41: the worker sends miles; older saved trips carried km */
+function nrMiles(r){return Math.round(r.mi!=null?r.mi:(r.km||0)*0.621371)}   /* v7.42: the worker sends miles; older saved trips carried km */
 function nrDur(min){var hh=Math.floor(min/60),mm=min%60;return (hh?hh+' h ':'')+(mm||!hh?mm+' min':'')}
 function nrBuild(to){
   var out=$('#otp-nrOut');if(!to||NR.busy||!out)return;NR.busy=true;NR.view=null;NR.built=null;

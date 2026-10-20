@@ -47,8 +47,8 @@ const cells = (p) => p.$$('.run-live .sgw-cell').length;
 const ebayPrices = (p) => p.$$('.rlive[data-lv="ebay"] .sgw-cell').map((c) => c.getAttribute('data-p'));
 const click = (p, el) => el.dispatchEvent(new p.win.MouseEvent('click', { bubbles: true, cancelable: true }));
 
-test('the search bar has the filter button before Hunt, the chips sit under it, and the page is v7.41', () => {
-  assert.match(html, /var PROWL_VERSION='v7\.41';/);
+test('the search bar has the filter button before Hunt, the chips sit under it, and the page is v7.42', () => {
+  assert.match(html, /var PROWL_VERSION='v7\.42';/);
   const form = html.slice(html.indexOf('<form id="otp-sf"'), html.indexOf('</form>'));
   assert.ok(form.indexOf('id="otp-flt"') > -1 && form.indexOf('id="otp-flt"') < form.indexOf('type="submit"'), 'the filter button comes before Hunt');
   assert.match(form, /class="flt-n" id="otp-fltN" hidden/);

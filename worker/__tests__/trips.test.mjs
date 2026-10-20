@@ -148,7 +148,7 @@ test("/near: without the key a plain 'not set up'; with it the shops around a po
   assert.equal(names[0], "Central City Antiques", "the biggest first");
   assert.equal(names.filter((n) => /Central City|14th Street/.test(n)).length, 3, "the three Huntington shops");
   assert.ok(names.indexOf("Bluegrass Collectors") === -1, "Ashland, 11 miles off, is outside the circle");
-  assert.ok(!r.body.places.find((p) => p.near > TRIP.NEAR_KEEP_MI), "v133: nothing beyond NEAR_KEEP_MI (miles since v147)");
+  assert.ok(!r.body.places.find((p) => p.near > TRIP.NEAR_KEEP_MI), "v133: nothing beyond NEAR_KEEP_MI (miles since v148)");
   assert.ok(names.indexOf("Maumee Antique Mall") === -1, "Maumee is not near Huntington");
   const c = r.body.places[0];
   assert.equal(c.town, "Huntington, WV"); assert.equal(c.why, "60 dealers"); assert.equal(c.photo, "/pp?n=places%2FChIJCentralCityAntiques%2Fphotos%2FP1");
@@ -387,7 +387,7 @@ test("the worker's own guards: routes are wired, the login links the account, th
   assert.match(INDEX, /url\.pathname\.startsWith\("\/finds\/"\) && request\.method === "GET"\) return findPhotoRoute/);
   assert.match(INDEX, /await tripAcctLink\(env, id, email\)/);
   assert.match(INDEX, /await tripSweep\(env\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v147"/);
+  assert.match(INDEX, /const WORKER_VERSION = "v148"/);
   assert.equal((INDEX.match(/env\.GOOGLE_MAPS_KEY/g) || []).length, 1, "the key is read in one place (gKey) and never put in an answer");
   for (const name of ["nearRoute", "tripRoute", "tripsRoute", "tripBuild", "ppRoute"]) assert.ok(!/GOOGLE_MAPS_KEY/.test(indexFn(name)), name + " never touches the key itself");
 });

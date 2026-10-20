@@ -448,8 +448,8 @@ test('v7.39: the road with the most to see is said; smaller shops sit apart and 
   await p.close();
 });
 
-test('the page says v7.41, and keeps every old localStorage key (prowl.trip was v7.36\'s one new one; v7.40 adds prowl.filter)', () => {
-  assert.match(PAGE, /var PROWL_VERSION='v7\.41'/);
+test('the page says v7.42, and keeps every old localStorage key (prowl.trip was v7.36\'s one new one; v7.40 adds prowl.filter)', () => {
+  assert.match(PAGE, /var PROWL_VERSION='v7\.42'/);
   assert.match(PAGE, /var FLT_KEY='prowl\.filter'/);
   assert.match(PAGE, /var TRIP_KEY='prowl\.trip'/);
   assert.match(PAGE, /var CATS_KEY='prowl\.nearCats',SKIP_KEY='prowl\.nearSkip'/);

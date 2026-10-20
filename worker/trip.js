@@ -12,7 +12,7 @@
 export const DETOUR_MIN = 10;            /* a stop may cost this many minutes off the route (internal, never shown) */
 export const DETOUR_MPH = 37;            /* v146: the speed assumed off the highway, for turning distance into minutes (25 mph called
                                             Maumee Antique Mall, 2.4 miles from I-475, an 11.7-minute detour and dropped it) */
-export const MI_M = 1609.344;            /* metres in a mile: Google wants metres, Prowl thinks in miles (v147) */
+export const MI_M = 1609.344;            /* metres in a mile: Google wants metres, Prowl thinks in miles (v148) */
 export const MAPS_WAYPOINTS = 9;         /* Google Maps directions links take about nine waypoints */
 export const FINDS_GRACE_DAYS = 7;       /* find photos live this long after the trip closes (the spec's default) */
 export const TRIP_DAYS_MAX = 14;         /* a trip day may be at most this far ahead */

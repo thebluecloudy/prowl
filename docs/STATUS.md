@@ -1,17 +1,17 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.41 / v147).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.42 / v148).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.41** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v147** | |
+| Page | **v7.42** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v148** | |
 
 Recently shipped, newest first:
 
-- **v7.41 / v147: miles and mph, nowhere a kilometre** (the owner: "don't use km or km/hr, use miles and mph"). The
+- **v7.42 / v148: miles and mph, nowhere a kilometre** (the owner: "don't use km or km/hr, use miles and mph"). The
   worker measures everything in miles now: `haversineMi`, `nearestOnRoute` answers `mi`, the detour speed is 37 mph
   (`DETOUR_MPH`; 3 miles each way is the 10-minute budget), the corridor circles are 15 miles apart and 9 miles wide,
   Around you keeps places within 25 miles (`NEAR_KEEP_MI`) and the walkable cluster is 0.4 miles. Google still takes
@@ -784,7 +784,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.42, worker v148**. Claim one here when you start.
+Next free numbers: **page v7.43, worker v149** (PR #194 holds v7.41 / v147). Claim one here when you start.
 
 ## What's next
 
