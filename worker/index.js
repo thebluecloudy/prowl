@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v149: 2026-10-20. Cross-posts in different currencies (an Etsy lamp at 180.00 CAD, a Poshmark one at $129) are never
+ *         matched on price; the page now calls them similar, not the same piece.
  *   v148: 2026-10-20. Miles and mph everywhere (the owner: "don't use km or km/hr"): /trip answers route.mi, Around You's
  *         near is miles, the corridor and detour constants are miles and mph (trip.js). Keys v=9.
  *   v146: 2026-10-20. The detour was the thief: the road passes 2.4 miles from Maumee Antique Mall and 25 mph both ways
@@ -507,7 +509,7 @@ import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v148";
+const WORKER_VERSION = "v149";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;

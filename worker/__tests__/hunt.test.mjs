@@ -142,3 +142,12 @@ test("no chains through a middle listing, and never two listings from the same s
   const etsy = all.filter(x => x.src === "etsy");
   assert.ok(!(etsy[0].dupeOf === etsy[1].url || etsy[1].dupeOf === etsy[0].url), "two Etsy listings are never one piece");
 });
+
+/* v147 (the owner: an Etsy panther lamp at 180.00 CAD was called the same piece as a $129 Poshmark lamp) */
+test("prices in different currencies are never matched", () => {
+  const rows = [
+    { source: "etsy", status: 200, note: "", items: [it("etsy", "Black Ceramic Panther Panther Lamp with shade", "180.00 CAD")] },
+    { source: "poshmark", status: 200, note: "", items: [it("poshmark", "Vintage Ceramic Black Panther TV Lamp", "$129.00")] }
+  ];
+  assert.equal(huntCombine(rows, T).dupes.length, 0);
+});
