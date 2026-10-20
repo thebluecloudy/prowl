@@ -12,7 +12,8 @@ test('simple is the default: the marketplace list folds behind one button, and t
   await search(p, 'pyrex');
   assert.ok(p.$('.scout-app-wrapper').classList.contains('dt-simple'));
   const more = p.$('#otp-dtMore');
-  assert.match(more.textContent, /Show all \d+ marketplaces/);
+  assert.match(more.textContent, /^More places to look/, 'v7.31: was Show all N marketplaces');
+  assert.match(more.textContent, /All \d+ marketplaces, Facebook, Instagram, sold prices/);
   more.click();
   assert.ok(p.$('#otp-res .rc').classList.contains('dt-open'));
   await p.close();

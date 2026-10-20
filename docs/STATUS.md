@@ -1,16 +1,37 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.30 / v128).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.31 / v128).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.30** | 402,878 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.31** | 402,502 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v128** | |
 
 Recently shipped, newest first:
 
+- **v7.31: the first visit, and the extras out of the way** (Matt, 2026-10-20: "yes, do them all, they are good
+  ideas"; step 2 of the simplification).
+  - **First visit:** How Prowl works no longer opens by itself (it is in the menu). No sample hunts (`DEF` is empty;
+    was ceramic panther, Halloween decor, ceramic Christmas tree). Under the search box, `#otp-start`: three steps
+    (Search, Keep, Prowl watches) and Try one, the first 8 of `OLD_DEF`. Until a hunt is kept, the wrapper has
+    `is-new`, which hides the empty hunts panel, the guide card, the Get the app card and the home Alerts box. The
+    "v7.xx · live" line shows only with the owner key.
+  - **Keep this hunt** is the primary button on a single-hunt result, with "new ones show in Daily"; once kept, an
+    "Email me when they land" link (no alerts sign-in yet) opens Den › Settings.
+  - **Results:** one sideways row per marketplace in a hunt, Daily and the home panel (`#otp-res`/`#otp-sgw`
+    `.sgw-grid` is a horizontal scroller). A 9-marketplace hunt at 390 px went from about 7,100 px to 3,700 px.
+  - **One button per card:** result cards keep only the heart. Save this find is in the listing popup (`.pp-sv`) and
+    Fair price? is in its Price check, which now starts open. A site the popup cannot read (Chairish, Poshmark,
+    Vinted, Grailed) opens a light popup drawn from the card (`popOpen(card, lite)`, no `/item` call), so Save and
+    Fair price? are on every result. Flock cards are unchanged.
+  - **More places to look:** the simple mode's Show all N marketplaces is now More places to look, and it also folds
+    Facebook in every city, Instagram, eBay Sold, Terapeak and the tab notes (`.rf`). The "tap any row" toast is gone.
+  - **Alerts box once:** not on a search (`is-run`), not on a first visit, and Daily's big card is one line ("Want
+    these by email?").
+  Test: `__tests__/page/first-visit-v731.test.mjs`; `card-row`, `detail-shelf-v708`, `flock-den-near`, `flock-next`,
+  `help-app-v710`, `help-film-v714`, `jellycat-v726`, `popup-home`, `salvation` and `five-tabs-v730` updated.
 - **v7.30: five tabs, one job each** (Matt, 2026-10-20, after showing his wife: "too complicated for people to use";
   "hunt is ... focused hunts", "DAILY ... maybe we only show new stuff", "local's intent is to be used when you are
   out in the car"). Step 1 of the simplification plan; the first-visit path and the Pro offer come next.
@@ -522,7 +543,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.31, worker v129**. Claim one here when you start.
+Next free numbers: **page v7.32, worker v129**. Claim one here when you start.
 
 ## What's next
 

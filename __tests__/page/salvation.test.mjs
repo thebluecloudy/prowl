@@ -38,7 +38,7 @@ test('live Salvation Army results render with the auction details', async () => 
     const items = u.pathname === '/salvation' ? [{ title: 'Pink Panther plush 1983', price: '$12.00', url: 'https://shopthesalvationarmy.com/Listing/Details/588855451/x', image: 'https://shopsalvationarmyblob.blob.core.windows.net/assets/media/a_fullsize.jpg', src: 'salvation', bids: 3, time_left: '2d 4h' }] : [];
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ items }), text: () => Promise.resolve('') });
   };
-  const p = loadPage({ fetchImpl });
+  const p = loadPage({ fetchImpl, storage: { 'prowl.v36': { hunts: ['pink panther'] } } });   /* v7.31: no sample hunts on a first visit */
   p.win.confirm = () => true;
   await tick(40);
   p.$('#otp-dock .db[data-m="flock"]').click();

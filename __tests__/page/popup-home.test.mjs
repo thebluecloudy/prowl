@@ -70,11 +70,19 @@ test('v6.53: an Etsy result opens the popup too', async () => {
   await p.close();
 });
 
-test('other marketplaces and modifier clicks still go straight to the listing', async () => {
+test('v7.31: a site the popup cannot read opens a light popup from the card; modifier clicks still go straight to the listing', async () => {
   const p = setup();
   const ch = await waitFor(() => homeCell(p, 'chairish.com'));
-  assert.equal(tap(p, ch).defaultPrevented, false, 'Chairish has no popup');
-  assert.ok(!sheetOpen(p));
+  assert.equal(tap(p, ch).defaultPrevented, true, 'Chairish opens the light popup');
+  assert.ok(sheetOpen(p));
+  const b = p.$('#otp-sheetB');
+  assert.match(b.querySelector('.pp-go').textContent, /View on Chairish/);
+  assert.ok(b.querySelector('.pp-sv .sgw-sv'), 'Save this find');
+  assert.ok(b.querySelector('.pp-fp .sgw-fp'), 'Fair price?');
+  assert.deepEqual(p.items, [], 'nothing fetched: it is drawn from the card');
+  await tick(60);   /* the sheet slides in on the next frame; Close before that is a no-op */
+  b.querySelector('[data-ppclose]').click();
+  await waitFor(() => !sheetOpen(p));
   const eb = homeCell(p, 'ebay.com/itm/');
   assert.equal(tap(p, eb, { ctrlKey: true }).defaultPrevented, false, 'ctrl-click opens a new tab as usual');
   assert.equal(tap(p, eb, { metaKey: true }).defaultPrevented, false);
@@ -83,13 +91,13 @@ test('other marketplaces and modifier clicks still go straight to the listing', 
   await p.close();
 });
 
-test('the star and Fair price? under a card keep their own jobs', async () => {
+test('v7.31: the heart under a card keeps its own job; Fair price? and Save are in the popup', async () => {
   const p = setup();
   const cell = await waitFor(() => homeCell(p, 'ebay.com/itm/'));
-  const fp = cell.querySelector('.sgw-fp');
-  assert.ok(fp);
-  fp.click();
-  assert.ok(!p.$('#otp-sheet').classList.contains('pop'), 'Fair price? does not open the popup');
+  assert.equal(cell.querySelector('.sgw-fp'), null, 'no Fair price? on the card');
+  assert.equal(cell.querySelector('.sgw-sv'), null, 'no star on the card');
+  cell.querySelector('.sgw-lk').click();
+  assert.ok(!p.$('#otp-sheet').classList.contains('pop'), 'the heart does not open the popup');
   await p.close();
 });
 

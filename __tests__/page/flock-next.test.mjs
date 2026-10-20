@@ -7,9 +7,11 @@ const ls = (p, k) => JSON.parse(p.win.localStorage.getItem(k) || 'null');
 const cards = (p) => p.$$('#otp-flockRow .fl-card');
 const find = (n, price, at = n) => ({ title: `Find ${n}`, price, url: `https://shopgoodwill.com/item/f${n}`, image: '', src: '', hunt: 'pyrex', at });
 
+/* v7.31: a first visit has no sample hunts any more, so Flock gets the three it used to start with */
+const SAMPLE = { 'prowl.v36': { hunts: ['ceramic panther', 'Halloween decor', 'ceramic Christmas tree'] } };
 async function open(opts = {}, fx = {}) {
   const f = liveFetch(fx);
-  const p = loadPage({ fetchImpl: f.impl, ...opts });
+  const p = loadPage({ fetchImpl: f.impl, ...opts, storage: { ...SAMPLE, ...(opts.storage || {}) } });
   p.win.confirm = () => true;
   await tick(50);
   p.$('#otp-dock .db[data-m="flock"]').click();

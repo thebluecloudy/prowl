@@ -77,7 +77,7 @@ test('NEAR ME opens its own screen, stores first, without the Den\'s tabs; DEN s
   await p.close();
 });
 
-test('Daily: the alerts card comes after the finds, and the page is short', async () => {
+test('Daily: one email line after the finds (v7.31: the big alerts card left Daily), and the page is short', async () => {
   const f = liveFetch({ perSource: 3 });
   const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.v36': { seen: true, hunts: ['fiesta', 'pyrex', 'blenko'], lock: [0, 1, 2] } } });
   await tick(50);
@@ -85,9 +85,13 @@ test('Daily: the alerts card comes after the finds, and the page is short', asyn
   await waitFor(() => p.$$('.dg-blk').length === 3 && p.$$('.dg-blk').every((b) => b.getAttribute('data-done') === '1'), { timeout: 15000 });
   const rc = p.$('.dg-rc');
   const kids = [...rc.children];
-  const mail = kids.indexOf(p.$('.dg-rc .dg-mail'));
+  assert.equal(p.$('.dg-rc .dg-mail'), null, 'no alerts card');
+  const mail = kids.indexOf(p.$('.dg-rc .dg-mailq'));
   const last = kids.indexOf(p.$$('.dg-blk').pop());
-  assert.ok(mail > last, 'the alerts card follows the last hunt');
+  assert.ok(mail > last, 'the email line follows the last hunt');
+  p.$('#otp-dgMail').click();
+  await tick(60);
+  assert.equal(p.$('#otp-denSettings').hidden, false, 'it opens the alerts settings');
   assert.ok(p.$$('.dg-rc .sgw-cell[data-u]').length <= 18, 'at most 6 cards a hunt, though 3 hunts x 8 sites x 3 are live');
   assert.deepEqual(p.errors, []);
   await p.close();
