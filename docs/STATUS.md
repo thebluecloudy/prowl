@@ -584,8 +584,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.35 + worker v131**: the new plans (Free: 3 hunts emailed at the pace you pick; Pro: up to 100 hunts, unlimited photo checks, fair use 100 a day) and the email ask (promise, preview, Daily's second ask, keep your hunts safe) | Building. |
 
-Next free numbers: **page v7.35, worker v131**. Claim one here when you start.
+Next free numbers: **page v7.36, worker v132**. Claim one here when you start.
 
 ## What's next
 
