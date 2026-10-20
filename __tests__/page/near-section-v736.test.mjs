@@ -1,4 +1,4 @@
-// Page v7.36 / worker v132 (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). NEAR ME is its own screen
+// Page v7.37 / worker v132 (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). NEAR ME is its own screen
 // with two tabs: Around you (the shops around the phone, OPEN NOW / CLOSED worked out when the card is drawn) and Road
 // trip (one box, where to; the stops in drive order, one anchor a town with the rest nested, hours for the trip's day,
 // OPEN IN MAPS pinned, SHARE for the group, the Finds feed). The photo check gets SHARE THIS FIND while a trip is on.
@@ -37,7 +37,8 @@ function nearFetch(calls, opt = {}) {
   return (u, o) => {
     const url = String(u); calls.push({ url, o: o || {} });
     if (/\/near\?/.test(url)) return opt.near503 ? J({ error: 'not set up', places: [] }, 503) : J({ at: '', places: PLACES });
-    if (/\/trip\?/.test(url)) { const d = /[&?]day=([\d-]+)/.exec(url); return J(trip(d ? d[1] : '', /to=nowhere/.test(url))); }
+    if (/\/trip\?/.test(url)) { const d = /[&?]day=([\d-]+)/.exec(url), t = trip(d ? d[1] : '', /to=nowhere/.test(url)); if (/lat=38\.4192/.test(url)) { t.origin = { town: 'Huntington, WV' }; t.stops = [STOPS[2]]; } return J(t); }
+    if (/\/trips\/t[a-z0-9]{9}\/rebuild$/.test(url)) return J(Object.assign(VIEW('2026-10-26'), { origin: 'Huntington, WV', stops: [STOPS[2]] }));
     if (/\/trips$/.test(url) && o && o.method === 'POST') { const b = JSON.parse(o.body); return J(VIEW(b.day)); }
     if (/\/trips$/.test(url)) return J({ trips: [{ id: 'tabcdefghi', day: '2026-10-26', origin: 'Novi, MI', dest: DEST, members: 2, stops: 3, org: true }] });
     if (/\/trips\/t[a-z0-9]{9}\/finds$/.test(url) && o && o.method === 'POST') return J(Object.assign({}, FINDS[0], { by: 'me' }));
@@ -50,7 +51,13 @@ function nearFetch(calls, opt = {}) {
 }
 /* a phone standing in Novi, a canvas that shrinks, an Image that loads */
 function phone(win, geo) {
-  Object.defineProperty(win.navigator, 'geolocation', { configurable: true, value: { getCurrentPosition: (ok, err) => setTimeout(() => (geo === 'denied' ? err({ code: 1 }) : ok({ coords: { latitude: 42.4806, longitude: -83.4755 } })), 0) } });
+  let fixes = 0;
+  Object.defineProperty(win.navigator, 'geolocation', { configurable: true, value: { getCurrentPosition: (ok, err, opt) => setTimeout(() => {
+    if (geo === 'denied') return err({ code: 1 });
+    fixes++;
+    const moved = opt && opt.maximumAge === 0 && fixes > 1;   /* a fresh fix later on: the phone is in Huntington now */
+    ok({ coords: moved ? { latitude: 38.4192, longitude: -82.4452 } : { latitude: 42.4806, longitude: -83.4755 } });
+  }, 0) } });
   win.HTMLCanvasElement.prototype.getContext = () => ({ drawImage() {}, fillRect() {}, fillText() {}, measureText: () => ({ width: 10 }), save() {}, restore() {}, beginPath() {}, rect() {}, clip() {} });
   win.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
   win.Image = class { constructor() { this.width = 1000; this.height = 800; } set src(v) { this._src = v; setTimeout(() => this.onload && this.onload(), 0); } get src() { return this._src; } };
@@ -292,8 +299,46 @@ test('the photo check: SHARE THIS FIND while a trip is on, one tap to the trip\'
   await none.close(); await old.close();
 });
 
-test('the page says v7.36, and keeps every old localStorage key (prowl.trip is the one new one)', () => {
-  assert.match(PAGE, /var PROWL_VERSION='v7\.36'/);
+test('v7.37: FROM HERE rebuilds from where the phone is now; on your kept trip the worker saves it; Refresh re-reads Around you', async () => {
+  const calls = [];
+  const p = loadPage({ storage: Object.assign({}, DEN, { 'prowl.session': sess() }), fetchImpl: nearFetch(calls), beforeLoad: (w) => phone(w) });
+  await tick(30);
+  p.$('#otp-localBtn').click(); await tick(120);
+  assert.equal(p.$$('#otp-nrLive .nr-card').length, 3);
+  assert.ok(p.$('#otp-nrRefresh'), 'Around you has Refresh');
+  p.$('#otp-nrRefresh').click();
+  await tick(120);
+  const nears = calls.filter((x) => /\/near\?/.test(x.url));
+  assert.equal(nears.length, 2); assert.match(nears[1].url, /lat=38\.4192/, 'a fresh fix, not the cached one');
+  p.$('#otp-nrT2').click(); await tick(60);
+  p.$('#otp-nrTo').value = 'Blenko Glass Company, Milton, WV';
+  p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
+  await tick(120);
+  const here = p.$('#otp-nrHere');
+  assert.equal(here.hidden, false); assert.equal(here.textContent, 'FROM HERE');
+  here.click();
+  await tick(200);
+  const trips = calls.filter((x) => /\/trip\?/.test(x.url));
+  assert.equal(trips.length, 2); assert.match(trips[1].url, /to=Blenko%20Glass%20Company%2C%20Milton%2C%20WV&lat=38\.4192&lng=-82\.4452/);
+  assert.equal(p.$('#otp-nrOut .nr-route').textContent, 'Huntington, WV → Blenko Glass Company, Milton, WV');
+  assert.deepEqual(p.$$('#otp-nrOut .nr-stops > .nr-stop > a.nr-anchor .nr-n').map((e) => e.textContent), ['Central City Antiques'], 'the stops behind are gone');
+  /* a kept trip of your own: the worker rebuilds it for the whole group */
+  p.$('#otp-nrShare').click();
+  await tick(150);
+  assert.ok(p.$('#otp-nrFinds'), 'kept');
+  here.click();
+  await tick(200);
+  const rb = calls.find((x) => /\/rebuild$/.test(x.url));
+  assert.ok(rb, 'the worker was asked'); assert.deepEqual(JSON.parse(rb.o.body), { lat: 38.4192, lng: -82.4452 });
+  assert.equal(p.$('#otp-nrOut .nr-route').textContent, 'Huntington, WV → Blenko Glass Company, Milton, WV');
+  assert.ok(p.$('#otp-nrFinds'), 'still the kept trip, with its Finds');
+  assert.match(p.$('#otp-toast').textContent, /Rebuilt from Huntington, WV/);
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test('the page says v7.37, and keeps every old localStorage key (prowl.trip is the one new one)', () => {
+  assert.match(PAGE, /var PROWL_VERSION='v7\.37'/);
   assert.match(PAGE, /var TRIP_KEY='prowl\.trip'/);
   for (const k of ['prowl.v36', 'owlTwigSearches', 'prowl.likes', 'prowl.maps', 'prowl.salesPlace', 'prowl.session']) assert.ok(PAGE.includes("'" + k + "'") || PAGE.includes(k), k);
   assert.doesNotMatch(PAGE, /\{\{|\{%/, 'no Liquid openers');
