@@ -841,8 +841,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.49**: NEAR ME for the road: miles on Around you with Biggest/Closest, open or closed when you get there on today's trip, a Go button on every stop, hours as "Open until 6 PM" | Building. |
 
-Next free numbers: **page v7.49, worker v154**. Claim one here when you start.
+Next free numbers: **page v7.50, worker v154**. Claim one here when you start.
 
 ## What's next
 
