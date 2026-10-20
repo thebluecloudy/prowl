@@ -143,7 +143,7 @@ test("/near: without the key a plain 'not set up'; with it the shops around a po
   const r = await call(env, "GET", "/near?lat=38.4192&lng=-82.4452");   /* standing in Huntington */
   assert.equal(r.status, 200);
   assert.equal(CALLS.filter((u) => /searchNearby/.test(u)).length, 0, "v143: no Nearby for antiques and thrift, Google has no such types");
-  assert.equal(CALLS.filter((u) => /searchText/.test(u)).length, 1, "one text search for the three kinds");
+  assert.equal(CALLS.filter((u) => /searchText/.test(u)).length, 2, "v145: antiques on their own, then vintage and thrift");
   const names = r.body.places.map((p) => p.name);
   assert.equal(names[0], "Central City Antiques", "the biggest first");
   assert.equal(names.filter((n) => /Central City|14th Street/.test(n)).length, 3, "the three Huntington shops");
@@ -195,7 +195,7 @@ test("/trip: the reference route from Novi to Blenko, in drive order, the Centra
   assert.ok(!JSON.stringify(b).includes("Hillbilly"), "v138: a flea market is out while its chip is off");
   assert.equal(b.stops[5].name, "Bluegrass Collectors", "so Ashland's anchor is the collectors' shop");
   const searches = CALLS.filter((u) => /searchText|searchNearby/.test(u)).length;
-  assert.ok(searches >= 20 && searches <= 130, "two routes, one text search a circle, shared circles asked once: " + searches);
+  assert.ok(searches >= 40 && searches <= 150, "two routes, two text searches a circle, shared circles asked once: " + searches);
   const again = await call(env, "GET", "/trip?" + NOVI + "&to=" + encodeURIComponent("blenko glass company, milton, wv") + "&day=2026-10-26");
   assert.equal(again.res.headers.get("X-Prowl-Cache"), "hit");
 });
@@ -245,7 +245,7 @@ test("v140: Nearby by type, most popular first; a refused type falls back to the
   CALLS.length = 0;
   const all = await W.kindSearches(env, ["antiques", "books"], { lat: 38.4192, lng: -82.4452 }, 22000, true, 1);
   assert.ok(all.find((p) => p.name === "Central City Antiques"));
-  assert.equal(CALLS.filter((u) => /searchNearby/.test(u)).length, 1, "books by type"); assert.equal(CALLS.filter((u) => /searchText/.test(u)).length, 1, "antiques by text");
+  assert.equal(CALLS.filter((u) => /searchNearby/.test(u)).length, 1, "books by type"); assert.equal(CALLS.filter((u) => /searchText/.test(u)).length, 1, "antiques by text, alone");
 });
 
 test("/pp: only a place photo name, through the worker", async () => {
@@ -387,7 +387,7 @@ test("the worker's own guards: routes are wired, the login links the account, th
   assert.match(INDEX, /url\.pathname\.startsWith\("\/finds\/"\) && request\.method === "GET"\) return findPhotoRoute/);
   assert.match(INDEX, /await tripAcctLink\(env, id, email\)/);
   assert.match(INDEX, /await tripSweep\(env\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v144"/);
+  assert.match(INDEX, /const WORKER_VERSION = "v145"/);
   assert.equal((INDEX.match(/env\.GOOGLE_MAPS_KEY/g) || []).length, 1, "the key is read in one place (gKey) and never put in an answer");
   for (const name of ["nearRoute", "tripRoute", "tripsRoute", "tripBuild", "ppRoute"]) assert.ok(!/GOOGLE_MAPS_KEY/.test(indexFn(name)), name + " never touches the key itself");
 });
