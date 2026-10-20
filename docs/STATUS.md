@@ -1,15 +1,24 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.37 / v134).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.38 / v135).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.37** | 399,845 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v134** | |
+| Page | **v7.38** | 399,845 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v135** | |
 
 Recently shipped, newest first:
+
+- **v7.38 / v135: trips for Prowl Alerts members** (the owner tapped SHARE: "it took me to the den and tried to make
+  me sign in, but i am pro"). SHARE, Your trips, FROM HERE on a kept trip and SHARE THIS FIND took only a store
+  session (`prowl.session`); a member signed in by email code (`prowl.alertTok` + `prowl.alertEmail`) was "signed
+  out". The page now sends the alerts email and token as `X-Prowl-Email` / `X-Prowl-Tok` (`nrH`, `nrSigned`), and the
+  worker's `tripWho` takes them as it takes a Bearer session: the member's customer id when linked, else `e` + a hash
+  of the address (never the address). `tripPro` counts the owner key, the comp list, the member's own Pro and paid
+  orders. A share to an address that is an alerts member adds them at once; the email-code sign-in also links the
+  account, so waiting invitations join. Tests: `worker/__tests__/trips.test.mjs`, `__tests__/page/near-section-v736.test.mjs`.
 
 - **v7.37 / v134: FROM HERE and Refresh** (the owner: "each time i visit a location, i may want to rebuild, or find
   near places"). On any trip, **FROM HERE** in the foot reads a fresh fix and rebuilds the trip to the same
@@ -653,7 +662,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.38, worker v135**. Claim one here when you start.
+Next free numbers: **page v7.39, worker v136**. Claim one here when you start.
 
 ## What's next
 

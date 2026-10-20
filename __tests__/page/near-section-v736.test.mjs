@@ -1,4 +1,4 @@
-// Page v7.37 / worker v132 (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). NEAR ME is its own screen
+// Page v7.38 / worker v132 (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). NEAR ME is its own screen
 // with two tabs: Around you (the shops around the phone, OPEN NOW / CLOSED worked out when the card is drawn) and Road
 // trip (one box, where to; the stops in drive order, one anchor a town with the rest nested, hours for the trip's day,
 // OPEN IN MAPS pinned, SHARE for the group, the Finds feed). The photo check gets SHARE THIS FIND while a trip is on.
@@ -217,7 +217,7 @@ test('SHARE: signed out it asks for the store sign-in; signed in it keeps the tr
   await tick(120);
   out.$('#otp-nrShare').click();
   await tick(400);
-  assert.match(out.$('#otp-toast').textContent, /Sign in to your Owl & Twig account to share a trip/);
+  assert.match(out.$('#otp-toast').textContent, /Sign in to Prowl to share a trip/);
   assert.equal(out.$('#otp-den').hidden, false, 'the sign-in lives in Den > Settings');
   await out.close();
   const calls = [];
@@ -299,7 +299,7 @@ test('the photo check: SHARE THIS FIND while a trip is on, one tap to the trip\'
   await none.close(); await old.close();
 });
 
-test('v7.37: FROM HERE rebuilds from where the phone is now; on your kept trip the worker saves it; Refresh re-reads Around you', async () => {
+test('v7.38: FROM HERE rebuilds from where the phone is now; on your kept trip the worker saves it; Refresh re-reads Around you', async () => {
   const calls = [];
   const p = loadPage({ storage: Object.assign({}, DEN, { 'prowl.session': sess() }), fetchImpl: nearFetch(calls), beforeLoad: (w) => phone(w) });
   await tick(30);
@@ -337,8 +337,31 @@ test('v7.37: FROM HERE rebuilds from where the phone is now; on your kept trip t
   await p.close();
 });
 
-test('the page says v7.37, and keeps every old localStorage key (prowl.trip is the one new one)', () => {
-  assert.match(PAGE, /var PROWL_VERSION='v7\.37'/);
+test('v7.38: a Prowl Alerts sign-in (email code) shares trips too, with its email and token on the call', async () => {
+  const calls = [];
+  const p = loadPage({ storage: Object.assign({}, DEN, { 'prowl.alertTok': 'tok-0123456789abcdef', 'prowl.alertEmail': 'matt@example.com', 'prowl.alertPro': '1' }), fetchImpl: nearFetch(calls), beforeLoad: (w) => phone(w) });
+  await tick(60);
+  p.$('#otp-localBtn').click(); await tick(60);
+  p.$('#otp-nrT2').click(); await tick(60);
+  assert.ok(p.$('#otp-nrTrips .nr-tripb'), 'your trips are listed for an alerts member');
+  const list = calls.find((x) => /\/trips$/.test(x.url));
+  assert.equal(list.o.headers['X-Prowl-Email'], 'matt@example.com'); assert.equal(list.o.headers['X-Prowl-Tok'], 'tok-0123456789abcdef');
+  p.$('#otp-nrTo').value = 'Blenko Glass Company, Milton, WV';
+  p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
+  await tick(120);
+  p.$('#otp-nrShare').click();
+  await tick(150);
+  const post = calls.find((x) => /\/trips$/.test(x.url) && x.o.method === 'POST');
+  assert.ok(post, 'kept without a store sign-in');
+  assert.equal(post.o.headers['X-Prowl-Email'], 'matt@example.com');
+  assert.equal(p.$('#otp-den').hidden, true, 'not sent to the Den');
+  assert.ok(p.$('#otp-nrShareRow'), 'the add-member row');
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test('the page says v7.38, and keeps every old localStorage key (prowl.trip is the one new one)', () => {
+  assert.match(PAGE, /var PROWL_VERSION='v7\.38'/);
   assert.match(PAGE, /var TRIP_KEY='prowl\.trip'/);
   for (const k of ['prowl.v36', 'owlTwigSearches', 'prowl.likes', 'prowl.maps', 'prowl.salesPlace', 'prowl.session']) assert.ok(PAGE.includes("'" + k + "'") || PAGE.includes(k), k);
   assert.doesNotMatch(PAGE, /\{\{|\{%/, 'no Liquid openers');
