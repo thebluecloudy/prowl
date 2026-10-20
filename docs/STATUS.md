@@ -1,13 +1,13 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.40 / v139).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.40 / v141).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.40** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v139** | |
+| Worker | **v141** | |
 
 Recently shipped, newest first:
 
@@ -26,6 +26,21 @@ Recently shipped, newest first:
   (`FLT_KEY`); the sites are the drawer's saved set (`st.mkt`, unchanged key), and the drawer's count follows. Page
   only. Not in this version: on-screen local pickup (the email's ZIP and radius) needs the worker's live eBay search
   to take them. Test: `__tests__/page/filter-sheet-v740.test.mjs`.
+- **v141: `/trip` says how it looked** (`how`: each route's km, minutes, score, anchors and places found, the boxes
+  searched on the chosen road, the Nearby and text search counts, and whether Google refused a place type), so a
+  missing stop (Maumee Antique Mall was still absent on v140) can be traced instead of guessed at. Pawn, coin, fabric
+  and garden shops are never ours by name too. Worker only.
+
+- **v140: by Google's own types, most popular first** (the v139 live build: a horror museum, a clothing store and a
+  business centre were anchors on their review counts, and Maumee Antique Mall was still missing after three pages:
+  a free-text search in a dense box never surfaces it). For the kinds that have a Google type (antiques
+  `antique_store`, thrift `thrift_store`, books `book_store`, toys `toy_store`) the worker asks Nearby Search inside
+  the box's circle, `rankPreference: POPULARITY`, so the 20 answers are the 20 most reviewed antique stores there and a
+  museum can never come back (`gPlacesNearby`, `kindSearches`, `kindPlan`); vintage, records and flea markets stay text
+  searches. If Google refuses a type the box falls back to the text search. A crowd of reviews counts only for a place
+  of our kinds or with a telling name (`OUR_KIND`, `OUR_NAME`); an antiques shop needs 75 (`ANCHOR_REVIEWS_ANTIQUES`,
+  Bluegrass Collectors has 90); museums, clothing, business centres and the like are never ours. Around you uses the
+  same searches. Cache keys v=5. Worker only. Tests: `worker/__tests__/trip.test.mjs`, `trips.test.mjs`.
 
 - **v139: the boxes read to the end, and nothing that is never ours** (the first live build on v138: "The Mall of
   Monroe", a shopping mall at 3.2 stars, was anchor one; "Garden Cottage Emporium", 4 reviews, an anchor on its name;
@@ -727,7 +742,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.41, worker v140**. Claim one here when you start.
+Next free numbers: **page v7.41, worker v142**. Claim one here when you start.
 
 ## What's next
 

@@ -43,7 +43,17 @@ export function catsQueries(cats, n) {
 }
 export const NEAR_RADIUS_M = 15000, NEAR_KEEP_KM = 40, CORRIDOR_CENTERS_MAX = 24;   /* Around You: Google answers beyond the circle; keep only what is really near */
 export const TRIP_STOPS_MAX = 40, TRIP_NESTED_MAX = 6, NEAR_MAX = 24, TRIP_MORE_MAX = 20;
-export const ANCHOR_REVIEWS = 150;       /* v136: an antiques or vintage place with this many reviews is worth planning around */
+export const ANCHOR_REVIEWS = 150;       /* v136: a place of our kinds with this many reviews is worth planning around ... */
+export const ANCHOR_REVIEWS_ANTIQUES = 75;   /* ... and an antiques shop with this many (v140: Bluegrass Collectors, 90) */
+/* v140: Google's own place types for the kinds that have one; Nearby Search answers "antique stores only, most popular
+   first", which is "biggest first" and can never return a museum. Vintage, records and flea markets have no type and
+   stay text searches. */
+export const NEARBY_TYPES = { antiques: ["antique_store"], thrift: ["thrift_store"], books: ["book_store"], toys: ["toy_store"] };
+export function kindPlan(cats) {
+  const keys = catsParse(cats.join ? cats.join(",") : cats), types = [], text = [];
+  for (const k of keys) { if (NEARBY_TYPES[k]) types.push(...NEARBY_TYPES[k]); else text.push(CATS[k]); }
+  return { types: types, text: text.length ? text.join(", ") : "", textKeys: keys.filter((k) => !NEARBY_TYPES[k]) };
+}
 export const ROUTES_MAX = 3, TRIP_SEARCHES_MAX = 120, TRIP_PAGES_MAX = 3;   /* v139: a full box is read to its third page */
 export const ANCHOR_MIN_REVIEWS = 25;    /* v139: whatever its name says, an anchor has at least this many reviews */   /* v136: Google's alternatives are searched too; this many Text Searches a build at most */
 export const FIND_IMG_MAX = 600 * 1024;  /* a find photo arrives already downscaled by the page; refuse anything bigger */
@@ -111,16 +121,22 @@ export function sizeTier(place) {
   let pts = SIZE_WORD.test(text) ? 1 : 0;
   const d = DEALERS.exec(text); if (d) { const n = Number(d[1]); pts += n >= 100 ? 3 : n >= 20 ? 2 : 1; }
   const s = SQFT.exec(text); if (s) { const n = Number(String(s[1]).replace(/,/g, "")); pts += n >= 30000 ? 3 : n >= 10000 ? 2 : n >= 3000 ? 1 : 0; }
-  if (!isThrift(place)) { const n = Number(place.n) || 0; pts += n >= 1000 ? 2 : n >= ANCHOR_REVIEWS ? 1 : 0; }
+  if (!isThrift(place) && (OUR_KIND.test(String(place.kind || "")) || OUR_NAME.test(String(place.name || "")))) {
+    const n = Number(place.n) || 0, bar = /antique/i.test(String(place.kind || "") + " " + String(place.name || "")) ? ANCHOR_REVIEWS_ANTIQUES : ANCHOR_REVIEWS;
+    pts += n >= 1000 ? 2 : n >= bar ? 1 : 0;
+  }
   return Math.min(3, pts);
 }
 /* v138: a place of a kind the chips turned off is dropped when its kind is plain (a flea market on an antiques
    search); a kind Google names oddly ("Store", "Home goods store") stays */
 const KIND_OF = { Antiques: "antiques", Vintage: "vintage", Thrift: "thrift", Records: "records", Books: "books", Toys: "toys", "Flea market": "flea" };
 /* v139: never ours, whatever the query returned (Google fills a strict box with shopping malls for "antique malls") */
-const NEVER_KIND = /shopping\s*mall|furniture|pawn|jewel|department\s*store|gun|sporting|grocery|supermarket|pharmacy|hardware|mattress|appliance|car\s*dealer|auto\s*parts|outlet\s*mall/i;
+const NEVER_KIND = /shopping\s*mall|furniture|pawn|jewel|department\s*store|gun|sporting|grocery|supermarket|pharmacy|hardware|mattress|appliance|car\s*dealer|auto\s*parts|outlet\s*mall|museum|clothing|boutique|business\s*cent|salon|restaurant|cafe|\bbar\b|hotel|school|church|bank|real\s*estate|coin|fitness|medical/i;
+/* v140: a crowd of reviews is a size only for a place of our kinds, or one whose name says what it is */
+const OUR_KIND = /^(Antiques|Vintage|Thrift|Records|Books|Toys|Flea market)$/;
+const OUR_NAME = /antique|vintage|collectib|mercantile|emporium|thrift|resale|consign|flea|salvage|architectural|estate\s+sale/i;
 export function kindAllowed(place, cats) {
-  if (NEVER_KIND.test(String(place.kind || "")) || /\bmall of\b|shopping\s+(center|centre|mall)|\bplaza\b.*\bmall\b/i.test(String(place.name || ""))) return false;
+  if (NEVER_KIND.test(String(place.kind || "")) || /\bmall of\b|shopping\s+(center|centre|mall)|\bplaza\b.*\bmall\b|\bpawn\b|\bcoins?\b|\bfabric|\bgarden\b|\bfitness\b|\bfurniture\b/i.test(String(place.name || ""))) return false;
   const k = KIND_OF[String(place.kind || "")];
   return !k || catsParse(cats.join ? cats.join(",") : cats).indexOf(k) !== -1;
 }
