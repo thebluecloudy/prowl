@@ -15,9 +15,9 @@ export const MAPS_WAYPOINTS = 9;         /* Google Maps directions links take ab
 export const FINDS_GRACE_DAYS = 7;       /* find photos live this long after the trip closes (the spec's default) */
 export const TRIP_DAYS_MAX = 14;         /* a trip day may be at most this far ahead */
 export const CLUSTER_WALK_KM = 0.6;      /* shops this close are one walkable cluster even across a town line */
-export const CORRIDOR_STEP_KM = 40;      /* v138: the corridor is searched in boxes this far apart ... */
-export const CORRIDOR_RADIUS_M = 22000;  /* ... each this far to a side, and Google must stay inside the box (a bias let a
-                                            box's 20 answers wander 30 km off and lose Maumee Antique Mall, 1,776 reviews) */
+export const CORRIDOR_STEP_KM = 25;      /* v143: the corridor is searched in circles this far apart ... */
+export const CORRIDOR_RADIUS_M = 15000;  /* ... each this wide, as a bias (what Around You uses and what finds Maumee Antique
+                                            Mall first); a strict 44 km box ranked by distance to its centre never listed it */
 /* v135 (the owner: "maybe someone wants to see records, toys, antique or thrift stores"): what to look for, as the
    chips on the page. The default is the spec's three. One Google text query a circle carries every picked kind. */
 export const CATS = { antiques: "antique stores and antique malls", vintage: "vintage stores", thrift: "thrift stores", records: "record stores", books: "used book stores", toys: "vintage toy and collectibles shops", flea: "flea markets" };
@@ -48,7 +48,7 @@ export const ANCHOR_REVIEWS_ANTIQUES = 75;   /* ... and an antiques shop with th
 /* v140: Google's own place types for the kinds that have one; Nearby Search answers "antique stores only, most popular
    first", which is "biggest first" and can never return a museum. Vintage, records and flea markets have no type and
    stay text searches. */
-export const NEARBY_TYPES = { antiques: ["antique_store"], thrift: ["thrift_store"], books: ["book_store"], toys: ["toy_store"] };
+export const NEARBY_TYPES = { books: ["book_store"], toys: ["toy_store"] };   /* v143: Google refused antique_store and thrift_store (how.badTypes on the live build); those are text searches */
 /* v142: "Blenko Glass Company, Milton, WV via Portsmouth, OH" steers the road through a town (or towns, joined by
    "and"); Google's alternatives alone do not always offer the road a collector wants */
 export function splitVia(text) {
@@ -61,7 +61,7 @@ export function kindPlan(cats) {
   for (const k of keys) { if (NEARBY_TYPES[k]) types.push(...NEARBY_TYPES[k]); else text.push(CATS[k]); }
   return { types: types, text: text.length ? text.join(", ") : "", textKeys: keys.filter((k) => !NEARBY_TYPES[k]) };
 }
-export const ROUTES_MAX = 3, TRIP_SEARCHES_MAX = 120, TRIP_PAGES_MAX = 3;   /* v139: a full box is read to its third page */
+export const ROUTES_MAX = 3, TRIP_SEARCHES_MAX = 130, TRIP_PAGES_MAX = 1;   /* v143: small circles instead of pages */
 export const ANCHOR_MIN_REVIEWS = 25;    /* v139: whatever its name says, an anchor has at least this many reviews */   /* v136: Google's alternatives are searched too; this many Text Searches a build at most */
 export const FIND_IMG_MAX = 600 * 1024;  /* a find photo arrives already downscaled by the page; refuse anything bigger */
 export const FINDS_MAX = 200;            /* finds kept per trip */

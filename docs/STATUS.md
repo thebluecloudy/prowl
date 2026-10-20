@@ -1,15 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v142).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v143).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.39** | 399,599 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v142** | |
+| Worker | **v143** | |
 
 Recently shipped, newest first:
+
+- **v143: text searches in small circles** (the live v142 build answered `how.badTypes: antique_store, thrift_store`:
+  Google's Nearby Search has neither type, so the typed search can never run for antiques; books and toys keep
+  theirs). The corridor goes back to bias circles, now 25 km apart and 15 km wide, Around you's radius, which lists
+  Maumee Antique Mall first; a strict 44 km box ranked by distance to its centre never listed the mall. One page a
+  circle, at most 130 searches a build (two or three routes, shared circles asked once). Worker only.
+  Tests: `worker/__tests__/trip.test.mjs`, `trips.test.mjs`.
 
 - **v142: the typed search really runs, and "via"** (v141's `how` on the live Novi to Blenko build: `refused 20`, every
   Nearby call refused, so the search had fallen back to text all along and the Maumee box, centred 3.9 km from the
@@ -736,7 +743,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.40, worker v143**. Claim one here when you start.
+Next free numbers: **page v7.40, worker v144**. Claim one here when you start.
 
 ## What's next
 

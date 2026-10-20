@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v143: 2026-10-20. The live build said how.badTypes = antique_store, thrift_store: Google's Nearby has no such types,
+ *         so antiques and thrift are text searches for good. The corridor goes back to bias circles, 25 km apart and
+ *         15 km wide (Around You's radius, which lists Maumee Antique Mall first), one page each; a strict 44 km box
+ *         ranked by distance to its centre never listed the mall. At most 130 searches a build.
  *   v142: 2026-10-20. v141's "how" said every typed Nearby call was refused (refused 20), so the search had fallen back
  *         to text all along: Nearby now tries each place type on its own and remembers the ones Google rejects
  *         (BAD_TYPES, how.badTypes). "via": a destination such as "Blenko Glass Company, Milton, WV via Portsmouth, OH"
@@ -493,7 +497,7 @@ import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v
 import { decodePolyline, haversineKm, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_KM, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v142";
+const WORKER_VERSION = "v143";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6466,7 +6470,7 @@ async function tripBuild(env, from, toText, day, cats, via) {
   /* v136: every route's corridor is searched (a circle and a query asked once, however many routes share it), and the
      route with the most to see wins; the fastest is the tie-break */
   const asked = new Map(), stat = { nearby: 0, text: 0, refused: 0 };   /* v141: how it was looked for */
-  const ask = (c) => { const k = c.lat.toFixed(1) + "," + c.lng.toFixed(1); if (!asked.has(k)) asked.set(k, asked.size * TRIP_PAGES_MAX * 2 < TRIP_SEARCHES_MAX ? kindSearches(env, cats, c, CORRIDOR_RADIUS_M, true, TRIP_PAGES_MAX, stat) : Promise.resolve([])); return asked.get(k); };   /* v140: by type */
+  const ask = (c) => { const k = c.lat.toFixed(2) + "," + c.lng.toFixed(2); if (!asked.has(k)) asked.set(k, asked.size * 2 < TRIP_SEARCHES_MAX ? kindSearches(env, cats, c, CORRIDOR_RADIUS_M, false, 0, stat) : Promise.resolve([])); return asked.get(k); };   /* v143: bias circles, one page */
   const built = await Promise.all(routes.map(async (route) => {
     const centers = corridorCenters(route.pts).slice(0, CORRIDOR_CENTERS_MAX);
     const lists = await Promise.all(centers.map((c) => ask(c)));
