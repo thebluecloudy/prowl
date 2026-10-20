@@ -44,7 +44,7 @@ test('two hunts give two Vinted rows but still one invite line', async () => {
 test('no Vinted in the run, no invite line', async () => {
   const p = loadPage({ storage: DEN });
   await tick(30);
-  await run(p, 'Pyrex Butterprint', '#otp-oneBtn');   /* v7.09: Near me opens the Maps links now; the one-site run has no Vinted */
+  await run(p, 'Pyrex Butterprint', '#otp-one');   /* the one-site run has no Vinted (v7.30: a pill under the search box, no longer a dock tab) */
   assert.ok(p.$$('#otp-res a.hit').length > 0, 'the run drew rows');
   assert.equal(p.$('#otp-res li.vinv'), null);
   await p.close();

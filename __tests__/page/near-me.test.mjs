@@ -1,6 +1,7 @@
 // Page v6.90: Near me takes Facebook USA's spot under the search box (Hunt · Search All · Near me). It does what the
 // dock's LOCAL does; Facebook USA is still on the results, as "Facebook Marketplace · search X in N cities".
 // v7.09: both open Den > Local's Maps links (stores near you) instead of a marketplace run.
+// v7.30: Near me is the dock tab (NEAR ME) and its own screen; the chip under the search box is Just ShopGoodwill.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -11,18 +12,18 @@ const PAGE = readFileSync(fileURLToPath(new URL('../../page/prowl.html', import.
 const DEN = { 'prowl.v36': { seen: true, hunts: [] } };
 const hosts = (p) => p.$$('#otp-res a.hit').map((a) => new URL(a.href).hostname.replace(/^www\./, ''));
 
-test('the row under the search box is Hunt and Near me (v7.03: Search All folded into Hunt)', async () => {
+test('the row under the search box is Hunt and Just ShopGoodwill (v7.30: Near me moved to the dock)', async () => {
   const p = loadPage({ storage: DEN });
   await tick(30);
-  assert.deepEqual(p.$$('#otp-sf > button.b').filter((b) => !b.hidden).map((b) => b.textContent.replace(/[^A-Za-z ]/g, '').trim()), ['Hunt', 'Near me']);
+  assert.deepEqual(p.$$('#otp-sf > button.b').filter((b) => !b.hidden).map((b) => b.textContent.replace(/[^A-Za-z ]/g, '').trim()), ['Hunt', 'Just ShopGoodwill']);
   assert.equal(p.$('#otp-fb'), null, 'Facebook USA left the row');
-  assert.ok(p.$('#otp-localBtn'), 'the dock keeps LOCAL');
+  assert.equal(p.$('#otp-localBtn span').textContent, 'NEAR ME', 'the dock\'s Near me');
   assert.doesNotMatch(PAGE, /\.b\.fb[{:]/, 'its styles went with it');
   await p.close();
 });
 
-test('v7.09: Near me and the dock\'s LOCAL open the Maps links for stores near you, with or without a hunt', async () => {
-  for (const [typed, btn] of [['Pyrex Butterprint', '#otp-near'], ['', '#otp-near'], ['Pyrex Butterprint', '#otp-localBtn']]) {
+test('v7.09: the dock\'s Near me opens the Maps links for stores near you, with or without a hunt', async () => {
+  for (const [typed, btn] of [['Pyrex Butterprint', '#otp-localBtn'], ['', '#otp-localBtn']]) {
     const p = loadPage({ storage: DEN });
     await tick(30);
     p.$('#otp-q').value = typed;

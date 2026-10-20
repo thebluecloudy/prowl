@@ -1,6 +1,8 @@
 // Page v7.09: Daily announces itself (Matt, 2026-10-17: "it reads as I tapped DAILY and nothing changed"). A "Your
 // daily prowl" header with the hunt count, What's new since the last day's Daily at the top, then one block per hunt.
 // Live listings only: no marketplace rows and no Open all (Matt: "no one should open 500 tabs").
+// v7.30 (Matt: "maybe we only show new stuff"): each hunt shows only its new listings, at most 6, and See all opens
+// the hunt; a quiet hunt is one line. The first Daily on a device shows a first look at each hunt.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
@@ -19,22 +21,29 @@ async function openDaily(storage, perSource, opts) {
   await tick(50);
   p.$('#otp-dock .db[data-m="daily"]').click();
   await tick(20);
-  /* every queued fetch has landed: no marketplace in any hunt block is still blank or looking */
+  /* every queued fetch has landed: each hunt's block says it is done */
   await waitFor(() => {
-    const subs = [...p.doc.querySelectorAll('.dg-blk .sgw-sub')];
-    return subs.length && subs.every((s) => s.querySelector('.sgw-upd') || /Could not reach|busy|Nothing live/.test((s.nextElementSibling || {}).textContent || ''));
+    const b = [...p.doc.querySelectorAll('.dg-blk')];
+    return b.length && b.every((x) => x.getAttribute('data-done') === '1');
   }, { timeout: 12000 });
   await tick(200);
   return p;
 }
 
-test('the first Daily: its own header and hunt count, one block per hunt, and no rows or Open all', async () => {
+test('the first Daily: its own header and hunt count, a first look at each hunt, and no rows or Open all', async () => {
   const p = await openDaily(Object.assign({}, HUNTS), 2);
   assert.equal(p.$('.dg-rh h2').textContent, 'Your daily prowl');
   assert.match(p.$('#otp-dgSum').textContent, /^2 hunts · first day on this device$/);
   assert.match(p.$('.dg-rh .dg-hunts').textContent, /fiesta · pyrex/);
   assert.equal(p.doc.querySelectorAll('.dg-blk').length, 2, 'grouped per hunt');
-  assert.match(p.$('#otp-dgNew').textContent, /first daily prowl on this device/);
+  assert.match(p.$('#otp-dgNew h3').textContent, /A first look/);
+  assert.match(p.$('#otp-dgNew').textContent, /first daily prowl on this device.*From tomorrow, Daily shows only what is new/);
+  for (const b of p.$$('.dg-blk')) {
+    const n = b.querySelectorAll('.sgw-cell[data-u]').length;
+    assert.ok(n > 0 && n <= 6, 'a few cards a hunt: ' + n);
+    assert.match(b.querySelector('.dg-run').textContent, /^See all \d+$/);
+  }
+  assert.equal(p.$('#otp-res .sgw-sub'), null, 'no marketplace-by-marketplace blocks');
   assert.equal(p.$('#otp-res .hits'), null, 'no marketplace rows');
   assert.equal(p.$('#otp-oa'), null, 'no Open all');
   assert.equal(p.$('#otp-dtMore'), null);
@@ -53,19 +62,19 @@ test('the next day: what is new since yesterday is at the top, per hunt, and cou
   await p1.close();
   kept.d = dayStr(new Date(Date.now() - 864e5));   /* that run was yesterday */
   const p = await openDaily(Object.assign({}, HUNTS, { 'prowl.dailySeen': kept }), 3);
-  const groups = [...p.doc.querySelectorAll('#otp-dgNew .dg-nh')];
+  const groups = [...p.doc.querySelectorAll('.dg-blk')];
   assert.equal(groups.length, 2, 'one group per hunt');
   assert.match(p.$('#otp-dgNew h3').textContent, /What’s new since yesterday/);
   let total = 0;
   for (const g of groups) {
-    const n = +/(\d+) new/.exec(g.querySelector('h4 span').textContent)[1];
+    const n = +/^(\d+) new$/.exec(g.querySelector('.dg-n').textContent)[1];
     total += n;
     const cells = [...g.querySelectorAll('.sgw-cell[data-u]')];
     assert.ok(cells.length > 0 && cells.length <= 6, 'at most 6 cards a hunt');
-    assert.ok(cells.every((c) => /-2$/.test(c.getAttribute('data-u'))), 'only listings yesterday did not have');
+    assert.ok(cells.every((c) => /-2$/.test(c.getAttribute('data-u'))), 'only listings yesterday did not have: nothing old');
   }
   assert.match(p.$('#otp-dgSum').textContent, new RegExp('^2 hunts · ' + total + ' new since yesterday$'));
-  assert.match(p.$('.dg-blk .dg-n').textContent, /\d+ new · \d+ live now/);
+  assert.match(p.$('.dg-blk .dg-run').textContent, /^See all \d+$/, 'the rest is one tap away');
   const after = JSON.parse(p.win.localStorage.getItem('prowl.dailySeen'));
   assert.equal(after.pd, kept.d, 'yesterday is what today compares with');
   assert.deepEqual(after.prev.fiesta, kept.cur.fiesta);
@@ -80,7 +89,12 @@ test('nothing new since yesterday says so; a broken saved list starts over', asy
   kept.d = dayStr(new Date(Date.now() - 864e5));
   const p = await openDaily(Object.assign({}, HUNTS, { 'prowl.dailySeen': kept }), 2);
   assert.match(p.$('#otp-dgSum').textContent, /nothing new since yesterday/);
-  assert.match(p.$('#otp-dgNew').textContent, /Nothing new since yesterday\. Everything live for each hunt is below\./);
+  assert.match(p.$('#otp-dgNew').textContent, /Nothing new since yesterday\. Your hunts are quiet; See all opens any of them\./);
+  for (const b of p.$$('.dg-blk')) {
+    assert.ok(b.classList.contains('dg-quiet'), 'a quiet hunt is one line');
+    assert.equal(b.querySelector('.dg-n').textContent, 'nothing new');
+    assert.equal(b.querySelectorAll('.sgw-cell').length, 0, 'and shows nothing old');
+  }
   await p.close();
   const b = await openDaily(Object.assign({}, HUNTS, { 'prowl.dailySeen': [1, 2] }), 1);
   assert.match(b.$('#otp-dgSum').textContent, /first day on this device/);
@@ -96,11 +110,11 @@ test('a marketplace that was down yesterday does not make all of its listings ne
   kept.d = dayStr(new Date(Date.now() - 864e5));
   const p = await openDaily(Object.assign({}, HUNTS, { 'prowl.dailySeen': kept }), 2);
   assert.match(p.$('#otp-dgSum').textContent, /nothing new since yesterday/);
-  assert.equal(p.doc.querySelectorAll('#otp-dgNew .sgw-cell').length, 0);
+  assert.equal(p.doc.querySelectorAll('.dg-blk .sgw-cell').length, 0);
   await p.close();
 });
 
-test('Close leaves Daily, and Run the full hunt still opens one hunt', async () => {
+test('Close leaves Daily, and See all opens one hunt', async () => {
   const p = await openDaily(Object.assign({}, HUNTS), 1);
   p.$('.dg-blk [data-dh="0"]').click();
   await tick(30);
