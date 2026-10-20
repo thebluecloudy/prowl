@@ -1,16 +1,34 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.29 / v128).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.30 / v128).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.29** | 402,942 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.30** | 402,878 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v128** | |
 
 Recently shipped, newest first:
 
+- **v7.30: five tabs, one job each** (Matt, 2026-10-20, after showing his wife: "too complicated for people to use";
+  "hunt is ... focused hunts", "DAILY ... maybe we only show new stuff", "local's intent is to be used when you are
+  out in the car"). Step 1 of the simplification plan; the first-visit path and the Pro offer come next.
+  - **Dock:** HUNT · DAILY · FLOCK · NEAR ME · DEN (was PROWL · GOODWILL · LOCAL · FLOCK · DAILY · DEN). The
+    `data-m` values are unchanged (`prowl`, `daily`, `flock`, `local`, `den`); `#otp-oneBtn` is gone.
+  - **Just ShopGoodwill:** the one-site search that was the GOODWILL tab is a pill under the search box (`#otp-one`,
+    where Near me was), named after the site picked in the Den (`st.one`). Typed: runs that hunt on that site; empty:
+    the one-site screen, as before.
+  - **Near me:** its own screen: the Den drawer with the Den's tabs hidden (`.den-near`), titled Near me, stores first,
+    then garage sales and Facebook, the city box and help after. The Den's LOCAL tab is hidden; DEN always opens the
+    Den.
+  - **Daily is only what is new:** each locked hunt shows its new listings since the last day's Daily (at most 6) and
+    See all opens the hunt; a quiet hunt is one line ("nothing new"). The first Daily on a device is "A first look": a
+    few live listings a hunt. The marketplace-by-marketplace blocks left Daily, and the alerts card moved below the
+    finds. Daily at 390 px went from about 13,400 px tall to 5,400 px in the 3-hunt check.
+  - How Prowl works and Prowl's words name the new tabs (Near me added to the glossary).
+  Test: `__tests__/page/five-tabs-v730.test.mjs`; `daily-screen-v709`, `near-me`, `declutter-v703`, `flock` and
+  `vinted-invite` updated.
 - **v7.29: Possible reproduction in the listing popup, with why** (the owner, on a "Brad Keeler Style" flamingo:
   "possible reproduction shows up in the search listing, but not in the card ... and what is wrong with it, bring it
   back"). A card tagged Possible reproduction opens a popup with the same warning (`.pp-repro`) and the reason: the
@@ -504,7 +522,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.30, worker v129**. Claim one here when you start.
+Next free numbers: **page v7.31, worker v129**. Claim one here when you start.
 
 ## What's next
 

@@ -7,11 +7,11 @@ import { liveFetch } from '../helpers/flockFixture.mjs';
 const setup = (storage = {}) => loadPage({ fetchImpl: liveFetch().impl, storage: { owlTwigSgwTerms: ['panther', 'pyrex'], 'prowl.v36': { seen: true, hunts: [] }, ...storage } });
 const cls = (p) => p.$('.scout-app-wrapper').className;
 
-test('one search button: Search All is hidden, Hunt and a Near me chip remain', async () => {
+test('one search button: Search All is hidden, Hunt and a chip remain (v7.30: Just ShopGoodwill, Near me is a tab)', async () => {
   const p = setup();
   await tick(60);
   assert.equal(p.$('#otp-sa').hidden, true);
-  assert.ok(p.$('#otp-near').classList.contains('near-chip'));
+  assert.ok(p.$('#otp-one').classList.contains('near-chip'));
   await p.close();
 });
 

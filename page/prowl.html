@@ -1044,6 +1044,10 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 @media(max-width:480px){.scout-app-wrapper .sgw-sub .sgw-live,.scout-app-wrapper .sgw-sub .sgw-fbh{font-size:18px}.scout-app-wrapper .rlive .sgw-head b{font-size:19px} }
 .scout-app-wrapper .dg-blk .sgw-grid{padding:0 18px 12px}
 .scout-app-wrapper .dg-blk .sgw-note{padding:0 18px 10px}
+.scout-app-wrapper .dg-blk.dg-quiet{padding:10px 0 4px}
+.scout-app-wrapper .dg-quiet .dg-hd h3{font-size:17px}
+.scout-app-wrapper .dg-blk .dg-n{white-space:nowrap}
+.scout-app-wrapper .sgw-mail.dg-mail{margin:18px 0 6px}
 .scout-app-wrapper .dg-tip{margin:12px 18px 0;font-size:14px;color:var(--mu);line-height:1.5}
 .scout-app-wrapper .dg-tip b{color:var(--ink)}
 .scout-app-wrapper .hn{margin:4px 0 14px;padding:12px 0 6px;border:2px solid var(--ac);border-radius:14px;background:var(--ac-soft)}
@@ -1079,7 +1083,6 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .dg-nh .dg-more{margin:0 18px 10px;font-size:14px;color:var(--mu)}
 .scout-app-wrapper .sgw-mail{margin:0 15px 10px;font-size:15px;color:var(--i2)}
 .scout-app-wrapper .sgw-mail.mail-card{margin:0;border:2px solid var(--ac);border-radius:14px;padding:14px 16px;background:var(--ac-soft)}
-.scout-app-wrapper .sgw-mail.dg-mail{margin:4px 0 18px}
 .scout-app-wrapper .sgw-mail .mail-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
 .scout-app-wrapper .sgw-mail .mail-top h3{margin:0;font-size:17px;font-weight:800;color:var(--ink)}
 .scout-app-wrapper .sgw-mail .mail-pill{flex:none;font-size:13px;font-weight:800;padding:3px 10px;border-radius:999px;border:1px solid var(--l2);color:var(--i3)}
@@ -1298,7 +1301,6 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-fpu{color:var(--ac);font-weight:700;text-decoration:underline}
 .scout-app-wrapper .sgw-fpr.fp-out{border-left-color:var(--ac);font-size:14px;line-height:1.45;color:var(--ink)}
 /* v5.93: Photo check gets its own screen (dock tab, home card, ?photo=1) */
-.scout-app-wrapper #otp-dock{grid-template-columns:repeat(6,1fr)}
 .scout-app-wrapper .apr-go{-webkit-appearance:none;appearance:none;text-transform:none;display:flex;align-items:center;gap:14px;width:100%;margin:0 0 22px;padding:14px 16px;border:1.5px solid var(--l2);border-radius:16px;background:var(--cd2);color:var(--ink);text-align:left;font:inherit;cursor:pointer}
 .scout-app-wrapper .apr-go:hover{background:var(--hover)}
 .scout-app-wrapper .apr-go svg{flex:none;width:32px;height:32px;color:var(--ac)}
@@ -1401,6 +1403,13 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper ol.dx-top li small{float:right;color:var(--mu) }
 .scout-app-wrapper .dx-sub{margin-top:12px!important }
 @media (max-width:480px){.scout-app-wrapper #otp-den .tabs{flex-wrap:wrap;row-gap:6px}.scout-app-wrapper #otp-den .tab{flex:1 1 30%}}
+/* v7.30: Near me is the Den drawer without its tabs, stores first */
+.scout-app-wrapper #otp-den.den-near .tabs{display:none}
+.scout-app-wrapper #otp-den .tab[hidden]{display:none}
+.scout-app-wrapper #otp-denLocal:not([hidden]){display:flex;flex-direction:column}
+.scout-app-wrapper #otp-denLocal>.lochelp,.scout-app-wrapper #otp-denLocal>.addrow,.scout-app-wrapper #otp-denLocal>.cityhelp{order:2}
+.scout-app-wrapper #otp-denLocal>.nearblk{order:1}
+.scout-app-wrapper #otp-denLocal>.tl{order:3}
 .scout-app-wrapper .drawer.dragging{transition:none }
 @media (max-width:640px){
   .scout-app-wrapper .drawer{width:100%;border-left:0 }
@@ -2039,7 +2048,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     </div>
     <button class="b p" type="submit">Hunt</button>
     <button class="b" id="otp-sa" type="button" hidden>Search All</button>
-    <button class="b near-chip" id="otp-near" type="button">⌖ Near me</button>
+    <button class="b near-chip" id="otp-one" type="button">Just <span id="otp-oneLab">ShopGoodwill</span></button>
   </form>
   <div class="bolo" id="otp-bolo" role="region" aria-label="Ideas to hunt" hidden></div>
 
@@ -2601,11 +2610,10 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <!-- v6.38: the swallow sprite sits outside the hidden Flock section, so the dock icon draws before Flock opens -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="otp-swallow" viewbox="0 0 24 24"><path fill="currentColor" d="M22.2 8.8 20.4 7.6 18.3 8C17.7 8.1 17.1 8.1 16.5 8.2 14 4.4 9.8 2.8 5.6 1.4 9.2 4.4 11.2 7.6 11.8 10.4 10.2 11.4 6.8 13.2 2.2 16.2L5.6 17.2 3.2 20.4 9.3 15.8C12 15.2 15.8 14.4 18.2 12.4 19.6 11.3 20.4 10.4 20.8 9.9Z"></path></symbol></svg>
 <nav id="otp-dock" aria-label="Prowl modes">
-  <button class="db on" data-m="prowl" aria-label="Prowl home"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path></svg><span>PROWL</span></button>
-  <button class="db" data-m="one" id="otp-oneBtn"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11"></path><path d="M9 20v-6h6v6"></path></svg><span id="otp-oneLab">GOODWILL</span></button>
-  <button class="db" data-m="local" id="otp-localBtn" aria-label="Local: stores near you on the map, or set your city"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.4"></circle></svg><span>LOCAL</span></button>
+  <button class="db on" data-m="prowl" aria-label="Hunt: one search across every marketplace"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4.3-4.3"></path></svg><span>HUNT</span></button>
+  <button class="db" data-m="daily" aria-label="Daily: what is new in your hunts"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg><span>DAILY</span><em class="bd" id="otp-ds" hidden></em></button>
   <button class="db" data-m="flock" id="otp-flockBtn" aria-label="Flock: a look across your hunts"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#otp-swallow"></use></svg><span>FLOCK</span><em class="bd" id="otp-flbd" hidden></em></button>
-  <button class="db" data-m="daily" aria-label="Daily prowl"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg><span>DAILY</span><em class="bd" id="otp-ds" hidden></em></button>
+  <button class="db" data-m="local" id="otp-localBtn" aria-label="Near me: stores and sales around you"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.4"></circle></svg><span>NEAR ME</span></button>
   <button class="db" data-m="den" id="otp-denBtn" aria-label="Den: hunts and settings"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"></path></svg><span>DEN</span></button>
 </nav>
 
@@ -2638,7 +2646,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   <div class="tabs" role="tablist">
     <button class="tab on" id="otp-denT1" role="tab">ALL HUNTS</button>
     <button class="tab" id="otp-denT5" role="tab">LIKES</button>
-    <button class="tab" id="otp-denT2" role="tab">LOCAL</button>
+    <button class="tab" id="otp-denT2" role="tab" hidden>LOCAL</button>
     <button class="tab" id="otp-denT4" role="tab">ABOUT</button>
     <button class="tab" id="otp-denT6" role="tab">STATS</button>
     <button class="tab" id="otp-denT3" role="tab">SETTINGS</button>
@@ -2922,7 +2930,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <div class="mi">
 <u>1</u><div>
 <h3>Search everywhere at once</h3>
-<p>Type what you are hunting and tap <b style="color:var(--ink)">Hunt</b>. Every marketplace lands as a row; tap one to open it, or <b style="color:var(--ink)">Open all</b> (allow pop-ups for this site). <b style="color:var(--ink)">Near me</b> opens a map of antique, thrift and vintage shops around you.</p>
+<p>Type what you are hunting and tap <b style="color:var(--ink)">Hunt</b>. Every marketplace lands as a row; tap one to open it, or <b style="color:var(--ink)">Open all</b> (allow pop-ups for this site). <b style="color:var(--ink)">Just ShopGoodwill</b> under the box searches that one site. <b style="color:var(--ink)">NEAR ME</b> in the footer is for when you are out in the car: antique, thrift and vintage shops and this week's sales around you.</p>
 </div>
 </div>
     <div class="mi">
@@ -2934,7 +2942,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <div class="mi">
 <u>3</u><div>
 <h3>DAILY</h3>
-<p><b style="color:var(--ink)">DAILY</b> in the footer runs all your locked hunts in one go: what is new since yesterday first, then live listings for each.</p>
+<p><b style="color:var(--ink)">DAILY</b> in the footer checks all your locked hunts in one go and shows only what is new since yesterday. <b style="color:var(--ink)">See all</b> opens a whole hunt.</p>
 </div>
 </div>
     <div class="mi">
@@ -2968,9 +2976,11 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <dt>Hiding</dt>
 <dd>A hunt you keep in the Den but are not stalking right now. Tap it to lock on again.</dd>
 <dt>Daily</dt>
-<dd>Your daily prowl: what is new since yesterday for the hunts you are locked on.</dd>
+<dd>Your daily prowl: only what is new since yesterday in the hunts you are locked on.</dd>
 <dt>Flock</dt>
 <dd>A feed of finds drawn from your hunts and likes. Like what you love; pass on the rest.</dd>
+<dt>Near me</dt>
+<dd>Stores and this week's sales around you, for when you are out in the car.</dd>
 <dt>On the lookout</dt>
 <dd>Ideas to hunt, offered when the search box is empty.</dd>
 <dt>Best picks</dt>
@@ -3004,7 +3014,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.29';
+var PROWL_VERSION='v7.30';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3711,6 +3721,9 @@ $('#otp-cityIn').addEventListener('keydown',function(e){if(e.key==='Enter'){e.pr
 /* ---------- DEN TABS ---------- */
 function setDenTab(t){
   denTab=t;
+  den.classList.toggle('den-near',t==='local');   /* v7.30: Near me, not a Den tab */
+  $('#otp-dent').textContent=t==='local'?'Near me':'Den';
+  $('#otp-denClose').setAttribute('aria-label',t==='local'?'Close Near me':'Close Den');
   $('#otp-denT1').classList.toggle('on',t==='hunts');
   $('#otp-denT2').classList.toggle('on',t==='local');
   $('#otp-denT4').classList.toggle('on',t==='about');
@@ -3740,7 +3753,7 @@ $('#otp-denT6').addEventListener('click',function(){setDenTab('stats')});   /* v
 var lf=null;
 function openDen(){lf=document.activeElement;den.hidden=false;rDenHunts();rDenLocal();rDenX();setDenTab(denTab);requestAnimationFrame(function(){sc.classList.add('on');den.classList.add('on')});$('#otp-denClose').focus();}
 function closeDen(){sc.classList.remove('on');den.classList.remove('on');setTimeout(function(){den.hidden=true},300);if(lf&&lf.focus)lf.focus();}
-$('#otp-denBtn').addEventListener('click',openDen);
+$('#otp-denBtn').addEventListener('click',function(){if(denTab==='local')denTab='hunts';openDen()});   /* v7.30: DEN opens the Den, not Near me */
 $('#otp-denClose').addEventListener('click',closeDen);
 /* v5.93: Photo check has its own screen, like the Den. Opened from the dock,
    the home card or ?photo=1. The photo script binds by id, so it is unchanged. */
@@ -4190,19 +4203,20 @@ function dgFresh(k){
   for(i=0;i<its.length;i++){src=seenSrc(its[i].url);if(src&&ps&&ps.length&&ps.indexOf(src)<0)continue;if(!has[dgH(its[i].url)])out.push(its[i])}
   return out;
 }
+/* v7.30 (Matt: "maybe we only show new stuff to reduce the amount of items - and they can go to the hunt to see all
+   of them as that is focused"): Daily is only what is new. Each hunt shows its new listings, at most DG_NEW_CARDS,
+   and See all opens that one hunt. A quiet hunt is one line. A first Daily has nothing to compare with, so it shows a
+   first look at each hunt. The marketplace-by-marketplace blocks are gone from Daily; the hunt has them. */
 var DG_NEW_CARDS=6;
 function dgNew(T){
-  var o=dgLoad(),x={n:0,since:dgSince(o),wait:false,base:false},h='',j,k,f,i,cards;
+  var o=dgLoad(),x={n:0,since:dgSince(o),wait:false,base:false},h='',j,k,f;
   for(j=0;j<T.length;j++){
     k=T[j].toLowerCase();if(!liveSummary(T[j]).done)x.wait=true;
-    f=dgFresh(k);if(f===null)continue;x.base=true;if(!f.length)continue;x.n+=f.length;cards='';
-    for(i=0;i<f.length&&i<DG_NEW_CARDS;i++)cards+=sgwCard(f[i],T[j]);
-    h+='<div class="dg-nh"><h4>'+esc(T[j])+'<span>'+f.length+' new</span></h4><div class="sgw-grid">'+cards+'</div>'+
-      (f.length>DG_NEW_CARDS?'<p class="dg-more">'+(f.length-DG_NEW_CARDS)+' more in '+esc(T[j])+' below.</p>':'')+'</div>';
+    f=dgFresh(k);if(f===null)continue;x.base=true;x.n+=f.length;
   }
-  var hd='<h3>What\u2019s new'+(x.since?' <small>'+esc(x.since)+'</small>':'')+'</h3>';
-  if(!x.base)h='<p class="sgw-note">This is your first daily prowl on this device. Come back tomorrow and the new listings show up here first.</p>';
-  else if(!x.n)h='<p class="sgw-note">'+(x.wait?'<span class="paws" aria-hidden="true"><i>🐾</i><i>🐾</i><i>🐾</i></span>Checking what is new…':'Nothing new '+esc(x.since)+'. Everything live for each hunt is below.')+'</p>';
+  var hd='<h3>'+(x.base?'What’s new'+(x.since?' <small>'+esc(x.since)+'</small>':''):'A first look')+'</h3>';
+  if(!x.base)h='<p class="sgw-note">Your first daily prowl on this device: a few live listings from each hunt. From tomorrow, Daily shows only what is new.</p>';
+  else if(!x.n)h='<p class="sgw-note">'+(x.wait?'<span class="paws" aria-hidden="true"><i>🐾</i><i>🐾</i><i>🐾</i></span>Checking what is new…':'Nothing new '+esc(x.since)+'. Your hunts are quiet; See all opens any of them.')+'</p>';
   x.html='<div class="dg-new" id="otp-dgNew">'+hd+h+'</div>';
   return x;
 }
@@ -4229,24 +4243,22 @@ function dgTerms(r){
   return out;
 }
 function dgBlock(t,j){
-  var k=t.toLowerCase(),i,s,tot=0,body,fr=dgFresh(k);
-  body=liveBlock('ShopGoodwill',t,sgw.cache[k],!sgw.cache[k]);
-  tot+=liveCount(sgw.cache[k]);
-  for(i=0;i<LIVE_SRC.length;i++){
-    s=LIVE_SRC[i];
-    body+=liveBlock(s.name,t,lv[s.id].cache[k],!lv[s.id].cache[k]);
-    tot+=liveCount(lv[s.id].cache[k]);
-  }
-  body=body.split(' The full hunt below still searches everywhere else.').join('').split(' The rows below still search every site directly.').join('');   /* v7.09: Daily has no rows below */
-  return '<div class="dg-blk" data-dg="'+j+'"><div class="dg-hd"><h3>'+esc(t)+'</h3>'+
-    '<span class="dg-n">'+(fr&&fr.length?fr.length+' new \u00b7 ':'')+(tot?tot+' live now':'')+'</span>'+
-    '<button type="button" class="dg-run" data-dh="'+j+'">Run the full hunt</button></div>'+body+'</div>';
+  var k=t.toLowerCase(),fr=dgFresh(k),sm=liveSummary(t),first=fr===null,its=first?dgItems(k):fr,i,cards='',lab;
+  for(i=0;i<its.length&&i<DG_NEW_CARDS;i++)cards+=sgwCard(its[i],t);
+  if(!sm.done&&!cards)lab='checking…';
+  else if(first)lab=sm.n?sm.n+' live now':'nothing live right now';
+  else lab=fr.length?fr.length+' new':'nothing new';
+  return '<div class="dg-blk'+(cards?'':' dg-quiet')+'" data-dg="'+j+'"'+(sm.done?' data-done="1"':'')+'><div class="dg-hd"><h3>'+esc(t)+'</h3>'+
+    '<span class="dg-n">'+lab+'</span>'+
+    '<button type="button" class="dg-run" data-dh="'+j+'">'+(sm.n?'See all '+sm.n:'See all')+'</button></div>'+
+    (cards?'<div class="sgw-grid">'+cards+'</div>':'')+'</div>';
 }
 function dgDigest(r,x){
-  var beta=true;   /* v5.80: Prowl Alerts is for everyone now */
-  var T=dgTerms(r),html=x.html+'<div class="otp-mail sgw-mail mail-card dg-mail" data-mode="card"'+(beta?'>'+mailBoxHtml('card',true):' hidden>')+'</div>',j;
+  var T=dgTerms(r),html=x.html,j;
   for(j=0;j<T.length;j++)html+=dgBlock(T[j],j);
-  if(r.terms.length>DG_LIVE_MAX)html+='<p class="dg-tip">Daily shows live listings for your first <b>'+DG_LIVE_MAX+'</b> locked hunts. Run the full hunt from the home screen for the other <b>'+(r.terms.length-DG_LIVE_MAX)+'</b>.</p>';
+  if(r.terms.length>DG_LIVE_MAX)html+='<p class="dg-tip">Daily checks your first <b>'+DG_LIVE_MAX+'</b> locked hunts. Run the full hunt from the home screen for the other <b>'+(r.terms.length-DG_LIVE_MAX)+'</b>.</p>';
+  /* v7.30: the alerts card comes after the finds, not before them */
+  html+='<div class="otp-mail sgw-mail mail-card dg-mail" data-mode="card">'+mailBoxHtml('card',true)+'</div>';
   return html+'<p class="dg-tip">These are your <b>locked hunts</b>. Change the list with the chips on the home screen: <b>+ add a hunt</b> locks a new one, the <b>x</b> takes one off Daily.</p>';
 }
 /* v5.78: when one hunt's listings land, redraw just that hunt's block. Redrawing
@@ -4482,8 +4494,8 @@ function rDock(){
   var n=st.lock.size;
   var dsb=$('#otp-ds');if(dsb){dsb.textContent=n;dsb.hidden=n===0;}
   flBadge();   /* v6.38 */
-  var ol=$('#otp-oneLab'),ob=$('#otp-oneBtn');
-  if(ol)ol.textContent=oneShort();
+  var ol=$('#otp-oneLab'),ob=$('#otp-one');   /* v7.30: a pill under the search box, no longer a dock tab */
+  if(ol)ol.textContent=oneName();
   if(ob)ob.title='Search '+oneName()+' on its own';
   $$('#otp-dock .db').forEach(function(b){
     var m=b.dataset.m;
@@ -4541,7 +4553,10 @@ function goLocal(){
   denTab='local';openDen();
   setTimeout(function(){var g=document.getElementById('otp-nearGrid'),b=g&&g.closest('.nearblk');if(b&&b.scrollIntoView)try{b.scrollIntoView({behavior:'smooth',block:'start'})}catch(e){}},60);
 }
-$('#otp-near').addEventListener('click',goLocal);
+/* v7.30 (Matt: "local's intent is to be used when you are out in the car looking for a place to shop"): NEAR ME is
+   a dock tab and opens its own Near me screen (the Den drawer without the Den's tabs), stores first. The one-site
+   search that was the GOODWILL tab is the Just ShopGoodwill pill under the search box, where Near me was. */
+$('#otp-one').addEventListener('click',function(){dockGo('one')});
 $('#otp-sf').addEventListener('submit',function(e){
   e.preventDefault();
   if(!q.value.trim()){boloShow();return}   /* v7.23: an empty box offers hunts to pick, never a silent re-run */
@@ -9091,7 +9106,7 @@ try{promoPick();setTimeout(promoPick,1500);window.addEventListener('focus',promo
   }
   var sf=document.getElementById('otp-sf');
   if(sf)sf.addEventListener('submit',function(){var qq=document.getElementById('otp-q');if(qq&&!qq.value.replace(/\s+/g,''))return;startHunt(sf.querySelector('button[type=submit]'))});   /* v7.23: an empty box hunts nothing */
-  ['otp-sa','otp-oneBtn'].forEach(function(id){var b=document.getElementById(id),dock=id!=='otp-sa';if(b)b.addEventListener('click',function(){var q=document.getElementById('otp-q');if(!dock||(q&&q.value.trim()))startHunt(b)})});   /* v6.88: one-site only when a hunt is typed; with none it opens a picker, not a run. v7.09: LOCAL and Near me open the Maps links, not a hunt */
+  ['otp-sa','otp-one'].forEach(function(id){var b=document.getElementById(id),dock=id!=='otp-sa';if(b)b.addEventListener('click',function(){var q=document.getElementById('otp-q');if(!dock||(q&&q.value.trim()))startHunt(b)})});   /* v6.88: one-site only when a hunt is typed; with none it opens a picker, not a run. v7.09: LOCAL and Near me open the Maps links, not a hunt */
   root.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('[data-sgw="pick"]')){unicorns=1;UNI=null}},true);   /* picking a hunt */
   /* the chip sheen: once each time the pointer comes onto a hunt's chip. The chips are redrawn as results come in (the
      old ones removed, so they never see the pointer leave) and a new chip under a resting pointer gets a mouseover:
