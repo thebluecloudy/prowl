@@ -44,6 +44,8 @@ test("v138: size points add up, and a kind whose chip is off is dropped when the
   assert.equal(kindAllowed(mk("Woodland Mall", 914, { kind: "Shopping mall" }), ["antiques", "flea"]), false);
   assert.equal(kindAllowed(mk("Sauer Furniture", 300, { kind: "Furniture store" }), CATS_DEFAULT), false);
   assert.equal(kindAllowed(mk("Pack Rats Pawn Shop", 300, { kind: "Pawn shop" }), CATS_DEFAULT), false);
+  assert.equal(kindAllowed(mk("Pack Rats Pawn Shop", 300, { kind: "Store" }), CATS_DEFAULT), false, "v141: by name too");
+  assert.equal(kindAllowed(mk("Howard Rare Coin Gallery", 300, { kind: "Store" }), CATS_DEFAULT), false);
   assert.equal(kindAllowed(mk("Maumee Antique Mall", 1776), CATS_DEFAULT), true);
   const cl = (name, n, nested, extra) => Object.assign(placeCard(mk(name, n, extra)), { tier: sizeTier(mk(name, n, extra)), nested: (nested || []).map((x) => placeCard(mk(x[0], x[1]))) });
   const sp = splitAnchors([cl("Garden Cottage Emporium", 4, [["Blessings and Bargains", 12], ["Stuff n Things", 8]], { kind: "Home goods store", rating: 5 }), cl("WAREHOUSE 61", 87, [["The Delaware Antique Mall", 303]])]);

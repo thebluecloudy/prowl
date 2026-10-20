@@ -136,7 +136,7 @@ const NEVER_KIND = /shopping\s*mall|furniture|pawn|jewel|department\s*store|gun|
 const OUR_KIND = /^(Antiques|Vintage|Thrift|Records|Books|Toys|Flea market)$/;
 const OUR_NAME = /antique|vintage|collectib|mercantile|emporium|thrift|resale|consign|flea|salvage|architectural|estate\s+sale/i;
 export function kindAllowed(place, cats) {
-  if (NEVER_KIND.test(String(place.kind || "")) || /\bmall of\b|shopping\s+(center|centre|mall)|\bplaza\b.*\bmall\b/i.test(String(place.name || ""))) return false;
+  if (NEVER_KIND.test(String(place.kind || "")) || /\bmall of\b|shopping\s+(center|centre|mall)|\bplaza\b.*\bmall\b|\bpawn\b|\bcoins?\b|\bfabric|\bgarden\b|\bfitness\b|\bfurniture\b/i.test(String(place.name || ""))) return false;
   const k = KIND_OF[String(place.kind || "")];
   return !k || catsParse(cats.join ? cats.join(",") : cats).indexOf(k) !== -1;
 }

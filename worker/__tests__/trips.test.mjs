@@ -185,6 +185,8 @@ test("/trip: the reference route from Novi to Blenko, in drive order, the Centra
   assert.ok(!/42\.48|83\.4755/.test(JSON.stringify(b.origin)), "the origin point is not echoed");
   assert.equal(b.route.km, 640); assert.equal(b.route.min, 390); assert.equal(b.empty, false);
   assert.equal(b.route.slower, 42, "v136: the route with the most to see, 42 minutes longer than Google's fastest");
+  assert.equal(b.how.routes.length, 2, "v141: how it was looked for"); assert.ok(b.how.boxes.length >= 13 && b.how.nearby >= 13 && b.how.text >= 13 && b.how.refused === 0, JSON.stringify(b.how));
+  assert.ok(b.how.routes[0].score > b.how.routes[1].score, "the chosen route scored higher");
   assert.equal(b.route.routes, 2);
   assert.ok(!b.stops.find((s) => /Gaffney|Ellie Mills/.test(s.name)), "small shops are not anchors");
   assert.deepEqual(b.more.map((m) => m.name), ["Gaffney's Treasures and Gifts"], "smaller shops along the way, listed apart");
@@ -371,7 +373,7 @@ test("the worker's own guards: routes are wired, the login links the account, th
   assert.match(INDEX, /url\.pathname\.startsWith\("\/finds\/"\) && request\.method === "GET"\) return findPhotoRoute/);
   assert.match(INDEX, /await tripAcctLink\(env, id, email\)/);
   assert.match(INDEX, /await tripSweep\(env\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v140"/);
+  assert.match(INDEX, /const WORKER_VERSION = "v141"/);
   assert.equal((INDEX.match(/env\.GOOGLE_MAPS_KEY/g) || []).length, 1, "the key is read in one place (gKey) and never put in an answer");
   for (const name of ["nearRoute", "tripRoute", "tripsRoute", "tripBuild", "ppRoute"]) assert.ok(!/GOOGLE_MAPS_KEY/.test(indexFn(name)), name + " never touches the key itself");
 });
