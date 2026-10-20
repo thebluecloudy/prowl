@@ -11,6 +11,15 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.45 /
 
 Recently shipped, newest first:
 
+- **CI on a diet (no page or worker version)** (GitHub, 2026-10-20: 1,800 of the 2,000 included Actions minutes used,
+  resets Nov 1, anything past that is billed). About 50 CI runs a day at 6 to 7 minutes each, every merge tested
+  twice. CI (`.github/workflows/blank.yml`) no longer runs on the push to main (the pull request run already tested
+  that merge, and the deploys never waited on it); a newer push to a pull request cancels the run it replaces; and a
+  pull request that changes only `worker/`, `docs/`, `extension/` or `.md` files runs the worker and extension tests,
+  STATUS.md's check and the page tests that read the worker's files (`scripts/ci-tests.mjs`; about 1 minute, not
+  5). Any page, test, script or workflow change still runs the whole suite; `npm test` locally is unchanged. The SGW
+  digest is off its daily schedule (nothing reads `sgw-digest.json`); it still runs by hand. Test:
+  `__tests__/ci-tests.test.mjs`.
 - **v7.45 / v151: NEAR ME on a map, and Directions to the next stop** (the owner, on the road: "i stopped at one,
   now i want to find the next one but i don't know where i am, it would be good to pull up a map to show and then i
   can pick and then get directions to the next"). Both tabs get **Show on a map**: Leaflet and OpenStreetMap tiles

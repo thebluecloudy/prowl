@@ -1,8 +1,9 @@
 name: SGW digest
 
+# Off its daily schedule since 2026-10-20 (it was 12:30 UTC): nothing in the page
+# or the worker reads sgw-digest.json any more, and each run installs Playwright's
+# Chromium on Actions minutes. Still runs by hand from the Actions tab.
 on:
-  schedule:
-    - cron: "30 12 * * *"   # 12:30 UTC = 8:30am EDT / 7:30am EST
   workflow_dispatch: {}     # allows manual "Run workflow" from the Actions tab
 
 permissions:

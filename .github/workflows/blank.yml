@@ -1,12 +1,17 @@
 name: CI
 
-# Checks the worker, page and extension on every pull request and push to main:
-# every file parses, the page has no Liquid openers, and the unit tests in
-# worker/__tests__ and __tests__ pass (Node's built-in test runner). The page
-# tests load page/prowl.html in jsdom, the one dev-only package (package.json).
+# Checks the worker, page and extension on every pull request: every file
+# parses, the page has no Liquid openers, and the unit tests in worker/__tests__
+# and __tests__ pass (Node's built-in test runner). The page tests load
+# page/prowl.html in jsdom, the one dev-only package (package.json).
+# Actions minutes cost money past the plan's 2,000 a month (90% gone 2026-10-20),
+# so: no second run on the push to main (the pull request run already tested
+# that merge, and nothing waits on it: the deploys run on the push either way);
+# a newer push to a pull request cancels the run it replaces; and a pull request
+# that changes only worker, docs, extension or .md files skips the page tests
+# that never read the worker (scripts/ci-tests.mjs; about 1 minute, not 5).
+# Run it by hand from the Actions tab for the whole suite on main.
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
@@ -14,15 +19,22 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 10   # the suite runs about 4.5 min and grew past 5 (runs 357, 361, 362 cancelled mid-test)
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2   # the merge commit and the base, for the list of changed files
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - name: Worker files parse
         run: |
           mkdir -p /tmp/w && cp worker/*.js /tmp/w/ && echo '{"type":"module"}' > /tmp/w/package.json
@@ -34,4 +46,5 @@ jobs:
       - name: Install test packages (jsdom, dev only)
         run: npm ci --no-audit --no-fund
       - name: Unit tests (worker, page, extension)
-        run: npm test
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then node scripts/ci-tests.mjs HEAD^1 HEAD; else npm test; fi
