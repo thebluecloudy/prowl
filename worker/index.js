@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v137: 2026-10-20. The /trip and /near cache keys move to v=2, so no build kept by v135 (16 anchors, no "more", no
+ *         alternatives) is served after v136 went live; a kept answer lives an hour.
  *   v136: 2026-10-20. The route with the most to see (the owner, against Meta's Novi to Blenko itinerary: Google's fastest
  *         drive runs US-35 and never passes Portsmouth, Ashland or Huntington). /trip asks Google for its alternative
  *         routes, searches each corridor (antiques in a query of their own, so a big mall is never crowded out), and
@@ -469,7 +471,7 @@ import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v
 import { decodePolyline, haversineKm, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_KM, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v136";
+const WORKER_VERSION = "v137";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6375,7 +6377,7 @@ async function nearRoute(request, env, url, origin) {
   if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, places: [] }, 503, origin);
   const cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=1";
+  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=2";
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("near:" + ipKey(request.headers.get("CF-Connecting-IP")), NEAR_PER_IP))) return json({ error: "slow down" }, 429, origin);
@@ -6421,7 +6423,7 @@ async function tripRoute(request, env, url, origin) {
   if (to.length < 2) return json({ error: "to required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, stops: [] }, 503, origin);
   const day = tripDay(url.searchParams.get("day")), cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=1";
+  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=2";   /* v137: v136 changed the answer */
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("trip:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIP_PER_IP))) return json({ error: "slow down" }, 429, origin);

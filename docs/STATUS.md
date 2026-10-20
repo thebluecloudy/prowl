@@ -1,15 +1,18 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v136).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v137).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.39** | 399,599 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v136** | |
+| Worker | **v137** | |
 
 Recently shipped, newest first:
+
+- **v137: the trip and near cache keys move to v=2**, so no build kept by v135 is served after v136 (a kept answer
+  lives an hour; the owner's first look after the deploy would have shown the old 16-anchor list). Worker only.
 
 - **v7.39 / v136: the road with the most to see** (the owner set Prowl's Novi to Blenko link beside Meta's itinerary:
   Meta's eight anchors ran US-23 through Portsmouth, Ashland and Huntington; Prowl searched only Google's fastest
@@ -689,7 +692,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.40, worker v137**. Claim one here when you start.
+Next free numbers: **page v7.40, worker v138**. Claim one here when you start.
 
 ## What's next
 
