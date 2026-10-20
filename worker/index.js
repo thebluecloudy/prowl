@@ -19,6 +19,11 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v130: 2026-10-20. NEAR ME (the spec: NEAR ME section, Road Trip, Trip Finds). GET /near (Around You), GET /trip (Road
+ *         Trip: the route's corridor, one anchor a town, the Maps link with the origin as a town only), /pp (place photos),
+ *         /trips (group trips in KV, shared account to account, Pro checked here: PRO_CIDS, a member's Pro or paid
+ *         orders), /trips/<id>/finds and /finds (photos in R2, deleted FINDS_GRACE_DAYS after the trip closes). Needs
+ *         the secret GOOGLE_MAPS_KEY and the R2 bucket PROWL_FINDS; see trip.js and the NEAR ME comment.
  *   v129: 2026-10-20. ShopGoodwill listings keep only titles with every word of the hunt (the owner: "Brookwood" came up
  *         for Rookwood); see sgwExact.
  *   v128: 2026-10-20. Etsy listing details in English when the seller wrote an English translation (the owner: a German
@@ -437,7 +442,10 @@ import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-const WORKER_VERSION = "v129";
+import { decodePolyline, haversineKm, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
+  tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
+  DETOUR_MIN, NEAR_MAX, NEAR_QUERIES, NEAR_RADIUS_M, TRIP_QUERY, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v130 */
+const WORKER_VERSION = "v130";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -5134,6 +5142,7 @@ async function proxyHandle(request, env, url) {
       const nj = await capsCall(capsDay(), "take", { k: "pxn:" + (await sha16(String(b.sig) + ":" + ts)), lim: 1 });
       if (nj && nj.left < 0) return pxJson({ error: "This sign-in was already used. Reload Prowl." }, 401);
     } catch (e) { console.error("pxn", String(e && e.message || e)); }
+    try { await tripAcctLink(env, id, email); } catch (e) { console.error("acct link", String(e && e.message || e)); }   /* v130: trips shared to this account */
     let sub = await kvGet(env, "sub:" + email, null);
     if (!sub) {   /* v54: the store email may differ from the alerts email */
       const linked = await kvGet(env, "cid:" + id, null);
@@ -6113,6 +6122,7 @@ async function cronRun(env) {
   const t0 = Date.now();
   let r = null, err = "";
   try { r = await alTick(env); } catch (e) { err = String(e && e.message || e); console.error("alTick", err); }   /* v51: never silent */
+  if (new Date().getUTCMinutes() < 5) { try { await tripSweep(env); } catch (e) { console.error("trip sweep", String(e && e.message || e)); } }   /* v130: once an hour */
   try {
     await capsCall("metrics", "mrec", { c: { t: t0, ms: Date.now() - t0, members: (r && r.members) || 0, checked: (r && r.checked) || 0,
       sent: (r && r.sent) || 0, failed: ((r && r.failed) || 0) + (err ? 1 : 0), errors: err ? [scrubPII("alert clock crashed: " + err).slice(0, 160)] : ((r && r.errors) || []), skipped: (r && r.skipped) || "",
@@ -6229,6 +6239,302 @@ async function fbFinds(request, env, url, origin) {
   const v = await kvGet(env, "fb:" + term, null);
   if (!v || !Array.isArray(v.items)) return json({ error: "not swept" }, 404, origin, hdr);
   return json({ term: v.term, updated: v.updated, items: v.items }, 200, origin, hdr);
+}
+
+/* ---------- v130: NEAR ME ----------
+   The in-person prowl (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). The logic is in trip.js (pure);
+   this part talks to Google and the stores. Everything needs the secret GOOGLE_MAPS_KEY (Places API (New), Routes API
+   and Geocoding API enabled on it); without it /near and /trip answer 503 "not set up" and the page keeps its Maps links.
+     GET  /near?lat&lng                 Around You: the antique, vintage and thrift shops around a point, ranked (size,
+                                        then rating weighted by reviews, then distance), with each one's weekly hours
+                                        and UTC offset so the page prints OPEN NOW / CLOSED when it draws the card.
+                                        Kept 10 minutes per ~1 km cell; NEAR_PER_IP a day.
+     GET  /trip?to&lat&lng[&day]        Road Trip: the route from the point (its town only is ever kept or shown) to the
+                                        destination, the shops inside DETOUR_MIN of it, one anchor per town with the
+                                        rest nested, in drive order, hours for the trip's day, and the one Maps link
+                                        (origin town, anchors, destination). Kept an hour per origin town, destination
+                                        and day; TRIP_PER_IP a day. An empty corridor is a result, not an error.
+     GET  /pp?n=<photo name>            a place's photo through the worker (the key never reaches the page), a day in
+                                        the edge cache.
+   Group trips (a store sign-in: Authorization: Bearer; Pro checked here, never on the page):
+     POST /trips  { to, lat, lng, day } the organizer builds and keeps a trip:   trip:<id>, trips:<cid> (ids), trips:all
+     GET  /trips                        the member's trips (summaries)
+     GET  /trips/<id>                   the trip as every member sees it, stop hours fetched afresh (10-minute cache)
+     POST /trips/<id>/share { email }   the organizer adds a member by account. The address is hashed (acct:<hash>, written
+                                        at every store sign-in, holds the customer id); an address that never signed in
+                                        waits in tripinv:<hash> and joins at its next sign-in. The address is never kept.
+     POST /trips/<id>/close             the organizer closes it now (finds expire FINDS_GRACE_DAYS later)
+     POST /trips/<id>/finds { img, item, price, verdict, fair, stop, town, name }   a member posts a photo check's find
+                                        (the photo, a JPEG the page shrank, goes to R2 finds/<trip>/<find>.jpg; the lines
+                                        to tripfinds:<id>)
+     GET  /trips/<id>/finds             the feed; each photo is a signed link good for an hour
+     GET  /finds/<trip>/<find>.jpg?e&s  the photo, for a valid signature on an unexpired trip only
+   Pro for trips: PRO_CIDS (a comma list of store customer ids, the comp list the organizer arranges with the owner),
+   a linked Prowl Alerts member's Pro, or that customer's own paid Prowl Pro orders (alProShop by cid). The page never
+   decides. Trip finds expire: the trip closes at the end of its day (or when closed), the photos and the feed are
+   deleted FINDS_GRACE_DAYS later by tripSweep (the alert clock, once an hour), and /finds refuses them from the moment
+   the trip expires whatever R2 still holds. The bucket's own lifecycle rule (wrangler.toml) is the backstop. */
+const NEAR_PER_IP = 120, TRIP_PER_IP = 30, PP_PER_IP = 1500, TRIPS_PER_IP = 400, NEAR_CACHE_SECONDS = 600, TRIP_CACHE_SECONDS = 3600, HOURS_CACHE_SECONDS = 600;
+const G_PLACE_FIELDS = "id,displayName,formattedAddress,addressComponents,location,rating,userRatingCount,regularOpeningHours,utcOffsetMinutes,photos,editorialSummary,primaryType,primaryTypeDisplayName,googleMapsUri";
+const G_TIMEOUT_MS = 9000, FIND_SIG_SECONDS = 3600, FIND_BODY_MAX = 1024 * 1024, TRIPINV_TTL = 30 * 86400;
+function gKey(env) { return String((env && env.GOOGLE_MAPS_KEY) || ""); }
+async function gFetch(url, init, mask, env) {
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), G_TIMEOUT_MS);
+  try {
+    const h = Object.assign({ "X-Goog-Api-Key": gKey(env), "Content-Type": "application/json" }, mask ? { "X-Goog-FieldMask": mask } : {});
+    const r = await fetch(url, Object.assign({ signal: ctl.signal, headers: h }, init || {}));
+    let j = null; try { j = await r.json(); } catch (e) {}
+    if (!r.ok) { console.error("google " + r.status, scrubPII(String(j && j.error && j.error.message || "")).slice(0, 160)); return null; }
+    return j;
+  } catch (e) { console.error("google", String(e && e.message || e)); return null; }
+  finally { clearTimeout(timer); }
+}
+/* Text Search (New), biased to a circle when one is given; normalized places */
+async function gPlacesText(env, query, center, radius, max) {
+  const body = { textQuery: query, maxResultCount: Math.max(1, Math.min(20, max || 20)), languageCode: "en", regionCode: "US" };
+  if (center) body.locationBias = { circle: { center: { latitude: center.lat, longitude: center.lng }, radius: Math.min(50000, radius || NEAR_RADIUS_M) } };
+  const j = await gFetch("https://places.googleapis.com/v1/places:searchText", { method: "POST", body: JSON.stringify(body) }, G_PLACE_FIELDS.split(",").map((f) => "places." + f).join(","), env);
+  return ((j && j.places) || []).map(normalizePlace).filter(Boolean);
+}
+/* one place's hours now, 10 minutes in the cache (hours are never kept as copy beyond that) */
+async function gPlaceHours(env, id) {
+  if (!/^[A-Za-z0-9_-]{5,200}$/.test(String(id || ""))) return null;
+  const key = "https://prowl-hours.invalid/" + id;
+  const hit = await PCACHE.match(key);
+  if (hit) { try { return await hit.json(); } catch (e) {} }
+  const j = await gFetch("https://places.googleapis.com/v1/places/" + encodeURIComponent(id), { method: "GET" }, "id,regularOpeningHours,utcOffsetMinutes", env);
+  const p = j ? normalizePlace(Object.assign({ id: id }, j)) : null, hours = p ? p.hours : null;
+  if (hours) { try { await PCACHE.put(key, new Response(JSON.stringify(hours), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=" + HOURS_CACHE_SECONDS } })); } catch (e) {} }
+  return hours;
+}
+/* the driving route; to is { lat, lng } or an address */
+async function gRoute(env, from, to) {
+  const body = { origin: { location: { latLng: { latitude: from.lat, longitude: from.lng } } },
+    destination: typeof to === "string" ? { address: to } : { location: { latLng: { latitude: to.lat, longitude: to.lng } } },
+    travelMode: "DRIVE", routingPreference: "TRAFFIC_UNAWARE", polylineQuality: "OVERVIEW", languageCode: "en-US", units: "IMPERIAL" };
+  const j = await gFetch("https://routes.googleapis.com/directions/v2:computeRoutes", { method: "POST", body: JSON.stringify(body) }, "routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration", env);
+  const r = j && Array.isArray(j.routes) && j.routes[0];
+  if (!r || !r.polyline || !r.polyline.encodedPolyline) return null;
+  return { pts: decodePolyline(r.polyline.encodedPolyline), km: Math.round(Number(r.distanceMeters || 0) / 100) / 10, min: Math.round(Number(String(r.duration || "0s").replace(/s$/, "")) / 60) };
+}
+/* the town a point is in ("Novi, MI"): never a street */
+async function gTown(env, lat, lng) {
+  const j = await gFetch("https://maps.googleapis.com/maps/api/geocode/json?latlng=" + lat + "," + lng + "&result_type=locality|postal_town|administrative_area_level_3&key=" + encodeURIComponent(gKey(env)), { method: "GET" }, "", env);
+  const r = j && Array.isArray(j.results) && j.results[0];
+  const t = r ? townLabel(townOf(r.address_components)) : "";
+  return hasStreet(t) ? "" : t;
+}
+function nearNum(v, lo, hi) { const n = Number(v); return Number.isFinite(n) && n >= lo && n <= hi ? n : null; }
+function tripCell(lat, lng) { return lat.toFixed(2) + "," + lng.toFixed(2); }
+function nearAnswer(body, status, origin, seconds) { return json(body, status, origin, { "Cache-Control": "private, max-age=" + (seconds || 0) }); }
+async function nearRoute(request, env, url, origin) {
+  const lat = nearNum(url.searchParams.get("lat"), -90, 90), lng = nearNum(url.searchParams.get("lng"), -180, 180);
+  if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
+  if (!gKey(env)) return json({ error: "not set up", empty: true, places: [] }, 503, origin);
+  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&v=1";
+  const hit = await PCACHE.match(key);
+  if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
+  if (!(await vCount("near:" + ipKey(request.headers.get("CF-Connecting-IP")), NEAR_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  const here = { lat: lat, lng: lng };
+  const lists = await Promise.all(NEAR_QUERIES.map((q) => gPlacesText(env, q, here, NEAR_RADIUS_M, 20)));
+  const seen = Object.create(null), all = [];
+  for (const p of [].concat(...lists)) { if (seen[p.id]) continue; seen[p.id] = 1; p.near = Math.round(haversineKm(here, p) * 10) / 10; all.push(p); }
+  const places = rankPlaces(all).slice(0, NEAR_MAX).map((p) => placeCard(p));
+  const res = json({ at: new Date().toISOString(), places: places, empty: !places.length }, 200, origin, { "Cache-Control": "private, max-age=" + NEAR_CACHE_SECONDS });
+  try { await PCACHE.put(key, res.clone()); } catch (e) {}
+  return res;
+}
+/* build the trip: origin town, destination, route, the corridor's shops clustered in drive order */
+async function tripBuild(env, from, toText, day) {
+  const [town, destList] = await Promise.all([gTown(env, from.lat, from.lng), gPlacesText(env, toText, null, 0, 1)]);
+  const dest = destList[0] || null;
+  const route = await gRoute(env, from, dest && Number.isFinite(dest.lat) ? { lat: dest.lat, lng: dest.lng } : toText);
+  if (!route || route.pts.length < 2) return null;
+  const centers = corridorCenters(route.pts).slice(0, CORRIDOR_CENTERS_MAX);
+  const lists = await Promise.all(centers.map((c) => gPlacesText(env, TRIP_QUERY, c, CORRIDOR_RADIUS_M, 20)));
+  const seen = Object.create(null), all = [];
+  for (const p of [].concat(...lists)) { if (seen[p.id] || (dest && p.id === dest.id)) continue; seen[p.id] = 1; all.push(p); }
+  const stops = clusterStops(alongRoute(all, route.pts, DETOUR_MIN));
+  const destCard = dest ? placeCard(dest) : { id: "", name: vClean(toText, 120), town: "", why: "", hours: null, url: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(toText) };
+  const destLabel = destCard.name + (destCard.town ? ", " + destCard.town : "");
+  return { origin: { town: town }, dest: destCard, route: { km: route.km, min: route.min }, day: day, weekday: weekdayOf(day), stops: stops, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.length };
+}
+async function tripRoute(request, env, url, origin) {
+  const lat = nearNum(url.searchParams.get("lat"), -90, 90), lng = nearNum(url.searchParams.get("lng"), -180, 180);
+  const to = vClean(url.searchParams.get("to"), 160);
+  if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
+  if (to.length < 2) return json({ error: "to required" }, 400, origin);
+  if (!gKey(env)) return json({ error: "not set up", empty: true, stops: [] }, 503, origin);
+  const day = tripDay(url.searchParams.get("day"));
+  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&v=1";
+  const hit = await PCACHE.match(key);
+  if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
+  if (!(await vCount("trip:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIP_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  const built = await tripBuild(env, { lat: lat, lng: lng }, to, day);
+  if (!built) return json({ error: "no route", empty: true, stops: [] }, 404, origin);
+  const res = json(built, 200, origin, { "Cache-Control": "private, max-age=" + TRIP_CACHE_SECONDS });
+  try { await PCACHE.put(key, res.clone()); } catch (e) {}
+  return res;
+}
+/* a place's photo: Google's media endpoint needs the key, so the page asks here */
+async function ppRoute(request, env, url) {
+  const n = String(url.searchParams.get("n") || "");
+  if (!/^places\/[A-Za-z0-9_-]{5,200}\/photos\/[A-Za-z0-9_-]{5,400}$/.test(n)) return new Response("not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  if (!gKey(env)) return new Response("not set up", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  if (!(await vCount("pp:" + ipKey(request.headers.get("CF-Connecting-IP")), PP_PER_IP))) return new Response("slow down", { status: 429, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  let r;
+  try { r = await fetch("https://places.googleapis.com/v1/" + n + "/media?maxWidthPx=480&key=" + encodeURIComponent(gKey(env)), { redirect: "follow", cf: { cacheTtl: 86400, cacheEverything: true } }); } catch (e) { return new Response("could not fetch", { status: 502, headers: { "Content-Type": "text/plain; charset=utf-8" } }); }
+  const type = String(r.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
+  if (!r.ok || !/^image\/(jpeg|png|webp|gif|avif)$/.test(type)) return new Response("not an image", { status: 415, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  return new Response(r.body, { status: 200, headers: { "Content-Type": type, "Cache-Control": "public, max-age=86400", "X-Content-Type-Options": "nosniff", "Cross-Origin-Resource-Policy": "cross-origin" } });
+}
+/* ---- group trips ---- */
+function proCids(env) { return String((env && env.PRO_CIDS) || "").split(/[\s,]+/).filter((x) => /^\d{1,20}$/.test(x)); }
+/* Pro for the trip features, decided here: the comp list, a linked member's Pro, or the customer's own paid orders */
+async function tripPro(env, request, cid) {
+  if (proCids(env).indexOf(String(cid)) !== -1) return true;
+  const s = await sessMember(request, env);
+  if (s && s.pro) return true;
+  const r = await alProShop(env, "", await kvGet(env, "pro:cid:" + cid, null), cid);
+  return !!r.pro;
+}
+function tripId() { const a = new Uint8Array(9); crypto.getRandomValues(a); return "t" + Array.from(a, (x) => "abcdefghijklmnopqrstuvwxyz0123456789"[x % 36]).join(""); }
+async function tripGet(env, id) { return /^t[a-z0-9]{9}$/.test(String(id || "")) ? kvGet(env, "trip:" + id, null) : null; }
+async function tripPut(env, trip) { await kvPut(env, "trip:" + trip.id, trip); }
+async function tripIndexAdd(env, cid, id) {
+  const ids = await kvGet(env, "trips:" + cid, []);
+  if (ids.indexOf(id) === -1) { ids.unshift(id); await kvPut(env, "trips:" + cid, ids.slice(0, 50)); }
+}
+async function tripJoin(env, trip, cid) {
+  cid = String(cid);
+  if (tripMember(trip, cid)) return true;
+  if (trip.members.length >= TRIP_MEMBERS_MAX) return false;
+  trip.members.push(cid);
+  await tripPut(env, trip);
+  await tripIndexAdd(env, cid, trip.id);
+  return true;
+}
+function tripSummary(trip, cid) { return { id: trip.id, day: trip.day, origin: trip.origin, dest: trip.dest, members: trip.members.length, stops: trip.stops.length, org: trip.org === String(cid), closes: trip.closes }; }
+async function acctHash(email) { return sha16("acct:" + String(email || "").trim().toLowerCase()); }
+/* at every store sign-in: the account's hash points at its customer id, and any trip invitations waiting for it join */
+async function tripAcctLink(env, cid, email) {
+  if (!env || !env.PROWL_ALERTS || !/^\d{1,20}$/.test(String(cid || "")) || !email) return;
+  const h = await acctHash(email);
+  await kvPut(env, "acct:" + h, { cid: String(cid) });
+  const inv = await kvGet(env, "tripinv:" + h, null);
+  if (!inv || !Array.isArray(inv.ids)) return;
+  for (const id of inv.ids.slice(0, 20)) { const t = await tripGet(env, id); if (t && !tripExpired(t)) await tripJoin(env, t, cid); }
+  await env.PROWL_ALERTS.delete("tripinv:" + h);
+}
+async function findSig(env, trip, find, exp) { return (await pxHmac(sessKey(env) || String(env.ADMIN_KEY || "prowl"), "prowl-find-v1:" + trip + "." + find + "." + exp)).slice(0, 32); }
+async function findUrl(env, trip, find) { const exp = Math.floor(Date.now() / 1000) + FIND_SIG_SECONDS; return "/finds/" + trip + "/" + find + ".jpg?e=" + exp + "&s=" + await findSig(env, trip, find, exp); }
+async function tripsRoute(request, env, url, origin) {
+  if (!env.PROWL_ALERTS) return json({ error: "no store" }, 503, origin);
+  const cid = await sessVerify(request, env);
+  if (!cid) return json({ error: "Sign in to your Owl & Twig account to share trips.", signin: true }, 401, origin);
+  if (!(await vCount("trips:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIPS_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  const m = /^\/trips(?:\/(t[a-z0-9]{9})(?:\/(share|close|finds))?)?$/.exec(url.pathname);
+  if (!m) return json({ error: "not found" }, 404, origin);
+  const id = m[1] || "", act = m[2] || "", post = request.method === "POST";
+  if (!id) {
+    if (!post) {
+      const ids = await kvGet(env, "trips:" + cid, []), out = [];
+      for (const tid of ids.slice(0, 20)) { const t = await tripGet(env, tid); if (t && tripMember(t, cid) && !tripExpired(t)) out.push(tripSummary(t, cid)); }
+      return nearAnswer({ trips: out }, 200, origin);
+    }
+    if (!(await tripPro(env, request, cid))) return json({ error: "Group trips come with Prowl Pro.", pro: false }, 403, origin);
+    if (!gKey(env)) return json({ error: "not set up" }, 503, origin);
+    const b = await readJson(request, 4096);
+    const lat = nearNum(b.lat, -90, 90), lng = nearNum(b.lng, -180, 180), to = vClean(b.to, 160);
+    if (lat == null || lng == null || to.length < 2) return json({ error: "where to?" }, 400, origin);
+    const day = tripDay(b.day), built = await tripBuild(env, { lat: lat, lng: lng }, to, day);
+    if (!built) return json({ error: "no route" }, 404, origin);
+    const trip = tripRecord(tripId(), cid, built, day);
+    await tripPut(env, trip);
+    await tripIndexAdd(env, cid, trip.id);
+    const all = await kvGet(env, "trips:all", []); all.push({ id: trip.id, expires: trip.expires }); await kvPut(env, "trips:all", all.slice(-2000));
+    return nearAnswer(Object.assign(tripView(trip, null), { mine: true, org: true, stops: built.stops, maps: built.maps, empty: built.empty }), 200, origin);
+  }
+  const trip = await tripGet(env, id);
+  if (!trip || !tripMember(trip, cid) || tripExpired(trip)) return json({ error: "not found" }, 404, origin);
+  const org = trip.org === String(cid);
+  if (!act) {
+    if (post) return json({ error: "not found" }, 404, origin);
+    const ids = []; trip.stops.forEach((a) => { ids.push(a.id); (a.nested || []).forEach((n) => ids.push(n.id)); });
+    const hours = {}; if (gKey(env)) (await Promise.all(ids.slice(0, 60).map((pid) => gPlaceHours(env, pid)))).forEach((h, i) => { if (h) hours[ids[i]] = h; });
+    const finds = await kvGet(env, "tripfinds:" + id, []);
+    return nearAnswer(Object.assign(tripView(trip, hours), { mine: true, org: org, weekday: weekdayOf(trip.day), finds: finds.length }), 200, origin);
+  }
+  if (act === "share") {
+    if (!post || !org) return json({ error: "Only the organizer adds members." }, 403, origin);
+    if (!(await tripPro(env, request, cid))) return json({ error: "Group trips come with Prowl Pro.", pro: false }, 403, origin);
+    const b = await readJson(request, 2048), email = alEmail(b.email);
+    if (!email) return json({ error: "That email does not look right." }, 400, origin);
+    if (trip.members.length >= TRIP_MEMBERS_MAX) return json({ error: "This trip is full." }, 409, origin);
+    const h = await acctHash(email), acct = await kvGet(env, "acct:" + h, null);
+    if (acct && /^\d{1,20}$/.test(String(acct.cid || ""))) { await tripJoin(env, trip, acct.cid); return nearAnswer({ ok: true, added: true, pending: false, members: trip.members.length }, 200, origin); }
+    const inv = await kvGet(env, "tripinv:" + h, { ids: [] });
+    if (inv.ids.indexOf(id) === -1) inv.ids.push(id);
+    await env.PROWL_ALERTS.put("tripinv:" + h, JSON.stringify({ ids: inv.ids.slice(-20) }), { expirationTtl: TRIPINV_TTL });
+    return nearAnswer({ ok: true, added: false, pending: true, members: trip.members.length }, 200, origin);
+  }
+  if (act === "close") {
+    if (!post || !org) return json({ error: "Only the organizer closes a trip." }, 403, origin);
+    trip.closes = new Date().toISOString(); trip.expires = tripExpires(trip.closes);
+    await tripPut(env, trip);
+    return nearAnswer({ ok: true, closes: trip.closes, expires: trip.expires }, 200, origin);
+  }
+  /* finds */
+  if (!post) {
+    const list = await kvGet(env, "tripfinds:" + id, []), out = [];
+    for (const f of list) out.push(Object.assign({}, f, { by: f.by === String(cid) ? "me" : "", photo: await findUrl(env, id, f.id) }));
+    return nearAnswer({ finds: out, expires: trip.expires }, 200, origin);
+  }
+  if (!env.PROWL_FINDS) return json({ error: "Trip finds are not set up yet." }, 503, origin);
+  if (!(await tripPro(env, request, cid))) return json({ error: "Trip finds come with Prowl Pro.", pro: false }, 403, origin);
+  if (Date.parse(trip.closes) <= Date.now()) return json({ error: "This trip is over." }, 409, origin);
+  const b = await readJson(request, FIND_BODY_MAX);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  const img = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(b.img || ""));
+  if (!img || img[1].length > FIND_IMG_MAX * 4 / 3 + 8) return json({ error: "a JPEG photo is needed" }, 400, origin);
+  let bytes; try { bytes = Uint8Array.from(atob(img[1]), (c) => c.charCodeAt(0)); } catch (e) { return json({ error: "bad photo" }, 400, origin); }
+  if (bytes.length > FIND_IMG_MAX || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) return json({ error: "a JPEG photo is needed" }, 400, origin);
+  const list = await kvGet(env, "tripfinds:" + id, []);
+  if (list.length >= FINDS_MAX) return json({ error: "This trip's feed is full." }, 409, origin);
+  const find = findRecord("f" + tripId().slice(1), cid, b.name, b);
+  await env.PROWL_FINDS.put("finds/" + id + "/" + find.id + ".jpg", bytes, { httpMetadata: { contentType: "image/jpeg" }, customMetadata: { expires: trip.expires } });
+  list.unshift(find);
+  await kvPut(env, "tripfinds:" + id, list.slice(0, FINDS_MAX));
+  return nearAnswer(Object.assign({}, find, { by: "me", photo: await findUrl(env, id, find.id) }), 200, origin);
+}
+async function findPhotoRoute(request, env, url) {
+  const txt = (s, st) => new Response(s, { status: st, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+  const m = /^\/finds\/(t[a-z0-9]{9})\/(f[a-z0-9]{9})\.jpg$/.exec(url.pathname);
+  if (!m) return txt("not found", 404);
+  const exp = Number(url.searchParams.get("e") || 0), sig = String(url.searchParams.get("s") || "");
+  if (!exp || exp * 1000 <= Date.now() || !alSame(sig, await findSig(env, m[1], m[2], exp))) return txt("not found", 404);
+  const trip = await tripGet(env, m[1]);
+  if (!trip || tripExpired(trip) || !env.PROWL_FINDS) return txt("not found", 404);
+  const obj = await env.PROWL_FINDS.get("finds/" + m[1] + "/" + m[2] + ".jpg");
+  if (!obj) return txt("not found", 404);
+  return new Response(obj.body, { status: 200, headers: { "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=600", "X-Content-Type-Options": "nosniff", "Cross-Origin-Resource-Policy": "cross-origin" } });
+}
+/* once an hour from the alert clock: expired trips lose their photos, their feed and their record */
+async function tripSweep(env) {
+  if (!env || !env.PROWL_ALERTS) return { swept: 0 };
+  const all = await kvGet(env, "trips:all", []), keep = [], now = Date.now(); let swept = 0;
+  for (const e of all) {
+    if (!e || !e.id) continue;
+    if (Date.parse(e.expires || "") > now) { keep.push(e); continue; }
+    try {
+      if (env.PROWL_FINDS) { let cursor; do { const l = await env.PROWL_FINDS.list({ prefix: "finds/" + e.id + "/", cursor: cursor }); if (l.objects.length) await env.PROWL_FINDS.delete(l.objects.map((o) => o.key)); cursor = l.truncated ? l.cursor : null; } while (cursor); }
+      await env.PROWL_ALERTS.delete("tripfinds:" + e.id);
+      await env.PROWL_ALERTS.delete("trip:" + e.id);
+      swept++;
+    } catch (err) { console.error("trip sweep", e.id, String(err && err.message || err)); keep.push(e); }
+  }
+  if (swept) await kvPut(env, "trips:all", keep);
+  return { swept: swept };
 }
 
 /* v111: GET /css/prowl.<hash>.css, the page's main stylesheet. The deployed page links to it instead of carrying
@@ -6380,6 +6686,11 @@ async function handleFetch(request, env, ctx) {
       return itemRoute(env, url, origin, request);
     }
     if (url.pathname === "/fb-finds") return fbFinds(request, env, url, origin);   /* v94 */
+    if (url.pathname === "/near" && request.method === "GET") return nearRoute(request, env, url, origin);   /* v130: Around You */
+    if (url.pathname === "/trip" && request.method === "GET") return tripRoute(request, env, url, origin);   /* v130: Road Trip */
+    if (url.pathname === "/pp" && request.method === "GET") return ppRoute(request, env, url);   /* v130: a place's photo */
+    if (url.pathname === "/trips" || url.pathname.startsWith("/trips/")) return tripsRoute(request, env, url, origin);   /* v130: group trips and finds */
+    if (url.pathname.startsWith("/finds/") && request.method === "GET") return findPhotoRoute(request, env, url);   /* v130: a find's photo, signed */
     if (url.pathname === "/sales" && request.method === "GET") return esSales(request, env, url, origin);   /* v103 */
     if (url.pathname === "/shop-picks") {
       return shopPicks(env, url, origin, request);

@@ -14,6 +14,16 @@ keep_vars = true
 binding = "PROWL_ALERTS"
 id = "102ebd733ced41f3806399872dd19027"
 
+# v130: Trip Finds photos (NEAR ME > Road Trip > Finds) live in R2 and expire. Before merging, the owner creates the
+# bucket in Cloudflare > R2 > Create bucket, named prowl-finds, and uncomments the binding; until then the worker
+# answers "Trip finds are not set up yet" and everything else in NEAR ME works. The worker deletes a trip's photos
+# itself 7 days after the trip closes (tripSweep, once an hour). Backstop: on the bucket add an object lifecycle rule
+# that deletes objects with the prefix finds/ 30 days after upload (R2 > prowl-finds > Settings > Object lifecycle
+# rules), so nothing outlives a trip even if the clock misses it.
+# [[r2_buckets]]
+# binding = "PROWL_FINDS"
+# bucket_name = "prowl-finds"
+
 # v48: counters and the response cache live in a Durable Object. The Cache API
 # does nothing on workers.dev, so the daily caps were never enforced before this.
 [[durable_objects.bindings]]

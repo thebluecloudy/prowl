@@ -51,27 +51,29 @@ test('the pill names the site picked in the Den', async () => {
   await p.close();
 });
 
-test('NEAR ME opens its own screen, stores first, without the Den\'s tabs; DEN still opens the Den', async () => {
+test('NEAR ME opens its own screen (v7.34: #otp-near, not the Den), stores first; DEN still opens the Den', async () => {
   const p = loadPage({ storage: DEN });
   await tick(30);
-  const den = p.$('#otp-den');
+  const den = p.$('#otp-den'), near = p.$('#otp-near');
   p.$('#otp-localBtn').click();
   await tick(60);
-  assert.equal(den.hidden, false);
-  assert.equal(p.$('#otp-dent').textContent, 'Near me');
-  assert.ok(den.classList.contains('den-near'), 'the Den\'s tabs are hidden');
-  assert.equal(p.$('#otp-denClose').getAttribute('aria-label'), 'Close Near me');
+  assert.equal(near.hidden, false, 'Near me is its own drawer');
+  assert.equal(den.hidden, true, 'the Den stays shut');
+  assert.equal(p.$('#otp-nearT').textContent, 'Near me');
+  assert.equal(p.$('#otp-nearClose').getAttribute('aria-label'), 'Close Near me');
   assert.equal(p.$('#otp-denLocal').hidden, false);
+  assert.ok(near.contains(p.$('#otp-denLocal')), 'the store finder lives in Near me now');
   assert.ok(p.$$('#otp-nearGrid a.nearc').length >= 8, 'the store types');
-  p.$('#otp-denClose').click();
+  p.$('#otp-nearClose').click();
   await tick(350);
-  assert.equal(den.hidden, true);
+  assert.equal(near.hidden, true);
   p.$('#otp-denBtn').click();
   await tick(60);
+  assert.equal(den.hidden, false);
   assert.equal(p.$('#otp-dent').textContent, 'Den');
-  assert.equal(den.classList.contains('den-near'), false);
   assert.equal(p.$('#otp-denTerms').hidden, false, 'on your hunts, not Near me');
-  assert.equal(p.$('#otp-denT2').hidden, true, 'the Den has no LOCAL tab: Near me is its door');
+  assert.equal(p.$('#otp-denT2'), null, 'the Den has no LOCAL tab at all');
+  assert.equal(den.classList.contains('den-near'), false);
   assert.equal(p.$('#otp-denClose').getAttribute('aria-label'), 'Close Den');
   assert.deepEqual(p.errors, []);
   await p.close();
