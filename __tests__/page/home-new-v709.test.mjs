@@ -21,8 +21,8 @@ const STORE = {
 };
 
 // v7.32 (the owner, on opening MC Escher: "it shows new since last look, best picks and then MC Escher"): with a hunt
-// open, the other hunts' new listings are one line that opens Daily, not a block of cards above the hunt
-test('with a hunt open, the other hunts\' new listings are one line that opens Daily; in a hunt its new ones come first', async () => {
+// open, the other hunts' new listings are one line naming each hunt with its count, not a block of cards above the hunt
+test('with a hunt open, the other hunts\' new listings are one line; in a hunt its new ones come first', async () => {
   const f = liveFetch({ perSource: 3 });
   const p = loadPage({ fetchImpl: f.impl, storage: STORE });
   await tick(50);
@@ -31,7 +31,7 @@ test('with a hunt open, the other hunts\' new listings are one line that opens D
   await tick(5000);
   p.$('#otp-cr').click();
   const line = await waitFor(() => p.$('#otp-sgw .hn-line'), { timeout: 12000 });
-  assert.match(line.textContent, /^\d+ new in your other hunts/);
+  assert.match(line.textContent, /^New in your other hunts:\s*pyrex \d+$/);
   assert.equal(p.$('#otp-homeNew'), null, 'no block of cards above the hunt');
   /* in the hunt, its new listings are first in each marketplace and say New */
   const chip = [...p.$$('#otp-sgw .sgw-chip[data-i]')].find((c) => /pyrex/.test(c.textContent));
@@ -45,17 +45,17 @@ test('with a hunt open, the other hunts\' new listings are one line that opens D
   await p.close();
 });
 
-test('Open Daily on that line opens Daily', async () => {
+test('tapping a hunt on that line opens that hunt, the one its count is for', async () => {
   const f = liveFetch({ perSource: 3 });
   const p = loadPage({ fetchImpl: f.impl, storage: STORE });
   await tick(50);
   p.$('#otp-dock .db[data-m="daily"]').click();
   await tick(5000);
   p.$('#otp-cr').click();
-  const btn = await waitFor(() => p.$('#otp-sgw .hn-line [data-hndaily]'), { timeout: 12000 });
-  assert.equal([...p.$$('h2')].some((h) => /Your daily prowl/.test(h.textContent) && !h.closest('[hidden]')), false, 'Daily closed');
-  btn.click();
-  await waitFor(() => [...p.$$('h2')].some((h) => /Your daily prowl/.test(h.textContent) && !h.closest('[hidden]')));
+  const pick = await waitFor(() => p.$('#otp-sgw .hn-line .hn-pick'), { timeout: 12000 });
+  assert.match(pick.textContent, /^pyrex \d+$/);
+  pick.click();
+  await waitFor(() => p.$('#otp-sgw .sgw-chip.on') && /pyrex/.test(p.$('#otp-sgw .sgw-chip.on').textContent));
   assert.deepEqual(p.errors, []);
   await p.close();
 });

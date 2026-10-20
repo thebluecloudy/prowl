@@ -4050,12 +4050,26 @@ function alExWords(v) {
     .map(w => (w.length > 3 ? (/ss$/.test(w) ? w : w.replace(/s$/, "")).replace(/(.{3,})e$/, "$1") : w));
 }
 /* v129 (the owner: a "Brookwood USA Camouflage Backpack" came up for the Rookwood hunt): ShopGoodwill's search is
-   loose, so its listings keep only titles that carry every word of the hunt as a whole word (plurals and a final e
-   allowed, as alExWords reads them). Unlike alExact there is no fallback: nothing is better than the wrong thing. */
+   loose, so its listings keep only titles that carry every word of the hunt as a whole word (alExWords: plurals and
+   a final e allowed). Filler words (vintage, vtg, antique...) are not required. Spellings run together or split also
+   count, on whole-word edges: "M.C. Escher" for mc escher, "Midcentury" for mid century, "Fire-King" for fireking,
+   but never "Brookwood" for rookwood. Unlike alExact there is no fallback: nothing is better than the wrong thing. */
 function sgwExact(items, term) {
-  const need = alExWords(String(term || "").replace(/"/g, " "));
+  const SOFT = { vintage: 1, vtg: 1, antique: 1, retro: 1, old: 1, rare: 1, mcm: 1, the: 1, and: 1, of: 1, a: 1, an: 1 };
+  const words = v => String(v || "").toLowerCase().replace(/[\u2018\u2019'.]/g, "").replace(/[^a-z0-9\u00c0-\u1fff\u2c00-\uffff]+/g, " ").split(" ").filter(Boolean);
+  const stem = w => alExWords(w)[0] || w;
+  const need = words(term).filter(w => !SOFT[w]);
   if (!need.length || !Array.isArray(items)) return items;
-  return items.filter(x => { const have = " " + alExWords(x && x.title).join(" ") + " "; return need.every(w => have.indexOf(" " + w + " ") !== -1); });
+  const needS = need.map(stem), squash = need.join("");
+  return items.filter(x => {
+    const tw = words(x && x.title), have = " " + tw.map(stem).join(" ") + " ";
+    if (needS.every(w => have.indexOf(" " + w + " ") !== -1)) return true;
+    const starts = {}, ends = {};
+    let run = "";
+    tw.forEach(w => { starts[run.length] = 1; run += w; ends[run.length] = 1; });
+    for (let i = run.indexOf(squash); i !== -1; i = run.indexOf(squash, i + 1)) if (starts[i] && ends[i + squash.length]) return true;
+    return false;
+  });
 }
 function alExact(items, term) {
   const need = alExWords(term);

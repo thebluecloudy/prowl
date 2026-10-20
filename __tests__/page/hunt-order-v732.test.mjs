@@ -18,10 +18,11 @@ test('marketplaces with listings come first; "Nothing live on ShopGoodwill" goes
   await p.close();
 });
 
-test('a button never runs past its row; the home panel hunt buttons wrap', () => {
+test('the home panel hunt buttons wrap instead of running out of the pill; the other-hunts line wraps too', () => {
   const html = readFileSync(new URL('../../page/prowl.html', import.meta.url), 'utf8');
-  assert.match(html, /\.scout-app-wrapper \.b\{max-width:100%;overflow:hidden;text-overflow:ellipsis\}/);
   assert.match(html, /\.scout-app-wrapper \.hn-go\{height:auto;min-height:40px;padding:8px 16px;white-space:normal;overflow-wrap:anywhere/);
-  /* both come after the base .b rule, so they win */
-  assert.ok(html.indexOf('.scout-app-wrapper .b{max-width:100%') > html.indexOf('.scout-app-wrapper .b{height:50px'));
+  assert.match(html, /\.scout-app-wrapper \.hn-line\{display:flex;flex-wrap:wrap/);
+  assert.match(html, /\.scout-app-wrapper \.hn-pick\{[^}]*max-width:100%[^}]*overflow-wrap:anywhere/);
+  /* the review: a rule on every .b cut "Open first N of M" off on phones */
+  assert.doesNotMatch(html, /\.scout-app-wrapper \.b\{max-width:100%;overflow:hidden/);
 });

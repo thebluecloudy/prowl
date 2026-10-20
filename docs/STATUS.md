@@ -16,16 +16,20 @@ Recently shipped, newest first:
     the photos). A missing photo, or one that fails to load, is filled from `/item` (the popup's call, cached in
     ITEMC), one call per listing, kept in PHOTO for redraws, no loop if that photo fails too.
   - **No repair flag for "free from chips, cracks and repairs"** (a Rookwood cat). FLAG_NO also reads "free from",
-    "nor", "neither", "absent", "devoid of" and "n't".
+    "nor", "neither", "absent" and "devoid of"; "n't" counts only right before the damage word (FLAG_NT), so "small
+    chip, doesn't affect display" still flags.
   - **A hunt shows its own results first** (opening MC Escher showed New since your last look, the other hunts'
-    buttons and Best picks before MC Escher). With a hunt open, the other hunts' new listings are one line, "N new in
-    your other hunts · Open Daily" (`homeNewLine`); the New since your last look cards stay only with no hunt open.
+    buttons and Best picks before MC Escher). With a hunt open, the other hunts' new listings are one line, "New in your
+    other hunts: Rookwood 9+ · porcelain panther 3", each opening its hunt (`homeNewLine`; Daily counts from another
+    baseline, so it is not the target); the New since your last look cards stay only with no hunt open.
     Marketplaces with listings come before the empty ones ("Nothing live on ShopGoodwill" moved down).
   - **"Brookwood" no longer matches the Rookwood hunt** (worker v129). ShopGoodwill's search is loose, so its
-    listings keep only titles with every word of the hunt (`sgwExact`, using alExWords: plurals and a final e allowed),
-    in the live search, alerts and liveFetch. No fallback.
-  - **Words stay inside buttons** ("the words fall out of pills sometimes"): `.b` never grows past its row and a long
-    label ends in an ellipsis; the home panel's hunt buttons wrap.
+    listings keep only titles with every word of the hunt (`sgwExact`: plurals and a final e allowed; filler words such
+    as vintage, vtg, antique not required; "M.C. Escher", "Midcentury", "Fire-King" match mc escher, mid century,
+    fireking on whole-word edges), in the live search, alerts and liveFetch. No fallback.
+  - **Words stay inside the hunt pills** ("the words fall out of pills sometimes"): the home panel's hunt buttons
+    (`.hn-go`) wrap onto two lines instead of running out. (A rule on every `.b` was tried and dropped: it cut "Open
+    first N of M" off on phones.)
   - Tests: `__tests__/page/card-photo-v732.test.mjs`, `hunt-order-v732.test.mjs`, `popup-flags-v710.test.mjs`,
     `home-new-v709.test.mjs` (now the one-line behaviour), `worker/__tests__/sgw-exact.test.mjs`.
 

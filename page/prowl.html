@@ -1056,11 +1056,11 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .hn-grid{padding:0 15px 8px}
 .scout-app-wrapper .hn-acts{display:flex;flex-wrap:wrap;gap:8px;margin:0 15px 8px}
 .scout-app-wrapper .hn-go{min-height:40px;font-size:14px}
-.scout-app-wrapper .hn-line{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;margin:0 0 12px;font-size:14px;color:var(--mu)}
-.scout-app-wrapper .hn-line .hn-daily{min-height:40px;padding:0 14px;font-size:14px}
-/* v7.32 (the owner: "the words fall out of pills sometimes"): a button never grows past its row, and a long label is
-   cut with an ellipsis instead of running out of it; the home panel's hunt buttons wrap onto two lines instead */
-.scout-app-wrapper .b{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.scout-app-wrapper .hn-line{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;margin:0 0 12px;font-size:14px;color:var(--mu)}
+.scout-app-wrapper .hn-pick{-webkit-appearance:none;appearance:none;max-width:100%;min-height:40px;padding:0;border:0;background:none;color:var(--ac);font:inherit;font-weight:700;text-align:left;overflow-wrap:anywhere;cursor:pointer}
+.scout-app-wrapper .hn-pick b{color:var(--ink)}
+/* v7.32 (the owner: "the words fall out of pills sometimes"): the home panel's hunt buttons wrap onto two lines
+   instead of running out of the pill */
 .scout-app-wrapper .hn-go{height:auto;min-height:40px;padding:8px 16px;white-space:normal;overflow-wrap:anywhere;text-align:left;line-height:1.3}
 .scout-app-wrapper .sale-was{color:var(--mu);font-weight:600;font-size:.85em}
 .scout-app-wrapper .sale-off{display:inline-block;padding:1px 7px;border-radius:99px;background:#1f7a3a;color:#fff;font-size:.72em;font-weight:800;vertical-align:.12em}
@@ -6413,15 +6413,12 @@ function homeNew(NEWN){
    open, the other hunts' new listings are one line that opens Daily (Daily is only what is new since v7.30), not a
    block of cards and buttons above the hunt. With no hunt open, homeNew stays. */
 function homeNewLine(NEWN){
-  var n=0,i;for(i=0;i<NEWN.length;i++)n+=NEWN[i]||0;
+  var n=0,h='',i;
+  for(i=0;i<NEWN.length&&i<sgw.terms.length;i++)if(NEWN[i]){n+=NEWN[i];
+    h+='<button type="button" class="hn-pick" data-sgw="pick" data-i="'+i+'">'+esc(sgw.terms[i].t)+' <b>'+(NEWN[i]>9?'9+':NEWN[i])+'</b></button>'}
   if(!n)return '';
-  return '<p class="hn-line"><span>'+n+' new in your other hunts</span><button type="button" class="gh hn-daily" data-hndaily="1">Open Daily</button></p>';
+  return '<p class="hn-line"><span>New in your other hunts:</span>'+h+'</p>';
 }
-document.addEventListener('click',function(e){
-  var t=e.target;while(t&&t.getAttribute&&!t.getAttribute('data-hndaily'))t=t.parentNode;
-  if(!t||!t.getAttribute)return;
-  var db=document.querySelector('.scout-app-wrapper .db[data-m=daily]');if(db)db.click();
-});
 function rSGW(){
   var mount=$('#otp-sgw');
   if(!mount)return;
@@ -7179,10 +7176,12 @@ function popOpen(card,lite){
    is not a flag. */
 var FLAG_REP=/\b(repair(?:ed|s)?|restor(?:ed|ation)|re-?glued|glued|touch(?:ed)?[- ]?ups?|re-?painted|over-?painted)\b/i,
   FLAG_DMG=/\b(chip(?:ped|s)?|crack(?:ed|s)?|hairlines?|craz(?:ed|ing)|broken|damaged?|missing|flea ?bites?|as[- ]is)\b/i,
-  FLAG_NO=/\b(no|not|never|without|free (?:of|from)|zero|none|nor|neither|absent|devoid of)\b|n't\b/i;   /* v7.32: "free from chips, cracks and repairs" */
+  FLAG_NO=/\b(no|not|never|without|free (?:of|from)|zero|none|nor|neither|absent|devoid of)\b/i,   /* v7.32: "free from chips, cracks and repairs" */
+  /* v7.32: "doesn't have any chips" says none, "small chip, doesn't affect display" does not: n't counts only right before the damage word */
+  FLAG_NT=/n['\u2019]t\s+(?:\w+\s+){0,3}?(?:chip|crack|hairline|craz|broken|damage|repair|restor|glued|flaw|issue|problem)/i;
 function popFlags(title,d){
   var txt=popUnEnt(String(d.description||'').replace(/<br\s*\/?>/gi,'. ').replace(/<\/(p|li|div)>/gi,'. ').replace(/<[^>]*>/g,' ')),parts=(String(title||'')+'. '+String(d.condition||'')+'. '+txt).split(/[.!?]+(?:\s+|$)|\n+/),rep=[],dmg=[],i,x;
-  for(i=0;i<parts.length;i++){x=parts[i].replace(/\s+/g,' ').trim();if(!x||x.length>220||FLAG_NO.test(x))continue;
+  for(i=0;i<parts.length;i++){x=parts[i].replace(/\s+/g,' ').trim();if(!x||x.length>220||FLAG_NO.test(x)||FLAG_NT.test(x))continue;
     if(FLAG_REP.test(x)){if(rep.length<2&&rep.indexOf(x)<0)rep.push(x)}else if(FLAG_DMG.test(x)&&dmg.length<2&&dmg.indexOf(x)<0)dmg.push(x)}
   if(!rep.length&&!dmg.length)return null;
   var head=rep.length?(dmg.length?'Mentions a repair and damage':'Mentions a repair'):'Mentions damage',qs=rep.concat(dmg).slice(0,2);

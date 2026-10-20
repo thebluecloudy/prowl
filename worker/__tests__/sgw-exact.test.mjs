@@ -34,3 +34,24 @@ test("every ShopGoodwill search path uses it", () => {
   assert.match(INDEX, /shopgoodwill: \[\(t\) => callUpstream\(t\), \(x, t\) => sgwExact\(normalize\(x\), t\)\]/);
   assert.equal((INDEX.match(/sgwExact\(normalize\(up\.text\), term\)/g) || []).length, 2, "alSearch and the live search route");
 });
+
+/* the review of v129: the same piece spelled another way must stay */
+test("spellings run together, split, dotted or hyphenated still match; Brookwood still does not", () => {
+  const keep = (term, title) => sgwExact(t(title), term).length === 1;
+  assert.ok(keep("mc escher", "M.C. Escher Print Reptiles"));
+  assert.ok(keep("mc escher", "MC Escher Litho"));
+  assert.ok(keep("mid century", "Midcentury lamp"));
+  assert.ok(keep("midcentury", "Mid-Century Modern lamp"));
+  assert.ok(keep("fire king", "Fireking Jadeite Mug"));
+  assert.ok(keep("fireking", "Fire-King mug"));
+  assert.ok(keep("haeger panther", "Royal Haeger™ black panther"));
+  assert.ok(keep("“rookwood”", "Rookwood vase"), "curly quotes in the hunt");
+  assert.ok(!keep("rookwood", "Brookwood USA Camouflage Backpack"));
+  assert.ok(!keep("fire", "Fireplace screen"), "a word must end on a word edge");
+});
+
+test("filler words in the hunt are not required", () => {
+  const got = sgwExact(t("Pyrex Butterprint bowl", "Corning bowl"), "vintage pyrex");
+  assert.deepEqual(got.map(x => x.title), ["Pyrex Butterprint bowl"]);
+  assert.equal(sgwExact(t("a"), "vintage").length, 1, "a hunt of filler only is left alone");
+});
