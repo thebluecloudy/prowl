@@ -3253,7 +3253,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.44';
+var PROWL_VERSION='v7.45';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3843,7 +3843,7 @@ function esLeaflet(cb){
   var css=document.createElement('link');css.rel='stylesheet';css.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(css);
   var js=document.createElement('script');js.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';js.async=true;
   js.onload=function(){var q=ES.lfq;ES.lfq=[];q.forEach(function(f){try{f()}catch(e){}})};
-  js.onerror=function(){var q=ES.lfq;ES.lf=0;ES.lfq=[];ES.err='The map could not load. The list still works.';ES.map=null;rEs();q.forEach(function(f){try{f('fail')}catch(e){}})};   /* v7.44: NEAR ME's map waits on this too */
+  js.onerror=function(){var q=ES.lfq;ES.lf=0;ES.lfq=[];ES.err='The map could not load. The list still works.';ES.map=null;rEs();q.forEach(function(f){try{f('fail')}catch(e){}})};   /* v7.45: NEAR ME's map waits on this too */
   document.head.appendChild(js);
 }
 function esMap(items){
@@ -9635,7 +9635,7 @@ function promoPick(){
    decides Pro; nothing here does. Hours are never copy: a card carries the week's periods and the place's UTC offset
    and nrState works them out at draw time. The origin is only ever its town. */
 var NR_API='https://prowl.thebluecloud.workers.dev';
-var near=$('#otp-near'),NR={mode:'around',pos:null,posAt:0,day:'',built:null,view:null,trips:null,around:null,aroundAt:0,aroundTown:'',finds:null,busy:false,lf:null,mapOn:{around:false,trip:false},lmap:{}};   /* v7.44: the map, per tab */
+var near=$('#otp-near'),NR={mode:'around',pos:null,posAt:0,day:'',built:null,view:null,trips:null,around:null,aroundAt:0,aroundTown:'',finds:null,busy:false,lf:null,mapOn:{around:false,trip:false},lmap:{}};   /* v7.45: the map, per tab */
 var TRIP_KEY='prowl.trip';   /* v7.36: the shared trip you are on, {id,name,day,stops}: new key, outside the backup */
 function nrTripGet(){try{var v=JSON.parse(localStorage.getItem(TRIP_KEY)||'null');return v&&v.id?v:null}catch(e){return null}}
 function nrTripSet(t){try{if(t)localStorage.setItem(TRIP_KEY,JSON.stringify(t));else localStorage.removeItem(TRIP_KEY)}catch(e){}}
@@ -9740,7 +9740,7 @@ function nrPos(cb,fresh){
   setTimeout(function(){fin(null,'fail')},10000);
 }
 function nrKm(a,b){var R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180,s=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);return 2*R*Math.asin(Math.min(1,Math.sqrt(s)))}
-/* ---- v7.44: the map (the owner: "i stopped at one, now i want to find the next one but i don't know where i am, it
+/* ---- v7.45: the map (the owner: "i stopped at one, now i want to find the next one but i don't know where i am, it
    would be good to pull up a map to show and then i can pick and then get directions to the next"). Leaflet and
    OpenStreetMap tiles through esLeaflet, loaded the first time a map is asked for. Your blue dot, the shops as
    numbered pins that match the list, tap a pin for Directions. The Directions link names no origin, so Google Maps
@@ -9796,7 +9796,7 @@ function nrAroundLoad(force){
     nrFetch('/near?lat='+pos.lat.toFixed(4)+'&lng='+pos.lng.toFixed(4)+'&cats='+E(nrCatsQ())).then(function(r){
       if(r.status===503){el.innerHTML='';return}   /* not switched on yet: the map searches below carry it */
       if(!r.ok){el.innerHTML='<p class="nearp">The shops around you could not be listed just now. The map searches below still work.</p>';return}
-      NR.aroundAt=Date.now();NR.around=r.j.places||[];NR.aroundTown=r.j.town||'';nrAroundDraw();   /* v7.44: the town too */
+      NR.aroundAt=Date.now();NR.around=r.j.places||[];NR.aroundTown=r.j.town||'';nrAroundDraw();   /* v7.45: the town too */
     });
   },force);   /* v7.37: Refresh asks the phone for a fresh fix */
 }
@@ -9804,7 +9804,7 @@ function nrAroundDraw(){
   var el=$('#otp-nrLive'),L=NR.around||[],here=NR.aroundTown?'You are in <b>'+esc(NR.aroundTown)+'</b>. ':'';if(!el)return;
   if(!L.length){el.innerHTML='<h3 class="nearh">Around you '+nrRefreshBtn()+'</h3><p class="nearp">'+here+'No antique, vintage or thrift shops close by right now. Try a map search below, or plan a road trip.</p>'+nrMapBar('around');nrMap('around');return}
   el.innerHTML='<h3 class="nearh">Around you '+nrRefreshBtn()+'</h3><p class="nearp">'+here+'Antique, vintage and thrift shops near where you are standing, biggest first. Open or closed is from today’s hours. One tap opens the shop in Google Maps; Directions starts the drive from where you are. The numbers match the pins on the map. Moved on? Tap Refresh.</p>'+nrMapBar('around')+'<div class="nr-list">'+L.map(function(p,i){return nrRow(p,'',i+1)}).join('')+'</div>';
-  nrMap('around');   /* v7.44 */
+  nrMap('around');   /* v7.45 */
 }
 /* ---- Road trip ---- */
 function nrDays(){var out=[],i,d,t=Date.now();for(i=0;i<7;i++){d=new Date(t+i*86400000);out.push({day:nrLocalDay(d),label:i===0?'Today':NR_D3[d.getDay()]})}return out}
@@ -9831,7 +9831,7 @@ function nrDrawTrip(t,o){
   function row(p,cls,num){return '<div class="nr-row">'+nrCard(p,day,cls,num)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'">Skip</button></div>'}
   h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):'')+'</p>'+
      '<p class="nearp">'+(t.route&&(t.route.mi||t.route.km)?nrMiles(t.route)+' mi · '+nrDur(t.route.min||0)+' of driving · ':'')+'Trip day '+NR_DAYS[wd]+'<span id="otp-nrMembers">'+(o.members?' · '+o.members+' on this trip':'')+'</span></p>'+
-     (t.route&&t.route.slower>0?'<p class="nearp nr-alt">The road with the most to see, '+nrDur(t.route.slower)+' longer than the fastest drive.</p>':'')+'</div>'+nrMapBar('trip');   /* v7.44: the map, you and the stops */
+     (t.route&&t.route.slower>0?'<p class="nearp nr-alt">The road with the most to see, '+nrDur(t.route.slower)+' longer than the fastest drive.</p>':'')+'</div>'+nrMapBar('trip');   /* v7.45: the map, you and the stops */
   if(vis.hidden)h+='<p class="nr-skipped">'+vis.hidden+' skipped · <button type="button" class="sgw-ml" id="otp-nrUnskip">Show them again</button></p>';
   if(!stops.length)h+='<p class="nearp nr-empty">'+(vis.hidden?'Every stop on this route is skipped.':'No shops of the kinds you picked are worth a stop inside this route’s corridor.')+' The drive itself is ready: open it in Maps below.</p>';
   else{
@@ -9843,7 +9843,7 @@ function nrDrawTrip(t,o){
   if(t.more&&t.more.length)h+='<details class="nr-more"><summary>Smaller shops along the way ('+t.more.length+')</summary><p class="nearp">Not worth planning around, but there if you pass. These never go into the Maps link.</p><div class="nr-list">'+t.more.map(function(p){return nrCard(p,day,'nr-sub')}).join('')+'</div></details>';   /* v7.39 */
   out.innerHTML=h;
   nrFoot(t);
-  nrMap('trip');   /* v7.44 */
+  nrMap('trip');   /* v7.45 */
 }
 function nrFoot(t){
   var f=$('#otp-nrFoot'),m=$('#otp-nrMaps'),s=$('#otp-nrShare'),hb=$('#otp-nrHere');if(!f||!m||!s)return;
@@ -9992,7 +9992,7 @@ if(near){
     if(e.target.closest&&e.target.closest('#otp-nrRefresh')){NR.pos=null;NR.around=null;nrAroundLoad(true);return}   /* v7.37 */
     var cat=e.target.closest&&e.target.closest('[data-nrcat]');if(cat){nrCatToggle(cat.getAttribute('data-nrcat'));return}   /* v7.38 */
     var sk=e.target.closest&&e.target.closest('[data-nrskip]');if(sk){e.preventDefault();nrSkip(sk.getAttribute('data-nrskip'));return}
-    var mp=e.target.closest&&e.target.closest('[data-nrmap]');if(mp){nrMapToggle(mp.getAttribute('data-nrmap'));return}   /* v7.44 */
+    var mp=e.target.closest&&e.target.closest('[data-nrmap]');if(mp){nrMapToggle(mp.getAttribute('data-nrmap'));return}   /* v7.45 */
     if(e.target.closest&&e.target.closest('#otp-nrUnskip')){nrUnskipAll();return}
     var b=e.target.closest&&e.target.closest('[data-nrtrip]');
     if(b){var id=b.getAttribute('data-nrtrip');if(NR.busy)return;NR.busy=true;b.disabled=true;nrFetch('/trips/'+E(id)).then(function(r){NR.busy=false;b.disabled=false;if(!r.ok){toast('That trip could not be opened just now.',2800);return}nrOpenTrip(r.j,false)});return}

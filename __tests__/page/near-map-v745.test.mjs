@@ -1,4 +1,4 @@
-// Page v7.44 / worker v150 (the owner: "i stopped at one, now i want to find the next one but i don't know where i am,
+// Page v7.45 / worker v151 (the owner: "i stopped at one, now i want to find the next one but i don't know where i am,
 // it would be good to pull up a map to show and then i can pick and then get directions to the next"). NEAR ME gets a
 // map on both tabs: Leaflet and OpenStreetMap tiles through the page's existing loader, your blue dot with the town the
 // worker names, the shops as numbered pins that match the numbered list, a popup with Directions (no origin: Google

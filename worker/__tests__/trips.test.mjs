@@ -150,7 +150,7 @@ test("/near: without the key a plain 'not set up'; with it the shops around a po
   assert.ok(names.indexOf("Bluegrass Collectors") === -1, "Ashland, 11 miles off, is outside the circle");
   assert.ok(!r.body.places.find((p) => p.near > TRIP.NEAR_KEEP_MI), "v133: nothing beyond NEAR_KEEP_MI (miles since v148)");
   assert.ok(names.indexOf("Maumee Antique Mall") === -1, "Maumee is not near Huntington");
-  assert.equal(r.body.town, "Huntington, WV", "v150: the town you are standing in, for the map's dot");
+  assert.equal(r.body.town, "Huntington, WV", "v151: the town you are standing in, for the map's dot");
   const c = r.body.places[0];
   assert.equal(c.town, "Huntington, WV"); assert.equal(c.why, "60 dealers"); assert.equal(c.photo, "/pp?n=places%2FChIJCentralCityAntiques%2Fphotos%2FP1");
   assert.equal(c.hours.offset, -240); assert.equal(c.hours.periods.length, 7); assert.equal(typeof c.near, "number");
