@@ -19,7 +19,7 @@ const constLine = (name) => { const m = new RegExp("^const " + name + " = [^\\n]
 function load(deps = {}, nowIso = "2026-10-07T19:36:00Z") {
   const RealDate = Date, fixed = RealDate.parse(nowIso);
   class FakeDate extends RealDate { constructor(...a) { super(...(a.length ? a : [fixed])); } static now() { return fixed; } }
-  const names = ["hibidText", "money", "ebayMoney", "ebaySale", "ebayAge", "ebaySeller", "ptOff", "sgwMs", "timeLeft", "salvationEnd", "itemRef", "itemDesc", "itemImages", "itemEbay", "itemSgw", "salvationItem", "itemRoute"];
+  const names = ["hibidText", "money", "ebayMoney", "ebaySale", "ebayAge", "ebaySeller", "itemFrom", "ptOff", "sgwMs", "timeLeft", "salvationEnd", "itemRef", "itemDesc", "itemImages", "itemEbay", "itemSgw", "salvationItem", "itemRoute"];
   const src = [
     constLine("ITEM_TAGS"), constLine("PT_FMT"), "const itemImg = " + /const itemImg = ([^\n]+)/.exec(INDEX)[1],
     'const SALVATION_BASE = "https://shopthesalvationarmy.com";',
@@ -153,4 +153,12 @@ test("/item: the per-visitor cap answers 429 before any source is asked", async 
 test("/item is wired and measured", () => {
   assert.match(INDEX, /if \(url\.pathname === "\/item"\) \{   \/\* v81/);
   assert.equal(routeKey("/item"), "item:popup");
+});
+
+// v128 (the owner: "flag that it is international / german so that you know this before thinking about bidding")
+test("eBay: an item located outside the US says where it ships from; a US one does not", async () => {
+  const at = (country) => load({ fetch: async () => resp(200, { title: "x", itemWebUrl: "https://www.ebay.com/itm/1", itemLocation: { country } }) }).itemEbay("123456789012", {});
+  assert.deepEqual((await at("DE")).from, { cc: "DE", name: "Germany" });
+  assert.deepEqual((await at("gb")).from, { cc: "GB", name: "United Kingdom" });
+  for (const c of ["US", "", "Germany", undefined]) assert.equal("from" in (await at(c)), false, String(c));
 });

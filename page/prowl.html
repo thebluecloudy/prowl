@@ -1057,6 +1057,9 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .pp-flag{margin:10px 0;padding:10px 12px;border:2px solid #d9541e;border-radius:10px;background:rgba(217,84,30,.1);color:var(--ink);font-size:15px;line-height:1.45}
 .scout-app-wrapper .pp-flag b{display:block;margin-bottom:2px}
 .scout-app-wrapper .pp-flag q{display:block;font-style:italic}
+.scout-app-wrapper .pp-repro{border-color:#D98C1F;background:rgba(217,140,31,.1)}
+.scout-app-wrapper .pp-repro span,.scout-app-wrapper .pp-intl span{display:block}
+.scout-app-wrapper .pp-intl{border-color:#3b82c4;background:rgba(59,130,196,.1)}
 .scout-app-wrapper .pp-sold{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;margin-top:10px;border-radius:99px;font-weight:800}
 /* v7.09 (Matt: "make them glow"): new listings glow, in the strip and in a hunt. A steady ring outside the card and a
    breathing light inside its edge; only opacity moves (an animated shadow stalls phones); still under reduced motion. */
@@ -3001,7 +3004,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.28';
+var PROWL_VERSION='v7.29';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -7049,7 +7052,7 @@ function popOpen(card){
   var u=card.getAttribute('data-u')||'',src=popSrc(u);if(!src)return false;
   var img=card.querySelector('.sgw-card img')||card.querySelector('img');   /* v7.18: a Best picks card's photo */
   POP={u:u,src:src,t:card.getAttribute('data-t')||card.getAttribute('aria-label')||'',p:card.getAttribute('data-p')||'',
-    s:card.getAttribute('data-s')||src,img:img?img.getAttribute('src')||'':'',auc:((card.querySelector('.fl-auc')||{}).textContent)||popAuc(card)};
+    s:card.getAttribute('data-s')||src,img:img?img.getAttribute('src')||'':'',auc:((card.querySelector('.fl-auc')||{}).textContent)||popAuc(card),repro:!!card.querySelector('.sgw-repro')};   /* v7.29 */
   openSheet(POP_NAME[src],'');
   if(sh)sh.classList.add('pop');
   popPaint(ITEMC[u]||null);
@@ -7081,6 +7084,29 @@ function popFlags(title,d){
 }
 /* v7.10 (Matt: "what if I want to look at sold listings of this item from here"): eBay's sold listings for the cleaned
    title, in a new tab (Prowl cannot show sold results itself yet) */
+/* v7.29 (the owner, on a "Brad Keeler Style" flamingo: "possible reproduction shows up in the search listing, but not
+   in the card ... and what is wrong with it, bring it back"): the card's Possible reproduction tag shows in the popup
+   too, with why: the title's own words when they say it (style, inspired, replica, reissue...), else what the check
+   looks for. */
+var REPRO_LIKE=/\b(style|type|inspired|esque|look[- ]?alike|attributed|attrib\.?|in the manner of|manner of)\b/i,
+  REPRO_SAYS=/\b(reproductions?|repro|replicas?|reissued?|re-?issue|reprints?|copy|copies|recast|knock[- ]?off|fakes?|faux)\b/i;
+function popRepro(t){
+  t=String(t||'');
+  var m=REPRO_LIKE.exec(t),k,q,why;
+  if(m){k=t.slice(0,m.index).split(/\s+/).filter(Boolean).slice(-2);q=k.concat([m[1]]).join(' ');
+    why='Sellers use \u201c'+q+'\u201d for a piece made to look like a maker\u2019s work, usually not by them.'}
+  else if((m=REPRO_SAYS.exec(t))){q=m[1];why='The title says \u201c'+q+'\u201d: not an original.'}
+  else why='The title reads like a reproduction, a reissue or a lookalike from another maker.';
+  why+=' Look for the maker\u2019s mark in the photos before you buy.';
+  return {html:'<div class="pp-flag pp-repro" role="note"><b>\u26a0 Possible reproduction</b><span>'+esc(why)+'</span></div>',note:'Possible reproduction: '+why};
+}
+/* v7.29 (the owner, on a German Etsy shop: "flag that it is international / german so that you know this before
+   thinking about bidding"): worker v128 says where a listing outside the US ships from */
+function popFrom(f){
+  if(!f||!/^[A-Z]{2}$/.test(String(f.cc||''))||f.cc==='US')return null;
+  var n=String(f.name||f.cc).slice(0,60),why='An international seller: shipping, customs and import fees can add to the price, and a return costs more. Check them before you bid or buy.';
+  return {html:'<div class="pp-flag pp-intl" role="note"><b>\ud83c\udf0d Ships from '+esc(n)+'</b><span>'+esc(why)+'</span></div>',note:'Ships from '+n+' (international).'};
+}
 function popSold(t){return window.prowlAff('https://www.ebay.com/sch/i.html?_nkw='+E(String(t||'').slice(0,90))+'&LH_Sold=1&LH_Complete=1','prowl-sold')}
 function popDetails(meta,d){
   var t=meta.join(' · '),i;
@@ -7125,6 +7151,8 @@ function popPaint(d){
   if(price)h+='<p class="pp-p">'+esc(price)+(d.was?' <s class="sale-was">'+esc(d.was)+'</s>'+(d.off?' <span class="sale-off">'+esc(d.off)+'</span>':''):'')+'</p>';   /* v7.10 */
   h+=slrHtml(d.seller||SLR[P.u],'pp-r');   /* v7.26 */
   var flags=popFlags(title,d);if(flags)h+=flags.html;
+  var rp=P.repro?popRepro(title):null;if(rp)h+=rp.html;   /* v7.29 */
+  var fr=popFrom(d.from);if(fr)h+=fr.html;   /* v7.29 */
   if(meta.length)h+='<p class="pp-m">'+esc(meta.join(' · '))+'</p>';
   if(P.pnc)h+='<div class="pp-pnc" role="note"><b>\uD83D\uDC3E Pounce '+(P.pnc.maybe?'thinks this may be':'match')+' for '+esc(P.pnc.hunt)+'</b>'+(P.pnc.reason?'<span>'+esc(P.pnc.reason)+'</span>':'')+
     (P.pnc.done?'<em>Marked not it.</em>':'<button type="button" class="b" data-ppnot="1">Not it</button>')+'</div>';   /* v7.19 */
@@ -7138,7 +7166,7 @@ function popPaint(d){
   if(d.aspects&&d.aspects.length){det+='<dl class="pp-asp">';for(i=0;i<d.aspects.length&&i<6;i++)det+='<dt>'+esc(popUnEnt(d.aspects[i].n))+'</dt><dd>'+esc(popUnEnt(d.aspects[i].v))+'</dd>';det+='</dl>'}
   if(desc)det+='<div class="pp-d clip" id="otp-ppd"></div><button type="button" class="pp-more" data-ppmore="1" aria-controls="otp-ppd" aria-expanded="false">Read more</button>';
   if(det)h+=popSec('det','Item details',det,'det' in was?was.det:true);
-  if(price&&!d.gone&&!aiOff())pc+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'" data-d="'+esc((d.was?'On sale, was '+d.was+(d.off?' ('+d.off+')':'')+'. ':'')+(flags?flags.note+' ':'')+popDetails(meta,d))+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
+  if(price&&!d.gone&&!aiOff())pc+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'" data-d="'+esc((d.was?'On sale, was '+d.was+(d.off?' ('+d.off+')':'')+'. ':'')+(fr?fr.note+' ':'')+(rp?rp.note+' ':'')+(flags?flags.note+' ':'')+popDetails(meta,d))+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
   if(price||P.term)pc+='<a class="b pp-sold" href="'+esc(popSold(P.term||title))+'" target="_blank" rel="noopener noreferrer">What it sold for on eBay \u2197</a>';   /* v7.10 */
   if(pc)h+=popSec('price','Price check',pc,'price' in was?was.price:!!(FP&&FP[P.u]));
   var go=window.prowlAff(d.url||P.u,'prowl-popup',d.affUrl);
