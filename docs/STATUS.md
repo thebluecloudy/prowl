@@ -1,16 +1,31 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v146).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.40 / v146).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.39** | 399,599 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.40** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v146** | |
 
 Recently shipped, newest first:
 
+- **v7.40: one Filter sheet beside the search box** (the owner, after a look at how Shop, Vinted, Walmart, Airbnb,
+  Fiverr and Tock draw their filters on Mobbin: "this is perfect, build it"). A sliders button beside the search box,
+  with a count badge, opens the page's bottom sheet (`openSheet`) with four rows that show their value while closed:
+  **Sort by** (Best match, Price low to high, Price high to low, Newest first), **Price** (three pills plus min and
+  max), **Sites** (the drawer's 29-row list with its SHOP and BOLO tabs, Select all and Clear) and **Skip words**
+  (Prowl Pro, as in the email; a Pro member's words go to the email too). Nothing applies until **Show N listings**,
+  which counts the live listings on screen that would pass; Clear all sits at the top of the sheet. The filters in
+  force are chips under the search box, each with a cross; the badge says how many. They shape every live strip on
+  the results screen (a strip says "2 hidden by your filters", or "all hidden" with an Edit filters link), the Best
+  picks and Daily's cards; the marketplace rows under More places to look are links and are left alone. With a sort
+  on, a strip is one order (no exact/close split); a price in another currency is left alone by a price filter;
+  Newest uses `listed` (eBay) or `found` (Daily). Sort, price and skip words are a new key, `prowl.filter`
+  (`FLT_KEY`); the sites are the drawer's saved set (`st.mkt`, unchanged key), and the drawer's count follows. Page
+  only. Not in this version: on-screen local pickup (the email's ZIP and radius) needs the worker's live eBay search
+  to take them. Test: `__tests__/page/filter-sheet-v740.test.mjs`.
 - **v146: the detour was the thief.** Build after build (v136 to v145) had no Maumee Antique Mall though every search
   change was aimed at it. v141's diagnostics held the answer: the road passes 3.9 km from the mall, and the detour
   rule (straight-line distance both ways at 40 km/h) called that 11.7 minutes, over the 10-minute line. Now the
@@ -762,7 +777,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.40, worker v147**. Claim one here when you start.
+Next free numbers: **page v7.41, worker v147**. Claim one here when you start.
 
 ## What's next
 
