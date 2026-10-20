@@ -7338,10 +7338,10 @@ function awayAdd(u){
 /* v7.26 (Matt, from Jellycat's outlined "Best Seller" box): a result that is one of a hunt's Best picks says so on its
    photo (.is-pick), wherever its card shows. Kept for this visit only. */
 var PICK=Object.create(null);
-function pickAdd(d){var i,j,it;if(!d||!d.picks)return;for(i=0;i<d.picks.length;i++)if(d.picks[i]&&d.picks[i].url)PICK[d.picks[i].url]=1;
-  /* v7.34: every cross-posted copy, picked or not, keeps the other sites it is on */
+function pickAdd(d){var i,j,it;if(!d)return;
+  /* v7.34: every cross-posted copy, picked or not, keeps the other sites it is on (a hunt with no picks too) */
   for(i=0;d.rows&&i<d.rows.length;i++)for(j=0;d.rows[i].items&&j<d.rows[i].items.length;j++){it=d.rows[i].items[j];if(it&&it.url&&alsoClean(it.also))ALSO[it.url]=alsoClean(it.also)}
-  for(i=0;i<d.picks.length;i++){it=d.picks[i];if(it&&it.url&&alsoClean(it.also))ALSO[it.url]=alsoClean(it.also)}
+  for(i=0;d.picks&&i<d.picks.length;i++){it=d.picks[i];if(it&&it.url){PICK[it.url]=1;if(alsoClean(it.also))ALSO[it.url]=alsoClean(it.also)}}
   pickMark(document)}
 function alsoClean(a){
   var out=[],i,x;if(!a||!a.length)return null;
@@ -7355,6 +7355,9 @@ function pickMark(root){
     if(root.getAttribute&&root.getAttribute('data-u'))els.push(root);
     if(root.querySelectorAll)els=els.concat([].slice.call(root.querySelectorAll('.sgw-cell[data-u]')));
     for(i=0;i<els.length;i++)if(PICK[els[i].getAttribute('data-u')]&&!els[i].classList.contains('is-pick')&&!els[i].classList.contains('pp-fp'))els[i].classList.add('is-pick');   /* v7.33: not the popup's price check box */
+    /* v7.34: a card drawn before /hunt answered gets its "Also on" line now */
+    for(i=0;i<els.length;i++){var u=els[i].getAttribute('data-u'),mm;
+      if(ALSO[u]&&!els[i].classList.contains('pp-fp')&&!els[i].querySelector('.sgw-also')){mm=els[i].querySelector('.sgw-m');if(mm)mm.insertAdjacentHTML('beforeend','<br>'+alsoLine(u))}}
   }catch(e){}
 }
 function awayMark(root){

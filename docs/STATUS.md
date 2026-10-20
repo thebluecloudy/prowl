@@ -15,10 +15,13 @@ Recently shipped, newest first:
   $211 on Poshmark and on eBay: "show that it is listed in 2 other places, and they have different prices. say someone
   doesn't trust poshmark, but would buy from etsy, or if lowest price need to include the shipping").
   - Worker `hunt.js`: a long title (4+ meaningful words) on two sites is the same piece up to 60% apart
-    (`HUNT_XPOST_GAP`); short titles still need 6%. Copies are grouped, the cheapest leads (one Best pick spot, not
+    (`HUNT_XPOST_GAP`, `huntSamePiece`) when neither title has a word the other lacks on both sides (blue vs green glaze
+    stays apart), the numbers match (6 vs 4 inch, 1946 vs 1922 stay apart) and both or neither are a lot or pair; short
+    titles still need 6%. Every pair in a group must pass on its own (no chains), one listing per site. Copies are grouped, the cheapest leads (one Best pick spot, not
     three), and every copy carries `also`: the other sites with price and link. eBay listings carry `ship` (free or
     $X, from eBay's search; the other sites do not say). `/hunt` cache key v=2.
-  - Page: a card says "Also on eBay $205.00 + $12.50 shipping · Poshmark $211.00"; the popup lists each site with its
+  - Page: a card says "Also on eBay $205.00 + $12.50 shipping · Poshmark $211.00" (cards drawn before /hunt
+    answered get it from pickMark); the popup lists each site with its
     price, shipping when known and a View link ("Shipping is extra unless shown"); Fair price is told.
   - Tests: `worker/__tests__/hunt.test.mjs`, `ebay-ship.test.mjs`, `__tests__/page/cross-post-v734.test.mjs`.
 

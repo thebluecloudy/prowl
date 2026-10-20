@@ -53,3 +53,18 @@ test('its popup lists each site with its price and a link, so the visitor can pi
   assert.deepEqual(p.errors, []);
   await p.close();
 });
+
+test('a result card that is a cross-posted copy gets its "Also on" line, even when drawn before or after /hunt answered', async () => {
+  const p = open();
+  await waitFor(() => p.$('.pk-card[data-s="etsy"]'), { timeout: 8000 });
+  const cell = p.doc.createElement('div');
+  cell.className = 'sgw-cell';
+  cell.setAttribute('data-u', POSH);
+  cell.innerHTML = '<a class="sgw-card" href="#"><img alt="" src="https://x/p.jpg"><div class="sgw-t">' + T + '</div><div class="sgw-m">Poshmark</div></a>';
+  p.$('.scout-app-wrapper').appendChild(cell);
+  await tick(30);
+  assert.equal(cell.querySelector('.sgw-also').textContent, 'Also on Etsy $190.00 · eBay $205.00 + $12.50 shipping');
+  assert.equal(cell.querySelectorAll('.sgw-also').length, 1, 'once');
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});

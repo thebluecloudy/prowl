@@ -116,3 +116,29 @@ test("a long title more than 60% apart is not the same piece", () => {
   ];
   assert.equal(huntCombine(rows, T).dupes.length, 0);
 });
+
+/* the review of v130: different pieces stay apart, and no chains */
+test("different sizes, glazes, a pair or a lot are not the same piece, even with near-identical titles", () => {
+  const Q = "rookwood owl";
+  const two = (a, pa, b, pb) => huntCombine([
+    { source: "etsy", status: 200, note: "", items: [it("etsy", a, pa)] },
+    { source: "poshmark", status: 200, note: "", items: [it("poshmark", b, pb)] }], Q).dupes.length;
+  assert.equal(two("Rookwood pottery owl paperweight 6 inch signed", "$190.00", "Rookwood pottery owl paperweight 4 inch signed", "$125.00"), 0, "6 vs 4 inch");
+  assert.equal(two("Rookwood pottery owl paperweight blue glaze", "$190.00", "Rookwood pottery owl paperweight green glaze", "$130.00"), 0, "blue vs green");
+  assert.equal(two("Pair Rookwood pottery owl bookends signed", "$300.00", "Rookwood pottery owl bookends signed", "$190.00"), 0, "pair vs single");
+  assert.equal(two("Lot of 2 Rookwood pottery owl paperweight", "$300.00", "Rookwood pottery owl paperweight", "$190.00"), 0, "lot vs single");
+  assert.equal(two("Rookwood pottery owl paperweight signed 1946", "$190.00", "Rookwood pottery owl paperweight signed 1922", "$130.00"), 0, "1946 vs 1922");
+  assert.equal(two("Rookwood pottery owl paperweight 6 inch signed", "$190.00", "Rookwood pottery owl paperweight 6 inch signed cream", "$211.00"), 1, "the same piece, one title adds a word");
+});
+
+test("no chains through a middle listing, and never two listings from the same site", () => {
+  const rows = [
+    { source: "etsy", status: 200, note: "", items: [it("etsy", "Rookwood pottery owl paperweight green", "$120.00"), it("etsy", "Rookwood pottery owl paperweight green glaze", "$180.00")] },
+    { source: "poshmark", status: 200, note: "", items: [it("poshmark", "Rookwood pottery owl paperweight green glaze", "$170.00")] },
+    { source: "ebay", status: 200, note: "", items: [it("ebay", "Rookwood pottery owl paperweight green", "$150.00")] }
+  ];
+  const out = huntCombine(rows, "rookwood owl"), all = out.rows.flatMap(r => r.items);
+  for (const x of all) for (const a of x.also || []) assert.notEqual(a.src, x.src, x.src + " lists another " + a.src + " listing as itself");
+  const etsy = all.filter(x => x.src === "etsy");
+  assert.ok(!(etsy[0].dupeOf === etsy[1].url || etsy[1].dupeOf === etsy[0].url), "two Etsy listings are never one piece");
+});

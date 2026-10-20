@@ -81,6 +81,23 @@ export function huntSimilar(a, b) {
   return same / Math.max(A.length, B.length) >= 0.8;
 }
 
+/* v130: two listings are one piece. Within 6% the old rule (80% of the title words). Further apart, up to
+   HUNT_XPOST_GAP, only a long title (4+ meaningful words) with no word the other lacks on both sides (one may only add
+   words: "blue glaze" vs "green glaze" stays apart), the same numbers (sizes, years) and the same lot-ness (a pair is
+   not the single). Never two listings on the same site. */
+const HUNT_LOT = /\b(lot|pair|set of|\d+\s*(pc|pcs|pieces))\b/i;
+function huntNums(t) { return (String(t || "").match(/\d+/g) || []).sort().join(","); }
+export function huntSamePiece(a, b) {
+  if (!a || !b || a.src === b.src || !a.priceN || !b.priceN || !huntSimilar(a.key, b.key)) return false;
+  const gap = Math.max(a.priceN, b.priceN) / Math.min(a.priceN, b.priceN);
+  if (gap <= 1.06) return true;
+  if (gap > HUNT_XPOST_GAP) return false;
+  const A = a.key.split(" "), B = b.key.split(" ");
+  if (Math.min(A.length, B.length) < 4) return false;
+  const onlyA = A.some((w) => B.indexOf(w) === -1), onlyB = B.some((w) => A.indexOf(w) === -1);
+  return !(onlyA && onlyB) && huntNums(a.title) === huntNums(b.title) && HUNT_LOT.test(a.title) === HUNT_LOT.test(b.title);
+}
+
 export function huntScore(it, median) {
   let s = 0;
   if (it.priceN > 0 && median > 0) s += Math.max(-2, Math.min(3, (median - it.priceN) / median * 3));
@@ -105,15 +122,15 @@ export function huntCombine(rows, term) {
     r.items.forEach((it) => { it.key = huntKey(it.title); all.push(it); });
   });
 
-  const dupes = [], up = all.map((_, i) => i);
+  const dupes = [], up = all.map((_, i) => i), members = all.map((_, i) => [i]);
   const root = (i) => { while (up[i] !== i) i = up[i] = up[up[i]]; return i; };
   for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
-    const a = all[i], b = all[j];
-    if (a.src === b.src || !a.priceN || !b.priceN) continue;
-    if (!huntSimilar(a.key, b.key)) continue;
-    const gap = Math.max(a.priceN, b.priceN) / Math.min(a.priceN, b.priceN);
-    if (gap > 1.06 && !(gap <= HUNT_XPOST_GAP && Math.min(a.key.split(" ").length, b.key.split(" ").length) >= 4)) continue;
-    up[root(j)] = root(i);
+    if (!huntSamePiece(all[i], all[j])) continue;
+    const ri = root(i), rj = root(j);
+    if (ri === rj) continue;
+    /* every pair in a group must pass on its own: no chains through a middle listing, one listing per site */
+    if (!members[ri].every((x) => members[rj].every((y) => huntSamePiece(all[x], all[y])))) continue;
+    up[rj] = ri; members[ri] = members[ri].concat(members[rj]);
   }
   const groups = {};
   all.forEach((it, i) => { const r = root(i); (groups[r] = groups[r] || []).push(it); });
