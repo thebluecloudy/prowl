@@ -12,8 +12,12 @@ const PAGE = readFileSync(fileURLToPath(new URL('../../page/prowl.html', import.
 const DEN = { 'prowl.v36': { seen: true, hunts: [] } };
 const hosts = (p) => p.$$('#otp-res a.hit').map((a) => new URL(a.href).hostname.replace(/^www\./, ''));
 
-test('the row under the search box is Hunt and Just ShopGoodwill (v7.30: Near me moved to the dock)', async () => {
-  const p = loadPage({ storage: DEN });
+test('the row under the search box is Hunt, and Just ShopGoodwill once turned on (v7.30: Near me moved to the dock)', async () => {
+  let p = loadPage({ storage: DEN });
+  await tick(30);
+  assert.deepEqual(p.$$('#otp-sf > button.b:not(.flt-b)').filter((b) => !b.hidden).map((b) => b.textContent.trim()), ['Hunt'], 'v7.49: the one-site pill is opt-in');
+  await p.close();
+  p = loadPage({ storage: { 'prowl.v36': { ...JSON.parse(JSON.stringify(DEN['prowl.v36'] || {})), oneOn: true } } });
   await tick(30);
   /* v7.40: the Filter button (an icon, no text) sits before Hunt */
   assert.deepEqual(p.$$('#otp-sf > button.b:not(.flt-b)').filter((b) => !b.hidden).map((b) => b.textContent.replace(/[^A-Za-z ]/g, '').trim()), ['Hunt', 'Just ShopGoodwill']);

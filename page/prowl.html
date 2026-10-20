@@ -3051,7 +3051,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <div class="setcol">
         <label class="setlab" for="otp-oneSel">One-site button</label>
         <select id="otp-oneSel"></select>
-        <p class="setnote">The second button in the bar at the bottom searches this one marketplace. Goodwill to start with — change it to whichever single site you check most.</p>
+        <p class="setnote">Off to start with. Pick the one marketplace you check most and a “Just …” button appears beside Hunt that searches only that site.</p>
       </div>
       <div class="setrow">
         <div>
@@ -3268,7 +3268,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.48';
+var PROWL_VERSION='v7.49';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3540,7 +3540,7 @@ function oneShort(){return SHORT[oneId()]||oneName().toUpperCase()}
 function modeLabel(r){return r.mode==='one'?oneName():(ML[r.mode]||r.mode)}
 
 /* ---------- STATE ---------- */
-var st={mode:'prowl',sel:new Set(),lock:new Set(),mkt:new Set(ALL),tab:'shop',exp:false,run:null,seen:false,hunts:DEF.slice(),city:'',fbHub:'local',one:ONE_DEFAULT};
+var st={mode:'prowl',sel:new Set(),lock:new Set(),mkt:new Set(ALL),tab:'shop',exp:false,run:null,seen:false,hunts:DEF.slice(),city:'',fbHub:'local',one:ONE_DEFAULT,oneOn:false};
 var denTab='hunts';
 var quick=$('#otp-quick'),res=$('#otp-res'),dw=$('#otp-dw'),den=$('#otp-den'),sc=$('#otp-sc'),q=$('#otp-q'),dock=$('#otp-dock'),ms=$('#otp-ms');
 var runTimers=[];
@@ -3627,6 +3627,8 @@ function load(){
   /* Additive. An unknown id (a marketplace we dropped) falls back to Goodwill
      rather than leaving the button pointing at nothing. */
   if(r.one&&mb(r.one))st.one=r.one;
+  /* v7.49: the Just … pill is off unless asked for. A save from before has no oneOn: a site picked by hand keeps it on */
+  st.oneOn=typeof r.oneOn==='boolean'?r.oneOn:st.one!==ONE_DEFAULT;
 }
 function fbHubKnown(k){for(var i=0;i<FBHUBS.length;i++)if(FBHUBS[i].key===k)return true;return false}
 function legacyFbHub(){
@@ -3634,7 +3636,7 @@ function legacyFbHub(){
   try{lh=JSON.parse(lh)}catch(e2){}
   return (typeof lh==='string'&&fbHubKnown(lh))?lh:'';
 }
-function save(){try{localStorage.setItem(LS,JSON.stringify({hunts:st.hunts,sel:Array.from(st.sel),lock:Array.from(st.lock),mkt:Array.from(st.mkt),city:st.city,seen:st.seen,fbHub:st.fbHub,one:st.one,h21:1,h36:1,h42:1,h68:1}))}catch(e){}if(typeof startSync==='function')startSync()}
+function save(){try{localStorage.setItem(LS,JSON.stringify({hunts:st.hunts,sel:Array.from(st.sel),lock:Array.from(st.lock),mkt:Array.from(st.mkt),city:st.city,seen:st.seen,fbHub:st.fbHub,one:st.one,oneOn:!!st.oneOn,h21:1,h36:1,h42:1,h68:1}))}catch(e){}if(typeof startSync==='function')startSync()}
 
 var tT=null;
 function toast(h,ms){var e=$('#otp-toast');e.innerHTML=h;e.classList.toggle('act',/<button/i.test(h));e.classList.add('on');clearTimeout(tT);tT=setTimeout(function(){e.classList.remove('on');e.classList.remove('act')},ms||3600)}
@@ -3899,16 +3901,17 @@ function rSales(){
 
 function rDenOne(){
   var sel=$('#otp-oneSel');if(!sel)return;
-  var cur=oneId();
-  sel.innerHTML=M.map(function(m){
+  var cur=st.oneOn?oneId():'';
+  sel.innerHTML='<option value=""'+(cur?'':' selected')+'>Off</option>'+M.map(function(m){
     return '<option value="'+esc(m.id)+'"'+(m.id===cur?' selected':'')+'>'+esc(m.n)+'</option>';
   }).join('');
 }
 $('#otp-oneSel').addEventListener('change',function(){
   var v=this.value;
+  if(!v){st.oneOn=false;save();rDock();toast('The one-site button is off.',3000);return;}   /* v7.49 */
   if(!mb(v)){rDenOne();return;}
-  st.one=v;save();rDock();
-  toast('The one-site button now searches <b>'+esc(oneName())+'</b>.',3000);
+  st.one=v;st.oneOn=true;save();rDock();
+  toast('<b>Just '+esc(oneName())+'</b> now sits beside Hunt.',3000);
 });
 
 function rDenLocal(){
@@ -4771,7 +4774,7 @@ function rDock(){
   flBadge();   /* v6.38 */
   var ol=$('#otp-oneLab'),ob=$('#otp-one');   /* v7.30: a pill under the search box, no longer a dock tab */
   if(ol)ol.textContent=oneName();
-  if(ob)ob.title='Search '+oneName()+' on its own';
+  if(ob){ob.title='Search '+oneName()+' on its own';ob.hidden=!st.oneOn;}   /* v7.49: only when turned on in the Den */
   $$('#otp-dock .db').forEach(function(b){
     var m=b.dataset.m;
     if(m==='den')return;
@@ -4901,7 +4904,7 @@ function exportData(){
     city:st.city||'',
     theme:document.documentElement.getAttribute('data-theme')||'light',
     fbHub:st.fbHub||'local',   /* v6.00: restore already reads these two */
-    one:oneId(),
+    one:oneId(),oneOn:!!st.oneOn,   /* v7.49 */
     runs:runsGet(),finds:findsGet(),mktStats:statsGet(),   /* v6.02 */
     research:resGet(),   /* v6.08 */
     discarded:disGet().slice(),   /* v6.38 */
@@ -4991,12 +4994,13 @@ function applyBackup(o){
     /* v5.87 (B3): a v2 fbHub is a Facebook region key, not a city */
     if(typeof o.fbHub==='string'&&fbHubKnown(o.fbHub))st.fbHub=o.fbHub;
     if(typeof o.one==='string'&&mb(o.one))st.one=o.one;   /* v6.00 */
+    if(typeof o.oneOn==='boolean')st.oneOn=o.oneOn;else if(typeof o.one==='string'&&mb(o.one)&&o.one!==ONE_DEFAULT)st.oneOn=true;   /* v7.49 */
     if(o.theme&&THEMES.indexOf(o.theme)>-1)applyTheme(o.theme);
     xImport(o);   /* v6.02: only the lists the backup carries */
   }
   st.seen=true;
   save();
-  rDenHunts();rDenLocal();rQuick();rDrawer();rDock();
+  rDenHunts();rDenLocal();rDenOne();rQuick();rDrawer();rDock();
   return true;
 }
 function restoreFrom(text,label){
@@ -5035,12 +5039,12 @@ $('#otp-clearBtn').addEventListener('click',function(){
   var member=!!(mGet('alertTok')&&mGet('alertEmail'));
   if(member){clearTimeout(MAIL.timer);MAIL.ready=false;mSet('alertSig','')}
   try{localStorage.removeItem(LS);localStorage.removeItem(SGW_KEY);localStorage.removeItem('prowl.lastHunt');localStorage.removeItem(SEEN_KEY);localStorage.removeItem(RUNS_KEY);localStorage.removeItem(FINDS_KEY);localStorage.removeItem(STATS_KEY);localStorage.removeItem(RES_KEY);localStorage.removeItem(DIS_KEY);localStorage.removeItem(WATCH_KEY);localStorage.removeItem(SEEN_FL_KEY);localStorage.removeItem(LIKE_KEY);localStorage.removeItem(LMUTE_KEY);localStorage.removeItem(DIST_KEY);localStorage.removeItem(LGONE_KEY);localStorage.removeItem('prowl.likeMuteAt');localStorage.removeItem(SPK_KEY)}catch(e){}SPK=null;LMODEL=null;LMAP=null;FC=null;RC=null;DIS=null;FLOCK.picks=Object.create(null);rDenX();
-  st.hunts=DEF.slice();st.sel=new Set();st.lock=new Set();st.mkt=new Set(ALL);st.city='';st.fbHub='local';st.one=ONE_DEFAULT;
+  st.hunts=DEF.slice();st.sel=new Set();st.lock=new Set();st.mkt=new Set(ALL);st.city='';st.fbHub='local';st.one=ONE_DEFAULT;st.oneOn=false;
   /* v5.87 (B1): save the cleared state, or the next load re-imports the old
      owlTwigSearches list through legacySeed(). */
   save();
   SEEN=null;FRESH=Object.create(null);FRESH_BASE=Object.create(null);sgw.cur='';sgw.extra=sgwLoadExtra();sgwSync();rSGW();   /* v6.69: and nothing is new */
-  rDenHunts();rDenLocal();rQuick();rDrawer();rDock();
+  rDenHunts();rDenLocal();rDenOne();rQuick();rDrawer();rDock();
   if(member)mailStatus(false);
   toast('Saved data cleared.',2400);
 });

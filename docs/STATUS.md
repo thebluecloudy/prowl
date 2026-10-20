@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.48 / v153).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.49 / v153).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.48** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.49** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v153** | |
 
 Recently shipped, newest first:
 
+- **v7.49: the one-site pill is opt-in** (Matt, 2026-10-20, Den > Settings: "this no longer is needed. Unless we can
+  have them turn it on if they want"). The Just ShopGoodwill pill beside Hunt is hidden to start with. Den > Settings >
+  One-site button has **Off** first, then every marketplace; picking one shows "Just <site>" and Off hides it again.
+  Stored as `oneOn` inside `prowl.v36` (no new key); a save or backup without it keeps the pill only when a site other
+  than Goodwill was picked by hand. The note no longer says "the bar at the bottom". Import and Clear now refresh the
+  picker. Test: `__tests__/page/one-site-optin-v749.test.mjs`; `five-tabs-v730` turns the pill on.
 - **v7.48 / v153: the shop you stand in is always asked for** (the owner, back in Maumee Antique Mall with Antiques on:
   still missing). Asked fresh at the mall's own spot, Google's relevance answer to "antique stores and antique malls"
   had the mall on some asks and not others (antiques + flea: first; antiques + records, or the usual three: missing),
@@ -842,7 +848,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.49, worker v154**. Claim one here when you start.
+Next free numbers: **page v7.50, worker v154**. Claim one here when you start.
 
 ## What's next
 
