@@ -49,6 +49,13 @@ export const ANCHOR_REVIEWS_ANTIQUES = 75;   /* ... and an antiques shop with th
    first", which is "biggest first" and can never return a museum. Vintage, records and flea markets have no type and
    stay text searches. */
 export const NEARBY_TYPES = { antiques: ["antique_store"], thrift: ["thrift_store"], books: ["book_store"], toys: ["toy_store"] };
+/* v142: "Blenko Glass Company, Milton, WV via Portsmouth, OH" steers the road through a town (or towns, joined by
+   "and"); Google's alternatives alone do not always offer the road a collector wants */
+export function splitVia(text) {
+  const m = /^(.*?)\s+via\s+(.+)$/i.exec(String(text || "").trim());
+  if (!m) return { to: String(text || "").trim(), via: [] };
+  return { to: m[1].trim(), via: m[2].split(/\s+(?:and|then)\s+/i).map((v) => v.trim()).filter(Boolean).slice(0, 3) };
+}
 export function kindPlan(cats) {
   const keys = catsParse(cats.join ? cats.join(",") : cats), types = [], text = [];
   for (const k of keys) { if (NEARBY_TYPES[k]) types.push(...NEARBY_TYPES[k]); else text.push(CATS[k]); }
@@ -337,7 +344,7 @@ export function tripExpired(trip, now) { return !!trip && Date.parse(trip.expire
    stops in drive order. Never a street for the origin. */
 export function tripRecord(id, org, built, day, now) {
   const stops = (built.stops || []).slice(0, TRIP_STOPS_MAX).map((a) => stopRef(a));
-  return { id: id, org: String(org), members: [String(org)], created: new Date(now || Date.now()).toISOString(), cats: catsParse((built.cats || []).join(",")),
+  return { id: id, org: String(org), members: [String(org)], created: new Date(now || Date.now()).toISOString(), cats: catsParse((built.cats || []).join(",")), via: (built.via || []).map((v) => String(v).slice(0, 80)).slice(0, 3),
     day: day, closes: tripCloses(day), expires: tripExpires(tripCloses(day)),
     origin: String(built.origin && built.origin.town || "").slice(0, 80), dest: { name: String(built.dest && built.dest.name || "").slice(0, 120), town: String(built.dest && built.dest.town || "").slice(0, 80), id: String(built.dest && built.dest.id || "") },
     route: built.route || null, stops: stops };

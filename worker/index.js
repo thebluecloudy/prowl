@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v142: 2026-10-20. v141's "how" said every typed Nearby call was refused (refused 20), so the search had fallen back
+ *         to text all along: Nearby now tries each place type on its own and remembers the ones Google rejects
+ *         (BAD_TYPES, how.badTypes). "via": a destination such as "Blenko Glass Company, Milton, WV via Portsmouth, OH"
+ *         routes through that town (Routes API intermediates), kept on the trip for rebuilds (trip.js splitVia).
  *   v141: 2026-10-20. /trip answers carry "how": the boxes searched on the chosen road, each route's score, how many
  *         Nearby and text searches ran and whether Google refused a place type, so a missing stop can be traced (the
  *         v140 build still had no Maumee Antique Mall). Pawn, coin, fabric and garden shops are never ours by name too.
@@ -488,8 +492,8 @@ import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
 import { decodePolyline, haversineKm, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
-  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_KM, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v141";
+  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_KM, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
+const WORKER_VERSION = "v142";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6351,18 +6355,27 @@ async function gFetch(url, init, mask, env) {
 async function gPlacesText(env, query, center, radius, max, restrict) { return (await gPlacesPage(env, query, center, radius, max, restrict, "")).places; }
 /* v140: Nearby Search (New) by place type inside a circle, the most popular first; null when Google refuses (an unknown
    type), so the caller can fall back to a text search */
-async function gPlacesNearby(env, types, center, radius) {
-  if (!types || !types.length) return [];
+const BAD_TYPES = new Set();   /* v142: place types Google refused, remembered for this isolate's life */
+async function gPlacesNearby(env, types, center, radius, stat) {
+  types = (types || []).filter((t) => !BAD_TYPES.has(t));
+  if (!types.length) return null;
   const body = { includedTypes: types, maxResultCount: 20, rankPreference: "POPULARITY", languageCode: "en", regionCode: "US",
     locationRestriction: { circle: { center: { latitude: center.lat, longitude: center.lng }, radius: Math.min(50000, radius || NEAR_RADIUS_M) } } };
   const j = await gFetch("https://places.googleapis.com/v1/places:searchNearby", { method: "POST", body: JSON.stringify(body) }, G_PLACE_FIELDS.split(",").map((f) => "places." + f).join(","), env);
-  if (!j) return null;
-  return ((j && j.places) || []).map(normalizePlace).filter(Boolean);
+  if (j) return ((j && j.places) || []).map(normalizePlace).filter(Boolean);
+  if (stat) stat.refused = (stat.refused || 0) + 1;
+  if (types.length === 1) { BAD_TYPES.add(types[0]); if (stat) stat.badTypes = Array.from(BAD_TYPES); return null; }
+  /* refused together: each type on its own, and the bad one is remembered */
+  const parts = await Promise.all(types.map((t) => gPlacesNearby(env, [t], center, radius, stat)));
+  if (parts.every((p) => p === null)) return null;
+  const seen = Object.create(null), out = [];
+  for (const p of [].concat(...parts.filter(Boolean))) { if (!seen[p.id]) { seen[p.id] = 1; out.push(p); } }
+  return out;
 }
 /* the searches for a box or a circle: the typed kinds by Nearby (text if Google refuses the types), the rest by text */
 async function kindSearches(env, cats, center, radius, restrict, pages, stat) {
   const plan = kindPlan(cats), jobs = [], st = stat || {};
-  if (plan.types.length) { st.nearby = (st.nearby || 0) + 1; jobs.push(gPlacesNearby(env, plan.types, center, radius + 3000).then((r) => { if (r !== null) return r; st.refused = (st.refused || 0) + 1; return pages ? gPlacesAll(env, catsQueries(cats.filter((k) => !plan.textKeys.includes(k)), 1)[0], center, radius, restrict, pages) : gPlacesText(env, catsQueries(cats.filter((k) => !plan.textKeys.includes(k)), 1)[0], center, radius, 20, restrict); })); }
+  if (plan.types.length) { st.nearby = (st.nearby || 0) + 1; jobs.push(gPlacesNearby(env, plan.types, center, radius + 3000, st).then((r) => { if (r !== null) return r; return pages ? gPlacesAll(env, catsQueries(cats.filter((k) => !plan.textKeys.includes(k)), 1)[0], center, radius, restrict, pages) : gPlacesText(env, catsQueries(cats.filter((k) => !plan.textKeys.includes(k)), 1)[0], center, radius, 20, restrict); })); }
   if (plan.text) { st.text = (st.text || 0) + 1; jobs.push(pages ? gPlacesAll(env, plan.text, center, radius, restrict, pages) : gPlacesText(env, plan.text, center, radius, 20, restrict)); }
   return [].concat(...(await Promise.all(jobs)));
 }
@@ -6399,8 +6412,9 @@ async function gPlaceHours(env, id) {
   return hours;
 }
 /* the driving routes, the fastest first and Google's alternatives after it (v136); to is { lat, lng } or an address */
-async function gRoutes(env, from, to) {
+async function gRoutes(env, from, to, via) {
   const body = { origin: { location: { latLng: { latitude: from.lat, longitude: from.lng } } },
+    intermediates: (via || []).slice(0, 3).map((v) => ({ address: String(v).slice(0, 120), via: true })),
     destination: typeof to === "string" ? { address: to } : { location: { latLng: { latitude: to.lat, longitude: to.lng } } },
     travelMode: "DRIVE", routingPreference: "TRAFFIC_UNAWARE", polylineQuality: "OVERVIEW", computeAlternativeRoutes: true, languageCode: "en-US", units: "IMPERIAL" };
   const j = await gFetch("https://routes.googleapis.com/directions/v2:computeRoutes", { method: "POST", body: JSON.stringify(body) }, "routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration", env);
@@ -6442,11 +6456,12 @@ async function nearRoute(request, env, url, origin) {
   return res;
 }
 /* build the trip: origin town, destination, route, the corridor's shops clustered in drive order */
-async function tripBuild(env, from, toText, day, cats) {
+async function tripBuild(env, from, toText, day, cats, via) {
   cats = catsParse((cats || []).join ? (cats || []).join(",") : cats);
+  const sv = splitVia(toText); toText = sv.to; via = (via && via.length ? via : sv.via).slice(0, 3);   /* v142 */
   const [town, destList] = await Promise.all([gTown(env, from.lat, from.lng), gPlacesText(env, toText, null, 0, 1)]);
   const dest = destList[0] || null;
-  const routes = await gRoutes(env, from, dest && Number.isFinite(dest.lat) ? { lat: dest.lat, lng: dest.lng } : toText);
+  const routes = await gRoutes(env, from, dest && Number.isFinite(dest.lat) ? { lat: dest.lat, lng: dest.lng } : toText, via);
   if (!routes.length) return null;
   /* v136: every route's corridor is searched (a circle and a query asked once, however many routes share it), and the
      route with the most to see wins; the fastest is the tie-break */
@@ -6465,8 +6480,8 @@ async function tripBuild(env, from, toText, day, cats) {
   const destCard = dest ? placeCard(dest) : { id: "", name: vClean(toText, 120), town: "", why: "", hours: null, url: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(toText) };
   const destLabel = destCard.name + (destCard.town ? ", " + destCard.town : "");
   return { origin: { town: town }, dest: destCard, route: { km: best.route.km, min: best.route.min, slower: Math.max(0, best.route.min - routes[0].min), routes: routes.length }, day: day, weekday: weekdayOf(day), cats: cats,
-    stops: stops, more: best.more, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.length,
-    how: { routes: built.map((b) => ({ km: b.route.km, min: b.route.min, score: b.score, anchors: b.stops.length, found: b.found, boxes: b.boxes.length })), boxes: best.boxes, nearby: stat.nearby, text: stat.text, refused: stat.refused } };
+    stops: stops, more: best.more, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.length, via: via,
+    how: { badTypes: Array.from(BAD_TYPES), routes: built.map((b) => ({ km: b.route.km, min: b.route.min, score: b.score, anchors: b.stops.length, found: b.found, boxes: b.boxes.length })), boxes: best.boxes, nearby: stat.nearby, text: stat.text, refused: stat.refused } };
 }
 async function tripRoute(request, env, url, origin) {
   const lat = nearNum(url.searchParams.get("lat"), -90, 90), lng = nearNum(url.searchParams.get("lng"), -180, 180);
@@ -6623,7 +6638,7 @@ async function tripsRoute(request, env, url, origin) {
     if (Date.parse(trip.closes) <= Date.now()) return json({ error: "This trip is over." }, 409, origin);
     const b = await readJson(request, 2048), lat = nearNum(b.lat, -90, 90), lng = nearNum(b.lng, -180, 180);
     if (lat == null || lng == null) return json({ error: "where are you?" }, 400, origin);
-    const built = await tripBuild(env, { lat: lat, lng: lng }, trip.dest.name + (trip.dest.town ? ", " + trip.dest.town : ""), trip.day, trip.cats || []);
+    const built = await tripBuild(env, { lat: lat, lng: lng }, trip.dest.name + (trip.dest.town ? ", " + trip.dest.town : ""), trip.day, trip.cats || [], trip.via || []);
     if (!built) return json({ error: "no route" }, 404, origin);
     const fresh = tripRecord(trip.id, trip.org, built, trip.day);
     trip.origin = fresh.origin; trip.route = fresh.route; trip.stops = fresh.stops; trip.rebuilt = new Date().toISOString();
