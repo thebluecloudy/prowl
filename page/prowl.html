@@ -1056,6 +1056,12 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .hn-grid{padding:0 15px 8px}
 .scout-app-wrapper .hn-acts{display:flex;flex-wrap:wrap;gap:8px;margin:0 15px 8px}
 .scout-app-wrapper .hn-go{min-height:40px;font-size:14px}
+.scout-app-wrapper .hn-line{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;margin:0 0 12px;font-size:14px;color:var(--mu)}
+.scout-app-wrapper .hn-line .hn-daily{min-height:40px;padding:0 14px;font-size:14px}
+/* v7.32 (the owner: "the words fall out of pills sometimes"): a button never grows past its row, and a long label is
+   cut with an ellipsis instead of running out of it; the home panel's hunt buttons wrap onto two lines instead */
+.scout-app-wrapper .b{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.scout-app-wrapper .hn-go{height:auto;min-height:40px;padding:8px 16px;white-space:normal;overflow-wrap:anywhere;text-align:left;line-height:1.3}
 .scout-app-wrapper .sale-was{color:var(--mu);font-weight:600;font-size:.85em}
 .scout-app-wrapper .sale-off{display:inline-block;padding:1px 7px;border-radius:99px;background:#1f7a3a;color:#fff;font-size:.72em;font-weight:800;vertical-align:.12em}
 .scout-app-wrapper .pp-flag{margin:10px 0;padding:10px 12px;border:2px solid #d9541e;border-radius:10px;background:rgba(217,84,30,.1);color:var(--ink);font-size:15px;line-height:1.45}
@@ -4951,7 +4957,7 @@ function slrHtml(s,cls){
     '<span class="slr-1" aria-hidden="true">★</span> '+pc+'%'+cnt+'</div>';
   return '';
 }
-/* v7.31 (the owner, on a ShopGoodwill camo backpack in Daily: the card had no picture, the popup had it): a card whose
+/* v7.32 (the owner, on a ShopGoodwill camo backpack in Daily: the card had no picture, the popup had it): a card whose
    photo is missing or does not load takes the listing's first photo from /item (the popup's own call, kept in ITEMC).
    PHOTO keeps it by URL so a redraw shows it straight away. */
 var PHOTO=Object.create(null),PHOTO_Q=Object.create(null);
@@ -5425,9 +5431,13 @@ function sgwBody0(t){
   var sm=liveSummary(t);
   if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return fbHas(t)?fbBlock(t)+liveEmptyCard(t,1):liveEmptyCard(t)+fbBlock(t);   /* v6.33; v6.65: Facebook finds first when there are some */
   if(sm.done&&!sm.n&&sm.err1===sm.count)return '<div class="sgw-empty"><p class="sgw-empty-h">Prowl\u2019s live results are not reaching you.</p><p>Check your connection. If you use a content or ad blocker, allow <b>prowl.thebluecloud.workers.dev</b>. More places to look still searches every site directly.</p></div>';
-  var k=t.toLowerCase(),html=liveBlock('ShopGoodwill',t,sgw.cache[k],sgw.busy===t)+fbBlock(t),i,s;   /* v6.65: Facebook under Goodwill */
-  for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];html+=liveBlock(s.name,t,lv[s.id].cache[k],lvBusy(s.id,t))}
-  return html;
+  /* v7.32 (the owner: "MC Escher ... needs to get to the hunt faster"): marketplaces with listings come first, the
+     ones with nothing (or still asking) after them, so "Nothing live on ShopGoodwill" no longer sits on top */
+  var k=t.toLowerCase(),html='',quiet='',i,s,b;
+  b=liveBlock('ShopGoodwill',t,sgw.cache[k],sgw.busy===t)+fbBlock(t);   /* v6.65: Facebook under Goodwill */
+  if(liveCount(sgw.cache[k])||fbHas(t))html+=b;else quiet+=b;
+  for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];b=liveBlock(s.name,t,lv[s.id].cache[k],lvBusy(s.id,t));if(liveCount(lv[s.id].cache[k]))html+=b;else quiet+=b}
+  return html+quiet;
 }
 
 /* v6.74: "Run the full hunt" moved to the foot of the live listings as "Continue the full hunt" (sgwCont) */
@@ -6399,6 +6409,19 @@ function homeNew(NEWN){
   return '<div class="hn" id="otp-homeNew"><h3 class="hn-h">New since your last look <small>'+tot+'</small></h3>'+
     '<div class="sgw-grid hn-grid">'+cards+'</div><div class="hn-acts">'+btn+'</div></div>';
 }
+/* v7.32 (the owner, on opening MC Escher: "it shows new since last look, best picks and then MC Escher"): with a hunt
+   open, the other hunts' new listings are one line that opens Daily (Daily is only what is new since v7.30), not a
+   block of cards and buttons above the hunt. With no hunt open, homeNew stays. */
+function homeNewLine(NEWN){
+  var n=0,i;for(i=0;i<NEWN.length;i++)n+=NEWN[i]||0;
+  if(!n)return '';
+  return '<p class="hn-line"><span>'+n+' new in your other hunts</span><button type="button" class="gh hn-daily" data-hndaily="1">Open Daily</button></p>';
+}
+document.addEventListener('click',function(e){
+  var t=e.target;while(t&&t.getAttribute&&!t.getAttribute('data-hndaily'))t=t.parentNode;
+  if(!t||!t.getAttribute)return;
+  var db=document.querySelector('.scout-app-wrapper .db[data-m=daily]');if(db)db.click();
+});
 function rSGW(){
   var mount=$('#otp-sgw');
   if(!mount)return;
@@ -6428,7 +6451,7 @@ function rSGW(){
   if(hid)html+='<span class="sgw-chip sgw-more" role="button" tabindex="0" data-sgw="more">+'+hid+' more</span>';
   else if(sgw.more&&isNarrow()&&sgw.terms.length>CHIP_FEW+1)html+='<span class="sgw-chip sgw-more" role="button" tabindex="0" data-sgw="less">Show fewer</span>';
   form.insertAdjacentHTML('beforebegin',html);
-  mount.querySelector('.sgw-body').innerHTML=homeNew(NEWN)+sgwBody();   /* v7.09 */
+  mount.querySelector('.sgw-body').innerHTML=(sgw.cur?homeNewLine(NEWN):homeNew(NEWN))+sgwBody();   /* v7.09; v7.32 */
   freshPaint(mount);   /* v6.69 */
   whypPaint();   /* v6.74 */
   mount.querySelector('.sgw-acts').innerHTML=sgwActs();
@@ -7156,7 +7179,7 @@ function popOpen(card,lite){
    is not a flag. */
 var FLAG_REP=/\b(repair(?:ed|s)?|restor(?:ed|ation)|re-?glued|glued|touch(?:ed)?[- ]?ups?|re-?painted|over-?painted)\b/i,
   FLAG_DMG=/\b(chip(?:ped|s)?|crack(?:ed|s)?|hairlines?|craz(?:ed|ing)|broken|damaged?|missing|flea ?bites?|as[- ]is)\b/i,
-  FLAG_NO=/\b(no|not|never|without|free of|zero|none)\b/i;
+  FLAG_NO=/\b(no|not|never|without|free (?:of|from)|zero|none|nor|neither|absent|devoid of)\b|n't\b/i;   /* v7.32: "free from chips, cracks and repairs" */
 function popFlags(title,d){
   var txt=popUnEnt(String(d.description||'').replace(/<br\s*\/?>/gi,'. ').replace(/<\/(p|li|div)>/gi,'. ').replace(/<[^>]*>/g,' ')),parts=(String(title||'')+'. '+String(d.condition||'')+'. '+txt).split(/[.!?]+(?:\s+|$)|\n+/),rep=[],dmg=[],i,x;
   for(i=0;i<parts.length;i++){x=parts[i].replace(/\s+/g,' ').trim();if(!x||x.length>220||FLAG_NO.test(x))continue;
@@ -7293,7 +7316,7 @@ function awayMark(root){
     for(i=0;i<els.length;i++)if(g[els[i].getAttribute('data-u')]&&!els[i].classList.contains('is-gone'))els[i].classList.add('is-gone');
   }catch(e){}
 }
-/* v7.31: see PHOTO above sgwCard */
+/* v7.32: see PHOTO above sgwCard */
 function photoCell(el){while(el&&el.getAttribute&&!el.getAttribute('data-u'))el=el.parentNode;return el&&el.getAttribute?el:null}
 function photoPut(u,s){
   PHOTO[u]=s;

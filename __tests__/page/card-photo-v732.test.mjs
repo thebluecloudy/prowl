@@ -1,4 +1,4 @@
-// Page v7.31 (the owner, on a ShopGoodwill camo backpack in Daily: no picture on the card, but the popup had it): a
+// Page v7.32 (the owner, on a ShopGoodwill camo backpack in Daily: no picture on the card, but the popup had it): a
 // card whose photo is missing or does not load takes the listing's first photo from /item.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
