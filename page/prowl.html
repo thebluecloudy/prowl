@@ -2111,6 +2111,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-row .nr-card{flex:1 1 auto;min-width:0}
 .scout-app-wrapper .nr-skip{flex:0 0 auto;border:1px solid var(--l2);background:transparent;color:var(--mu);border-radius:10px;padding:0 9px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
 .scout-app-wrapper .nr-skipped{margin:0 0 10px;font-size:13px;color:var(--mu)}
+.scout-app-wrapper .nr-kindsoff{margin:-2px 0 10px;padding:8px 10px;border:1px solid var(--ac);border-radius:10px;font-size:13.5px}
 .scout-app-wrapper .nr-go{display:flex;align-items:center;text-decoration:none;color:var(--ac);border-color:var(--ac)}
 .scout-app-wrapper .nr-num{position:absolute;left:4px;top:4px;width:20px;height:20px;border-radius:50%;background:#C2491F;color:#fff;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:1}
 .scout-app-wrapper .nr-mapbar{display:flex;justify-content:flex-end;margin:0 0 8px}
@@ -3266,7 +3267,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.46';
+var PROWL_VERSION='v7.47';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -9916,10 +9917,20 @@ function nrAroundLoad(force){
     });
   },force);   /* v7.37: Refresh asks the phone for a fresh fix */
 }
+/* v7.47 (the owner, standing in Maumee Antique Mall with only Vintage on: "it doesn't come up"). The copy names the
+   kinds that are on, never a fixed "antique, vintage and thrift"; a usual kind that is off is said, with one tap to
+   turn it back on; and a listed shop within a few hundred feet is where you are. */
+var NR_NOUN={antiques:'antique',vintage:'vintage',thrift:'thrift',records:'record',books:'book',toys:'toy'};
+function nrAnd(a){return a.length<2?(a[0]||''):a.slice(0,-1).join(', ')+' and '+a[a.length-1]}
+function nrKinds(on){var w=[],i,s;for(i=0;i<on.length;i++)if(NR_NOUN[on[i]])w.push(NR_NOUN[on[i]]);s=w.length?nrAnd(w)+' shops':'';if(on.indexOf('flea')!==-1)s=s?s+' and flea markets':'flea markets';return s}
+function nrCap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+function nrKindsOff(on){var off=NR_CATS_DEF.filter(function(k){return on.indexOf(k)===-1});if(!off.length)return '';var n=off.map(function(k){for(var i=0;i<NR_CATS.length;i++)if(NR_CATS[i][0]===k)return NR_CATS[i][1];return k});return '<p class="nearp nr-kindsoff">'+esc(nrAnd(n))+' '+(n.length>1?'are':'is')+' off, so '+(off.indexOf('antiques')!==-1?'antique malls':'those shops')+' are not listed. <button type="button" class="sgw-ml" id="otp-nrCatsAll">Show them too</button></p>'}
+function nrCatsAll(){var on=nrCatsGet();nrCatsSet(NR_CATS.map(function(c){return c[0]}).filter(function(k){return on.indexOf(k)!==-1||NR_CATS_DEF.indexOf(k)!==-1}));rNrCats();NR.around=null;nrAroundLoad(true)}
+function nrAt(L){var i,b=null;for(i=0;i<L.length;i++)if(typeof L[i].near==='number'&&L[i].near<=0.15&&(!b||L[i].near<b.near))b=L[i];return b}
 function nrAroundDraw(){
-  var el=$('#otp-nrLive'),L=NR.around||[],here=NR.aroundTown?'You are in <b>'+esc(NR.aroundTown)+'</b>. ':'';if(!el)return;
-  if(!L.length){el.innerHTML='<h3 class="nearh">Around you '+nrRefreshBtn()+'</h3><p class="nearp">'+here+'No antique, vintage or thrift shops close by right now. Try a map search below, or plan a road trip.</p>'+nrMapBar('around');nrMap('around');return}
-  el.innerHTML='<h3 class="nearh">Around you '+nrRefreshBtn()+'</h3><p class="nearp">'+here+'Antique, vintage and thrift shops near where you are standing, biggest first. Open or closed is from today’s hours. One tap opens the shop in Google Maps; Directions starts the drive from where you are. The numbers match the pins on the map. Moved on? Tap Refresh.</p>'+nrMapBar('around')+'<div class="nr-list">'+L.map(function(p,i){return nrRow(p,'',i+1)}).join('')+'</div>';
+  var el=$('#otp-nrLive'),L=NR.around||[],on=nrCatsGet(),kinds=nrKinds(on),at=nrAt(L),here=at?'You are at <b>'+esc(at.name)+'</b>'+(NR.aroundTown?' in '+esc(NR.aroundTown):'')+'. ':NR.aroundTown?'You are in <b>'+esc(NR.aroundTown)+'</b>. ':'',off=nrKindsOff(on);if(!el)return;
+  if(!L.length){el.innerHTML='<h3 class="nearh">Around you '+nrRefreshBtn()+'</h3><p class="nearp">'+here+'No '+esc(kinds)+' close by right now. Try a map search below, or plan a road trip.</p>'+off+nrMapBar('around');nrMap('around');return}
+  el.innerHTML='<h3 class="nearh">Around you '+nrRefreshBtn()+'</h3><p class="nearp">'+here+esc(nrCap(kinds))+' near where you are standing, biggest first. Open or closed is from today’s hours. One tap opens the shop in Google Maps; Directions starts the drive from where you are. The numbers match the pins on the map. Moved on? Tap Refresh.</p>'+off+nrMapBar('around')+'<div class="nr-list">'+L.map(function(p,i){return nrRow(p,'',i+1)}).join('')+'</div>';
   nrMap('around');   /* v7.45 */
 }
 /* ---- Road trip ---- */
@@ -10106,7 +10117,8 @@ if(near){
   $('#otp-nrHere').addEventListener('click',nrHere);
   near.addEventListener('click',function(e){
     if(e.target.closest&&e.target.closest('#otp-nrRefresh')){NR.pos=null;NR.around=null;nrAroundLoad(true);return}   /* v7.37 */
-    var cat=e.target.closest&&e.target.closest('[data-nrcat]');if(cat){nrCatToggle(cat.getAttribute('data-nrcat'));return}   /* v7.38 */
+    var cat=e.target.closest&&e.target.closest('[data-nrcat]');if(cat){nrCatToggle(cat.getAttribute('data-nrcat'));return}
+    if(e.target.closest&&e.target.closest('#otp-nrCatsAll')){nrCatsAll();return}   /* v7.47 */   /* v7.38 */
     var sk=e.target.closest&&e.target.closest('[data-nrskip]');if(sk){e.preventDefault();nrSkip(sk.getAttribute('data-nrskip'));return}
     var mp=e.target.closest&&e.target.closest('[data-nrmap]');if(mp){nrMapToggle(mp.getAttribute('data-nrmap'));return}   /* v7.45 */
     if(e.target.closest&&e.target.closest('#otp-nrUnskip')){nrUnskipAll();return}

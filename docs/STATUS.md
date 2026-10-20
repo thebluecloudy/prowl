@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.46 / v152).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.47 / v152).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.46** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.47** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v152** | |
 
 Recently shipped, newest first:
 
+- **v7.47: Around you says which kinds it looked for** (the owner, standing in the middle of Maumee Antique Mall: "it
+  doesn't come up"). The search was right: only the Vintage chip was on, and the live worker lists the mall first once
+  Antiques is on. The page said "Antique, vintage and thrift shops" whatever the chips were. Now the line names the
+  kinds that are on (`nrKinds`), a usual kind that is off is said with **Show them too** (`nrCatsAll`, the same
+  `prowl.nearCats` key, saved in chip order), and a listed shop within 0.15 miles is where you are: "You are at
+  Maumee Antique Mall in Maumee, OH." Page only. Test: `__tests__/page/near-kinds-v747.test.mjs`.
 - **v7.46 / v152: the weekly letter** (the owner, from Cat On Chair 1.9.0's Weekly Recap: "this is perfect ... i like
   that it is in the app too, everyone gets it, sunday is good ... for now keep in den").
   - Every Sunday from 6pm in the member's time zone the panther writes each member with emails on (not paused, not
@@ -827,7 +833,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.47, worker v153**. Claim one here when you start.
+Next free numbers: **page v7.48, worker v153**. Claim one here when you start.
 
 ## What's next
 
