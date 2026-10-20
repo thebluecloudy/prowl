@@ -36,8 +36,8 @@ Recently shipped, newest first:
     asking price, the call, the nearest stop or town and the member's first name post to the trip. Photos go to R2
     (`PROWL_FINDS`, `finds/<trip>/<find>.jpg`), served only through signed hour-long links to members, refused once
     the trip has expired, and deleted by `tripSweep` 7 days after the trip closes (`FINDS_GRACE_DAYS`). View-only.
-  - **Needs the owner** (see Waiting on Matt): `PRO_CIDS` for a group, and the bucket's lifecycle rule. The secret
-    `GOOGLE_MAPS_KEY` and the R2 bucket `prowl-finds` (bound in `wrangler.toml`) were set up on 2026-10-20.
+  - **Needs the owner** (see Waiting on Matt): only `PRO_CIDS` for a group. The secret `GOOGLE_MAPS_KEY`, the R2
+    bucket `prowl-finds` (bound in `wrangler.toml`) and its lifecycle rule were set up on 2026-10-20.
   - Tests: `worker/__tests__/trip.test.mjs` (the pure module, the reference route Novi to Blenko, Monday hours),
     `worker/__tests__/trips.test.mjs` (the routes against a fake Google, KV and R2), `__tests__/page/near-section-v734.test.mjs`;
     `near-me`, `five-tabs-v730` and `local-dock` updated.
@@ -621,8 +621,8 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
   1. Done 2026-10-20: the worker secret **GOOGLE_MAPS_KEY** (Places API (New), Routes API, Geocoding API; API
      restriction only, no website restriction, since only the worker calls Google). Cost: a Road Trip build is about
      13 Text Search calls, cached an hour; Around you is 2 calls, cached 10 minutes per ~1 km.
-  2. Done 2026-10-20: the R2 bucket **prowl-finds** exists and `worker/wrangler.toml` binds it. Still to add: an
-     object lifecycle rule on the bucket (prefix `finds/`, delete 30 days after upload) as the backstop.
+  2. Done 2026-10-20: the R2 bucket **prowl-finds** exists, `worker/wrangler.toml` binds it, and its lifecycle rule
+     (prefix `finds/`, delete 30 days after upload) is the backstop behind the worker's own 7-day cleanup.
   3. For a group: the members' store customer ids in the plain-text variable **PRO_CIDS** (comma list), which is the
      comp list the spec asks for. A member with their own Pro order needs nothing.
   Then test the reference route: NEAR ME > Road trip, "Blenko Glass Company, Milton, WV" from Novi on a Monday pill.
