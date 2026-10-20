@@ -15,7 +15,7 @@ const hosts = (p) => p.$$('#otp-res a.hit').map((a) => new URL(a.href).hostname.
 test('the row under the search box is Hunt, and Just ShopGoodwill once turned on (v7.30: Near me moved to the dock)', async () => {
   let p = loadPage({ storage: DEN });
   await tick(30);
-  assert.deepEqual(p.$$('#otp-sf > button.b:not(.flt-b)').filter((b) => !b.hidden).map((b) => b.textContent.trim()), ['Hunt'], 'v7.49: the one-site pill is opt-in');
+  assert.deepEqual(p.$$('#otp-sf > button.b:not(.flt-b)').filter((b) => !b.hidden).map((b) => b.textContent.trim()), ['Hunt'], 'v7.52: the one-site pill is opt-in');
   await p.close();
   p = loadPage({ storage: { 'prowl.v36': { ...JSON.parse(JSON.stringify(DEN['prowl.v36'] || {})), oneOn: true } } });
   await tick(30);

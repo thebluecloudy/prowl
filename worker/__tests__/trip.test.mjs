@@ -320,3 +320,34 @@ test("a find keeps the lines of the photo check and the member's first name, nev
   const g = findRecord("f2", "1", "", { item: "mail me at a@b.co", price: "lots" });
   assert.equal(g.name, "A member"); assert.equal(g.price, ""); assert.ok(!/@/.test(g.item));
 });
+
+/* v154 (the owner, from Gemini's Findlay to Milton run): time to allow, worth the detour, a short walk */
+import { stayMinutes, worthDetour, BIG_DETOUR_MIN, alongRoute as alongRoute154, splitAnchors as splitAnchors154, tripRecord as tripRecord154 } from "../trip.js";
+test("v154: the time to allow comes from the dealer count, else the size; a big antiques place is worth a longer detour", () => {
+  const heart = { name: "Heart of Ohio Antique Center", summary: "650 dealers under one roof", kind: "Antiques", n: 5200, lat: 40.5, lng: -82.886 };
+  assert.equal(stayMinutes(heart), 240, "650 dealers: half a day");
+  assert.equal(stayMinutes({ name: "Jeffrey's Antique Gallery", summary: "250 dealers", kind: "Antiques", n: 1201 }), 90);
+  assert.equal(stayMinutes({ name: "Corner Thrift", kind: "Thrift", n: 12 }), 30, "a small shop: half an hour");
+  assert.equal(stayMinutes({ name: "Main Street Shops", summary: "40 shops", kind: "Store", n: 10 }), 75, "shops are not dealers: the size tier decides (40 shops is tier 2)");
+  assert.equal(worthDetour(heart), true);
+  assert.equal(worthDetour({ name: "Big Thrift", kind: "Thrift", n: 2400 }), false, "not antiques");
+  assert.equal(worthDetour({ name: "Small Antiques", kind: "Antiques", n: 300 }), false, "not big enough");
+  const road = [{ lat: 40, lng: -83 }, { lat: 41, lng: -83 }];
+  const got = alongRoute154([heart, Object.assign({}, heart, { id: "small", name: "Small Antiques", summary: "", n: 300 }), { id: "near", name: "Near Antiques", kind: "Antiques", n: 300, lat: 40.5, lng: -82.97 }], road, 10);
+  const h = got.find((p) => p.name === "Heart of Ohio Antique Center");
+  assert.ok(h && h.worth === true && h.near > 10 && h.near <= BIG_DETOUR_MIN, "six miles off: about 20 minutes, kept and marked: " + (h && h.near));
+  assert.ok(!got.find((p) => p.name === "Small Antiques"), "the same spot, a small shop: out");
+  assert.equal(got.find((p) => p.name === "Near Antiques").worth, undefined, "inside ten minutes: no mark");
+});
+test("v154: a town's shops a short walk from its stop say so, and a kept trip keeps the time, the worth and the walk", () => {
+  const card = (id, name, lat, lng, extra) => Object.assign({ id, name, town: "Huntington, WV", kind: "Antiques", n: 300, rating: 4.6, lat, lng, summary: "60 dealers" }, extra || {});
+  const split = splitAnchors154([Object.assign(card("a", "Central City Antiques", 38.419, -82.461, { n: 900 }), { tier: 2, stay: 60, worth: true, nested: [card("b", "Olde Central City Vintage", 38.4205, -82.4605, { kind: "Vintage", n: 30, summary: "" }), card("c", "Far Side Antiques", 38.44, -82.42, { n: 30, summary: "" })] })]);
+  const s = split.stops[0];
+  assert.equal(s.name, "Central City Antiques"); assert.equal(s.stay, 60); assert.equal(s.worth, true);
+  assert.equal(s.nested.find((n) => n.id === "b").walk, true, "a tenth of a mile");
+  assert.equal(s.nested.find((n) => n.id === "c").walk, undefined, "two and a half miles: a drive");
+  const rec = tripRecord154("tabcdefghi", "123", { origin: { town: "Novi, MI" }, dest: { name: "Blenko Glass Company", town: "Milton, WV" }, stops: split.stops, cats: [] }, "2026-10-26", Date.parse("2026-10-20T12:00:00Z"));
+  assert.equal(rec.stops[0].stay, 60); assert.equal(rec.stops[0].worth, true);
+  assert.equal(rec.stops[0].nested.find((n) => n.id === "b").walk, true);
+  assert.equal(rec.stops[0].nested.find((n) => n.id === "c").walk, undefined);
+});

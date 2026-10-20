@@ -22,7 +22,7 @@ test('five tabs with plain names; no GOODWILL tab', async () => {
 });
 
 test('Just ShopGoodwill runs the typed hunt on that one site; with nothing typed it opens the one-site screen', async () => {
-  const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [], oneOn: true } } });   /* v7.49: the pill is opt-in */
+  const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [], oneOn: true } } });   /* v7.52: the pill is opt-in */
   await tick(30);
   const pill = p.$('#otp-one');
   assert.equal(pill.textContent, 'Just ShopGoodwill');

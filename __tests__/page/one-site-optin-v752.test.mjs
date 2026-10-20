@@ -1,4 +1,4 @@
-// Page v7.49 (Matt, 2026-10-20, Den > Settings: "this no longer is needed. Unless we can have them turn it on if they
+// Page v7.52 (Matt, 2026-10-20, Den > Settings: "this no longer is needed. Unless we can have them turn it on if they
 // want"): the Just ShopGoodwill pill beside Hunt is off to start with. Den > Settings > One-site button has Off first;
 // picking a site turns the pill on and names it. A save or backup from before keeps a site picked by hand.
 import { test } from 'node:test';

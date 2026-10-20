@@ -10,6 +10,7 @@
    and the Maps export carries the anchors only, with the origin as a town name, never a street. */
 
 export const DETOUR_MIN = 10;            /* a stop may cost this many minutes off the route (internal, never shown) */
+export const BIG_DETOUR_MIN = 30;        /* v154: a destination antique mall may cost this much, and says so (the owner, from Gemini's I-70 run) */
 export const DETOUR_MPH = 37;            /* v146: the speed assumed off the highway, for turning distance into minutes (25 mph called
                                             Maumee Antique Mall, 2.4 miles from I-475, an 11.7-minute detour and dropped it) */
 export const MI_M = 1609.344;            /* metres in a mile: Google wants metres, Prowl thinks in miles (v148) */
@@ -242,8 +243,10 @@ function cleanPeriod(pr) {
 }
 /* a place's row of cards, the fields the page draws (and nothing a member typed) */
 export function placeCard(p, near) {
-  return { id: p.id, name: p.name, town: townLabel(p), why: differentiator(p), rating: p.rating, n: p.n, photo: p.photo ? "/pp?n=" + encodeURIComponent(p.photo) : "",
+  const c = { id: p.id, name: p.name, town: townLabel(p), why: differentiator(p), rating: p.rating, n: p.n, photo: p.photo ? "/pp?n=" + encodeURIComponent(p.photo) : "",
     url: pinUrl(p), lat: p.lat, lng: p.lng, hours: p.hours, near: near == null ? (p.near == null ? null : p.near) : near };
+  if (p.worth) c.worth = true;   /* v154: off the road, but worth it */
+  return c;
 }
 export function pinUrl(p) {
   if (p.url) return p.url;
@@ -295,8 +298,21 @@ export function alongRoute(places, route, budgetMin) {
     const n = nearestOnRoute(route, p);
     const det = detourMinutes(n.mi);
     if (det <= budgetMin) out.push(Object.assign({}, p, { near: det, prog: n.idx }));
+    else if (det <= BIG_DETOUR_MIN && worthDetour(p)) out.push(Object.assign({}, p, { near: det, prog: n.idx, worth: true }));   /* v154 */
   }
   return out;
+}
+/* v154 (the owner, from Gemini's Findlay to Milton run: Heart of Ohio, "650 dealers", "a slight detour"): an antiques
+   place this big is worth up to BIG_DETOUR_MIN off the road. Big means the top size tier and a thousand reviews. */
+export function worthDetour(p) {
+  return sizeTier(p) >= 3 && (Number(p.n) || 0) >= 1000 && /antique/i.test(String(p.kind || "") + " " + String(p.name || "") + " " + String(p.summary || ""));
+}
+/* v154 (Gemini: "you can easily spend an entire day walking the aisles here; allocate a dedicated chunk of time"): the
+   time to allow at a stop, in minutes, from its dealer count when Google's summary gives one, else its size tier */
+export function stayMinutes(p) {
+  const d = DEALERS.exec([p.name, p.summary].filter(Boolean).join(" . "));
+  if (d && /dealer|vendor|booth|seller|consignor/i.test(d[2])) { const n = Number(d[1]); return n >= 500 ? 240 : n >= 300 ? 150 : n >= 120 ? 90 : n >= 40 ? 60 : 30; }
+  return [30, 45, 75, 120][Math.max(0, Math.min(3, sizeTier(p)))];
 }
 /* one anchor per town (the strongest stop), the rest nested; walkable neighbours join the cluster whatever their
    town says; clusters in drive order */
@@ -309,7 +325,7 @@ export function clusterStops(places) {
     if (g) g.nested.push(p); else groups.push({ anchor: p, nested: [] });
   }
   groups.sort((a, b) => (a.anchor.prog || 0) - (b.anchor.prog || 0) || (a.anchor.near || 0) - (b.anchor.near || 0));
-  return groups.map((g) => Object.assign(placeCard(g.anchor), { tier: sizeTier(g.anchor), nested: g.nested.slice(0, TRIP_NESTED_MAX).map((p) => placeCard(p)) }));
+  return groups.map((g) => Object.assign(placeCard(g.anchor), { tier: sizeTier(g.anchor), stay: stayMinutes(g.anchor), nested: g.nested.slice(0, TRIP_NESTED_MAX).map((p) => Object.assign(placeCard(p), { stay: stayMinutes(p) })) }));
 }
 /* v136 (the owner, against Meta's eight: "big antique stores, good to stop at"): a town is a stop worth planning
    around only when its best shop is a real antiques place or has a crowd of reviews (tier 1+). The rest are "smaller
@@ -323,11 +339,12 @@ export function splitAnchors(clusters) {
     const ok = list.filter((p) => tier(p) >= 1 && (Number(p.n) || 0) >= ANCHOR_MIN_REVIEWS).sort((a, b) => tier(b) - tier(a) || ratingScore(b.rating, b.n) - ratingScore(a.rating, a.n));
     if (ok.length) {
       const a = ok[0], rest = list.filter((p) => p !== a);
-      stops.push(Object.assign({}, a, { tier: tier(a), nested: rest.slice(0, TRIP_NESTED_MAX).map((p) => { const q = Object.assign({}, p); delete q.nested; delete q.tier; return q; }) }));
+      /* v154: the shops a short walk from the stop say so (Gemini: "district walkability"); the stop keeps its time to allow */
+      stops.push(Object.assign({}, a, { tier: tier(a), nested: rest.slice(0, TRIP_NESTED_MAX).map((p) => { const q = Object.assign({}, p); delete q.nested; delete q.tier; delete q.stay; if (haversineMi(a, p) <= CLUSTER_WALK_MI) q.walk = true; return q; }) }));
     } else { more.push(c); (c.nested || []).forEach((n) => more.push(n)); }
   }
   more.sort((a, b) => ratingScore(b.rating, b.n) - ratingScore(a.rating, a.n));
-  return { stops: stops, more: more.slice(0, TRIP_MORE_MAX).map((p) => { const q = Object.assign({}, p); delete q.nested; delete q.tier; return q; }) };
+  return { stops: stops, more: more.slice(0, TRIP_MORE_MAX).map((p) => { const q = Object.assign({}, p); delete q.nested; delete q.tier; delete q.stay; return q; }) };
 }
 /* how much a route has to see: its anchors, weighted by size, plus a little for what is nested under them */
 export function routeScore(stops) {
@@ -368,8 +385,11 @@ export function tripRecord(id, org, built, day, now) {
     route: built.route || null, stops: stops };
 }
 function stopRef(a) {
-  return { id: a.id, name: a.name, town: a.town, lat: a.lat, lng: a.lng, why: a.why, url: a.url, photo: a.photo,
-    nested: (a.nested || []).map((n) => ({ id: n.id, name: n.name, town: n.town, lat: n.lat, lng: n.lng, why: n.why, url: n.url, photo: n.photo })) };
+  const r = { id: a.id, name: a.name, town: a.town, lat: a.lat, lng: a.lng, why: a.why, url: a.url, photo: a.photo,
+    nested: (a.nested || []).map((n) => { const q = { id: n.id, name: n.name, town: n.town, lat: n.lat, lng: n.lng, why: n.why, url: n.url, photo: n.photo }; if (n.walk === true) q.walk = true; return q; }) };
+  const st = Number(a.stay); if (Number.isFinite(st) && st >= 15 && st <= 480) r.stay = Math.round(st);   /* v154: kept for the group too */
+  if (a.worth === true) r.worth = true;
+  return r;
 }
 export function tripMember(trip, cid) { return !!trip && Array.isArray(trip.members) && trip.members.indexOf(String(cid)) !== -1; }
 /* the trip as the page gets it: the record, plus the hours now known for each stop (hoursById: id -> hours) */

@@ -1,22 +1,44 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.49 / v153).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.52 / v154).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.49** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v153** | |
+| Page | **v7.52** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v154** | |
 
 Recently shipped, newest first:
 
-- **v7.49: the one-site pill is opt-in** (Matt, 2026-10-20, Den > Settings: "this no longer is needed. Unless we can
+- **v7.52: the one-site pill is opt-in** (Matt, 2026-10-20, Den > Settings: "this no longer is needed. Unless we can
   have them turn it on if they want"). The Just ShopGoodwill pill beside Hunt is hidden to start with. Den > Settings >
   One-site button has **Off** first, then every marketplace; picking one shows "Just <site>" and Off hides it again.
   Stored as `oneOn` inside `prowl.v36` (no new key); a save or backup without it keeps the pill only when a site other
   than Goodwill was picked by hand. The note no longer says "the bar at the bottom". Import and Clear now refresh the
-  picker. Test: `__tests__/page/one-site-optin-v749.test.mjs`; `five-tabs-v730` turns the pill on.
+  picker. Test: `__tests__/page/one-site-optin-v752.test.mjs`; `five-tabs-v730` and `near-me` turn the pill on; the letter's swap test waits for the alerts status.
+- **v7.51 / v154: a road trip says how long to allow, what a detour costs, and what is a short walk** (the owner,
+  with Gemini's Findlay to Milton write-up: "some good advice, can we incorporate this somehow?"). Gemini's advice,
+  filled from Google's data rather than its prose (its store descriptions are its own words and were left out):
+  - **Time to allow** ("allocate a dedicated chunk of time"): each stop carries `stay` minutes (`stayMinutes`: from
+    the dealer count when Google's summary gives one, 30 min to half a day; else from the size tier, 30 to 120). The
+    card says "Allow about 2 h"; the trip head adds the visible stops: "About 7 h 30 min in the shops. With the drive,
+    12 h 30 min: more than a day, so plan a night on the road or Skip a few stops." Skipping a stop takes it out.
+  - **Worth the detour** (Heart of Ohio, "a slight detour"): an antiques place in the top size tier with a thousand
+    reviews (`worthDetour`) may sit up to 30 minutes off the road (`BIG_DETOUR_MIN`) and says "Worth the detour: adds
+    about 22 min". Everything else keeps the 10-minute rule.
+  - **A short walk** ("district walkability"): a town's shops within 0.4 miles of its stop say "A short walk from the
+    stop" (`walk`).
+  - Kept group trips keep `stay`, `worth` and `walk` (`stopRef`). Trip cache key v=10.
+  - Tests: `worker/__tests__/trip.test.mjs`, `__tests__/page/near-plan-v751.test.mjs`.
+- **v7.49: NEAR ME for the road** (the owner: "1-4" of the Near me suggestions). Around you shows how far each shop
+  is ("1.4 mi", "< 0.1 mi" next door) with a **Biggest first / Closest first** switch, remembered in the new key
+  `prowl.nearSort`; the map numbers its pins in the order shown. On a road trip for today each stop is open or closed
+  for when you would get there, driving straight from the phone's spot ("Get there ~11:40 AM · closed by then"),
+  estimated on the page from straight-line miles x 1.25 at the trip's own average speed; other days keep that day's
+  hours. Every Around-you row, every stop and the final stop has a bold **Directions** button (Skip sits under it).
+  Today's hours read at a glance: "Open until 6 PM", "Opens 10 AM", "Opens tomorrow 11 AM", "Closed today · opens Fri
+  10 AM" (`nrNext`, `nrNextText`). Page only, no worker change. Tests: `__tests__/page/near-road-v749.test.mjs`.
 - **v7.48 / v153: the shop you stand in is always asked for** (the owner, back in Maumee Antique Mall with Antiques on:
   still missing). Asked fresh at the mall's own spot, Google's relevance answer to "antique stores and antique malls"
   had the mall on some asks and not others (antiques + flea: first; antiques + records, or the usual three: missing),
@@ -848,7 +870,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.50, worker v154**. Claim one here when you start.
+Next free numbers: **page v7.53, worker v155**. Claim one here when you start.
 
 ## What's next
 
