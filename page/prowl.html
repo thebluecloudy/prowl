@@ -3241,7 +3241,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.40';
+var PROWL_VERSION='v7.41';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -9749,7 +9749,7 @@ function nrAroundDraw(){
 /* ---- Road trip ---- */
 function nrDays(){var out=[],i,d,t=Date.now();for(i=0;i<7;i++){d=new Date(t+i*86400000);out.push({day:nrLocalDay(d),label:i===0?'Today':NR_D3[d.getDay()]})}return out}
 function rNrDays(){var el=$('#otp-nrDays');if(!el)return;var D=nrDays();if(!NR.day||NR.day<D[0].day)NR.day=D[0].day;el.innerHTML=D.map(function(x){return '<button type="button" class="hubc'+(x.day===NR.day?' on':'')+'" data-nrday="'+x.day+'" aria-pressed="'+(x.day===NR.day)+'">'+x.label+'</button>'}).join('')}
-function nrMiles(km){return Math.round(km*0.621371)}
+function nrMiles(r){return Math.round(r.mi!=null?r.mi:(r.km||0)*0.621371)}   /* v7.41: the worker sends miles; older saved trips carried km */
 function nrDur(min){var hh=Math.floor(min/60),mm=min%60;return (hh?hh+' h ':'')+(mm||!hh?mm+' min':'')}
 function nrBuild(to){
   var out=$('#otp-nrOut');if(!to||NR.busy||!out)return;NR.busy=true;NR.view=null;NR.built=null;
@@ -9770,7 +9770,7 @@ function nrDrawTrip(t,o){
   var out=$('#otp-nrOut'),h='',i,a,wd=nrWeekday(t.day),day=t.day||'',from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),dest=t.dest||{},vis=nrVisible(t),stops=vis.stops;
   function row(p,cls){return '<div class="nr-row">'+nrCard(p,day,cls)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'">Skip</button></div>'}
   h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):'')+'</p>'+
-     '<p class="nearp">'+(t.route&&t.route.km?nrMiles(t.route.km)+' mi · '+nrDur(t.route.min||0)+' of driving · ':'')+'Trip day '+NR_DAYS[wd]+'<span id="otp-nrMembers">'+(o.members?' · '+o.members+' on this trip':'')+'</span></p>'+
+     '<p class="nearp">'+(t.route&&(t.route.mi||t.route.km)?nrMiles(t.route)+' mi · '+nrDur(t.route.min||0)+' of driving · ':'')+'Trip day '+NR_DAYS[wd]+'<span id="otp-nrMembers">'+(o.members?' · '+o.members+' on this trip':'')+'</span></p>'+
      (t.route&&t.route.slower>0?'<p class="nearp nr-alt">The road with the most to see, '+nrDur(t.route.slower)+' longer than the fastest drive.</p>':'')+'</div>';
   if(vis.hidden)h+='<p class="nr-skipped">'+vis.hidden+' skipped · <button type="button" class="sgw-ml" id="otp-nrUnskip">Show them again</button></p>';
   if(!stops.length)h+='<p class="nearp nr-empty">'+(vis.hidden?'Every stop on this route is skipped.':'No shops of the kinds you picked are worth a stop inside this route’s corridor.')+' The drive itself is ready: open it in Maps below.</p>';

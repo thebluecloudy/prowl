@@ -42,8 +42,8 @@ function encodePolyline(pts) {
   return out;
 }
 const WAY35 = [[42.4806, -83.4755], [41.6639, -83.5552], [41.5754, -83.63], [41.0442, -83.6499], [40.2987, -83.068], [39.9612, -82.9988], [39.3331, -82.9824], [39.052, -82.6366], [38.8445, -82.137], [38.4345, -82.1322]].map(([lat, lng]) => ({ lat, lng }));
-const ROUTE35 = (() => { const out = []; for (let i = 0; i < WAY35.length - 1; i++) { const a = WAY35[i], b = WAY35[i + 1], n = Math.max(1, Math.round(TRIP.haversineKm(a, b) / 2)); for (let k = 0; k < n; k++) out.push({ lat: a.lat + (b.lat - a.lat) * k / n, lng: a.lng + (b.lng - a.lng) * k / n }); } out.push(WAY35[WAY35.length - 1]); return out; })();
-const ROUTE_PTS = (() => { const out = []; for (let i = 0; i < WAY.length - 1; i++) { const a = WAY[i], b = WAY[i + 1], n = Math.max(1, Math.round(TRIP.haversineKm(a, b) / 2)); for (let k = 0; k < n; k++) out.push({ lat: a.lat + (b.lat - a.lat) * k / n, lng: a.lng + (b.lng - a.lng) * k / n }); } out.push(WAY[WAY.length - 1]); return out; })();
+const ROUTE35 = (() => { const out = []; for (let i = 0; i < WAY35.length - 1; i++) { const a = WAY35[i], b = WAY35[i + 1], n = Math.max(1, Math.round(TRIP.haversineMi(a, b) * 0.8)); for (let k = 0; k < n; k++) out.push({ lat: a.lat + (b.lat - a.lat) * k / n, lng: a.lng + (b.lng - a.lng) * k / n }); } out.push(WAY35[WAY35.length - 1]); return out; })();
+const ROUTE_PTS = (() => { const out = []; for (let i = 0; i < WAY.length - 1; i++) { const a = WAY[i], b = WAY[i + 1], n = Math.max(1, Math.round(TRIP.haversineMi(a, b) * 0.8)); for (let k = 0; k < n; k++) out.push({ lat: a.lat + (b.lat - a.lat) * k / n, lng: a.lng + (b.lng - a.lng) * k / n }); } out.push(WAY[WAY.length - 1]); return out; })();
 const HOURS_TUE_SUN = { periods: [0, 2, 3, 4, 5, 6].map((d) => ({ open: { day: d, hour: 10, minute: 0 }, close: { day: d, hour: 17, minute: 0 } })), weekdayDescriptions: ["Monday: Closed", "Tuesday: 10:00 AM – 5:00 PM", "Wednesday: 10:00 AM – 5:00 PM", "Thursday: 10:00 AM – 5:00 PM", "Friday: 10:00 AM – 5:00 PM", "Saturday: 10:00 AM – 5:00 PM", "Sunday: 10:00 AM – 5:00 PM"] };
 const HOURS_DAILY = { periods: [0, 1, 2, 3, 4, 5, 6].map((d) => ({ open: { day: d, hour: 10, minute: 0 }, close: { day: d, hour: 18, minute: 0 } })), weekdayDescriptions: ["Monday: 10:00 AM – 6:00 PM", "Tuesday: 10:00 AM – 6:00 PM", "Wednesday: 10:00 AM – 6:00 PM", "Thursday: 10:00 AM – 6:00 PM", "Friday: 10:00 AM – 6:00 PM", "Saturday: 10:00 AM – 6:00 PM", "Sunday: 10:00 AM – 6:00 PM"] };
 function gPlace(name, town, st, lat, lng, extra) {
@@ -89,13 +89,13 @@ function fakeGoogle(u, init) {
     if (!c) return ok({ places: [] });
     const here = { lat: c.center.latitude, lng: c.center.longitude };
     if (here.lat > 44) return ok({ places: [] });   /* the far north: no shops at all */
-    return ok({ places: SHOPS.filter((p) => TRIP.haversineKm(here, { lat: p.location.latitude, lng: p.location.longitude }) <= c.radius / 1000) });
+    return ok({ places: SHOPS.filter((p) => TRIP.haversineMi(here, { lat: p.location.latitude, lng: p.location.longitude }) <= c.radius / 1609.344) });
   }
   if (/places:searchNearby/.test(u)) {   /* v140: by type, the most popular first, inside the circle */
     const b = JSON.parse(init.body), c = b.locationRestriction.circle, here = { lat: c.center.latitude, lng: c.center.longitude };
     if (b.includedTypes.indexOf("bogus_type") !== -1 || b.includedTypes.indexOf("thrift_store") !== -1) return Promise.resolve({ ok: false, status: 400, json: async () => ({ error: { message: "Invalid type" } }), headers: new Headers() });   /* v142: the fake Google refuses thrift_store, as the real one refused one of the pair */
     if (here.lat > 44) return ok({ places: [] });
-    const hits = SHOPS.filter((p) => b.includedTypes.indexOf(p.primaryType) !== -1 && TRIP.haversineKm(here, { lat: p.location.latitude, lng: p.location.longitude }) <= c.radius / 1000);
+    const hits = SHOPS.filter((p) => b.includedTypes.indexOf(p.primaryType) !== -1 && TRIP.haversineMi(here, { lat: p.location.latitude, lng: p.location.longitude }) <= c.radius / 1609.344);
     hits.sort((a, b2) => (b2.userRatingCount || 0) - (a.userRatingCount || 0));
     return ok({ places: hits.slice(0, 20) });
   }
@@ -147,8 +147,8 @@ test("/near: without the key a plain 'not set up'; with it the shops around a po
   const names = r.body.places.map((p) => p.name);
   assert.equal(names[0], "Central City Antiques", "the biggest first");
   assert.equal(names.filter((n) => /Central City|14th Street/.test(n)).length, 3, "the three Huntington shops");
-  assert.ok(names.indexOf("Bluegrass Collectors") === -1, "Ashland, 18 km off, is outside the circle");
-  assert.ok(!r.body.places.find((p) => p.near > TRIP.NEAR_KEEP_KM), "v133: nothing beyond NEAR_KEEP_KM");
+  assert.ok(names.indexOf("Bluegrass Collectors") === -1, "Ashland, 11 miles off, is outside the circle");
+  assert.ok(!r.body.places.find((p) => p.near > TRIP.NEAR_KEEP_MI), "v133: nothing beyond NEAR_KEEP_MI (miles since v147)");
   assert.ok(names.indexOf("Maumee Antique Mall") === -1, "Maumee is not near Huntington");
   const c = r.body.places[0];
   assert.equal(c.town, "Huntington, WV"); assert.equal(c.why, "60 dealers"); assert.equal(c.photo, "/pp?n=places%2FChIJCentralCityAntiques%2Fphotos%2FP1");
@@ -160,7 +160,7 @@ test("/near: without the key a plain 'not set up'; with it the shops around a po
   const q = CALLS.filter((u) => /searchText|searchNearby/.test(u)).length;
   assert.ok(q >= 3, "it asked Google again");
   const again = await call(env, "GET", "/near?lat=38.4191&lng=-82.4451");
-  assert.equal(again.res.headers.get("X-Prowl-Cache"), "hit", "the same ~1 km cell within 10 minutes");
+  assert.equal(again.res.headers.get("X-Prowl-Cache"), "hit", "the same ~0.6-mile cell within 10 minutes");
   assert.equal(again.body.places[0].name, "Central City Antiques");
 });
 
@@ -184,7 +184,7 @@ test("/trip: the reference route from Novi to Blenko, in drive order, the Centra
   assert.ok(!/Olde Central/.test(u.searchParams.get("waypoints")), "nested stops are not waypoints");
   assert.ok(!TRIP.hasStreet(JSON.stringify(b).replace(/1 Main St/g, "")), "no street address in the answer besides the shops' own");
   assert.ok(!/42\.48|83\.4755/.test(JSON.stringify(b.origin)), "the origin point is not echoed");
-  assert.equal(b.route.km, 640); assert.equal(b.route.min, 390); assert.equal(b.empty, false);
+  assert.equal(b.route.mi, 397.7); assert.equal(b.route.min, 390); assert.equal(b.empty, false);
   assert.equal(b.route.slower, 42, "v136: the route with the most to see, 42 minutes longer than Google's fastest");
   assert.equal(b.how.routes.length, 2, "v141: how it was looked for"); assert.ok(b.how.boxes.length >= 20 && b.how.nearby === 0 && b.how.text >= 20, JSON.stringify(b.how));
   assert.deepEqual(b.how.badTypes, [], "v143: nothing typed, nothing refused");
@@ -387,7 +387,7 @@ test("the worker's own guards: routes are wired, the login links the account, th
   assert.match(INDEX, /url\.pathname\.startsWith\("\/finds\/"\) && request\.method === "GET"\) return findPhotoRoute/);
   assert.match(INDEX, /await tripAcctLink\(env, id, email\)/);
   assert.match(INDEX, /await tripSweep\(env\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v146"/);
+  assert.match(INDEX, /const WORKER_VERSION = "v147"/);
   assert.equal((INDEX.match(/env\.GOOGLE_MAPS_KEY/g) || []).length, 1, "the key is read in one place (gKey) and never put in an answer");
   for (const name of ["nearRoute", "tripRoute", "tripsRoute", "tripBuild", "ppRoute"]) assert.ok(!/GOOGLE_MAPS_KEY/.test(indexFn(name)), name + " never touches the key itself");
 });

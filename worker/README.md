@@ -26,7 +26,7 @@ about a minute. No dashboard paste needed.
   `/pp`, and the live hours in `/trips/<id>`). Enable Places API (New), Routes API and Geocoding API on it, restrict
   it to those three, and set it with `wrangler secret put GOOGLE_MAPS_KEY` (or the dashboard). Without it those routes
   answer 503 "not set up" and the page keeps its plain Maps links. A Road Trip build is about 13 Text Search calls
-  (one a 50 km circle) plus a route and a reverse geocode, kept an hour per origin town, destination and day.
+  (one a 9-mile circle) plus a route and a reverse geocode, kept an hour per origin town, destination and day.
 - `PRO_CIDS` (v132, plain-text variable) is the comp list for group trips: store customer ids, comma-separated, that
   count as Pro for building and sharing a trip and posting finds, the way the organizer arranges with the owner outside
   the app. A member's own paid Pro order (by customer id) or a linked Prowl Alerts member's Pro counts too. The page
