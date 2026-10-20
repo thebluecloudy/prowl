@@ -6,17 +6,33 @@ import {
   haversineKm, decodePolyline, nearestOnRoute, detourMinutes, corridorCenters, sizeTier, differentiator, ratingScore, rankPlaces,
   townOf, townFromAddress, normalizePlace, placeCard, hoursForDay, openAt, alongRoute, clusterStops, mapsDirUrl, hasStreet,
   tripDay, weekdayOf, tripCloses, tripExpires, tripExpired, tripRecord, tripMember, tripView, findRecord,
-  DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS, CATS, CATS_DEFAULT, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, ANCHOR_REVIEWS, kindAllowed,
+  DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS, CATS, CATS_DEFAULT, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, ANCHOR_REVIEWS, kindAllowed, kindPlan, ANCHOR_REVIEWS_ANTIQUES,
 } from "../trip.js";
+
+test("v140: the typed kinds go to Nearby Search, the rest to a text search; a crowd counts only for our kinds; the museum is never ours", () => {
+  assert.deepEqual(kindPlan(["antiques", "vintage", "thrift"]), { types: ["antique_store", "thrift_store"], text: "vintage stores", textKeys: ["vintage"] });
+  assert.deepEqual(kindPlan(["records", "flea"]), { types: [], text: "record stores, flea markets", textKeys: ["records", "flea"] });
+  assert.deepEqual(kindPlan("antiques,books,toys").types, ["antique_store", "book_store", "toy_store"]);
+  const mk = (name, n, extra) => Object.assign({ id: name.replace(/\W+/g, ""), name, town: "T", state: "OH", lat: 0, lng: 0, rating: 4.5, n, kind: "Antiques", hours: null, photo: "", url: "", summary: "" }, extra || {});
+  assert.equal(sizeTier(mk("The Michigan Museum of Horror", 831, { kind: "Museum" })), 0, "no crowd point for a museum");
+  assert.equal(kindAllowed(mk("The Michigan Museum of Horror", 831, { kind: "Museum" }), CATS_DEFAULT), false);
+  assert.equal(kindAllowed(mk("Clothes Mentor Perrysburg, OH", 163, { kind: "Women's clothing store" }), CATS_DEFAULT), false);
+  assert.equal(kindAllowed(mk("Greenwood Centre", 518, { kind: "Business center" }), CATS_DEFAULT), false);
+  assert.equal(sizeTier(mk("Second Hand Rose Clothing Store", 267, { kind: "Store" })), 0, "an odd kind and a plain name: no crowd point");
+  assert.equal(sizeTier(mk("Grandview Mercantile", 697, { kind: "Store" })), 1, "mercantile in the name: the crowd counts");
+  assert.equal(sizeTier(mk("Bluegrass Collectors", 90)), 1, "an antiques shop with " + ANCHOR_REVIEWS_ANTIQUES + "+ reviews");
+  assert.equal(sizeTier(mk("Bluegrass Collectors", 60)), 0);
+  assert.equal(sizeTier(mk("The Mason Jar", 176, { kind: "Home goods store" })), 0);
+});
 
 test("v138: size points add up, and a kind whose chip is off is dropped when the kind is plain", () => {
   const mk = (name, n, extra) => Object.assign({ id: name.replace(/\W+/g, ""), name, town: "T", state: "OH", lat: 0, lng: 0, rating: 4.5, n, kind: "Antiques", hours: null, photo: "", url: "", summary: "" }, extra || {});
   assert.equal(sizeTier(mk("The Delaware Antique Mall", 303)), 2, "antique mall + a crowd");
-  assert.equal(sizeTier(mk("WAREHOUSE 61", 87)), 1, "a bare warehouse");
+  assert.equal(sizeTier(mk("WAREHOUSE 61", 87, { kind: "Warehouse" })), 1, "a bare warehouse");
   assert.equal(sizeTier(mk("Maumee Antique Mall", 1776)), 3);
   assert.equal(sizeTier(mk("Chillicothe Antique Emporium", 292)), 2);
   assert.equal(sizeTier(mk("American Vintage Warehouse", 246)), 2);
-  assert.equal(sizeTier(mk("Pickaway Craft Mall", 232, { kind: "Home goods store" })), 1);
+  assert.equal(sizeTier(mk("Pickaway Craft Mall", 232, { kind: "Home goods store" })), 0, "v140: a craft mall with no antiques word earns no crowd point");
   assert.equal(sizeTier(mk("Goodwill", 2500, { kind: "Thrift" })), 0);
   assert.equal(kindAllowed(mk("Hillbilly Flea Market", 970, { kind: "Flea market" }), CATS_DEFAULT), false);
   assert.equal(kindAllowed(mk("Hillbilly Flea Market", 970, { kind: "Flea market" }), ["antiques", "flea"]), true);

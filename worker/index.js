@@ -19,6 +19,12 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v140: 2026-10-20. Nearby Search by Google's own types (antique_store, thrift_store, book_store, toy_store), most
+ *         popular first, for the kinds that have a type; a text search only for vintage, records and flea markets. A
+ *         free-text search in a dense box never surfaced Maumee Antique Mall and crowned a museum, a clothing store and
+ *         a business centre on their review counts (v139 live). A crowd of reviews now counts only for a place of our
+ *         kinds or with a telling name; an antiques shop needs 75 (Bluegrass Collectors); museums, clothing and the like
+ *         are never ours. gPlacesNearby falls back to the text search if Google refuses a type. Keys v=5.
  *   v139: 2026-10-20. v138's strict boxes filled with shopping malls ("The Mall of Monroe", 3.2 stars, an anchor), a
  *         4-review "emporium" was an anchor on its name, and Maumee Antique Mall was still out because the Toledo box's
  *         20 answers were all downtown. Kinds that are never ours are dropped (kindAllowed); an anchor needs
@@ -479,8 +485,8 @@ import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
 import { decodePolyline, haversineKm, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
-  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_KM, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v139";
+  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_KM, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
+const WORKER_VERSION = "v140";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6340,6 +6346,23 @@ async function gFetch(url, init, mask, env) {
 }
 /* Text Search (New), biased to a circle when one is given, or (v138, restrict) held inside a box that far to a side */
 async function gPlacesText(env, query, center, radius, max, restrict) { return (await gPlacesPage(env, query, center, radius, max, restrict, "")).places; }
+/* v140: Nearby Search (New) by place type inside a circle, the most popular first; null when Google refuses (an unknown
+   type), so the caller can fall back to a text search */
+async function gPlacesNearby(env, types, center, radius) {
+  if (!types || !types.length) return [];
+  const body = { includedTypes: types, maxResultCount: 20, rankPreference: "POPULARITY", languageCode: "en", regionCode: "US",
+    locationRestriction: { circle: { center: { latitude: center.lat, longitude: center.lng }, radius: Math.min(50000, radius || NEAR_RADIUS_M) } } };
+  const j = await gFetch("https://places.googleapis.com/v1/places:searchNearby", { method: "POST", body: JSON.stringify(body) }, G_PLACE_FIELDS.split(",").map((f) => "places." + f).join(","), env);
+  if (!j) return null;
+  return ((j && j.places) || []).map(normalizePlace).filter(Boolean);
+}
+/* the searches for a box or a circle: the typed kinds by Nearby (text if Google refuses the types), the rest by text */
+async function kindSearches(env, cats, center, radius, restrict, pages) {
+  const plan = kindPlan(cats), jobs = [];
+  if (plan.types.length) jobs.push(gPlacesNearby(env, plan.types, center, radius + 3000).then((r) => r !== null ? r : (pages ? gPlacesAll(env, catsQueries(cats.filter((k) => !plan.textKeys.includes(k)), 1)[0], center, radius, restrict, pages) : gPlacesText(env, catsQueries(cats.filter((k) => !plan.textKeys.includes(k)), 1)[0], center, radius, 20, restrict))));
+  if (plan.text) jobs.push(pages ? gPlacesAll(env, plan.text, center, radius, restrict, pages) : gPlacesText(env, plan.text, center, radius, 20, restrict));
+  return [].concat(...(await Promise.all(jobs)));
+}
 /* v139: a full box (20 answers) is read on to its next pages, so a dense town is read to the end */
 async function gPlacesAll(env, query, center, radius, restrict, pages) {
   let out = [], token = "";
@@ -6402,12 +6425,12 @@ async function nearRoute(request, env, url, origin) {
   if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, places: [] }, 503, origin);
   const cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=4";
+  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=5";
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("near:" + ipKey(request.headers.get("CF-Connecting-IP")), NEAR_PER_IP))) return json({ error: "slow down" }, 429, origin);
   const here = { lat: lat, lng: lng };
-  const lists = await Promise.all(catsQueries(cats, 2).map((q) => gPlacesText(env, q, here, NEAR_RADIUS_M, 20)));
+  const lists = [await kindSearches(env, cats, here, NEAR_RADIUS_M, false, 0)];   /* v140: by type, most popular first */
   const seen = Object.create(null), all = [];
   for (const p of [].concat(...lists)) { if (seen[p.id] || !kindAllowed(p, cats)) continue; seen[p.id] = 1; p.near = Math.round(haversineKm(here, p) * 10) / 10; if (p.near <= NEAR_KEEP_KM) all.push(p); }   /* v133: Google answers past the circle; v138: off kinds out */
   const places = rankPlaces(all).slice(0, NEAR_MAX).map((p) => placeCard(p));
@@ -6424,11 +6447,11 @@ async function tripBuild(env, from, toText, day, cats) {
   if (!routes.length) return null;
   /* v136: every route's corridor is searched (a circle and a query asked once, however many routes share it), and the
      route with the most to see wins; the fastest is the tie-break */
-  const queries = tripQueries(cats), asked = new Map();
-  const ask = (q, c) => { const k = q + "|" + c.lat.toFixed(1) + "," + c.lng.toFixed(1); if (!asked.has(k)) asked.set(k, asked.size * TRIP_PAGES_MAX < TRIP_SEARCHES_MAX ? gPlacesAll(env, q, c, CORRIDOR_RADIUS_M, true, TRIP_PAGES_MAX) : Promise.resolve([])); return asked.get(k); };
+  const asked = new Map();
+  const ask = (c) => { const k = c.lat.toFixed(1) + "," + c.lng.toFixed(1); if (!asked.has(k)) asked.set(k, asked.size * TRIP_PAGES_MAX * 2 < TRIP_SEARCHES_MAX ? kindSearches(env, cats, c, CORRIDOR_RADIUS_M, true, TRIP_PAGES_MAX) : Promise.resolve([])); return asked.get(k); };   /* v140: by type */
   const built = await Promise.all(routes.map(async (route) => {
     const centers = corridorCenters(route.pts).slice(0, CORRIDOR_CENTERS_MAX);
-    const lists = await Promise.all([].concat(...centers.map((c) => queries.map((q) => ask(q, c)))));
+    const lists = await Promise.all(centers.map((c) => ask(c)));
     const seen = Object.create(null), all = [];
     for (const p of [].concat(...lists)) { if (seen[p.id] || (dest && p.id === dest.id) || !kindAllowed(p, cats)) continue; seen[p.id] = 1; all.push(p); }
     const split = splitAnchors(clusterStops(alongRoute(all, route.pts, DETOUR_MIN)));
@@ -6448,7 +6471,7 @@ async function tripRoute(request, env, url, origin) {
   if (to.length < 2) return json({ error: "to required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, stops: [] }, 503, origin);
   const day = tripDay(url.searchParams.get("day")), cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=4";   /* v137 to v139: the answer changed */
+  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=5";   /* v137 to v140: the answer changed */
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("trip:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIP_PER_IP))) return json({ error: "slow down" }, 429, origin);
