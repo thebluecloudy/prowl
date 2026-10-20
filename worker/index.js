@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v134: 2026-10-20. POST /trips/<id>/rebuild { lat, lng } (the owner: "each time i visit a location, i may want to
+ *         rebuild"): the organizer rebuilds a kept trip from where they stand to the same destination; the stops
+ *         behind them drop, the origin becomes that town, and every member sees the new list.
  *   v133: 2026-10-20. NEAR ME after the first live look (the owner: "it found the best places ... big antique stores").
  *         /pp takes Google's long photo names (they run past 400 characters, so every photo was a 404), Around You keeps
  *         only places within NEAR_KEEP_KM (Maumee, 100 km off, was on a Novi list), and the size signal counts only
@@ -456,7 +459,7 @@ import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v
 import { decodePolyline, haversineKm, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_QUERIES, NEAR_RADIUS_M, NEAR_KEEP_KM, TRIP_QUERY, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v133";
+const WORKER_VERSION = "v134";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6286,6 +6289,8 @@ async function fbFinds(request, env, url, origin) {
                                         at every store sign-in, holds the customer id); an address that never signed in
                                         waits in tripinv:<hash> and joins at its next sign-in. The address is never kept.
      POST /trips/<id>/close             the organizer closes it now (finds expire FINDS_GRACE_DAYS later)
+     POST /trips/<id>/rebuild { lat, lng }   the organizer rebuilds it from where they stand (v134): the same destination
+                                        and day, the stops still ahead, the origin now that town; members see it
      POST /trips/<id>/finds { img, item, price, verdict, fair, stop, town, name }   a member posts a photo check's find
                                         (the photo, a JPEG the page shrank, goes to R2 finds/<trip>/<find>.jpg; the lines
                                         to tripfinds:<id>)
@@ -6455,7 +6460,7 @@ async function tripsRoute(request, env, url, origin) {
   const cid = await sessVerify(request, env);
   if (!cid) return json({ error: "Sign in to your Owl & Twig account to share trips.", signin: true }, 401, origin);
   if (!(await vCount("trips:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIPS_PER_IP))) return json({ error: "slow down" }, 429, origin);
-  const m = /^\/trips(?:\/(t[a-z0-9]{9})(?:\/(share|close|finds))?)?$/.exec(url.pathname);
+  const m = /^\/trips(?:\/(t[a-z0-9]{9})(?:\/(share|close|finds|rebuild))?)?$/.exec(url.pathname);
   if (!m) return json({ error: "not found" }, 404, origin);
   const id = m[1] || "", act = m[2] || "", post = request.method === "POST";
   if (!id) {
@@ -6505,6 +6510,21 @@ async function tripsRoute(request, env, url, origin) {
     trip.closes = new Date().toISOString(); trip.expires = tripExpires(trip.closes);
     await tripPut(env, trip);
     return nearAnswer({ ok: true, closes: trip.closes, expires: trip.expires }, 200, origin);
+  }
+  if (act === "rebuild") {   /* v134 */
+    if (!post || !org) return json({ error: "Only the organizer rebuilds a trip." }, 403, origin);
+    if (!(await tripPro(env, request, cid))) return json({ error: "Group trips come with Prowl Pro.", pro: false }, 403, origin);
+    if (!gKey(env)) return json({ error: "not set up" }, 503, origin);
+    if (Date.parse(trip.closes) <= Date.now()) return json({ error: "This trip is over." }, 409, origin);
+    const b = await readJson(request, 2048), lat = nearNum(b.lat, -90, 90), lng = nearNum(b.lng, -180, 180);
+    if (lat == null || lng == null) return json({ error: "where are you?" }, 400, origin);
+    const built = await tripBuild(env, { lat: lat, lng: lng }, trip.dest.name + (trip.dest.town ? ", " + trip.dest.town : ""), trip.day);
+    if (!built) return json({ error: "no route" }, 404, origin);
+    const fresh = tripRecord(trip.id, trip.org, built, trip.day);
+    trip.origin = fresh.origin; trip.route = fresh.route; trip.stops = fresh.stops; trip.rebuilt = new Date().toISOString();
+    await tripPut(env, trip);
+    const finds = await kvGet(env, "tripfinds:" + id, []);
+    return nearAnswer(Object.assign(tripView(trip, null), { mine: true, org: true, weekday: weekdayOf(trip.day), finds: finds.length, stops: built.stops, maps: built.maps, empty: built.empty }), 200, origin);
   }
   /* finds */
   if (!post) {

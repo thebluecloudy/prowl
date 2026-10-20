@@ -2028,6 +2028,8 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper #otp-nrAround>#otp-denLocal{padding:0}
 .scout-app-wrapper #otp-nrAround>#otp-denLocal>.nearblk:first-of-type{margin-top:0;padding-top:0;border-top:0}
 .scout-app-wrapper .nr-live:not(:empty){margin-bottom:18px;padding-bottom:4px;border-bottom:1px solid var(--ln)}
+.scout-app-wrapper .nr-refresh{margin-left:auto;min-height:30px;padding:6px 11px;font-size:12.5px}
+.scout-app-wrapper .nr-foot .b{padding-left:8px;padding-right:8px;font-size:13px}
 .scout-app-wrapper .nr-list,.scout-app-wrapper .nr-nest,.scout-app-wrapper .nr-findlist,.scout-app-wrapper .nr-triplist{display:flex;flex-direction:column;gap:8px}
 .scout-app-wrapper .nr-card{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--l2);border-radius:12px;background:var(--cd2);color:var(--ink);text-decoration:none;min-height:64px;position:relative}
 .scout-app-wrapper .nr-card.nr-sub{min-height:52px;background:transparent}
@@ -3063,6 +3065,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   </div>
   <div class="nr-foot" id="otp-nrFoot" hidden>
     <a class="b p" id="otp-nrMaps" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">OPEN IN MAPS</a>
+    <button type="button" class="b" id="otp-nrHere">FROM HERE</button>
     <button type="button" class="b" id="otp-nrShare">SHARE</button>
   </div>
 </aside>
@@ -3160,7 +3163,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.36';
+var PROWL_VERSION='v7.37';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -9338,32 +9341,33 @@ function nrCard(p,day,cls){
     (s.tag?'<span class="nr-st '+s.cls+'">'+s.tag+'</span>':'')+'</a>';
 }
 /* where you are, kept 5 minutes; cb(pos) or cb(null, 'denied' | 'fail' | 'nogeo') */
-function nrPos(cb){
-  if(NR.pos&&Date.now()-NR.posAt<300000){cb(NR.pos);return}
+function nrPos(cb,fresh){
+  if(!fresh&&NR.pos&&Date.now()-NR.posAt<300000){cb(NR.pos);return}
   if(!navigator.geolocation){cb(null,'nogeo');return}
   var done=false;function fin(p,e){if(done)return;done=true;cb(p,e)}
-  try{navigator.geolocation.getCurrentPosition(function(x){NR.pos={lat:x.coords.latitude,lng:x.coords.longitude};NR.posAt=Date.now();fin(NR.pos)},function(e){fin(null,e&&e.code===1?'denied':'fail')},{maximumAge:300000,timeout:9000})}catch(e){fin(null,'fail')}
+  try{navigator.geolocation.getCurrentPosition(function(x){NR.pos={lat:x.coords.latitude,lng:x.coords.longitude};NR.posAt=Date.now();fin(NR.pos)},function(e){fin(null,e&&e.code===1?'denied':'fail')},{maximumAge:fresh?0:300000,timeout:9000})}catch(e){fin(null,'fail')}
   setTimeout(function(){fin(null,'fail')},10000);
 }
 function nrKm(a,b){var R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180,s=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);return 2*R*Math.asin(Math.min(1,Math.sqrt(s)))}
 /* ---- Around you ---- */
+function nrRefreshBtn(){return '<button type="button" class="hubc nr-refresh" id="otp-nrRefresh">Refresh</button>'}
 function nrAroundLoad(force){
   var el=$('#otp-nrLive');if(!el)return;
   if(NR.around&&!force&&Date.now()-NR.aroundAt<120000){nrAroundDraw();return}
   el.innerHTML='<p class="nearp">Finding the shops around you…</p>';
   nrPos(function(pos,err){
-    if(!pos){el.innerHTML='<p class="nearp">'+(err==='denied'?'Location is off for this site, so the shops around you cannot be listed. The map searches below still work.':'Your location could not be read just now. The map searches below still work.')+'</p>';return}
+    if(!pos){el.innerHTML='<p class="nearp">'+(err==='denied'?'Location is off for this site, so the shops around you cannot be listed. The map searches below still work.':'Your location could not be read just now. The map searches below still work.')+' '+nrRefreshBtn()+'</p>';return}
     nrFetch('/near?lat='+pos.lat.toFixed(4)+'&lng='+pos.lng.toFixed(4)).then(function(r){
       if(r.status===503){el.innerHTML='';return}   /* not switched on yet: the map searches below carry it */
       if(!r.ok){el.innerHTML='<p class="nearp">The shops around you could not be listed just now. The map searches below still work.</p>';return}
       NR.aroundAt=Date.now();NR.around=r.j.places||[];nrAroundDraw();
     });
-  });
+  },force);   /* v7.37: Refresh asks the phone for a fresh fix */
 }
 function nrAroundDraw(){
   var el=$('#otp-nrLive'),L=NR.around||[];if(!el)return;
-  if(!L.length){el.innerHTML='<p class="nearp">No antique, vintage or thrift shops close by right now. Try a map search below, or plan a road trip.</p>';return}
-  el.innerHTML='<h3 class="nearh">Around you</h3><p class="nearp">Antique, vintage and thrift shops near where you are standing, biggest first. Open or closed is from today’s hours. One tap opens the shop in Google Maps.</p><div class="nr-list">'+L.map(function(p){return nrCard(p,'','')}).join('')+'</div>';
+  if(!L.length){el.innerHTML='<h3 class="nearh">Around you '+nrRefreshBtn()+'</h3><p class="nearp">No antique, vintage or thrift shops close by right now. Try a map search below, or plan a road trip.</p>';return}
+  el.innerHTML='<h3 class="nearh">Around you '+nrRefreshBtn()+'</h3><p class="nearp">Antique, vintage and thrift shops near where you are standing, biggest first. Open or closed is from today’s hours. One tap opens the shop in Google Maps. Moved on? Tap Refresh.</p><div class="nr-list">'+L.map(function(p){return nrCard(p,'','')}).join('')+'</div>';
 }
 /* ---- Road trip ---- */
 function nrDays(){var out=[],i,d,t=Date.now();for(i=0;i<7;i++){d=new Date(t+i*86400000);out.push({day:nrLocalDay(d),label:i===0?'Today':NR_D3[d.getDay()]})}return out}
@@ -9400,10 +9404,32 @@ function nrDrawTrip(t,o){
   nrFoot(t);
 }
 function nrFoot(t){
-  var f=$('#otp-nrFoot'),m=$('#otp-nrMaps'),s=$('#otp-nrShare');if(!f||!m||!s)return;
+  var f=$('#otp-nrFoot'),m=$('#otp-nrMaps'),s=$('#otp-nrShare'),hb=$('#otp-nrHere');if(!f||!m||!s)return;
+  if(hb)hb.hidden=!t||!t.dest||!t.dest.name;
   if(!t||!t.maps||NR.mode!=='trip'){f.hidden=true;return}
   f.hidden=false;m.href=t.maps;
   if(NR.view){s.hidden=!NR.view.org;s.textContent='SHARE'}else{s.hidden=false;s.textContent='SHARE'}
+}
+/* v7.37 (the owner: "each time i visit a location, i may want to rebuild"): FROM HERE reads where you stand now and
+   rebuilds the trip to the same destination: the stops behind you drop. On your own kept trip the worker saves it,
+   so everyone on the trip sees the new list; on a built trip, or someone else's, it redraws your own view. */
+function nrHere(){
+  var t=NR.view||NR.built;if(!t||NR.busy)return;
+  var dest=t.dest||{},to=NR.built&&NR.built.to?NR.built.to:(dest.name||'')+(dest.town?', '+dest.town:''),out=$('#otp-nrOut');if(!to||!out)return;
+  NR.busy=true;out.insertAdjacentHTML('afterbegin','<p class="nearp nr-wait" id="otp-nrHereWait">Finding where you are and the stops still ahead…</p>');
+  function fail(msg){NR.busy=false;var w=$('#otp-nrHereWait');if(w)w.textContent=msg}
+  nrPos(function(pos,err){
+    if(!pos){fail(err==='denied'?'Location is off for this site, so Prowl cannot tell where you are. Turn it on and try again.':'Your location could not be read just now. Try again in a moment.');return}
+    if(NR.view&&NR.view.org){
+      nrFetch('/trips/'+E(NR.view.id)+'/rebuild',{method:'POST',body:{lat:pos.lat,lng:pos.lng}}).then(function(r){
+        if(!r.ok){fail(esc((r.j&&r.j.error)||'The trip could not be rebuilt just now.'));return}
+        NR.busy=false;NR.trips=null;nrOpenTrip(r.j,false);
+        toast('Rebuilt from <b>'+esc(r.j.origin||'here')+'</b>. Everyone on the trip sees the stops still ahead.',3600);
+      });
+      return;
+    }
+    NR.busy=false;NR.view=null;nrBuild(to);
+  },true);
 }
 function nrSignin(){var e2;try{e2=new Event('prowl-signin')}catch(x){e2=document.createEvent('Event');e2.initEvent('prowl-signin',true,true)}closeNear();document.dispatchEvent(e2)}
 /* SHARE: on a built trip, keep it for the group (a store sign-in; Pro is the worker's call); on your own kept trip, add a member */
@@ -9516,7 +9542,9 @@ if(near){
   $('#otp-nrForm').addEventListener('submit',function(e){e.preventDefault();var inp=$('#otp-nrTo');nrBuild(inp?inp.value.replace(/\s+/g,' ').trim().slice(0,160):'')});
   $('#otp-nrDays').addEventListener('click',function(e){var b=e.target.closest('[data-nrday]');if(!b)return;NR.day=b.getAttribute('data-nrday');rNrDays();if(NR.built&&NR.built.to)nrBuild(NR.built.to)});
   $('#otp-nrShare').addEventListener('click',nrShare);
+  $('#otp-nrHere').addEventListener('click',nrHere);
   near.addEventListener('click',function(e){
+    if(e.target.closest&&e.target.closest('#otp-nrRefresh')){NR.pos=null;NR.around=null;nrAroundLoad(true);return}   /* v7.37 */
     var b=e.target.closest&&e.target.closest('[data-nrtrip]');
     if(b){var id=b.getAttribute('data-nrtrip');if(NR.busy)return;NR.busy=true;b.disabled=true;nrFetch('/trips/'+E(id)).then(function(r){NR.busy=false;b.disabled=false;if(!r.ok){toast('That trip could not be opened just now.',2800);return}nrOpenTrip(r.j,false)});return}
     var ad=e.target.closest&&e.target.closest('#otp-nrAdd');

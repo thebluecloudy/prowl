@@ -77,8 +77,9 @@ function fakeGoogle(u, init) {
     if (here.lat > 44) return ok({ places: [] });   /* the far north: no shops at all */
     return ok({ places: SHOPS.filter((p) => TRIP.haversineKm(here, { lat: p.location.latitude, lng: p.location.longitude }) <= c.radius / 1000) });
   }
-  if (/computeRoutes/.test(u)) { const b = JSON.parse(init.body); if (b.destination.address === "nowhere special") return ok({ routes: [] }); if (b.destination.address === "nowhere") return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline([{ lat: 46.5, lng: -84.3 }, { lat: 46.6, lng: -84.2 }]) }, distanceMeters: 12000, duration: "900s" }] }); return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline(ROUTE_PTS) }, distanceMeters: 640000, duration: "23400s" }] }); }
-  if (/geocode\/json/.test(u)) return ok({ results: [{ address_components: [{ long_name: "Novi", short_name: "Novi", types: ["locality", "political"] }, { long_name: "Michigan", short_name: "MI", types: ["administrative_area_level_1", "political"] }] }] });
+  if (/computeRoutes/.test(u)) { const b = JSON.parse(init.body); if (b.destination.address === "nowhere special") return ok({ routes: [] });
+    if (b.origin.location.latLng.latitude < 39) return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline(ROUTE_PTS.filter((p) => p.lng > -82.47)) }, distanceMeters: 30000, duration: "1500s" }] }); if (b.destination.address === "nowhere") return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline([{ lat: 46.5, lng: -84.3 }, { lat: 46.6, lng: -84.2 }]) }, distanceMeters: 12000, duration: "900s" }] }); return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline(ROUTE_PTS) }, distanceMeters: 640000, duration: "23400s" }] }); }
+  if (/geocode\/json/.test(u)) { const south = /latlng=38\./.test(u); return ok({ results: [{ address_components: [{ long_name: south ? "Huntington" : "Novi", short_name: south ? "Huntington" : "Novi", types: ["locality", "political"] }, { long_name: south ? "West Virginia" : "Michigan", short_name: south ? "WV" : "MI", types: ["administrative_area_level_1", "political"] }] }] }); }
   const m = /\/v1\/places\/([^?]+)/.exec(u);
   if (m) { const p = SHOPS.concat([BLENKO]).find((x) => x.id === decodeURIComponent(m[1])); return ok(p ? { id: p.id, regularOpeningHours: p.regularOpeningHours, utcOffsetMinutes: -240 } : {}); }
   return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
@@ -219,6 +220,19 @@ test("group trips: a sign-in is needed, Pro is decided on the worker, the organi
   assert.deepEqual(sharedKnown.body, { ok: true, added: true, pending: false, members: 3 });
   assert.equal((await call(env, "POST", "/trips/" + t.id + "/share", { email: "x@y.z" }, "1002")).status, 403, "only the organizer adds members");
   assert.equal((await call(env, "POST", "/trips/" + t.id + "/share", { email: "nope" }, "1001")).status, 400);
+  /* v134: standing in Huntington, the organizer rebuilds: the stops behind drop, the origin is that town, members see it */
+  assert.equal((await call(env, "POST", "/trips/" + t.id + "/rebuild", { lat: 38.4192, lng: -82.4452 }, "1002")).status, 403, "only the organizer");
+  assert.equal((await call(env, "POST", "/trips/" + t.id + "/rebuild", { lat: 999, lng: 0 }, "1001")).status, 400);
+  const rebuilt = await call(env, "POST", "/trips/" + t.id + "/rebuild", { lat: 38.4192, lng: -82.4452 }, "1001");
+  assert.equal(rebuilt.status, 200);
+  assert.equal(rebuilt.body.origin, "Huntington, WV");
+  assert.deepEqual(rebuilt.body.stops.map((s) => s.name), ["Central City Antiques"]);
+  assert.equal(new URL(rebuilt.body.maps).searchParams.get("origin"), "Huntington, WV");
+  assert.equal(rebuilt.body.id, t.id); assert.equal(rebuilt.body.members, 3, "the same trip, the same group");
+  const after = await call(env, "GET", "/trips/" + t.id, null, "1002");
+  assert.deepEqual(after.body.stops.map((s) => s.name), ["Central City Antiques"], "the member sees the rebuilt list");
+  assert.equal(after.body.origin, "Huntington, WV");
+  assert.ok(!/42\.48|-83\.4755|38\.4192/.test(env.PROWL_ALERTS.m.get("trip:" + t.id)), "no origin point is kept, before or after");
   const closed = await call(env, "POST", "/trips/" + t.id + "/close", null, "1001");
   assert.equal(closed.status, 200);
   assert.equal(Date.parse(closed.body.expires) - Date.parse(closed.body.closes), TRIP.FINDS_GRACE_DAYS * 86400000);
@@ -276,6 +290,6 @@ test("the worker's own guards: routes are wired, the login links the account, th
   assert.match(INDEX, /url\.pathname\.startsWith\("\/finds\/"\) && request\.method === "GET"\) return findPhotoRoute/);
   assert.match(INDEX, /await tripAcctLink\(env, id, email\)/);
   assert.match(INDEX, /await tripSweep\(env\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v133"/);
+  assert.match(INDEX, /const WORKER_VERSION = "v134"/);
   for (const name of ["nearRoute", "tripRoute", "tripsRoute", "tripBuild"]) assert.ok(!/GOOGLE_MAPS_KEY|gKey\(env\)\s*\}/.test(indexFn(name).replace(/gKey\(env\)\)/g, "").replace(/!gKey\(env\)/g, "")), name + " only tests for the key");
 });

@@ -1,15 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.36 / v133).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.37 / v134).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.36** | 399,916 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v133** | |
+| Page | **v7.37** | 399,845 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v134** | |
 
 Recently shipped, newest first:
+
+- **v7.37 / v134: FROM HERE and Refresh** (the owner: "each time i visit a location, i may want to rebuild, or find
+  near places"). On any trip, **FROM HERE** in the foot reads a fresh fix and rebuilds the trip to the same
+  destination: the stops behind you drop and the origin becomes that town. On your own kept trip the worker saves it
+  (`POST /trips/<id>/rebuild { lat, lng }`, organizer only) so everyone on the trip sees the stops still ahead; on a
+  built trip, or someone else's, it redraws your own view. Around you has **Refresh**, which re-reads the phone's
+  position and the shops around it (the worker's 10-minute cache is per ~1 km cell, so moving on gives a new list).
+  Tests: `__tests__/page/near-section-v736.test.mjs`, `worker/__tests__/trips.test.mjs`.
 
 - **v133: NEAR ME after the first live look** (the owner: "when i did this in meta, it found the best places to visit,
   big antique stores"). Worker only. `/pp` takes Google's photo names, which run past 400 characters, so every card
@@ -645,7 +653,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.37, worker v134**. Claim one here when you start.
+Next free numbers: **page v7.38, worker v135**. Claim one here when you start.
 
 ## What's next
 
