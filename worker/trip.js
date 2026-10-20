@@ -15,8 +15,9 @@ export const MAPS_WAYPOINTS = 9;         /* Google Maps directions links take ab
 export const FINDS_GRACE_DAYS = 7;       /* find photos live this long after the trip closes (the spec's default) */
 export const TRIP_DAYS_MAX = 14;         /* a trip day may be at most this far ahead */
 export const CLUSTER_WALK_KM = 0.6;      /* shops this close are one walkable cluster even across a town line */
-export const CORRIDOR_STEP_KM = 50;      /* the corridor is searched in circles this far apart ... */
-export const CORRIDOR_RADIUS_M = 30000;  /* ... each this wide (Google's circle bias caps at 50 km); one search a circle */
+export const CORRIDOR_STEP_KM = 40;      /* v138: the corridor is searched in boxes this far apart ... */
+export const CORRIDOR_RADIUS_M = 22000;  /* ... each this far to a side, and Google must stay inside the box (a bias let a
+                                            box's 20 answers wander 30 km off and lose Maumee Antique Mall, 1,776 reviews) */
 /* v135 (the owner: "maybe someone wants to see records, toys, antique or thrift stores"): what to look for, as the
    chips on the page. The default is the spec's three. One Google text query a circle carries every picked kind. */
 export const CATS = { antiques: "antique stores and antique malls", vintage: "vintage stores", thrift: "thrift stores", records: "record stores", books: "used book stores", toys: "vintage toy and collectibles shops", flea: "flea markets" };
@@ -43,7 +44,7 @@ export function catsQueries(cats, n) {
 export const NEAR_RADIUS_M = 15000, NEAR_KEEP_KM = 40, CORRIDOR_CENTERS_MAX = 24;   /* Around You: Google answers beyond the circle; keep only what is really near */
 export const TRIP_STOPS_MAX = 40, TRIP_NESTED_MAX = 6, NEAR_MAX = 24, TRIP_MORE_MAX = 20;
 export const ANCHOR_REVIEWS = 150;       /* v136: an antiques or vintage place with this many reviews is worth planning around */
-export const ROUTES_MAX = 3, TRIP_SEARCHES_MAX = 60;   /* v136: Google's alternatives are searched too; this many Text Searches a build at most */
+export const ROUTES_MAX = 3, TRIP_SEARCHES_MAX = 80;   /* v136: Google's alternatives are searched too; this many Text Searches a build at most */
 export const FIND_IMG_MAX = 600 * 1024;  /* a find photo arrives already downscaled by the page; refuse anything bigger */
 export const FINDS_MAX = 200;            /* finds kept per trip */
 export const TRIP_MEMBERS_MAX = 24;
@@ -100,16 +101,24 @@ const THRIFT = /\b(thrift|goodwill|salvation\s+army|value\s+world|savers|st\.?\s
 export function isThrift(place) { return /thrift/i.test(String(place.kind || "")) || THRIFT.test(String(place.name || "")); }
 const DEALERS = /(\d{2,4})\+?\s*(dealers?|vendors?|booths?|shops?|consignors?|sellers?)/i;
 const SQFT = /([\d,]{4,7})\s*(sq\.?\s*ft|square\s*f(ee|oo)t)/i;
-/* 0: a shop; 1: reads like a mall or warehouse; 2: tens of dealers or 10,000+ sq ft; 3: a hundred dealers or 30,000+ sq ft */
+/* 0: a shop; 1 to 3: the signals add up (v138, so an antique mall with a crowd of reviews beats a bare "warehouse"):
+   a word that means a big antiques place is a point; a crowd of reviews is a point, a thousand two (not for a thrift
+   chain, which draws reviews for being a chain); tens of dealers or 10,000+ sq ft are two, a hundred dealers or
+   30,000+ sq ft three. Three is the top. */
 export function sizeTier(place) {
   const text = [place.name, place.summary].filter(Boolean).join(" . ");
-  let tier = SIZE_WORD.test(text) ? 1 : 0;
-  const d = DEALERS.exec(text); if (d) { const n = Number(d[1]); if (n >= 100) tier = Math.max(tier, 3); else if (n >= 20) tier = Math.max(tier, 2); else tier = Math.max(tier, 1); }
-  const s = SQFT.exec(text); if (s) { const n = Number(String(s[1]).replace(/,/g, "")); if (n >= 30000) tier = Math.max(tier, 3); else if (n >= 10000) tier = Math.max(tier, 2); else if (n >= 3000) tier = Math.max(tier, 1); }
-  /* no number in the text: a crowd of reviews is the size signal Google does give, for an antiques or vintage place
-     (a thrift chain draws reviews for being a chain, not for being a destination) */
-  if (!isThrift(place)) { const n = Number(place.n) || 0; if (n >= 1000) tier = Math.max(tier, 2); else if (n >= ANCHOR_REVIEWS) tier = Math.max(tier, 1); }
-  return tier;
+  let pts = SIZE_WORD.test(text) ? 1 : 0;
+  const d = DEALERS.exec(text); if (d) { const n = Number(d[1]); pts += n >= 100 ? 3 : n >= 20 ? 2 : 1; }
+  const s = SQFT.exec(text); if (s) { const n = Number(String(s[1]).replace(/,/g, "")); pts += n >= 30000 ? 3 : n >= 10000 ? 2 : n >= 3000 ? 1 : 0; }
+  if (!isThrift(place)) { const n = Number(place.n) || 0; pts += n >= 1000 ? 2 : n >= ANCHOR_REVIEWS ? 1 : 0; }
+  return Math.min(3, pts);
+}
+/* v138: a place of a kind the chips turned off is dropped when its kind is plain (a flea market on an antiques
+   search); a kind Google names oddly ("Store", "Home goods store") stays */
+const KIND_OF = { Antiques: "antiques", Vintage: "vintage", Thrift: "thrift", Records: "records", Books: "books", Toys: "toys", "Flea market": "flea" };
+export function kindAllowed(place, cats) {
+  const k = KIND_OF[String(place.kind || "")];
+  return !k || catsParse(cats.join ? cats.join(",") : cats).indexOf(k) !== -1;
 }
 /* the one-line differentiator on a card: "120 dealers", "28,000 sq ft", "Antique mall", or the category */
 export function differentiator(place) {
