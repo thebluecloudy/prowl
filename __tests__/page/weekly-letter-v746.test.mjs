@@ -18,16 +18,16 @@ const SIGNED = { 'prowl.alertTok': 'tok-0123456789abcdef', 'prowl.alertEmail': '
   'prowl.v36': { seen: true, hunts: ['rookwood owl', 'monstor vendall 1988 vending machine'], lock: [0, 1], h21: 1, h36: 1, h42: 1, h68: 1 } };
 
 function open(extra = {}, url) {
-  const live = liveFetch({ perSource: 2 }), sent = [];
+  const live = liveFetch({ perSource: 2 }), sent = [], status = { n: 0 };
   const fetchImpl = (u, o) => {
     const s = String(u);
     const body = o && o.body ? JSON.parse(o.body) : null;
     if (/\/alerts\/letter$/.test(s)) { sent.push({ u: s, body }); return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body && body.preview ? { letter: { ...LETTER, hello: 'Tuesday, Oct 27' }, preview: true } : { letter: LETTER }) }); }
-    if (/\/alerts\/status$/.test(s)) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ on: true, hunts: SIGNED['prowl.v36'].hunts, prefs: {}, mail: 'on', free: 5, pro: false }) });
+    if (/\/alerts\/status$/.test(s)) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(++status.n && { on: true, hunts: SIGNED['prowl.v36'].hunts, prefs: {}, mail: 'on', free: 5, pro: false }) });
     if (/\/alerts\/prefs$/.test(s)) { sent.push({ u: s, body }); return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, prefs: body.prefs }) }); }
     return live.impl(u, o);
   };
-  return { p: loadPage({ fetchImpl, storage: { ...SIGNED, ...extra }, url }), sent };
+  return { p: loadPage({ fetchImpl, storage: { ...SIGNED, ...extra }, url }), sent, status };
 }
 
 test('Daily shows the Sunday letter at the top, with the best find linked and Save, Share and Close', async () => {
@@ -50,7 +50,10 @@ test('Daily shows the Sunday letter at the top, with the best find linked and Sa
 });
 
 test('the quiet hunt: the shorter search is added as a new hunt, or replaces the old one', async () => {
-  const { p } = open();
+  const { p, status } = open();
+  /* the worker's status (and its hunt list) lands first, as it does long before anyone reads a letter; on a slow
+     runner it could land after the swap and merge the old hunt back in */
+  await waitFor(() => status.n > 0, { timeout: 8000 });
   await tick(60);
   p.$('#otp-dock .db[data-m="daily"]').click();
   const card = await waitFor(() => p.$('.dg-rc .lt-card'), { timeout: 8000 });

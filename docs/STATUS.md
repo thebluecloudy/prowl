@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.51 / v154).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.52 / v154).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.51** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.52** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v154** | |
 
 Recently shipped, newest first:
 
+- **v7.52: the one-site pill is opt-in** (Matt, 2026-10-20, Den > Settings: "this no longer is needed. Unless we can
+  have them turn it on if they want"). The Just ShopGoodwill pill beside Hunt is hidden to start with. Den > Settings >
+  One-site button has **Off** first, then every marketplace; picking one shows "Just <site>" and Off hides it again.
+  Stored as `oneOn` inside `prowl.v36` (no new key); a save or backup without it keeps the pill only when a site other
+  than Goodwill was picked by hand. The note no longer says "the bar at the bottom". Import and Clear now refresh the
+  picker. Test: `__tests__/page/one-site-optin-v752.test.mjs`; `five-tabs-v730` and `near-me` turn the pill on; the letter's swap test waits for the alerts status.
 - **v7.51 / v154: a road trip says how long to allow, what a detour costs, and what is a short walk** (the owner,
   with Gemini's Findlay to Milton write-up: "some good advice, can we incorporate this somehow?"). Gemini's advice,
   filled from Google's data rather than its prose (its store descriptions are its own words and were left out):
@@ -864,7 +870,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.52, worker v155** (PR #200 holds page v7.50). Claim one here when you start.
+Next free numbers: **page v7.53, worker v155**. Claim one here when you start.
 
 ## What's next
 
