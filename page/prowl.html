@@ -1070,6 +1070,16 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .pp-repro{border-color:#D98C1F;background:rgba(217,140,31,.1)}
 .scout-app-wrapper .pp-repro span,.scout-app-wrapper .pp-intl span{display:block}
 .scout-app-wrapper .pp-intl{border-color:#3b82c4;background:rgba(59,130,196,.1)}
+.scout-app-wrapper .pp-also{margin:10px 0;padding:10px 12px;border:2px solid var(--l2);border-radius:10px;background:var(--cd2);color:var(--ink);font-size:15px;line-height:1.45}
+.scout-app-wrapper .pp-also>b{display:block;margin-bottom:4px}
+.scout-app-wrapper .pp-also ul{margin:0;padding:0;list-style:none}
+.scout-app-wrapper .pp-also li{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-height:44px;border-top:1px solid var(--ln)}
+.scout-app-wrapper .pp-also li:first-child{border-top:0}
+.scout-app-wrapper .pp-also li span{min-width:84px;font-weight:700}
+.scout-app-wrapper .pp-also li small{color:var(--mu);font-size:14px}
+.scout-app-wrapper .pp-also li a{margin-left:auto;color:var(--ac);font-weight:800;text-decoration:none}
+.scout-app-wrapper .pp-also-n{display:block;margin-top:6px;font-size:14px;color:var(--mu)}
+.scout-app-wrapper .sgw-also{display:inline-block;margin-top:3px;font-size:12.5px;font-weight:700;color:var(--i2)}
 .scout-app-wrapper .pp-sold{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;margin-top:10px;border-radius:99px;font-weight:800}
 /* v7.09 (Matt: "make them glow"): new listings glow, in the strip and in a hunt. A steady ring outside the card and a
    breathing light inside its edge; only opacity moves (an animated shadow stalls phones); still under reduced motion. */
@@ -3062,7 +3072,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.33';
+var PROWL_VERSION='v7.34';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4366,9 +4376,9 @@ function huntInner(t){
     h+='<a class="pk-card" href="'+esc(huntLink(it))+'" target="_blank" rel="noopener noreferrer" data-u="'+esc(it.url||'')+'" data-t="'+esc(it.title||'')+'" data-p="'+esc(it.price||'')+'" data-s="'+esc(it.src||'')+'">'+   /* v7.18: data for the popup */
       (it.image?'<img loading="lazy" src="'+esc(it.image)+'" alt="">':'<span class="pk-noimg"></span>')+
       '<b>'+esc(it.price||'—')+'</b><span class="pk-t">'+esc(it.title)+'</span>'+
-      '<small>'+esc(huntSite(it.src))+(it.time_left?' · '+esc(it.time_left)+' left':'')+(it.where?' · '+esc(it.where):'')+'</small></a>'}
+      '<small>'+esc(huntSite(it.src))+(it.time_left?' · '+esc(it.time_left)+' left':'')+(it.where?' · '+esc(it.where):'')+'</small>'+alsoLine(it.url)+'</a>'}   /* v7.34 */
   h+='</div>';
-  if(d.dupes&&d.dupes.length)h+='<p class="pk-dupe">'+d.dupes.length+' listing'+(d.dupes.length>1?'s are':' is')+' posted on two sites. Prowl shows the cheaper one.</p>';
+  if(d.dupes&&d.dupes.length)h+='<p class="pk-dupe">'+d.dupes.length+' listing'+(d.dupes.length>1?'s are the same piece as one':' is the same piece as one')+' on another site. Prowl picks the cheapest; open it to compare prices on each site.</p>';
   h+='<ul class="pk-sites">';
   for(i=0;i<d.rows.length;i++){r=d.rows[i];
     h+='<li class="'+(r.gated?'pk-gated':r.kept?'pk-yes':'pk-no')+'" title="'+esc(r.kept?'':r.note||'')+'">'+esc(huntSite(r.source))+(r.kept?' · '+r.kept:'')+'</li>'}
@@ -4968,6 +4978,17 @@ function slrHtml(s,cls){
    photo is missing or does not load takes the listing's first photo from /item (the popup's own call, kept in ITEMC).
    PHOTO keeps it by URL so a redraw shows it straight away. */
 var PHOTO=Object.create(null),PHOTO_Q=Object.create(null);
+/* v7.34 (the owner, on one Rookwood owl at $190 on Etsy and $211 on Poshmark: "show that it is listed in 2 other places,
+   and they have different prices. say someone doesn't trust poshmark, but would buy from etsy, or if lowest price need
+   to include the shipping"): worker v130's /hunt gives every cross-posted copy `also`, the other sites with their price
+   (eBay also says its shipping). Kept by URL; a card says "Also on Poshmark $211", the popup lists each with a link. */
+var ALSO=Object.create(null);
+function alsoShip(x){return x.ship==='free'?' free shipping':x.ship?' + '+x.ship+' shipping':''}
+function alsoLine(u){
+  var a=(typeof ALSO!=='undefined'&&ALSO[u])||null,i,p=[];if(!a||!a.length)return '';
+  for(i=0;i<a.length&&i<2;i++)p.push(esc(huntSite(a[i].src))+' '+esc(a[i].price||'')+esc(alsoShip(a[i])));
+  return '<span class="sgw-also">Also on '+p.join(' \u00b7 ')+(a.length>2?' +'+(a.length-2)+' more':'')+'</span>';
+}
 function sgwCard(it,hunt,bare){
   /* no loading="lazy" here: on the live page it left some cards with an empty
      box even once scrolled into view. A handful of thumbnails is cheap. */
@@ -4979,6 +5000,7 @@ function sgwCard(it,hunt,bare){
   if(it.location)m+=' · '+esc(it.location);   /* v6.65: Facebook finds say where */
   /* v5.63: worker v21 Jev tags likely reproductions; turning JEV_RESULTS off removes the tag */
   if(it.repro)m+='<br><span class="sgw-repro" title="The title reads like a reproduction, reissue or a lookalike from another maker">Possible reproduction</span>';
+  var al=typeof alsoLine==='function'?alsoLine(it.url):'';if(al)m+='<br>'+al;   /* v7.34 */
   var a='<a class="sgw-card" href="'+esc(window.prowlAff(it.url,'prowl-live'))+'" target="_blank" rel="noopener noreferrer">'+
     img+
     '<div class="sgw-t">'+esc(it.title)+'</div>'+
@@ -7220,6 +7242,16 @@ function popFrom(f){
   var n=String(f.name||f.cc).slice(0,60),why='An international seller: shipping, customs and import fees can add to the price, and a return costs more. Check them before you bid or buy.';
   return {html:'<div class="pp-flag pp-intl" role="note"><b>\ud83c\udf0d Ships from '+esc(n)+'</b><span>'+esc(why)+'</span></div>',note:'Ships from '+n+' (international).'};
 }
+/* v7.34: the same piece on other sites, each with its price and a link, so the visitor picks the site they trust */
+function popAlso(u,price){
+  var a=ALSO[u],h='',n=[],i,x,go;if(!a||!a.length)return null;
+  for(i=0;i<a.length;i++){x=a[i];go=window.prowlAff(x.url,'prowl-also');
+    h+='<li><span>'+esc(huntSite(x.src))+'</span><b>'+esc(x.price||'')+'</b><small>'+esc(alsoShip(x).replace(/^ \+ /,'+ ').replace(/^ /,''))+'</small>'+
+      (go!=='#'?'<a href="'+esc(go)+'" target="_blank" rel="noopener noreferrer">View \u2197</a>':'')+'</li>';
+    n.push(huntSite(x.src)+' '+x.price)}
+  return {html:'<div class="pp-also" role="note"><b>The same piece is also on</b><ul>'+h+'</ul><span class="pp-also-n">This one is '+esc(price||'')+' here. Shipping is extra unless shown; check it on each site.</span></div>',
+    note:'Also listed on '+n.join(', ')+'.'};
+}
 function popSold(t){return window.prowlAff('https://www.ebay.com/sch/i.html?_nkw='+E(String(t||'').slice(0,90))+'&LH_Sold=1&LH_Complete=1','prowl-sold')}
 function popDetails(meta,d){
   var t=meta.join(' · '),i;
@@ -7266,6 +7298,7 @@ function popPaint(d){
   var flags=popFlags(title,d);if(flags)h+=flags.html;
   var rp=P.repro?popRepro(title):null;if(rp)h+=rp.html;   /* v7.29 */
   var fr=popFrom(d.from);if(fr)h+=fr.html;   /* v7.29 */
+  var al=popAlso(P.u,price);if(al)h+=al.html;   /* v7.34 */
   if(meta.length)h+='<p class="pp-m">'+esc(meta.join(' · '))+'</p>';
   if(P.pnc)h+='<div class="pp-pnc" role="note"><b>\uD83D\uDC3E Pounce '+(P.pnc.maybe?'thinks this may be':'match')+' for '+esc(P.pnc.hunt)+'</b>'+(P.pnc.reason?'<span>'+esc(P.pnc.reason)+'</span>':'')+
     (P.pnc.done?'<em>Marked not it.</em>':'<button type="button" class="b" data-ppnot="1">Not it</button>')+'</div>';   /* v7.19 */
@@ -7279,7 +7312,7 @@ function popPaint(d){
   if(d.aspects&&d.aspects.length){det+='<dl class="pp-asp">';for(i=0;i<d.aspects.length&&i<6;i++)det+='<dt>'+esc(popUnEnt(d.aspects[i].n))+'</dt><dd>'+esc(popUnEnt(d.aspects[i].v))+'</dd>';det+='</dl>'}
   if(desc)det+='<div class="pp-d clip" id="otp-ppd"></div><button type="button" class="pp-more" data-ppmore="1" aria-controls="otp-ppd" aria-expanded="false">Read more</button>';
   if(det)h+=popSec('det','Item details',det,'det' in was?was.det:true);
-  if(price&&!d.gone&&!aiOff())pc+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'" data-d="'+esc((d.was?'On sale, was '+d.was+(d.off?' ('+d.off+')':'')+'. ':'')+(fr?fr.note+' ':'')+(rp?rp.note+' ':'')+(flags?flags.note+' ':'')+popDetails(meta,d))+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
+  if(price&&!d.gone&&!aiOff())pc+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'" data-d="'+esc((d.was?'On sale, was '+d.was+(d.off?' ('+d.off+')':'')+'. ':'')+(al?al.note+' ':'')+(fr?fr.note+' ':'')+(rp?rp.note+' ':'')+(flags?flags.note+' ':'')+popDetails(meta,d))+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
   if(price||P.term)pc+='<a class="b pp-sold" href="'+esc(popSold(P.term||title))+'" target="_blank" rel="noopener noreferrer">What it sold for on eBay \u2197</a>';   /* v7.10 */
   if(pc)h+=popSec('price','Price check',pc,'price' in was?was.price:true);   /* v7.31: open, now that Fair price? is only here */
   var go=window.prowlAff(d.url||P.u,'prowl-popup',d.affUrl);
@@ -7305,13 +7338,26 @@ function awayAdd(u){
 /* v7.26 (Matt, from Jellycat's outlined "Best Seller" box): a result that is one of a hunt's Best picks says so on its
    photo (.is-pick), wherever its card shows. Kept for this visit only. */
 var PICK=Object.create(null);
-function pickAdd(d){var i;if(!d||!d.picks)return;for(i=0;i<d.picks.length;i++)if(d.picks[i]&&d.picks[i].url)PICK[d.picks[i].url]=1;pickMark(document)}
+function pickAdd(d){var i,j,it;if(!d)return;
+  /* v7.34: every cross-posted copy, picked or not, keeps the other sites it is on (a hunt with no picks too) */
+  for(i=0;d.rows&&i<d.rows.length;i++)for(j=0;d.rows[i].items&&j<d.rows[i].items.length;j++){it=d.rows[i].items[j];if(it&&it.url&&alsoClean(it.also))ALSO[it.url]=alsoClean(it.also)}
+  for(i=0;d.picks&&i<d.picks.length;i++){it=d.picks[i];if(it&&it.url){PICK[it.url]=1;if(alsoClean(it.also))ALSO[it.url]=alsoClean(it.also)}}
+  pickMark(document)}
+function alsoClean(a){
+  var out=[],i,x;if(!a||!a.length)return null;
+  for(i=0;i<a.length&&out.length<4;i++){x=a[i];if(x&&typeof x.url==='string'&&/^https:\/\//.test(x.url)&&typeof x.src==='string')
+    out.push({src:x.src.slice(0,20),price:String(x.price||'').slice(0,24),url:x.url,ship:(x.ship==='free'||/^\$\d+(\.\d\d)?$/.test(String(x.ship||'')))?x.ship:''})}
+  return out.length?out:null;
+}
 function pickMark(root){
   try{
     var els=[],i;
     if(root.getAttribute&&root.getAttribute('data-u'))els.push(root);
     if(root.querySelectorAll)els=els.concat([].slice.call(root.querySelectorAll('.sgw-cell[data-u]')));
     for(i=0;i<els.length;i++)if(PICK[els[i].getAttribute('data-u')]&&!els[i].classList.contains('is-pick')&&!els[i].classList.contains('pp-fp'))els[i].classList.add('is-pick');   /* v7.33: not the popup's price check box */
+    /* v7.34: a card drawn before /hunt answered gets its "Also on" line now */
+    for(i=0;i<els.length;i++){var u=els[i].getAttribute('data-u'),mm;
+      if(ALSO[u]&&!els[i].classList.contains('pp-fp')&&!els[i].querySelector('.sgw-also')){mm=els[i].querySelector('.sgw-m');if(mm)mm.insertAdjacentHTML('beforeend','<br>'+alsoLine(u))}}
   }catch(e){}
 }
 function awayMark(root){

@@ -39,7 +39,7 @@ test('a single search shows Best picks, the cross-post line and a chip for every
   assert.ok(box, 'the picks box is in the results');
   assert.equal(box.querySelectorAll('.pk-card').length, 2);
   assert.match(box.querySelector('.pk-h').textContent, /typical price \$80\.00/);
-  assert.match(box.textContent, /1 listing is posted on two sites/);
+  assert.match(box.textContent, /1 listing is the same piece as one on another site/);
   assert.equal(box.querySelectorAll('.pk-sites li').length, 4);
   assert.ok(box.querySelector('.pk-sites .pk-gated'));
   assert.ok(!box.querySelector('.pk-card b b'), 'titles are escaped, not rendered as HTML');
