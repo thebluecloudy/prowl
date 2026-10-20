@@ -25,7 +25,15 @@ export function catsParse(s) {
   const want = String(s || "").toLowerCase().split(/[\s,]+/).filter(Boolean), out = Object.keys(CATS).filter((k) => want.indexOf(k) !== -1);
   return out.length ? out : CATS_DEFAULT.slice();
 }
-/* the picked kinds as n query strings (Around You asks twice, a trip circle once) */
+/* v136 (Maumee Antique Mall fell out of a circle's 20 answers): on a trip, antiques get a query of their own and the
+   other kinds share one, so a big mall is never crowded out by thrift and vintage hits */
+export function tripQueries(cats) {
+  const keys = catsParse(cats.join ? cats.join(",") : cats), rest = keys.filter((k) => k !== "antiques").map((k) => CATS[k]);
+  const out = keys.indexOf("antiques") !== -1 ? [CATS.antiques] : [];
+  if (rest.length) out.push(rest.join(", "));
+  return out;
+}
+/* the picked kinds as n query strings (Around You asks twice) */
 export function catsQueries(cats, n) {
   const phrases = catsParse(cats.join ? cats.join(",") : cats).map((k) => CATS[k]), out = [];
   n = Math.max(1, Math.min(n || 1, phrases.length));
@@ -33,7 +41,9 @@ export function catsQueries(cats, n) {
   return out;
 }
 export const NEAR_RADIUS_M = 15000, NEAR_KEEP_KM = 40, CORRIDOR_CENTERS_MAX = 24;   /* Around You: Google answers beyond the circle; keep only what is really near */
-export const TRIP_STOPS_MAX = 40, TRIP_NESTED_MAX = 6, NEAR_MAX = 24;
+export const TRIP_STOPS_MAX = 40, TRIP_NESTED_MAX = 6, NEAR_MAX = 24, TRIP_MORE_MAX = 20;
+export const ANCHOR_REVIEWS = 150;       /* v136: an antiques or vintage place with this many reviews is worth planning around */
+export const ROUTES_MAX = 3, TRIP_SEARCHES_MAX = 60;   /* v136: Google's alternatives are searched too; this many Text Searches a build at most */
 export const FIND_IMG_MAX = 600 * 1024;  /* a find photo arrives already downscaled by the page; refuse anything bigger */
 export const FINDS_MAX = 200;            /* finds kept per trip */
 export const TRIP_MEMBERS_MAX = 24;
@@ -98,7 +108,7 @@ export function sizeTier(place) {
   const s = SQFT.exec(text); if (s) { const n = Number(String(s[1]).replace(/,/g, "")); if (n >= 30000) tier = Math.max(tier, 3); else if (n >= 10000) tier = Math.max(tier, 2); else if (n >= 3000) tier = Math.max(tier, 1); }
   /* no number in the text: a crowd of reviews is the size signal Google does give, for an antiques or vintage place
      (a thrift chain draws reviews for being a chain, not for being a destination) */
-  if (!isThrift(place)) { const n = Number(place.n) || 0; if (n >= 1000) tier = Math.max(tier, 2); else if (n >= 300) tier = Math.max(tier, 1); }
+  if (!isThrift(place)) { const n = Number(place.n) || 0; if (n >= 1000) tier = Math.max(tier, 2); else if (n >= ANCHOR_REVIEWS) tier = Math.max(tier, 1); }
   return tier;
 }
 /* the one-line differentiator on a card: "120 dealers", "28,000 sq ft", "Antique mall", or the category */
@@ -245,7 +255,25 @@ export function clusterStops(places) {
     if (g) g.nested.push(p); else groups.push({ anchor: p, nested: [] });
   }
   groups.sort((a, b) => (a.anchor.prog || 0) - (b.anchor.prog || 0) || (a.anchor.near || 0) - (b.anchor.near || 0));
-  return groups.map((g) => Object.assign(placeCard(g.anchor), { nested: g.nested.slice(0, TRIP_NESTED_MAX).map((p) => placeCard(p)) }));
+  return groups.map((g) => Object.assign(placeCard(g.anchor), { tier: sizeTier(g.anchor), nested: g.nested.slice(0, TRIP_NESTED_MAX).map((p) => placeCard(p)) }));
+}
+/* v136 (the owner, against Meta's eight: "big antique stores, good to stop at"): a town is a stop worth planning
+   around only when its best shop is a real antiques place or has a crowd of reviews (tier 1+). The rest are "smaller
+   shops along the way": listed, never in the Maps link. */
+export function splitAnchors(clusters) {
+  const stops = [], more = [];
+  for (const c of clusters) {
+    if ((c.tier || 0) >= 1) stops.push(c);
+    else { more.push(c); (c.nested || []).forEach((n) => more.push(n)); }
+  }
+  more.sort((a, b) => ratingScore(b.rating, b.n) - ratingScore(a.rating, a.n));
+  return { stops: stops, more: more.slice(0, TRIP_MORE_MAX).map((p) => { const q = Object.assign({}, p); delete q.nested; delete q.tier; return q; }) };
+}
+/* how much a route has to see: its anchors, weighted by size, plus a little for what is nested under them */
+export function routeScore(stops) {
+  let s = 0;
+  for (const a of stops) s += 1 + (a.tier || 0) + Math.min(3, (a.nested || []).length) * 0.25;
+  return Math.round(s * 100) / 100;
 }
 /* the one directions link: origin town, anchors as waypoints in drive order (nine at most), destination */
 export function mapsDirUrl(originTown, anchors, destination) {

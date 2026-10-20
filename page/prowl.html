@@ -2035,6 +2035,11 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-row .nr-card{flex:1 1 auto;min-width:0}
 .scout-app-wrapper .nr-skip{flex:0 0 auto;border:1px solid var(--l2);background:transparent;color:var(--mu);border-radius:10px;padding:0 9px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
 .scout-app-wrapper .nr-skipped{margin:0 0 10px;font-size:13px;color:var(--mu)}
+.scout-app-wrapper .nr-legs{display:flex;flex:1 1 auto;gap:6px;min-width:0}
+.scout-app-wrapper .nr-legs .b{flex:1 1 auto}
+.scout-app-wrapper .nr-more{margin-top:14px;border-top:1px solid var(--ln);padding-top:10px}
+.scout-app-wrapper .nr-more summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--mu);margin-bottom:8px}
+.scout-app-wrapper .nr-more .nr-list{margin-top:8px}
 .scout-app-wrapper .nr-foot .b{padding-left:8px;padding-right:8px;font-size:13px}
 .scout-app-wrapper .nr-list,.scout-app-wrapper .nr-nest,.scout-app-wrapper .nr-findlist,.scout-app-wrapper .nr-triplist{display:flex;flex-direction:column;gap:8px}
 .scout-app-wrapper .nr-card{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--l2);border-radius:12px;background:var(--cd2);color:var(--ink);text-decoration:none;min-height:64px;position:relative}
@@ -3072,7 +3077,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     </div>
   </div>
   <div class="nr-foot" id="otp-nrFoot" hidden>
-    <a class="b p" id="otp-nrMaps" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">OPEN IN MAPS</a>
+    <span class="nr-legs" id="otp-nrLegs"><a class="b p" id="otp-nrMaps" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">OPEN IN MAPS</a></span>
     <button type="button" class="b" id="otp-nrHere">FROM HERE</button>
     <button type="button" class="b" id="otp-nrShare">SHARE</button>
   </div>
@@ -3171,7 +3176,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.38';
+var PROWL_VERSION='v7.39';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -9329,6 +9334,16 @@ function nrVisible(t){
   return {stops:out,hidden:hid};
 }
 function nrMapsUrl(from,anchors,dest){var wp=anchors.slice(0,9).map(function(a){return a.name+(a.town?', '+a.town:'')}).join('|');return 'https://www.google.com/maps/dir/?api=1&travelmode=driving&origin='+E(from||'')+'&destination='+E(dest||'')+(wp?'&waypoints='+E(wp):'')}
+/* v7.39 (Meta's two legs): Google Maps takes about nine waypoints, so more anchors than that become legs, each leg
+   ending at the next leg's first stop */
+function nrMapsLegs(t){
+  if(!t)return [];var d=t.dest||{};if(!d.name)return t.maps?[{label:'OPEN IN MAPS',url:t.maps}]:[];
+  var from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),an=nrVisible(t).stops,destL=d.name+(d.town?', '+d.town:''),lab=function(a){return a.name+(a.town?', '+a.town:'')};
+  if(an.length<=9)return [{label:'OPEN IN MAPS',url:nrMapsUrl(from,an,destL)}];
+  var legs=[],s=0,e,k=1,o=from;
+  while(s<an.length){e=Math.min(s+9,an.length);var last=e>=an.length;legs.push({label:'LEG '+k,url:nrMapsUrl(o,an.slice(s,e),last?destL:lab(an[e]))});if(last)break;o=lab(an[e]);s=e+1;k++}
+  return legs;
+}
 function nrMapsFor(t){if(!t)return '';var d=t.dest||{};if(!d.name)return t.maps||'';var from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||'');return nrMapsUrl(from,nrVisible(t).stops,d.name+(d.town?', '+d.town:''))}
 function nrH(){var h={},k=fbOwnerKey(),em=mGet('alertEmail'),tk=mGet('alertTok');if(k)h['X-Prowl-Owner']=k;if(em&&tk){h['X-Prowl-Email']=em;h['X-Prowl-Tok']=tk}return window.prowlAuth?window.prowlAuth(h):h}   /* v7.38: the alerts member too */
 /* v7.38 (the owner: "it took me to the den and tried to make me sign in, but i am pro"): a Prowl Alerts sign-in is a sign-in */
@@ -9434,7 +9449,8 @@ function nrDrawTrip(t,o){
   var out=$('#otp-nrOut'),h='',i,a,wd=nrWeekday(t.day),day=t.day||'',from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),dest=t.dest||{},vis=nrVisible(t),stops=vis.stops;
   function row(p,cls){return '<div class="nr-row">'+nrCard(p,day,cls)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'">Skip</button></div>'}
   h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):'')+'</p>'+
-     '<p class="nearp">'+(t.route&&t.route.km?nrMiles(t.route.km)+' mi · '+nrDur(t.route.min||0)+' of driving · ':'')+'Trip day '+NR_DAYS[wd]+'<span id="otp-nrMembers">'+(o.members?' · '+o.members+' on this trip':'')+'</span></p></div>';
+     '<p class="nearp">'+(t.route&&t.route.km?nrMiles(t.route.km)+' mi · '+nrDur(t.route.min||0)+' of driving · ':'')+'Trip day '+NR_DAYS[wd]+'<span id="otp-nrMembers">'+(o.members?' · '+o.members+' on this trip':'')+'</span></p>'+
+     (t.route&&t.route.slower>0?'<p class="nearp nr-alt">The road with the most to see, '+nrDur(t.route.slower)+' longer than the fastest drive.</p>':'')+'</div>';
   if(vis.hidden)h+='<p class="nr-skipped">'+vis.hidden+' skipped · <button type="button" class="sgw-ml" id="otp-nrUnskip">Show them again</button></p>';
   if(!stops.length)h+='<p class="nearp nr-empty">'+(vis.hidden?'Every stop on this route is skipped.':'No shops of the kinds you picked are worth a stop inside this route’s corridor.')+' The drive itself is ready: open it in Maps below.</p>';
   else{
@@ -9443,6 +9459,7 @@ function nrDrawTrip(t,o){
     h+='</ol>';
   }
   if(dest.name)h+='<div class="nr-dest"><p class="nr-nesth">Final stop</p>'+nrCard(dest,day,'nr-anchor')+'</div>';
+  if(t.more&&t.more.length)h+='<details class="nr-more"><summary>Smaller shops along the way ('+t.more.length+')</summary><p class="nearp">Not worth planning around, but there if you pass. These never go into the Maps link.</p><div class="nr-list">'+t.more.map(function(p){return nrCard(p,day,'nr-sub')}).join('')+'</div></details>';   /* v7.39 */
   out.innerHTML=h;
   nrFoot(t);
 }
@@ -9450,7 +9467,10 @@ function nrFoot(t){
   var f=$('#otp-nrFoot'),m=$('#otp-nrMaps'),s=$('#otp-nrShare'),hb=$('#otp-nrHere');if(!f||!m||!s)return;
   if(hb)hb.hidden=!t||!t.dest||!t.dest.name;
   if(!t||!t.maps||NR.mode!=='trip'){f.hidden=true;return}
-  f.hidden=false;m.href=nrMapsFor(t)||t.maps;
+  var legs=nrMapsLegs(t),lw=$('#otp-nrLegs');
+  f.hidden=false;
+  if(lw&&legs.length)lw.innerHTML=legs.map(function(l,i){return '<a class="b p" '+(i===0?'id="otp-nrMaps" ':'')+'href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer">'+esc(l.label)+'</a>'}).join('');
+  else m.href=nrMapsFor(t)||t.maps;
   if(NR.view){s.hidden=!NR.view.org;s.textContent='SHARE'}else{s.hidden=false;s.textContent='SHARE'}
 }
 /* v7.37 (the owner: "each time i visit a location, i may want to rebuild"): FROM HERE reads where you stand now and
