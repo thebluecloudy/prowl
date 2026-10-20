@@ -6,7 +6,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.38 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.38** | 399,845 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.38** | 399,644 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v135** | |
 
 Recently shipped, newest first:
@@ -18,7 +18,15 @@ Recently shipped, newest first:
   worker's `tripWho` takes them as it takes a Bearer session: the member's customer id when linked, else `e` + a hash
   of the address (never the address). `tripPro` counts the owner key, the comp list, the member's own Pro and paid
   orders. A share to an address that is an alerts member adds them at once; the email-code sign-in also links the
-  account, so waiting invitations join. Tests: `worker/__tests__/trips.test.mjs`, `__tests__/page/near-section-v736.test.mjs`.
+  account, so waiting invitations join.
+  - **Kinds and skips** (the owner: "maybe someone wants to see records, toys, antique or thrift stores"; "let me at
+    least discard ones i don't want to go to"). Chips on both tabs: Antiques, Vintage, Thrift (the spec's three, on by
+    default), Records, Books, Toys, Flea markets (`prowl.nearCats`, new key, outside the backup; `cats=` on `/near`
+    and `/trip`, kept on a trip record; one Google query a circle still). Every stop has **Skip**: a skipped place
+    leaves the list and the Maps link (the page builds the link from what is left, `nrMapsFor`), the next shop in its
+    town steps up as the anchor, and "N skipped · Show them again" undoes it. Skips are by place id (`prowl.nearSkip`,
+    new key), so a shop stays skipped on later trips.
+  Tests: `worker/__tests__/trip.test.mjs`, `trips.test.mjs`, `session.test.mjs`, `__tests__/page/near-section-v736.test.mjs`.
 
 - **v7.37 / v134: FROM HERE and Refresh** (the owner: "each time i visit a location, i may want to rebuild, or find
   near places"). On any trip, **FROM HERE** in the foot reads a fresh fix and rebuilds the trip to the same

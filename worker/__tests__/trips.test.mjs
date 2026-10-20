@@ -129,6 +129,11 @@ test("/near: without the key a plain 'not set up'; with it the shops around a po
   assert.equal(c.town, "Huntington, WV"); assert.equal(c.why, "60 dealers"); assert.equal(c.photo, "/pp?n=places%2FChIJCentralCityAntiques%2Fphotos%2FP1");
   assert.equal(c.hours.offset, -240); assert.equal(c.hours.periods.length, 7); assert.equal(typeof c.near, "number");
   assert.equal(TRIP.openAt(c.hours, Date.parse("2026-10-26T16:00:00Z")), true, "the page can say OPEN NOW from what it got");
+  /* v135: the kinds asked for go into the query and the cache key */
+  const recs = await call(env, "GET", "/near?lat=38.4191&lng=-82.4451&cats=records,toys");
+  assert.equal(recs.res.headers.get("X-Prowl-Cache"), null, "another kind is another answer");
+  const q = CALLS.filter((u) => /searchText/.test(u)).length;
+  assert.ok(q >= 3, "it asked Google again");
   const again = await call(env, "GET", "/near?lat=38.4191&lng=-82.4451");
   assert.equal(again.res.headers.get("X-Prowl-Cache"), "hit", "the same ~1 km cell within 10 minutes");
   assert.equal(again.body.places[0].name, "Central City Antiques");
@@ -198,7 +203,7 @@ test("group trips: a sign-in is needed, Pro is decided on the worker, the organi
   assert.match(t.id, /^t[a-z0-9]{9}$/); assert.equal(t.org, true); assert.equal(t.mine, true); assert.equal(t.members, 1);
   assert.equal(t.origin, "Novi, MI"); assert.equal(t.stops.length, 7);
   const kept = JSON.parse(env.PROWL_ALERTS.m.get("trip:" + t.id));
-  assert.deepEqual(kept.members, ["1001"]); assert.equal(kept.origin, "Novi, MI");
+  assert.deepEqual(kept.members, ["1001"]); assert.equal(kept.origin, "Novi, MI"); assert.deepEqual(kept.cats, ["antiques", "vintage", "thrift"]);
   assert.ok(!/42\.48|-83\.4755/.test(JSON.stringify(kept)), "the stored trip has no origin point, only its town");
   assert.ok(!TRIP.hasStreet(JSON.stringify(kept).replace(/1 Main St/g, "")));
   const mine = await call(env, "GET", "/trips", null, "1001");
