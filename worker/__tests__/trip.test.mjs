@@ -6,13 +6,21 @@ import {
   haversineKm, decodePolyline, nearestOnRoute, detourMinutes, corridorCenters, sizeTier, differentiator, ratingScore, rankPlaces,
   townOf, townFromAddress, normalizePlace, placeCard, hoursForDay, openAt, alongRoute, clusterStops, mapsDirUrl, hasStreet,
   tripDay, weekdayOf, tripCloses, tripExpires, tripExpired, tripRecord, tripMember, tripView, findRecord,
-  DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS, CATS, CATS_DEFAULT, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, ANCHOR_REVIEWS, kindAllowed, kindPlan, ANCHOR_REVIEWS_ANTIQUES,
+  DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS, CATS, CATS_DEFAULT, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, ANCHOR_REVIEWS, kindAllowed, kindPlan, ANCHOR_REVIEWS_ANTIQUES, splitVia,
 } from "../trip.js";
 
+test("v142: 'via' in the destination steers the road", () => {
+  assert.deepEqual(splitVia("Blenko Glass Company, Milton, WV via Portsmouth, OH"), { to: "Blenko Glass Company, Milton, WV", via: ["Portsmouth, OH"] });
+  assert.deepEqual(splitVia("Milton, WV via Portsmouth, OH and Ashland, KY"), { to: "Milton, WV", via: ["Portsmouth, OH", "Ashland, KY"] });
+  assert.deepEqual(splitVia("Via Vintage, Toledo"), { to: "Via Vintage, Toledo", via: [] }, "a name that starts with Via is not a via");
+  assert.deepEqual(splitVia("Blenko"), { to: "Blenko", via: [] });
+  assert.deepEqual(splitVia("A via b and c and d and e"), { to: "A", via: ["b", "c", "d"] }, "three at most");
+});
+
 test("v140: the typed kinds go to Nearby Search, the rest to a text search; a crowd counts only for our kinds; the museum is never ours", () => {
-  assert.deepEqual(kindPlan(["antiques", "vintage", "thrift"]), { types: ["antique_store", "thrift_store"], text: "vintage stores", textKeys: ["vintage"] });
+  assert.deepEqual(kindPlan(["antiques", "vintage", "thrift"]), { types: [], text: "antique stores and antique malls, vintage stores, thrift stores", textKeys: ["antiques", "vintage", "thrift"] }, "v143: Google has no antique_store or thrift_store type");
   assert.deepEqual(kindPlan(["records", "flea"]), { types: [], text: "record stores, flea markets", textKeys: ["records", "flea"] });
-  assert.deepEqual(kindPlan("antiques,books,toys").types, ["antique_store", "book_store", "toy_store"]);
+  assert.deepEqual(kindPlan("antiques,books,toys").types, ["book_store", "toy_store"]);
   const mk = (name, n, extra) => Object.assign({ id: name.replace(/\W+/g, ""), name, town: "T", state: "OH", lat: 0, lng: 0, rating: 4.5, n, kind: "Antiques", hours: null, photo: "", url: "", summary: "" }, extra || {});
   assert.equal(sizeTier(mk("The Michigan Museum of Horror", 831, { kind: "Museum" })), 0, "no crowd point for a museum");
   assert.equal(kindAllowed(mk("The Michigan Museum of Horror", 831, { kind: "Museum" }), CATS_DEFAULT), false);
@@ -144,7 +152,7 @@ test("the corridor: a stop 40 km off the route is out, ten minutes of detour is 
   assert.equal(detourMinutes(0), 0);
   assert.ok(detourMinutes(3) <= DETOUR_MIN && detourMinutes(4) > DETOUR_MIN, "about 3 km each way is the budget at 40 km/h");
   const centers = corridorCenters(ROUTE);
-  assert.ok(centers.length >= 13 && centers.length <= 20, "a 640 km route in ~40 km steps: " + centers.length);
+  assert.ok(centers.length >= 20 && centers.length <= 30, "a route of about 560 km as the crow flies in ~25 km steps: " + centers.length);
   assert.ok(haversineKm(centers[centers.length - 1], WAY[WAY.length - 1]) < 25, "the last circle reaches the destination");
   const far = nearestOnRoute(ROUTE, { lat: 40.7584, lng: -82.5154 });
   assert.ok(far.km > 30, String(far.km));

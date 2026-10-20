@@ -47,7 +47,7 @@ const ROUTE_PTS = (() => { const out = []; for (let i = 0; i < WAY.length - 1; i
 const HOURS_TUE_SUN = { periods: [0, 2, 3, 4, 5, 6].map((d) => ({ open: { day: d, hour: 10, minute: 0 }, close: { day: d, hour: 17, minute: 0 } })), weekdayDescriptions: ["Monday: Closed", "Tuesday: 10:00 AM – 5:00 PM", "Wednesday: 10:00 AM – 5:00 PM", "Thursday: 10:00 AM – 5:00 PM", "Friday: 10:00 AM – 5:00 PM", "Saturday: 10:00 AM – 5:00 PM", "Sunday: 10:00 AM – 5:00 PM"] };
 const HOURS_DAILY = { periods: [0, 1, 2, 3, 4, 5, 6].map((d) => ({ open: { day: d, hour: 10, minute: 0 }, close: { day: d, hour: 18, minute: 0 } })), weekdayDescriptions: ["Monday: 10:00 AM – 6:00 PM", "Tuesday: 10:00 AM – 6:00 PM", "Wednesday: 10:00 AM – 6:00 PM", "Thursday: 10:00 AM – 6:00 PM", "Friday: 10:00 AM – 6:00 PM", "Saturday: 10:00 AM – 6:00 PM", "Sunday: 10:00 AM – 6:00 PM"] };
 function gPlace(name, town, st, lat, lng, extra) {
-  return Object.assign({ id: "ChIJ" + name.replace(/\W+/g, ""), primaryType: /thrift/i.test(name) ? "thrift_store" : /flea/i.test(name) ? "flea_market" : /mercantile|gift|mason jar/i.test(name) ? "home_goods_store" : "antique_store", displayName: { text: name }, formattedAddress: "1 Main St, " + town + ", " + st + " 00000, USA",
+  return Object.assign({ id: "ChIJ" + name.replace(/\W+/g, ""), primaryType: /thrift/i.test(name) ? "thrift_store" : /flea/i.test(name) ? "flea_market" : /mercantile|gift|mason jar/i.test(name) ? "home_goods_store" : "book_store",   /* the fake's typed kind is books, the one type Nearby takes in the tests */ displayName: { text: name }, formattedAddress: "1 Main St, " + town + ", " + st + " 00000, USA",
     addressComponents: [{ longText: "1", types: ["street_number"] }, { longText: "Main Street", types: ["route"] }, { longText: town, types: ["locality"] }, { longText: st, shortText: st, types: ["administrative_area_level_1"] }],
     location: { latitude: lat, longitude: lng }, rating: 4.6, userRatingCount: 300, utcOffsetMinutes: -240, regularOpeningHours: HOURS_DAILY,
     photos: [{ name: "places/ChIJ" + name.replace(/\W+/g, "") + "/photos/P1" }], primaryTypeDisplayName: { text: "Antique Store" } }, extra || {});
@@ -93,13 +93,14 @@ function fakeGoogle(u, init) {
   }
   if (/places:searchNearby/.test(u)) {   /* v140: by type, the most popular first, inside the circle */
     const b = JSON.parse(init.body), c = b.locationRestriction.circle, here = { lat: c.center.latitude, lng: c.center.longitude };
-    if (b.includedTypes.indexOf("bogus_type") !== -1) return Promise.resolve({ ok: false, status: 400, json: async () => ({ error: { message: "Invalid type" } }), headers: new Headers() });
+    if (b.includedTypes.indexOf("bogus_type") !== -1 || b.includedTypes.indexOf("thrift_store") !== -1) return Promise.resolve({ ok: false, status: 400, json: async () => ({ error: { message: "Invalid type" } }), headers: new Headers() });   /* v142: the fake Google refuses thrift_store, as the real one refused one of the pair */
     if (here.lat > 44) return ok({ places: [] });
     const hits = SHOPS.filter((p) => b.includedTypes.indexOf(p.primaryType) !== -1 && TRIP.haversineKm(here, { lat: p.location.latitude, lng: p.location.longitude }) <= c.radius / 1000);
     hits.sort((a, b2) => (b2.userRatingCount || 0) - (a.userRatingCount || 0));
     return ok({ places: hits.slice(0, 20) });
   }
   if (/computeRoutes/.test(u)) { const b = JSON.parse(init.body); if (b.destination.address === "nowhere special") return ok({ routes: [] });
+    if (b.intermediates && b.intermediates.length && /Portsmouth/.test(b.intermediates[0].address)) return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline(ROUTE_PTS) }, distanceMeters: 640000, duration: "23400s" }] });   /* v142: via Portsmouth is the US-23 road */
     if (b.origin.location.latLng.latitude < 39) return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline(ROUTE_PTS.filter((p) => p.lng > -82.47)) }, distanceMeters: 30000, duration: "1500s" }] }); if (b.destination.address === "nowhere") return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline([{ lat: 46.5, lng: -84.3 }, { lat: 46.6, lng: -84.2 }]) }, distanceMeters: 12000, duration: "900s" }] }); /* v136: the fastest first (US-35), then the US-23 alternative with more along it */
     return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline(ROUTE35) }, distanceMeters: 571000, duration: "20880s" }].concat(b.computeAlternativeRoutes ? [{ polyline: { encodedPolyline: encodePolyline(ROUTE_PTS) }, distanceMeters: 640000, duration: "23400s" }] : []) }); }
   if (/geocode\/json/.test(u)) { const south = /latlng=38\./.test(u); return ok({ results: [{ address_components: [{ long_name: south ? "Huntington" : "Novi", short_name: south ? "Huntington" : "Novi", types: ["locality", "political"] }, { long_name: south ? "West Virginia" : "Michigan", short_name: south ? "WV" : "MI", types: ["administrative_area_level_1", "political"] }] }] }); }
@@ -114,7 +115,7 @@ const PRO = {};   /* cid -> paid Pro, the fake shop */
 const names = ["gKey", "gFetch", "gPlacesText", "gPlacesAll", "gPlacesPage", "gPlacesNearby", "kindSearches", "gPlaceHours", "gRoutes", "gTown", "nearNum", "tripCell", "nearAnswer", "nearRoute", "tripBuild", "tripRoute", "ppRoute",
   "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep",
   "b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessVerify", "sessMember", "pxHmac", "alSame", "alEmail", "sha16", "kvGet", "kvPut", "readJson", "vClean", "scrubPII", "ipKey", "ip6Parts", "cors", "json"];
-const pre = [constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
+const pre = ["const BAD_TYPES = new Set();",constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
 const W = fromIndex(names, Object.assign({ fetch: fakeGoogle, PCACHE, vCount: async () => true, isOwner: (r) => r.headers.get("x-prowl-owner") === "owner-key-0123456789", alProShop: async (env, email, c, cid) => ({ pro: !!PRO[cid] }), console: { error() {} } }, TRIP), pre);
 
 function envWith(o) { return Object.assign({ PROWL_ALERTS: new FakeKV(), PROWL_SESSION_SECRET: SECRET, GOOGLE_MAPS_KEY: "k".repeat(30) }, o || {}); }
@@ -141,8 +142,8 @@ test("/near: without the key a plain 'not set up'; with it the shops around a po
   const env = envWith(); CALLS.length = 0; PCACHE.m.clear();
   const r = await call(env, "GET", "/near?lat=38.4192&lng=-82.4452");   /* standing in Huntington */
   assert.equal(r.status, 200);
-  assert.equal(CALLS.filter((u) => /searchNearby/.test(u)).length, 1, "v140: one Nearby search for antiques and thrift, by type");
-  assert.equal(CALLS.filter((u) => /searchText/.test(u)).length, 1, "and one text search for vintage");
+  assert.equal(CALLS.filter((u) => /searchNearby/.test(u)).length, 0, "v143: no Nearby for antiques and thrift, Google has no such types");
+  assert.equal(CALLS.filter((u) => /searchText/.test(u)).length, 1, "one text search for the three kinds");
   const names = r.body.places.map((p) => p.name);
   assert.equal(names[0], "Central City Antiques", "the biggest first");
   assert.equal(names.filter((n) => /Central City|14th Street/.test(n)).length, 3, "the three Huntington shops");
@@ -185,7 +186,8 @@ test("/trip: the reference route from Novi to Blenko, in drive order, the Centra
   assert.ok(!/42\.48|83\.4755/.test(JSON.stringify(b.origin)), "the origin point is not echoed");
   assert.equal(b.route.km, 640); assert.equal(b.route.min, 390); assert.equal(b.empty, false);
   assert.equal(b.route.slower, 42, "v136: the route with the most to see, 42 minutes longer than Google's fastest");
-  assert.equal(b.how.routes.length, 2, "v141: how it was looked for"); assert.ok(b.how.boxes.length >= 13 && b.how.nearby >= 13 && b.how.text >= 13 && b.how.refused === 0, JSON.stringify(b.how));
+  assert.equal(b.how.routes.length, 2, "v141: how it was looked for"); assert.ok(b.how.boxes.length >= 20 && b.how.nearby === 0 && b.how.text >= 20, JSON.stringify(b.how));
+  assert.deepEqual(b.how.badTypes, [], "v143: nothing typed, nothing refused");
   assert.ok(b.how.routes[0].score > b.how.routes[1].score, "the chosen route scored higher");
   assert.equal(b.route.routes, 2);
   assert.ok(!b.stops.find((s) => /Gaffney|Ellie Mills/.test(s.name)), "small shops are not anchors");
@@ -193,10 +195,22 @@ test("/trip: the reference route from Novi to Blenko, in drive order, the Centra
   assert.ok(!JSON.stringify(b).includes("Hillbilly"), "v138: a flea market is out while its chip is off");
   assert.equal(b.stops[5].name, "Bluegrass Collectors", "so Ashland's anchor is the collectors' shop");
   const searches = CALLS.filter((u) => /searchText|searchNearby/.test(u)).length;
-  assert.ok(searches >= 20 && searches <= 120, "two routes, a Nearby and a text search a box, shared boxes asked once: " + searches);
-  assert.ok(CALLS.filter((u) => /searchNearby/.test(u)).length >= 10, "the typed kinds went to Nearby");
+  assert.ok(searches >= 20 && searches <= 130, "two routes, one text search a circle, shared circles asked once: " + searches);
   const again = await call(env, "GET", "/trip?" + NOVI + "&to=" + encodeURIComponent("blenko glass company, milton, wv") + "&day=2026-10-26");
   assert.equal(again.res.headers.get("X-Prowl-Cache"), "hit");
+});
+
+test("v142: 'via Portsmouth, OH' routes through Portsmouth, and a kept trip keeps its via for rebuilds", async () => {
+  const env = envWith({ PRO_CIDS: "1001" }); PCACHE.m.clear();
+  const r = await call(env, "GET", "/trip?" + NOVI + "&to=" + encodeURIComponent("Blenko Glass Company, Milton, WV via Portsmouth, OH") + "&day=2026-10-26");
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.via, ["Portsmouth, OH"]);
+  assert.equal(r.body.dest.name, "Blenko Glass Company", "the destination is the part before via");
+  assert.equal(r.body.how.routes.length, 1, "one road: the one through Portsmouth");
+  assert.ok(r.body.stops.find((s) => s.name === "Unique Antiques Warehouse"));
+  const made = await call(env, "POST", "/trips", { to: "Blenko Glass Company, Milton, WV via Portsmouth, OH", lat: 42.4806, lng: -83.4755, day: "2026-10-26" }, "1001");
+  assert.equal(made.status, 200);
+  assert.deepEqual(JSON.parse(env.PROWL_ALERTS.m.get("trip:" + made.body.id)).via, ["Portsmouth, OH"]);
 });
 
 test("/trip: an empty corridor is a result with the route, not an error; no route is a 404; no key is 'not set up'", async () => {
@@ -224,14 +238,14 @@ test("v139: a full box is read on to its next pages, and never past the third", 
 
 test("v140: Nearby by type, most popular first; a refused type falls back to the text search", async () => {
   const env = envWith(); CALLS.length = 0;
-  const near = await W.gPlacesNearby(env, ["antique_store"], { lat: 38.4192, lng: -82.4452 }, 25000);
+  const near = await W.gPlacesNearby(env, ["book_store"], { lat: 38.4192, lng: -82.4452 }, 25000);
   assert.deepEqual(near.map((p) => p.name).slice(0, 2).sort(), ["Bluegrass Collectors", "Central City Antiques"], "the two most reviewed first (a tie in the fixture), Ashland inside the circle");
   assert.ok(near.findIndex((p) => p.name === "Olde Central City Vintage") > 1, "the 40-review shop after them");
   assert.equal(await W.gPlacesNearby(env, ["bogus_type"], { lat: 38.4192, lng: -82.4452 }, 25000), null, "Google refused: null, not an empty list");
   CALLS.length = 0;
-  const all = await W.kindSearches(env, ["antiques", "vintage"], { lat: 38.4192, lng: -82.4452 }, 22000, true, 1);
+  const all = await W.kindSearches(env, ["antiques", "books"], { lat: 38.4192, lng: -82.4452 }, 22000, true, 1);
   assert.ok(all.find((p) => p.name === "Central City Antiques"));
-  assert.equal(CALLS.filter((u) => /searchNearby/.test(u)).length, 1); assert.equal(CALLS.filter((u) => /searchText/.test(u)).length, 1);
+  assert.equal(CALLS.filter((u) => /searchNearby/.test(u)).length, 1, "books by type"); assert.equal(CALLS.filter((u) => /searchText/.test(u)).length, 1, "antiques by text");
 });
 
 test("/pp: only a place photo name, through the worker", async () => {
@@ -373,7 +387,7 @@ test("the worker's own guards: routes are wired, the login links the account, th
   assert.match(INDEX, /url\.pathname\.startsWith\("\/finds\/"\) && request\.method === "GET"\) return findPhotoRoute/);
   assert.match(INDEX, /await tripAcctLink\(env, id, email\)/);
   assert.match(INDEX, /await tripSweep\(env\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v141"/);
+  assert.match(INDEX, /const WORKER_VERSION = "v143"/);
   assert.equal((INDEX.match(/env\.GOOGLE_MAPS_KEY/g) || []).length, 1, "the key is read in one place (gKey) and never put in an answer");
   for (const name of ["nearRoute", "tripRoute", "tripsRoute", "tripBuild", "ppRoute"]) assert.ok(!/GOOGLE_MAPS_KEY/.test(indexFn(name)), name + " never touches the key itself");
 });

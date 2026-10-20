@@ -15,9 +15,9 @@ export const MAPS_WAYPOINTS = 9;         /* Google Maps directions links take ab
 export const FINDS_GRACE_DAYS = 7;       /* find photos live this long after the trip closes (the spec's default) */
 export const TRIP_DAYS_MAX = 14;         /* a trip day may be at most this far ahead */
 export const CLUSTER_WALK_KM = 0.6;      /* shops this close are one walkable cluster even across a town line */
-export const CORRIDOR_STEP_KM = 40;      /* v138: the corridor is searched in boxes this far apart ... */
-export const CORRIDOR_RADIUS_M = 22000;  /* ... each this far to a side, and Google must stay inside the box (a bias let a
-                                            box's 20 answers wander 30 km off and lose Maumee Antique Mall, 1,776 reviews) */
+export const CORRIDOR_STEP_KM = 25;      /* v143: the corridor is searched in circles this far apart ... */
+export const CORRIDOR_RADIUS_M = 15000;  /* ... each this wide, as a bias (what Around You uses and what finds Maumee Antique
+                                            Mall first); a strict 44 km box ranked by distance to its centre never listed it */
 /* v135 (the owner: "maybe someone wants to see records, toys, antique or thrift stores"): what to look for, as the
    chips on the page. The default is the spec's three. One Google text query a circle carries every picked kind. */
 export const CATS = { antiques: "antique stores and antique malls", vintage: "vintage stores", thrift: "thrift stores", records: "record stores", books: "used book stores", toys: "vintage toy and collectibles shops", flea: "flea markets" };
@@ -48,13 +48,20 @@ export const ANCHOR_REVIEWS_ANTIQUES = 75;   /* ... and an antiques shop with th
 /* v140: Google's own place types for the kinds that have one; Nearby Search answers "antique stores only, most popular
    first", which is "biggest first" and can never return a museum. Vintage, records and flea markets have no type and
    stay text searches. */
-export const NEARBY_TYPES = { antiques: ["antique_store"], thrift: ["thrift_store"], books: ["book_store"], toys: ["toy_store"] };
+export const NEARBY_TYPES = { books: ["book_store"], toys: ["toy_store"] };   /* v143: Google refused antique_store and thrift_store (how.badTypes on the live build); those are text searches */
+/* v142: "Blenko Glass Company, Milton, WV via Portsmouth, OH" steers the road through a town (or towns, joined by
+   "and"); Google's alternatives alone do not always offer the road a collector wants */
+export function splitVia(text) {
+  const m = /^(.*?)\s+via\s+(.+)$/i.exec(String(text || "").trim());
+  if (!m) return { to: String(text || "").trim(), via: [] };
+  return { to: m[1].trim(), via: m[2].split(/\s+(?:and|then)\s+/i).map((v) => v.trim()).filter(Boolean).slice(0, 3) };
+}
 export function kindPlan(cats) {
   const keys = catsParse(cats.join ? cats.join(",") : cats), types = [], text = [];
   for (const k of keys) { if (NEARBY_TYPES[k]) types.push(...NEARBY_TYPES[k]); else text.push(CATS[k]); }
   return { types: types, text: text.length ? text.join(", ") : "", textKeys: keys.filter((k) => !NEARBY_TYPES[k]) };
 }
-export const ROUTES_MAX = 3, TRIP_SEARCHES_MAX = 120, TRIP_PAGES_MAX = 3;   /* v139: a full box is read to its third page */
+export const ROUTES_MAX = 3, TRIP_SEARCHES_MAX = 130, TRIP_PAGES_MAX = 1;   /* v143: small circles instead of pages */
 export const ANCHOR_MIN_REVIEWS = 25;    /* v139: whatever its name says, an anchor has at least this many reviews */   /* v136: Google's alternatives are searched too; this many Text Searches a build at most */
 export const FIND_IMG_MAX = 600 * 1024;  /* a find photo arrives already downscaled by the page; refuse anything bigger */
 export const FINDS_MAX = 200;            /* finds kept per trip */
@@ -337,7 +344,7 @@ export function tripExpired(trip, now) { return !!trip && Date.parse(trip.expire
    stops in drive order. Never a street for the origin. */
 export function tripRecord(id, org, built, day, now) {
   const stops = (built.stops || []).slice(0, TRIP_STOPS_MAX).map((a) => stopRef(a));
-  return { id: id, org: String(org), members: [String(org)], created: new Date(now || Date.now()).toISOString(), cats: catsParse((built.cats || []).join(",")),
+  return { id: id, org: String(org), members: [String(org)], created: new Date(now || Date.now()).toISOString(), cats: catsParse((built.cats || []).join(",")), via: (built.via || []).map((v) => String(v).slice(0, 80)).slice(0, 3),
     day: day, closes: tripCloses(day), expires: tripExpires(tripCloses(day)),
     origin: String(built.origin && built.origin.town || "").slice(0, 80), dest: { name: String(built.dest && built.dest.name || "").slice(0, 120), town: String(built.dest && built.dest.town || "").slice(0, 80), id: String(built.dest && built.dest.id || "") },
     route: built.route || null, stops: stops };
