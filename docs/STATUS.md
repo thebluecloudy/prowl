@@ -1,16 +1,37 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.34 / v130).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.35 / v131).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.34** | 402,502 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v130** | |
+| Page | **v7.35** | 402,218 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v131** | |
 
 Recently shipped, newest first:
 
+- **v7.35 + worker v131: the new plans, and the email ask** (Matt, 2026-10-20: "everything that the customer does is
+  free"; "3 hunts is good, pro gets unlimited ... once they get the email, they can adjust this"; "unlimited photo
+  checks, people can use to price their stuff"; "we can just say owl and twig vintage". The goal: get the email, so
+  alerts bring people back to search and buy through the affiliate links).
+  - **Plans (worker v131):** one free plan for every member: alerts for 3 hunts (`ALERT_FREE_HUNTS`, default 3) at the
+    pace they pick. The v55 split (members after Oct 4, 2026 got 1 hunt on Mondays; `ALERT_FREE_HUNTS_NEW`) is gone:
+    `alFree` no longer reads it and `alFreeWeekly` is always false. Pro covers up to 100 hunts (`AL_MAX_HUNTS`, was
+    25) and photo checks are "unlimited" with a fair-use ceiling of 100 a day (`PHOTO_PRO_PER_DAY`, was 25). The
+    Den still holds 5 hunts on Free and 100 on Pro (Matt's choice). Emails and perks say the new plan.
+  - **Plan copy (page):** every place that quoted 1 hunt on Mondays, 25 hunts or 25 photo checks says Free: 3 hunts,
+    Pro: up to 100 hunts, unlimited photo checks (fair use, 100 a day). The plan table follows.
+  - **The email ask:** under every email box, "From Owl & Twig Vintage. No password. Your email is never sold or
+    shared. One tap to unsubscribe." (`mailTrust`), and a preview of the email from the visitor's own hunt, up to 3
+    listings Prowl already has (`mailPreview`; nothing is fetched for it). Daily counts the days it was opened (new key
+    `prowl.dailyDays`); from the second day a not-signed-in visitor gets a "Get your daily prowl by email" card. The
+    Den's hunts tab says "Your hunts live only on this device. Keep them safe with your email" (`#otp-denSafe`).
+  - **For Matt:** the Prowl Pro product page on Shopify (`/products/prowl-pro`) is not in this repo; its description
+    may still say 25 hunts and 25 photo checks. Alert capacity is shared (`ALERT_BATCH` hunts per 5-minute run); watch
+    the admin's checked counts as members grow.
+  Test: `worker/__tests__/plans-v131.test.mjs`, `__tests__/page/email-ask-v735.test.mjs`; the photo copy test in
+  `motion.test.mjs` updated.
 - **v7.34 / v130: one piece on several sites, with each site's price** (the owner, on a Rookwood owl at $190 on Etsy,
   $211 on Poshmark and on eBay: "show that it is listed in 2 other places, and they have different prices. say someone
   doesn't trust poshmark, but would buy from etsy, or if lowest price need to include the shipping").
@@ -584,7 +605,6 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `ccr-0de21c46-yzs839` | Claude | **v7.35 + worker v131**: the new plans (Free: 3 hunts emailed at the pace you pick; Pro: up to 100 hunts, unlimited photo checks, fair use 100 a day) and the email ask (promise, preview, Daily's second ask, keep your hunts safe) | Building. |
 
 Next free numbers: **page v7.36, worker v132**. Claim one here when you start.
 
