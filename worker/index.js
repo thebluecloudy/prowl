@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v153: 2026-10-20. Around You also asks Google for the closest shops of the kinds picked, ranked by distance within 3
+ *         miles (the owner, standing in Maumee Antique Mall: it was missing; Google's relevance answer at the mall's
+ *         own spot dropped it on some asks and not others). Near cache key v=11.
  *   v152: 2026-10-20. The weekly letter (the owner, from Cat On Chair's Weekly Recap): every Sunday from 6pm in the
  *         member's time zone the panther writes each member about their week (letter.js): new finds, the best find
  *         against its hunt's typical price, likes saved, and for the quietest hunt a shorter search proved on eBay.
@@ -517,7 +520,7 @@ import { wkAdd, wkFresh, wkCur, letterShorters, letterBuild, letterText, letterQ
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v152";
+const WORKER_VERSION = "v153";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6462,6 +6465,7 @@ async function fbFinds(request, env, url, origin) {
    decides. Trip finds expire: the trip closes at the end of its day (or when closed), the photos and the feed are
    deleted FINDS_GRACE_DAYS later by tripSweep (the alert clock, once an hour), and /finds refuses them from the moment
    the trip expires whatever R2 still holds. The bucket's own lifecycle rule (wrangler.toml) is the backstop. */
+const NEAR_HERE_M = Math.round(3 * MI_M);   /* v153: the distance-ranked ask looks this far */
 const NEAR_PER_IP = 120, TRIP_PER_IP = 30, PP_PER_IP = 1500, TRIPS_PER_IP = 400, NEAR_CACHE_SECONDS = 600, TRIP_CACHE_SECONDS = 3600, HOURS_CACHE_SECONDS = 600;
 const G_PLACE_FIELDS = "id,displayName,formattedAddress,addressComponents,location,rating,userRatingCount,regularOpeningHours,utcOffsetMinutes,photos,editorialSummary,primaryType,primaryTypeDisplayName,googleMapsUri";
 const G_TIMEOUT_MS = 9000, FIND_SIG_SECONDS = 3600, FIND_BODY_MAX = 1024 * 1024, TRIPINV_TTL = 30 * 86400;
@@ -6478,7 +6482,7 @@ async function gFetch(url, init, mask, env) {
   finally { clearTimeout(timer); }
 }
 /* Text Search (New), biased to a circle when one is given, or (v138, restrict) held inside a box that far to a side */
-async function gPlacesText(env, query, center, radius, max, restrict) { return (await gPlacesPage(env, query, center, radius, max, restrict, "")).places; }
+async function gPlacesText(env, query, center, radius, max, restrict, rank) { return (await gPlacesPage(env, query, center, radius, max, restrict, "", rank)).places; }
 /* v140: Nearby Search (New) by place type inside a circle, the most popular first; null when Google refuses (an unknown
    type), so the caller can fall back to a text search */
 const BAD_TYPES = new Set();   /* v142: place types Google refused, remembered for this isolate's life */
@@ -6516,9 +6520,10 @@ async function gPlacesAll(env, query, center, radius, restrict, pages) {
   }
   return out;
 }
-async function gPlacesPage(env, query, center, radius, max, restrict, pageToken) {
+async function gPlacesPage(env, query, center, radius, max, restrict, pageToken, rank) {
   const body = { textQuery: query, maxResultCount: Math.max(1, Math.min(20, max || 20)), languageCode: "en", regionCode: "US" };
   if (pageToken) body.pageToken = pageToken;
+  if (rank === "DISTANCE") body.rankPreference = "DISTANCE";   /* v153: the closest first, for where you stand */
   if (center && restrict) {
     const dLat = (radius || NEAR_RADIUS_M) / 111000, dLng = (radius || NEAR_RADIUS_M) / (111000 * Math.max(0.2, Math.cos(center.lat * Math.PI / 180)));
     body.locationRestriction = { rectangle: { low: { latitude: center.lat - dLat, longitude: center.lng - dLng }, high: { latitude: center.lat + dLat, longitude: center.lng + dLng } } };
@@ -6568,13 +6573,17 @@ async function nearRoute(request, env, url, origin) {
   if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, places: [] }, 503, origin);
   const cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=10";   /* v151: town */
+  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=11";   /* v151: town; v153: the closest asked too */
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("near:" + ipKey(request.headers.get("CF-Connecting-IP")), NEAR_PER_IP))) return json({ error: "slow down" }, 429, origin);
   const here = { lat: lat, lng: lng };
-  const [found, town] = await Promise.all([kindSearches(env, cats, here, NEAR_RADIUS_M, false, 0), gTown(env, lat, lng).catch(() => "")]);   /* v140: by type, most popular first; v151: the town too */
-  const lists = [found];
+  const plan = kindPlan(cats);
+  /* v153: and the closest of those kinds, by distance: Google's relevance answer, asked at Maumee Antique Mall's own spot,
+     dropped the mall on some asks and not others; ranked by distance the shop you stand in comes first */
+  const [found, town, closest] = await Promise.all([kindSearches(env, cats, here, NEAR_RADIUS_M, false, 0), gTown(env, lat, lng).catch(() => ""),
+    plan.text ? gPlacesText(env, plan.text, here, NEAR_HERE_M, 20, false, "DISTANCE").catch(() => []) : Promise.resolve([])]);   /* v140: by type, most popular first; v151: the town too */
+  const lists = [found, closest];
   const seen = Object.create(null), all = [];
   for (const p of [].concat(...lists)) { if (seen[p.id] || !kindAllowed(p, cats)) continue; seen[p.id] = 1; p.near = Math.round(haversineMi(here, p) * 10) / 10; if (p.near <= NEAR_KEEP_MI) all.push(p); }   /* v133: Google answers past the circle; v138: off kinds out */
   const places = rankPlaces(all).slice(0, NEAR_MAX).map((p) => placeCard(p));
