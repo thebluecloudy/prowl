@@ -1,13 +1,13 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.40 / v143).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.40 / v144).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.40** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v143** | |
+| Worker | **v144** | |
 
 Recently shipped, newest first:
 
@@ -26,6 +26,11 @@ Recently shipped, newest first:
   (`FLT_KEY`); the sites are the drawer's saved set (`st.mkt`, unchanged key), and the drawer's count follows. Page
   only. Not in this version: on-screen local pickup (the email's ZIP and radius) needs the worker's live eBay search
   to take them. Test: `__tests__/page/filter-sheet-v740.test.mjs`.
+- **v144: cache keys v=6.** v143's upload sat on Cloudflare for an hour without taking over (requests still answered
+  with v142's 40 km boxes; Cloudflare's stored script was v143). The keys move so no v142 build is served once v143's
+  circles are live, and the push starts a fresh build. If a build ever sits like this again: Cloudflare > Workers &
+  Pages > prowl > Deployments shows whether the latest build failed or is waiting to be promoted. Worker only.
+
 - **v143: text searches in small circles** (the live v142 build answered `how.badTypes: antique_store, thrift_store`:
   Google's Nearby Search has neither type, so the typed search can never run for antiques; books and toys keep
   theirs). The corridor goes back to bias circles, now 25 km apart and 15 km wide, Around you's radius, which lists
@@ -758,7 +763,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.41, worker v144**. Claim one here when you start.
+Next free numbers: **page v7.41, worker v145**. Claim one here when you start.
 
 ## What's next
 
