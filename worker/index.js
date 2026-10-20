@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v155: 2026-10-20. Keeping a trip for the group reuses the build already made for the page (the same cache key as
+ *         /trip) instead of building it again, and a build or save that fails says so (502 / 503) instead of a bare
+ *         500 (the owner: SHARE said "could not be shared").
  *   v154: 2026-10-20. Road trip stops carry the time to allow (stay, minutes), a destination antique mall up to 30
  *         minutes off the road comes along marked worth, and a town's shops a short walk from its stop say walk (the
  *         owner, from Gemini's Findlay to Milton run). Trip cache key v=10.
@@ -523,7 +526,7 @@ import { wkAdd, wkFresh, wkCur, letterShorters, letterBuild, letterText, letterQ
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v154";
+const WORKER_VERSION = "v155";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6629,7 +6632,7 @@ async function tripRoute(request, env, url, origin) {
   if (to.length < 2) return json({ error: "to required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, stops: [] }, 503, origin);
   const day = tripDay(url.searchParams.get("day")), cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=10";   /* v137 to v154: the answer changed */
+  const key = tripKey(url.origin, lat, lng, to, day, cats);
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("trip:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIP_PER_IP))) return json({ error: "slow down" }, 429, origin);
@@ -6639,6 +6642,8 @@ async function tripRoute(request, env, url, origin) {
   try { await PCACHE.put(key, res.clone()); } catch (e) {}
   return res;
 }
+/* v155: one key for a built trip, so keeping it for the group finds the build the page is showing */
+function tripKey(o, lat, lng, to, day, cats) { return o + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(String(to).toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=10"; }   /* v137 to v154: the answer changed */
 /* a place's photo: Google's media endpoint needs the key, so the page asks here */
 async function ppRoute(request, env, url) {
   const n = String(url.searchParams.get("n") || "");
@@ -6731,12 +6736,21 @@ async function tripsRoute(request, env, url, origin) {
     const b = await readJson(request, 4096);
     const lat = nearNum(b.lat, -90, 90), lng = nearNum(b.lng, -180, 180), to = vClean(b.to, 160);
     if (lat == null || lng == null || to.length < 2) return json({ error: "where to?" }, 400, origin);
-    const day = tripDay(b.day), built = await tripBuild(env, { lat: lat, lng: lng }, to, day, catsParse(String(b.cats || "")));
-    if (!built) return json({ error: "no route" }, 404, origin);
+    const day = tripDay(b.day), cats = catsParse(String(b.cats || ""));
+    /* v155: the trip the page is showing, from the cache /trip filled; built again only when it has gone */
+    let built = null;
+    try { const hit = await PCACHE.match(tripKey(url.origin, lat, lng, to, day, cats)); if (hit) built = await hit.json(); } catch (e) { built = null; }
+    if (!built || !Array.isArray(built.stops)) {
+      try { built = await tripBuild(env, { lat: lat, lng: lng }, to, day, cats); }
+      catch (e) { console.error("trips build", String(e && e.stack || e)); return json({ error: "The trip could not be built just now." }, 502, origin); }
+    }
+    if (!built) return json({ error: "No driving route to there could be found." }, 404, origin);
     const trip = tripRecord(tripId(), cid, built, day);
-    await tripPut(env, trip);
-    await tripIndexAdd(env, cid, trip.id);
-    const all = await kvGet(env, "trips:all", []); all.push({ id: trip.id, expires: trip.expires }); await kvPut(env, "trips:all", all.slice(-2000));
+    try {
+      await tripPut(env, trip);
+      await tripIndexAdd(env, cid, trip.id);
+      const all = await kvGet(env, "trips:all", []); all.push({ id: trip.id, expires: trip.expires }); await kvPut(env, "trips:all", all.slice(-2000));
+    } catch (e) { console.error("trips save", String(e && e.message || e)); return json({ error: "Trips cannot be saved just now." }, 503, origin); }
     return nearAnswer(Object.assign(tripView(trip, null), { mine: true, org: true, stops: built.stops, maps: built.maps, empty: built.empty }), 200, origin);
   }
   const trip = await tripGet(env, id);

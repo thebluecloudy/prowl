@@ -1,16 +1,30 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.52 / v154).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.53 / v155).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.52** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v154** | |
+| Page | **v7.53** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v155** | |
 
 Recently shipped, newest first:
 
+- **v7.53 / v155: SHARE sends the route, and a keep that fails says why** (the owner, on the road: "cannot share the
+  map itinerary"; SHARE toasted "The trip could not be shared just now"). SHARE only ever kept a Pro group trip, and
+  it built the whole trip again on the worker (about a hundred Google calls over a phone connection) and hid the
+  reason when that failed. Now SHARE opens a choice on the trip:
+  - **Send the route** (`nrSend`, `nrRouteText`): the drive, the stops in order (skipped ones out, "+1 more in town"),
+    the final stop and the Google Maps link (each leg's when there are more than nine stops), through the phone's
+    share sheet, or copied when there is none. Anyone, no sign-in; the origin is only its town.
+  - **Keep it for my group** (`nrKeep`, the old SHARE): a failure toasts the worker's reason and status, or "Prowl
+    could not be reached" with no answer at all. On a kept trip the second button is Add a member.
+  - Worker: `POST /trips` takes the build `/trip` already cached for the page (`tripKey`, the same key) and builds
+    again only when it has gone; a build that throws is a 502 and a save that fails a 503, each with words, logged as
+    "trips build" / "trips save".
+  - Tests: `__tests__/page/near-send-v753.test.mjs`, `worker/__tests__/trips.test.mjs`, and the SHARE taps in
+    `near-section-v736` now pick Keep it for my group.
 - **v7.52: the one-site pill is opt-in** (Matt, 2026-10-20, Den > Settings: "this no longer is needed. Unless we can
   have them turn it on if they want"). The Just ShopGoodwill pill beside Hunt is hidden to start with. Den > Settings >
   One-site button has **Off** first, then every marketplace; picking one shows "Just <site>" and Off hides it again.
@@ -870,7 +884,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.53, worker v155**. Claim one here when you start.
+Next free numbers: **page v7.54, worker v156**. Claim one here when you start.
 
 ## What's next
 
