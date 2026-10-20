@@ -1,15 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v138).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v139).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.39** | 399,599 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v138** | |
+| Worker | **v139** | |
 
 Recently shipped, newest first:
+
+- **v139: the boxes read to the end, and nothing that is never ours** (the first live build on v138: "The Mall of
+  Monroe", a shopping mall at 3.2 stars, was anchor one; "Garden Cottage Emporium", 4 reviews, an anchor on its name;
+  Maumee Antique Mall still missing because the Toledo box's 20 answers were all downtown). Shopping malls, furniture,
+  pawn, jewelry and the like are dropped whatever the query returned (`kindAllowed`, `NEVER_KIND`); an anchor needs
+  25+ reviews (`ANCHOR_MIN_REVIEWS`) and the next shop in town with the reviews steps up; a box that comes back full
+  is read on to its third page (`gPlacesAll`, `TRIP_PAGES_MAX`, at most 120 searches a build). Cache keys v=4.
+  Worker only. Tests: `worker/__tests__/trip.test.mjs`, `trips.test.mjs`.
 
 - **v138: the corridor keeps what is on the road** (the owner, against Meta's list: Maumee Antique Mall, 1,776 reviews
   on I-75, and Unique Antiques Warehouse, 600 m off US-23, were missing from the Novi to Blenko build though
@@ -703,7 +711,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.40, worker v139**. Claim one here when you start.
+Next free numbers: **page v7.40, worker v140**. Claim one here when you start.
 
 ## What's next
 

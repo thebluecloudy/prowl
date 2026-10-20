@@ -44,7 +44,8 @@ export function catsQueries(cats, n) {
 export const NEAR_RADIUS_M = 15000, NEAR_KEEP_KM = 40, CORRIDOR_CENTERS_MAX = 24;   /* Around You: Google answers beyond the circle; keep only what is really near */
 export const TRIP_STOPS_MAX = 40, TRIP_NESTED_MAX = 6, NEAR_MAX = 24, TRIP_MORE_MAX = 20;
 export const ANCHOR_REVIEWS = 150;       /* v136: an antiques or vintage place with this many reviews is worth planning around */
-export const ROUTES_MAX = 3, TRIP_SEARCHES_MAX = 80;   /* v136: Google's alternatives are searched too; this many Text Searches a build at most */
+export const ROUTES_MAX = 3, TRIP_SEARCHES_MAX = 120, TRIP_PAGES_MAX = 3;   /* v139: a full box is read to its third page */
+export const ANCHOR_MIN_REVIEWS = 25;    /* v139: whatever its name says, an anchor has at least this many reviews */   /* v136: Google's alternatives are searched too; this many Text Searches a build at most */
 export const FIND_IMG_MAX = 600 * 1024;  /* a find photo arrives already downscaled by the page; refuse anything bigger */
 export const FINDS_MAX = 200;            /* finds kept per trip */
 export const TRIP_MEMBERS_MAX = 24;
@@ -116,7 +117,10 @@ export function sizeTier(place) {
 /* v138: a place of a kind the chips turned off is dropped when its kind is plain (a flea market on an antiques
    search); a kind Google names oddly ("Store", "Home goods store") stays */
 const KIND_OF = { Antiques: "antiques", Vintage: "vintage", Thrift: "thrift", Records: "records", Books: "books", Toys: "toys", "Flea market": "flea" };
+/* v139: never ours, whatever the query returned (Google fills a strict box with shopping malls for "antique malls") */
+const NEVER_KIND = /shopping\s*mall|furniture|pawn|jewel|department\s*store|gun|sporting|grocery|supermarket|pharmacy|hardware|mattress|appliance|car\s*dealer|auto\s*parts|outlet\s*mall/i;
 export function kindAllowed(place, cats) {
+  if (NEVER_KIND.test(String(place.kind || "")) || /\bmall of\b|shopping\s+(center|centre|mall)|\bplaza\b.*\bmall\b/i.test(String(place.name || ""))) return false;
   const k = KIND_OF[String(place.kind || "")];
   return !k || catsParse(cats.join ? cats.join(",") : cats).indexOf(k) !== -1;
 }
@@ -272,8 +276,14 @@ export function clusterStops(places) {
 export function splitAnchors(clusters) {
   const stops = [], more = [];
   for (const c of clusters) {
-    if ((c.tier || 0) >= 1) stops.push(c);
-    else { more.push(c); (c.nested || []).forEach((n) => more.push(n)); }
+    /* v139: a name alone ("Garden Cottage Emporium", 4 reviews) is not a stop worth planning around; the next shop in
+       town with the reviews steps up */
+    const list = [c].concat(c.nested || []), tier = (p) => (p === c ? (c.tier || 0) : sizeTier(p));
+    const ok = list.filter((p) => tier(p) >= 1 && (Number(p.n) || 0) >= ANCHOR_MIN_REVIEWS).sort((a, b) => tier(b) - tier(a) || ratingScore(b.rating, b.n) - ratingScore(a.rating, a.n));
+    if (ok.length) {
+      const a = ok[0], rest = list.filter((p) => p !== a);
+      stops.push(Object.assign({}, a, { tier: tier(a), nested: rest.slice(0, TRIP_NESTED_MAX).map((p) => { const q = Object.assign({}, p); delete q.nested; delete q.tier; return q; }) }));
+    } else { more.push(c); (c.nested || []).forEach((n) => more.push(n)); }
   }
   more.sort((a, b) => ratingScore(b.rating, b.n) - ratingScore(a.rating, a.n));
   return { stops: stops, more: more.slice(0, TRIP_MORE_MAX).map((p) => { const q = Object.assign({}, p); delete q.nested; delete q.tier; return q; }) };

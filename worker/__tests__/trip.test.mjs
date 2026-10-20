@@ -23,6 +23,18 @@ test("v138: size points add up, and a kind whose chip is off is dropped when the
   assert.equal(kindAllowed(mk("Grandview Mercantile", 697, { kind: "Store" }), CATS_DEFAULT), true, "an odd Google kind stays");
   assert.equal(kindAllowed(mk("Goodwill", 2500, { kind: "Thrift" }), ["antiques"]), false, "thrift off means no thrift");
   assert.equal(kindAllowed(mk("Flipside Records", 100, { kind: "Records" }), "antiques,records"), true);
+  /* v139: never ours, and a name alone is no anchor */
+  assert.equal(kindAllowed(mk("The Mall of Monroe", 2481, { kind: "Shopping mall", rating: 3.2 }), CATS_DEFAULT), false);
+  assert.equal(kindAllowed(mk("Woodland Mall", 914, { kind: "Shopping mall" }), ["antiques", "flea"]), false);
+  assert.equal(kindAllowed(mk("Sauer Furniture", 300, { kind: "Furniture store" }), CATS_DEFAULT), false);
+  assert.equal(kindAllowed(mk("Pack Rats Pawn Shop", 300, { kind: "Pawn shop" }), CATS_DEFAULT), false);
+  assert.equal(kindAllowed(mk("Maumee Antique Mall", 1776), CATS_DEFAULT), true);
+  const cl = (name, n, nested, extra) => Object.assign(placeCard(mk(name, n, extra)), { tier: sizeTier(mk(name, n, extra)), nested: (nested || []).map((x) => placeCard(mk(x[0], x[1]))) });
+  const sp = splitAnchors([cl("Garden Cottage Emporium", 4, [["Blessings and Bargains", 12], ["Stuff n Things", 8]], { kind: "Home goods store", rating: 5 }), cl("WAREHOUSE 61", 87, [["The Delaware Antique Mall", 303]])]);
+  assert.deepEqual(sp.stops.map((a) => a.name), ["The Delaware Antique Mall"], "the warehouse's town hands the anchor to the mall with the crowd");
+  assert.deepEqual(sp.stops[0].nested.map((a) => a.name), ["WAREHOUSE 61"]);
+  assert.equal(sp.more.length, 3, "the 4-review emporium and its town are smaller shops");
+  assert.ok(sp.more.find((a) => a.name === "Garden Cottage Emporium"));
 });
 
 test("v136: antiques get a query of their own on a trip; a town is an anchor only with a real antiques place or a crowd of reviews; the rest are smaller shops", () => {

@@ -75,6 +75,10 @@ function fakeGoogle(u, init) {
   const ok = (j) => Promise.resolve({ ok: true, status: 200, json: async () => j, headers: new Headers({ "Content-Type": "application/json" }) });
   if (/places:searchText/.test(u)) {
     const b = JSON.parse(init.body);
+    if (/paged test/.test(b.textQuery)) {   /* v139: 45 shops over three pages */
+      const page = b.pageToken === "p2" ? 1 : b.pageToken === "p3" ? 2 : 0, all = Array.from({ length: 45 }, (_, i) => gPlace("Paged Shop " + i, "Paged", "OH", 40 + i / 1000, -83, {}));
+      return ok({ places: all.slice(page * 20, page * 20 + 20), nextPageToken: page < 2 ? "p" + (page + 2) : undefined });
+    }
     if (/blenko/i.test(b.textQuery)) return ok({ places: [BLENKO] });
     if (/nowhere/i.test(b.textQuery)) return ok({ places: [] });
     const c = b.locationBias ? b.locationBias.circle : null, r = b.locationRestriction ? b.locationRestriction.rectangle : null;
@@ -99,7 +103,7 @@ function fakeGoogle(u, init) {
 /* ---- the worker's functions, with their helpers ---- */
 const SECRET = "s".repeat(40);
 const PRO = {};   /* cid -> paid Pro, the fake shop */
-const names = ["gKey", "gFetch", "gPlacesText", "gPlaceHours", "gRoutes", "gTown", "nearNum", "tripCell", "nearAnswer", "nearRoute", "tripBuild", "tripRoute", "ppRoute",
+const names = ["gKey", "gFetch", "gPlacesText", "gPlacesAll", "gPlacesPage", "gPlaceHours", "gRoutes", "gTown", "nearNum", "tripCell", "nearAnswer", "nearRoute", "tripBuild", "tripRoute", "ppRoute",
   "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep",
   "b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessVerify", "sessMember", "pxHmac", "alSame", "alEmail", "sha16", "kvGet", "kvPut", "readJson", "vClean", "scrubPII", "ipKey", "ip6Parts", "cors", "json"];
 const pre = [constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
@@ -178,7 +182,7 @@ test("/trip: the reference route from Novi to Blenko, in drive order, the Centra
   assert.ok(!JSON.stringify(b).includes("Hillbilly"), "v138: a flea market is out while its chip is off");
   assert.equal(b.stops[5].name, "Bluegrass Collectors", "so Ashland's anchor is the collectors' shop");
   const searches = CALLS.filter((u) => /searchText/.test(u)).length;
-  assert.ok(searches >= 20 && searches <= 60, "two routes, two queries a circle, shared circles asked once: " + searches);
+  assert.ok(searches >= 20 && searches <= 120, "two routes, two queries a box, shared boxes asked once: " + searches);
   const again = await call(env, "GET", "/trip?" + NOVI + "&to=" + encodeURIComponent("blenko glass company, milton, wv") + "&day=2026-10-26");
   assert.equal(again.res.headers.get("X-Prowl-Cache"), "hit");
 });
@@ -193,6 +197,17 @@ test("/trip: an empty corridor is a result with the route, not an error; no rout
   const off = await call(envWith({ GOOGLE_MAPS_KEY: "" }), "GET", "/trip?" + NOVI + "&to=anywhere");
   assert.equal(off.status, 503); assert.equal(off.body.error, "not set up");
   assert.equal((await call(env, "GET", "/trip?" + NOVI)).status, 400);
+});
+
+test("v139: a full box is read on to its next pages, and never past the third", async () => {
+  const env = envWith(); CALLS.length = 0;
+  const all = await W.gPlacesAll(env, "paged test", { lat: 40, lng: -83 }, 22000, true, 3);
+  assert.equal(all.length, 45);
+  assert.equal(CALLS.filter((u) => /searchText/.test(u)).length, 3);
+  CALLS.length = 0;
+  assert.equal((await W.gPlacesAll(env, "paged test", { lat: 40, lng: -83 }, 22000, true, 1)).length, 20, "one page when asked for one");
+  const one = await W.gPlacesText(env, "paged test", { lat: 40, lng: -83 }, 22000, 20, true);
+  assert.equal(one.length, 20, "the plain call is still one page");
 });
 
 test("/pp: only a place photo name, through the worker", async () => {
@@ -334,7 +349,7 @@ test("the worker's own guards: routes are wired, the login links the account, th
   assert.match(INDEX, /url\.pathname\.startsWith\("\/finds\/"\) && request\.method === "GET"\) return findPhotoRoute/);
   assert.match(INDEX, /await tripAcctLink\(env, id, email\)/);
   assert.match(INDEX, /await tripSweep\(env\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v138"/);
+  assert.match(INDEX, /const WORKER_VERSION = "v139"/);
   assert.equal((INDEX.match(/env\.GOOGLE_MAPS_KEY/g) || []).length, 1, "the key is read in one place (gKey) and never put in an answer");
   for (const name of ["nearRoute", "tripRoute", "tripsRoute", "tripBuild", "ppRoute"]) assert.ok(!/GOOGLE_MAPS_KEY/.test(indexFn(name)), name + " never touches the key itself");
 });
