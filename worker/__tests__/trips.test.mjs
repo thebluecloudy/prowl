@@ -66,6 +66,7 @@ const SHOPS = [
   gPlace("Ellie Mills Mercantile", "Jackson", "OH", 39.052, -82.6366, { userRatingCount: 5, rating: 5, primaryTypeDisplayName: { text: "Home goods store" } }),   /* on US-35 */
   gPlace("The Mason Jar", "Point Pleasant", "WV", 38.8445, -82.137, { userRatingCount: 176, primaryTypeDisplayName: { text: "Home goods store" } }),
   gPlace("Gaffney's Treasures and Gifts", "Marion", "OH", 40.62, -83.30, { userRatingCount: 60, primaryTypeDisplayName: { text: "Gift shop" } }),   /* on both, small */
+  gPlace("Hillbilly Flea Market", "Ashland", "KY", 38.4795, -82.6410, { userRatingCount: 970, rating: 3.9, primaryTypeDisplayName: { text: "Flea Market" } }),   /* v138: out unless Flea markets is on */
 ];
 const BLENKO = gPlace("Blenko Glass Company", "Milton", "WV", 38.4345, -82.1322, { regularOpeningHours: { periods: [1, 2, 3, 4, 5].map((d) => ({ open: { day: d, hour: 9, minute: 0 }, close: { day: d, hour: 15, minute: 30 } })), weekdayDescriptions: ["Monday: 9:00 AM – 3:30 PM", "Tuesday: 9:00 AM – 3:30 PM", "Wednesday: 9:00 AM – 3:30 PM", "Thursday: 9:00 AM – 3:30 PM", "Friday: 9:00 AM – 3:30 PM", "Saturday: Closed", "Sunday: Closed"] } });
 const CALLS = [];
@@ -76,7 +77,11 @@ function fakeGoogle(u, init) {
     const b = JSON.parse(init.body);
     if (/blenko/i.test(b.textQuery)) return ok({ places: [BLENKO] });
     if (/nowhere/i.test(b.textQuery)) return ok({ places: [] });
-    const c = b.locationBias ? b.locationBias.circle : null;
+    const c = b.locationBias ? b.locationBias.circle : null, r = b.locationRestriction ? b.locationRestriction.rectangle : null;
+    if (r) {   /* v138: a trip box; Google stays inside it */
+      if (r.low.latitude > 44) return ok({ places: [] });
+      return ok({ places: SHOPS.filter((p) => p.location.latitude >= r.low.latitude && p.location.latitude <= r.high.latitude && p.location.longitude >= r.low.longitude && p.location.longitude <= r.high.longitude) });
+    }
     if (!c) return ok({ places: [] });
     const here = { lat: c.center.latitude, lng: c.center.longitude };
     if (here.lat > 44) return ok({ places: [] });   /* the far north: no shops at all */
@@ -170,6 +175,8 @@ test("/trip: the reference route from Novi to Blenko, in drive order, the Centra
   assert.equal(b.route.routes, 2);
   assert.ok(!b.stops.find((s) => /Gaffney|Ellie Mills/.test(s.name)), "small shops are not anchors");
   assert.deepEqual(b.more.map((m) => m.name), ["Gaffney's Treasures and Gifts"], "smaller shops along the way, listed apart");
+  assert.ok(!JSON.stringify(b).includes("Hillbilly"), "v138: a flea market is out while its chip is off");
+  assert.equal(b.stops[5].name, "Bluegrass Collectors", "so Ashland's anchor is the collectors' shop");
   const searches = CALLS.filter((u) => /searchText/.test(u)).length;
   assert.ok(searches >= 20 && searches <= 60, "two routes, two queries a circle, shared circles asked once: " + searches);
   const again = await call(env, "GET", "/trip?" + NOVI + "&to=" + encodeURIComponent("blenko glass company, milton, wv") + "&day=2026-10-26");
@@ -327,7 +334,7 @@ test("the worker's own guards: routes are wired, the login links the account, th
   assert.match(INDEX, /url\.pathname\.startsWith\("\/finds\/"\) && request\.method === "GET"\) return findPhotoRoute/);
   assert.match(INDEX, /await tripAcctLink\(env, id, email\)/);
   assert.match(INDEX, /await tripSweep\(env\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v137"/);
+  assert.match(INDEX, /const WORKER_VERSION = "v138"/);
   assert.equal((INDEX.match(/env\.GOOGLE_MAPS_KEY/g) || []).length, 1, "the key is read in one place (gKey) and never put in an answer");
   for (const name of ["nearRoute", "tripRoute", "tripsRoute", "tripBuild", "ppRoute"]) assert.ok(!/GOOGLE_MAPS_KEY/.test(indexFn(name)), name + " never touches the key itself");
 });

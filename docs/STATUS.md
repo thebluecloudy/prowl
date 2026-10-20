@@ -1,15 +1,26 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v137).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v138).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.39** | 399,599 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v137** | |
+| Worker | **v138** | |
 
 Recently shipped, newest first:
+
+- **v138: the corridor keeps what is on the road** (the owner, against Meta's list: Maumee Antique Mall, 1,776 reviews
+  on I-75, and Unique Antiques Warehouse, 600 m off US-23, were missing from the Novi to Blenko build though
+  Around you finds both). A corridor circle was a Google *bias*, so its 20 answers wandered 30 km off to Blissfield
+  and Otway. The corridor is now boxes 40 km apart and 22 km to a side that Google must stay inside
+  (`locationRestriction`; `gPlacesText(..., restrict)`), at most 80 searches a build. Size points add up (`sizeTier`:
+  a big-place word, a crowd of reviews, dealers or square feet), so The Delaware Antique Mall (303 reviews) outranks a
+  bare "WAREHOUSE 61" and Chillicothe Antique Emporium its warehouse neighbour. A flea market, record store or thrift
+  shop is dropped when its chip is off (`kindAllowed`; odd Google kinds such as "Store" stay), so Bluegrass Collectors
+  is Ashland's anchor, not Hillbilly Flea Market. Cache keys v=3. Worker only.
+  Tests: `worker/__tests__/trip.test.mjs`, `trips.test.mjs`.
 
 - **v137: the trip and near cache keys move to v=2**, so no build kept by v135 is served after v136 (a kept answer
   lives an hour; the owner's first look after the deploy would have shown the old 16-anchor list). Worker only.
@@ -692,7 +703,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.40, worker v138**. Claim one here when you start.
+Next free numbers: **page v7.40, worker v139**. Claim one here when you start.
 
 ## What's next
 

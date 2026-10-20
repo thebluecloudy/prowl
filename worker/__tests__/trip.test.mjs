@@ -6,8 +6,24 @@ import {
   haversineKm, decodePolyline, nearestOnRoute, detourMinutes, corridorCenters, sizeTier, differentiator, ratingScore, rankPlaces,
   townOf, townFromAddress, normalizePlace, placeCard, hoursForDay, openAt, alongRoute, clusterStops, mapsDirUrl, hasStreet,
   tripDay, weekdayOf, tripCloses, tripExpires, tripExpired, tripRecord, tripMember, tripView, findRecord,
-  DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS, CATS, CATS_DEFAULT, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, ANCHOR_REVIEWS,
+  DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS, CATS, CATS_DEFAULT, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, ANCHOR_REVIEWS, kindAllowed,
 } from "../trip.js";
+
+test("v138: size points add up, and a kind whose chip is off is dropped when the kind is plain", () => {
+  const mk = (name, n, extra) => Object.assign({ id: name.replace(/\W+/g, ""), name, town: "T", state: "OH", lat: 0, lng: 0, rating: 4.5, n, kind: "Antiques", hours: null, photo: "", url: "", summary: "" }, extra || {});
+  assert.equal(sizeTier(mk("The Delaware Antique Mall", 303)), 2, "antique mall + a crowd");
+  assert.equal(sizeTier(mk("WAREHOUSE 61", 87)), 1, "a bare warehouse");
+  assert.equal(sizeTier(mk("Maumee Antique Mall", 1776)), 3);
+  assert.equal(sizeTier(mk("Chillicothe Antique Emporium", 292)), 2);
+  assert.equal(sizeTier(mk("American Vintage Warehouse", 246)), 2);
+  assert.equal(sizeTier(mk("Pickaway Craft Mall", 232, { kind: "Home goods store" })), 1);
+  assert.equal(sizeTier(mk("Goodwill", 2500, { kind: "Thrift" })), 0);
+  assert.equal(kindAllowed(mk("Hillbilly Flea Market", 970, { kind: "Flea market" }), CATS_DEFAULT), false);
+  assert.equal(kindAllowed(mk("Hillbilly Flea Market", 970, { kind: "Flea market" }), ["antiques", "flea"]), true);
+  assert.equal(kindAllowed(mk("Grandview Mercantile", 697, { kind: "Store" }), CATS_DEFAULT), true, "an odd Google kind stays");
+  assert.equal(kindAllowed(mk("Goodwill", 2500, { kind: "Thrift" }), ["antiques"]), false, "thrift off means no thrift");
+  assert.equal(kindAllowed(mk("Flipside Records", 100, { kind: "Records" }), "antiques,records"), true);
+});
 
 test("v136: antiques get a query of their own on a trip; a town is an anchor only with a real antiques place or a crowd of reviews; the rest are smaller shops", () => {
   assert.deepEqual(tripQueries(["antiques", "vintage", "thrift"]), ["antique stores and antique malls", "vintage stores, thrift stores"]);
@@ -15,7 +31,7 @@ test("v136: antiques get a query of their own on a trip; a town is an anchor onl
   assert.deepEqual(tripQueries(["antiques"]), ["antique stores and antique malls"]);
   assert.equal(ANCHOR_REVIEWS, 150);
   const mk = (name, n, extra) => Object.assign({ id: name.replace(/\W+/g, ""), name, town: "T", state: "OH", lat: 0, lng: 0, rating: 4.6, n, kind: "Antiques", hours: null, photo: "", url: "", summary: "" }, extra || {});
-  assert.equal(sizeTier(mk("Chillicothe Antique Emporium", 292)), 1, "292 reviews is a crowd");
+  assert.equal(sizeTier(mk("Chillicothe Antique Emporium", 292)), 2, "an emporium, and 292 reviews is a crowd (v138: the points add up)");
   assert.equal(sizeTier(mk("Two Old Broads and a Geezer", 109, { kind: "Home goods store" })), 0);
   assert.equal(sizeTier(mk("Gaffney's Treasures and Gifts", 60, { kind: "Gift shop" })), 0);
   const clusters = [
@@ -98,7 +114,7 @@ test("the corridor: a stop 40 km off the route is out, ten minutes of detour is 
   assert.equal(detourMinutes(0), 0);
   assert.ok(detourMinutes(3) <= DETOUR_MIN && detourMinutes(4) > DETOUR_MIN, "about 3 km each way is the budget at 40 km/h");
   const centers = corridorCenters(ROUTE);
-  assert.ok(centers.length >= 10 && centers.length <= 16, "a 640 km route in ~50 km steps: " + centers.length);
+  assert.ok(centers.length >= 13 && centers.length <= 20, "a 640 km route in ~40 km steps: " + centers.length);
   assert.ok(haversineKm(centers[centers.length - 1], WAY[WAY.length - 1]) < 25, "the last circle reaches the destination");
   const far = nearestOnRoute(ROUTE, { lat: 40.7584, lng: -82.5154 });
   assert.ok(far.km > 30, String(far.km));
@@ -127,16 +143,17 @@ test("ranking: size first, then rating weighted by reviews, then distance", () =
   /* v133: the words that mean a big antiques place, and a crowd of reviews; not "market" on a thrift shop */
   assert.equal(sizeTier(place({ name: "Pathway Market", town: "X", lat: 0, lng: 0, kind: "Thrift", n: 89 })), 0);
   assert.equal(sizeTier(place({ name: "Pathway Market", town: "X", lat: 0, lng: 0, kind: "Thrift", n: 2500 })), 0, "a thrift chain's reviews are not a size");
-  assert.equal(sizeTier(place({ name: "Motor City Antique Gallery", town: "X", lat: 0, lng: 0, n: 1054 })), 2, "a thousand reviews on an antiques place");
+  assert.equal(sizeTier(place({ name: "Motor City Antique Gallery", town: "X", lat: 0, lng: 0, n: 1054 })), 3, "antique gallery and a thousand reviews");
   assert.equal(sizeTier(place({ name: "Rusty Relics Vintage and Antiques", town: "X", lat: 0, lng: 0, n: 227 })), 1, "v136: 150+ reviews on an antiques place is a size");
-  assert.equal(sizeTier(place({ name: "Dixieland Flea Market", town: "X", lat: 0, lng: 0, n: 2306 })), 2);
+  assert.equal(sizeTier(place({ name: "Dixieland Flea Market", town: "X", lat: 0, lng: 0, n: 2306 })), 3);
   assert.equal(sizeTier(place({ name: "Le Shoppe Vintage Market", town: "X", lat: 0, lng: 0, n: 16 })), 1);
   assert.deepEqual(rankPlaces([
     place({ name: "Pathway Market", town: "X", lat: 0, lng: 0, kind: "Thrift", rating: 4.9, n: 89, near: 17 }),
     place({ name: "Town Peddler Craft and Antique Mall", town: "X", lat: 0, lng: 0, rating: 4.7, n: 2204, near: 14 }),
     place({ name: "Motor City Antique Gallery", town: "X", lat: 0, lng: 0, rating: 4.7, n: 1054, near: 47 }),
   ]).map((p) => p.name), ["Town Peddler Craft and Antique Mall", "Motor City Antique Gallery", "Pathway Market"], "the malls before the thrift shop");
-  assert.equal(sizeTier(place({ name: "Red Barn Antique Mall", town: "X", lat: 0, lng: 0 })), 1);
+  assert.equal(sizeTier(place({ name: "Red Barn Antique Mall", town: "X", lat: 0, lng: 0 })), 2, "antique mall, and the fixture's 300 reviews");
+  assert.equal(sizeTier(place({ name: "Red Barn Antique Mall", town: "X", lat: 0, lng: 0, n: 12 })), 1);
   assert.equal(sizeTier(place({ name: "Corner Thrift", town: "X", lat: 0, lng: 0, summary: "12,000 square feet" })), 2);
   assert.ok(ratingScore(5.0, 3) < ratingScore(4.8, 900), "few reviews pull toward 4.0");
   assert.equal(ratingScore(0, 0), 0);
