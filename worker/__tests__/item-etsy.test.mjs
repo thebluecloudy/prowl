@@ -16,7 +16,7 @@ const constLine = (name) => { const m = new RegExp("^const " + name + " = [^\\n]
 
 function load(etsyGet) {
   const asked = [];
-  const names = ["hibidText", "money", "itemRef", "itemDesc", "itemImages", "etsyMade", "itemEtsy", "itemRoute"];
+  const names = ["hibidText", "money", "itemRef", "itemDesc", "itemImages", "etsyMade", "etsyEnglish", "itemEtsy", "itemRoute"];
   const src = [constLine("ITEM_TAGS"), "const itemImg = " + /const itemImg = ([^\n]+)/.exec(INDEX)[1],
     "const ITEM_CACHE_SECONDS = 86400, ITEM_PER_IP = 300, ITEM_IMAGES = 24, ITEM_DESC_MAX = 20000;"].concat(names.map(indexFn)).join("\n");
   const deps = {
@@ -96,4 +96,48 @@ test("v126: the shop's review average and count come along as seller stars", asy
   assert.deepEqual(withStars.seller, { stars: 4.9, n: 312 });
   const none = await load(async () => ok({ ...LISTING, shop: { shop_name: "OwlFinds", review_average: null, review_count: 0 } })).itemEtsy("1234567890", {});
   assert.equal("seller" in none, false, "a shop with no reviews shows none");
+});
+
+/* v128: a German shop's listing showed in German in Prowl though Etsy showed it in English. The English is the
+   seller's translation, asked for separately; with none, the shop's own text stays. */
+const DE = { ...LISTING, listing_id: 4596549900, shop_id: 777, language: "de",
+  title: "Hertwig Katzhütte Panther Porzellanfigur", description: "Hallo Sammler von schönem Porzellan." };
+const etsyBy = (map) => async (path) => (path in map ? map[path] : { status: 404, text: "{}" });
+
+test("a German shop's listing comes in the seller's English translation", async () => {
+  const L = load(etsyBy({
+    "listings/4596549900?includes=Images,Shop": ok(DE),
+    "shops/777/listings/4596549900/translations/en-US": ok({ title: "Hertwig Katzhutte Panther Figurine", description: "Hello collectors.\nRare panther." }),
+  }));
+  const d = await L.itemEtsy("4596549900", {});
+  assert.equal(d.title, "Hertwig Katzhutte Panther Figurine");
+  assert.match(d.description, /Hello collectors\.<br>Rare panther\./);
+  assert.doesNotMatch(d.description, /Hallo/);
+});
+
+test("English under en-GB is found when en-US is missing", async () => {
+  const L = load(etsyBy({
+    "listings/4596549900?includes=Images,Shop": ok(DE),
+    "shops/777/listings/4596549900/translations/en-GB": ok({ title: "Panther figurine", description: "Hello." }),
+  }));
+  const d = await L.itemEtsy("4596549900", {});
+  assert.equal(d.title, "Panther figurine");
+  assert.deepEqual(L.asked.slice(1), ["shops/777/listings/4596549900/translations/en-US", "shops/777/listings/4596549900/translations/en-GB"]);
+});
+
+test("no English translation, or a failure asking for one, keeps the shop's own text", async () => {
+  const none = load(etsyBy({ "listings/4596549900?includes=Images,Shop": ok(DE) }));
+  const d = await none.itemEtsy("4596549900", {});
+  assert.equal(d.title, "Hertwig Katzhütte Panther Porzellanfigur");
+  assert.match(d.description, /Hallo Sammler/);
+  const broken = load(async (path) => (path.indexOf("translations") !== -1 ? { status: 200, text: "not json" } : ok(DE)));
+  assert.match((await broken.itemEtsy("4596549900", {})).description, /Hallo Sammler/);
+});
+
+test("an English shop's listing asks Etsy once, no translation call", async () => {
+  for (const language of ["en-US", "en", undefined]) {
+    const L = load(async () => ok({ ...LISTING, shop_id: 1, language }));
+    await L.itemEtsy("1234567890", {});
+    assert.deepEqual(L.asked, ["listings/1234567890?includes=Images,Shop"], String(language));
+  }
 });

@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v128: 2026-10-20. Etsy listing details in English when the seller wrote an English translation (the owner: a German
+ *         shop's panther "is in english on etsy but shows up in german in the prowl app"); otherwise the shop's own text.
  *   v127: 2026-10-19. Visitors move to the admin (the owner: "shouldn't this be on admin only?"): GET /admin/api/usage answers
  *         14 days of people searching and searches plus where visitors came from (cfReferrers); GET /owner-stats is gone.
  *   v126: 2026-10-18. Seller stars (Matt, from Jellycat's stars and review count): eBay search results and /item carry
@@ -432,7 +434,7 @@ import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-const WORKER_VERSION = "v127";
+const WORKER_VERSION = "v128";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -1680,6 +1682,19 @@ function etsyMade(w) {
   if (w === "made_to_order") return "made to order";
   return w.replace(/^before_/, "before ").replace(/_/g, "\u2013");
 }
+async function etsyEnglish(j, env) {
+  const lang = String(j.language || "");
+  if (!lang || /^en\b/i.test(lang) || !j.shop_id) return null;
+  for (const tag of ["en-US", "en-GB"]) {
+    try {
+      const s = await etsyGet("shops/" + encodeURIComponent(j.shop_id) + "/listings/" + encodeURIComponent(j.listing_id) + "/translations/" + tag, env);
+      if (s.status !== 200) continue;
+      const t = JSON.parse(s.text);
+      if (t && (t.title || t.description)) return { title: String(t.title || ""), description: String(t.description || "") };
+    } catch (e) { return null; }
+  }
+  return null;
+}
 async function itemEtsy(id, env) {
   const s = await etsyGet("listings/" + encodeURIComponent(id) + "?includes=Images,Shop", env);
   if (s.status === 404) return { gone: true };
@@ -1689,6 +1704,10 @@ async function itemEtsy(id, env) {
   const p = j.price || {}, n = p.divisor ? Number(p.amount) / Number(p.divisor) : NaN;
   const imgs = (Array.isArray(j.images) ? j.images.slice() : []).filter(Boolean)
     .sort((a, b) => (Number(a.rank) || 0) - (Number(b.rank) || 0)).map(x => x.url_fullxfull || x.url_570xN);
+  /* v128: Etsy answers in the shop's own language. A German shop's listing came up in German though Etsy showed it in
+     English: the seller's English is a translation, asked for separately. None (or any failure) keeps the original. */
+  const en = await etsyEnglish(j, env);
+  if (en) { if (en.title) j.title = en.title; if (en.description) j.description = en.description; }
   const text = String(j.description || "").slice(0, 40000).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\r?\n/g, "<br>");
   const aspects = [];
   const shop = j.shop && j.shop.shop_name ? String(j.shop.shop_name) : "";

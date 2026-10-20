@@ -1,15 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-19 (v7.28 / v127).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.28 / v128).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.28** | 402,942 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v127** | |
+| Worker | **v128** | |
 
 Recently shipped, newest first:
+
+- **v128: Etsy listing details in English** (the owner: a Hertwig panther from a German shop "is in english on etsy but
+  shows up in german in the prowl app"). Etsy's API answers in the shop's language; the seller's English is a separate
+  translation (`shops/<shop>/listings/<id>/translations/en-US`, then `en-GB`). When the listing's language is not English
+  the worker asks for it and uses its title and description; with none it keeps the shop's own text (Etsy's own
+  machine translation on its site is not in the API). Worker only. Tests: `worker/__tests__/item-etsy.test.mjs`.
 
 - **v7.28: Found on the Prowl shows only vintage** (the owner: it "is showing new parts it should only show the vintage
   stuff"). `isVintageProduct` was a block list (studio types and tags), so Printify's Scented Soy Candle and Skull Castle
@@ -485,7 +491,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.29, worker v128**. Claim one here when you start.
+Next free numbers: **page v7.29, worker v129**. Claim one here when you start.
 
 ## What's next
 
