@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v150: 2026-10-20. /near says the town you are standing in (one reverse geocode a cell, cached with the list; the
+ *         page's map, v7.44, puts it on your dot). Near cache key v=10.
  *   v149: 2026-10-20. Cross-posts in different currencies (an Etsy lamp at 180.00 CAD, a Poshmark one at $129) are never
  *         matched on price; the page now calls them similar, not the same piece.
  *   v148: 2026-10-20. Miles and mph everywhere (the owner: "don't use km or km/hr"): /trip answers route.mi, Around You's
@@ -509,7 +511,7 @@ import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v149";
+const WORKER_VERSION = "v150";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6458,16 +6460,17 @@ async function nearRoute(request, env, url, origin) {
   if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, places: [] }, 503, origin);
   const cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=9";
+  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=10";   /* v150: town */
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("near:" + ipKey(request.headers.get("CF-Connecting-IP")), NEAR_PER_IP))) return json({ error: "slow down" }, 429, origin);
   const here = { lat: lat, lng: lng };
-  const lists = [await kindSearches(env, cats, here, NEAR_RADIUS_M, false, 0)];   /* v140: by type, most popular first */
+  const [found, town] = await Promise.all([kindSearches(env, cats, here, NEAR_RADIUS_M, false, 0), gTown(env, lat, lng).catch(() => "")]);   /* v140: by type, most popular first; v150: the town too */
+  const lists = [found];
   const seen = Object.create(null), all = [];
   for (const p of [].concat(...lists)) { if (seen[p.id] || !kindAllowed(p, cats)) continue; seen[p.id] = 1; p.near = Math.round(haversineMi(here, p) * 10) / 10; if (p.near <= NEAR_KEEP_MI) all.push(p); }   /* v133: Google answers past the circle; v138: off kinds out */
   const places = rankPlaces(all).slice(0, NEAR_MAX).map((p) => placeCard(p));
-  const res = json({ at: new Date().toISOString(), places: places, empty: !places.length }, 200, origin, { "Cache-Control": "private, max-age=" + NEAR_CACHE_SECONDS });
+  const res = json({ at: new Date().toISOString(), town: town || "", places: places, empty: !places.length }, 200, origin, { "Cache-Control": "private, max-age=" + NEAR_CACHE_SECONDS });
   try { await PCACHE.put(key, res.clone()); } catch (e) {}
   return res;
 }

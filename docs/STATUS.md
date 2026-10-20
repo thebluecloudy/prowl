@@ -1,16 +1,29 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.43 / v149).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.44 / v150).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.43** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v149** | |
+| Page | **v7.44** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v150** | |
 
 Recently shipped, newest first:
 
+- **v7.44 / v150: NEAR ME on a map, and Directions to the next stop** (the owner, on the road: "i stopped at one,
+  now i want to find the next one but i don't know where i am, it would be good to pull up a map to show and then i
+  can pick and then get directions to the next"). Both tabs get **Show on a map**: Leaflet and OpenStreetMap tiles
+  through the estate-sales map's loader (`esLeaflet`, cdnjs, fetched the first time a map is asked for; if it fails the
+  box says so and the list stands). Your position is a blue dot with the town the worker now names (`/near` answers
+  `town`, one reverse geocode a cell, cached with the list; near cache key v=10), and Around you's copy opens with
+  "You are in Maumee, OH." The shops are numbered pins that match the now-numbered list (`nrCard` takes a number); on a
+  trip the anchors are numbered, the town's nested shops are small amber dots, the final stop a green flag, and a
+  skipped stop leaves the map. A pin's popup has the name, OPEN NOW / CLOSED for the day shown, **Directions** and
+  **In Maps**. Every Around-you row has a Directions link beside the card. Directions links name no origin, so
+  Google Maps starts from the phone and your position never goes into a link. The map takes the drive's hours on a
+  trip (a Monday trip shows Chillicothe CLOSED whatever today is). Tests: `__tests__/page/near-map-v744.test.mjs`,
+  `worker/__tests__/trips.test.mjs`.
 - **v7.43 / v149: cross-posts are "similar", not "the same piece"** (the owner, on an Etsy panther lamp with a shade at
   180.00 CAD that Prowl called the same as a $129 Poshmark TV lamp: "change to a similar one is on poshmark, go check it
   out, vs saying it is the same"). A title can't prove it is the same piece, so the card says "Similar on Poshmark
@@ -792,7 +805,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.44, worker v150**. Claim one here when you start.
+Next free numbers: **page v7.45, worker v151**. Claim one here when you start.
 
 ## What's next
 
