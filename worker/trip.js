@@ -57,11 +57,16 @@ export function splitVia(text) {
   return { to: m[1].trim(), via: m[2].split(/\s+(?:and|then)\s+/i).map((v) => v.trim()).filter(Boolean).slice(0, 3) };
 }
 export function kindPlan(cats) {
-  const keys = catsParse(cats.join ? cats.join(",") : cats), types = [], text = [];
+  const keys = catsParse(cats.join ? cats.join(",") : cats), types = [], text = [], texts = [];
   for (const k of keys) { if (NEARBY_TYPES[k]) types.push(...NEARBY_TYPES[k]); else text.push(CATS[k]); }
-  return { types: types, text: text.length ? text.join(", ") : "", textKeys: keys.filter((k) => !NEARBY_TYPES[k]) };
+  /* v145: antiques are asked on their own (as Around You does, which lists Maumee Antique Mall first); one combined
+     question's 20 answers were a mix of thrift and vintage that crowded the mall out */
+  if (keys.indexOf("antiques") !== -1 && !NEARBY_TYPES.antiques) texts.push(CATS.antiques);
+  const rest = text.filter((p) => p !== CATS.antiques || NEARBY_TYPES.antiques);
+  if (rest.length) texts.push(rest.join(", "));
+  return { types: types, text: text.length ? text.join(", ") : "", texts: texts, textKeys: keys.filter((k) => !NEARBY_TYPES[k]) };
 }
-export const ROUTES_MAX = 3, TRIP_SEARCHES_MAX = 130, TRIP_PAGES_MAX = 1;   /* v143: small circles instead of pages */
+export const ROUTES_MAX = 3, TRIP_SEARCHES_MAX = 150, TRIP_PAGES_MAX = 1;   /* v143: small circles instead of pages; v145: two questions a circle */
 export const ANCHOR_MIN_REVIEWS = 25;    /* v139: whatever its name says, an anchor has at least this many reviews */   /* v136: Google's alternatives are searched too; this many Text Searches a build at most */
 export const FIND_IMG_MAX = 600 * 1024;  /* a find photo arrives already downscaled by the page; refuse anything bigger */
 export const FINDS_MAX = 200;            /* finds kept per trip */

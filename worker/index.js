@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v145: 2026-10-20. Antiques asked on their own again, a circle at a time (kindPlan.texts): since v140 the trip put all
+ *         three kinds in one question and Maumee Antique Mall never made a circle's 20 answers; Around You, which asks
+ *         antiques alone, lists it first. Keys v=7.
  *   v144: 2026-10-20. The /trip and /near cache keys move to v=6, so no v142 build (40 km boxes) is served once v143's
  *         small circles are live; v143's upload sat undeployed for an hour, and this push starts a fresh build.
  *   v143: 2026-10-20. The live build said how.badTypes = antique_store, thrift_store: Google's Nearby has no such types,
@@ -499,7 +502,7 @@ import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v
 import { decodePolyline, haversineKm, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_KM, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v144";
+const WORKER_VERSION = "v145";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6382,7 +6385,7 @@ async function gPlacesNearby(env, types, center, radius, stat) {
 async function kindSearches(env, cats, center, radius, restrict, pages, stat) {
   const plan = kindPlan(cats), jobs = [], st = stat || {};
   if (plan.types.length) { st.nearby = (st.nearby || 0) + 1; jobs.push(gPlacesNearby(env, plan.types, center, radius + 3000, st).then((r) => { if (r !== null) return r; return pages ? gPlacesAll(env, catsQueries(cats.filter((k) => !plan.textKeys.includes(k)), 1)[0], center, radius, restrict, pages) : gPlacesText(env, catsQueries(cats.filter((k) => !plan.textKeys.includes(k)), 1)[0], center, radius, 20, restrict); })); }
-  if (plan.text) { st.text = (st.text || 0) + 1; jobs.push(pages ? gPlacesAll(env, plan.text, center, radius, restrict, pages) : gPlacesText(env, plan.text, center, radius, 20, restrict)); }
+  for (const q of plan.texts) { st.text = (st.text || 0) + 1; jobs.push(pages ? gPlacesAll(env, q, center, radius, restrict, pages) : gPlacesText(env, q, center, radius, 20, restrict)); }   /* v145: antiques alone, then the rest */
   return [].concat(...(await Promise.all(jobs)));
 }
 /* v139: a full box (20 answers) is read on to its next pages, so a dense town is read to the end */
@@ -6448,7 +6451,7 @@ async function nearRoute(request, env, url, origin) {
   if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, places: [] }, 503, origin);
   const cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=6";
+  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=7";
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("near:" + ipKey(request.headers.get("CF-Connecting-IP")), NEAR_PER_IP))) return json({ error: "slow down" }, 429, origin);
@@ -6472,7 +6475,7 @@ async function tripBuild(env, from, toText, day, cats, via) {
   /* v136: every route's corridor is searched (a circle and a query asked once, however many routes share it), and the
      route with the most to see wins; the fastest is the tie-break */
   const asked = new Map(), stat = { nearby: 0, text: 0, refused: 0 };   /* v141: how it was looked for */
-  const ask = (c) => { const k = c.lat.toFixed(2) + "," + c.lng.toFixed(2); if (!asked.has(k)) asked.set(k, asked.size * 2 < TRIP_SEARCHES_MAX ? kindSearches(env, cats, c, CORRIDOR_RADIUS_M, false, 0, stat) : Promise.resolve([])); return asked.get(k); };   /* v143: bias circles, one page */
+  const ask = (c) => { const k = c.lat.toFixed(2) + "," + c.lng.toFixed(2); if (!asked.has(k)) asked.set(k, asked.size * 3 < TRIP_SEARCHES_MAX ? kindSearches(env, cats, c, CORRIDOR_RADIUS_M, false, 0, stat) : Promise.resolve([])); return asked.get(k); };   /* v143: bias circles, one page */
   const built = await Promise.all(routes.map(async (route) => {
     const centers = corridorCenters(route.pts).slice(0, CORRIDOR_CENTERS_MAX);
     const lists = await Promise.all(centers.map((c) => ask(c)));
@@ -6496,7 +6499,7 @@ async function tripRoute(request, env, url, origin) {
   if (to.length < 2) return json({ error: "to required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, stops: [] }, 503, origin);
   const day = tripDay(url.searchParams.get("day")), cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=6";   /* v137 to v144: the answer changed */
+  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=7";   /* v137 to v145: the answer changed */
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("trip:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIP_PER_IP))) return json({ error: "slow down" }, 429, origin);
