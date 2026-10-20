@@ -1,4 +1,4 @@
-/* v130: NEAR ME on the worker. Around You (the shops near where you stand) and Road Trip (the shops worth a stop
+/* v132: NEAR ME on the worker. Around You (the shops near where you stand) and Road Trip (the shops worth a stop
    between here and a destination), the group trip record and the finds feed. This module is pure: no fetch, no env,
    no KV. index.js talks to Google (Places, Routes, Geocoding) and R2 and hands the answers here.
 

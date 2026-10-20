@@ -51,7 +51,7 @@ test('the pill names the site picked in the Den', async () => {
   await p.close();
 });
 
-test('NEAR ME opens its own screen (v7.34: #otp-near, not the Den), stores first; DEN still opens the Den', async () => {
+test('NEAR ME opens its own screen (v7.36: #otp-near, not the Den), stores first; DEN still opens the Den', async () => {
   const p = loadPage({ storage: DEN });
   await tick(30);
   const den = p.$('#otp-den'), near = p.$('#otp-near');

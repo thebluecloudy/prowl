@@ -29,7 +29,7 @@ test('v7.09: the dock\'s Near me opens the Maps links for stores near you, with 
     p.$('#otp-q').value = typed;
     p.$(btn).click();
     await tick(120);
-    assert.equal(p.$('#otp-near').hidden, false, btn + ' ' + typed);   /* v7.34: Near me's own screen */
+    assert.equal(p.$('#otp-near').hidden, false, btn + ' ' + typed);   /* v7.36: Near me's own screen */
     assert.equal(p.$('#otp-den').hidden, true, 'not through the Den');
     assert.equal(p.$('#otp-denLocal').hidden, false);
     const links = p.$$('#otp-nearGrid a.nearc');

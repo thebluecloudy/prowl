@@ -1,17 +1,17 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.34 / v130).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.36 / v132).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.34** | 400,200 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v130** | |
+| Page | **v7.36** | 399,916 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v132** | |
 
 Recently shipped, newest first:
 
-- **v7.34 / v130: NEAR ME is its own section: Around you, Road trip, group trips and Trip Finds** (the spec of
+- **v7.36 / v132: NEAR ME is its own section: Around you, Road trip, group trips and Trip Finds** (the spec of
   2026-10-20, `Prowl NEAR ME, Road Trip & Trip Finds`). Branch `claude/new-session-pffeiw`.
   - **Its own screen.** The dock's NEAR ME opens `#otp-near` (two tabs, AROUND YOU and ROAD TRIP), never the Den. The
     Den's hidden LOCAL tab and the `den-near` dress are gone; the store finder, garage sales and Facebook city
@@ -39,8 +39,42 @@ Recently shipped, newest first:
   - **Needs the owner** (see Waiting on Matt): only `PRO_CIDS` for a group. The secret `GOOGLE_MAPS_KEY`, the R2
     bucket `prowl-finds` (bound in `wrangler.toml`) and its lifecycle rule were set up on 2026-10-20.
   - Tests: `worker/__tests__/trip.test.mjs` (the pure module, the reference route Novi to Blenko, Monday hours),
-    `worker/__tests__/trips.test.mjs` (the routes against a fake Google, KV and R2), `__tests__/page/near-section-v734.test.mjs`;
+    `worker/__tests__/trips.test.mjs` (the routes against a fake Google, KV and R2), `__tests__/page/near-section-v736.test.mjs`;
     `near-me`, `five-tabs-v730` and `local-dock` updated.
+- **v7.35 + worker v131: the new plans, and the email ask** (Matt, 2026-10-20: "everything that the customer does is
+  free"; "3 hunts is good, pro gets unlimited ... once they get the email, they can adjust this"; "unlimited photo
+  checks, people can use to price their stuff"; "we can just say owl and twig vintage". The goal: get the email, so
+  alerts bring people back to search and buy through the affiliate links).
+  - **Plans (worker v131):** one free plan for every member: alerts for 3 hunts (`ALERT_FREE_HUNTS`, default 3) at the
+    pace they pick. The v55 split (members after Oct 4, 2026 got 1 hunt on Mondays; `ALERT_FREE_HUNTS_NEW`) is gone:
+    `alFree` no longer reads it and `alFreeWeekly` is always false. Pro covers up to 100 hunts (`AL_MAX_HUNTS`, was
+    25) and photo checks are "unlimited" with a fair-use ceiling of 100 a day (`PHOTO_PRO_PER_DAY`, was 25). The
+    Den still holds 5 hunts on Free and 100 on Pro (Matt's choice). Emails and perks say the new plan.
+  - **Plan copy (page):** every place that quoted 1 hunt on Mondays, 25 hunts or 25 photo checks says Free: 3 hunts,
+    Pro: up to 100 hunts, unlimited photo checks (fair use, 100 a day). The plan table follows.
+  - **The email ask:** under every email box, "From Owl & Twig Vintage. No password. Your email is never sold or
+    shared. One tap to unsubscribe." (`mailTrust`), and a preview of the email from the visitor's own hunt, up to 3
+    listings Prowl already has (`mailPreview`; nothing is fetched for it). Daily counts the days it was opened (new key
+    `prowl.dailyDays`); from the second day a not-signed-in visitor gets a "Get your daily prowl by email" card. The
+    Den's hunts tab says "Your hunts live only on this device. Keep them safe with your email" (`#otp-denSafe`).
+  - **For Matt:** the Prowl Pro product page on Shopify (`/products/prowl-pro`) is not in this repo; its description
+    may still say 25 hunts and 25 photo checks. Alert capacity is shared (`ALERT_BATCH` hunts per 5-minute run); watch
+    the admin's checked counts as members grow.
+  Test: `worker/__tests__/plans-v131.test.mjs`, `__tests__/page/email-ask-v735.test.mjs`; the photo copy test in
+  `motion.test.mjs` updated.
+- **v7.34 / v130: one piece on several sites, with each site's price** (the owner, on a Rookwood owl at $190 on Etsy,
+  $211 on Poshmark and on eBay: "show that it is listed in 2 other places, and they have different prices. say someone
+  doesn't trust poshmark, but would buy from etsy, or if lowest price need to include the shipping").
+  - Worker `hunt.js`: a long title (4+ meaningful words) on two sites is the same piece up to 60% apart
+    (`HUNT_XPOST_GAP`, `huntSamePiece`) when neither title has a word the other lacks on both sides (blue vs green glaze
+    stays apart), the numbers match (6 vs 4 inch, 1946 vs 1922 stay apart) and both or neither are a lot or pair; short
+    titles still need 6%. Every pair in a group must pass on its own (no chains), one listing per site. Copies are grouped, the cheapest leads (one Best pick spot, not
+    three), and every copy carries `also`: the other sites with price and link. eBay listings carry `ship` (free or
+    $X, from eBay's search; the other sites do not say). `/hunt` cache key v=2.
+  - Page: a card says "Also on eBay $205.00 + $12.50 shipping · Poshmark $211.00" (cards drawn before /hunt
+    answered get it from pickMark); the popup lists each site with its
+    price, shipping when known and a View link ("Shipping is extra unless shown"); Fair price is told.
+  - Tests: `worker/__tests__/hunt.test.mjs`, `ebay-ship.test.mjs`, `__tests__/page/cross-post-v734.test.mjs`.
 
 - **v7.33: the popup's Price check, readable and untagged** (the owner, on an Etsy Rookwood vase: "Best pick is
   overlapping price check ... font for price check seems different and too small to read on phone"). The price check
@@ -602,7 +636,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.35, worker v131**. Claim one here when you start.
+Next free numbers: **page v7.37, worker v133**. Claim one here when you start.
 
 ## What's next
 
@@ -617,7 +651,7 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 ## Waiting on Matt
 
-- **NEAR ME (v7.34 / v130) needs three things in Cloudflare before it does more than the old Maps links:**
+- **NEAR ME (v7.36 / v132) needs three things in Cloudflare before it does more than the old Maps links:**
   1. Done 2026-10-20: the worker secret **GOOGLE_MAPS_KEY** (Places API (New), Routes API, Geocoding API; API
      restriction only, no website restriction, since only the worker calls Google). Cost: a Road Trip build is about
      13 Text Search calls, cached an hour; Around you is 2 calls, cached 10 minutes per ~1 km.

@@ -1,4 +1,4 @@
-// Page v7.34 / worker v130 (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). NEAR ME is its own screen
+// Page v7.36 / worker v132 (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). NEAR ME is its own screen
 // with two tabs: Around you (the shops around the phone, OPEN NOW / CLOSED worked out when the card is drawn) and Road
 // trip (one box, where to; the stops in drive order, one anchor a town with the rest nested, hours for the trip's day,
 // OPEN IN MAPS pinned, SHARE for the group, the Finds feed). The photo check gets SHARE THIS FIND while a trip is on.
@@ -292,8 +292,8 @@ test('the photo check: SHARE THIS FIND while a trip is on, one tap to the trip\'
   await none.close(); await old.close();
 });
 
-test('the page says v7.34, and keeps every old localStorage key (prowl.trip is the one new one)', () => {
-  assert.match(PAGE, /var PROWL_VERSION='v7\.34'/);
+test('the page says v7.36, and keeps every old localStorage key (prowl.trip is the one new one)', () => {
+  assert.match(PAGE, /var PROWL_VERSION='v7\.36'/);
   assert.match(PAGE, /var TRIP_KEY='prowl\.trip'/);
   for (const k of ['prowl.v36', 'owlTwigSearches', 'prowl.likes', 'prowl.maps', 'prowl.salesPlace', 'prowl.session']) assert.ok(PAGE.includes("'" + k + "'") || PAGE.includes(k), k);
   assert.doesNotMatch(PAGE, /\{\{|\{%/, 'no Liquid openers');

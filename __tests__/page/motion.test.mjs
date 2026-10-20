@@ -621,20 +621,24 @@ test('every motion style is inside prefers-reduced-motion: no-preference, and ca
 /* ---------- copy ---------- */
 
 test("the photo check limits in the copy are the worker's, everywhere they are quoted", () => {
+  /* v7.35 (Matt: "unlimited photo checks, people can use to price their stuff"): Pro is quoted as unlimited, and its
+     fair-use ceiling is the worker's PHOTO_PRO_PER_DAY wherever a number is given */
   const free = Number(/const PHOTO_FREE_PER_DAY = (\d+);/.exec(WORKER)[1]), pro = Number(/const PHOTO_PRO_PER_DAY = (\d+);/.exec(WORKER)[1]);
   const words = ['zero', 'One', 'Two', 'Three'], s = (n) => (n === 1 ? '' : 's');
   const quotes = [
-    'Free: ' + free + ' photo check' + s(free) + ' a day. Prowl Pro: ' + pro + ' a day.',
-    words[free] + ' free check' + s(free) + ' a day, ' + pro + ' with Prowl Pro.',
-    "'Prowl Pro: " + pro + " photo checks a day.'",
-    "'" + pro + " a day with Prowl Pro'",
-    'Pro members get ' + pro + ' a day',
-    "['Photo checks','" + free + " a day','" + pro + " a day']",
-    'plus ' + pro + ' photo checks a day',
+    'Free: ' + free + ' photo check' + s(free) + ' a day. Prowl Pro: unlimited.',
+    words[free] + ' free check' + s(free) + ' a day, unlimited with Prowl Pro.',
+    "'Prowl Pro: unlimited photo checks.'",
+    "'Unlimited with Prowl Pro'",
+    'Pro members get unlimited photo checks (fair use, ' + pro + ' a day)',
+    "['Photo checks','" + free + " a day','Unlimited']",
+    'plus unlimited photo checks',
     free + ' photo check' + s(free) + ' and 1 Fair price check a day',
   ];
   for (const q of quotes) assert.ok(PAGE.includes(q), q);
   /* and no other number next to a photo check */
-  for (const m of PAGE.matchAll(/(\d+) (?:free )?photo checks? a day/g)) assert.ok([free, pro].includes(Number(m[1])), m[0]);
-  assert.doesNotMatch(PAGE, /Two free checks a day|Free: 2 photo checks|2 photo checks a day|15 with Prowl Pro/);
+  for (const m of PAGE.matchAll(/(\d+) (?:free )?photo checks? a day/g)) assert.ok([free].includes(Number(m[1])), m[0]);
+  for (const m of PAGE.matchAll(/fair use, (\d+) a day/g)) assert.equal(Number(m[1]), pro, m[0]);
+  assert.doesNotMatch(PAGE, /Two free checks a day|Free: 2 photo checks|2 photo checks a day|15 with Prowl Pro|25 photo checks|25 a day with Prowl Pro/);
 });
+

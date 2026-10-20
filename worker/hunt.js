@@ -3,10 +3,15 @@
      huntCombine(rows, term) -> { median, picks, rows, dupes }
    1. Relevance: every meaningful query word (or a synonym, plurals folded) must be in the title, and no noise phrase.
    2. Cross-posts: the same title words (80%) on two different sites with prices within 6%; the dearer one is marked.
+      v130 (the owner, on a Rookwood owl at $190 on Etsy and $211 on Poshmark): sellers price each site for its fees,
+      so a long title (4+ meaningful words) is the same piece up to 60% apart. Copies are grouped, the cheapest leads,
+      and every copy carries `also`: the other sites with their price (and shipping when the site says), so a buyer
+      can pick the site they trust or the lowest total.
    3. Best picks: top 3 by cheap-vs-median, a quiet live auction, a lot or pair, a photo.
    4. Every source keeps a row with a note, and the login-only sites are listed as gated, so a hunt reads complete. */
 
 export const HUNT_PICKS = 3;
+export const HUNT_XPOST_GAP = 1.6;   /* v130: a long title on two sites is one piece up to 60% apart */
 
 /* Sites Prowl can't read without the visitor's own login. Shown as a row, never fetched. */
 export const HUNT_GATED = {
@@ -76,6 +81,23 @@ export function huntSimilar(a, b) {
   return same / Math.max(A.length, B.length) >= 0.8;
 }
 
+/* v130: two listings are one piece. Within 6% the old rule (80% of the title words). Further apart, up to
+   HUNT_XPOST_GAP, only a long title (4+ meaningful words) with no word the other lacks on both sides (one may only add
+   words: "blue glaze" vs "green glaze" stays apart), the same numbers (sizes, years) and the same lot-ness (a pair is
+   not the single). Never two listings on the same site. */
+const HUNT_LOT = /\b(lot|pair|set of|\d+\s*(pc|pcs|pieces))\b/i;
+function huntNums(t) { return (String(t || "").match(/\d+/g) || []).sort().join(","); }
+export function huntSamePiece(a, b) {
+  if (!a || !b || a.src === b.src || !a.priceN || !b.priceN || !huntSimilar(a.key, b.key)) return false;
+  const gap = Math.max(a.priceN, b.priceN) / Math.min(a.priceN, b.priceN);
+  if (gap <= 1.06) return true;
+  if (gap > HUNT_XPOST_GAP) return false;
+  const A = a.key.split(" "), B = b.key.split(" ");
+  if (Math.min(A.length, B.length) < 4) return false;
+  const onlyA = A.some((w) => B.indexOf(w) === -1), onlyB = B.some((w) => A.indexOf(w) === -1);
+  return !(onlyA && onlyB) && huntNums(a.title) === huntNums(b.title) && HUNT_LOT.test(a.title) === HUNT_LOT.test(b.title);
+}
+
 export function huntScore(it, median) {
   let s = 0;
   if (it.priceN > 0 && median > 0) s += Math.max(-2, Math.min(3, (median - it.priceN) / median * 3));
@@ -100,17 +122,31 @@ export function huntCombine(rows, term) {
     r.items.forEach((it) => { it.key = huntKey(it.title); all.push(it); });
   });
 
-  const dupes = [];
+  const dupes = [], up = all.map((_, i) => i), members = all.map((_, i) => [i]);
+  const root = (i) => { while (up[i] !== i) i = up[i] = up[up[i]]; return i; };
   for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
-    const a = all[i], b = all[j];
-    if (a.src === b.src || !a.priceN || !b.priceN) continue;
-    if (Math.abs(a.priceN - b.priceN) / Math.max(a.priceN, b.priceN) > 0.06) continue;
-    if (!huntSimilar(a.key, b.key)) continue;
-    const dear = a.priceN > b.priceN ? a : b, cheap = dear === a ? b : a;
-    if (dear.dupeOf) continue;
-    dear.dupeOf = cheap.url;
-    dupes.push([cheap.url, dear.url]);
+    if (!huntSamePiece(all[i], all[j])) continue;
+    const ri = root(i), rj = root(j);
+    if (ri === rj) continue;
+    /* every pair in a group must pass on its own: no chains through a middle listing, one listing per site */
+    if (!members[ri].every((x) => members[rj].every((y) => huntSamePiece(all[x], all[y])))) continue;
+    up[rj] = ri; members[ri] = members[ri].concat(members[rj]);
   }
+  const groups = {};
+  all.forEach((it, i) => { const r = root(i); (groups[r] = groups[r] || []).push(it); });
+  Object.keys(groups).forEach((g) => {
+    const m = groups[g];
+    if (m.length < 2) return;
+    m.sort((x, y) => x.priceN - y.priceN);
+    m.forEach((it, k) => {
+      if (k) { it.dupeOf = m[0].url; dupes.push([m[0].url, it.url]); }
+      it.also = m.filter((o) => o !== it).slice(0, 4).map((o) => {
+        const a = { src: o.src, price: o.price, url: o.url };
+        if (o.ship) a.ship = o.ship;
+        return a;
+      });
+    });
+  });
 
   const prices = all.map((x) => x.priceN).filter((n) => n > 0).sort((x, y) => x - y);
   const median = prices.length ? prices[Math.floor(prices.length / 2)] : 0;

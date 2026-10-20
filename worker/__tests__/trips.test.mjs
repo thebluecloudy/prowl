@@ -1,4 +1,4 @@
-/* v130 NEAR ME on the worker: /near, /trip, /trips (group trips in KV), the finds feed (R2) and the sweep, against a
+/* v132 NEAR ME on the worker: /near, /trip, /trips (group trips in KV), the finds feed (R2) and the sweep, against a
    fake Google and fake stores. Run: node --test worker/__tests__/trips.test.mjs */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -271,6 +271,6 @@ test("the worker's own guards: routes are wired, the login links the account, th
   assert.match(INDEX, /url\.pathname\.startsWith\("\/finds\/"\) && request\.method === "GET"\) return findPhotoRoute/);
   assert.match(INDEX, /await tripAcctLink\(env, id, email\)/);
   assert.match(INDEX, /await tripSweep\(env\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v130"/);
+  assert.match(INDEX, /const WORKER_VERSION = "v132"/);
   for (const name of ["nearRoute", "tripRoute", "tripsRoute", "tripBuild"]) assert.ok(!/GOOGLE_MAPS_KEY|gKey\(env\)\s*\}/.test(indexFn(name).replace(/gKey\(env\)\)/g, "").replace(/!gKey\(env\)/g, "")), name + " only tests for the key");
 });

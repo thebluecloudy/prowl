@@ -11,7 +11,7 @@ function indexFn(name) {
 }
 const deps = { EBAY_ITEM_URL: "https://www.ebay.com/itm/", timeLeft: () => "" };
 const keys = Object.keys(deps);
-const { ebaySale, ebayItem } = new Function(...keys, indexFn("money") + indexFn("ebayMoney") + indexFn("ebaySale") + indexFn("ebayAge") + indexFn("ebaySeller") + indexFn("ebayItem") + "\nreturn { ebaySale, ebayItem };")(...keys.map((k) => deps[k]));
+const { ebaySale, ebayItem } = new Function(...keys, indexFn("money") + indexFn("ebayMoney") + indexFn("ebaySale") + indexFn("ebayAge") + indexFn("ebaySeller") + indexFn("ebayShip") + indexFn("ebayItem") + "\nreturn { ebaySale, ebayItem };")(...keys.map((k) => deps[k]));
 const SUMMARY = { title: "Marilyn Consco astronaut girl", itemWebUrl: "https://www.ebay.com/itm/1", legacyItemId: "123456789012", price: { value: "358.40", currency: "USD" }, buyingOptions: ["FIXED_PRICE"],
   marketingPrice: { originalPrice: { value: "448.00", currency: "USD" }, discountPercentage: "20", priceTreatment: "STRIKETHROUGH" } };
 

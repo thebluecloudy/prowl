@@ -12,7 +12,7 @@ function indexFn(name) {
 }
 const deps = { EBAY_ITEM_URL: "https://www.ebay.com/itm/", timeLeft: () => "" };
 const keys = Object.keys(deps);
-const { ebayAge, ebayItem } = new Function(...keys, indexFn("money") + indexFn("ebayMoney") + indexFn("ebaySale") + indexFn("ebayAge") + indexFn("ebaySeller") + indexFn("ebayItem") + "\nreturn { ebayAge, ebayItem };")(...keys.map((k) => deps[k]));
+const { ebayAge, ebayItem } = new Function(...keys, indexFn("money") + indexFn("ebayMoney") + indexFn("ebaySale") + indexFn("ebayAge") + indexFn("ebaySeller") + indexFn("ebayShip") + indexFn("ebayItem") + "\nreturn { ebayAge, ebayItem };")(...keys.map((k) => deps[k]));
 const NOW = Date.parse("2026-10-18T12:00:00Z");
 const BASE = { title: "Padilla studio vase", itemWebUrl: "https://www.ebay.com/itm/1", legacyItemId: "123456789012", price: { value: "85.00", currency: "USD" }, buyingOptions: ["FIXED_PRICE"] };
 

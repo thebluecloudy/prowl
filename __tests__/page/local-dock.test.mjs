@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
 
-test('dock NEAR ME with no hunt opens the Near me screen (v7.34: its own drawer, not the Den)', async () => {
+test('dock NEAR ME with no hunt opens the Near me screen (v7.36: its own drawer, not the Den)', async () => {
   const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [] } } });
   await tick(30);
   assert.equal(p.$('#otp-dock .db[data-m="all"]'), null, 'ALL is gone from the dock');

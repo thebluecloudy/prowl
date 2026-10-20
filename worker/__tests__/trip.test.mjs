@@ -1,4 +1,4 @@
-/* v130 NEAR ME: the pure trip module. Ranking, hours, clustering, the corridor, the Maps export and the trip record.
+/* v132 NEAR ME: the pure trip module. Ranking, hours, clustering, the corridor, the Maps export and the trip record.
    Run: node --test worker/__tests__/trip.test.mjs */
 import { test } from "node:test";
 import assert from "node:assert/strict";

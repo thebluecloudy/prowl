@@ -19,11 +19,18 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
- *   v130: 2026-10-20. NEAR ME (the spec: NEAR ME section, Road Trip, Trip Finds). GET /near (Around You), GET /trip (Road
+ *   v132: 2026-10-20. NEAR ME (the spec: NEAR ME section, Road Trip, Trip Finds). GET /near (Around You), GET /trip (Road
  *         Trip: the route's corridor, one anchor a town, the Maps link with the origin as a town only), /pp (place photos),
  *         /trips (group trips in KV, shared account to account, Pro checked here: PRO_CIDS, a member's Pro or paid
  *         orders), /trips/<id>/finds and /finds (photos in R2, deleted FINDS_GRACE_DAYS after the trip closes). Needs
  *         the secret GOOGLE_MAPS_KEY and the R2 bucket PROWL_FINDS; see trip.js and the NEAR ME comment.
+ *   v131: 2026-10-20. The new plans (the owner: "3 hunts is good, pro gets unlimited ... once they get the email, they
+ *         can adjust this"). Free alerts cover 3 hunts for every member at the pace they pick (daily, Mon/Wed/Fri or
+ *         weekly; the new-member Mondays-only plan is gone). Pro covers up to 100 hunts (AL_MAX_HUNTS, was 25) and photo
+ *         checks are unlimited on Pro with a fair-use ceiling of 100 a day (PHOTO_PRO_PER_DAY, was 25).
+ *   v130: 2026-10-20. Cross-posts (the owner: one Rookwood owl at $190 on Etsy, $211 on Poshmark, and on eBay): a long
+ *         title on two sites is one piece up to 60% apart; every copy in /hunt carries also: the other sites with their
+ *         price, and eBay listings carry ship (free or $X). /hunt cache key v=2.
  *   v129: 2026-10-20. ShopGoodwill listings keep only titles with every word of the hunt (the owner: "Brookwood" came up
  *         for Rookwood); see sgwExact.
  *   v128: 2026-10-20. Etsy listing details in English when the seller wrote an English translation (the owner: a German
@@ -350,7 +357,7 @@
  *        alerts, 10 listings per site, one Jev call per hunt, 2 hunts per run
  *        (ALERT_BATCH), a run either checks hunts or sends one email, never both.
  *        Test email checks 2 hunts.
- *   v32: Prowl Pro. Free alerts cover the first 3 hunts, Pro up to 25. Pro = PRO_EMAILS
+ *   v32: Prowl Pro. Free alerts cover the first 3 hunts, Pro up to 25 (v131: 100). Pro = PRO_EMAILS
  *        list, or a paid PROWL-PRO-MONTHLY order in the last 35 days (secret
  *        SHOPIFY_ORDERS_TOKEN, read_orders). /alerts/status reports pro/free/active.
  *        Free emails end with an upgrade note when the visitor has more hunts.
@@ -444,8 +451,8 @@ import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
 import { decodePolyline, haversineKm, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
-  DETOUR_MIN, NEAR_MAX, NEAR_QUERIES, NEAR_RADIUS_M, TRIP_QUERY, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v130 */
-const WORKER_VERSION = "v130";
+  DETOUR_MIN, NEAR_MAX, NEAR_QUERIES, NEAR_RADIUS_M, TRIP_QUERY, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
+const WORKER_VERSION = "v132";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -802,6 +809,16 @@ function ebaySeller(it) {
   if (!(pct >= 0 && pct <= 100) || s.feedbackPercentage === "" || s.feedbackPercentage == null) return null;
   return { pct: Math.round(pct * 10) / 10, n: n >= 0 && isFinite(n) ? Math.floor(n) : 0 };
 }
+/* v130 (the owner: "if lowest price need to include the shipping"): eBay's search says what shipping costs; the other
+   marketplaces do not, so only eBay listings carry it. "free", "$12.50", or "" when eBay does not say. */
+function ebayShip(it) {
+  const o = it && Array.isArray(it.shippingOptions) ? it.shippingOptions[0] : null;
+  if (!o) return "";
+  if (o.shippingCostType === "CALCULATED" && !o.shippingCost) return "";
+  const v = o.shippingCost ? Number(o.shippingCost.value) : NaN;
+  if (v === 0) return "free";
+  return v > 0 && isFinite(v) && (!o.shippingCost.currency || o.shippingCost.currency === "USD") ? "$" + v.toFixed(2) : "";
+}
 function ebayItem(it) {
   if (!it || !it.title || !it.itemWebUrl) return null;
   const opts = it.buyingOptions || [];
@@ -826,6 +843,8 @@ function ebayItem(it) {
   if (age) { out.listed = age.listed; if (age.relisted) out.relisted = age.relisted; }
   const sel = ebaySeller(it);   /* v126 */
   if (sel) out.seller = sel;
+  const ship = ebayShip(it);   /* v130 */
+  if (ship) out.ship = ship;
   if (auction) {
     out.bids = Number(it.bidCount) || 0;
     const tl = timeLeft(it.itemEndDate);
@@ -2681,7 +2700,7 @@ async function museTest(env, url) {
    range can lean on real sold prices), then plain Chat Completions if that fails. */
 const APPRAISE_PER_DAY = 250;
 const PHOTO_FREE_PER_DAY = 1;  // v45: free photo checks per visitor per day (v55: was 2)
-const PHOTO_PRO_PER_DAY = 25;  // v49: Prowl Pro photo checks per day (was 15)
+const PHOTO_PRO_PER_DAY = 100;  // v49: Prowl Pro photo checks per day (was 15). v131: "unlimited", fair use 100 a day (was 25)
 const PHOTO_FREE_PER_NET = 12; // v48: free photo checks per neighbourhood per day
 
 function apPrompt(price, searched, hint, looks) {
@@ -3576,7 +3595,7 @@ async function appraise(request, env, origin) {
 
    KV keys: sub:<email> {email,tok,hunts,day,done,sent,created}
             pend:<email> {hunt:[items]}   seen:<email> [urls]   conf:<email> {code,hunts,exp} */
-const AL_MAX_HUNTS = 25;
+const AL_MAX_HUNTS = 100;   /* v131: Pro covers up to 100 hunts (was 25), the same as the Den holds on Pro */
 const AL_PER_HUNT_EMAIL = 6;      // cards shown per hunt; the rest is "+N more on Prowl"
 const AL_PEND_CAP = 30;           // new items held per hunt between emails
 const AL_SEEN_CAP = 6000;   // v50: URLs and title keys
@@ -3684,11 +3703,10 @@ const PRO_MANAGE_URL = "https://www.owlandtwigvintage.com/account";
 /* v55: members created before AL_FREE_CUTOFF keep the old free plan (3 hunts, any day). */
 const AL_FREE_CUTOFF = "2026-10-04";
 function alLegacyFree(sub) { return !!sub && (!sub.created || String(sub.created) < AL_FREE_CUTOFF); }
-function alFree(env, sub) {
-  if (sub === undefined || alLegacyFree(sub)) { const n = parseInt((env && env.ALERT_FREE_HUNTS) || "3", 10); return n > 0 ? n : 3; }
-  const m = parseInt((env && env.ALERT_FREE_HUNTS_NEW) || "1", 10); return m > 0 ? m : 1;
-}
-function alFreeWeekly(sub) { return !!sub && !sub.pro && !alLegacyFree(sub); }
+/* v131: one free plan again: ALERT_FREE_HUNTS (default 3) for every member, at the pace they pick. The v55 split (new
+   members 1 hunt, Mondays only) is gone; alLegacyFree stays for the admin area's history. */
+function alFree(env, sub) { const n = parseInt((env && env.ALERT_FREE_HUNTS) || "3", 10); return n > 0 ? n : 3; }
+function alFreeWeekly(sub) { return false; }
 function alActive(env, sub) {
   const mute = alPrefs(sub).mute, hs = sub.hunts.filter(h => mute.indexOf(h.toLowerCase()) === -1);   /* v50 */
   return sub.pro ? hs.slice(0, AL_MAX_HUNTS) : hs.slice(0, alFree(env, sub));
@@ -4756,7 +4774,7 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
   const all = sub.allCount || sub.hunts.length, free = alFree(env, sub);
   const up = (!sub.pro && all > free) ? '<tr><td style="padding:22px 12px 0"><div style="border:2px solid #8a4b1f;border-radius:10px;padding:14px;font:14px/1.5 Arial,sans-serif;color:#2b2118">' +
     '<b>You are on the free plan:</b> alerts for your first ' + free + ' hunts. You have ' + all + '. ' +
-    '<a href="' + alEsc(alUpgradeUrl(sub)) + '" style="color:#8a4b1f;font-weight:bold">Get all ' + Math.min(all, AL_MAX_HUNTS) + ' every day with Prowl Pro' + (sub.hadPro ? ' · $7/month' : ' · first month free') + '</a></div></td></tr>' : '';
+    '<a href="' + alEsc(alUpgradeUrl(sub)) + '" style="color:#8a4b1f;font-weight:bold">Get all ' + Math.min(all, AL_MAX_HUNTS) + ' with Prowl Pro' + (sub.hadPro ? ' · $7/month' : ' · first month free') + '</a></div></td></tr>' : '';
   return alShell(env, inner + up, alWhy(sub), links);
 }
 /* v56: " · local pickup within 50 mi of 48375" after a local hunt's heading */
@@ -4805,9 +4823,9 @@ async function alDigest(env, sub, send) {
    $7 charge. Both are about billing, so they go even when the digest is off or
    paused. Marked on the member (trialHi / trialRemind = order name). */
 function alPerks() {
-  return ["Prowl Alerts for up to 25 hunts, or your whole Den, every day at the time you pick",
+  return ["Prowl Alerts for up to " + AL_MAX_HUNTS + " hunts, or your whole Den, as often as you pick",
     "A price ceiling and skip-words, so the email only carries what you would buy",
-    "25 photo checks a day: the piece named, flaws noted, a fair range from sold prices",
+    "Unlimited photo checks (fair use, " + PHOTO_PRO_PER_DAY + " a day): the piece named, flaws noted, a fair range from sold prices",
     "Unlimited Fair price checks on live listings"];
 }
 function alTrialMail(env, sub, kind) {
@@ -5142,7 +5160,7 @@ async function proxyHandle(request, env, url) {
       const nj = await capsCall(capsDay(), "take", { k: "pxn:" + (await sha16(String(b.sig) + ":" + ts)), lim: 1 });
       if (nj && nj.left < 0) return pxJson({ error: "This sign-in was already used. Reload Prowl." }, 401);
     } catch (e) { console.error("pxn", String(e && e.message || e)); }
-    try { await tripAcctLink(env, id, email); } catch (e) { console.error("acct link", String(e && e.message || e)); }   /* v130: trips shared to this account */
+    try { await tripAcctLink(env, id, email); } catch (e) { console.error("acct link", String(e && e.message || e)); }   /* v132: trips shared to this account */
     let sub = await kvGet(env, "sub:" + email, null);
     if (!sub) {   /* v54: the store email may differ from the alerts email */
       const linked = await kvGet(env, "cid:" + id, null);
@@ -5312,7 +5330,7 @@ async function alSendGift(env, email, until, sub, opts) {
   const link = sub ? alHomeUrl(sub) : links.start, btn = sub ? "Open Prowl" : "Start Prowl";
   const P = 'style="margin:0 0 12px"', small = 'style="margin:0 0 4px;font:13px/1.5 Arial,sans-serif;color:#6b5b4a"';
   const shopNote = "If you still pay for Prowl Pro in the Owl & Twig shop, that subscription is separate: this gift does not cancel it. To stop being charged, cancel it in your Owl & Twig account under Subscriptions:";
-  const steps = sub ? '<p ' + P + '>It is already on for your account: up to ' + AL_MAX_HUNTS + ' hunts, daily emails, and price and keyword filters. Your hunts and settings have not changed.</p>' +
+  const steps = sub ? '<p ' + P + '>It is already on for your account: up to ' + AL_MAX_HUNTS + ' hunts, emails as often as you like, and price and keyword filters. Your hunts and settings have not changed.</p>' +
       (paid ? '<p ' + P + '>' + alEsc(shopNote) + ' <a href="' + PRO_MANAGE_URL + '" style="color:#8a4b1f">' + alEsc(PRO_MANAGE_URL.replace(/^https:\/\/(www\.)?/, "")) + '</a>.</p>' : '')
     : '<p style="margin:0 0 6px"><b>How to start</b></p><ol style="margin:0 0 12px;padding-left:22px">' +
       '<li style="margin:0 0 6px">Tap <b>Start Prowl</b> below. It signs you in with this email address. There is no password.</li>' +
@@ -5331,7 +5349,7 @@ async function alSendGift(env, email, until, sub, opts) {
     links ? '<a href="' + alEsc(links.stop) + '" style="color:#9a8b7a">Stop gift emails to this address</a>' : '');
   const text = ["Owl & Twig Vintage has given you Prowl Pro, free " + ends + ".", "",
     "Prowl searches " + sites + " at once for the things you collect, and emails you what is new.", "",
-    sub ? "It is already on for your account: up to " + AL_MAX_HUNTS + " hunts, daily emails, and price and keyword filters." + (paid ? "\n\n" + shopNote + " " + PRO_MANAGE_URL : "")
+    sub ? "It is already on for your account: up to " + AL_MAX_HUNTS + " hunts, emails as often as you like, and price and keyword filters." + (paid ? "\n\n" + shopNote + " " + PRO_MANAGE_URL : "")
       : "How to start:\n1. Open the Start Prowl link below. It signs you in with this email address. There is no password.\n2. Search for something you collect and save it as a hunt. Pro gives you up to " + AL_MAX_HUNTS + ".\n3. Each morning, Prowl emails you anything new for your hunts.",
     "", btn + ": " + link, "", after, "", "--", "Prowl Alerts by Owl & Twig Vintage. " + why, links ? "Stop gift emails to this address: " + links.stop : null, links ? 'Or just reply "unsubscribe" to this email.' : null,
     "Copyright © " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(l => l !== null).join("\n");
@@ -5603,7 +5621,7 @@ async function alUnsub(request, env, url, origin) {
   sub.mail = "off"; sub.mailOffAt = new Date().toISOString();
   await alMerge(env, sub, ["mail", "mailOffAt"]);
   for (const k of ["pend:", "seen:"]) await env.PROWL_ALERTS.delete(k + email);
-  return wantJson ? json({ ok: true, on: true, mail: "off", pro: !!sub.pro }, 200, origin) : alPage("Prowl emails are off", "You will not get any more Prowl Alerts emails." + (sub.pro ? " Prowl Pro is still on: 25 photo checks a day and unlimited Fair price checks in Prowl. To stop paying, cancel it in your Owl & Twig account under Subscriptions." : "") + " Turn emails back on any time in Prowl under Den, then Settings.");
+  return wantJson ? json({ ok: true, on: true, mail: "off", pro: !!sub.pro }, 200, origin) : alPage("Prowl emails are off", "You will not get any more Prowl Alerts emails." + (sub.pro ? " Prowl Pro is still on: unlimited photo checks and Fair price checks in Prowl. To stop paying, cancel it in your Owl & Twig account under Subscriptions." : "") + " Turn emails back on any time in Prowl under Den, then Settings.");
 }
 
 /* v29: "Send me a test email" in Prowl. Token required, 3 a day. Checks up to
@@ -5844,7 +5862,7 @@ async function huntOne(env, source, term, cl) {
       else row.items = (items || []).slice(0, HUNT_PER_SOURCE).filter(x => x && /^https:\/\//.test(x.url || "")).map(x => ({
         title: String(x.title || "").slice(0, 160), price: String(x.price || ""), priceN: huntPriceN(x.price), url: x.url,
         image: /^https:\/\//.test(x.image || "") ? x.image : "", src: source, bids: Number(x.bids) || 0,
-        time_left: String(x.time_left || ""), where: String(x.where || "").slice(0, 60) }));
+        time_left: String(x.time_left || ""), where: String(x.where || "").slice(0, 60), ship: String(x.ship || "").slice(0, 24) }));   /* v130: ship */
     }
   } catch (e) { row.note = "unreachable"; }
   row.ms = Date.now() - t0;
@@ -5854,7 +5872,7 @@ async function huntRoute(request, env, url, origin) {
   const term = String(url.searchParams.get("q") || "").replace(/\s+/g, " ").trim().slice(0, 80);
   if (term.length < 2) return json({ error: "q required" }, 400, origin);
   const cl = String(url.searchParams.get("cl") || "").toLowerCase().replace(/[^a-z]/g, "").slice(0, 20);
-  const key = url.origin + "/hunt?q=" + encodeURIComponent(term.toLowerCase()) + "&cl=" + cl + "&v=1";
+  const key = url.origin + "/hunt?q=" + encodeURIComponent(term.toLowerCase()) + "&cl=" + cl + "&v=2";   /* v130: also, ship */
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("hu:" + ipKey(request.headers.get("CF-Connecting-IP")), HUNT_PER_IP))) return json({ error: "slow down" }, 429, origin);
@@ -6122,7 +6140,7 @@ async function cronRun(env) {
   const t0 = Date.now();
   let r = null, err = "";
   try { r = await alTick(env); } catch (e) { err = String(e && e.message || e); console.error("alTick", err); }   /* v51: never silent */
-  if (new Date().getUTCMinutes() < 5) { try { await tripSweep(env); } catch (e) { console.error("trip sweep", String(e && e.message || e)); } }   /* v130: once an hour */
+  if (new Date().getUTCMinutes() < 5) { try { await tripSweep(env); } catch (e) { console.error("trip sweep", String(e && e.message || e)); } }   /* v132: once an hour */
   try {
     await capsCall("metrics", "mrec", { c: { t: t0, ms: Date.now() - t0, members: (r && r.members) || 0, checked: (r && r.checked) || 0,
       sent: (r && r.sent) || 0, failed: ((r && r.failed) || 0) + (err ? 1 : 0), errors: err ? [scrubPII("alert clock crashed: " + err).slice(0, 160)] : ((r && r.errors) || []), skipped: (r && r.skipped) || "",
@@ -6241,7 +6259,7 @@ async function fbFinds(request, env, url, origin) {
   return json({ term: v.term, updated: v.updated, items: v.items }, 200, origin, hdr);
 }
 
-/* ---------- v130: NEAR ME ----------
+/* ---------- v132: NEAR ME ----------
    The in-person prowl (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). The logic is in trip.js (pure);
    this part talks to Google and the stores. Everything needs the secret GOOGLE_MAPS_KEY (Places API (New), Routes API
    and Geocoding API enabled on it); without it /near and /trip answer 503 "not set up" and the page keeps its Maps links.
@@ -6686,11 +6704,11 @@ async function handleFetch(request, env, ctx) {
       return itemRoute(env, url, origin, request);
     }
     if (url.pathname === "/fb-finds") return fbFinds(request, env, url, origin);   /* v94 */
-    if (url.pathname === "/near" && request.method === "GET") return nearRoute(request, env, url, origin);   /* v130: Around You */
-    if (url.pathname === "/trip" && request.method === "GET") return tripRoute(request, env, url, origin);   /* v130: Road Trip */
-    if (url.pathname === "/pp" && request.method === "GET") return ppRoute(request, env, url);   /* v130: a place's photo */
-    if (url.pathname === "/trips" || url.pathname.startsWith("/trips/")) return tripsRoute(request, env, url, origin);   /* v130: group trips and finds */
-    if (url.pathname.startsWith("/finds/") && request.method === "GET") return findPhotoRoute(request, env, url);   /* v130: a find's photo, signed */
+    if (url.pathname === "/near" && request.method === "GET") return nearRoute(request, env, url, origin);   /* v132: Around You */
+    if (url.pathname === "/trip" && request.method === "GET") return tripRoute(request, env, url, origin);   /* v132: Road Trip */
+    if (url.pathname === "/pp" && request.method === "GET") return ppRoute(request, env, url);   /* v132: a place's photo */
+    if (url.pathname === "/trips" || url.pathname.startsWith("/trips/")) return tripsRoute(request, env, url, origin);   /* v132: group trips and finds */
+    if (url.pathname.startsWith("/finds/") && request.method === "GET") return findPhotoRoute(request, env, url);   /* v132: a find's photo, signed */
     if (url.pathname === "/sales" && request.method === "GET") return esSales(request, env, url, origin);   /* v103 */
     if (url.pathname === "/shop-picks") {
       return shopPicks(env, url, origin, request);
