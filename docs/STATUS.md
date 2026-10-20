@@ -1,15 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v144).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v145).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.39** | 399,599 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v144** | |
+| Worker | **v145** | |
 
 Recently shipped, newest first:
+
+- **v145: antiques asked on their own, a circle at a time** (the v144 live build, 23 small circles, still had no Maumee
+  Antique Mall: since v140 a trip put all three kinds in one question, "antique stores and antique malls, vintage
+  stores, thrift stores", and a circle's 20 answers were a mix that crowded the mall out; Around you, which asks
+  antiques alone, lists it first). `kindPlan.texts`: antiques alone, then the other text kinds together; two text
+  searches a circle, at most 150 a build. Cache keys v=7. Worker only. Tests: `worker/__tests__/trip.test.mjs`,
+  `trips.test.mjs`.
 
 - **v144: cache keys v=6.** v143's upload sat on Cloudflare for an hour without taking over (requests still answered
   with v142's 40 km boxes; Cloudflare's stored script was v143). The keys move so no v142 build is served once v143's
@@ -748,7 +755,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.40, worker v145**. Claim one here when you start.
+Next free numbers: **page v7.40, worker v146**. Claim one here when you start.
 
 ## What's next
 

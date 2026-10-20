@@ -18,9 +18,11 @@ test("v142: 'via' in the destination steers the road", () => {
 });
 
 test("v140: the typed kinds go to Nearby Search, the rest to a text search; a crowd counts only for our kinds; the museum is never ours", () => {
-  assert.deepEqual(kindPlan(["antiques", "vintage", "thrift"]), { types: [], text: "antique stores and antique malls, vintage stores, thrift stores", textKeys: ["antiques", "vintage", "thrift"] }, "v143: Google has no antique_store or thrift_store type");
-  assert.deepEqual(kindPlan(["records", "flea"]), { types: [], text: "record stores, flea markets", textKeys: ["records", "flea"] });
+  assert.deepEqual(kindPlan(["antiques", "vintage", "thrift"]), { types: [], text: "antique stores and antique malls, vintage stores, thrift stores", texts: ["antique stores and antique malls", "vintage stores, thrift stores"], textKeys: ["antiques", "vintage", "thrift"] }, "v143: Google has no antique_store or thrift_store type; v145: antiques asked alone");
+  assert.deepEqual(kindPlan(["records", "flea"]), { types: [], text: "record stores, flea markets", texts: ["record stores, flea markets"], textKeys: ["records", "flea"] });
   assert.deepEqual(kindPlan("antiques,books,toys").types, ["book_store", "toy_store"]);
+  assert.deepEqual(kindPlan("antiques,books,toys").texts, ["antique stores and antique malls"]);
+  assert.deepEqual(kindPlan(["thrift"]).texts, ["thrift stores"]);
   const mk = (name, n, extra) => Object.assign({ id: name.replace(/\W+/g, ""), name, town: "T", state: "OH", lat: 0, lng: 0, rating: 4.5, n, kind: "Antiques", hours: null, photo: "", url: "", summary: "" }, extra || {});
   assert.equal(sizeTier(mk("The Michigan Museum of Horror", 831, { kind: "Museum" })), 0, "no crowd point for a museum");
   assert.equal(kindAllowed(mk("The Michigan Museum of Horror", 831, { kind: "Museum" }), CATS_DEFAULT), false);
