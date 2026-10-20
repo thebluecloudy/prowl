@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v139: 2026-10-20. v138's strict boxes filled with shopping malls ("The Mall of Monroe", 3.2 stars, an anchor), a
+ *         4-review "emporium" was an anchor on its name, and Maumee Antique Mall was still out because the Toledo box's
+ *         20 answers were all downtown. Kinds that are never ours are dropped (kindAllowed); an anchor needs
+ *         ANCHOR_MIN_REVIEWS; a box that comes back full is read to its next pages (gPlacesAll, TRIP_PAGES_MAX). Keys v=4.
  *   v138: 2026-10-20. Maumee Antique Mall (1,776 reviews, on I-75) and Unique Antiques Warehouse (600 m off US-23) were
  *         missing from the Novi to Blenko build though /near finds both: a corridor circle was a bias, so its 20 answers
  *         wandered 30 km off. The corridor is now boxes 40 km apart, 22 km to a side, that Google must stay inside
@@ -475,8 +479,8 @@ import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
 import { decodePolyline, haversineKm, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
-  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_KM, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v138";
+  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_KM, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
+const WORKER_VERSION = "v139";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6335,14 +6339,27 @@ async function gFetch(url, init, mask, env) {
   finally { clearTimeout(timer); }
 }
 /* Text Search (New), biased to a circle when one is given, or (v138, restrict) held inside a box that far to a side */
-async function gPlacesText(env, query, center, radius, max, restrict) {
+async function gPlacesText(env, query, center, radius, max, restrict) { return (await gPlacesPage(env, query, center, radius, max, restrict, "")).places; }
+/* v139: a full box (20 answers) is read on to its next pages, so a dense town is read to the end */
+async function gPlacesAll(env, query, center, radius, restrict, pages) {
+  let out = [], token = "";
+  for (let i = 0; i < Math.max(1, pages || TRIP_PAGES_MAX); i++) {
+    const r = await gPlacesPage(env, query, center, radius, 20, restrict, token);
+    out = out.concat(r.places);
+    if (!r.next || r.places.length < 20) break;
+    token = r.next;
+  }
+  return out;
+}
+async function gPlacesPage(env, query, center, radius, max, restrict, pageToken) {
   const body = { textQuery: query, maxResultCount: Math.max(1, Math.min(20, max || 20)), languageCode: "en", regionCode: "US" };
+  if (pageToken) body.pageToken = pageToken;
   if (center && restrict) {
     const dLat = (radius || NEAR_RADIUS_M) / 111000, dLng = (radius || NEAR_RADIUS_M) / (111000 * Math.max(0.2, Math.cos(center.lat * Math.PI / 180)));
     body.locationRestriction = { rectangle: { low: { latitude: center.lat - dLat, longitude: center.lng - dLng }, high: { latitude: center.lat + dLat, longitude: center.lng + dLng } } };
   } else if (center) body.locationBias = { circle: { center: { latitude: center.lat, longitude: center.lng }, radius: Math.min(50000, radius || NEAR_RADIUS_M) } };
-  const j = await gFetch("https://places.googleapis.com/v1/places:searchText", { method: "POST", body: JSON.stringify(body) }, G_PLACE_FIELDS.split(",").map((f) => "places." + f).join(","), env);
-  return ((j && j.places) || []).map(normalizePlace).filter(Boolean);
+  const j = await gFetch("https://places.googleapis.com/v1/places:searchText", { method: "POST", body: JSON.stringify(body) }, G_PLACE_FIELDS.split(",").map((f) => "places." + f).join(",") + ",nextPageToken", env);
+  return { places: ((j && j.places) || []).map(normalizePlace).filter(Boolean), next: j && typeof j.nextPageToken === "string" ? j.nextPageToken : "" };
 }
 /* one place's hours now, 10 minutes in the cache (hours are never kept as copy beyond that) */
 async function gPlaceHours(env, id) {
@@ -6385,7 +6402,7 @@ async function nearRoute(request, env, url, origin) {
   if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, places: [] }, 503, origin);
   const cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=3";
+  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=4";
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("near:" + ipKey(request.headers.get("CF-Connecting-IP")), NEAR_PER_IP))) return json({ error: "slow down" }, 429, origin);
@@ -6408,7 +6425,7 @@ async function tripBuild(env, from, toText, day, cats) {
   /* v136: every route's corridor is searched (a circle and a query asked once, however many routes share it), and the
      route with the most to see wins; the fastest is the tie-break */
   const queries = tripQueries(cats), asked = new Map();
-  const ask = (q, c) => { const k = q + "|" + c.lat.toFixed(1) + "," + c.lng.toFixed(1); if (!asked.has(k)) asked.set(k, asked.size < TRIP_SEARCHES_MAX ? gPlacesText(env, q, c, CORRIDOR_RADIUS_M, 20, true) : Promise.resolve([])); return asked.get(k); };
+  const ask = (q, c) => { const k = q + "|" + c.lat.toFixed(1) + "," + c.lng.toFixed(1); if (!asked.has(k)) asked.set(k, asked.size * TRIP_PAGES_MAX < TRIP_SEARCHES_MAX ? gPlacesAll(env, q, c, CORRIDOR_RADIUS_M, true, TRIP_PAGES_MAX) : Promise.resolve([])); return asked.get(k); };
   const built = await Promise.all(routes.map(async (route) => {
     const centers = corridorCenters(route.pts).slice(0, CORRIDOR_CENTERS_MAX);
     const lists = await Promise.all([].concat(...centers.map((c) => queries.map((q) => ask(q, c)))));
@@ -6431,7 +6448,7 @@ async function tripRoute(request, env, url, origin) {
   if (to.length < 2) return json({ error: "to required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, stops: [] }, 503, origin);
   const day = tripDay(url.searchParams.get("day")), cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=3";   /* v137, v138: the answer changed */
+  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=4";   /* v137 to v139: the answer changed */
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("trip:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIP_PER_IP))) return json({ error: "slow down" }, 429, origin);
