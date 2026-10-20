@@ -19,17 +19,19 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
- *   v146: 2026-10-20. The detour was the thief: the road passes 3.9 km from Maumee Antique Mall and 40 km/h both ways
+ *   v148: 2026-10-20. Miles and mph everywhere (the owner: "don't use km or km/hr"): /trip answers route.mi, Around You's
+ *         near is miles, the corridor and detour constants are miles and mph (trip.js). Keys v=9.
+ *   v146: 2026-10-20. The detour was the thief: the road passes 2.4 miles from Maumee Antique Mall and 25 mph both ways
  *         called that 11.7 minutes, over the 10-minute line, build after build. trip.js: the distance is to the road's
- *         segments, not its sampled points, and 60 km/h off the highway. Keys v=8.
+ *         segments, not its sampled points, and 37 mph off the highway. Keys v=8.
  *   v145: 2026-10-20. Antiques asked on their own again, a circle at a time (kindPlan.texts): since v140 the trip put all
  *         three kinds in one question and Maumee Antique Mall never made a circle's 20 answers; Around You, which asks
  *         antiques alone, lists it first. Keys v=7.
- *   v144: 2026-10-20. The /trip and /near cache keys move to v=6, so no v142 build (40 km boxes) is served once v143's
+ *   v144: 2026-10-20. The /trip and /near cache keys move to v=6, so no v142 build (25-mile boxes) is served once v143's
  *         small circles are live; v143's upload sat undeployed for an hour, and this push starts a fresh build.
  *   v143: 2026-10-20. The live build said how.badTypes = antique_store, thrift_store: Google's Nearby has no such types,
- *         so antiques and thrift are text searches for good. The corridor goes back to bias circles, 25 km apart and
- *         15 km wide (Around You's radius, which lists Maumee Antique Mall first), one page each; a strict 44 km box
+ *         so antiques and thrift are text searches for good. The corridor goes back to bias circles, 15 miles apart and
+ *         9 miles wide (Around You's radius, which lists Maumee Antique Mall first), one page each; a strict 27-mile box
  *         ranked by distance to its centre never listed the mall. At most 130 searches a build.
  *   v142: 2026-10-20. v141's "how" said every typed Nearby call was refused (refused 20), so the search had fallen back
  *         to text all along: Nearby now tries each place type on its own and remembers the ones Google rejects
@@ -48,9 +50,9 @@
  *         4-review "emporium" was an anchor on its name, and Maumee Antique Mall was still out because the Toledo box's
  *         20 answers were all downtown. Kinds that are never ours are dropped (kindAllowed); an anchor needs
  *         ANCHOR_MIN_REVIEWS; a box that comes back full is read to its next pages (gPlacesAll, TRIP_PAGES_MAX). Keys v=4.
- *   v138: 2026-10-20. Maumee Antique Mall (1,776 reviews, on I-75) and Unique Antiques Warehouse (600 m off US-23) were
+ *   v138: 2026-10-20. Maumee Antique Mall (1,776 reviews, on I-75) and Unique Antiques Warehouse (a third of a mile off US-23) were
  *         missing from the Novi to Blenko build though /near finds both: a corridor circle was a bias, so its 20 answers
- *         wandered 30 km off. The corridor is now boxes 40 km apart, 22 km to a side, that Google must stay inside
+ *         wandered 20 miles off. The corridor is now boxes 25 miles apart, 14 miles to a side, that Google must stay inside
  *         (locationRestriction); size points add up (trip.js sizeTier); a flea market, record store or thrift shop is
  *         dropped when its chip is off (kindAllowed). Cache keys v=3.
  *   v137: 2026-10-20. The /trip and /near cache keys move to v=2, so no build kept by v135 (16 anchors, no "more", no
@@ -70,7 +72,7 @@
  *         behind them drop, the origin becomes that town, and every member sees the new list.
  *   v133: 2026-10-20. NEAR ME after the first live look (the owner: "it found the best places ... big antique stores").
  *         /pp takes Google's long photo names (they run past 400 characters, so every photo was a 404), Around You keeps
- *         only places within NEAR_KEEP_KM (Maumee, 100 km off, was on a Novi list), and the size signal counts only
+ *         only places within NEAR_KEEP_MI (Maumee, 60 miles off, was on a Novi list), and the size signal counts only
  *         real antiques-place words and a crowd of reviews, not "market" or "gallery" alone (trip.js sizeTier).
  *   v132: 2026-10-20. NEAR ME (the spec: NEAR ME section, Road Trip, Trip Finds). GET /near (Around You), GET /trip (Road
  *         Trip: the route's corridor, one anchor a town, the Maps link with the origin as a town only), /pp (place photos),
@@ -502,10 +504,10 @@ import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-import { decodePolyline, haversineKm, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
+import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
-  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_KM, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v146";
+  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
+const WORKER_VERSION = "v148";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6320,7 +6322,7 @@ async function fbFinds(request, env, url, origin) {
      GET  /near?lat&lng[&cats]          Around You: the antique, vintage and thrift shops around a point, ranked (size,
                                         then rating weighted by reviews, then distance), with each one's weekly hours
                                         and UTC offset so the page prints OPEN NOW / CLOSED when it draws the card.
-                                        Kept 10 minutes per ~1 km cell; NEAR_PER_IP a day.
+                                        Kept 10 minutes per half-mile cell; NEAR_PER_IP a day.
      GET  /trip?to&lat&lng[&day&cats]   Road Trip (cats, v135: antiques,vintage,thrift,records,books,toys,flea; trip.js CATS): the route from the point (its town only is ever kept or shown) to the
                                         destination, the shops inside DETOUR_MIN of it, one anchor per town with the
                                         rest nested, in drive order, hours for the trip's day, and the one Maps link
@@ -6434,7 +6436,7 @@ async function gRoutes(env, from, to, via) {
   for (const r of (j && Array.isArray(j.routes) ? j.routes : []).slice(0, ROUTES_MAX)) {
     if (!r || !r.polyline || !r.polyline.encodedPolyline) continue;
     const pts = decodePolyline(r.polyline.encodedPolyline);
-    if (pts.length >= 2) out.push({ pts: pts, km: Math.round(Number(r.distanceMeters || 0) / 100) / 10, min: Math.round(Number(String(r.duration || "0s").replace(/s$/, "")) / 60) });
+    if (pts.length >= 2) out.push({ pts: pts, mi: Math.round(Number(r.distanceMeters || 0) / MI_M * 10) / 10, min: Math.round(Number(String(r.duration || "0s").replace(/s$/, "")) / 60) });
   }
   out.sort((a, b) => a.min - b.min);
   return out;
@@ -6454,14 +6456,14 @@ async function nearRoute(request, env, url, origin) {
   if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, places: [] }, 503, origin);
   const cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=8";
+  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=9";
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("near:" + ipKey(request.headers.get("CF-Connecting-IP")), NEAR_PER_IP))) return json({ error: "slow down" }, 429, origin);
   const here = { lat: lat, lng: lng };
   const lists = [await kindSearches(env, cats, here, NEAR_RADIUS_M, false, 0)];   /* v140: by type, most popular first */
   const seen = Object.create(null), all = [];
-  for (const p of [].concat(...lists)) { if (seen[p.id] || !kindAllowed(p, cats)) continue; seen[p.id] = 1; p.near = Math.round(haversineKm(here, p) * 10) / 10; if (p.near <= NEAR_KEEP_KM) all.push(p); }   /* v133: Google answers past the circle; v138: off kinds out */
+  for (const p of [].concat(...lists)) { if (seen[p.id] || !kindAllowed(p, cats)) continue; seen[p.id] = 1; p.near = Math.round(haversineMi(here, p) * 10) / 10; if (p.near <= NEAR_KEEP_MI) all.push(p); }   /* v133: Google answers past the circle; v138: off kinds out */
   const places = rankPlaces(all).slice(0, NEAR_MAX).map((p) => placeCard(p));
   const res = json({ at: new Date().toISOString(), places: places, empty: !places.length }, 200, origin, { "Cache-Control": "private, max-age=" + NEAR_CACHE_SECONDS });
   try { await PCACHE.put(key, res.clone()); } catch (e) {}
@@ -6491,9 +6493,9 @@ async function tripBuild(env, from, toText, day, cats, via) {
   const best = built[0], stops = best.stops;
   const destCard = dest ? placeCard(dest) : { id: "", name: vClean(toText, 120), town: "", why: "", hours: null, url: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(toText) };
   const destLabel = destCard.name + (destCard.town ? ", " + destCard.town : "");
-  return { origin: { town: town }, dest: destCard, route: { km: best.route.km, min: best.route.min, slower: Math.max(0, best.route.min - routes[0].min), routes: routes.length }, day: day, weekday: weekdayOf(day), cats: cats,
+  return { origin: { town: town }, dest: destCard, route: { mi: best.route.mi, min: best.route.min, slower: Math.max(0, best.route.min - routes[0].min), routes: routes.length }, day: day, weekday: weekdayOf(day), cats: cats,
     stops: stops, more: best.more, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.length, via: via,
-    how: { badTypes: Array.from(BAD_TYPES), routes: built.map((b) => ({ km: b.route.km, min: b.route.min, score: b.score, anchors: b.stops.length, found: b.found, boxes: b.boxes.length })), boxes: best.boxes, nearby: stat.nearby, text: stat.text, refused: stat.refused } };
+    how: { badTypes: Array.from(BAD_TYPES), routes: built.map((b) => ({ mi: b.route.mi, min: b.route.min, score: b.score, anchors: b.stops.length, found: b.found, boxes: b.boxes.length })), boxes: best.boxes, nearby: stat.nearby, text: stat.text, refused: stat.refused } };
 }
 async function tripRoute(request, env, url, origin) {
   const lat = nearNum(url.searchParams.get("lat"), -90, 90), lng = nearNum(url.searchParams.get("lng"), -180, 180);
@@ -6502,7 +6504,7 @@ async function tripRoute(request, env, url, origin) {
   if (to.length < 2) return json({ error: "to required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, stops: [] }, 503, origin);
   const day = tripDay(url.searchParams.get("day")), cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=8";   /* v137 to v146: the answer changed */
+  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=9";   /* v137 to v148: the answer changed */
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("trip:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIP_PER_IP))) return json({ error: "slow down" }, 429, origin);

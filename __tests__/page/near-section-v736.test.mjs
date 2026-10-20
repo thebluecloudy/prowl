@@ -30,7 +30,7 @@ const STOPS = [
 const DEST = card('D1', 'Blenko Glass Company', 'Milton, WV', 'Glass factory', H_BLENKO);
 const MAPS = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=Novi%2C%20MI&destination=Blenko%20Glass%20Company%2C%20Milton%2C%20WV&waypoints=Maumee%20Antique%20Mall%2C%20Maumee%2C%20OH%7CChillicothe%20Antique%20Emporium%2C%20Chillicothe%2C%20OH%7CCentral%20City%20Antiques%2C%20Huntington%2C%20WV';
 const MORE = [card('M1', 'Gaffney\'s Treasures and Gifts', 'Marion, OH', 'Gift shop', H_DAILY), card('M2', 'Ellie Mills Mercantile', 'Jackson, OH', 'Home goods store', H_DAILY)];
-const trip = (d, empty) => ({ origin: { town: 'Novi, MI' }, dest: DEST, route: { km: 640, min: 390, slower: 42, routes: 2 }, day: d, weekday: new Date(d + 'T12:00:00Z').getUTCDay(), stops: empty ? [] : STOPS, more: empty ? [] : MORE, maps: MAPS, empty: !!empty });
+const trip = (d, empty) => ({ origin: { town: 'Novi, MI' }, dest: DEST, route: { mi: 398, min: 390, slower: 42, routes: 2 }, day: d, weekday: new Date(d + 'T12:00:00Z').getUTCDay(), stops: empty ? [] : STOPS, more: empty ? [] : MORE, maps: MAPS, empty: !!empty });
 const VIEW = (d) => Object.assign(trip(d), { id: 'tabcdefghi', mine: true, org: true, members: 1, closes: '2026-12-01T00:00:00.000Z', finds: 0 });
 const FINDS = [{ id: 'fabcdefghi', by: '', name: 'Hark', at: '2026-10-26T18:00:00.000Z', item: 'Blenko 384 decanter, tangerine', price: '$45', verdict: 'FAIR', fair: '$40–$70', stop: 'Central City Antiques', town: 'Huntington, WV', photo: '/finds/tabcdefghi/fabcdefghi.jpg?e=1&s=abc' }];
 const J = (j, status) => Promise.resolve({ ok: !status || status < 400, status: status || 200, json: () => Promise.resolve(j), text: () => Promise.resolve(JSON.stringify(j)) });
@@ -448,8 +448,8 @@ test('v7.39: the road with the most to see is said; smaller shops sit apart and 
   await p.close();
 });
 
-test('the page says v7.40, and keeps every old localStorage key (prowl.trip was v7.36\'s one new one; v7.40 adds prowl.filter)', () => {
-  assert.match(PAGE, /var PROWL_VERSION='v7\.40'/);
+test('the page says v7.42, and keeps every old localStorage key (prowl.trip was v7.36\'s one new one; v7.40 adds prowl.filter)', () => {
+  assert.match(PAGE, /var PROWL_VERSION='v7\.42'/);
   assert.match(PAGE, /var FLT_KEY='prowl\.filter'/);
   assert.match(PAGE, /var TRIP_KEY='prowl\.trip'/);
   assert.match(PAGE, /var CATS_KEY='prowl\.nearCats',SKIP_KEY='prowl\.nearSkip'/);

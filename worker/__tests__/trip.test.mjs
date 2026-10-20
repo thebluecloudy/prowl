@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  haversineKm, decodePolyline, nearestOnRoute, detourMinutes, corridorCenters, sizeTier, differentiator, ratingScore, rankPlaces,
+  haversineMi, decodePolyline, nearestOnRoute, detourMinutes, corridorCenters, sizeTier, differentiator, ratingScore, rankPlaces,
   townOf, townFromAddress, normalizePlace, placeCard, hoursForDay, openAt, alongRoute, clusterStops, mapsDirUrl, hasStreet,
   tripDay, weekdayOf, tripCloses, tripExpires, tripExpired, tripRecord, tripMember, tripView, findRecord,
   DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS, CATS, CATS_DEFAULT, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, ANCHOR_REVIEWS, kindAllowed, kindPlan, ANCHOR_REVIEWS_ANTIQUES, splitVia,
@@ -113,11 +113,11 @@ const WAY = [
   { lat: 38.4192, lng: -82.4452 },   /* Huntington */
   { lat: 38.4345, lng: -82.1322 },   /* Milton */
 ];
-/* a route sampled about every kilometre along those legs */
+/* a route sampled about every 0.6 mile along those legs */
 function sampleRoute(way) {
   const out = [];
   for (let i = 0; i < way.length - 1; i++) {
-    const a = way[i], b = way[i + 1], n = Math.max(1, Math.round(haversineKm(a, b)));
+    const a = way[i], b = way[i + 1], n = Math.max(1, Math.round(haversineMi(a, b) * 1.6));
     for (let k = 0; k < n; k++) out.push({ lat: a.lat + (b.lat - a.lat) * k / n, lng: a.lng + (b.lng - a.lng) * k / n });
   }
   out.push(way[way.length - 1]);
@@ -136,36 +136,36 @@ const STOPS = [
   place({ name: "Olde Central City Vintage", town: "Huntington", state: "WV", lat: 38.4193, lng: -82.4605, n: 40 }),
   place({ name: "14th Street Collectibles", town: "Huntington", state: "WV", lat: 38.4188, lng: -82.4600, n: 25, rating: 4.3 }),
   place({ name: "Heritage Station Shops", town: "Huntington", state: "WV", lat: 38.4196, lng: -82.4598, n: 12, rating: 4.9 }),
-  place({ name: "Mansfield Antique Barn", town: "Mansfield", lat: 40.7584, lng: -82.5154, n: 300, summary: "200 dealers" }),   /* 40 km off the route */
+  place({ name: "Mansfield Antique Barn", town: "Mansfield", lat: 40.7584, lng: -82.5154, n: 300, summary: "200 dealers" }),   /* 25 miles off the route */
 ];
 
-test("haversine and polylines: Novi to Toledo is about 90 km; Google's example polyline decodes", () => {
-  const km = haversineKm(WAY[0], WAY[1]);
-  assert.ok(km > 85 && km < 100, String(km));
+test("haversine and polylines: Novi to Toledo is about 57 miles; Google's example polyline decodes", () => {
+  const mi = haversineMi(WAY[0], WAY[1]);
+  assert.ok(mi > 53 && mi < 62, String(mi));
   assert.deepEqual(decodePolyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@"), [{ lat: 38.5, lng: -120.2 }, { lat: 40.7, lng: -120.95 }, { lat: 43.252, lng: -126.453 }]);
   assert.deepEqual(decodePolyline(""), []);
 });
 
-test("the corridor: a stop 40 km off the route is out, ten minutes of detour is the line, the circles cover the route", () => {
+test("the corridor: a stop 25 miles off the route is out, ten minutes of detour is the line, the circles cover the route", () => {
   const inside = alongRoute(STOPS, ROUTE, DETOUR_MIN);
   assert.ok(!inside.find((p) => p.town === "Mansfield"), "Mansfield is not on the way");
   assert.equal(inside.length, STOPS.length - 1);
   for (const p of inside) assert.ok(p.near <= DETOUR_MIN && p.prog >= 0, p.name);
   assert.equal(detourMinutes(0), 0);
-  assert.ok(detourMinutes(5) <= DETOUR_MIN && detourMinutes(6) > DETOUR_MIN, "v146: about 5 km each way is the budget at 60 km/h");
-  assert.ok(detourMinutes(3.9) < DETOUR_MIN, "Maumee Antique Mall, 3.9 km off I-475, is inside it");
+  assert.ok(detourMinutes(3) <= DETOUR_MIN && detourMinutes(3.5) > DETOUR_MIN, "v146: about 3 miles each way is the budget at 37 mph");
+  assert.ok(detourMinutes(2.4) < DETOUR_MIN, "Maumee Antique Mall, 2.4 miles off I-475, is inside it");
   /* v146: the distance is to the road, not to its sampled points */
-  const coarse = [{ lat: 41.60, lng: -83.60 }, { lat: 41.50, lng: -83.60 }];   /* an 11 km straight segment, no point in between */
-  const beside = { lat: 41.55, lng: -83.61 };   /* 0.8 km west of its middle */
-  assert.ok(nearestOnRoute(coarse, beside).km < 1, "beside the middle of a long segment: " + nearestOnRoute(coarse, beside).km);
+  const coarse = [{ lat: 41.60, lng: -83.60 }, { lat: 41.50, lng: -83.60 }];   /* a 7-mile straight segment, no point in between */
+  const beside = { lat: 41.55, lng: -83.61 };   /* half a mile west of its middle */
+  assert.ok(nearestOnRoute(coarse, beside).mi < 0.7, "beside the middle of a long segment: " + nearestOnRoute(coarse, beside).mi);
   assert.equal(nearestOnRoute(coarse, beside).idx, 0);
-  assert.ok(nearestOnRoute(coarse, { lat: 41.70, lng: -83.60 }).km > 10, "past the end: the end point, not the line extended");
-  assert.deepEqual(nearestOnRoute([], beside), { idx: -1, km: Infinity });
+  assert.ok(nearestOnRoute(coarse, { lat: 41.70, lng: -83.60 }).mi > 6, "past the end: the end point, not the line extended");
+  assert.deepEqual(nearestOnRoute([], beside), { idx: -1, mi: Infinity });
   const centers = corridorCenters(ROUTE);
-  assert.ok(centers.length >= 20 && centers.length <= 30, "a route of about 560 km as the crow flies in ~25 km steps: " + centers.length);
-  assert.ok(haversineKm(centers[centers.length - 1], WAY[WAY.length - 1]) < 25, "the last circle reaches the destination");
+  assert.ok(centers.length >= 20 && centers.length <= 30, "a route of about 350 miles as the crow flies in ~15-mile steps: " + centers.length);
+  assert.ok(haversineMi(centers[centers.length - 1], WAY[WAY.length - 1]) < 16, "the last circle reaches the destination");
   const far = nearestOnRoute(ROUTE, { lat: 40.7584, lng: -82.5154 });
-  assert.ok(far.km > 30, String(far.km));
+  assert.ok(far.mi > 19, String(far.mi));
 });
 
 test("the reference route: anchors in drive order, Huntington's Central City as one cluster, Mansfield out", () => {
@@ -293,7 +293,7 @@ test("the trip record: the organizer is its first member, the origin is a town, 
   assert.equal(tripDay("2026-12-25", now), "2026-10-20", "too far ahead: today");
   assert.equal(tripDay("2026-10-01", now), "2026-10-20", "in the past: today");
   assert.equal(tripDay("garbage", now), "2026-10-20");
-  const built = { origin: { town: "Novi, MI" }, dest: { name: "Blenko Glass Company", town: "Milton, WV", id: "ChIJblenko" }, route: { km: 640, min: 390 },
+  const built = { origin: { town: "Novi, MI" }, dest: { name: "Blenko Glass Company", town: "Milton, WV", id: "ChIJblenko" }, route: { mi: 398, min: 390 },
     stops: clusterStops(alongRoute(STOPS, ROUTE, DETOUR_MIN)) };
   const t = tripRecord("t_abc", "1234567", built, "2026-10-26", now);
   assert.deepEqual(t.members, ["1234567"]); assert.equal(t.org, "1234567");

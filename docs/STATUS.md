@@ -1,16 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.40 / v146).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.42 / v148).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.40** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v146** | |
+| Page | **v7.42** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v148** | |
 
 Recently shipped, newest first:
 
+- **v7.42 / v148: miles and mph, nowhere a kilometre** (the owner: "don't use km or km/hr, use miles and mph"). The
+  worker measures everything in miles now: `haversineMi`, `nearestOnRoute` answers `mi`, the detour speed is 37 mph
+  (`DETOUR_MPH`; 3 miles each way is the 10-minute budget), the corridor circles are 15 miles apart and 9 miles wide,
+  Around you keeps places within 25 miles (`NEAR_KEEP_MI`) and the walkable cluster is 0.4 miles. Google still takes
+  metres (`MI_M`). `/trip` sends `route.mi` (and `how.routes[].mi`); the page reads `mi`, and a trip saved before
+  this version with `km` still draws (`nrMiles` converts). Cache keys v=9. Tests and docs say miles too. Tests:
+  `worker/__tests__/trip.test.mjs`, `worker/__tests__/trips.test.mjs`, `__tests__/page/near-section-v736.test.mjs`.
 - **v7.40: one Filter sheet beside the search box** (the owner, after a look at how Shop, Vinted, Walmart, Airbnb,
   Fiverr and Tock draw their filters on Mobbin: "this is perfect, build it"). A sliders button beside the search box,
   with a count badge, opens the page's bottom sheet (`openSheet`) with four rows that show their value while closed:
@@ -27,10 +34,10 @@ Recently shipped, newest first:
   only. Not in this version: on-screen local pickup (the email's ZIP and radius) needs the worker's live eBay search
   to take them. Test: `__tests__/page/filter-sheet-v740.test.mjs`.
 - **v146: the detour was the thief.** Build after build (v136 to v145) had no Maumee Antique Mall though every search
-  change was aimed at it. v141's diagnostics held the answer: the road passes 3.9 km from the mall, and the detour
-  rule (straight-line distance both ways at 40 km/h) called that 11.7 minutes, over the 10-minute line. Now the
-  distance is to the road's segments rather than its sampled points (an overview polyline's points sit kilometres
-  apart; `nearestOnRoute`), and the speed off the highway is 60 km/h (`DETOUR_KMH`), so about 5 km each way is the
+  change was aimed at it. v141's diagnostics held the answer: the road passes 2.4 miles from the mall, and the detour
+  rule (straight-line distance both ways at 25 mph) called that 11.7 minutes, over the 10-minute line. Now the
+  distance is to the road's segments rather than its sampled points (an overview polyline's points sit miles
+  apart; `nearestOnRoute`), and the speed off the highway is 37 mph (`DETOUR_MPH`), so about 3 miles each way is the
   budget. Cache keys v=8. Worker only. Tests: `worker/__tests__/trip.test.mjs`.
 
 - **v145: antiques asked on their own, a circle at a time** (the v144 live build, 23 small circles, still had no Maumee
@@ -41,19 +48,19 @@ Recently shipped, newest first:
   `trips.test.mjs`.
 
 - **v144: cache keys v=6.** v143's upload sat on Cloudflare for an hour without taking over (requests still answered
-  with v142's 40 km boxes; Cloudflare's stored script was v143). The keys move so no v142 build is served once v143's
+  with v142's 25-mile boxes; Cloudflare's stored script was v143). The keys move so no v142 build is served once v143's
   circles are live, and the push starts a fresh build. If a build ever sits like this again: Cloudflare > Workers &
   Pages > prowl > Deployments shows whether the latest build failed or is waiting to be promoted. Worker only.
 
 - **v143: text searches in small circles** (the live v142 build answered `how.badTypes: antique_store, thrift_store`:
   Google's Nearby Search has neither type, so the typed search can never run for antiques; books and toys keep
-  theirs). The corridor goes back to bias circles, now 25 km apart and 15 km wide, Around you's radius, which lists
-  Maumee Antique Mall first; a strict 44 km box ranked by distance to its centre never listed the mall. One page a
+  theirs). The corridor goes back to bias circles, now 15 miles apart and 9 miles wide, Around you's radius, which lists
+  Maumee Antique Mall first; a strict 27-mile box ranked by distance to its centre never listed the mall. One page a
   circle, at most 130 searches a build (two or three routes, shared circles asked once). Worker only.
   Tests: `worker/__tests__/trip.test.mjs`, `trips.test.mjs`.
 
 - **v142: the typed search really runs, and "via"** (v141's `how` on the live Novi to Blenko build: `refused 20`, every
-  Nearby call refused, so the search had fallen back to text all along and the Maumee box, centred 3.9 km from the
+  Nearby call refused, so the search had fallen back to text all along and the Maumee box, centred 2.4 miles from the
   mall, still never listed it). Nearby now tries each place type on its own when the pair is refused and remembers the
   type Google rejects (`BAD_TYPES`, `how.badTypes`), so `antique_store` keeps working even if `thrift_store` is not a
   type. **Via:** "Blenko Glass Company, Milton, WV via Portsmouth, OH" (up to three towns, joined by "and") routes
@@ -61,7 +68,7 @@ Recently shipped, newest first:
   rebuilds; Google's own alternatives offered the Portsmouth road on one build and not the next. Worker only.
   Tests: `worker/__tests__/trip.test.mjs`, `trips.test.mjs`.
 
-- **v141: `/trip` says how it looked** (`how`: each route's km, minutes, score, anchors and places found, the boxes
+- **v141: `/trip` says how it looked** (`how`: each route's miles, minutes, score, anchors and places found, the boxes
   searched on the chosen road, the Nearby and text search counts, and whether Google refused a place type), so a
   missing stop (Maumee Antique Mall was still absent on v140) can be traced instead of guessed at. Pawn, coin, fabric
   and garden shops are never ours by name too. Worker only.
@@ -87,8 +94,8 @@ Recently shipped, newest first:
 
 - **v138: the corridor keeps what is on the road** (the owner, against Meta's list: Maumee Antique Mall, 1,776 reviews
   on I-75, and Unique Antiques Warehouse, 600 m off US-23, were missing from the Novi to Blenko build though
-  Around you finds both). A corridor circle was a Google *bias*, so its 20 answers wandered 30 km off to Blissfield
-  and Otway. The corridor is now boxes 40 km apart and 22 km to a side that Google must stay inside
+  Around you finds both). A corridor circle was a Google *bias*, so its 20 answers wandered 19 miles off to Blissfield
+  and Otway. The corridor is now boxes 25 miles apart and 14 miles to a side that Google must stay inside
   (`locationRestriction`; `gPlacesText(..., restrict)`), at most 80 searches a build. Size points add up (`sizeTier`:
   a big-place word, a crowd of reviews, dealers or square feet), so The Delaware Antique Mall (303 reviews) outranks a
   bare "WAREHOUSE 61" and Chillicothe Antique Emporium its warehouse neighbour. A flea market, record store or thrift
@@ -140,13 +147,13 @@ Recently shipped, newest first:
   destination: the stops behind you drop and the origin becomes that town. On your own kept trip the worker saves it
   (`POST /trips/<id>/rebuild { lat, lng }`, organizer only) so everyone on the trip sees the stops still ahead; on a
   built trip, or someone else's, it redraws your own view. Around you has **Refresh**, which re-reads the phone's
-  position and the shops around it (the worker's 10-minute cache is per ~1 km cell, so moving on gives a new list).
+  position and the shops around it (the worker's 10-minute cache is per ~0.6-mile cell, so moving on gives a new list).
   Tests: `__tests__/page/near-section-v736.test.mjs`, `worker/__tests__/trips.test.mjs`.
 
 - **v133: NEAR ME after the first live look** (the owner: "when i did this in meta, it found the best places to visit,
   big antique stores"). Worker only. `/pp` takes Google's photo names, which run past 400 characters, so every card
-  photo was a 404 on day one. Around you keeps only places within 40 km (`NEAR_KEEP_KM`; Google's circle is a bias, and
-  Maumee, 100 km off, was on a Novi list). The size signal counts only words that mean a big antiques place (antique
+  photo was a 404 on day one. Around you keeps only places within 25 miles (`NEAR_KEEP_MI`; Google's circle is a bias, and
+  Maumee, 60 miles off, was on a Novi list). The size signal counts only words that mean a big antiques place (antique
   mall, antique center or gallery or warehouse, emporium, flea market) and, for an antiques or vintage place, a crowd
   of reviews (300+ is a size, 1,000+ a bigger one; a thrift chain's reviews do not count), so "Pathway Market", a
   thrift shop with 89 reviews, no longer sits above Town Peddler's 2,204. Tests: `worker/__tests__/trip.test.mjs`,
@@ -163,7 +170,7 @@ Recently shipped, newest first:
     today's hours, OPEN NOW / CLOSED worked out when the card is drawn from the week's periods and the place's UTC
     offset (`nrState`). One tap opens Google Maps. Location off or the key not set: the Maps links below still work.
   - **Road trip** (`GET /trip?to&lat&lng&day`): one box, where to. The worker maps the drive (Routes API), searches
-    the corridor one circle per 50 km (Places Text Search), keeps stops within 10 minutes of detour (internal, never
+    the corridor one circle per 30 miles (Places Text Search), keeps stops within 10 minutes of detour (internal, never
     shown), clusters each town into one anchor with the rest nested, in drive order, hours for the trip's day (seven
     day pills, Today first). **OPEN IN MAPS** is pinned at the foot: one directions link, origin as a town name only,
     anchors as waypoints (nine at most), destination. An empty corridor is plain copy plus the route, never an error.
@@ -777,7 +784,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.41, worker v147**. Claim one here when you start.
+Next free numbers: **page v7.43, worker v149** (PR #194 holds v7.41 / v147). Claim one here when you start.
 
 ## What's next
 
@@ -795,7 +802,7 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 - **NEAR ME (v7.36 / v132) needs three things in Cloudflare before it does more than the old Maps links:**
   1. Done 2026-10-20: the worker secret **GOOGLE_MAPS_KEY** (Places API (New), Routes API, Geocoding API; API
      restriction only, no website restriction, since only the worker calls Google). Cost: a Road Trip build is about
-     13 Text Search calls, cached an hour; Around you is 2 calls, cached 10 minutes per ~1 km.
+     13 Text Search calls, cached an hour; Around you is 2 calls, cached 10 minutes per ~0.6 mile.
   2. Done 2026-10-20: the R2 bucket **prowl-finds** exists, `worker/wrangler.toml` binds it, and its lifecycle rule
      (prefix `finds/`, delete 30 days after upload) is the backstop behind the worker's own 7-day cleanup.
   3. For a group: the members' store customer ids in the plain-text variable **PRO_CIDS** (comma list), which is the

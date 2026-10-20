@@ -10,15 +10,16 @@
    and the Maps export carries the anchors only, with the origin as a town name, never a street. */
 
 export const DETOUR_MIN = 10;            /* a stop may cost this many minutes off the route (internal, never shown) */
-export const DETOUR_KMH = 60;            /* v146: the speed assumed off the highway, for turning distance into minutes (40 called
-                                            Maumee Antique Mall, 3.9 km from I-475, an 11.7-minute detour and dropped it) */
+export const DETOUR_MPH = 37;            /* v146: the speed assumed off the highway, for turning distance into minutes (25 mph called
+                                            Maumee Antique Mall, 2.4 miles from I-475, an 11.7-minute detour and dropped it) */
+export const MI_M = 1609.344;            /* metres in a mile: Google wants metres, Prowl thinks in miles (v148) */
 export const MAPS_WAYPOINTS = 9;         /* Google Maps directions links take about nine waypoints */
 export const FINDS_GRACE_DAYS = 7;       /* find photos live this long after the trip closes (the spec's default) */
 export const TRIP_DAYS_MAX = 14;         /* a trip day may be at most this far ahead */
-export const CLUSTER_WALK_KM = 0.6;      /* shops this close are one walkable cluster even across a town line */
-export const CORRIDOR_STEP_KM = 25;      /* v143: the corridor is searched in circles this far apart ... */
-export const CORRIDOR_RADIUS_M = 15000;  /* ... each this wide, as a bias (what Around You uses and what finds Maumee Antique
-                                            Mall first); a strict 44 km box ranked by distance to its centre never listed it */
+export const CLUSTER_WALK_MI = 0.4;      /* shops this close are one walkable cluster even across a town line */
+export const CORRIDOR_STEP_MI = 15;      /* v143: the corridor is searched in circles this far apart ... */
+export const CORRIDOR_RADIUS_M = Math.round(9 * MI_M);   /* ... each 9 miles wide, as a bias (what Around You uses and what finds Maumee Antique
+                                            Mall first); a strict 27-mile box ranked by distance to its centre never listed it */
 /* v135 (the owner: "maybe someone wants to see records, toys, antique or thrift stores"): what to look for, as the
    chips on the page. The default is the spec's three. One Google text query a circle carries every picked kind. */
 export const CATS = { antiques: "antique stores and antique malls", vintage: "vintage stores", thrift: "thrift stores", records: "record stores", books: "used book stores", toys: "vintage toy and collectibles shops", flea: "flea markets" };
@@ -42,7 +43,7 @@ export function catsQueries(cats, n) {
   for (let i = 0; i < n; i++) out.push(phrases.filter((p, j) => j % n === i).join(", "));
   return out;
 }
-export const NEAR_RADIUS_M = 15000, NEAR_KEEP_KM = 40, CORRIDOR_CENTERS_MAX = 24;   /* Around You: Google answers beyond the circle; keep only what is really near */
+export const NEAR_RADIUS_M = Math.round(9 * MI_M), NEAR_KEEP_MI = 25, CORRIDOR_CENTERS_MAX = 24;   /* Around You: Google answers beyond the circle; keep only what is really near */
 export const TRIP_STOPS_MAX = 40, TRIP_NESTED_MAX = 6, NEAR_MAX = 24, TRIP_MORE_MAX = 20;
 export const ANCHOR_REVIEWS = 150;       /* v136: a place of our kinds with this many reviews is worth planning around ... */
 export const ANCHOR_REVIEWS_ANTIQUES = 75;   /* ... and an antiques shop with this many (v140: Bluegrass Collectors, 90) */
@@ -74,8 +75,8 @@ export const FINDS_MAX = 200;            /* finds kept per trip */
 export const TRIP_MEMBERS_MAX = 24;
 
 /* ---------- geometry ---------- */
-export function haversineKm(a, b) {
-  const R = 6371, dLat = (b.lat - a.lat) * Math.PI / 180, dLng = (b.lng - a.lng) * Math.PI / 180;
+export function haversineMi(a, b) {
+  const R = 3958.8, dLat = (b.lat - a.lat) * Math.PI / 180, dLng = (b.lng - a.lng) * Math.PI / 180;
   const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
 }
@@ -95,36 +96,36 @@ export function decodePolyline(str) {
   return out;
 }
 /* the point of the road closest to p: the index of the segment it is on (progress along the route) and the distance to
-   the road itself. v146: to the segment, not its end points; an overview polyline's points sit kilometres apart and a
+   the road itself. v146: to the segment, not its end points; an overview polyline's points sit miles apart and a
    shop between two of them was further "off the road" than it is. */
 export function nearestOnRoute(route, p) {
-  let best = { idx: -1, km: Infinity };
+  let best = { idx: -1, mi: Infinity };
   if (!route.length) return best;
-  const cosLat = Math.cos(p.lat * Math.PI / 180), X = (q) => (q.lng - p.lng) * cosLat * 111.32, Y = (q) => (q.lat - p.lat) * 110.57;
+  const cosLat = Math.cos(p.lat * Math.PI / 180), X = (q) => (q.lng - p.lng) * cosLat * 69.17, Y = (q) => (q.lat - p.lat) * 68.71;
   for (let i = 0; i < route.length; i++) {
-    let km;
+    let mi;
     if (i + 1 < route.length) {
       const ax = X(route[i]), ay = Y(route[i]), bx = X(route[i + 1]), by = Y(route[i + 1]);
       const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
       const t = len2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len2)) : 0;
       const cx = ax + t * dx, cy = ay + t * dy;
-      km = Math.sqrt(cx * cx + cy * cy);
-    } else km = haversineKm(route[i], p);
-    if (km < best.km) best = { idx: i, km: km };
+      mi = Math.sqrt(cx * cx + cy * cy);
+    } else mi = haversineMi(route[i], p);
+    if (mi < best.mi) best = { idx: i, mi: mi };
   }
   return best;
 }
-export function detourMinutes(km) { return Math.round(km * 2 / DETOUR_KMH * 60 * 10) / 10; }
-/* circles to search along the route, one every CORRIDOR_STEP_KM, the first and last included */
-export function corridorCenters(route, stepKm) {
-  stepKm = stepKm || CORRIDOR_STEP_KM;
-  const out = []; let acc = stepKm;
+export function detourMinutes(mi) { return Math.round(mi * 2 / DETOUR_MPH * 60 * 10) / 10; }
+/* circles to search along the route, one every CORRIDOR_STEP_MI, the first and last included */
+export function corridorCenters(route, stepMi) {
+  stepMi = stepMi || CORRIDOR_STEP_MI;
+  const out = []; let acc = stepMi;
   for (let i = 0; i < route.length; i++) {
-    if (i > 0) acc += haversineKm(route[i - 1], route[i]);
-    if (acc >= stepKm) { out.push({ lat: route[i].lat, lng: route[i].lng }); acc = 0; }
+    if (i > 0) acc += haversineMi(route[i - 1], route[i]);
+    if (acc >= stepMi) { out.push({ lat: route[i].lat, lng: route[i].lng }); acc = 0; }
   }
   const last = route[route.length - 1];
-  if (last && (!out.length || haversineKm(out[out.length - 1], last) > stepKm / 2)) out.push({ lat: last.lat, lng: last.lng });
+  if (last && (!out.length || haversineMi(out[out.length - 1], last) > stepMi / 2)) out.push({ lat: last.lat, lng: last.lng });
   return out;
 }
 
@@ -179,7 +180,7 @@ export function ratingScore(rating, n) {
   if (!rating) return 0;
   return Math.round((rating * n + 4.0 * 20) / (n + 20) * 100) / 100;
 }
-/* size, then rating weighted by reviews, then the near measure (km, or detour minutes) ascending */
+/* size, then rating weighted by reviews, then the near measure (miles, or detour minutes) ascending */
 export function rankPlaces(list) {
   return list.slice().sort((a, b) => {
     const ta = sizeTier(a), tb = sizeTier(b);
@@ -292,7 +293,7 @@ export function alongRoute(places, route, budgetMin) {
   for (const p of places) {
     if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue;
     const n = nearestOnRoute(route, p);
-    const det = detourMinutes(n.km);
+    const det = detourMinutes(n.mi);
     if (det <= budgetMin) out.push(Object.assign({}, p, { near: det, prog: n.idx }));
   }
   return out;
@@ -304,7 +305,7 @@ export function clusterStops(places) {
   const key = (p) => (p.town + "|" + p.state).toLowerCase();
   for (const p of rankPlaces(places)) {
     let g = groups.find((x) => key(x.anchor) === key(p) && p.town);
-    if (!g) g = groups.find((x) => haversineKm(x.anchor, p) <= CLUSTER_WALK_KM);
+    if (!g) g = groups.find((x) => haversineMi(x.anchor, p) <= CLUSTER_WALK_MI);
     if (g) g.nested.push(p); else groups.push({ anchor: p, nested: [] });
   }
   groups.sort((a, b) => (a.anchor.prog || 0) - (b.anchor.prog || 0) || (a.anchor.near || 0) - (b.anchor.near || 0));
