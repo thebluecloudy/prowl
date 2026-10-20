@@ -2111,6 +2111,9 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-row .nr-card{flex:1 1 auto;min-width:0}
 .scout-app-wrapper .nr-skip{flex:0 0 auto;border:1px solid var(--l2);background:transparent;color:var(--mu);border-radius:10px;padding:0 9px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
 .scout-app-wrapper .nr-skipped{margin:0 0 10px;font-size:13px;color:var(--mu)}
+.scout-app-wrapper .nr-sendbox{margin:0 0 12px;padding:10px;border:1px solid var(--ac);border-radius:12px}
+.scout-app-wrapper .nr-sendrow{display:flex;gap:8px;flex-wrap:wrap}
+.scout-app-wrapper .nr-sendrow .b{flex:1 1 auto}
 .scout-app-wrapper .nr-x{display:block;margin-top:2px;font-size:12.5px;color:var(--ac);font-weight:600}
 .scout-app-wrapper .nr-kindsoff{margin:-2px 0 10px;padding:8px 10px;border:1px solid var(--ac);border-radius:10px;font-size:13.5px}
 .scout-app-wrapper .nr-kindsoff button{display:inline-block;margin-top:6px;padding:6px 14px;border:0;border-radius:99px;background:var(--ac);color:#111;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}   /* v7.48: a button, not a line of text */
@@ -3278,7 +3281,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.52';
+var PROWL_VERSION='v7.53';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -10078,15 +10081,49 @@ function nrHere(){
 }
 function nrSignin(){var e2;try{e2=new Event('prowl-signin')}catch(x){e2=document.createEvent('Event');e2.initEvent('prowl-signin',true,true)}closeNear();document.dispatchEvent(e2)}
 /* SHARE: on a built trip, keep it for the group (a store sign-in; Pro is the worker's call); on your own kept trip, add a member */
+/* v7.53 (the owner, on the road: "cannot share the map itinerary"): SHARE offers two things. Send the route is the
+   stops and the Google Maps link through the phone's share sheet (or copied), for anyone, no sign-in. Keep it for my
+   group is the Pro group trip, and when it fails it says why. */
 function nrShare(){
-  if(!nrSigned()){toast('Sign in to Prowl to share a trip with your group.',3600);nrSignin();return}
+  var t=NR.view||NR.built,out=$('#otp-nrOut'),box=$('#otp-nrSendBox');if(!t||!out)return;
+  if(box){box.parentNode.removeChild(box);return}
+  var keep=NR.view?(NR.view.org?'<button type="button" class="b" id="otp-nrKeep">Add a member</button>':''):'<button type="button" class="b" id="otp-nrKeep">Keep it for my group</button>';
+  out.insertAdjacentHTML('afterbegin','<div class="nr-sendbox" id="otp-nrSendBox"><div class="nr-sendrow"><button type="button" class="b p" id="otp-nrSend">Send the route</button>'+keep+'</div><p class="nearp nr-shnote"><b>Send the route</b>: the stops and the Google Maps link, by text or any app. '+(NR.view?'':'<b>Keep it for my group</b>: everyone you add sees this trip in Prowl, with live hours and Finds (Prowl Pro).')+'</p></div>');
+  try{out.scrollIntoView({block:'start'})}catch(e){}
+}
+/* the route as words: the drive, the stops in order (skipped ones left out), the final stop, the Maps link(s). The
+   origin is only ever its town */
+function nrRouteText(t){
+  var d=t.dest||{},from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),st=nrVisible(t).stops,legs=nrMapsLegs(t),L=[],i;
+  L.push('Road trip: '+(from||'here')+' to '+(d.name||'')+(d.town?', '+d.town:''));
+  if(t.route&&(t.route.mi||t.route.km))L.push(nrMiles(t.route)+' mi, '+nrDurT(t.route.min||0)+' of driving');
+  L.push('');
+  for(i=0;i<st.length;i++)L.push((i+1)+'. '+st[i].name+(st[i].town?', '+st[i].town:'')+(st[i].nested&&st[i].nested.length?' (+'+st[i].nested.length+' more in town)':''));
+  if(d.name)L.push('Final stop: '+d.name+(d.town?', '+d.town:''));
+  L.push('');
+  if(legs.length===1)L.push('Open in Google Maps: '+legs[0].url);
+  else for(i=0;i<legs.length;i++)L.push('Google Maps, part '+(i+1)+': '+legs[i].url);
+  return L.join('\n');
+}
+function nrSend(){
+  var t=NR.view||NR.built;if(!t)return;
+  var d=t.dest||{},txt=nrRouteText(t),title='Road trip to '+(d.name||'');
+  function copied(){toast('Copied. Paste it into a text or an email.',3200)}
+  function copy(){try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(copied,function(){toast('Could not copy it here. Open in Maps and share from there.',3600)});return}}catch(e){}toast('Could not copy it here. Open in Maps and share from there.',3600)}
+  if(navigator.share){try{navigator.share({title:title,text:txt}).then(function(){},function(e){if(!e||e.name!=='AbortError')copy()});return}catch(e){}}
+  copy();
+}
+function nrKeep(){
   if(NR.view){var row=$('#otp-nrShareRow');if(row){row.hidden=!row.hidden;if(!row.hidden){var inp=$('#otp-nrEmail');if(inp)try{inp.focus()}catch(e){}}}return}
-  var b=NR.built;if(!b||NR.busy||!NR.pos)return;NR.busy=true;
+  if(!nrSigned()){toast('Sign in to Prowl to share a trip with your group.',3600);nrSignin();return}
+  var b=NR.built;if(!b||NR.busy)return;
+  if(!NR.pos){toast('Prowl needs your location to keep the trip. Tap FROM HERE, then try again.',3600);return}
+  NR.busy=true;toast('Keeping the trip for your group…',2400);
   nrFetch('/trips',{method:'POST',body:{to:b.to,lat:NR.pos.lat,lng:NR.pos.lng,day:NR.day,cats:nrCatsQ()}}).then(function(r){
     NR.busy=false;
     if(r.status===401){toast('Sign in to your Owl & Twig account to share a trip.',3600);nrSignin();return}
     if(r.status===403){toast('Group trips come with Prowl Pro. <a href="/products/prowl-pro">Try it free for a month</a>',5200);return}
-    if(!r.ok){toast('The trip could not be shared just now. Try again in a moment.',3000);return}
+    if(!r.ok){toast((r.status===0?'Prowl could not be reached. Check your signal and try again.':esc((r.j&&r.j.error)||'The trip could not be kept just now.')+' ('+r.status+')')+' Send the route still works.',5200);return}   /* v7.53: say why */
     NR.trips=null;nrOpenTrip(r.j,true);nrTripsLoad();
     toast('Trip kept for your group. Add them by their account email.',3400);
   });
@@ -10191,7 +10228,9 @@ if(near){
   near.addEventListener('click',function(e){
     if(e.target.closest&&e.target.closest('#otp-nrRefresh')){NR.pos=null;NR.around=null;nrAroundLoad(true);return}   /* v7.37 */
     var cat=e.target.closest&&e.target.closest('[data-nrcat]');if(cat){nrCatToggle(cat.getAttribute('data-nrcat'));return}
-    if(e.target.closest&&e.target.closest('#otp-nrCatsAll')){nrCatsAll();return}   /* v7.47 */   /* v7.38 */
+    if(e.target.closest&&e.target.closest('#otp-nrCatsAll')){nrCatsAll();return}   /* v7.47 */
+    if(e.target.closest&&e.target.closest('#otp-nrSend')){nrSend();return}   /* v7.53 */
+    if(e.target.closest&&e.target.closest('#otp-nrKeep')){nrKeep();return}   /* v7.38 */
     var sk=e.target.closest&&e.target.closest('[data-nrskip]');if(sk){e.preventDefault();nrSkip(sk.getAttribute('data-nrskip'));return}
     var so=e.target.closest&&e.target.closest('[data-nrsort]');if(so){e.preventDefault();nrSortSet(so.getAttribute('data-nrsort'));return}   /* v7.49 */
     var mp=e.target.closest&&e.target.closest('[data-nrmap]');if(mp){nrMapToggle(mp.getAttribute('data-nrmap'));return}   /* v7.45 */

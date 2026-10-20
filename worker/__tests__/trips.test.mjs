@@ -114,7 +114,7 @@ function fakeGoogle(u, init) {
 /* ---- the worker's functions, with their helpers ---- */
 const SECRET = "s".repeat(40);
 const PRO = {};   /* cid -> paid Pro, the fake shop */
-const names = ["gKey", "gFetch", "gPlacesText", "gPlacesAll", "gPlacesPage", "gPlacesNearby", "kindSearches", "gPlaceHours", "gRoutes", "gTown", "nearNum", "tripCell", "nearAnswer", "nearRoute", "tripBuild", "tripRoute", "ppRoute",
+const names = ["gKey", "gFetch", "gPlacesText", "gPlacesAll", "gPlacesPage", "gPlacesNearby", "kindSearches", "gPlaceHours", "gRoutes", "gTown", "nearNum", "tripCell", "nearAnswer", "nearRoute", "tripBuild", "tripRoute", "tripKey", "ppRoute",
   "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep",
   "b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessVerify", "sessMember", "pxHmac", "alSame", "alEmail", "sha16", "kvGet", "kvPut", "readJson", "vClean", "scrubPII", "ipKey", "ip6Parts", "cors", "json"];
 const pre = ["const BAD_TYPES = new Set();", constLine("NEAR_HERE_M"), constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
@@ -410,4 +410,20 @@ test("v153: standing in the shop itself, it is listed even when Google's relevan
     assert.ok(c.near < 0.1, String(c.near));
     assert.equal(r.body.places.filter((p) => p.name === "Central City Antiques").length, 1, "once, not twice");
   } finally { DROP_HERE = false; }
+});
+
+test("v155: keeping a trip reuses the build the page is showing, and a save that fails says why", async () => {
+  const env = envWith({ PRO_CIDS: "5005" }), to = "Blenko Glass Company, Milton, WV", body = { to, lat: 42.4807, lng: -83.4756, day: "2026-10-27", cats: "antiques,vintage" };
+  const page = await call(env, "GET", "/trip?to=" + encodeURIComponent(to) + "&lat=42.4807&lng=-83.4756&day=2026-10-27&cats=antiques,vintage");
+  assert.equal(page.status, 200);
+  CALLS.length = 0;
+  const kept = await call(env, "POST", "/trips", body, "5005");
+  assert.equal(kept.status, 200, JSON.stringify(kept.body));
+  assert.equal(CALLS.filter((u) => /googleapis/.test(u)).length, 0, "no Google call: the trip the page already has");
+  assert.deepEqual(kept.body.stops.map((s) => s.name), page.body.stops.map((s) => s.name), "the same stops as on screen");
+  const full = envWith({ PRO_CIDS: "5005" });
+  full.PROWL_ALERTS.put = async () => { throw new Error("KV put() limit exceeded for the day."); };
+  const bad = await call(full, "POST", "/trips", body, "5005");
+  assert.equal(bad.status, 503);
+  assert.equal(bad.body.error, "Trips cannot be saved just now.", "said, not a bare server error");
 });

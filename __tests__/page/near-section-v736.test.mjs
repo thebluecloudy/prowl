@@ -217,6 +217,7 @@ test('SHARE: signed out it asks for the store sign-in; signed in it keeps the tr
   out.$('#otp-nrForm').dispatchEvent(new out.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
   out.$('#otp-nrShare').click();
+  out.$('#otp-nrKeep').click();   /* v7.53: SHARE offers Send the route or Keep it for my group */
   await tick(400);
   assert.match(out.$('#otp-toast').textContent, /Sign in to Prowl to share a trip/);
   assert.equal(out.$('#otp-den').hidden, false, 'the sign-in lives in Den > Settings');
@@ -233,6 +234,7 @@ test('SHARE: signed out it asks for the store sign-in; signed in it keeps the tr
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
   p.$('#otp-nrShare').click();
+  p.$('#otp-nrKeep').click();   /* v7.53 */
   await tick(150);
   const post = calls.find((x) => /\/trips$/.test(x.url) && x.o.method === 'POST');
   assert.ok(post, 'one tap keeps the trip');
@@ -325,6 +327,7 @@ test('v7.39: FROM HERE rebuilds from where the phone is now; on your kept trip t
   assert.deepEqual(p.$$('#otp-nrOut .nr-stops > .nr-stop > .nr-row > a.nr-anchor .nr-n').map((e) => e.textContent), ['Central City Antiques'], 'the stops behind are gone');
   /* a kept trip of your own: the worker rebuilds it for the whole group */
   p.$('#otp-nrShare').click();
+  p.$('#otp-nrKeep').click();   /* v7.53 */
   await tick(150);
   assert.ok(p.$('#otp-nrFinds'), 'kept');
   here.click();
@@ -351,6 +354,7 @@ test('v7.39: a Prowl Alerts sign-in (email code) shares trips too, with its emai
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
   p.$('#otp-nrShare').click();
+  p.$('#otp-nrKeep').click();   /* v7.53 */
   await tick(150);
   const post = calls.find((x) => /\/trips$/.test(x.url) && x.o.method === 'POST');
   assert.ok(post, 'kept without a store sign-in');
