@@ -2113,7 +2113,16 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-skipped{margin:0 0 10px;font-size:13px;color:var(--mu)}
 .scout-app-wrapper .nr-kindsoff{margin:-2px 0 10px;padding:8px 10px;border:1px solid var(--ac);border-radius:10px;font-size:13.5px}
 .scout-app-wrapper .nr-kindsoff button{display:inline-block;margin-top:6px;padding:6px 14px;border:0;border-radius:99px;background:var(--ac);color:#111;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}   /* v7.48: a button, not a line of text */
-.scout-app-wrapper .nr-go{display:flex;align-items:center;text-decoration:none;color:var(--ac);border-color:var(--ac)}
+.scout-app-wrapper .nr-go{display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--ac);border-color:var(--ac)}
+/* v7.49: NEAR ME for the road. Directions is the bold button; a trip stop stacks it over Skip; miles beside the tag */
+.scout-app-wrapper .nr-row>.nr-go,.scout-app-wrapper .nr-acts>.nr-go{flex:0 0 auto;border:1px solid var(--ac);border-radius:10px;padding:0 9px;font-family:inherit;min-width:78px;min-height:44px;background:var(--ac);border-color:var(--ac);color:var(--onink);font-size:13.5px;font-weight:800}
+.scout-app-wrapper .nr-acts{flex:0 0 auto;display:flex;flex-direction:column;gap:6px}
+.scout-app-wrapper .nr-acts>*{flex:1 1 auto}
+.scout-app-wrapper .nr-side{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:0 0 auto}
+.scout-app-wrapper .nr-mi{font-size:13px;font-weight:800;color:var(--ink);white-space:nowrap}
+.scout-app-wrapper .nr-sort{display:flex;gap:6px;margin:0 0 8px}
+.scout-app-wrapper .nr-sort .hubc{min-height:32px;padding:7px 12px;font-size:12.5px}
+.scout-app-wrapper .nr-etan{margin:4px 0 0;font-size:13px}
 .scout-app-wrapper .nr-num{position:absolute;left:4px;top:4px;width:20px;height:20px;border-radius:50%;background:#C2491F;color:#fff;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:1}
 .scout-app-wrapper .nr-mapbar{display:flex;justify-content:flex-end;margin:0 0 8px}
 .scout-app-wrapper .nr-mapbar .hubc{min-height:32px;padding:7px 12px;font-size:12.5px}
@@ -3268,7 +3277,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.48';
+var PROWL_VERSION='v7.49';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -9834,21 +9843,60 @@ function nrOpenAt(hrs,when){
   }
   return false;
 }
-/* the OPEN NOW / CLOSED tag and the hours line, worked out now. day: the trip's YYYY-MM-DD, or '' for today. */
-function nrState(hrs,day){
-  var now=Date.now(),today=nrLocalDay(new Date(now)),wd=day?nrWeekday(day):new Date(now).getDay(),dh=nrDayHours(hrs,wd),o;
+/* v7.49 (the owner, on the road: things you can read at a glance): at an instant, open or not, when it closes if
+   open, when it next opens if not. null when the hours are unknown. Minutes of the place's own week, as nrOpenAt. */
+function nrNext(hrs,when){
+  if(!hrs||!hrs.periods||!hrs.periods.length||hrs.offset==null)return null;
+  var loc=new Date(when+hrs.offset*60000),t=loc.getUTCDay()*1440+loc.getUTCHours()*60+loc.getUTCMinutes(),i,p,o,c,x,d,best=null,bd=1e9;
+  for(i=0;i<hrs.periods.length;i++){
+    p=hrs.periods[i];if(!p||!p.open)continue;if(!p.close)return {open:true,always:true};
+    o=p.open.day*1440+p.open.hour*60+p.open.minute;c=p.close.day*1440+p.close.hour*60+p.close.minute;if(c<=o)c+=10080;x=t<o?t+10080:t;
+    if(x>=o&&x<c)return {open:true,close:p.close,left:c-x};
+    d=(o-t+10080)%10080;if(d<bd){bd=d;best=p.open}
+  }
+  return best?{open:false,next:best,wait:bd,today:loc.getUTCDay()}:{open:false};
+}
+function nrHm(x){return nrTime(x.hour,x.minute)}
+/* "Open until 6 PM", "Opens 10 AM", "Opens tomorrow 10 AM", "Closed today · opens Fri 10 AM" */
+function nrNextText(n){
+  if(!n)return '';
+  if(n.always)return 'Open 24 hours';
+  if(n.open)return 'Open until '+nrHm(n.close);
+  if(!n.next)return 'Closed';
+  if(n.next.day===n.today&&n.wait<1440)return 'Opens '+nrHm(n.next);
+  if(n.next.day===(n.today+1)%7&&n.wait<2880)return 'Opens tomorrow '+nrHm(n.next);
+  return 'Closed today · opens '+NR_D3[n.next.day]+' '+nrHm(n.next);
+}
+/* the OPEN NOW / CLOSED tag and the hours line, worked out now. day: the trip's YYYY-MM-DD, or '' for today. eta: when
+   you would get there on today's drive (v7.49), so a shop two hours down the road is judged at 11:40, not now. */
+function nrState(hrs,day,eta){
+  var now=Date.now(),today=nrLocalDay(new Date(now)),wd=day?nrWeekday(day):new Date(now).getDay(),dh=nrDayHours(hrs,wd),o,n,at;
   if(dh.open===null)return {cls:'',tag:'',text:'Hours not listed'};
-  if(!dh.open)return {cls:'nr-closed',tag:'CLOSED',text:day&&day!==today?'Closed on '+NR_DAYS[wd]+'s':dh.text};
-  if(!day||day===today){o=nrOpenAt(hrs,now);if(o===true)return {cls:'nr-open',tag:'OPEN NOW',text:dh.text};if(o===false)return {cls:'nr-closed',tag:'CLOSED',text:dh.text};return {cls:'',tag:'',text:dh.text}}
+  if(eta&&(!day||day===today)){
+    n=nrNext(hrs,eta);at='Get there ~'+nrClock(eta);
+    if(n&&n.open)return {cls:'nr-open',tag:'OPEN',text:at+' · '+nrNextText(n).replace(/^O/,'o')};
+    if(n)return {cls:'nr-closed',tag:'CLOSED',text:at+' · '+(n.next&&n.next.day===n.today&&n.wait<1440?'opens '+nrHm(n.next):'closed by then')};
+  }
+  if(!day||day===today){
+    n=nrNext(hrs,now);
+    if(!dh.open)return {cls:'nr-closed',tag:'CLOSED',text:n?nrNextText(n):dh.text};
+    o=nrOpenAt(hrs,now);if(o===true)return {cls:'nr-open',tag:'OPEN NOW',text:n?nrNextText(n):dh.text};if(o===false)return {cls:'nr-closed',tag:'CLOSED',text:n?nrNextText(n):dh.text};return {cls:'',tag:'',text:dh.text}
+  }
+  if(!dh.open)return {cls:'nr-closed',tag:'CLOSED',text:'Closed on '+NR_DAYS[wd]+'s'};
   return {cls:'nr-open',tag:'OPEN '+NR_D3[wd].toUpperCase(),text:dh.text};
 }
+/* the phone's own clock, to the nearest 5 minutes: "11:40 AM" */
+function nrClock(ts){var d=new Date(Math.round(ts/300000)*300000);return nrTime(d.getHours(),d.getMinutes())}
 /* a place's card: photo, name, town, the one-line differentiator, the day's hours, OPEN NOW / CLOSED; one tap opens Maps */
-function nrCard(p,day,cls,num){
-  var s=nrState(p.hours,day),ph=(num?'<span class="nr-num" aria-hidden="true">'+num+'</span>':'')+(p.photo?'<img class="nr-ph" src="'+esc(NR_API+p.photo)+'" alt="" loading="lazy">':'<span class="nr-ph nr-nop" aria-hidden="true">🛒</span>');
+function nrCard(p,day,cls,num,o){
+  o=o||{};var s=nrState(p.hours,day,o.eta),ph=(num?'<span class="nr-num" aria-hidden="true">'+num+'</span>':'')+(p.photo?'<img class="nr-ph" src="'+esc(NR_API+p.photo)+'" alt="" loading="lazy">':'<span class="nr-ph nr-nop" aria-hidden="true">🛒</span>');
   return '<a class="nr-card'+(cls?' '+cls:'')+'" href="'+esc(p.url||('https://www.google.com/maps/search/?api=1&query='+E(p.name+' '+(p.town||''))))+'" target="_blank" rel="noopener noreferrer">'+ph+
     '<span class="nr-body"><b class="nr-n">'+esc(p.name||'')+'</b><span class="nr-t">'+esc(p.town||'')+(p.why?' · '+esc(p.why):'')+'</span><span class="nr-h">'+esc(s.text)+'</span></span>'+
-    (s.tag?'<span class="nr-st '+s.cls+'">'+s.tag+'</span>':'')+'</a>';
+    (s.tag||o.mi!=null?'<span class="nr-side">'+(s.tag?'<span class="nr-st '+s.cls+'">'+s.tag+'</span>':'')+(o.mi!=null?'<span class="nr-mi">'+nrMiTxt(o.mi)+'</span>':'')+'</span>':'')+'</a>';
 }
+/* v7.49: miles from where you stand, as the crow flies; a place with no position, or a nonsense one, says nothing */
+function nrMiFrom(you,p){if(!you||typeof p.lat!=='number'||typeof p.lng!=='number'||(!p.lat&&!p.lng))return null;var m=nrKm(you,p)*0.621371;return m<=150?m:null}
+function nrMiTxt(m){return m<0.1?'< 0.1 mi':(m<10?(Math.round(m*10)/10):Math.round(m))+' mi'}
 /* where you are, kept 5 minutes; cb(pos) or cb(null, 'denied' | 'fail' | 'nogeo') */
 function nrPos(cb,fresh){
   if(!fresh&&NR.pos&&Date.now()-NR.posAt<300000){cb(NR.pos);return}
@@ -9864,14 +9912,15 @@ function nrKm(a,b){var R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*
    numbered pins that match the list, tap a pin for Directions. The Directions link names no origin, so Google Maps
    starts it from the phone itself; your position never goes into a link. */
 function nrDirUrl(p){return 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+E((p.name||'')+(p.town?', '+p.town:''))+(p.id?'&destination_place_id='+E(p.id):'')}
-function nrRow(p,day,num){return '<div class="nr-row">'+nrCard(p,day,'',num)+'<a class="nr-skip nr-go" href="'+esc(nrDirUrl(p))+'" target="_blank" rel="noopener noreferrer" aria-label="Directions to '+esc(p.name||'')+'">Directions</a></div>'}
+function nrGo(p){return '<a class="nr-go" href="'+esc(nrDirUrl(p))+'" target="_blank" rel="noopener noreferrer" aria-label="Directions to '+esc(p.name||'')+'">Directions</a>'}
+function nrRow(p,day,num,o){return '<div class="nr-row">'+nrCard(p,day,'',num,o)+nrGo(p)+'</div>'}
 function nrMapBar(mode){var on=!!NR.mapOn[mode];return '<div class="nr-mapbar"><button type="button" class="hubc nr-mapb'+(on?' on':'')+'" data-nrmap="'+mode+'" aria-pressed="'+on+'">'+(on?'Hide the map':'Show on a map')+'</button></div><div class="nr-map" id="otp-nrMap'+(mode==='around'?'A':'T')+'"'+(on?'':' hidden')+'></div>'}
 function nrYou(){return NR.pos&&Date.now()-NR.posAt<900000?NR.pos:null}
 function nrPt(p,num,cls){return typeof p.lat==='number'&&typeof p.lng==='number'?{lat:p.lat,lng:p.lng,num:num,cls:cls,p:p}:null}
 /* what goes on the map: Around you's list numbered as drawn; a trip's anchors numbered, the nested shops as small dots, the final stop as a flag */
 function nrMapPts(mode){
   var out=[],i,j,a,x,t,vis;
-  if(mode==='around'){for(i=0;i<(NR.around||[]).length;i++){x=nrPt(NR.around[i],i+1,'');if(x)out.push(x)}return out}
+  if(mode==='around'){var A=NR.aroundShown||NR.around||[];for(i=0;i<A.length;i++){x=nrPt(A[i],i+1,'');if(x)out.push(x)}return out}   /* v7.49: in the order shown */
   t=NR.view||NR.built;if(!t)return out;vis=nrVisible(t);
   for(i=0;i<vis.stops.length;i++){a=vis.stops[i];x=nrPt(a,i+1,'');if(x)out.push(x);for(j=0;j<(a.nested||[]).length;j++){x=nrPt(a.nested[j],'','nr-pin-sub');if(x)out.push(x)}}
   if(t.dest){x=nrPt(t.dest,'⚑','nr-pin-dest');if(x)out.push(x)}
@@ -9928,10 +9977,17 @@ function nrCap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
 function nrKindsOff(on){var off=NR_CATS_DEF.filter(function(k){return on.indexOf(k)===-1});if(!off.length)return '';var n=off.map(function(k){for(var i=0;i<NR_CATS.length;i++)if(NR_CATS[i][0]===k)return NR_CATS[i][1];return k});return '<p class="nearp nr-kindsoff">'+esc(nrAnd(n))+' '+(n.length>1?'are':'is')+' off, so '+(off.indexOf('antiques')!==-1?'antique malls':'those shops')+' are not listed. <button type="button" class="sgw-ml" id="otp-nrCatsAll">Show them too</button></p>'}
 function nrCatsAll(){var on=nrCatsGet();nrCatsSet(NR_CATS.map(function(c){return c[0]}).filter(function(k){return on.indexOf(k)!==-1||NR_CATS_DEF.indexOf(k)!==-1}));rNrCats();NR.around=null;nrAroundLoad(true)}
 function nrAt(L){var i,b=null,bd=0.15,d,you=nrYou();for(i=0;i<L.length;i++){d=you&&typeof L[i].lat==='number'&&typeof L[i].lng==='number'?nrKm(you,L[i])*0.621371:L[i].near;if(typeof d==='number'&&d<=bd){bd=d;b=L[i]}}return b}   /* v7.48: from your own fix; the worker's near is from whoever asked first in the cell */
+var NR_SORT_KEY='prowl.nearSort';   /* v7.49: 'near' or '' (biggest first, the worker's order) */
+function nrSortGet(){try{return localStorage.getItem(NR_SORT_KEY)==='near'?'near':''}catch(e){return ''}}
+function nrSortSet(v){try{localStorage.setItem(NR_SORT_KEY,v==='near'?'near':'')}catch(e){}NR.around&&nrAroundDraw()}
+function nrSortBar(srt){return '<div class="nr-sort" role="group" aria-label="Order"><button type="button" class="hubc'+(srt?'':' on')+'" data-nrsort="" aria-pressed="'+!srt+'">Biggest first</button><button type="button" class="hubc'+(srt?' on':'')+'" data-nrsort="near" aria-pressed="'+!!srt+'">Closest first</button></div>'}
 function nrAroundDraw(){
-  var el=$('#otp-nrLive'),L=NR.around||[],on=nrCatsGet(),kinds=nrKinds(on),at=nrAt(L),here=at?'You are at <b>'+esc(at.name)+'</b>'+(NR.aroundTown?' in '+esc(NR.aroundTown):'')+'. ':NR.aroundTown?'You are in <b>'+esc(NR.aroundTown)+'</b>. ':'',off=nrKindsOff(on);if(!el)return;
+  var you=nrYou(),srt=nrSortGet(),mi=function(p){return nrMiFrom(you,p)},L0=NR.around||[],L=L0.slice();
+  if(srt==='near')L.sort(function(a,b){var x=mi(a),y=mi(b);return (x==null?1e9:x)-(y==null?1e9:y)});
+  NR.aroundShown=L;   /* the map numbers its pins in this order */
+  var el=$('#otp-nrLive'),on=nrCatsGet(),kinds=nrKinds(on),at=nrAt(L),here=at?'You are at <b>'+esc(at.name)+'</b>'+(NR.aroundTown?' in '+esc(NR.aroundTown):'')+'. ':NR.aroundTown?'You are in <b>'+esc(NR.aroundTown)+'</b>. ':'',off=nrKindsOff(on);if(!el)return;
   if(!L.length){el.innerHTML='<h3 class="nearh">Around you '+nrRefreshBtn()+'</h3><p class="nearp">'+here+'No '+esc(kinds)+' close by right now. Try a map search below, or plan a road trip.</p>'+off+nrMapBar('around');nrMap('around');return}
-  el.innerHTML='<h3 class="nearh">Around you '+nrRefreshBtn()+'</h3><p class="nearp">'+here+esc(nrCap(kinds))+' near where you are standing, biggest first. Open or closed is from today’s hours. One tap opens the shop in Google Maps; Directions starts the drive from where you are. The numbers match the pins on the map. Moved on? Tap Refresh.</p>'+off+nrMapBar('around')+'<div class="nr-list">'+L.map(function(p,i){return nrRow(p,'',i+1)}).join('')+'</div>';
+  el.innerHTML='<h3 class="nearh">Around you '+nrRefreshBtn()+'</h3><p class="nearp">'+here+esc(nrCap(kinds))+' near where you are standing, '+(srt?'closest':'biggest')+' first. Directions starts the drive. Moved on? Tap Refresh.</p>'+off+nrSortBar(srt)+nrMapBar('around')+'<div class="nr-list">'+L.map(function(p,i){return nrRow(p,'',i+1,{mi:mi(p)})}).join('')+'</div>';
   nrMap('around');   /* v7.45 */
 }
 /* ---- Road trip ---- */
@@ -9956,9 +10012,14 @@ function nrBuild(to){
 /* the stop list, in drive order: anchors numbered, the rest of each town nested, the destination last */
 function nrDrawTrip(t,o){
   var out=$('#otp-nrOut'),h='',i,a,wd=nrWeekday(t.day),day=t.day||'',from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),dest=t.dest||{},vis=nrVisible(t),stops=vis.stops;
-  function row(p,cls,num){return '<div class="nr-row">'+nrCard(p,day,cls,num)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'">Skip</button></div>'}
+  /* v7.49: on today's drive each stop is judged at the time you would get there: straight-line miles from where you
+     stand, a quarter more for the road, at the trip's own average speed. A stop gets Directions above its Skip. */
+  var you=nrYou(),now=Date.now(),mpm=t.route&&t.route.min?nrMiles(t.route)/t.route.min:0,live=(!day||day===nrLocalDay(new Date(now)))&&you&&mpm>0;
+  function eta(p){var m=live?nrMiFrom(you,p):null;return m==null?0:now+Math.round(m*1.25/mpm)*60000}
+  function row(p,cls,num){return '<div class="nr-row">'+nrCard(p,day,cls,num,{eta:eta(p)})+'<span class="nr-acts">'+nrGo(p)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'">Skip</button></span></div>'}
   h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):'')+'</p>'+
      '<p class="nearp">'+(t.route&&(t.route.mi||t.route.km)?nrMiles(t.route)+' mi · '+nrDur(t.route.min||0)+' of driving · ':'')+'Trip day '+NR_DAYS[wd]+'<span id="otp-nrMembers">'+(o.members?' · '+o.members+' on this trip':'')+'</span></p>'+
+     (live?'<p class="nearp nr-etan">Open or closed is for when you would get there, driving straight from here.</p>':'')+
      (t.route&&t.route.slower>0?'<p class="nearp nr-alt">The road with the most to see, '+nrDur(t.route.slower)+' longer than the fastest drive.</p>':'')+'</div>'+nrMapBar('trip');   /* v7.45: the map, you and the stops */
   if(vis.hidden)h+='<p class="nr-skipped">'+vis.hidden+' skipped · <button type="button" class="sgw-ml" id="otp-nrUnskip">Show them again</button></p>';
   if(!stops.length)h+='<p class="nearp nr-empty">'+(vis.hidden?'Every stop on this route is skipped.':'No shops of the kinds you picked are worth a stop inside this route’s corridor.')+' The drive itself is ready: open it in Maps below.</p>';
@@ -9967,7 +10028,7 @@ function nrDrawTrip(t,o){
     for(i=0;i<stops.length;i++){a=stops[i];h+='<li class="nr-stop">'+row(a,'nr-anchor',i+1)+(a.nested&&a.nested.length?'<div class="nr-nest"><p class="nr-nesth">Also in '+esc((a.town||'town').split(',')[0])+'</p>'+a.nested.map(function(n){return row(n,'nr-sub')}).join('')+'</div>':'')+'</li>'}
     h+='</ol>';
   }
-  if(dest.name)h+='<div class="nr-dest"><p class="nr-nesth">Final stop</p>'+nrCard(dest,day,'nr-anchor')+'</div>';
+  if(dest.name)h+='<div class="nr-dest"><p class="nr-nesth">Final stop</p><div class="nr-row">'+nrCard(dest,day,'nr-anchor','',{eta:eta(dest)})+nrGo(dest)+'</div></div>';
   if(t.more&&t.more.length)h+='<details class="nr-more"><summary>Smaller shops along the way ('+t.more.length+')</summary><p class="nearp">Not worth planning around, but there if you pass. These never go into the Maps link.</p><div class="nr-list">'+t.more.map(function(p){return nrCard(p,day,'nr-sub')}).join('')+'</div></details>';   /* v7.39 */
   out.innerHTML=h;
   nrFoot(t);
@@ -10121,6 +10182,7 @@ if(near){
     var cat=e.target.closest&&e.target.closest('[data-nrcat]');if(cat){nrCatToggle(cat.getAttribute('data-nrcat'));return}
     if(e.target.closest&&e.target.closest('#otp-nrCatsAll')){nrCatsAll();return}   /* v7.47 */   /* v7.38 */
     var sk=e.target.closest&&e.target.closest('[data-nrskip]');if(sk){e.preventDefault();nrSkip(sk.getAttribute('data-nrskip'));return}
+    var so=e.target.closest&&e.target.closest('[data-nrsort]');if(so){e.preventDefault();nrSortSet(so.getAttribute('data-nrsort'));return}   /* v7.49 */
     var mp=e.target.closest&&e.target.closest('[data-nrmap]');if(mp){nrMapToggle(mp.getAttribute('data-nrmap'));return}   /* v7.45 */
     if(e.target.closest&&e.target.closest('#otp-nrUnskip')){nrUnskipAll();return}
     var b=e.target.closest&&e.target.closest('[data-nrtrip]');
