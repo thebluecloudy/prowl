@@ -1,16 +1,30 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.49 / v153).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.51 / v154).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.49** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v153** | |
+| Page | **v7.51** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v154** | |
 
 Recently shipped, newest first:
 
+- **v7.51 / v154: a road trip says how long to allow, what a detour costs, and what is a short walk** (the owner,
+  with Gemini's Findlay to Milton write-up: "some good advice, can we incorporate this somehow?"). Gemini's advice,
+  filled from Google's data rather than its prose (its store descriptions are its own words and were left out):
+  - **Time to allow** ("allocate a dedicated chunk of time"): each stop carries `stay` minutes (`stayMinutes`: from
+    the dealer count when Google's summary gives one, 30 min to half a day; else from the size tier, 30 to 120). The
+    card says "Allow about 2 h"; the trip head adds the visible stops: "About 7 h 30 min in the shops. With the drive,
+    12 h 30 min: more than a day, so plan a night on the road or Skip a few stops." Skipping a stop takes it out.
+  - **Worth the detour** (Heart of Ohio, "a slight detour"): an antiques place in the top size tier with a thousand
+    reviews (`worthDetour`) may sit up to 30 minutes off the road (`BIG_DETOUR_MIN`) and says "Worth the detour: adds
+    about 22 min". Everything else keeps the 10-minute rule.
+  - **A short walk** ("district walkability"): a town's shops within 0.4 miles of its stop say "A short walk from the
+    stop" (`walk`).
+  - Kept group trips keep `stay`, `worth` and `walk` (`stopRef`). Trip cache key v=10.
+  - Tests: `worker/__tests__/trip.test.mjs`, `__tests__/page/near-plan-v751.test.mjs`.
 - **v7.49: NEAR ME for the road** (the owner: "1-4" of the Near me suggestions). Around you shows how far each shop
   is ("1.4 mi", "< 0.1 mi" next door) with a **Biggest first / Closest first** switch, remembered in the new key
   `prowl.nearSort`; the map numbers its pins in the order shown. On a road trip for today each stop is open or closed
@@ -850,7 +864,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.50, worker v154**. Claim one here when you start.
+Next free numbers: **page v7.52, worker v155** (PR #200 holds page v7.50). Claim one here when you start.
 
 ## What's next
 

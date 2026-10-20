@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v154: 2026-10-20. Road trip stops carry the time to allow (stay, minutes), a destination antique mall up to 30
+ *         minutes off the road comes along marked worth, and a town's shops a short walk from its stop say walk (the
+ *         owner, from Gemini's Findlay to Milton run). Trip cache key v=10.
  *   v153: 2026-10-20. Around You also asks Google for the closest shops of the kinds picked, ranked by distance within 3
  *         miles (the owner, standing in Maumee Antique Mall: it was missing; Google's relevance answer at the mall's
  *         own spot dropped it on some asks and not others). Near cache key v=11.
@@ -520,7 +523,7 @@ import { wkAdd, wkFresh, wkCur, letterShorters, letterBuild, letterText, letterQ
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v153";
+const WORKER_VERSION = "v154";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6626,7 +6629,7 @@ async function tripRoute(request, env, url, origin) {
   if (to.length < 2) return json({ error: "to required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, stops: [] }, 503, origin);
   const day = tripDay(url.searchParams.get("day")), cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=9";   /* v137 to v148: the answer changed */
+  const key = url.origin + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(to.toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=10";   /* v137 to v154: the answer changed */
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("trip:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIP_PER_IP))) return json({ error: "slow down" }, 429, origin);

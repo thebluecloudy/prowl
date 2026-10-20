@@ -2111,6 +2111,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-row .nr-card{flex:1 1 auto;min-width:0}
 .scout-app-wrapper .nr-skip{flex:0 0 auto;border:1px solid var(--l2);background:transparent;color:var(--mu);border-radius:10px;padding:0 9px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
 .scout-app-wrapper .nr-skipped{margin:0 0 10px;font-size:13px;color:var(--mu)}
+.scout-app-wrapper .nr-x{display:block;margin-top:2px;font-size:12.5px;color:var(--ac);font-weight:600}
 .scout-app-wrapper .nr-kindsoff{margin:-2px 0 10px;padding:8px 10px;border:1px solid var(--ac);border-radius:10px;font-size:13.5px}
 .scout-app-wrapper .nr-kindsoff button{display:inline-block;margin-top:6px;padding:6px 14px;border:0;border-radius:99px;background:var(--ac);color:#111;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}   /* v7.48: a button, not a line of text */
 .scout-app-wrapper .nr-go{display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--ac);border-color:var(--ac)}
@@ -3277,7 +3278,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.49';
+var PROWL_VERSION='v7.51';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -9891,9 +9892,14 @@ function nrClock(ts){var d=new Date(Math.round(ts/300000)*300000);return nrTime(
 function nrCard(p,day,cls,num,o){
   o=o||{};var s=nrState(p.hours,day,o.eta),ph=(num?'<span class="nr-num" aria-hidden="true">'+num+'</span>':'')+(p.photo?'<img class="nr-ph" src="'+esc(NR_API+p.photo)+'" alt="" loading="lazy">':'<span class="nr-ph nr-nop" aria-hidden="true">🛒</span>');
   return '<a class="nr-card'+(cls?' '+cls:'')+'" href="'+esc(p.url||('https://www.google.com/maps/search/?api=1&query='+E(p.name+' '+(p.town||''))))+'" target="_blank" rel="noopener noreferrer">'+ph+
-    '<span class="nr-body"><b class="nr-n">'+esc(p.name||'')+'</b><span class="nr-t">'+esc(p.town||'')+(p.why?' · '+esc(p.why):'')+'</span><span class="nr-h">'+esc(s.text)+'</span></span>'+
+    '<span class="nr-body"><b class="nr-n">'+esc(p.name||'')+'</b><span class="nr-t">'+esc(p.town||'')+(p.why?' · '+esc(p.why):'')+'</span><span class="nr-h">'+esc(s.text)+'</span>'+nrPlanLine(p)+'</span>'+
     (s.tag||o.mi!=null?'<span class="nr-side">'+(s.tag?'<span class="nr-st '+s.cls+'">'+s.tag+'</span>':'')+(o.mi!=null?'<span class="nr-mi">'+nrMiTxt(o.mi)+'</span>':'')+'</span>':'')+'</a>';
 }
+/* v7.51 (the owner, from Gemini's Findlay to Milton run: time to allow, worth the detour, walkable): the worker's
+   stay (minutes to allow), worth (a big mall further off the road) and walk (a short walk from the stop) */
+function nrDurT(m){return nrDur(m).replace(/\s+$/,'')}
+function nrPlanLine(p){var x=[];if(p.stay>0)x.push('Allow about '+nrDurT(p.stay));if(p.worth)x.push('Worth the detour: adds about '+Math.max(1,Math.round(p.near||0))+' min');if(p.walk)x.push('A short walk from the stop');return x.length?'<span class="nr-x">'+esc(x.join(' · '))+'</span>':''}
+function nrPlanSum(t,stops){var st=0,i;for(i=0;i<stops.length;i++)st+=stops[i].stay>0?stops[i].stay:0;if(!st||!t.route||!t.route.min)return '';var all=t.route.min+st;return '<p class="nearp nr-plan">About '+nrDurT(st)+' in the shops. With the drive, '+nrDurT(all)+(all>600?': more than a day, so plan a night on the road or Skip a few stops.':'.')+'</p>'}
 /* v7.49: miles from where you stand, as the crow flies; a place with no position, or a nonsense one, says nothing */
 function nrMiFrom(you,p){if(!you||typeof p.lat!=='number'||typeof p.lng!=='number'||(!p.lat&&!p.lng))return null;var m=nrKm(you,p)*0.621371;return m<=150?m:null}
 function nrMiTxt(m){return m<0.1?'< 0.1 mi':(m<10?(Math.round(m*10)/10):Math.round(m))+' mi'}
@@ -10019,6 +10025,7 @@ function nrDrawTrip(t,o){
   function row(p,cls,num){return '<div class="nr-row">'+nrCard(p,day,cls,num,{eta:eta(p)})+'<span class="nr-acts">'+nrGo(p)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'">Skip</button></span></div>'}
   h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):'')+'</p>'+
      '<p class="nearp">'+(t.route&&(t.route.mi||t.route.km)?nrMiles(t.route)+' mi · '+nrDur(t.route.min||0)+' of driving · ':'')+'Trip day '+NR_DAYS[wd]+'<span id="otp-nrMembers">'+(o.members?' · '+o.members+' on this trip':'')+'</span></p>'+
+     nrPlanSum(t,stops)+   /* v7.51 */
      (live?'<p class="nearp nr-etan">Open or closed is for when you would get there, driving straight from here.</p>':'')+
      (t.route&&t.route.slower>0?'<p class="nearp nr-alt">The road with the most to see, '+nrDur(t.route.slower)+' longer than the fastest drive.</p>':'')+'</div>'+nrMapBar('trip');   /* v7.45: the map, you and the stops */
   if(vis.hidden)h+='<p class="nr-skipped">'+vis.hidden+' skipped · <button type="button" class="sgw-ml" id="otp-nrUnskip">Show them again</button></p>';
