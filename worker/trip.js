@@ -10,7 +10,8 @@
    and the Maps export carries the anchors only, with the origin as a town name, never a street. */
 
 export const DETOUR_MIN = 10;            /* a stop may cost this many minutes off the route (internal, never shown) */
-export const DETOUR_KMH = 40;            /* the speed assumed off the highway, for turning distance into minutes */
+export const DETOUR_KMH = 60;            /* v146: the speed assumed off the highway, for turning distance into minutes (40 called
+                                            Maumee Antique Mall, 3.9 km from I-475, an 11.7-minute detour and dropped it) */
 export const MAPS_WAYPOINTS = 9;         /* Google Maps directions links take about nine waypoints */
 export const FINDS_GRACE_DAYS = 7;       /* find photos live this long after the trip closes (the spec's default) */
 export const TRIP_DAYS_MAX = 14;         /* a trip day may be at most this far ahead */
@@ -93,11 +94,22 @@ export function decodePolyline(str) {
   }
   return out;
 }
-/* the route point closest to p: its index (progress along the route) and the distance to it */
+/* the point of the road closest to p: the index of the segment it is on (progress along the route) and the distance to
+   the road itself. v146: to the segment, not its end points; an overview polyline's points sit kilometres apart and a
+   shop between two of them was further "off the road" than it is. */
 export function nearestOnRoute(route, p) {
   let best = { idx: -1, km: Infinity };
+  if (!route.length) return best;
+  const cosLat = Math.cos(p.lat * Math.PI / 180), X = (q) => (q.lng - p.lng) * cosLat * 111.32, Y = (q) => (q.lat - p.lat) * 110.57;
   for (let i = 0; i < route.length; i++) {
-    const km = haversineKm(route[i], p);
+    let km;
+    if (i + 1 < route.length) {
+      const ax = X(route[i]), ay = Y(route[i]), bx = X(route[i + 1]), by = Y(route[i + 1]);
+      const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
+      const t = len2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len2)) : 0;
+      const cx = ax + t * dx, cy = ay + t * dy;
+      km = Math.sqrt(cx * cx + cy * cy);
+    } else km = haversineKm(route[i], p);
     if (km < best.km) best = { idx: i, km: km };
   }
   return best;

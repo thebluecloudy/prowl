@@ -152,7 +152,15 @@ test("the corridor: a stop 40 km off the route is out, ten minutes of detour is 
   assert.equal(inside.length, STOPS.length - 1);
   for (const p of inside) assert.ok(p.near <= DETOUR_MIN && p.prog >= 0, p.name);
   assert.equal(detourMinutes(0), 0);
-  assert.ok(detourMinutes(3) <= DETOUR_MIN && detourMinutes(4) > DETOUR_MIN, "about 3 km each way is the budget at 40 km/h");
+  assert.ok(detourMinutes(5) <= DETOUR_MIN && detourMinutes(6) > DETOUR_MIN, "v146: about 5 km each way is the budget at 60 km/h");
+  assert.ok(detourMinutes(3.9) < DETOUR_MIN, "Maumee Antique Mall, 3.9 km off I-475, is inside it");
+  /* v146: the distance is to the road, not to its sampled points */
+  const coarse = [{ lat: 41.60, lng: -83.60 }, { lat: 41.50, lng: -83.60 }];   /* an 11 km straight segment, no point in between */
+  const beside = { lat: 41.55, lng: -83.61 };   /* 0.8 km west of its middle */
+  assert.ok(nearestOnRoute(coarse, beside).km < 1, "beside the middle of a long segment: " + nearestOnRoute(coarse, beside).km);
+  assert.equal(nearestOnRoute(coarse, beside).idx, 0);
+  assert.ok(nearestOnRoute(coarse, { lat: 41.70, lng: -83.60 }).km > 10, "past the end: the end point, not the line extended");
+  assert.deepEqual(nearestOnRoute([], beside), { idx: -1, km: Infinity });
   const centers = corridorCenters(ROUTE);
   assert.ok(centers.length >= 20 && centers.length <= 30, "a route of about 560 km as the crow flies in ~25 km steps: " + centers.length);
   assert.ok(haversineKm(centers[centers.length - 1], WAY[WAY.length - 1]) < 25, "the last circle reaches the destination");
