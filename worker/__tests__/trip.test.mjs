@@ -6,8 +6,16 @@ import {
   haversineKm, decodePolyline, nearestOnRoute, detourMinutes, corridorCenters, sizeTier, differentiator, ratingScore, rankPlaces,
   townOf, townFromAddress, normalizePlace, placeCard, hoursForDay, openAt, alongRoute, clusterStops, mapsDirUrl, hasStreet,
   tripDay, weekdayOf, tripCloses, tripExpires, tripExpired, tripRecord, tripMember, tripView, findRecord,
-  DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS, CATS, CATS_DEFAULT, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, ANCHOR_REVIEWS, kindAllowed, kindPlan, ANCHOR_REVIEWS_ANTIQUES,
+  DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS, CATS, CATS_DEFAULT, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, ANCHOR_REVIEWS, kindAllowed, kindPlan, ANCHOR_REVIEWS_ANTIQUES, splitVia,
 } from "../trip.js";
+
+test("v142: 'via' in the destination steers the road", () => {
+  assert.deepEqual(splitVia("Blenko Glass Company, Milton, WV via Portsmouth, OH"), { to: "Blenko Glass Company, Milton, WV", via: ["Portsmouth, OH"] });
+  assert.deepEqual(splitVia("Milton, WV via Portsmouth, OH and Ashland, KY"), { to: "Milton, WV", via: ["Portsmouth, OH", "Ashland, KY"] });
+  assert.deepEqual(splitVia("Via Vintage, Toledo"), { to: "Via Vintage, Toledo", via: [] }, "a name that starts with Via is not a via");
+  assert.deepEqual(splitVia("Blenko"), { to: "Blenko", via: [] });
+  assert.deepEqual(splitVia("A via b and c and d and e"), { to: "A", via: ["b", "c", "d"] }, "three at most");
+});
 
 test("v140: the typed kinds go to Nearby Search, the rest to a text search; a crowd counts only for our kinds; the museum is never ours", () => {
   assert.deepEqual(kindPlan(["antiques", "vintage", "thrift"]), { types: ["antique_store", "thrift_store"], text: "vintage stores", textKeys: ["vintage"] });

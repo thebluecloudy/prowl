@@ -1,15 +1,24 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v141).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v142).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.39** | 399,599 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v141** | |
+| Worker | **v142** | |
 
 Recently shipped, newest first:
+
+- **v142: the typed search really runs, and "via"** (v141's `how` on the live Novi to Blenko build: `refused 20`, every
+  Nearby call refused, so the search had fallen back to text all along and the Maumee box, centred 3.9 km from the
+  mall, still never listed it). Nearby now tries each place type on its own when the pair is refused and remembers the
+  type Google rejects (`BAD_TYPES`, `how.badTypes`), so `antique_store` keeps working even if `thrift_store` is not a
+  type. **Via:** "Blenko Glass Company, Milton, WV via Portsmouth, OH" (up to three towns, joined by "and") routes
+  through that town (Routes API `intermediates`, pass-through), is kept on the trip (`via`) and used by FROM HERE
+  rebuilds; Google's own alternatives offered the Portsmouth road on one build and not the next. Worker only.
+  Tests: `worker/__tests__/trip.test.mjs`, `trips.test.mjs`.
 
 - **v141: `/trip` says how it looked** (`how`: each route's km, minutes, score, anchors and places found, the boxes
   searched on the chosen road, the Nearby and text search counts, and whether Google refused a place type), so a
@@ -727,7 +736,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.40, worker v142**. Claim one here when you start.
+Next free numbers: **page v7.40, worker v143**. Claim one here when you start.
 
 ## What's next
 
