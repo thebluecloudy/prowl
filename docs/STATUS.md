@@ -1,13 +1,13 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.40 / v145).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.40 / v146).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.40** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v145** | |
+| Worker | **v146** | |
 
 Recently shipped, newest first:
 
@@ -26,6 +26,13 @@ Recently shipped, newest first:
   (`FLT_KEY`); the sites are the drawer's saved set (`st.mkt`, unchanged key), and the drawer's count follows. Page
   only. Not in this version: on-screen local pickup (the email's ZIP and radius) needs the worker's live eBay search
   to take them. Test: `__tests__/page/filter-sheet-v740.test.mjs`.
+- **v146: the detour was the thief.** Build after build (v136 to v145) had no Maumee Antique Mall though every search
+  change was aimed at it. v141's diagnostics held the answer: the road passes 3.9 km from the mall, and the detour
+  rule (straight-line distance both ways at 40 km/h) called that 11.7 minutes, over the 10-minute line. Now the
+  distance is to the road's segments rather than its sampled points (an overview polyline's points sit kilometres
+  apart; `nearestOnRoute`), and the speed off the highway is 60 km/h (`DETOUR_KMH`), so about 5 km each way is the
+  budget. Cache keys v=8. Worker only. Tests: `worker/__tests__/trip.test.mjs`.
+
 - **v145: antiques asked on their own, a circle at a time** (the v144 live build, 23 small circles, still had no Maumee
   Antique Mall: since v140 a trip put all three kinds in one question, "antique stores and antique malls, vintage
   stores, thrift stores", and a circle's 20 answers were a mix that crowded the mall out; Around you, which asks
@@ -770,7 +777,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.41, worker v146**. Claim one here when you start.
+Next free numbers: **page v7.41, worker v147**. Claim one here when you start.
 
 ## What's next
 
