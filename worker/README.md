@@ -22,6 +22,18 @@ about a minute. No dashboard paste needed.
   (the public page keeps OWNER_KEY in the browser). The Start Prowl and stop links in Gift Pro
   emails are signed with a random key the worker makes once and keeps in KV (`giftkey:v1`);
   deleting that key retires every gift link already emailed.
+- `GOOGLE_MAPS_KEY` (v132) is the Google Cloud API key behind NEAR ME: Around You and Road Trip (`/near`, `/trip`,
+  `/pp`, and the live hours in `/trips/<id>`). Enable Places API (New), Routes API and Geocoding API on it, restrict
+  it to those three, and set it with `wrangler secret put GOOGLE_MAPS_KEY` (or the dashboard). Without it those routes
+  answer 503 "not set up" and the page keeps its plain Maps links. A Road Trip build is about 13 Text Search calls
+  (one a 50 km circle) plus a route and a reverse geocode, kept an hour per origin town, destination and day.
+- `PRO_CIDS` (v132, plain-text variable) is the comp list for group trips: store customer ids, comma-separated, that
+  count as Pro for building and sharing a trip and posting finds, the way the organizer arranges with the owner outside
+  the app. A member's own paid Pro order (by customer id) or a linked Prowl Alerts member's Pro counts too. The page
+  never decides Pro.
+- Trip Finds photos live in the R2 bucket `prowl-finds` (binding `PROWL_FINDS`, see `wrangler.toml`): the owner creates
+  it and uncomments the binding. Photos are served only through signed hour-long links to trip members and are deleted
+  7 days after the trip closes.
 - `FB_INGEST_KEY` (v94) lets Prowl-the-agent post the morning Facebook sweep to `POST /fb-ingest`: at least 24
   random characters, set with `wrangler secret put FB_INGEST_KEY`, given to the sweep and nowhere else (not the
   page, not OWNER_KEY). Without it the route answers 403 to everyone. The contract (one POST per locked hunt per

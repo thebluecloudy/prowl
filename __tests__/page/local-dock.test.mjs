@@ -4,15 +4,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
 
-test('dock LOCAL with no hunt opens Den > Local', async () => {
+test('dock NEAR ME with no hunt opens the Near me screen (v7.36: its own drawer, not the Den)', async () => {
   const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [] } } });
   await tick(30);
   assert.equal(p.$('#otp-dock .db[data-m="all"]'), null, 'ALL is gone from the dock');
   assert.ok(p.$('#otp-sa'), 'Search All is still under the search box');
   p.$('#otp-localBtn').click();
   await tick(30);
-  assert.equal(p.$('#otp-den').hidden, false, 'the Den opened');
-  assert.equal(p.$('#otp-denLocal').hidden, false, 'on the Local tab');
+  assert.equal(p.$('#otp-near').hidden, false, 'Near me opened');
+  assert.equal(p.$('#otp-den').hidden, true, 'not the Den');
+  assert.equal(p.$('#otp-denLocal').hidden, false, 'the store finder is on it');
   assert.deepEqual(p.errors, []);
   await p.close();
 });

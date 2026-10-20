@@ -1,16 +1,46 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.35 / v131).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.36 / v132).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.35** | 402,218 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v131** | |
+| Page | **v7.36** | 399,916 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v132** | |
 
 Recently shipped, newest first:
 
+- **v7.36 / v132: NEAR ME is its own section: Around you, Road trip, group trips and Trip Finds** (the spec of
+  2026-10-20, `Prowl NEAR ME, Road Trip & Trip Finds`). Branch `claude/new-session-pffeiw`.
+  - **Its own screen.** The dock's NEAR ME opens `#otp-near` (two tabs, AROUND YOU and ROAD TRIP), never the Den. The
+    Den's hidden LOCAL tab and the `den-near` dress are gone; the store finder, garage sales and Facebook city
+    (`#otp-denLocal`, ids unchanged) moved into Around you under the live cards. How Prowl works and the glossary say so.
+  - **Around you** (`GET /near?lat&lng`, worker): the antique, vintage and thrift shops around the phone, ranked size
+    first (dealer or booth count, square feet, "mall"/"warehouse"), then rating weighted by review count, then
+    distance. A card: photo (through `/pp`, the key never reaches the page), name, town, one-line differentiator,
+    today's hours, OPEN NOW / CLOSED worked out when the card is drawn from the week's periods and the place's UTC
+    offset (`nrState`). One tap opens Google Maps. Location off or the key not set: the Maps links below still work.
+  - **Road trip** (`GET /trip?to&lat&lng&day`): one box, where to. The worker maps the drive (Routes API), searches
+    the corridor one circle per 50 km (Places Text Search), keeps stops within 10 minutes of detour (internal, never
+    shown), clusters each town into one anchor with the rest nested, in drive order, hours for the trip's day (seven
+    day pills, Today first). **OPEN IN MAPS** is pinned at the foot: one directions link, origin as a town name only,
+    anchors as waypoints (nine at most), destination. An empty corridor is plain copy plus the route, never an error.
+  - **Group trips** (`/trips`, a store sign-in): SHARE keeps the trip in KV (`trip:<id>`, `trips:<cid>`, `trips:all`) and
+    the organizer adds members by account email; the address is hashed (`acct:<hash>`, written at every store
+    sign-in), a stranger to Prowl waits in `tripinv:<hash>` and joins at their first sign-in. Every member sees the
+    identical trip with live hours. **Pro is decided on the worker:** `PRO_CIDS` (the comp list of customer ids the
+    organizer arranges with the owner), a linked member's Pro, or the customer's own paid orders. The page never does.
+  - **Trip Finds** (`/trips/<id>/finds`, `/finds/...`): a photo check's result has **SHARE THIS FIND** when a trip is on
+    (`prowl.trip`, new key, outside the backup): the photo (shrunk to 800 px JPEG on the phone), what it is, the
+    asking price, the call, the nearest stop or town and the member's first name post to the trip. Photos go to R2
+    (`PROWL_FINDS`, `finds/<trip>/<find>.jpg`), served only through signed hour-long links to members, refused once
+    the trip has expired, and deleted by `tripSweep` 7 days after the trip closes (`FINDS_GRACE_DAYS`). View-only.
+  - **Needs the owner** (see Waiting on Matt): only `PRO_CIDS` for a group. The secret `GOOGLE_MAPS_KEY`, the R2
+    bucket `prowl-finds` (bound in `wrangler.toml`) and its lifecycle rule were set up on 2026-10-20.
+  - Tests: `worker/__tests__/trip.test.mjs` (the pure module, the reference route Novi to Blenko, Monday hours),
+    `worker/__tests__/trips.test.mjs` (the routes against a fake Google, KV and R2), `__tests__/page/near-section-v736.test.mjs`;
+    `near-me`, `five-tabs-v730` and `local-dock` updated.
 - **v7.35 + worker v131: the new plans, and the email ask** (Matt, 2026-10-20: "everything that the customer does is
   free"; "3 hunts is good, pro gets unlimited ... once they get the email, they can adjust this"; "unlimited photo
   checks, people can use to price their stuff"; "we can just say owl and twig vintage". The goal: get the email, so
@@ -606,7 +636,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.36, worker v132**. Claim one here when you start.
+Next free numbers: **page v7.37, worker v133**. Claim one here when you start.
 
 ## What's next
 
@@ -620,6 +650,18 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 (the piece, then its mark or back), then community-lite.
 
 ## Waiting on Matt
+
+- **NEAR ME (v7.36 / v132) needs three things in Cloudflare before it does more than the old Maps links:**
+  1. Done 2026-10-20: the worker secret **GOOGLE_MAPS_KEY** (Places API (New), Routes API, Geocoding API; API
+     restriction only, no website restriction, since only the worker calls Google). Cost: a Road Trip build is about
+     13 Text Search calls, cached an hour; Around you is 2 calls, cached 10 minutes per ~1 km.
+  2. Done 2026-10-20: the R2 bucket **prowl-finds** exists, `worker/wrangler.toml` binds it, and its lifecycle rule
+     (prefix `finds/`, delete 30 days after upload) is the backstop behind the worker's own 7-day cleanup.
+  3. For a group: the members' store customer ids in the plain-text variable **PRO_CIDS** (comma list), which is the
+     comp list the spec asks for. A member with their own Pro order needs nothing.
+  Then test the reference route: NEAR ME > Road trip, "Blenko Glass Company, Milton, WV" from Novi on a Monday pill.
+  Open decisions from the spec still open: the 7-day photo grace window (built as the default), hunts on the way
+  (not built), the origin (current location on every use, as built).
 
 - **Turn on Prowl's own notifications:** in Cloudflare > Workers > prowl > Settings > Variables and secrets, add
   `VAPID_PRIVATE_JWK` (type Secret) with the private key Claude gave in chat on 2026-10-13 (the public half is in
