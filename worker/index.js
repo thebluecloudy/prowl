@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v131: 2026-10-20. The new plans (the owner: "3 hunts is good, pro gets unlimited ... once they get the email, they
+ *         can adjust this"). Free alerts cover 3 hunts for every member at the pace they pick (daily, Mon/Wed/Fri or
+ *         weekly; the new-member Mondays-only plan is gone). Pro covers up to 100 hunts (AL_MAX_HUNTS, was 25) and photo
+ *         checks are unlimited on Pro with a fair-use ceiling of 100 a day (PHOTO_PRO_PER_DAY, was 25).
  *   v130: 2026-10-20. Cross-posts (the owner: one Rookwood owl at $190 on Etsy, $211 on Poshmark, and on eBay): a long
  *         title on two sites is one piece up to 60% apart; every copy in /hunt carries also: the other sites with their
  *         price, and eBay listings carry ship (free or $X). /hunt cache key v=2.
@@ -348,7 +352,7 @@
  *        alerts, 10 listings per site, one Jev call per hunt, 2 hunts per run
  *        (ALERT_BATCH), a run either checks hunts or sends one email, never both.
  *        Test email checks 2 hunts.
- *   v32: Prowl Pro. Free alerts cover the first 3 hunts, Pro up to 25. Pro = PRO_EMAILS
+ *   v32: Prowl Pro. Free alerts cover the first 3 hunts, Pro up to 25 (v131: 100). Pro = PRO_EMAILS
  *        list, or a paid PROWL-PRO-MONTHLY order in the last 35 days (secret
  *        SHOPIFY_ORDERS_TOKEN, read_orders). /alerts/status reports pro/free/active.
  *        Free emails end with an upgrade note when the visitor has more hunts.
@@ -440,7 +444,7 @@ import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
-const WORKER_VERSION = "v130";
+const WORKER_VERSION = "v131";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -2688,7 +2692,7 @@ async function museTest(env, url) {
    range can lean on real sold prices), then plain Chat Completions if that fails. */
 const APPRAISE_PER_DAY = 250;
 const PHOTO_FREE_PER_DAY = 1;  // v45: free photo checks per visitor per day (v55: was 2)
-const PHOTO_PRO_PER_DAY = 25;  // v49: Prowl Pro photo checks per day (was 15)
+const PHOTO_PRO_PER_DAY = 100;  // v49: Prowl Pro photo checks per day (was 15). v131: "unlimited", fair use 100 a day (was 25)
 const PHOTO_FREE_PER_NET = 12; // v48: free photo checks per neighbourhood per day
 
 function apPrompt(price, searched, hint, looks) {
@@ -3583,7 +3587,7 @@ async function appraise(request, env, origin) {
 
    KV keys: sub:<email> {email,tok,hunts,day,done,sent,created}
             pend:<email> {hunt:[items]}   seen:<email> [urls]   conf:<email> {code,hunts,exp} */
-const AL_MAX_HUNTS = 25;
+const AL_MAX_HUNTS = 100;   /* v131: Pro covers up to 100 hunts (was 25), the same as the Den holds on Pro */
 const AL_PER_HUNT_EMAIL = 6;      // cards shown per hunt; the rest is "+N more on Prowl"
 const AL_PEND_CAP = 30;           // new items held per hunt between emails
 const AL_SEEN_CAP = 6000;   // v50: URLs and title keys
@@ -3691,11 +3695,10 @@ const PRO_MANAGE_URL = "https://www.owlandtwigvintage.com/account";
 /* v55: members created before AL_FREE_CUTOFF keep the old free plan (3 hunts, any day). */
 const AL_FREE_CUTOFF = "2026-10-04";
 function alLegacyFree(sub) { return !!sub && (!sub.created || String(sub.created) < AL_FREE_CUTOFF); }
-function alFree(env, sub) {
-  if (sub === undefined || alLegacyFree(sub)) { const n = parseInt((env && env.ALERT_FREE_HUNTS) || "3", 10); return n > 0 ? n : 3; }
-  const m = parseInt((env && env.ALERT_FREE_HUNTS_NEW) || "1", 10); return m > 0 ? m : 1;
-}
-function alFreeWeekly(sub) { return !!sub && !sub.pro && !alLegacyFree(sub); }
+/* v131: one free plan again: ALERT_FREE_HUNTS (default 3) for every member, at the pace they pick. The v55 split (new
+   members 1 hunt, Mondays only) is gone; alLegacyFree stays for the admin area's history. */
+function alFree(env, sub) { const n = parseInt((env && env.ALERT_FREE_HUNTS) || "3", 10); return n > 0 ? n : 3; }
+function alFreeWeekly(sub) { return false; }
 function alActive(env, sub) {
   const mute = alPrefs(sub).mute, hs = sub.hunts.filter(h => mute.indexOf(h.toLowerCase()) === -1);   /* v50 */
   return sub.pro ? hs.slice(0, AL_MAX_HUNTS) : hs.slice(0, alFree(env, sub));
@@ -4763,7 +4766,7 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
   const all = sub.allCount || sub.hunts.length, free = alFree(env, sub);
   const up = (!sub.pro && all > free) ? '<tr><td style="padding:22px 12px 0"><div style="border:2px solid #8a4b1f;border-radius:10px;padding:14px;font:14px/1.5 Arial,sans-serif;color:#2b2118">' +
     '<b>You are on the free plan:</b> alerts for your first ' + free + ' hunts. You have ' + all + '. ' +
-    '<a href="' + alEsc(alUpgradeUrl(sub)) + '" style="color:#8a4b1f;font-weight:bold">Get all ' + Math.min(all, AL_MAX_HUNTS) + ' every day with Prowl Pro' + (sub.hadPro ? ' · $7/month' : ' · first month free') + '</a></div></td></tr>' : '';
+    '<a href="' + alEsc(alUpgradeUrl(sub)) + '" style="color:#8a4b1f;font-weight:bold">Get all ' + Math.min(all, AL_MAX_HUNTS) + ' with Prowl Pro' + (sub.hadPro ? ' · $7/month' : ' · first month free') + '</a></div></td></tr>' : '';
   return alShell(env, inner + up, alWhy(sub), links);
 }
 /* v56: " · local pickup within 50 mi of 48375" after a local hunt's heading */
@@ -4812,9 +4815,9 @@ async function alDigest(env, sub, send) {
    $7 charge. Both are about billing, so they go even when the digest is off or
    paused. Marked on the member (trialHi / trialRemind = order name). */
 function alPerks() {
-  return ["Prowl Alerts for up to 25 hunts, or your whole Den, every day at the time you pick",
+  return ["Prowl Alerts for up to " + AL_MAX_HUNTS + " hunts, or your whole Den, as often as you pick",
     "A price ceiling and skip-words, so the email only carries what you would buy",
-    "25 photo checks a day: the piece named, flaws noted, a fair range from sold prices",
+    "Unlimited photo checks (fair use, " + PHOTO_PRO_PER_DAY + " a day): the piece named, flaws noted, a fair range from sold prices",
     "Unlimited Fair price checks on live listings"];
 }
 function alTrialMail(env, sub, kind) {
@@ -5318,7 +5321,7 @@ async function alSendGift(env, email, until, sub, opts) {
   const link = sub ? alHomeUrl(sub) : links.start, btn = sub ? "Open Prowl" : "Start Prowl";
   const P = 'style="margin:0 0 12px"', small = 'style="margin:0 0 4px;font:13px/1.5 Arial,sans-serif;color:#6b5b4a"';
   const shopNote = "If you still pay for Prowl Pro in the Owl & Twig shop, that subscription is separate: this gift does not cancel it. To stop being charged, cancel it in your Owl & Twig account under Subscriptions:";
-  const steps = sub ? '<p ' + P + '>It is already on for your account: up to ' + AL_MAX_HUNTS + ' hunts, daily emails, and price and keyword filters. Your hunts and settings have not changed.</p>' +
+  const steps = sub ? '<p ' + P + '>It is already on for your account: up to ' + AL_MAX_HUNTS + ' hunts, emails as often as you like, and price and keyword filters. Your hunts and settings have not changed.</p>' +
       (paid ? '<p ' + P + '>' + alEsc(shopNote) + ' <a href="' + PRO_MANAGE_URL + '" style="color:#8a4b1f">' + alEsc(PRO_MANAGE_URL.replace(/^https:\/\/(www\.)?/, "")) + '</a>.</p>' : '')
     : '<p style="margin:0 0 6px"><b>How to start</b></p><ol style="margin:0 0 12px;padding-left:22px">' +
       '<li style="margin:0 0 6px">Tap <b>Start Prowl</b> below. It signs you in with this email address. There is no password.</li>' +
@@ -5337,7 +5340,7 @@ async function alSendGift(env, email, until, sub, opts) {
     links ? '<a href="' + alEsc(links.stop) + '" style="color:#9a8b7a">Stop gift emails to this address</a>' : '');
   const text = ["Owl & Twig Vintage has given you Prowl Pro, free " + ends + ".", "",
     "Prowl searches " + sites + " at once for the things you collect, and emails you what is new.", "",
-    sub ? "It is already on for your account: up to " + AL_MAX_HUNTS + " hunts, daily emails, and price and keyword filters." + (paid ? "\n\n" + shopNote + " " + PRO_MANAGE_URL : "")
+    sub ? "It is already on for your account: up to " + AL_MAX_HUNTS + " hunts, emails as often as you like, and price and keyword filters." + (paid ? "\n\n" + shopNote + " " + PRO_MANAGE_URL : "")
       : "How to start:\n1. Open the Start Prowl link below. It signs you in with this email address. There is no password.\n2. Search for something you collect and save it as a hunt. Pro gives you up to " + AL_MAX_HUNTS + ".\n3. Each morning, Prowl emails you anything new for your hunts.",
     "", btn + ": " + link, "", after, "", "--", "Prowl Alerts by Owl & Twig Vintage. " + why, links ? "Stop gift emails to this address: " + links.stop : null, links ? 'Or just reply "unsubscribe" to this email.' : null,
     "Copyright © " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(l => l !== null).join("\n");
@@ -5609,7 +5612,7 @@ async function alUnsub(request, env, url, origin) {
   sub.mail = "off"; sub.mailOffAt = new Date().toISOString();
   await alMerge(env, sub, ["mail", "mailOffAt"]);
   for (const k of ["pend:", "seen:"]) await env.PROWL_ALERTS.delete(k + email);
-  return wantJson ? json({ ok: true, on: true, mail: "off", pro: !!sub.pro }, 200, origin) : alPage("Prowl emails are off", "You will not get any more Prowl Alerts emails." + (sub.pro ? " Prowl Pro is still on: 25 photo checks a day and unlimited Fair price checks in Prowl. To stop paying, cancel it in your Owl & Twig account under Subscriptions." : "") + " Turn emails back on any time in Prowl under Den, then Settings.");
+  return wantJson ? json({ ok: true, on: true, mail: "off", pro: !!sub.pro }, 200, origin) : alPage("Prowl emails are off", "You will not get any more Prowl Alerts emails." + (sub.pro ? " Prowl Pro is still on: unlimited photo checks and Fair price checks in Prowl. To stop paying, cancel it in your Owl & Twig account under Subscriptions." : "") + " Turn emails back on any time in Prowl under Den, then Settings.");
 }
 
 /* v29: "Send me a test email" in Prowl. Token required, 3 a day. Checks up to
