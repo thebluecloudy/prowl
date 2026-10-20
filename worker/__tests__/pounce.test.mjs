@@ -301,8 +301,8 @@ test("wired in: routes, the alert check, status, purge and email move", () => {
   assert.match(indexFn("alTick"), /if \(held && !PJ_RUN\.down && loc\.hour < alSlotHour\(env, sub\) \+ 2\) continue;/, "the digest waits briefly for Pounce, never for an outage");
   assert.match(indexFn("alStatus"), /quarryMatches/);
   assert.match(indexFn("alPurge"), /"pj:", "gm:", "pq:", "pp:"/);
-  assert.match(indexFn("alMoveConfirm"), /"pj:", "gm:", "pp:"\]\) \{ const v = await kvGet/);
-  assert.match(indexFn("alMoveConfirm"), /"pj:", "gm:", "pq:", "pp:"\]\) await env\.PROWL_ALERTS\.delete/);
+  assert.match(indexFn("alMoveConfirm"), /"pj:", "gm:", "pp:"(, "[a-z]+:")*\]\) \{ const v = await kvGet/);   /* v152: wk: lt: follow */
+  assert.match(indexFn("alMoveConfirm"), /"pj:", "gm:", "pq:", "pp:"(, "[a-z]+:")*\]\) await env\.PROWL_ALERTS\.delete/);
   const tick = indexFn("alTick"), chk = indexFn("alCheck");
   assert.match(tick, /alCheck\(env, sub, budget, now, phoneOnly \|\| null\)/, "emails off + phone on: Pounce still runs");
   assert.match(tick, /if \(n \|\| phoneOnly\) continue;/, "and no digest goes");

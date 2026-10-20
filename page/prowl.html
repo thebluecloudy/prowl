@@ -1079,6 +1079,19 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .pp-also li small{color:var(--mu);font-size:14px}
 .scout-app-wrapper .pp-also li a{margin-left:auto;color:var(--ac);font-weight:800;text-decoration:none}
 .scout-app-wrapper .pp-also-n{display:block;margin-top:6px;font-size:14px;color:var(--mu)}
+.scout-app-wrapper .lt{margin:12px 0;padding:16px 18px;border:2px solid var(--l2);border-radius:12px;background:var(--cd);color:var(--ink);font-size:16px;line-height:1.55}
+.scout-app-wrapper .lt-card{border-color:var(--ac)}
+.scout-app-wrapper .lt-d{margin:0;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mu)}
+.scout-app-wrapper .lt-h{margin:2px 0 8px;font-size:22px;line-height:1.25}
+.scout-app-wrapper .lt p{margin:8px 0}
+.scout-app-wrapper .lt a{color:var(--ac);font-weight:700;text-decoration:none}
+.scout-app-wrapper .lt-s{font-style:italic}
+.scout-app-wrapper .lt-q,.scout-app-wrapper .lt-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.scout-app-wrapper .lt-q .b,.scout-app-wrapper .lt-acts .b{height:auto;min-height:44px;padding:8px 16px;white-space:normal;text-align:left}
+.scout-app-wrapper .lt-saved{margin-top:6px}
+.scout-app-wrapper .lt-saved summary{cursor:pointer;font-weight:700;min-height:40px;line-height:40px}
+.scout-app-wrapper .lt-saved .sgw-ml{display:block;min-height:40px}
+.scout-app-wrapper .lt-flash{outline:3px solid var(--ac);outline-offset:4px;border-radius:8px}
 .scout-app-wrapper .sgw-also{display:inline-block;margin-top:3px;font-size:12.5px;font-weight:700;color:var(--i2)}
 .scout-app-wrapper .pp-sold{display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;margin-top:10px;border-radius:99px;font-weight:800}
 /* v7.09 (Matt: "make them glow"): new listings glow, in the strip and in a hunt. A steady ring outside the card and a
@@ -3253,7 +3266,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.45';
+var PROWL_VERSION='v7.46';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4597,7 +4610,8 @@ function rRes(){
     var dT=dgTerms(r),di;for(di=0;di<dT.length;di++)dgMark(dT[di].toLowerCase());
     dgDayTick();   /* v7.35 */
     var dx=dgNew(dT);
-    res.innerHTML='<div class="rc dg-rc">'+dgHead(r,dx)+dgDigest(r,dx)+'</div>';
+    res.innerHTML='<div class="rc dg-rc">'+dgHead(r,dx)+letterCard()+dgDigest(r,dx)+'</div>';   /* v7.46: the Sunday letter */
+    letterFetch();
     var dcr=$('#otp-cr');if(dcr)dcr.addEventListener('click',clearRun);
     return;
   }
@@ -6030,7 +6044,7 @@ function mailInit(mount){
       var movedIn=/[?&]alerts=moved(&|$)/.test(location.search),signin=/[?&]alerts=in(&|$)/.test(location.search),upg=/[?&]upgrade=1(&|$)/.test(location.search);
       if(upg)setTimeout(mailUpgrade,1400);
       try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])(alerts=in|alerts=moved|upgrade=1)(&|$)/g,function(m,a,x,b){return b?a:''}).replace(/([?&])(alerts=in|alerts=moved|upgrade=1)(&|$)/g,function(m,a,x,b){return b?a:''}).replace(/[?&]$/,''))}catch(e){}
-      MAIL.msg=movedIn?'Done. Prowl Alerts now go to '+nxtEm+'. Your hunts, settings and plan came with you.':signin?'Signed in as '+nxtEm+'. Your hunts and plan are on this device now.':'Prowl Alerts is on. Your first email comes tomorrow morning.';MAIL.open=true;MAIL.signin=false;setTimeout(openMailSettings,1500);
+      MAIL.msg=movedIn?'Done. Prowl Alerts now go to '+nxtEm+'. Your hunts, settings and plan came with you.':signin?'Signed in as '+nxtEm+'. Your hunts and plan are on this device now.':'Prowl Alerts is on. Your first email comes tomorrow morning.';MAIL.open=true;MAIL.signin=false;if(!MAIL.huntLink)setTimeout(openMailSettings,1500);   /* v7.46: not over a ?hunt= search */
       MAIL.asked=1;setTimeout(function(){mailStatus(true)},600);
     }
   }catch(e){}
@@ -6056,6 +6070,9 @@ function mailInit(mount){
       if(a==='again'){mSet('alertWait','');rMail();return}
       if(a==='set'){e.preventDefault();openMailSettings();return}
       if(a==='freq'){prefsSet({freq:b.getAttribute('data-v')});return}
+      if(a==='letter'){prefsSet({letter:b.getAttribute('data-v')==='off'?'off':''});return}   /* v7.46 */
+      if(a==='letterpeek'){letterPeek();return}
+      if(a==='letteropen'){letterOpenSaved(parseInt(b.getAttribute('data-i'),10));return}
       if(a==='slot'){prefsSet({slot:slotOk(b.getAttribute('data-v'))});return}   /* v6.02 */
       if(a==='src'){var sv=b.getAttribute('data-v'),ss=prefs().sources.slice(),si=ss.indexOf(sv);if(si===-1)ss.push(sv);else if(ss.length>1)ss.splice(si,1);prefsSet({sources:ss});return}
       if(a==='mute'){var mh=String(b.getAttribute('data-h')||'').toLowerCase(),mm=prefs().mute.slice(),mi=mm.indexOf(mh);if(mi===-1)mm.push(mh);else mm.splice(mi,1);prefsSet({mute:mm});return}
@@ -6177,6 +6194,7 @@ function prefs(){
   o.radius=PREF_RADII.indexOf(parseInt(p.radius,10))!==-1?parseInt(p.radius,10):50;
   o.local=(p.local||[]).map(function(h){return String(h).toLowerCase()});
   o.noai=mGet('aiOff')==='1'?1:0;   /* v6.33 */
+  o.letter=p.letter==='off'?'off':'';   /* v7.46: the Sunday letter */
   return o;
 }
 var PREF_RADII=[25,50,100];
@@ -6206,9 +6224,107 @@ function prefsPush(){
       rMail();
     },function(){MAIL.saving='Could not reach Prowl. Try again in a minute.';rMail()});
 }
+/* ---------- v7.46: the weekly letter ----------
+   (Matt, 2026-10-20, from Cat On Chair's Weekly Recap: "i like that it is in the app too, everyone gets it, sunday is
+   good ... for now keep in den"). Worker v148 writes it every Sunday evening and keeps it (POST /alerts/letter). Daily
+   shows the latest for a week, with Save (prowl.letters, newest 12 on this device), Share and Close (prowl.letterSeen);
+   a quiet hunt's shorter search can be added as a new hunt or replace the old one. Den > Settings has the switch,
+   "Read this week's so far" and the saved letters. The email's links: ?letter=1 opens that switch, ?hunt= runs a search. */
+var LETTER={L:null,asked:0},LETTERS_KEY='prowl.letters',LETTER_SEEN_KEY='prowl.letterSeen';
+function letterSaved(){try{var a=JSON.parse(localStorage.getItem(LETTERS_KEY)||'[]');return Array.isArray(a)?a.filter(letterOk):[]}catch(e){return []}}
+function letterOk(L){return !!L&&typeof L==='object'&&/^\d{4}-\d{2}-\d{2}$/.test(String(L.day||''))&&Array.isArray(L.lines)}
+function letterDays(day){var t=Date.parse(String(day)+'T12:00:00');return isFinite(t)?(Date.now()-t)/864e5:99}
+function letterHtml(L,inCard){
+  var h='<div class="lt'+(inCard?' lt-card':'')+'" data-ltd="'+esc(L.day)+'"><p class="lt-d">'+esc(L.hello||L.day)+'</p><h3 class="lt-h">Your week on the prowl</h3>',i,l,u;
+  for(i=0;i<L.lines.length;i++){l=L.lines[i]||{};
+    u=typeof l.url==='string'&&/^https:\/\//.test(l.url)?window.prowlAff(l.url,'prowl-letter'):'';
+    h+='<p>'+(l.b?'<b>'+esc(l.b)+'</b> ':'')+esc(l.t||'')+(u&&u!=='#'?' <a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">See it \u2197</a>':'')+'</p>';
+    if(l.suggest&&l.n>0&&l.hunt)h+='<div class="lt-q"><button type="button" class="b p" data-lt="add" data-t="'+esc(l.suggest)+'">Add \u201c'+esc(l.suggest)+'\u201d as a new hunt</button>'+
+      '<button type="button" class="b" data-lt="swap" data-t="'+esc(l.suggest)+'" data-h="'+esc(l.hunt)+'">Replace my hunt</button></div>'}
+  h+='<p class="lt-s">'+esc(L.sign||'')+'</p>';
+  return h+'<div class="lt-acts"><button type="button" class="b" data-lt="save">\u2606 Save</button><button type="button" class="b" data-lt="share">Share</button>'+(inCard?'<button type="button" class="b" data-lt="close">Close</button>':'')+'</div></div>';
+}
+function letterCard(){
+  var L=LETTER.L;
+  if(!letterOk(L)||letterDays(L.day)>7||mGet('letterSeen')===L.day)return '';
+  return letterHtml(L,1);
+}
+function letterFetch(){
+  var tok=mGet('alertTok'),em=mGet('alertEmail');
+  if(LETTER.asked||!tok||!em||typeof fetch!=='function')return;
+  LETTER.asked=1;
+  fetch(SGW_API+'alerts/letter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,tok:tok})})
+    .then(function(r){return r.ok?r.json():null}).then(function(j){
+      if(!j||!letterOk(j.letter))return;
+      LETTER.L=j.letter;
+      var rc=document.querySelector('.scout-app-wrapper .dg-rc'),hd=rc&&rc.querySelector('.dg-rh'),c=letterCard(),tmp;
+      if(rc&&hd&&c&&!rc.querySelector('.lt-card')){tmp=document.createElement('div');tmp.innerHTML=c;hd.parentNode.insertBefore(tmp.firstChild,hd.nextSibling)}
+    })['catch'](function(){});
+}
+function letterSetHtml(p){
+  var off=p.letter==='off',sv=letterSaved(),h='<div class="mail-sec" id="otp-letterSet"><h4>Weekly letter</h4><div class="mail-seg">',i;
+  h+='<button type="button" data-mail="letter" data-v="on"'+(off?' aria-pressed="false"':' class="on" aria-pressed="true"')+'>On</button>';
+  h+='<button type="button" data-mail="letter" data-v="off"'+(off?' class="on" aria-pressed="true"':' aria-pressed="false"')+'>Off</button></div>';
+  h+='<p class="mail-fine">'+(off?'Off: no Sunday letter. Your alerts emails are separate.':'Every Sunday evening the panther writes you about your week: new finds, the best one, and a hunt that could use a tweak. It comes by email and shows in Daily.')+
+    ' <button type="button" class="sgw-ml" data-mail="letterpeek">Read this week\u2019s so far</button></p>';
+  if(sv.length){h+='<details class="lt-saved"><summary>Saved letters ('+sv.length+')</summary>';for(i=0;i<sv.length;i++)h+='<button type="button" class="sgw-ml" data-mail="letteropen" data-i="'+i+'">'+esc(sv[i].hello||sv[i].day)+'</button>';h+='</details>'}
+  return h+'</div>';
+}
+function letterPeek(){
+  var tok=mGet('alertTok'),em=mGet('alertEmail');
+  if(!tok||!em||typeof fetch!=='function')return;
+  openSheet('Your week so far','<p class="pk-wait"><span class="paws" aria-hidden="true"><i>\ud83d\udc3e</i><i>\ud83d\udc3e</i><i>\ud83d\udc3e</i></span>The panther is writing\u2026</p>');
+  fetch(SGW_API+'alerts/letter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,tok:tok,preview:1})})
+    .then(function(r){return r.json()['catch'](function(){return null})}).then(function(j){
+      var b=$('#otp-sheetB');if(!b)return;
+      if(j&&letterOk(j.letter)){b.innerHTML=letterHtml(j.letter,0)+'<p class="mail-fine">So far this week. The real letter comes on Sunday evening.</p>';b._lt=j.letter}
+      else b.innerHTML='<p class="sgw-note">'+esc((j&&j.error)||'The panther could not write just now. Try again in a minute.')+'</p>';
+    },function(){var b=$('#otp-sheetB');if(b)b.innerHTML='<p class="sgw-note">Could not reach Prowl. Try again in a minute.</p>'});
+}
+function letterOpenSaved(i){var L=letterSaved()[i];if(!L)return;openSheet('Saved letter',letterHtml(L,0));var b=$('#otp-sheetB');if(b)b._lt=L}
+function letterOf(el){
+  var box=el.closest('.lt'),day=box&&box.getAttribute('data-ltd'),sb=$('#otp-sheetB'),i,sv;
+  if(LETTER.L&&LETTER.L.day===day)return LETTER.L;
+  if(sb&&sb._lt&&sb._lt.day===day)return sb._lt;
+  sv=letterSaved();for(i=0;i<sv.length;i++)if(sv[i].day===day)return sv[i];
+  return null;
+}
+function letterText(L){var o=[L.hello||L.day,''],i,l;for(i=0;i<L.lines.length;i++){l=L.lines[i]||{};o.push((l.b?l.b+' ':'')+(l.t||'')+(l.url?' '+l.url:''))}o.push('',L.sign||'','','Prowl, a vintage search tool from Owl & Twig Vintage: '+SHARE_HOME);return o.join('\n')}
+function letterAct(b){
+  var a=b.getAttribute('data-lt'),L=letterOf(b),sv,i,t,hn;
+  if(a==='close'){if(L)mSet('letterSeen',L.day);var c=b.closest('.lt-card');if(c&&c.parentNode)c.parentNode.removeChild(c);return}
+  if(a==='save'){if(!L)return;sv=letterSaved().filter(function(x){return x.day!==L.day});sv.unshift(L);try{localStorage.setItem(LETTERS_KEY,JSON.stringify(sv.slice(0,12)))}catch(e){}toast('Saved. Find it in Den, then Settings, under Weekly letter.',3600);return}
+  if(a==='share'){if(!L)return;t=letterText(L);
+    if(navigator.share){try{navigator.share({title:'My week on the prowl',text:t})['catch'](function(){});return}catch(e){} }
+    if(copyTerm(t))toast('Copied. Paste it anywhere.',2400);else toast('Could not copy it here.',2600);return}
+  if(a==='add'||a==='swap'){t=sgwClean(b.getAttribute('data-t')||'');hn=String(b.getAttribute('data-h')||'');if(!t)return;
+    /* Replace: the shorter search takes the old hunt's place (as sgwUseSug does), so a full Den never loses one */
+    var j=a==='swap'?huntIndex(hn):-1;
+    if(j>-1&&huntIndex(t)<0){st.hunts[j]=t;st.lock.add(j);save();sgw.cur=t.toLowerCase();sgwSync();rSGW();rDenHunts();rDock();liveFetch(sgwCurTerm());loadPicks();
+      toast('\u25c9 Hunting <b>'+esc(t)+'</b> instead of <b>'+esc(hn)+'</b>.',3600);b.disabled=true;return}
+    if(sgwAdd(t)!==false){toast('Added <b>'+esc(t)+'</b> to your hunts.',3600);b.disabled=true}
+    return}
+}
+document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('[data-lt]');if(b&&b.closest('.scout-app-wrapper'))letterAct(b)});
+/* the email's links: ?letter=1 opens Den > Settings at the switch; ?hunt= runs that search */
+try{if(/[?&]letter=1(&|$)/.test(location.search)){
+  try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])letter=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
+  var lTries=0;setTimeout(function lGo(){lTries++;
+    if(mGet('alertTok')&&!MAIL.ready&&lTries<12){setTimeout(lGo,400);return}
+    openMailSettings();
+    setTimeout(function(){var el=$('#otp-letterSet');if(el){try{el.scrollIntoView({block:'center'})}catch(e){}el.classList.add('lt-flash')}},700);
+  },900);
+} }catch(e){}
+try{var lHunt=/[?&]hunt=([^&#]*)/.exec(location.search);if(lHunt){
+  var lT=sgwClean(decodeURIComponent(lHunt[1].replace(/\+/g,' '))).slice(0,80);
+  try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])hunt=[^&#]*(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
+  if(lT)MAIL.huntLink=1;   /* the sign-in in the same link must not open Den over the search */
+  if(lT)setTimeout(function(){if(!q)return;q.value=lT;var sa=$('#otp-sa');if(sa)sa.click();toast('Searching <b>'+esc(lT)+'</b>. Like what you see? Tap + to keep it as a hunt.',4800)},1200);
+} }catch(e){}
 function prefsHtml(on,em,n){
   var p=prefs(),pro=mailPro(),act=prefsActive(),hs=mailHunts(),h='',i,k,muted,locked,paused=prefsPaused();
   h+=pncHtml();   /* v6.93: Pounce */
+  h+=letterSetHtml(p);   /* v7.46: the weekly letter */
   /* how often */
   h+='<div class="mail-sec"><h4>How often</h4><div class="mail-seg">';
   var fw=MAIL.freeWeekly&&!pro,fq=fw?'weekly':p.freq;   /* v6.05: free = Mondays */

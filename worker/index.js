@@ -19,6 +19,11 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v152: 2026-10-20. The weekly letter (the owner, from Cat On Chair's Weekly Recap): every Sunday from 6pm in the
+ *         member's time zone the panther writes each member about their week (letter.js): new finds, the best find
+ *         against its hunt's typical price, likes saved, and for the quietest hunt a shorter search proved on eBay.
+ *         wk:<email> keeps the week's tally, lt:<email> the letter for the app (POST /alerts/letter, preview too).
+ *         prefs.letter = "off" stops it; /alerts/unsub?w=letter (footer and one-click List-Unsubscribe) stops only it.
  *   v151: 2026-10-20. /near says the town you are standing in (one reverse geocode a cell, cached with the list; the
  *         page's map, v7.45, puts it on your dot). Near cache key v=10.
  *   v149: 2026-10-20. Cross-posts in different currencies (an Etsy lamp at 180.00 CAD, a Poshmark one at $129) are never
@@ -507,11 +512,12 @@ import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb6
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
-import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
+import { huntCombine, huntPriceN, craigslistNormalize, huntNeeds, huntRelevant } from "./hunt.js";   /* v117; v152: huntNeeds, huntRelevant */
+import { wkAdd, wkFresh, wkCur, letterShorters, letterBuild, letterText, letterQuiet } from "./letter.js";   /* v152: the weekly letter */
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v151";
+const WORKER_VERSION = "v152";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -3728,7 +3734,8 @@ function alPrefs(sub) {
     tz: alTzClean(p.tz),   /* v53 */
     zip: /^\d{5}$/.test(String(p.zip || "")) ? String(p.zip) : "",   /* v56 */
     radius: AL_RADII.indexOf(Number(p.radius)) !== -1 ? Number(p.radius) : 50,
-    local: Array.isArray(p.local) ? p.local.map(h => vClean(h, 60).toLowerCase()).filter(Boolean).slice(0, AL_MAX_HUNTS) : []
+    local: Array.isArray(p.local) ? p.local.map(h => vClean(h, 60).toLowerCase()).filter(Boolean).slice(0, AL_MAX_HUNTS) : [],
+    letter: p.letter === "off" ? "off" : ""   /* v152: the Sunday letter, on unless turned off */
   };
 }
 function alPaused(sub, now) { const p = alPrefs(sub).pause; return !!p && now.day < p; }
@@ -4745,6 +4752,10 @@ async function alCheck(env, sub, limit, now, only) {
      (admin area) while this run searched. What this run found is added to what is stored now, so none of that is undone. */
   const [seenNow, pend] = await Promise.all([kvGet(env, "seen:" + sub.email, []), kvGet(env, "pend:" + sub.email, {})]);
   alPendAdd(pend, found, alPendCap(sub));
+  /* v152: the week's tally for the Sunday letter: counts, prices and the cheapest few per hunt */
+  if (Object.keys(found).some(h => found[h] && found[h].length)) {
+    try { await kvPut(env, "wk:" + sub.email, wkAdd(await kvGet(env, "wk:" + sub.email, null), found, now.day)); } catch (e) { console.error("week tally", String(e && e.message || e)); }
+  }
   await kvPut(env, "seen:" + sub.email, (Array.isArray(seenNow) ? seenNow : []).concat(newKeys).slice(-AL_SEEN_CAP));
   await kvPut(env, "pend:" + sub.email, pend);
   if (String(cur.day || "") !== String(readDay || "")) { sub.day = now.day; sub.done = checked; }   /* reset meanwhile: only what this call checked counts as done */
@@ -4859,6 +4870,90 @@ function alSubject(sub, pend) {
   return "Prowl: " + total + " new · " + head + (hunts.length > 2 ? ", +" + (hunts.length - 2) + " more" : "");
 }
 
+/* ---------- v152: the weekly letter ----------
+   Sunday from 6pm in the member's own time zone, to every member with emails on and not paused, unless they turned
+   the letter off (prefs.letter). Built from wk:<email> (what alCheck found since the last letter), the likes saved
+   this week and, for the quiet hunt, one eBay search to prove a shorter version finds something. Kept in lt:<email>
+   for three weeks so the app shows the same letter. A member with no tally yet (new this week) waits for next Sunday. */
+const AL_LETTERS_PER_RUN = 4, AL_LETTER_HOUR = 18, AL_LETTER_TTL = 21 * 86400, AL_LETTER_PREVIEWS = 10;
+function alLetterDue(sub, loc) {
+  return !!sub && loc.wday === 0 && loc.hour >= AL_LETTER_HOUR && sub.letter !== loc.day && alPrefs(sub).letter !== "off" &&
+    sub.mail !== "off" && !alPaused(sub, loc) && Array.isArray(sub.hunts) && sub.hunts.length > 0;
+}
+function alLetterUnsubUrl(sub) { return alUnsubUrl(sub) + "&w=letter"; }
+function alLetterOffUrl(sub) { return PROWL_APP + "?alerts=in&letter=1#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok; }
+function alTryUrl(sub, term) { return PROWL_APP + "?alerts=in&hunt=" + encodeURIComponent(term) + "#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok; }
+async function alLetterMake(env, sub, day, wk, verify) {
+  let likes = [];
+  try {
+    const L = await kvGet(env, "likes:" + sub.email, null), since = Date.parse(String(wk.from || "") + "T00:00:00Z") || 0;
+    likes = (L && Array.isArray(L.likes) ? L.likes : []).filter(x => x && x.u && Number(x.at) >= since).slice(0, 50);
+  } catch (e) {}
+  const act = alActive(env, sub);   /* only the hunts the alerts really search (not muted, not past the plan) */
+  const qh = letterQuiet(act, wk);
+  let quiet = null;
+  if (qh) {
+    quiet = { hunt: qh, suggest: "", n: 0 };
+    /* at most two shorter versions, one eBay search each: the first that finds something is offered */
+    for (const t of (verify ? letterShorters(qh).slice(0, 2) : [])) {
+      try {
+        /* the lean alerts search (2 calls at most), not the live ladder: a run has 50 outside calls in all */
+        const up = await ebayLean(t, env, ""), items = up && up.status === 200 ? ebayNormalize(up.text) : null, needs = huntNeeds(t);
+        const n = (items || []).filter(x => huntRelevant(x.title, needs, t)).length;
+        if (n > 0) { quiet.suggest = t; quiet.n = n; break; }
+      } catch (e) {}
+    }
+  }
+  return letterBuild({ day: day, hunts: act, wk: wk, likes: likes, quiet: quiet });
+}
+function alLetterHtml(env, sub, L) {
+  const p = (inner) => '<tr><td style="padding:6px 22px;font:16px/1.6 Georgia,serif;color:#2b2118">' + inner + '</td></tr>';
+  let h = '<tr><td style="padding:18px 22px 4px;font:bold 12px Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#9a8b7a">' + alEsc(L.hello) + '</td></tr>' +
+    '<tr><td style="padding:0 22px 8px;font:bold 24px/1.3 Georgia,serif;color:#2b2118">Your week on the prowl</td></tr>';
+  (L.lines || []).forEach(l => {
+    let inner = (l.b ? '<b>' + alEsc(l.b) + '</b> ' : '') + alEsc(l.t);
+    if (l.url) inner = (l.img ? '<a href="' + alEsc(epnUrl(env, l.url, "prowl-letter")) + '"><img src="' + alEsc(l.img) + '" width="180" alt="" style="display:block;max-width:180px;border-radius:6px;margin:6px 0"></a>' : '') +
+      inner + ' <a href="' + alEsc(epnUrl(env, l.url, "prowl-letter")) + '" style="color:#8a4b1f;font-weight:bold">See it</a>';
+    if (l.suggest && l.n > 0) inner += '<br><a href="' + alEsc(alTryUrl(sub, l.suggest)) + '" style="display:inline-block;margin-top:8px;padding:10px 18px;border-radius:99px;background:#8a4b1f;color:#fff;font:bold 15px Arial,sans-serif;text-decoration:none">Try \u201c' + alEsc(l.suggest) + '\u201d</a>';
+    h += p(inner);
+  });
+  h += p('<i>' + alEsc(L.sign) + '</i>');
+  h += '<tr><td style="padding:12px 22px 4px"><a href="' + alEsc(alDailyUrl(sub)) + '" style="display:inline-block;padding:12px 20px;border-radius:99px;background:#2b2118;color:#fff;font:bold 15px Arial,sans-serif;text-decoration:none">Open Prowl</a></td></tr>';
+  const links = '<a href="' + alEsc(alLetterOffUrl(sub)) + '" style="color:#9a8b7a">Stop the weekly letter</a> \u00b7 <a href="' + alEsc(alUnsubUrl(sub)) + '" style="color:#9a8b7a">Unsubscribe from all Prowl emails</a>';
+  return alShell(env, h, 'You are getting this weekly letter because you have Prowl Alerts on. It comes on Sunday evenings; your daily alerts are separate.', links);
+}
+async function alLetterSend(env, sub, loc, send) {
+  const wk = wkCur(await kvGet(env, "wk:" + sub.email, null), loc.day);   /* a tally older than a week (letter was off) is not "this week" */
+  if (!wk) { sub.letter = loc.day; await alMerge(env, sub, ["letter"]); await kvPut(env, "wk:" + sub.email, wkFresh(loc.day)); return "no tally yet"; }
+  const L = await alLetterMake(env, sub, loc.day, wk, true);
+  if (!send) return L;
+  const subject = L.finds ? "Your week on the prowl: " + L.finds + " new find" + (L.finds === 1 ? "" : "s") : "Your week on the prowl";
+  const r = await alSend(env, sub.email, subject, alLetterHtml(env, sub, L), letterText(L) + "\n" + alFootText(env, sub) + "\nStop the weekly letter: " + alLetterUnsubUrl(sub), alLetterUnsubUrl(sub));
+  if (!r.ok) return "not sent: " + String(r.error || "unknown").slice(0, 120);
+  /* the sent marker first: a failed write after it must never send the letter again on the next run */
+  sub.letter = loc.day;
+  await alMerge(env, sub, ["letter"]);
+  try { await env.PROWL_ALERTS.put("lt:" + sub.email, JSON.stringify(L), { expirationTtl: AL_LETTER_TTL }); } catch (e) { console.error("letter keep", String(e && e.message || e)); }
+  try { await kvPut(env, "wk:" + sub.email, wkFresh(loc.day)); } catch (e) { console.error("week reset", String(e && e.message || e)); }
+  return "sent";
+}
+/* POST /alerts/letter {email, tok, preview}: the member's latest letter for the app; preview builds this week's so far
+   (never sent, never stored; AL_LETTER_PREVIEWS a day, as it may ask eBay once) */
+async function alLetterRoute(request, env, origin) {
+  if (ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);
+  const b = await readJson(request, 2048);
+  const email = alEmail(b.email);
+  const sub = env && env.PROWL_ALERTS && email ? await kvGet(env, "sub:" + email, null) : null;
+  if (!sub || !alSame(b.tok, sub.tok)) return json({ letter: null }, 200, origin);
+  if (b.preview) {
+    if (!(await vCount("ltp:" + email, AL_LETTER_PREVIEWS))) return json({ error: "That is a lot of previews today. Try again tomorrow." }, 429, origin);
+    const loc = alLocal(sub, alNow(env));
+    const wk = wkCur(await kvGet(env, "wk:" + email, null), loc.day) || wkFresh(loc.day);
+    return json({ letter: await alLetterMake(env, sub, loc.day, wk, true), preview: true, off: alPrefs(sub).letter === "off" }, 200, origin);
+  }
+  return json({ letter: await kvGet(env, "lt:" + email, null), off: alPrefs(sub).letter === "off" }, 200, origin);
+}
+
 async function alDigest(env, sub, send) {
   const pend = await kvGet(env, "pend:" + sub.email, {});
   const hunts = sub.hunts.filter(h => pend[h] && pend[h].length);
@@ -4935,7 +5030,7 @@ async function alTick(env) {
   if (!alReady(env)) return { skipped: "off or no KV" };
   const now = alNow(env);
   PJ_RUN = { left: POUNCE_PER_RUN, m: {}, down: !!(await kvGet(env, "pjdown", null)) };   /* v112: Pounce's share of this run's outside calls; v112 review: none while Muse is down */
-  let budget = alBatch(env), proLeft = AL_PRO_REFRESH_PER_RUN;
+  let budget = alBatch(env), proLeft = AL_PRO_REFRESH_PER_RUN, lettersLeft = AL_LETTERS_PER_RUN;   /* v152 */
   /* v51: every member key (KV lists 1000 at a time), and each run starts at a
      different member, so the top of the alphabet never starves the bottom. */
   const names = [];
@@ -4977,6 +5072,12 @@ async function alTick(env) {
       if (sub.proDay !== now.day) { proLeft--; await alProSet(env, sub, false); }
       if (!sub.utok) sub.utok = alToken();   /* v51: members from before v51 get an unsubscribe token */
       if (!(await alMerge(env, sub, ["pro", "plan", "proDay", "utok", "proCheck"]))) continue;
+    }
+    /* v152: Sunday evening, the weekly letter (its own marker, so it never stands in for the day's digest) */
+    if (lettersLeft > 0 && alLetterDue(sub, loc)) {
+      lettersLeft--; budget = Math.max(0, budget - 1);   /* a letter's eBay checks take one hunt's share of the run */
+      try { const lr = await alLetterSend(env, sub, loc, true); log.push((await who(sub)) + " letter: " + scrubPII(String(lr))); if (lr === "sent") tally.sent++; }
+      catch (e) { log.push((await who(sub)) + " letter failed: " + why(e)); note("letter failed: " + String(e && e.message || e)); }
     }
     /* v112 review: first the phone taps that did not go through, then the listings Pounce did not reach on earlier runs */
     let held = 0;
@@ -5053,10 +5154,10 @@ function alGate(title, msg, button, url) {
 /* v51: member routes take their email and token from a POST body (JSON from the
    page, form or one-click from a mail app) or, for old links, the query string. */
 async function alParams(request, url) {
-  const p = { e: url.searchParams.get("e"), t: url.searchParams.get("t"), c: url.searchParams.get("c"), h: url.searchParams.get("h"), fresh: url.searchParams.get("fresh"), fmt: url.searchParams.get("fmt"), post: request.method === "POST", json: false };
+  const p = { e: url.searchParams.get("e"), t: url.searchParams.get("t"), c: url.searchParams.get("c"), h: url.searchParams.get("h"), w: url.searchParams.get("w"), fresh: url.searchParams.get("fresh"), fmt: url.searchParams.get("fmt"), post: request.method === "POST", json: false };   /* v152: w=letter */
   if (p.post && /json/i.test(request.headers.get("Content-Type") || "")) {
     const b = await readJson(request, 4096);
-    if (!b.big) { p.e = b.email || b.e || p.e; p.t = b.tok || b.t || p.t; if (b.h != null) p.h = b.h; if (b.fresh != null) p.fresh = String(b.fresh); p.fmt = "json"; p.json = true; }
+    if (!b.big) { p.e = b.email || b.e || p.e; p.t = b.tok || b.t || p.t; if (b.h != null) p.h = b.h; if (b.w != null) p.w = String(b.w); if (b.fresh != null) p.fresh = String(b.fresh); p.fmt = "json"; p.json = true; }
   }
   return p;
 }
@@ -5521,11 +5622,11 @@ async function alMoveConfirm(request, env, url) {
   const moved = Object.assign({}, sub, { email: to, prev: [from].concat(Array.isArray(sub.prev) ? sub.prev : []).filter((x, i, a) => x && x !== to && a.indexOf(x) === i).slice(0, 3), movedAt: new Date().toISOString() });
   await alProSet(env, moved, true);
   await kvPut(env, "sub:" + to, moved);
-  for (const k of ["pend:", "seen:", "likes:", "pj:", "gm:", "pp:"]) { const v = await kvGet(env, k + from, null); if (v != null) await kvPut(env, k + to, v); }   /* v85: likes:, v112: pj: gm: pp: (Pounce) */
+  for (const k of ["pend:", "seen:", "likes:", "pj:", "gm:", "pp:", "wk:", "lt:"]) { const v = await kvGet(env, k + from, null); if (v != null) await kvPut(env, k + to, v); }   /* v152: wk: lt: */   /* v85: likes:, v112: pj: gm: pp: (Pounce) */
   await pushMove(env, from, to);   /* v114: the phones move with the address */
   if (moved.cid) await kvPut(env, "cid:" + moved.cid, { email: to });
   await env.PROWL_ALERTS.put("moved:" + from, JSON.stringify({ to: to, tok: sub.tok, at: Date.now() }), { expirationTtl: 90 * 86400 });
-  for (const k of ["sub:", "pend:", "seen:", "mvf:", "likes:", "conf:", "code:", "pj:", "gm:", "pq:", "pp:"]) await env.PROWL_ALERTS.delete(k + from);   /* v86: conf: too, or a waiting confirm link makes a second, empty member on the old address */
+  for (const k of ["sub:", "pend:", "seen:", "mvf:", "likes:", "conf:", "code:", "pj:", "gm:", "pq:", "pp:", "wk:", "lt:"]) await env.PROWL_ALERTS.delete(k + from);   /* v152: wk: lt: */   /* v86: conf: too, or a waiting confirm link makes a second, empty member on the old address */
   await env.PROWL_ALERTS.delete("pro:" + from);   /* v93: the old address's Pro cache; the next check rebuilds it while the address is in prev */
   await env.PROWL_ALERTS.delete("mv:" + to);
   /* one notice to the old address, so a change is never silent */
@@ -5578,7 +5679,7 @@ async function alPurge(env, email, sub) {
     const mv = await kvGet(env, "moved:" + old, null);
     if (mv && mine.indexOf(String(mv.to)) !== -1) { await kv.delete("moved:" + old); gone.push("moved:"); }
   }
-  for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "code:", "pj:", "gm:", "pq:", "pp:"]) { await kv.delete(p + email); gone.push(p); }   /* v85: likes:, v86: conf:, v108: code:, v112: pj: gm: pq: pp: (Pounce) */
+  for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "code:", "pj:", "gm:", "pq:", "pp:", "wk:", "lt:"]) { await kv.delete(p + email); gone.push(p); }   /* v152: wk: lt: */   /* v85: likes:, v86: conf:, v108: code:, v112: pj: gm: pq: pp: (Pounce) */
   if (await pushPurge(env, email)) gone.push("push:");   /* v114 */
   const cid = sub && sub.cid ? String(sub.cid) : "";
   if (cid) {
@@ -5668,6 +5769,13 @@ async function alUnsub(request, env, url, origin) {
     if (mv && mv.to && !wantJson) return alPage("This address changed", (alSame(p.t, mv.tok) ? "Prowl Alerts for this account now go to " + alMask(String(mv.to)) + "." : "Prowl Alerts for this account moved to a newer address.") +
       " To stop them, use Unsubscribe in your newest Prowl email, or open Prowl and go to Den, then Settings.");
     return wantJson ? json({ error: "not found" }, 404, origin) : alPage("Already off", "There are no Prowl Alerts on for this link.");
+  }
+  /* v152: the weekly letter alone (its footer link and its one-click List-Unsubscribe); the daily alerts stay */
+  if (p.w === "letter") {
+    if (!p.post) return alGate("Stop the weekly letter?", "No more Sunday letters to " + email + ". Your Prowl Alerts emails keep coming.", "Stop the letter", url);
+    sub.prefs = Object.assign({}, sub.prefs || {}, { letter: "off" });
+    await alMerge(env, sub, ["prefs"]);
+    return wantJson ? json({ ok: true, letter: "off" }, 200, origin) : alPage("The weekly letter is off", "No more Sunday letters. Your Prowl Alerts emails keep coming. Turn the letter back on any time in Prowl under Den, then Settings.");
   }
   const h = vClean(p.h, 60).toLowerCase();
   if (!p.post) return alGate(h ? "Stop emails for " + h + "?" : "Turn off Prowl emails?", h ? "Your other hunts keep coming." : "No more Prowl Alerts emails to " + email + ". Your hunts and settings stay in Prowl" + (sub.pro ? ", and Prowl Pro stays on. To stop paying for Pro, cancel it in your Owl & Twig account under Subscriptions" : "") + ".", h ? "Stop this hunt" : "Turn off emails", url);   /* v51: GET changes nothing */
@@ -6812,6 +6920,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/alerts/status") {
       return alStatus(request, env, url, origin);
     }
+    if (url.pathname === "/alerts/letter" && request.method === "POST") return alLetterRoute(request, env, origin);   /* v152 */
     if (url.pathname === "/appraise" && request.method === "POST") {
       return appraise(request, env, origin);
     }

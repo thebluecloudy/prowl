@@ -1,15 +1,36 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.45 / v151).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.46 / v152).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.45** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v151** | |
+| Page | **v7.46** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v152** | |
 
 Recently shipped, newest first:
+
+- **v7.46 / v152: the weekly letter** (the owner, from Cat On Chair 1.9.0's Weekly Recap: "this is perfect ... i like
+  that it is in the app too, everyone gets it, sunday is good ... for now keep in den").
+  - Every Sunday from 6pm in the member's time zone the panther writes each member with emails on (not paused, not
+    turned off): the week in numbers, the best find against its hunt's typical price, the likes saved this week, and
+    for the quietest hunt a shorter search (years, model numbers and filler dropped) that one eBay search proved finds
+    something, with Try it in the email and Add / Replace in the app. Nothing changes without a tap.
+  - Worker: `letter.js` (pure: `wkAdd`, `letterShorters`, `letterBuild`, `letterText`, `letterQuiet`); `wk:<email>` is
+    the week's tally (alCheck adds to it), `lt:<email>` the sent letter for 21 days; `POST /alerts/letter` (latest, or
+    `preview` of this week so far, 10 a day); `prefs.letter`; `/alerts/unsub?w=letter` stops only the letter (footer
+    link and the one-click List-Unsubscribe); at most 4 letters a cron run; wk:/lt: move and go with the member. A member
+    with no tally yet waits for next Sunday.
+  - Page: Daily shows the latest letter for a week (Save to `prowl.letters`, Share, Close sets `prowl.letterSeen`, both
+    new keys); Den > Settings has the Weekly letter switch, "Read this week's so far" and saved letters; the email's
+    `?letter=1` opens that switch, `?hunt=` runs a search.
+  - Safe by design (the review): the sent marker is saved straight after the send, so a failed write never sends the
+    letter twice; the quiet-hunt check uses the lean eBay search and takes one hunt's share of the run's 50 calls; a
+    tally older than 8 days starts over (`wkCur`); only the hunts the alerts really search count (`alActive`); Replace
+    my hunt swaps in place, so a full Den never loses a hunt; the email's Try link no longer opens Den over the search.
+  - Not yet: a "manage my emails" page outside Den; got-away and Fair price in the letter (they live on the device).
+  - Tests: `worker/__tests__/letter.test.mjs`, `__tests__/page/weekly-letter-v746.test.mjs`.
 
 - **v7.45 / v151: NEAR ME on a map, and Directions to the next stop** (the owner, on the road: "i stopped at one,
   now i want to find the next one but i don't know where i am, it would be good to pull up a map to show and then i
@@ -24,6 +45,7 @@ Recently shipped, newest first:
   Google Maps starts from the phone and your position never goes into a link. The map takes the drive's hours on a
   trip (a Monday trip shows Chillicothe CLOSED whatever today is). Tests: `__tests__/page/near-map-v745.test.mjs`,
   `worker/__tests__/trips.test.mjs`.
+
 - **v7.43 / v149: cross-posts are "similar", not "the same piece"** (the owner, on an Etsy panther lamp with a shade at
   180.00 CAD that Prowl called the same as a $129 Poshmark TV lamp: "change to a similar one is on poshmark, go check it
   out, vs saying it is the same"). A title can't prove it is the same piece, so the card says "Similar on Poshmark
@@ -805,7 +827,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.46, worker v152** (PR #196 holds v7.44 / v150). Claim one here when you start.
+Next free numbers: **page v7.47, worker v153**. Claim one here when you start.
 
 ## What's next
 

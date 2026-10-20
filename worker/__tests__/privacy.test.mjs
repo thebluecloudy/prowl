@@ -63,7 +63,7 @@ test("alPurge removes every key for the member, keeps gifts and other members, l
   assert.equal(kv.m.has("cid:" + CID), false);
   assert.equal(kv.m.has("pro:cid:" + CID), false);
   for (const k of ["gift:abc123", "giftoff:abc123", "giftnomail:abc123", "sub:other@example.com", "seen:other@example.com"]) assert.ok(kv.m.has(k), k);
-  assert.deepEqual(gone, ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "code:", "pj:", "gm:", "pq:", "pp:", "cid:", "pro:cid:"]);
+  assert.deepEqual(gone, ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "code:", "pj:", "gm:", "pq:", "pp:", "wk:", "lt:", "cid:", "pro:cid:"]);   /* v152: the weekly letter's tally and letter go too */
   assert.ok(logs.length && logs.every((l) => !l.includes(EMAIL) && !l.includes(CID)), "no email or id in the log");
 });
 
