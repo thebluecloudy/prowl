@@ -1806,6 +1806,69 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
   .scout-app-wrapper #otp-flock.as-feed .fl-card .fl-new{position:absolute;left:0;right:0;bottom:100%;padding:0 0 4px;white-space:nowrap}
 }
 @media(prefers-reduced-motion:reduce){.scout-app-wrapper .otp-sheet{transition:none}}
+/* ---- v7.40: filters. A sliders button beside the search box opens one sheet (sort, price, sites, skip words); the
+   filters in force sit as chips under the box. Rows show their value closed, the way Vinted and Shop do; nothing
+   applies until Show. ---- */
+.scout-app-wrapper .flt-b{position:relative;flex:0 0 50px;width:50px;padding:0;display:inline-flex;align-items:center;justify-content:center;color:var(--i2)}
+.scout-app-wrapper .flt-b svg{width:22px;height:22px}
+.scout-app-wrapper .flt-b:hover{border-color:var(--ac);color:var(--ink)}
+.scout-app-wrapper .flt-b.is-on{border-color:var(--ac);color:var(--ac)}
+.scout-app-wrapper .flt-n{position:absolute;top:-8px;right:-8px;min-width:21px;height:21px;padding:0 5px;border-radius:999px;background:var(--ac);color:var(--onink);font-size:12.5px;font-weight:800;line-height:21px;text-align:center;border:2px solid var(--bg)}
+[data-theme=uranium] .scout-app-wrapper .flt-b.is-on{box-shadow:0 0 14px rgba(57,255,20,.35)}
+.scout-app-wrapper .flt-chips{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:-2px 0 10px}
+.scout-app-wrapper .flt-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 8px 6px 13px;border:1px solid var(--l2);border-radius:999px;background:var(--cd);font:inherit;font-size:13px;font-weight:700;color:var(--i2);line-height:1.4;cursor:pointer}
+.scout-app-wrapper .flt-chip b{font-weight:800;color:var(--ink)}
+.scout-app-wrapper .flt-chip s{text-decoration:none;color:var(--mu);font-size:15px;line-height:1}
+.scout-app-wrapper .flt-chip:hover{border-color:var(--ac)}
+.scout-app-wrapper .flt-chips .flt-clr{border:0;background:none;color:var(--mu);font:inherit;font-size:13px;font-weight:700;text-decoration:underline;padding:6px 4px;cursor:pointer}
+.scout-app-wrapper .flt-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-4px 0 4px;font-size:13px;color:var(--mu)}
+.scout-app-wrapper .flt-top .flt-clr{border:0;background:none;color:var(--ac);font:inherit;font-size:14px;font-weight:700;text-decoration:underline;padding:4px 0;cursor:pointer}
+.scout-app-wrapper .flt-row{border-top:1px solid var(--ln)}
+.scout-app-wrapper .flt-row:first-of-type{border-top:0}
+.scout-app-wrapper .flt-rh{width:100%;display:flex;align-items:center;gap:10px;padding:15px 2px;background:none;border:0;text-align:left;font:inherit;color:var(--ink);cursor:pointer}
+.scout-app-wrapper .flt-rh .l{font-weight:700;font-size:16px;flex:0 0 auto}
+.scout-app-wrapper .flt-rh .v{flex:1;min-width:0;text-align:right;color:var(--ac);font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scout-app-wrapper .flt-rh .v.dim{color:var(--mu);font-weight:500}
+.scout-app-wrapper .flt-rh .c{flex:0 0 auto;width:14px;height:14px;color:var(--mu);transition:transform .2s}
+.scout-app-wrapper .flt-row.open .flt-rh .c{transform:rotate(90deg)}
+.scout-app-wrapper .flt-rb{display:none;padding:0 2px 16px}
+.scout-app-wrapper .flt-row.open .flt-rb{display:block}
+.scout-app-wrapper .flt-lock{font-size:12.5px;font-weight:800;letter-spacing:.06em;padding:2px 6px;border-radius:6px;background:var(--tag-bg);color:var(--tag-fg);vertical-align:2px;margin-left:4px}
+.scout-app-wrapper .flt-hint{font-size:13px;color:var(--mu);margin:8px 0 0;line-height:1.45}
+.scout-app-wrapper .flt-hint a{color:var(--ac)}
+.scout-app-wrapper .flt-opts{display:flex;flex-direction:column;gap:2px}
+.scout-app-wrapper .flt-opt{position:relative;display:flex;align-items:center;gap:12px;padding:10px 6px;border-radius:10px;cursor:pointer}
+.scout-app-wrapper .flt-opt:hover{background:var(--hover)}
+.scout-app-wrapper .flt-opt input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.scout-app-wrapper .flt-opt .r{width:20px;height:20px;border-radius:50%;border:2px solid var(--l2);background:var(--cd);flex:0 0 20px;position:relative;box-sizing:border-box}
+.scout-app-wrapper .flt-opt input:checked+.r{border-color:var(--ac)}
+.scout-app-wrapper .flt-opt input:checked+.r:after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--ac)}
+.scout-app-wrapper .flt-opt input:focus-visible+.r{outline:2px solid var(--ac);outline-offset:2px}
+.scout-app-wrapper .flt-opt em{font-style:normal;font-weight:600;font-size:15px}
+.scout-app-wrapper .flt-pills{display:flex;flex-wrap:wrap;gap:6px}
+.scout-app-wrapper .flt-pills button{appearance:none;-webkit-appearance:none;text-transform:none;font:inherit;font-size:14px;font-weight:700;padding:7px 12px;border-radius:999px;border:1px solid var(--l2);background:var(--cd);color:var(--ink);cursor:pointer}
+.scout-app-wrapper .flt-pills button.on{background:var(--ac);border-color:var(--ac);color:var(--onink)}
+.scout-app-wrapper .flt-pr{display:flex;align-items:center;gap:8px;margin-top:10px}
+.scout-app-wrapper .flt-pr .f{display:flex;align-items:center;gap:4px;flex:1;min-width:0;height:44px;border:1px solid var(--l2);border-radius:10px;background:var(--cd);padding:0 10px;box-sizing:border-box}
+.scout-app-wrapper .flt-pr .f input{width:100%;min-width:0;height:40px;border:0;background:none;outline:none;box-shadow:none;padding:0;font:inherit;font-size:15px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.scout-app-wrapper .flt-pr .f b{color:var(--mu);font-weight:600}
+.scout-app-wrapper .flt-pr .to{color:var(--mu);font-size:13px}
+.scout-app-wrapper .flt-tabs{display:flex;gap:6px;margin-bottom:6px}
+.scout-app-wrapper .flt-tabs button{flex:1;border:1px solid var(--l2);background:var(--cd);border-radius:9px;padding:8px;font:inherit;font-size:13px;font-weight:800;letter-spacing:.04em;color:var(--mu);cursor:pointer}
+.scout-app-wrapper .flt-tabs button.on{background:var(--ac-tint);border-color:var(--ac);color:var(--ink)}
+.scout-app-wrapper .flt-acts{display:flex;gap:12px;justify-content:space-between;align-items:center;margin:4px 0}
+.scout-app-wrapper .flt-acts .mn{background:none;border:0;font:inherit;font-size:13px;font-weight:700;color:var(--ac);padding:4px 0;text-decoration:underline;cursor:pointer}
+.scout-app-wrapper .flt-acts small{color:var(--mu);font-size:12.5px}
+.scout-app-wrapper .flt-sites ul.mk{padding:0 6px;max-height:40vh;flex:none;border:1px solid var(--ln);border-radius:10px;background:var(--cd)}
+.scout-app-wrapper .flt-sites .mk label{padding:9px 8px}
+.scout-app-wrapper .flt-in{display:flex;gap:8px;align-items:center;margin-top:6px}
+.scout-app-wrapper .flt-in input[type=text]{flex:1;min-width:0;height:44px;font-size:15px}
+.scout-app-wrapper .flt-foot{position:sticky;bottom:0;margin:12px -18px calc(-20px - env(safe-area-inset-bottom)) -18px;padding:10px 18px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--ln);background:var(--bg)}
+.scout-app-wrapper .flt-foot .b{width:100%;font-size:16px}
+.scout-app-wrapper .flt-foot .b:disabled{opacity:.55;box-shadow:none;cursor:default}
+.scout-app-wrapper .flt-hid{color:var(--mu);font-weight:600}
+.scout-app-wrapper .flt-hid button{border:0;background:none;padding:0;font:inherit;font-weight:800;color:var(--ac);text-decoration:underline;cursor:pointer}
+.scout-app-wrapper .pk-hid{margin:0 0 10px;font-size:13px;color:var(--mu)}
 /* ---- v6.47: likes. The heart on a Flock card, and the Den's LIKES tab ---- */
 .scout-app-wrapper .fl-lk{display:none}
 .scout-app-wrapper #otp-flock.as-feed .fl-bar .fl-lk{font-size:21px}
@@ -2162,10 +2225,12 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <input id="otp-q" type="search" placeholder="ceramic panther, rookwood vase…" aria-label="Search term">
       <button type="button" class="sf-cam" id="otp-cam" aria-haspopup="dialog" aria-label="Photo check: snap a piece to identify and price it" title="Check a photo"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5h3.2l1.8-2.5h7l1.8 2.5h3.2v10.5h-17z"></path><circle cx="12" cy="13.5" r="3.4"></circle></svg></button>
     </div>
+    <button class="b flt-b" id="otp-flt" type="button" aria-haspopup="dialog" aria-label="Filter and sort: price, sites, sort order, skip words" title="Filter and sort"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2.3"></circle><circle cx="9" cy="17" r="2.3"></circle></svg><span class="flt-n" id="otp-fltN" hidden>0</span></button>
     <button class="b p" type="submit">Hunt</button>
     <button class="b" id="otp-sa" type="button" hidden>Search All</button>
     <button class="b near-chip" id="otp-one" type="button">Just <span id="otp-oneLab">ShopGoodwill</span></button>
   </form>
+  <div class="flt-chips" id="otp-fltChips" aria-live="polite" hidden></div>
   <div class="bolo" id="otp-bolo" role="region" aria-label="Ideas to hunt" hidden></div>
   <div class="start" id="otp-start" role="region" aria-label="How Prowl works in three steps" hidden>
 <ol class="start-steps">
@@ -3176,7 +3241,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.39';
+var PROWL_VERSION='v7.40';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4261,7 +4326,11 @@ function liveRunStrip(name,t,c){
   var items=[],i;
   for(i=0;i<c.items.length;i++){if(c.items[i]&&c.items[i].url&&c.items[i].title)items.push(c.items[i])}
   if(!items.length)return '<div class="rlive">'+head+'</div><p class="sgw-note">Nothing live for <b>'+esc(t)+'</b> on '+name+' right now. More places to look still searches it everywhere else.</p></div>';
-  var r=exRows(items,t);   /* v6.72 */
+  var f=fltApply(items),r,k;   /* v7.40: the filters */
+  if(!f.items.length)return '<div class="rlive">'+head+'</div><p class="sgw-note">'+items.length+' on '+name+', all hidden by your filters. <button type="button" class="lnk" data-flt="open">Edit filters</button></p></div>';
+  if(FLT.sort==='best')r=exRows(f.items,t);   /* v6.72 */
+  else{for(r='',k=0;k<f.items.length;k++)r+=sgwCard(f.items[k],t);r={rows:r,n:f.items.length,ex:0}}   /* sorted: one order, no exact/close split */
+  r.hid=f.hid;
   return '<div class="rlive">'+head+exUpd(r,c)+'</div><div class="sgw-grid">'+r.rows+'</div></div>';
 }
 /* v6.74: each strip says which marketplace it is (data-lv), so one answer redraws only its own strip (runPatch) */
@@ -4406,6 +4475,7 @@ function dgTerms(r){
 }
 function dgBlock(t,j){
   var k=t.toLowerCase(),fr=dgFresh(k),sm=liveSummary(t),first=fr===null,its=first?dgItems(k):fr,i,cards='',lab;
+  its=fltOnly(its);   /* v7.40: the filters shape Daily too (price, skip words, sites) */
   for(i=0;i<its.length&&i<DG_NEW_CARDS;i++)cards+=sgwCard(its[i],t);
   if(!sm.done&&!cards)lab='checking…';
   else if(first)lab=sm.n?sm.n+' live now':'nothing live right now';
@@ -4477,13 +4547,15 @@ function huntInner(t){
   var d=HUNT.c[t.toLowerCase()],h='',i,it,r;
   if(!d)return '<p class="pk-wait"><span class="paws" aria-hidden="true"><i>🐾</i><i>🐾</i><i>🐾</i></span>Finding the best picks across every marketplace…</p>';
   if(d.fail||!d.picks||!d.picks.length)return '';
-  h+='<h3 class="pk-h">Best picks'+(d.median?' <small>typical price '+esc(d.median)+'</small>':'')+'</h3><div class="pk-row">';
-  for(i=0;i<d.picks.length;i++){it=d.picks[i];
+  var picks=fltOnly(d.picks);   /* v7.40: the filters shape the picks too */
+  if(!picks.length)h+='<p class="pk-hid">Best picks: all '+d.picks.length+' hidden by your <button type="button" class="lnk" data-flt="open">filters</button>.</p>';
+  else h+='<h3 class="pk-h">Best picks'+(d.median?' <small>typical price '+esc(d.median)+'</small>':'')+'</h3><div class="pk-row">';
+  for(i=0;i<picks.length;i++){it=picks[i];
     h+='<a class="pk-card" href="'+esc(huntLink(it))+'" target="_blank" rel="noopener noreferrer" data-u="'+esc(it.url||'')+'" data-t="'+esc(it.title||'')+'" data-p="'+esc(it.price||'')+'" data-s="'+esc(it.src||'')+'">'+   /* v7.18: data for the popup */
       (it.image?'<img loading="lazy" src="'+esc(it.image)+'" alt="">':'<span class="pk-noimg"></span>')+
       '<b>'+esc(it.price||'—')+'</b><span class="pk-t">'+esc(it.title)+'</span>'+
       '<small>'+esc(huntSite(it.src))+(it.time_left?' · '+esc(it.time_left)+' left':'')+(it.where?' · '+esc(it.where):'')+'</small>'+alsoLine(it.url)+'</a>'}   /* v7.34 */
-  h+='</div>';
+  if(picks.length)h+='</div>';
   if(d.dupes&&d.dupes.length)h+='<p class="pk-dupe">'+d.dupes.length+' listing'+(d.dupes.length>1?'s are the same piece as one':' is the same piece as one')+' on another site. Prowl picks the cheapest; open it to compare prices on each site.</p>';
   h+='<ul class="pk-sites">';
   for(i=0;i<d.rows.length;i++){r=d.rows[i];
@@ -5131,6 +5203,255 @@ function sgwCard(it,hunt,bare){
     (done?(bare?sv+lk+fpHtml(done):row('')+fpHtml(done)):row('<button type="button" class="sgw-fp">Fair price?</button>'))+'</div>';
 }
 
+/* ---------- FILTERS (v7.40) ----------
+   The owner, after a look at how Shop, Vinted, Walmart, Airbnb and the rest draw their filters (Mobbin, 2026-10-20):
+   one sliders button beside the search box, a sheet with Sort by, Price, Sites and Skip words, the value of each row
+   shown while it is closed, chips under the search box for what is in force, one Show N listings button, and nothing
+   applies until it is tapped. Sort, price and skip words live under a new key (FLT_KEY); the sites are the saved
+   marketplace set (st.mkt, the drawer's key, unchanged). The filters shape every live strip on the results screen,
+   the Best picks and Daily's cards; the marketplace rows under More places to look are links and are left alone.
+   Skip words are Prowl Pro, as in the alert email; a Pro member's words go to the email too (prefsSet). */
+var FLT_KEY='prowl.filter';
+var FLT_SORTS=[['best','Best match'],['lo','Price: low to high'],['hi','Price: high to low'],['new','Newest first']];
+var FLT_PRICES=[['Under $100',0,100],['$100 to $300',100,300],['$300 and up',300,0]];
+var FLT=fltLoad(),FD=null,FLT_TAB='shop',FLT_OPEN={};
+function fltClean(o){
+  var s={sort:'best',lo:0,hi:0,skip:[]},i,k;o=o||{};
+  for(i=0;i<FLT_SORTS.length;i++)if(FLT_SORTS[i][0]===o.sort)s.sort=o.sort;
+  s.lo=parseInt(o.lo,10)>0?Math.min(parseInt(o.lo,10),999999):0;
+  s.hi=parseInt(o.hi,10)>0?Math.min(parseInt(o.hi,10),999999):0;
+  if(s.lo&&s.hi&&s.hi<s.lo){k=s.lo;s.lo=s.hi;s.hi=k}
+  s.skip=fltWords(Array.isArray(o.skip)?o.skip.join(','):'');
+  return s;
+}
+function fltLoad(){return fltClean(xGet(FLT_KEY,null))}
+function fltSave(){xSet(FLT_KEY,{sort:FLT.sort,lo:FLT.lo,hi:FLT.hi,skip:FLT.skip})}
+function fltWords(v){return String(v||'').toLowerCase().split(/[,;\n]+/).map(function(w){return w.replace(/\s+/g,' ').trim().slice(0,24)}).filter(Boolean).slice(0,12)}
+function fltPro(){return typeof mailPro==='function'&&mailPro()}
+/* a listing's price as a number: "$1,234.56", "US $12" and "12.00" read; yen, euros and the like are unknown (NaN) and
+   a price filter leaves them alone */
+function fltPriceNum(p){
+  var s=String(p||''),m;
+  if(!s||/[¥€£]|\b(EUR|GBP|JPY|CAD|AUD|CHF)\b/.test(s))return NaN;
+  m=s.replace(/,/g,'').match(/(\d+(?:\.\d+)?)/);
+  return m?parseFloat(m[1]):NaN;
+}
+function fltPass(it,s){
+  s=s||FLT;if(!it)return false;
+  var t=String(it.title||'').toLowerCase(),n,i;
+  for(i=0;i<s.skip.length;i++)if(t.indexOf(s.skip[i])>-1)return false;
+  if(s.lo||s.hi){n=fltPriceNum(it.price);if(!isNaN(n)){if(s.lo&&n<s.lo)return false;if(s.hi&&n>s.hi)return false}}
+  if(s.sites&&it.src&&ALL.indexOf(it.src)>-1&&s.sites.indexOf(it.src)<0)return false;
+  return true;
+}
+function fltOnly(items,s){var out=[],i;items=items||[];for(i=0;i<items.length;i++)if(fltPass(items[i],s))out.push(items[i]);return out}
+function fltDay(it){var d=String(it.listed||it.found||'');return /^\d{4}-\d{2}-\d{2}/.test(d)?d.slice(0,10):''}
+function fltSorted(items,s){
+  s=s||FLT;var k=s.sort,a,i;
+  if(k==='best'||!items||items.length<2)return items||[];
+  a=items.map(function(it,j){return {it:it,j:j,p:fltPriceNum(it.price),d:fltDay(it)}});
+  a.sort(function(x,y){
+    if(k==='new'){if(x.d!==y.d)return x.d&&y.d?(x.d<y.d?1:-1):(x.d?-1:1);return x.j-y.j}
+    var xp=isNaN(x.p),yp=isNaN(y.p);
+    if(xp!==yp)return xp?1:-1;   /* no price last */
+    if(!xp&&x.p!==y.p)return k==='lo'?x.p-y.p:y.p-x.p;
+    return x.j-y.j;
+  });
+  return a.map(function(x){return x.it});
+}
+/* a live strip's items through the filters: {items, hid} */
+function fltApply(items){var kept=fltOnly(items);return {items:fltSorted(kept),hid:(items||[]).length-kept.length}}
+function fltSortLabel(s){var i;for(i=0;i<FLT_SORTS.length;i++)if(FLT_SORTS[i][0]===s.sort)return FLT_SORTS[i][1];return 'Best match'}
+function fltPriceLabel(s){
+  if(s.lo&&s.hi)return '$'+s.lo+' to $'+s.hi;
+  if(s.lo)return '$'+s.lo+' and up';
+  if(s.hi)return 'Under $'+s.hi;
+  return '';
+}
+function fltCount(){
+  var n=0;
+  if(FLT.sort!=='best')n++;
+  if(FLT.lo||FLT.hi)n++;
+  if(st.mkt.size&&st.mkt.size<ALL.length)n++;
+  if(FLT.skip.length)n++;
+  return n;
+}
+function fltAny(){return !!(FLT.sort!=='best'||FLT.lo||FLT.hi||FLT.skip.length)}
+/* the chips under the search box and the count on the button */
+function rFlt(){
+  var box=$('#otp-fltChips'),b=$('#otp-flt'),nb=$('#otp-fltN'),c=[],n=fltCount(),h='',i;
+  if(nb){nb.textContent=String(n);nb.hidden=!n}
+  if(b)b.classList.toggle('is-on',!!n);
+  if(!box)return;
+  if(FLT.sort!=='best')c.push(['sort',fltSortLabel(FLT)]);
+  if(FLT.lo||FLT.hi)c.push(['price',fltPriceLabel(FLT)]);
+  if(st.mkt.size&&st.mkt.size<ALL.length)c.push(['sites',st.mkt.size+' of '+ALL.length+' sites']);
+  if(FLT.skip.length)c.push(['skip','Skip: '+FLT.skip.join(', ')]);
+  for(i=0;i<c.length;i++)h+='<button type="button" class="flt-chip" data-fc="'+c[i][0]+'" aria-label="Remove filter: '+esc(c[i][1])+'"><b>'+esc(c[i][1])+'</b><s aria-hidden="true">✕</s></button>';
+  if(c.length>1)h+='<button type="button" class="flt-clr" data-fc="all">Clear all</button>';
+  box.innerHTML=h;box.hidden=!c.length;
+}
+/* the sites changed under a run on screen: its scope follows and the strips that came on load (as liveScope does
+   for one site from the drawer) */
+function fltScope(before){
+  var r=st.run,on=false,id,i,live,sc,at;
+  if(!r||!Array.isArray(r.scope)||r.mode==='daily'||r.mode==='facebook')return;
+  sc=r.scope.slice();
+  for(i=0;i<ALL.length;i++){id=ALL[i];
+    if(st.mkt.has(id)===before.has(id))continue;
+    live=id==='shopgoodwill';for(var j=0;j<LIVE_SRC.length;j++)if(LIVE_SRC[j].mkt===id)live=true;
+    if(!live)continue;
+    at=sc.indexOf(id);
+    if(st.mkt.has(id)){if(at===-1){sc.push(id);on=true}}else if(at>-1)sc.splice(at,1);
+  }
+  r.scope=sc;
+  if(on)sgwForRun(r);
+}
+function fltSitesDiffer(list,set){var i;if(list.length!==set.size)return true;for(i=0;i<list.length;i++)if(!set.has(list[i]))return true;return false}
+function fltRedraw(){rFlt();if(st.run)rRes();if(typeof rSGW==='function'&&!st.run)rSGW()}
+function fltClear(k){
+  var before=new Set(st.mkt);
+  if(k==='all'||k==='sort')FLT.sort='best';
+  if(k==='all'||k==='price'){FLT.lo=0;FLT.hi=0}
+  if(k==='all'||k==='skip')FLT.skip=[];
+  if((k==='all'||k==='sites')&&before.size!==ALL.length){st.mkt=new Set(ALL);save();rDrawer();fltScope(before)}
+  fltSave();fltRedraw();
+  toast(k==='all'?'Filters cleared.':'Filter removed.',1800);
+}
+/* the live listings on screen for this run, through a draft: {n, loaded} */
+function fltLiveCount(d){
+  var r=st.run,n=0,loaded=false,t,c,i,s,k;
+  if(!r||r.mode==='daily'||r.mode==='facebook')return {n:0,loaded:false};
+  function add(c){if(!c||!c.items)return;loaded=true;for(var j=0;j<c.items.length;j++)if(c.items[j]&&c.items[j].url&&c.items[j].title&&fltPass(c.items[j],d))n++}
+  t=sgwTermOf(r);
+  if(t&&d.sites.indexOf('shopgoodwill')>-1)add(sgw.cache[t.toLowerCase()]);
+  for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];if(d.sites.indexOf(s.mkt)<0)continue;t=liveTermOf(r,s.mkt);if(!t||!lv[s.id])continue;add(lv[s.id].cache[t.toLowerCase()])}
+  k=huntTermOf(r);
+  if(k&&HUNT.c[k.toLowerCase()]&&HUNT.c[k.toLowerCase()].picks){c=HUNT.c[k.toLowerCase()].picks;loaded=true;for(i=0;i<c.length;i++)if(fltPass(c[i],d))n++}
+  return {n:n,loaded:loaded};
+}
+function fltSheetHtml(){
+  var d=FD,pro=fltPro(),h='',i,o,ns=0,nb=0,m,list;
+  for(i=0;i<M.length;i++)if(d.sites.indexOf(M[i].id)>-1){if(M[i].t==='bolo')nb++;else ns++}
+  function row(k,label,val,dim,body){
+    return '<div class="flt-row'+(FLT_OPEN[k]?' open':'')+'" data-fr="'+k+'"><button type="button" class="flt-rh" data-fa="row" data-r="'+k+'" aria-expanded="'+(FLT_OPEN[k]?'true':'false')+'">'+
+      '<span class="l">'+label+'</span><span class="v'+(dim?' dim':'')+'" data-fv="'+k+'">'+esc(val)+'</span>'+
+      '<svg class="c" viewbox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 2l5 5-5 5"></path></svg></button>'+
+      '<div class="flt-rb">'+body+'</div></div>';
+  }
+  h+='<div class="flt"><div class="flt-top"><span>What fits, on every hunt and in Daily.</span><button type="button" class="flt-clr" data-fa="clear">Clear all</button></div>';
+  /* sort */
+  o='<div class="flt-opts">';
+  for(i=0;i<FLT_SORTS.length;i++)o+='<label class="flt-opt"><input type="radio" name="otp-fltSort" value="'+FLT_SORTS[i][0]+'"'+(d.sort===FLT_SORTS[i][0]?' checked':'')+'><span class="r" aria-hidden="true"></span><em>'+FLT_SORTS[i][1]+'</em></label>';
+  o+='</div><p class="flt-hint">Newest uses the listing date where a site gives one (eBay, and what Daily found).</p>';
+  h+=row('sort','Sort by',fltSortLabel(d),d.sort==='best',o);
+  /* price */
+  o='<div class="flt-pills" id="otp-fltPrices">';
+  for(i=0;i<FLT_PRICES.length;i++)o+='<button type="button" data-fa="price" data-lo="'+FLT_PRICES[i][1]+'" data-hi="'+FLT_PRICES[i][2]+'"'+(d.lo===FLT_PRICES[i][1]&&d.hi===FLT_PRICES[i][2]?' class="on"':'')+'>'+FLT_PRICES[i][0]+'</button>';
+  o+='</div><div class="flt-pr"><div class="f"><b>$</b><input id="otp-fltLo" type="number" inputmode="numeric" min="0" step="1" placeholder="min" aria-label="Minimum price" value="'+(d.lo||'')+'"></div><span class="to">to</span>'+
+    '<div class="f"><b>$</b><input id="otp-fltHi" type="number" inputmode="numeric" min="0" step="1" placeholder="max" aria-label="Maximum price" value="'+(d.hi||'')+'"></div></div>'+
+    '<p class="flt-hint">Whole dollars. Shipping is extra unless the listing shows it. Listings priced in another currency stay.</p>';
+  h+=row('price','Price',fltPriceLabel(d)||'Any',!(d.lo||d.hi),o);
+  /* sites */
+  list='';
+  for(i=0;i<M.length;i++){m=M[i];if(m.t!==FLT_TAB)continue;
+    list+='<li><label><input type="checkbox" data-fm="'+m.id+'"'+(d.sites.indexOf(m.id)>-1?' checked':'')+'><span class="cbx" aria-hidden="true"></span><em>'+esc(m.n)+'</em><span class="tag'+(m.t==='bolo'?' bolo':'')+'">'+m.t.toUpperCase()+'</span></label></li>'}
+  o='<div class="flt-sites"><div class="flt-tabs" role="tablist"><button type="button" role="tab" data-fa="tab" data-t="shop"'+(FLT_TAB==='shop'?' class="on" aria-selected="true"':' aria-selected="false"')+'>SHOP <u>'+ns+'</u></button><button type="button" role="tab" data-fa="tab" data-t="bolo"'+(FLT_TAB==='bolo'?' class="on" aria-selected="true"':' aria-selected="false"')+'>BOLO <u>'+nb+'</u></button></div>'+
+    '<div class="flt-acts"><span><button type="button" class="mn" data-fa="selall">Select all</button> &nbsp; <button type="button" class="mn" data-fa="selnone">Clear</button></span><small data-fv="selcount">'+d.sites.length+' of '+ALL.length+' selected</small></div>'+
+    '<ul class="mk" id="otp-fltMk">'+list+'</ul><p class="flt-hint">The same list as Den › Settings › Marketplaces: these sites search, and these rows open under More places to look.</p></div>';
+  h+=row('sites','Sites',d.sites.length===ALL.length?'All '+ALL.length:d.sites.length+' of '+ALL.length,d.sites.length===ALL.length,o);
+  /* skip words (Pro) */
+  o='<div class="flt-in"><input id="otp-fltSkip" type="text" placeholder="reproduction, lot, replica" aria-label="Skip listings whose title has any of these words" value="'+esc(d.skip.join(', '))+'"'+(pro?'':' disabled')+'></div>'+
+    '<p class="flt-hint">'+(pro?'A listing whose title has any of these words stays off the screen and out of your alert email.':'<a class="sgw-ml" href="'+PRO_URL+'">Prowl Pro</a> adds skip words: listings whose title has any of them stay off the screen and out of the email.')+'</p>';
+  h+=row('skip','Skip words<span class="flt-lock">PRO</span>',d.skip.length?d.skip.join(', '):'None',!d.skip.length,o);
+  h+='<div class="flt-foot"><button type="button" class="b p" id="otp-fltGo" data-fa="go"></button></div></div>';
+  return h;
+}
+function fltDraftOpenRows(){
+  /* a row that holds something opens by itself, so the sheet shows what is set */
+  FLT_OPEN={};
+  if(FD.sort!=='best')FLT_OPEN.sort=1;
+  if(FD.lo||FD.hi)FLT_OPEN.price=1;
+  if(FD.skip.length)FLT_OPEN.skip=1;
+  if(!FLT_OPEN.sort&&!FLT_OPEN.price&&!FLT_OPEN.skip)FLT_OPEN.sort=1;
+}
+function fltOpen(){
+  FD={sort:FLT.sort,lo:FLT.lo,hi:FLT.hi,skip:FLT.skip.slice(),sites:st.mkt.size?Array.from(st.mkt):ALL.slice()};
+  FLT_TAB='shop';fltDraftOpenRows();
+  openSheet('Filter',fltSheetHtml());
+  fltSync();
+}
+function fltDraw(){var w=$('#otp-sheetB');if(!w||!w.querySelector('.flt'))return;w.innerHTML=fltSheetHtml();fltSync()}
+/* the values on the rows, the pills and the button, without redrawing the inputs */
+function fltSync(){
+  var w=$('#otp-sheetB'),d=FD,go,c,i,b;if(!w||!d||!w.querySelector('.flt'))return;
+  function v(k,t,dim){var el=w.querySelector('[data-fv="'+k+'"]');if(!el)return;el.textContent=t;el.classList.toggle('dim',!!dim)}
+  v('sort',fltSortLabel(d),d.sort==='best');
+  v('price',fltPriceLabel(d)||'Any',!(d.lo||d.hi));
+  v('sites',d.sites.length===ALL.length?'All '+ALL.length:d.sites.length+' of '+ALL.length,d.sites.length===ALL.length);
+  v('selcount',d.sites.length+' of '+ALL.length+' selected');
+  v('skip',d.skip.length?d.skip.join(', '):'None',!d.skip.length);
+  b=w.querySelectorAll('#otp-fltPrices button');
+  for(i=0;i<b.length;i++)b[i].classList.toggle('on',d.lo===parseInt(b[i].getAttribute('data-lo'),10)&&d.hi===parseInt(b[i].getAttribute('data-hi'),10));
+  go=$('#otp-fltGo');if(!go)return;
+  if(!d.sites.length){go.disabled=true;go.textContent='Pick at least one site';return}
+  c=fltLiveCount(d);
+  if(!c.loaded){go.disabled=false;go.textContent=st.run?'Apply filters':'Save filters';return}
+  go.disabled=!c.n;
+  go.textContent=c.n?'Show '+c.n+' listing'+(c.n===1?'':'s'):'Nothing fits these filters';
+}
+function fltGo(){
+  var d=FD,before=new Set(st.mkt),was=FLT.skip.join(','),n;if(!d)return;
+  if(d.lo&&d.hi&&d.hi<d.lo){n=d.lo;d.lo=d.hi;d.hi=n}
+  FLT=fltClean({sort:d.sort,lo:d.lo,hi:d.hi,skip:d.skip});
+  if(!fltPro())FLT.skip=[];
+  fltSave();
+  if(d.sites.length&&fltSitesDiffer(d.sites,before)){st.mkt=new Set(d.sites);save();rDrawer();fltScope(before)}
+  if(fltPro()&&FLT.skip.join(',')!==was&&MAIL.prefs&&typeof prefsSet==='function')prefsSet({skip:FLT.skip.slice()});   /* the email follows */
+  closeSheet();
+  fltRedraw();
+  n=fltCount();
+  toast(n?n+' filter'+(n===1?'':'s')+' on.':'Filters cleared.',1800);
+}
+function fltAct(e){
+  var t=e.target.closest('[data-fa]'),w=$('#otp-sheetB'),k,lo,hi,row,i;
+  if(!t||!FD||!w||!w.contains(t))return;
+  k=t.getAttribute('data-fa');
+  if(k==='row'){row=t.parentNode;k=t.getAttribute('data-r');FLT_OPEN[k]=!FLT_OPEN[k];row.classList.toggle('open',!!FLT_OPEN[k]);t.setAttribute('aria-expanded',FLT_OPEN[k]?'true':'false');return}
+  if(k==='price'){lo=parseInt(t.getAttribute('data-lo'),10)||0;hi=parseInt(t.getAttribute('data-hi'),10)||0;
+    if(FD.lo===lo&&FD.hi===hi){FD.lo=0;FD.hi=0}else{FD.lo=lo;FD.hi=hi}
+    i=$('#otp-fltLo');if(i)i.value=FD.lo||'';i=$('#otp-fltHi');if(i)i.value=FD.hi||'';fltSync();return}
+  if(k==='tab'){FLT_TAB=t.getAttribute('data-t')==='bolo'?'bolo':'shop';fltDraw();return}
+  if(k==='selall'){FD.sites=ALL.slice();fltDraw();return}
+  if(k==='selnone'){FD.sites=[];fltDraw();return}
+  if(k==='clear'){FD={sort:'best',lo:0,hi:0,skip:[],sites:ALL.slice()};fltDraftOpenRows();fltDraw();return}
+  if(k==='go'){fltGo()}
+}
+function fltChange(e){
+  var t=e.target,w=$('#otp-sheetB'),id,at;
+  if(!FD||!w||!w.contains(t))return;
+  if(t.name==='otp-fltSort'){FD.sort=t.value;fltSync();return}
+  if(t.hasAttribute('data-fm')){id=t.getAttribute('data-fm');at=FD.sites.indexOf(id);
+    if(t.checked&&at<0)FD.sites.push(id);else if(!t.checked&&at>-1)FD.sites.splice(at,1);
+    fltSync()}
+}
+function fltInput(e){
+  var t=e.target,w=$('#otp-sheetB');
+  if(!FD||!w||!w.contains(t))return;
+  if(t.id==='otp-fltLo'){FD.lo=Math.max(0,parseInt(t.value,10)||0);fltSync()}
+  else if(t.id==='otp-fltHi'){FD.hi=Math.max(0,parseInt(t.value,10)||0);fltSync()}
+  else if(t.id==='otp-fltSkip'){FD.skip=fltWords(t.value);fltSync()}
+}
+(function(){
+  var b=$('#otp-flt'),ch=$('#otp-fltChips'),w=$('#otp-sheetB');
+  if(b)b.addEventListener('click',fltOpen);
+  if(ch)ch.addEventListener('click',function(e){var t=e.target.closest('[data-fc]');if(t)fltClear(t.getAttribute('data-fc'))});
+  if(w){w.addEventListener('click',fltAct);w.addEventListener('change',fltChange);w.addEventListener('input',fltInput)}
+  document.addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target.closest('[data-flt="open"]'):null;if(t)fltOpen()});   /* "hidden by your filters" links */
+  window.prowlFlt={num:fltPriceNum,pass:fltPass,sorted:fltSorted};   /* for the tests */
+  rFlt();
+})();
+
 /* ---------- FAIR PRICE? (v5.33) ----------
    One tap sends this listing plus the other live results around it to the
    prowl Worker (/verdict), which asks Meta's Muse model for DEAL / FAIR /
@@ -5437,7 +5758,7 @@ function exRows(items,t){
   for(i=0;i<g.near.length;i++)rows+=sgwCard(g.near[i],t);
   return {rows:rows,n:items.length,ex:g.near.length&&g.ex.length?g.ex.length:0};
 }
-function exUpd(r,c){return '<span class="sgw-upd">'+(r.ex?r.ex+' exact · ':'')+r.n+(c.stale?' from earlier today':' live now')+'</span>'}
+function exUpd(r,c){return '<span class="sgw-upd">'+(r.ex?r.ex+' exact · ':'')+r.n+(c.stale?' from earlier today':' live now')+(r.hid?' · <span class="flt-hid">'+r.hid+' hidden by your <button type="button" data-flt="open">filters</button></span>':'')+'</span>'}   /* v7.40: hid */
 /* v6.33: why a live block failed, in words a visitor can act on. */
 function liveErrNote(name,c){
   if(c.err===2&&c.cap)return 'Live results are busy on your connection right now. Try again in a little while. More places to look still searches every site directly.';

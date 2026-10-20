@@ -15,7 +15,9 @@ const hosts = (p) => p.$$('#otp-res a.hit').map((a) => new URL(a.href).hostname.
 test('the row under the search box is Hunt and Just ShopGoodwill (v7.30: Near me moved to the dock)', async () => {
   const p = loadPage({ storage: DEN });
   await tick(30);
-  assert.deepEqual(p.$$('#otp-sf > button.b').filter((b) => !b.hidden).map((b) => b.textContent.replace(/[^A-Za-z ]/g, '').trim()), ['Hunt', 'Just ShopGoodwill']);
+  /* v7.40: the Filter button (an icon, no text) sits before Hunt */
+  assert.deepEqual(p.$$('#otp-sf > button.b:not(.flt-b)').filter((b) => !b.hidden).map((b) => b.textContent.replace(/[^A-Za-z ]/g, '').trim()), ['Hunt', 'Just ShopGoodwill']);
+  assert.equal(p.$('#otp-sf > button.flt-b').getAttribute('aria-haspopup'), 'dialog');
   assert.equal(p.$('#otp-fb'), null, 'Facebook USA left the row');
   assert.equal(p.$('#otp-localBtn span').textContent, 'NEAR ME', 'the dock\'s Near me');
   assert.doesNotMatch(PAGE, /\.b\.fb[{:]/, 'its styles went with it');
