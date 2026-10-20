@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v141: 2026-10-20. /trip answers carry "how": the boxes searched on the chosen road, each route's score, how many
+ *         Nearby and text searches ran and whether Google refused a place type, so a missing stop can be traced (the
+ *         v140 build still had no Maumee Antique Mall). Pawn, coin, fabric and garden shops are never ours by name too.
  *   v140: 2026-10-20. Nearby Search by Google's own types (antique_store, thrift_store, book_store, toy_store), most
  *         popular first, for the kinds that have a type; a text search only for vintage, records and flea markets. A
  *         free-text search in a dense box never surfaced Maumee Antique Mall and crowned a museum, a clothing store and
@@ -486,7 +489,7 @@ import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v
 import { decodePolyline, haversineKm, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_KM, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v140";
+const WORKER_VERSION = "v141";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6357,10 +6360,10 @@ async function gPlacesNearby(env, types, center, radius) {
   return ((j && j.places) || []).map(normalizePlace).filter(Boolean);
 }
 /* the searches for a box or a circle: the typed kinds by Nearby (text if Google refuses the types), the rest by text */
-async function kindSearches(env, cats, center, radius, restrict, pages) {
-  const plan = kindPlan(cats), jobs = [];
-  if (plan.types.length) jobs.push(gPlacesNearby(env, plan.types, center, radius + 3000).then((r) => r !== null ? r : (pages ? gPlacesAll(env, catsQueries(cats.filter((k) => !plan.textKeys.includes(k)), 1)[0], center, radius, restrict, pages) : gPlacesText(env, catsQueries(cats.filter((k) => !plan.textKeys.includes(k)), 1)[0], center, radius, 20, restrict))));
-  if (plan.text) jobs.push(pages ? gPlacesAll(env, plan.text, center, radius, restrict, pages) : gPlacesText(env, plan.text, center, radius, 20, restrict));
+async function kindSearches(env, cats, center, radius, restrict, pages, stat) {
+  const plan = kindPlan(cats), jobs = [], st = stat || {};
+  if (plan.types.length) { st.nearby = (st.nearby || 0) + 1; jobs.push(gPlacesNearby(env, plan.types, center, radius + 3000).then((r) => { if (r !== null) return r; st.refused = (st.refused || 0) + 1; return pages ? gPlacesAll(env, catsQueries(cats.filter((k) => !plan.textKeys.includes(k)), 1)[0], center, radius, restrict, pages) : gPlacesText(env, catsQueries(cats.filter((k) => !plan.textKeys.includes(k)), 1)[0], center, radius, 20, restrict); })); }
+  if (plan.text) { st.text = (st.text || 0) + 1; jobs.push(pages ? gPlacesAll(env, plan.text, center, radius, restrict, pages) : gPlacesText(env, plan.text, center, radius, 20, restrict)); }
   return [].concat(...(await Promise.all(jobs)));
 }
 /* v139: a full box (20 answers) is read on to its next pages, so a dense town is read to the end */
@@ -6447,22 +6450,23 @@ async function tripBuild(env, from, toText, day, cats) {
   if (!routes.length) return null;
   /* v136: every route's corridor is searched (a circle and a query asked once, however many routes share it), and the
      route with the most to see wins; the fastest is the tie-break */
-  const asked = new Map();
-  const ask = (c) => { const k = c.lat.toFixed(1) + "," + c.lng.toFixed(1); if (!asked.has(k)) asked.set(k, asked.size * TRIP_PAGES_MAX * 2 < TRIP_SEARCHES_MAX ? kindSearches(env, cats, c, CORRIDOR_RADIUS_M, true, TRIP_PAGES_MAX) : Promise.resolve([])); return asked.get(k); };   /* v140: by type */
+  const asked = new Map(), stat = { nearby: 0, text: 0, refused: 0 };   /* v141: how it was looked for */
+  const ask = (c) => { const k = c.lat.toFixed(1) + "," + c.lng.toFixed(1); if (!asked.has(k)) asked.set(k, asked.size * TRIP_PAGES_MAX * 2 < TRIP_SEARCHES_MAX ? kindSearches(env, cats, c, CORRIDOR_RADIUS_M, true, TRIP_PAGES_MAX, stat) : Promise.resolve([])); return asked.get(k); };   /* v140: by type */
   const built = await Promise.all(routes.map(async (route) => {
     const centers = corridorCenters(route.pts).slice(0, CORRIDOR_CENTERS_MAX);
     const lists = await Promise.all(centers.map((c) => ask(c)));
     const seen = Object.create(null), all = [];
     for (const p of [].concat(...lists)) { if (seen[p.id] || (dest && p.id === dest.id) || !kindAllowed(p, cats)) continue; seen[p.id] = 1; all.push(p); }
     const split = splitAnchors(clusterStops(alongRoute(all, route.pts, DETOUR_MIN)));
-    return { route: route, stops: split.stops, more: split.more, score: routeScore(split.stops) };
+    return { route: route, stops: split.stops, more: split.more, score: routeScore(split.stops), boxes: centers.map((c) => [Math.round(c.lat * 100) / 100, Math.round(c.lng * 100) / 100]), found: all.length };
   }));
   built.sort((a, b) => b.score - a.score || a.route.min - b.route.min);
   const best = built[0], stops = best.stops;
   const destCard = dest ? placeCard(dest) : { id: "", name: vClean(toText, 120), town: "", why: "", hours: null, url: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(toText) };
   const destLabel = destCard.name + (destCard.town ? ", " + destCard.town : "");
   return { origin: { town: town }, dest: destCard, route: { km: best.route.km, min: best.route.min, slower: Math.max(0, best.route.min - routes[0].min), routes: routes.length }, day: day, weekday: weekdayOf(day), cats: cats,
-    stops: stops, more: best.more, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.length };
+    stops: stops, more: best.more, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.length,
+    how: { routes: built.map((b) => ({ km: b.route.km, min: b.route.min, score: b.score, anchors: b.stops.length, found: b.found, boxes: b.boxes.length })), boxes: best.boxes, nearby: stat.nearby, text: stat.text, refused: stat.refused } };
 }
 async function tripRoute(request, env, url, origin) {
   const lat = nearNum(url.searchParams.get("lat"), -90, 90), lng = nearNum(url.searchParams.get("lng"), -180, 180);

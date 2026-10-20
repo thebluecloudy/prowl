@@ -1,15 +1,20 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v140).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v141).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.39** | 399,599 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v140** | |
+| Worker | **v141** | |
 
 Recently shipped, newest first:
+
+- **v141: `/trip` says how it looked** (`how`: each route's km, minutes, score, anchors and places found, the boxes
+  searched on the chosen road, the Nearby and text search counts, and whether Google refused a place type), so a
+  missing stop (Maumee Antique Mall was still absent on v140) can be traced instead of guessed at. Pawn, coin, fabric
+  and garden shops are never ours by name too. Worker only.
 
 - **v140: by Google's own types, most popular first** (the v139 live build: a horror museum, a clothing store and a
   business centre were anchors on their review counts, and Maumee Antique Mall was still missing after three pages:
@@ -722,7 +727,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.40, worker v141**. Claim one here when you start.
+Next free numbers: **page v7.40, worker v142**. Claim one here when you start.
 
 ## What's next
 
