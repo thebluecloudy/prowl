@@ -36,8 +36,8 @@ Recently shipped, newest first:
     asking price, the call, the nearest stop or town and the member's first name post to the trip. Photos go to R2
     (`PROWL_FINDS`, `finds/<trip>/<find>.jpg`), served only through signed hour-long links to members, refused once
     the trip has expired, and deleted by `tripSweep` 7 days after the trip closes (`FINDS_GRACE_DAYS`). View-only.
-  - **Needs the owner** (see Waiting on Matt): the secret `GOOGLE_MAPS_KEY`, the R2 bucket `prowl-finds` and its
-    binding in `wrangler.toml`, and `PRO_CIDS` for a group.
+  - **Needs the owner** (see Waiting on Matt): `PRO_CIDS` for a group, and the bucket's lifecycle rule. The secret
+    `GOOGLE_MAPS_KEY` and the R2 bucket `prowl-finds` (bound in `wrangler.toml`) were set up on 2026-10-20.
   - Tests: `worker/__tests__/trip.test.mjs` (the pure module, the reference route Novi to Blenko, Monday hours),
     `worker/__tests__/trips.test.mjs` (the routes against a fake Google, KV and R2), `__tests__/page/near-section-v734.test.mjs`;
     `near-me`, `five-tabs-v730` and `local-dock` updated.
@@ -618,13 +618,11 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 ## Waiting on Matt
 
 - **NEAR ME (v7.34 / v130) needs three things in Cloudflare before it does more than the old Maps links:**
-  1. A Google Cloud API key with **Places API (New)**, **Routes API** and **Geocoding API** enabled (restrict it to
-     those three), added as the worker secret **GOOGLE_MAPS_KEY**. Until then `/near` and `/trip` answer "not set up"
-     and the page quietly shows only the Maps links. Cost: a Road Trip build is about 13 Text Search calls, cached an
-     hour; Around you is 2 calls, cached 10 minutes per ~1 km.
-  2. An R2 bucket named **prowl-finds** (R2 > Create bucket), then uncomment the `[[r2_buckets]]` block in
-     `worker/wrangler.toml` and push. Until then SHARE THIS FIND says "Trip finds are not set up yet". Add an object
-     lifecycle rule on the bucket (prefix `finds/`, delete 30 days after upload) as the backstop.
+  1. Done 2026-10-20: the worker secret **GOOGLE_MAPS_KEY** (Places API (New), Routes API, Geocoding API; API
+     restriction only, no website restriction, since only the worker calls Google). Cost: a Road Trip build is about
+     13 Text Search calls, cached an hour; Around you is 2 calls, cached 10 minutes per ~1 km.
+  2. Done 2026-10-20: the R2 bucket **prowl-finds** exists and `worker/wrangler.toml` binds it. Still to add: an
+     object lifecycle rule on the bucket (prefix `finds/`, delete 30 days after upload) as the backstop.
   3. For a group: the members' store customer ids in the plain-text variable **PRO_CIDS** (comma list), which is the
      comp list the spec asks for. A member with their own Pro order needs nothing.
   Then test the reference route: NEAR ME > Road trip, "Blenko Glass Company, Milton, WV" from Novi on a Monday pill.
