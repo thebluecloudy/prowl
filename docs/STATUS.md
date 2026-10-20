@@ -1,15 +1,24 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.36 / v132).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.36 / v133).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.36** | 399,916 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v132** | |
+| Worker | **v133** | |
 
 Recently shipped, newest first:
+
+- **v133: NEAR ME after the first live look** (the owner: "when i did this in meta, it found the best places to visit,
+  big antique stores"). Worker only. `/pp` takes Google's photo names, which run past 400 characters, so every card
+  photo was a 404 on day one. Around you keeps only places within 40 km (`NEAR_KEEP_KM`; Google's circle is a bias, and
+  Maumee, 100 km off, was on a Novi list). The size signal counts only words that mean a big antiques place (antique
+  mall, antique center or gallery or warehouse, emporium, flea market) and, for an antiques or vintage place, a crowd
+  of reviews (300+ is a size, 1,000+ a bigger one; a thrift chain's reviews do not count), so "Pathway Market", a
+  thrift shop with 89 reviews, no longer sits above Town Peddler's 2,204. Tests: `worker/__tests__/trip.test.mjs`,
+  `trips.test.mjs`.
 
 - **v7.36 / v132: NEAR ME is its own section: Around you, Road trip, group trips and Trip Finds** (the spec of
   2026-10-20, `Prowl NEAR ME, Road Trip & Trip Finds`). Branch `claude/new-session-pffeiw`.
@@ -636,7 +645,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.37, worker v133**. Claim one here when you start.
+Next free numbers: **page v7.37, worker v134**. Claim one here when you start.
 
 ## What's next
 
