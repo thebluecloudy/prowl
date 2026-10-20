@@ -19,7 +19,7 @@ export const CORRIDOR_STEP_KM = 50;      /* the corridor is searched in circles 
 export const CORRIDOR_RADIUS_M = 30000;  /* ... each this wide (Google's circle bias caps at 50 km); one search a circle */
 export const TRIP_QUERY = "antique malls, antique stores, vintage stores and thrift stores";
 export const NEAR_QUERIES = ["antique stores and antique malls", "vintage stores and thrift stores"];
-export const NEAR_RADIUS_M = 15000, CORRIDOR_CENTERS_MAX = 24;
+export const NEAR_RADIUS_M = 15000, NEAR_KEEP_KM = 40, CORRIDOR_CENTERS_MAX = 24;   /* Around You: Google answers beyond the circle; keep only what is really near */
 export const TRIP_STOPS_MAX = 40, TRIP_NESTED_MAX = 6, NEAR_MAX = 24;
 export const FIND_IMG_MAX = 600 * 1024;  /* a find photo arrives already downscaled by the page; refuse anything bigger */
 export const FINDS_MAX = 200;            /* finds kept per trip */
@@ -70,7 +70,11 @@ export function corridorCenters(route, stepKm) {
 }
 
 /* ---------- places ---------- */
-const SIZE_WORD = /\b(antique\s+mall|mall|warehouse|emporium|gallery|center|centre|market|exchange|co-?op|collective)\b/i;
+/* v133 (the owner, on a thrift "market" ranked above the malls: "big antique stores, good to stop at"): only the words
+   that mean a big antiques place count; "market" or "gallery" alone do not */
+const SIZE_WORD = /\b(antiques?\s+(mall|center|centre|gallery|warehouse|emporium|market|exchange|village|barn|district|row)|vintage\s+(mall|market|warehouse|emporium)|flea\s+market|antiques?\s+(&|and)\s+collectibles\s+mall|emporium|warehouse|co-?op)\b/i;
+const THRIFT = /\b(thrift|goodwill|salvation\s+army|value\s+world|savers|st\.?\s+vincent|resale|habitat\s+restore|restore)\b/i;
+export function isThrift(place) { return /thrift/i.test(String(place.kind || "")) || THRIFT.test(String(place.name || "")); }
 const DEALERS = /(\d{2,4})\+?\s*(dealers?|vendors?|booths?|shops?|consignors?|sellers?)/i;
 const SQFT = /([\d,]{4,7})\s*(sq\.?\s*ft|square\s*f(ee|oo)t)/i;
 /* 0: a shop; 1: reads like a mall or warehouse; 2: tens of dealers or 10,000+ sq ft; 3: a hundred dealers or 30,000+ sq ft */
@@ -79,6 +83,9 @@ export function sizeTier(place) {
   let tier = SIZE_WORD.test(text) ? 1 : 0;
   const d = DEALERS.exec(text); if (d) { const n = Number(d[1]); if (n >= 100) tier = Math.max(tier, 3); else if (n >= 20) tier = Math.max(tier, 2); else tier = Math.max(tier, 1); }
   const s = SQFT.exec(text); if (s) { const n = Number(String(s[1]).replace(/,/g, "")); if (n >= 30000) tier = Math.max(tier, 3); else if (n >= 10000) tier = Math.max(tier, 2); else if (n >= 3000) tier = Math.max(tier, 1); }
+  /* no number in the text: a crowd of reviews is the size signal Google does give, for an antiques or vintage place
+     (a thrift chain draws reviews for being a chain, not for being a destination) */
+  if (!isThrift(place)) { const n = Number(place.n) || 0; if (n >= 1000) tier = Math.max(tier, 2); else if (n >= 300) tier = Math.max(tier, 1); }
   return tier;
 }
 /* the one-line differentiator on a card: "120 dealers", "28,000 sq ft", "Antique mall", or the category */

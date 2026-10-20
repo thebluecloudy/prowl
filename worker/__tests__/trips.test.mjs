@@ -122,6 +122,7 @@ test("/near: without the key a plain 'not set up'; with it the shops around a po
   assert.equal(names[0], "Central City Antiques", "the biggest first");
   assert.equal(names.filter((n) => /Central City|14th Street/.test(n)).length, 3, "the three Huntington shops");
   assert.ok(names.indexOf("Bluegrass Collectors") === -1, "Ashland, 18 km off, is outside the circle");
+  assert.ok(!r.body.places.find((p) => p.near > TRIP.NEAR_KEEP_KM), "v133: nothing beyond NEAR_KEEP_KM");
   assert.ok(names.indexOf("Maumee Antique Mall") === -1, "Maumee is not near Huntington");
   const c = r.body.places[0];
   assert.equal(c.town, "Huntington, WV"); assert.equal(c.why, "60 dealers"); assert.equal(c.photo, "/pp?n=places%2FChIJCentralCityAntiques%2Fphotos%2FP1");
@@ -175,6 +176,10 @@ test("/pp: only a place photo name, through the worker", async () => {
   const bad = await call(envWith(), "GET", "/pp?n=" + encodeURIComponent("https://evil/x"));
   assert.equal(bad.status, 404);
   assert.equal((await call(envWith({ GOOGLE_MAPS_KEY: "" }), "GET", "/pp?n=" + encodeURIComponent("places/ChIJx/photos/P1abcdef"))).status, 503);
+  /* v133: Google's photo names run to 500 characters and more; every photo answered 404 on the first live day */
+  const long = "places/ChIJATQDOM6yJIgREuVMbhvdRD8/photos/" + "Aa-ngMYA2fJs_IMj_pxqBvwyxiOKAf3Vfw4YwK3kyR9pxlIOF7WW7BfnPV5jVfuYsJ".repeat(9);
+  assert.ok(long.length > 500);
+  assert.equal((await call(envWith({ GOOGLE_MAPS_KEY: "" }), "GET", "/pp?n=" + encodeURIComponent(long))).status, 503, "a long name passes the shape check");
 });
 
 test("group trips: a sign-in is needed, Pro is decided on the worker, the organizer's trip is kept and every member sees the same stops", async () => {
@@ -271,6 +276,6 @@ test("the worker's own guards: routes are wired, the login links the account, th
   assert.match(INDEX, /url\.pathname\.startsWith\("\/finds\/"\) && request\.method === "GET"\) return findPhotoRoute/);
   assert.match(INDEX, /await tripAcctLink\(env, id, email\)/);
   assert.match(INDEX, /await tripSweep\(env\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v132"/);
+  assert.match(INDEX, /const WORKER_VERSION = "v133"/);
   for (const name of ["nearRoute", "tripRoute", "tripsRoute", "tripBuild"]) assert.ok(!/GOOGLE_MAPS_KEY|gKey\(env\)\s*\}/.test(indexFn(name).replace(/gKey\(env\)\)/g, "").replace(/!gKey\(env\)/g, "")), name + " only tests for the key");
 });

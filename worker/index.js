@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v133: 2026-10-20. NEAR ME after the first live look (the owner: "it found the best places ... big antique stores").
+ *         /pp takes Google's long photo names (they run past 400 characters, so every photo was a 404), Around You keeps
+ *         only places within NEAR_KEEP_KM (Maumee, 100 km off, was on a Novi list), and the size signal counts only
+ *         real antiques-place words and a crowd of reviews, not "market" or "gallery" alone (trip.js sizeTier).
  *   v132: 2026-10-20. NEAR ME (the spec: NEAR ME section, Road Trip, Trip Finds). GET /near (Around You), GET /trip (Road
  *         Trip: the route's corridor, one anchor a town, the Maps link with the origin as a town only), /pp (place photos),
  *         /trips (group trips in KV, shared account to account, Pro checked here: PRO_CIDS, a member's Pro or paid
@@ -451,8 +455,8 @@ import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
 import { decodePolyline, haversineKm, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
-  DETOUR_MIN, NEAR_MAX, NEAR_QUERIES, NEAR_RADIUS_M, TRIP_QUERY, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v132";
+  DETOUR_MIN, NEAR_MAX, NEAR_QUERIES, NEAR_RADIUS_M, NEAR_KEEP_KM, TRIP_QUERY, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
+const WORKER_VERSION = "v133";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6356,7 +6360,7 @@ async function nearRoute(request, env, url, origin) {
   const here = { lat: lat, lng: lng };
   const lists = await Promise.all(NEAR_QUERIES.map((q) => gPlacesText(env, q, here, NEAR_RADIUS_M, 20)));
   const seen = Object.create(null), all = [];
-  for (const p of [].concat(...lists)) { if (seen[p.id]) continue; seen[p.id] = 1; p.near = Math.round(haversineKm(here, p) * 10) / 10; all.push(p); }
+  for (const p of [].concat(...lists)) { if (seen[p.id]) continue; seen[p.id] = 1; p.near = Math.round(haversineKm(here, p) * 10) / 10; if (p.near <= NEAR_KEEP_KM) all.push(p); }   /* v133: Google answers past the circle */
   const places = rankPlaces(all).slice(0, NEAR_MAX).map((p) => placeCard(p));
   const res = json({ at: new Date().toISOString(), places: places, empty: !places.length }, 200, origin, { "Cache-Control": "private, max-age=" + NEAR_CACHE_SECONDS });
   try { await PCACHE.put(key, res.clone()); } catch (e) {}
@@ -6397,7 +6401,7 @@ async function tripRoute(request, env, url, origin) {
 /* a place's photo: Google's media endpoint needs the key, so the page asks here */
 async function ppRoute(request, env, url) {
   const n = String(url.searchParams.get("n") || "");
-  if (!/^places\/[A-Za-z0-9_-]{5,200}\/photos\/[A-Za-z0-9_-]{5,400}$/.test(n)) return new Response("not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  if (!/^places\/[A-Za-z0-9_-]{5,300}\/photos\/[A-Za-z0-9_-]{5,1500}$/.test(n)) return new Response("not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8" } });
   if (!gKey(env)) return new Response("not set up", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });
   if (!(await vCount("pp:" + ipKey(request.headers.get("CF-Connecting-IP")), PP_PER_IP))) return new Response("slow down", { status: 429, headers: { "Content-Type": "text/plain; charset=utf-8" } });
   let r;

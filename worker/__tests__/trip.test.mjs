@@ -90,6 +90,18 @@ test("ranking: size first, then rating weighted by reviews, then distance", () =
   const d = place({ name: "Same Shop", town: "X", lat: 0, lng: 0, rating: 4.8, n: 900, near: 2 });
   assert.deepEqual(rankPlaces([a, b, c, d]).map((p) => p.name), ["Big Mall", "Same Shop", "Good Shop", "Tiny Shop"]);
   assert.equal(sizeTier(b), 3);
+  /* v133: the words that mean a big antiques place, and a crowd of reviews; not "market" on a thrift shop */
+  assert.equal(sizeTier(place({ name: "Pathway Market", town: "X", lat: 0, lng: 0, kind: "Thrift", n: 89 })), 0);
+  assert.equal(sizeTier(place({ name: "Pathway Market", town: "X", lat: 0, lng: 0, kind: "Thrift", n: 2500 })), 0, "a thrift chain's reviews are not a size");
+  assert.equal(sizeTier(place({ name: "Motor City Antique Gallery", town: "X", lat: 0, lng: 0, n: 1054 })), 2, "a thousand reviews on an antiques place");
+  assert.equal(sizeTier(place({ name: "Rusty Relics Vintage and Antiques", town: "X", lat: 0, lng: 0, n: 227 })), 0);
+  assert.equal(sizeTier(place({ name: "Dixieland Flea Market", town: "X", lat: 0, lng: 0, n: 2306 })), 2);
+  assert.equal(sizeTier(place({ name: "Le Shoppe Vintage Market", town: "X", lat: 0, lng: 0, n: 16 })), 1);
+  assert.deepEqual(rankPlaces([
+    place({ name: "Pathway Market", town: "X", lat: 0, lng: 0, kind: "Thrift", rating: 4.9, n: 89, near: 17 }),
+    place({ name: "Town Peddler Craft and Antique Mall", town: "X", lat: 0, lng: 0, rating: 4.7, n: 2204, near: 14 }),
+    place({ name: "Motor City Antique Gallery", town: "X", lat: 0, lng: 0, rating: 4.7, n: 1054, near: 47 }),
+  ]).map((p) => p.name), ["Town Peddler Craft and Antique Mall", "Motor City Antique Gallery", "Pathway Market"], "the malls before the thrift shop");
   assert.equal(sizeTier(place({ name: "Red Barn Antique Mall", town: "X", lat: 0, lng: 0 })), 1);
   assert.equal(sizeTier(place({ name: "Corner Thrift", town: "X", lat: 0, lng: 0, summary: "12,000 square feet" })), 2);
   assert.ok(ratingScore(5.0, 3) < ratingScore(4.8, 900), "few reviews pull toward 4.0");
