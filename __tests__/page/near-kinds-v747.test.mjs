@@ -6,9 +6,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
 
-const card = (id, name, town, why, near) => ({ id, name, town, why, rating: 4.6, n: 300, photo: '', url: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(name) + '&query_place_id=' + id, lat: 41.56, lng: -83.66, hours: null, near });
-const VINTAGE = [card('V1', 'Vintage Groves 116', 'Perrysburg, OH', 'Vintage', 1.6), card('V2', 'Bella River Boutique', 'Maumee, OH', 'Store', 2.1)];
-const ALL = [card('M1', 'Maumee Antique Mall', 'Maumee, OH', 'Antique mall', 0.05)].concat(VINTAGE);
+const card = (id, name, town, why, near, lat, lng) => ({ id, name, town, why, rating: 4.6, n: 300, photo: '', url: 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(name) + '&query_place_id=' + id, lat: lat || 41.6, lng: lng || -83.7, hours: null, near });
+const VINTAGE = [card('V1', 'Vintage Groves 116', 'Perrysburg, OH', 'Vintage', 0.05), card('V2', 'Bella River Boutique', 'Maumee, OH', 'Store', 2.1)];
+const ALL = [card('M1', 'Maumee Antique Mall', 'Maumee, OH', 'Antique mall', 1.5, 41.5657, -83.6612)].concat(VINTAGE);   /* v7.48: 1.5 from the cell's first asker, steps from this phone */
 const J = (j) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(j), text: () => Promise.resolve(JSON.stringify(j)) });
 const fx = (calls) => (u) => {
   const url = String(u); calls.push(url);
@@ -30,6 +30,8 @@ test('only Vintage on: the line says vintage shops, says Antiques and Thrift are
   const off = p.$('#otp-nrLive .nr-kindsoff');
   assert.ok(off, 'the kinds that are off are said');
   assert.equal(off.textContent, 'Antiques and Thrift are off, so antique malls are not listed. Show them too');
+  assert.equal(p.$('#otp-nrCatsAll').tagName, 'BUTTON', 'v7.48: a real button');
+  assert.match(p.$('#otp-nrLive .nearp').textContent, /^You are in Maumee, OH\./, 'v7.48: a shop the worker called close is miles from this phone, so not "You are at"');
   p.$('#otp-nrCatsAll').click();
   await tick(60);
   assert.equal(JSON.parse(p.win.localStorage.getItem('prowl.nearCats')).join(','), 'antiques,vintage,thrift', 'the same key, the usual kinds added, in chip order');

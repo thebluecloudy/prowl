@@ -2112,6 +2112,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-skip{flex:0 0 auto;border:1px solid var(--l2);background:transparent;color:var(--mu);border-radius:10px;padding:0 9px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
 .scout-app-wrapper .nr-skipped{margin:0 0 10px;font-size:13px;color:var(--mu)}
 .scout-app-wrapper .nr-kindsoff{margin:-2px 0 10px;padding:8px 10px;border:1px solid var(--ac);border-radius:10px;font-size:13.5px}
+.scout-app-wrapper .nr-kindsoff button{display:inline-block;margin-top:6px;padding:6px 14px;border:0;border-radius:99px;background:var(--ac);color:#111;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}   /* v7.48: a button, not a line of text */
 .scout-app-wrapper .nr-go{display:flex;align-items:center;text-decoration:none;color:var(--ac);border-color:var(--ac)}
 .scout-app-wrapper .nr-num{position:absolute;left:4px;top:4px;width:20px;height:20px;border-radius:50%;background:#C2491F;color:#fff;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:1}
 .scout-app-wrapper .nr-mapbar{display:flex;justify-content:flex-end;margin:0 0 8px}
@@ -3267,7 +3268,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.47';
+var PROWL_VERSION='v7.48';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -9926,7 +9927,7 @@ function nrKinds(on){var w=[],i,s;for(i=0;i<on.length;i++)if(NR_NOUN[on[i]])w.pu
 function nrCap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
 function nrKindsOff(on){var off=NR_CATS_DEF.filter(function(k){return on.indexOf(k)===-1});if(!off.length)return '';var n=off.map(function(k){for(var i=0;i<NR_CATS.length;i++)if(NR_CATS[i][0]===k)return NR_CATS[i][1];return k});return '<p class="nearp nr-kindsoff">'+esc(nrAnd(n))+' '+(n.length>1?'are':'is')+' off, so '+(off.indexOf('antiques')!==-1?'antique malls':'those shops')+' are not listed. <button type="button" class="sgw-ml" id="otp-nrCatsAll">Show them too</button></p>'}
 function nrCatsAll(){var on=nrCatsGet();nrCatsSet(NR_CATS.map(function(c){return c[0]}).filter(function(k){return on.indexOf(k)!==-1||NR_CATS_DEF.indexOf(k)!==-1}));rNrCats();NR.around=null;nrAroundLoad(true)}
-function nrAt(L){var i,b=null;for(i=0;i<L.length;i++)if(typeof L[i].near==='number'&&L[i].near<=0.15&&(!b||L[i].near<b.near))b=L[i];return b}
+function nrAt(L){var i,b=null,bd=0.15,d,you=nrYou();for(i=0;i<L.length;i++){d=you&&typeof L[i].lat==='number'&&typeof L[i].lng==='number'?nrKm(you,L[i])*0.621371:L[i].near;if(typeof d==='number'&&d<=bd){bd=d;b=L[i]}}return b}   /* v7.48: from your own fix; the worker's near is from whoever asked first in the cell */
 function nrAroundDraw(){
   var el=$('#otp-nrLive'),L=NR.around||[],on=nrCatsGet(),kinds=nrKinds(on),at=nrAt(L),here=at?'You are at <b>'+esc(at.name)+'</b>'+(NR.aroundTown?' in '+esc(NR.aroundTown):'')+'. ':NR.aroundTown?'You are in <b>'+esc(NR.aroundTown)+'</b>. ':'',off=nrKindsOff(on);if(!el)return;
   if(!L.length){el.innerHTML='<h3 class="nearh">Around you '+nrRefreshBtn()+'</h3><p class="nearp">'+here+'No '+esc(kinds)+' close by right now. Try a map search below, or plan a road trip.</p>'+off+nrMapBar('around');nrMap('around');return}

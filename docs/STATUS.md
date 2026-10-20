@@ -1,16 +1,25 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.47 / v152).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.48 / v153).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.47** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v152** | |
+| Page | **v7.48** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v153** | |
 
 Recently shipped, newest first:
 
+- **v7.48 / v153: the shop you stand in is always asked for** (the owner, back in Maumee Antique Mall with Antiques on:
+  still missing). Asked fresh at the mall's own spot, Google's relevance answer to "antique stores and antique malls"
+  had the mall on some asks and not others (antiques + flea: first; antiques + records, or the usual three: missing),
+  while every neighbouring cell listed it first. The miss was cached for the cell. Around You now also asks for the
+  closest shops of the kinds picked, ranked by distance within 3 miles (`rankPreference: DISTANCE`, `NEAR_HERE_M`,
+  one more Text Search per cell and 10 minutes), merged before ranking. Near cache key v=11. The page judges "You are
+  at" from the phone's own fix (`nrAt`), not the worker's `near`, which is from whoever asked first in the cell, and
+  **Show them too** is a filled button (it read as plain text). Tests: `worker/__tests__/trips.test.mjs` (Google
+  leaves out the shop at the spot asked about; it is listed once), `__tests__/page/near-kinds-v747.test.mjs`.
 - **v7.47: Around you says which kinds it looked for** (the owner, standing in the middle of Maumee Antique Mall: "it
   doesn't come up"). The search was right: only the Vintage chip was on, and the live worker lists the mall first once
   Antiques is on. The page said "Antique, vintage and thrift shops" whatever the chips were. Now the line names the
@@ -833,7 +842,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.48, worker v153**. Claim one here when you start.
+Next free numbers: **page v7.49, worker v154**. Claim one here when you start.
 
 ## What's next
 
