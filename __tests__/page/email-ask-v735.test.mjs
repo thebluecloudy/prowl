@@ -37,10 +37,14 @@ test('the preview shows the email from the visitor\'s own hunt, up to 3 listings
   const f = liveFetch({ perSource: 3 });
   const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.v36': { seen: true, hunts: ['Blenko glass'], lock: [0] } } });
   await waitFor(() => p.$$('#otp-sgw .sgw-cell').length >= 3, { timeout: 8000 });
-  /* the locked hunt's own start-up searches can still be landing on a slow machine: count from when they have stopped */
-  for (let last = -1, i = 0; f.calls.length !== last && i < 40; i++) { last = f.calls.length; await tick(400); }
+  /* the preview is drawn synchronously when Settings opens, so any fetch of its own would be counted between these two
+     lines; calls the page makes on its own timers (start-up searches, the shop's picks) land outside them */
+  p.$('#otp-dock .db[data-m="den"]').click();
+  await tick(30);
   const before = f.calls.length;
-  const box = await settings(p);
+  p.$('#otp-denT3').click();
+  const during = f.calls.length;
+  const box = p.$('#otp-denSettings');
   const pv = box.querySelector('.mail-pv');
   assert.ok(pv, 'the preview');
   assert.match(pv.querySelector('.mail-pv-h').textContent, /Prowl Alerts · new for Blenko glass/);
@@ -48,7 +52,7 @@ test('the preview shows the email from the visitor\'s own hunt, up to 3 listings
   assert.equal(figs.length, 3);
   for (const fg of figs) { assert.match(fg.querySelector('img').getAttribute('src'), /^https:\/\/img\.example\.com\//); assert.match(fg.querySelector('figcaption').textContent, /^\$\d/); }
   assert.match(pv.textContent, /only listings you have not seen/);
-  assert.equal(f.calls.length, before, 'nothing fetched for it');
+  assert.equal(during, before, 'nothing fetched for it');
   assert.deepEqual(p.errors, []);
   await p.close();
 });
