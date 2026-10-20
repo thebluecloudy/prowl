@@ -3241,7 +3241,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.42';
+var PROWL_VERSION='v7.43';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4556,7 +4556,7 @@ function huntInner(t){
       '<b>'+esc(it.price||'—')+'</b><span class="pk-t">'+esc(it.title)+'</span>'+
       '<small>'+esc(huntSite(it.src))+(it.time_left?' · '+esc(it.time_left)+' left':'')+(it.where?' · '+esc(it.where):'')+'</small>'+alsoLine(it.url)+'</a>'}   /* v7.34 */
   if(picks.length)h+='</div>';
-  if(d.dupes&&d.dupes.length)h+='<p class="pk-dupe">'+d.dupes.length+' listing'+(d.dupes.length>1?'s are the same piece as one':' is the same piece as one')+' on another site. Prowl picks the cheapest; open it to compare prices on each site.</p>';
+  if(d.dupes&&d.dupes.length)h+='<p class="pk-dupe">'+d.dupes.length+' listing'+(d.dupes.length>1?'s look':' looks')+' like one on another site. Prowl shows the cheapest; open it to compare the photos and prices.</p>';   /* v7.41: similar, not the same */
   h+='<ul class="pk-sites">';
   for(i=0;i<d.rows.length;i++){r=d.rows[i];
     h+='<li class="'+(r.gated?'pk-gated':r.kept?'pk-yes':'pk-no')+'" title="'+esc(r.kept?'':r.note||'')+'">'+esc(huntSite(r.source))+(r.kept?' · '+r.kept:'')+'</li>'}
@@ -5164,7 +5164,7 @@ function alsoShip(x){return x.ship==='free'?' free shipping':x.ship?' + '+x.ship
 function alsoLine(u){
   var a=(typeof ALSO!=='undefined'&&ALSO[u])||null,i,p=[];if(!a||!a.length)return '';
   for(i=0;i<a.length&&i<2;i++)p.push(esc(huntSite(a[i].src))+' '+esc(a[i].price||'')+esc(alsoShip(a[i])));
-  return '<span class="sgw-also">Also on '+p.join(' \u00b7 ')+(a.length>2?' +'+(a.length-2)+' more':'')+'</span>';
+  return '<span class="sgw-also">Similar on '+p.join(' \u00b7 ')+(a.length>2?' +'+(a.length-2)+' more':'')+'</span>';   /* v7.41 */
 }
 function sgwCard(it,hunt,bare){
   /* no loading="lazy" here: on the live page it left some cards with an empty
@@ -7690,8 +7690,10 @@ function popAlso(u,price){
     h+='<li><span>'+esc(huntSite(x.src))+'</span><b>'+esc(x.price||'')+'</b><small>'+esc(alsoShip(x).replace(/^ \+ /,'+ ').replace(/^ /,''))+'</small>'+
       (go!=='#'?'<a href="'+esc(go)+'" target="_blank" rel="noopener noreferrer">View \u2197</a>':'')+'</li>';
     n.push(huntSite(x.src)+' '+x.price)}
-  return {html:'<div class="pp-also" role="note"><b>The same piece is also on</b><ul>'+h+'</ul><span class="pp-also-n">This one is '+esc(price||'')+' here. Shipping is extra unless shown; check it on each site.</span></div>',
-    note:'Also listed on '+n.join(', ')+'.'};
+  /* v7.41 (the owner, on an Etsy panther lamp with a shade that Prowl called the same as a Poshmark TV lamp: "change to
+     a similar one is on poshmark, go check it out, vs saying it is the same"): titles can't prove it is the same piece */
+  return {html:'<div class="pp-also" role="note"><b>'+(a.length>1?'Similar listings on other sites':'A similar listing is on '+esc(huntSite(a[0].src)))+'</b><ul>'+h+'</ul><span class="pp-also-n">It may be the same piece or a lookalike: compare the photos, size and marks. This one is '+esc(price||'')+' here. Shipping is extra unless shown.</span></div>',
+    note:'Similar listings on '+n.join(', ')+' (maybe the same piece).'};
 }
 function popSold(t){return window.prowlAff('https://www.ebay.com/sch/i.html?_nkw='+E(String(t||'').slice(0,90))+'&LH_Sold=1&LH_Complete=1','prowl-sold')}
 function popDetails(meta,d){

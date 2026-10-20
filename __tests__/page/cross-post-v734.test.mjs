@@ -29,7 +29,7 @@ test('the Best pick card says where else the same piece is listed, with each pri
   const p = open();
   const card = await waitFor(() => p.$('.pk-card[data-s="etsy"]'), { timeout: 8000 });
   assert.equal(p.$$('.pk-card').length, 1, 'one owl, one Best pick');
-  assert.equal(card.querySelector('.sgw-also').textContent, 'Also on eBay $205.00 + $12.50 shipping · Poshmark $211.00');
+  assert.equal(card.querySelector('.sgw-also').textContent, 'Similar on eBay $205.00 + $12.50 shipping · Poshmark $211.00');
   assert.deepEqual(p.errors, []);
   await p.close();
 });
@@ -41,15 +41,15 @@ test('its popup lists each site with its price and a link, so the visitor can pi
   await waitFor(() => p.$('#otp-sheet').classList.contains('on'));
   await tick(60);
   const box = await waitFor(() => p.$('#otp-sheetB .pp-also'));
-  assert.match(box.querySelector('b').textContent, /The same piece is also on/);
+  assert.match(box.querySelector('b').textContent, /Similar listings on other sites/);
   const rows = [...box.querySelectorAll('li')];
   assert.equal(rows.length, 2, 'the javascript: link is dropped');
   assert.match(rows[0].textContent, /^eBay\$205\.00\+ \$12\.50 shipping/);
   assert.match(rows[1].textContent, /^Poshmark\$211\.00/);
   assert.match(rows[1].querySelector('a').getAttribute('href'), /^https:\/\/poshmark\.com\/listing\/owl-222/);
   assert.equal(rows[1].querySelector('a').target, '_blank');
-  assert.match(box.textContent, /This one is \$190\.00 here\. Shipping is extra unless shown/);
-  assert.match(p.$('#otp-sheetB .pp-fp').getAttribute('data-d'), /^Also listed on eBay \$205\.00, Poshmark \$211\.00\. /);
+  assert.match(box.textContent, /It may be the same piece or a lookalike: compare the photos, size and marks\. This one is \$190\.00 here\. Shipping is extra unless shown/);
+  assert.match(p.$('#otp-sheetB .pp-fp').getAttribute('data-d'), /^Similar listings on eBay \$205\.00, Poshmark \$211\.00 \(maybe the same piece\)\. /);
   assert.deepEqual(p.errors, []);
   await p.close();
 });
@@ -63,7 +63,7 @@ test('a result card that is a cross-posted copy gets its "Also on" line, even wh
   cell.innerHTML = '<a class="sgw-card" href="#"><img alt="" src="https://x/p.jpg"><div class="sgw-t">' + T + '</div><div class="sgw-m">Poshmark</div></a>';
   p.$('.scout-app-wrapper').appendChild(cell);
   await tick(30);
-  assert.equal(cell.querySelector('.sgw-also').textContent, 'Also on Etsy $190.00 · eBay $205.00 + $12.50 shipping');
+  assert.equal(cell.querySelector('.sgw-also').textContent, 'Similar on Etsy $190.00 · eBay $205.00 + $12.50 shipping');
   assert.equal(cell.querySelectorAll('.sgw-also').length, 1, 'once');
   assert.deepEqual(p.errors, []);
   await p.close();
