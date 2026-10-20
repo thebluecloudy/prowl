@@ -143,9 +143,9 @@ test('locked hunts, panel terms and the newest hunts count first past 40 Den hun
   await p.close();
 });
 
-test('first visit: a sample hunt removed from the Den leaves Flock', async () => {
+test('a hunt removed from the Den leaves Flock (v7.31: no sample hunts on a first visit, so it is one of yours)', async () => {
   const f = liveFetch();
-  const p = loadPage({ fetchImpl: f.impl, beforeLoad: (w) => { w.Math.random = () => 0.5; } });
+  const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.v36': { hunts: ['ceramic panther'] } }, beforeLoad: (w) => { w.Math.random = () => 0.5; } });
   p.calls = f.calls;
   await tick(60);
   p.$('#otp-dock .db[data-m="flock"]').click();

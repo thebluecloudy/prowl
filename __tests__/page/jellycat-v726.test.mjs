@@ -59,7 +59,7 @@ test('eBay feedback shows under the price: one star, the percentage and the coun
   await p.close();
 });
 
-test('the popup: stars under the price, Item details open, Price check closed, and the details arriving keep what was opened', async () => {
+test('the popup: stars under the price, Item details open, Price check open (v7.31), and the details arriving keep what was opened', async () => {
   let release;
   const gate = new Promise((r) => { release = r; });
   const p = open(null, gate);
@@ -67,9 +67,9 @@ test('the popup: stars under the price, Item details open, Price check closed, a
   c.querySelector('.sgw-card img').dispatchEvent(new p.win.MouseEvent('click', { bubbles: true, cancelable: true }));
   const b = p.$('#otp-sheetB');
   const first = await waitFor(() => b.querySelector('details.pp-sec[data-sec="price"]'));
-  assert.equal(first.open, false, 'Price check starts closed');
+  assert.equal(first.open, true, 'v7.31: Price check starts open, Fair price? lives only here now');
+  first.open = false;   /* closed by the shopper: the repaint keeps it closed */
   assert.equal(b.querySelector('.pp-r').textContent, '\u2605 99.8% (12k)', 'the card\'s stars before the details arrive');
-  first.open = true;
   release();
   await waitFor(() => b.querySelector('details.pp-sec[data-sec="det"]'));
   await tick(40);
@@ -77,7 +77,7 @@ test('the popup: stars under the price, Item details open, Price check closed, a
   assert.deepEqual(secs.map((d) => d.querySelector('summary').textContent), ['Item details', 'Price check']);
   assert.equal(secs[0].open, true, 'Item details start open');
   assert.ok(secs[0].querySelector('.pp-asp') && secs[0].querySelector('#otp-ppd'), 'specifics and description inside');
-  assert.equal(secs[1].open, true, 'Price check stays open across the repaint');
+  assert.equal(secs[1].open, false, 'Price check stays as the shopper left it across the repaint');
   assert.ok(secs[1].querySelector('.pp-sold'), 'What it sold for inside');
   assert.equal(b.querySelector('.pp-r').textContent, '\u2605 99.8% (12k)');
   assert.ok(b.querySelector('.pp-dock .pp-go'), 'View on eBay stays pinned outside the sections');

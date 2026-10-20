@@ -13,11 +13,13 @@ function stubMedia(win) {
   Object.defineProperty(proto, 'paused', { configurable: true, get() { return !this.__playing; } });
 }
 
-test('How Prowl works opens with the film first, as a play card that loads nothing yet', async () => {
+test('How Prowl works (from the menu since v7.31) opens with the film first, as a play card that loads nothing yet', async () => {
   const p = loadPage({ storage: {}, beforeLoad: stubMedia });
   await tick(600);
   const ms = p.$('#otp-ms');
-  assert.ok(ms.classList.contains('on'), 'opens by itself the first time');
+  assert.ok(!ms.classList.contains('on'), 'v7.31: a first visit lands on the search box, not the help');
+  p.$('#otp-how').click();
+  assert.ok(ms.classList.contains('on'), 'the menu opens it');
   const film = ms.querySelector('#otp-film');
   assert.ok(film, 'the film is in the help');
   assert.match(film.getAttribute('data-src'), /^https:\/\/cdn\.shopify\.com\/videos\/.+\.mp4$/);

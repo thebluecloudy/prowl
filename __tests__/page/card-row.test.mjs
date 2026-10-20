@@ -1,6 +1,7 @@
 // Page v6.63: on result cards (home hunts, Daily, runs) the save star and the like heart leave the photo. They sit in
 // one row under the card with Fair price?, so phones are less busy. A Fair price answer goes under that row. Flock keeps
 // its own full-screen buttons.
+// v7.31 (one button per card): the row is the heart alone; Save and Fair price? are in the listing popup (tap the photo).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -26,14 +27,14 @@ async function home(f, extra = {}) {
   return p;
 }
 
-test('a result card is the link, then one row: star, heart, Fair price?; nothing sits on the photo', async () => {
+test('a result card is the link, then one row with the heart; nothing sits on the photo', async () => {
   const p = await home(withVerdict());
   const cells = p.$$('#otp-sgw .sgw-cell');
   for (const c of cells) {
     const kids = [...c.children].map((k) => k.className.split(' ')[0]);
     assert.deepEqual(kids, ['sgw-card', 'sgw-cbar'], 'the link, then the row');
     const row = c.querySelector(':scope > .sgw-cbar');
-    assert.deepEqual([...row.children].map((k) => k.className.split(' ')[0]), ['sgw-sv', 'sgw-lk', 'sgw-fp']);
+    assert.deepEqual([...row.children].map((k) => k.className.split(' ')[0]), ['sgw-lk'], 'v7.31: one button');
     assert.equal(c.querySelector(':scope > .sgw-sv, :scope > .sgw-lk'), null, 'no button straight on the cell, where it was placed over the photo');
     assert.equal(c.querySelector('.sgw-card button'), null, 'no button inside the link');
   }
@@ -47,34 +48,35 @@ test('a result card is the link, then one row: star, heart, Fair price?; nothing
   await p.close();
 });
 
-test('the star saves and the heart likes from the row', async () => {
+test('the heart likes from the row; Save this find is in the popup', async () => {
   const p = await home(withVerdict(), { 'prowl.alertTok': 'tok', 'prowl.alertEmail': 'a@b.co' });   /* saving finds is for members */
   const c = p.$('#otp-sgw .sgw-cell'), u = c.getAttribute('data-u');
-  c.querySelector('.sgw-cbar .sgw-sv').click();
+  c.querySelector('.sgw-card img').dispatchEvent(new p.win.MouseEvent('click', { bubbles: true, cancelable: true }));
+  const sv = await waitFor(() => p.$('#otp-sheetB .pp-sv .sgw-sv'));
+  assert.equal(sv.getAttribute('data-sv'), u);
+  sv.click();
   assert.ok(JSON.parse(p.win.localStorage.getItem('prowl.finds') || '[]').some((f) => f.url === u), 'saved');
-  assert.equal(p.$('#otp-sgw .sgw-cell .sgw-cbar .sgw-sv').classList.contains('on'), true);
+  assert.equal(p.$('#otp-sheetB .pp-sv .sgw-sv').classList.contains('on'), true);
   p.$('#otp-sgw .sgw-cell .sgw-cbar .sgw-lk').click();
   await tick(50);
   assert.ok(JSON.parse(p.win.localStorage.getItem('prowl.likes') || '[]').some((l) => l.u === u), 'liked');
   await p.close();
 });
 
-test('a Fair price answer goes under the row; the star and heart stay in it', async () => {
+test('Fair price? is asked in the popup; the card then shows the answer under its row', async () => {
   const f = withVerdict();
   const p = await home(f);
   const c = p.$('#otp-sgw .sgw-cell');
-  const fp = c.querySelector('.sgw-cbar .sgw-fp');
+  assert.equal(c.querySelector('.sgw-fp'), null, 'v7.31: not on the card');
+  c.querySelector('.sgw-card img').dispatchEvent(new p.win.MouseEvent('click', { bubbles: true, cancelable: true }));
+  const fp = await waitFor(() => p.$('#otp-sheetB .pp-fp .sgw-fp'));
+  assert.ok(fp.closest('details').open, 'Price check is open, now that it is the only place to ask');
   fp.click();
-  assert.equal(fp.textContent, 'Check\u00ading\u2026', 'while it checks: a soft hyphen, so the label can take two lines in the row');
-  assert.equal(fp.disabled, true);
-  const ans = await waitFor(() => c.querySelector('.sgw-fpr'));
+  const ans = await waitFor(() => p.$('#otp-sheetB .sgw-fpr'));
   assert.equal(f.sent.length, 1);
-  assert.equal(f.sent[0].url, c.getAttribute('data-u'), 'the cell is found from the button in the row');
-  assert.equal(ans.previousElementSibling.className, 'sgw-cbar', 'right under the row');
+  assert.equal(f.sent[0].url, c.getAttribute('data-u'));
   assert.match(ans.textContent, /Deal|DEAL|deal/);
-  const row = c.querySelector('.sgw-cbar');
-  assert.deepEqual([...row.children].map((k) => k.className.split(' ')[0]), ['sgw-sv', 'sgw-lk']);
-  /* a later redraw keeps the answer under the row */
+  /* a later redraw shows the answer under the card's row, the heart still in it */
   p.$$('.sgw-chip[data-sgw="pick"]')[0].click();
   await tick(60);
   const c2 = p.$('#otp-sgw .sgw-cell[data-u="' + c.getAttribute('data-u') + '"]');

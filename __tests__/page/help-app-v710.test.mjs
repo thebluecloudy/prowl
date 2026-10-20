@@ -4,11 +4,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
 
-test('a first visit opens How Prowl works with Get the app first, ahead of the steps', async () => {
+test('How Prowl works (from the menu since v7.31; it no longer opens by itself) has Get the app first, ahead of the steps', async () => {
   const p = loadPage({ storage: {} });
   await tick(600);
   const ms = p.$('#otp-ms');
-  assert.ok(ms.classList.contains('on'), 'opens by itself the first time');
+  assert.ok(!ms.classList.contains('on'), 'v7.31: a first visit lands on the search box, not the help');
+  p.$('#otp-how').click();
+  assert.ok(ms.classList.contains('on'), 'the menu opens it');
   const card = ms.querySelector('.otp-getapp[data-mode="help"]');
   assert.ok(card && !card.hidden, 'the card shows');
   const first = ms.querySelector('.mi');
