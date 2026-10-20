@@ -1850,6 +1850,13 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .pp-d h3,.scout-app-wrapper .pp-d h4{margin:8px 0 4px;font-size:16px}
 .scout-app-wrapper .pp-more{margin-top:4px;padding:4px 0;border:0;background:none;color:var(--ac);font-weight:700;font-size:15px;cursor:pointer}
 .scout-app-wrapper .pp-fp{margin-top:14px}
+/* v7.33 (the owner, on the popup's Price check: "check font for price check it seems different and too small to read
+   on phone"): in the popup it reads like the description beside it, 16px, not the 13px of a result card */
+.scout-app-wrapper .pp-fp .sgw-fpr{padding:12px 14px;font-family:inherit;font-size:16px;line-height:1.5}
+.scout-app-wrapper .pp-fp .sgw-fpr i{margin-bottom:4px;font-weight:700}
+.scout-app-wrapper .pp-fp .sgw-fpr em{margin-top:6px}
+.scout-app-wrapper .pp-fp .sgw-fpn,.scout-app-wrapper .pp-fp .sgw-fpl{margin-top:8px;font-size:14px}
+.scout-app-wrapper .pp-fp .sgw-fp{min-height:48px;font-size:16px}
 .scout-app-wrapper .pp-share{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;margin-top:10px;border-radius:99px;font-weight:800;font-size:16px}
 .scout-app-wrapper .pp-go{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;margin-top:14px;border-radius:99px;text-decoration:none;font-weight:800;font-size:16px}
 .scout-app-wrapper .pp-end,.scout-app-wrapper .pp-pnc{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin:10px 0 0;padding:12px 14px;border-radius:12px;background:var(--cd3);color:var(--ink)}
@@ -1969,8 +1976,8 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .fl-newb,.scout-app-wrapper .sgw-new,.scout-app-wrapper .sgw-repro,.scout-app-wrapper .sale-off{background:transparent;border:1.5px solid var(--ac);border-radius:3px;color:var(--ink);font-weight:600;letter-spacing:.01em}
 .scout-app-wrapper .sgw-repro{border-color:#D98C1F}
 .scout-app-wrapper .sale-off{border-color:#1F7A3A}
-.scout-app-wrapper .is-gone .sgw-card::before,.scout-app-wrapper .sgw-cell.is-pick:not(.fl-card):not(.lk-cell)::before{padding:2px 8px;border:1.5px solid var(--ink);border-radius:3px;background:var(--cd);color:var(--ink);font:600 12.5px/1.4 var(--sans);letter-spacing:.01em;text-transform:none}
-.scout-app-wrapper .sgw-cell.is-pick:not(.fl-card):not(.lk-cell)::before{content:'Best pick';position:absolute;top:9px;left:9px;z-index:2;border-color:var(--ac);pointer-events:none}
+.scout-app-wrapper .is-gone .sgw-card::before,.scout-app-wrapper .sgw-cell.is-pick:not(.fl-card):not(.lk-cell):not(.pp-fp)::before{padding:2px 8px;border:1.5px solid var(--ink);border-radius:3px;background:var(--cd);color:var(--ink);font:600 12.5px/1.4 var(--sans);letter-spacing:.01em;text-transform:none}
+.scout-app-wrapper .sgw-cell.is-pick:not(.fl-card):not(.lk-cell):not(.pp-fp)::before{content:'Best pick';position:absolute;top:9px;left:9px;z-index:2;border-color:var(--ac);pointer-events:none}
 .scout-app-wrapper .sgw-cell.is-pick.is-gone:not(.fl-card):not(.lk-cell)::before{content:none}
 .scout-app-wrapper .slr{font-size:13.5px;line-height:1.4;color:var(--i2)}
 .scout-app-wrapper .sgw-r{padding:3px 10px 0}
@@ -3055,7 +3062,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.32';
+var PROWL_VERSION='v7.33';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -7304,7 +7311,7 @@ function pickMark(root){
     var els=[],i;
     if(root.getAttribute&&root.getAttribute('data-u'))els.push(root);
     if(root.querySelectorAll)els=els.concat([].slice.call(root.querySelectorAll('.sgw-cell[data-u]')));
-    for(i=0;i<els.length;i++)if(PICK[els[i].getAttribute('data-u')]&&!els[i].classList.contains('is-pick'))els[i].classList.add('is-pick');
+    for(i=0;i<els.length;i++)if(PICK[els[i].getAttribute('data-u')]&&!els[i].classList.contains('is-pick')&&!els[i].classList.contains('pp-fp'))els[i].classList.add('is-pick');   /* v7.33: not the popup's price check box */
   }catch(e){}
 }
 function awayMark(root){

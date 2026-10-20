@@ -1,15 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.32 / v129).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.33 / v129).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.32** | 402,502 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.33** | 402,502 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v129** | |
 
 Recently shipped, newest first:
+
+- **v7.33: the popup's Price check, readable and untagged** (the owner, on an Etsy Rookwood vase: "Best pick is
+  overlapping price check ... font for price check seems different and too small to read on phone"). The price check
+  box carries the listing's data-u, so pickMark tagged it Best pick and the badge sat on its first line; pickMark and
+  the badge rules now skip `.pp-fp`. In the popup the price check reads at 16px in the popup's font (notes 14px), not a
+  result card's 13px. Page only. Test: `__tests__/page/popup-price-check-v733.test.mjs`.
 
 - **v7.32 / v129: the owner's error list of 2026-10-20.**
   - **A card with no photo gets the listing's own** (a ShopGoodwill camo backpack was blank in Daily, its popup had
@@ -565,7 +571,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.33, worker v130**. Claim one here when you start.
+Next free numbers: **page v7.34, worker v130**. Claim one here when you start.
 
 ## What's next
 
