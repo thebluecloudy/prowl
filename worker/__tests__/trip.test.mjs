@@ -6,8 +6,31 @@ import {
   haversineKm, decodePolyline, nearestOnRoute, detourMinutes, corridorCenters, sizeTier, differentiator, ratingScore, rankPlaces,
   townOf, townFromAddress, normalizePlace, placeCard, hoursForDay, openAt, alongRoute, clusterStops, mapsDirUrl, hasStreet,
   tripDay, weekdayOf, tripCloses, tripExpires, tripExpired, tripRecord, tripMember, tripView, findRecord,
-  DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS, CATS, CATS_DEFAULT, catsParse, catsQueries,
+  DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS, CATS, CATS_DEFAULT, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, ANCHOR_REVIEWS,
 } from "../trip.js";
+
+test("v136: antiques get a query of their own on a trip; a town is an anchor only with a real antiques place or a crowd of reviews; the rest are smaller shops", () => {
+  assert.deepEqual(tripQueries(["antiques", "vintage", "thrift"]), ["antique stores and antique malls", "vintage stores, thrift stores"]);
+  assert.deepEqual(tripQueries(["records"]), ["record stores"]);
+  assert.deepEqual(tripQueries(["antiques"]), ["antique stores and antique malls"]);
+  assert.equal(ANCHOR_REVIEWS, 150);
+  const mk = (name, n, extra) => Object.assign({ id: name.replace(/\W+/g, ""), name, town: "T", state: "OH", lat: 0, lng: 0, rating: 4.6, n, kind: "Antiques", hours: null, photo: "", url: "", summary: "" }, extra || {});
+  assert.equal(sizeTier(mk("Chillicothe Antique Emporium", 292)), 1, "292 reviews is a crowd");
+  assert.equal(sizeTier(mk("Two Old Broads and a Geezer", 109, { kind: "Home goods store" })), 0);
+  assert.equal(sizeTier(mk("Gaffney's Treasures and Gifts", 60, { kind: "Gift shop" })), 0);
+  const clusters = [
+    Object.assign(placeCard(mk("Jeffrey's Antique Gallery", 1200)), { tier: 2, nested: [placeCard(mk("Thistle Exchange", 30))] }),
+    Object.assign(placeCard(mk("Gaffney's Treasures and Gifts", 60, { kind: "Gift shop" })), { tier: 0, nested: [placeCard(mk("Blue Light Vintage", 40))] }),
+    Object.assign(placeCard(mk("The Delaware Antique Mall", 303)), { tier: 1, nested: [] }),
+    Object.assign(placeCard(mk("Ellie Mills Mercantile", 5, { rating: 5 })), { tier: 0, nested: [] }),
+  ];
+  const split = splitAnchors(clusters);
+  assert.deepEqual(split.stops.map((s) => s.name), ["Jeffrey's Antique Gallery", "The Delaware Antique Mall"]);
+  assert.deepEqual(split.more.map((s) => s.name), ["Gaffney's Treasures and Gifts", "Blue Light Vintage", "Ellie Mills Mercantile"], "ranked by rating weighted by reviews; 5.0 on 5 reviews last");
+  assert.ok(!split.more[0].nested && !split.more[0].tier, "flat cards");
+  assert.equal(routeScore(split.stops), 3 + 0.25 + 2, "1 + tier each, a little for what is nested");
+  assert.ok(routeScore(split.stops) > routeScore([clusters[1], clusters[3]]));
+});
 
 test("v135: the kinds to look for: the spec's three by default, any of the seven, as one or two query strings", () => {
   assert.deepEqual(catsParse(""), ["antiques", "vintage", "thrift"]);
@@ -105,7 +128,7 @@ test("ranking: size first, then rating weighted by reviews, then distance", () =
   assert.equal(sizeTier(place({ name: "Pathway Market", town: "X", lat: 0, lng: 0, kind: "Thrift", n: 89 })), 0);
   assert.equal(sizeTier(place({ name: "Pathway Market", town: "X", lat: 0, lng: 0, kind: "Thrift", n: 2500 })), 0, "a thrift chain's reviews are not a size");
   assert.equal(sizeTier(place({ name: "Motor City Antique Gallery", town: "X", lat: 0, lng: 0, n: 1054 })), 2, "a thousand reviews on an antiques place");
-  assert.equal(sizeTier(place({ name: "Rusty Relics Vintage and Antiques", town: "X", lat: 0, lng: 0, n: 227 })), 0);
+  assert.equal(sizeTier(place({ name: "Rusty Relics Vintage and Antiques", town: "X", lat: 0, lng: 0, n: 227 })), 1, "v136: 150+ reviews on an antiques place is a size");
   assert.equal(sizeTier(place({ name: "Dixieland Flea Market", town: "X", lat: 0, lng: 0, n: 2306 })), 2);
   assert.equal(sizeTier(place({ name: "Le Shoppe Vintage Market", town: "X", lat: 0, lng: 0, n: 16 })), 1);
   assert.deepEqual(rankPlaces([

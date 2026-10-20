@@ -19,6 +19,12 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v136: 2026-10-20. The route with the most to see (the owner, against Meta's Novi to Blenko itinerary: Google's fastest
+ *         drive runs US-35 and never passes Portsmouth, Ashland or Huntington). /trip asks Google for its alternative
+ *         routes, searches each corridor (antiques in a query of their own, so a big mall is never crowded out), and
+ *         keeps the route whose stops score highest (trip.js routeScore), saying how many minutes longer it is. A town
+ *         is an anchor only when its best shop is a real antiques place or has ANCHOR_REVIEWS+ reviews; the rest come
+ *         back as "more", smaller shops along the way, never in the Maps link (splitAnchors).
  *   v135: 2026-10-20. Trips for Prowl Alerts members too (the owner: "it took me to the den and tried to make me sign
  *         in, but i am pro"): the email and token the page keeps (X-Prowl-Email / X-Prowl-Tok) name a member on /trips as
  *         a store session does, as their customer id when linked, else e + a hash of the address; their Pro counts, and
@@ -462,8 +468,8 @@ import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize } from "./hunt.js";   /* v117 */
 import { decodePolyline, haversineKm, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
-  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_KM, catsParse, catsQueries, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v135";
+  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_KM, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
+const WORKER_VERSION = "v136";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6339,15 +6345,20 @@ async function gPlaceHours(env, id) {
   if (hours) { try { await PCACHE.put(key, new Response(JSON.stringify(hours), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=" + HOURS_CACHE_SECONDS } })); } catch (e) {} }
   return hours;
 }
-/* the driving route; to is { lat, lng } or an address */
-async function gRoute(env, from, to) {
+/* the driving routes, the fastest first and Google's alternatives after it (v136); to is { lat, lng } or an address */
+async function gRoutes(env, from, to) {
   const body = { origin: { location: { latLng: { latitude: from.lat, longitude: from.lng } } },
     destination: typeof to === "string" ? { address: to } : { location: { latLng: { latitude: to.lat, longitude: to.lng } } },
-    travelMode: "DRIVE", routingPreference: "TRAFFIC_UNAWARE", polylineQuality: "OVERVIEW", languageCode: "en-US", units: "IMPERIAL" };
+    travelMode: "DRIVE", routingPreference: "TRAFFIC_UNAWARE", polylineQuality: "OVERVIEW", computeAlternativeRoutes: true, languageCode: "en-US", units: "IMPERIAL" };
   const j = await gFetch("https://routes.googleapis.com/directions/v2:computeRoutes", { method: "POST", body: JSON.stringify(body) }, "routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration", env);
-  const r = j && Array.isArray(j.routes) && j.routes[0];
-  if (!r || !r.polyline || !r.polyline.encodedPolyline) return null;
-  return { pts: decodePolyline(r.polyline.encodedPolyline), km: Math.round(Number(r.distanceMeters || 0) / 100) / 10, min: Math.round(Number(String(r.duration || "0s").replace(/s$/, "")) / 60) };
+  const out = [];
+  for (const r of (j && Array.isArray(j.routes) ? j.routes : []).slice(0, ROUTES_MAX)) {
+    if (!r || !r.polyline || !r.polyline.encodedPolyline) continue;
+    const pts = decodePolyline(r.polyline.encodedPolyline);
+    if (pts.length >= 2) out.push({ pts: pts, km: Math.round(Number(r.distanceMeters || 0) / 100) / 10, min: Math.round(Number(String(r.duration || "0s").replace(/s$/, "")) / 60) });
+  }
+  out.sort((a, b) => a.min - b.min);
+  return out;
 }
 /* the town a point is in ("Novi, MI"): never a street */
 async function gTown(env, lat, lng) {
@@ -6382,16 +6393,26 @@ async function tripBuild(env, from, toText, day, cats) {
   cats = catsParse((cats || []).join ? (cats || []).join(",") : cats);
   const [town, destList] = await Promise.all([gTown(env, from.lat, from.lng), gPlacesText(env, toText, null, 0, 1)]);
   const dest = destList[0] || null;
-  const route = await gRoute(env, from, dest && Number.isFinite(dest.lat) ? { lat: dest.lat, lng: dest.lng } : toText);
-  if (!route || route.pts.length < 2) return null;
-  const centers = corridorCenters(route.pts).slice(0, CORRIDOR_CENTERS_MAX);
-  const lists = await Promise.all(centers.map((c) => gPlacesText(env, catsQueries(cats, 1)[0], c, CORRIDOR_RADIUS_M, 20)));
-  const seen = Object.create(null), all = [];
-  for (const p of [].concat(...lists)) { if (seen[p.id] || (dest && p.id === dest.id)) continue; seen[p.id] = 1; all.push(p); }
-  const stops = clusterStops(alongRoute(all, route.pts, DETOUR_MIN));
+  const routes = await gRoutes(env, from, dest && Number.isFinite(dest.lat) ? { lat: dest.lat, lng: dest.lng } : toText);
+  if (!routes.length) return null;
+  /* v136: every route's corridor is searched (a circle and a query asked once, however many routes share it), and the
+     route with the most to see wins; the fastest is the tie-break */
+  const queries = tripQueries(cats), asked = new Map();
+  const ask = (q, c) => { const k = q + "|" + c.lat.toFixed(1) + "," + c.lng.toFixed(1); if (!asked.has(k)) asked.set(k, asked.size < TRIP_SEARCHES_MAX ? gPlacesText(env, q, c, CORRIDOR_RADIUS_M, 20) : Promise.resolve([])); return asked.get(k); };
+  const built = await Promise.all(routes.map(async (route) => {
+    const centers = corridorCenters(route.pts).slice(0, CORRIDOR_CENTERS_MAX);
+    const lists = await Promise.all([].concat(...centers.map((c) => queries.map((q) => ask(q, c)))));
+    const seen = Object.create(null), all = [];
+    for (const p of [].concat(...lists)) { if (seen[p.id] || (dest && p.id === dest.id)) continue; seen[p.id] = 1; all.push(p); }
+    const split = splitAnchors(clusterStops(alongRoute(all, route.pts, DETOUR_MIN)));
+    return { route: route, stops: split.stops, more: split.more, score: routeScore(split.stops) };
+  }));
+  built.sort((a, b) => b.score - a.score || a.route.min - b.route.min);
+  const best = built[0], stops = best.stops;
   const destCard = dest ? placeCard(dest) : { id: "", name: vClean(toText, 120), town: "", why: "", hours: null, url: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(toText) };
   const destLabel = destCard.name + (destCard.town ? ", " + destCard.town : "");
-  return { origin: { town: town }, dest: destCard, route: { km: route.km, min: route.min }, day: day, weekday: weekdayOf(day), cats: cats, stops: stops, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.length };
+  return { origin: { town: town }, dest: destCard, route: { km: best.route.km, min: best.route.min, slower: Math.max(0, best.route.min - routes[0].min), routes: routes.length }, day: day, weekday: weekdayOf(day), cats: cats,
+    stops: stops, more: best.more, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.length };
 }
 async function tripRoute(request, env, url, origin) {
   const lat = nearNum(url.searchParams.get("lat"), -90, 90), lng = nearNum(url.searchParams.get("lng"), -180, 180);

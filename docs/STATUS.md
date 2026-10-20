@@ -1,15 +1,34 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.38 / v135).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.39 / v136).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.38** | 399,644 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v135** | |
+| Page | **v7.39** | 399,599 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v136** | |
 
 Recently shipped, newest first:
+
+- **v7.39 / v136: the road with the most to see** (the owner set Prowl's Novi to Blenko link beside Meta's itinerary:
+  Meta's eight anchors ran US-23 through Portsmouth, Ashland and Huntington; Prowl searched only Google's fastest
+  drive, US-35, and made 16 anchors out of every town with a hit, so the nine-waypoint Maps link stopped at
+  Worthington and Maumee Antique Mall was missing).
+  - **Alternative routes:** `/trip` asks Google for its alternatives (up to 3), searches each corridor (a circle and a
+    query asked once however many routes share it, at most 60 searches a build), scores each route by its anchors
+    (`routeScore`: 1 + size tier each, a little for what is nested) and keeps the best; the page says "The road with
+    the most to see, N min longer than the fastest drive" (`route.slower`, `route.routes`).
+  - **Antiques get their own query** a circle (`tripQueries`), so a big mall is never crowded out of Google's 20
+    answers by vintage and thrift hits.
+  - **Anchors:** a town is a stop worth planning around only when its best shop is a real antiques place or has 150+
+    reviews (`ANCHOR_REVIEWS`, was 300; `splitAnchors`). The rest come back as `more`: "Smaller shops along the way
+    (n)", a collapsed list under the trip, never in the Maps link, no Skip.
+  - **Legs:** more than nine anchors become LEG 1, LEG 2 links in the foot, each leg ending at the next leg's first
+    stop, the way Meta split it (`nrMapsLegs`).
+  - Cost: a build is now about 25 to 50 Text Searches (two or three routes, two queries a circle, shared circles
+    asked once), kept an hour per origin cell, destination, day and kinds.
+  Tests: `worker/__tests__/trip.test.mjs`, `trips.test.mjs`, `__tests__/page/near-section-v736.test.mjs`.
 
 - **v7.38 / v135: trips for Prowl Alerts members** (the owner tapped SHARE: "it took me to the den and tried to make
   me sign in, but i am pro"). SHARE, Your trips, FROM HERE on a kept trip and SHARE THIS FIND took only a store
@@ -670,7 +689,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.39, worker v136**. Claim one here when you start.
+Next free numbers: **page v7.40, worker v137**. Claim one here when you start.
 
 ## What's next
 

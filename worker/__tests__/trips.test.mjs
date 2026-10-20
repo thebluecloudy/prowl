@@ -41,6 +41,8 @@ function encodePolyline(pts) {
   for (const p of pts) { const lat = Math.round(p.lat * 1e5), lng = Math.round(p.lng * 1e5); out += enc(lat - plat) + enc(lng - plng); plat = lat; plng = lng; }
   return out;
 }
+const WAY35 = [[42.4806, -83.4755], [41.6639, -83.5552], [41.5754, -83.63], [41.0442, -83.6499], [40.2987, -83.068], [39.9612, -82.9988], [39.3331, -82.9824], [39.052, -82.6366], [38.8445, -82.137], [38.4345, -82.1322]].map(([lat, lng]) => ({ lat, lng }));
+const ROUTE35 = (() => { const out = []; for (let i = 0; i < WAY35.length - 1; i++) { const a = WAY35[i], b = WAY35[i + 1], n = Math.max(1, Math.round(TRIP.haversineKm(a, b) / 2)); for (let k = 0; k < n; k++) out.push({ lat: a.lat + (b.lat - a.lat) * k / n, lng: a.lng + (b.lng - a.lng) * k / n }); } out.push(WAY35[WAY35.length - 1]); return out; })();
 const ROUTE_PTS = (() => { const out = []; for (let i = 0; i < WAY.length - 1; i++) { const a = WAY[i], b = WAY[i + 1], n = Math.max(1, Math.round(TRIP.haversineKm(a, b) / 2)); for (let k = 0; k < n; k++) out.push({ lat: a.lat + (b.lat - a.lat) * k / n, lng: a.lng + (b.lng - a.lng) * k / n }); } out.push(WAY[WAY.length - 1]); return out; })();
 const HOURS_TUE_SUN = { periods: [0, 2, 3, 4, 5, 6].map((d) => ({ open: { day: d, hour: 10, minute: 0 }, close: { day: d, hour: 17, minute: 0 } })), weekdayDescriptions: ["Monday: Closed", "Tuesday: 10:00 AM – 5:00 PM", "Wednesday: 10:00 AM – 5:00 PM", "Thursday: 10:00 AM – 5:00 PM", "Friday: 10:00 AM – 5:00 PM", "Saturday: 10:00 AM – 5:00 PM", "Sunday: 10:00 AM – 5:00 PM"] };
 const HOURS_DAILY = { periods: [0, 1, 2, 3, 4, 5, 6].map((d) => ({ open: { day: d, hour: 10, minute: 0 }, close: { day: d, hour: 18, minute: 0 } })), weekdayDescriptions: ["Monday: 10:00 AM – 6:00 PM", "Tuesday: 10:00 AM – 6:00 PM", "Wednesday: 10:00 AM – 6:00 PM", "Thursday: 10:00 AM – 6:00 PM", "Friday: 10:00 AM – 6:00 PM", "Saturday: 10:00 AM – 6:00 PM", "Sunday: 10:00 AM – 6:00 PM"] };
@@ -61,6 +63,9 @@ const SHOPS = [
   gPlace("Olde Central City Vintage", "Huntington", "WV", 38.4193, -82.4605, { userRatingCount: 40 }),
   gPlace("14th Street Collectibles", "Huntington", "WV", 38.4188, -82.46, { userRatingCount: 25, rating: 4.3 }),
   gPlace("Mansfield Antique Barn", "Mansfield", "OH", 40.7584, -82.5154, { editorialSummary: { text: "200 dealers" } }),
+  gPlace("Ellie Mills Mercantile", "Jackson", "OH", 39.052, -82.6366, { userRatingCount: 5, rating: 5, primaryTypeDisplayName: { text: "Home goods store" } }),   /* on US-35 */
+  gPlace("The Mason Jar", "Point Pleasant", "WV", 38.8445, -82.137, { userRatingCount: 176, primaryTypeDisplayName: { text: "Home goods store" } }),
+  gPlace("Gaffney's Treasures and Gifts", "Marion", "OH", 40.62, -83.30, { userRatingCount: 60, primaryTypeDisplayName: { text: "Gift shop" } }),   /* on both, small */
 ];
 const BLENKO = gPlace("Blenko Glass Company", "Milton", "WV", 38.4345, -82.1322, { regularOpeningHours: { periods: [1, 2, 3, 4, 5].map((d) => ({ open: { day: d, hour: 9, minute: 0 }, close: { day: d, hour: 15, minute: 30 } })), weekdayDescriptions: ["Monday: 9:00 AM – 3:30 PM", "Tuesday: 9:00 AM – 3:30 PM", "Wednesday: 9:00 AM – 3:30 PM", "Thursday: 9:00 AM – 3:30 PM", "Friday: 9:00 AM – 3:30 PM", "Saturday: Closed", "Sunday: Closed"] } });
 const CALLS = [];
@@ -78,7 +83,8 @@ function fakeGoogle(u, init) {
     return ok({ places: SHOPS.filter((p) => TRIP.haversineKm(here, { lat: p.location.latitude, lng: p.location.longitude }) <= c.radius / 1000) });
   }
   if (/computeRoutes/.test(u)) { const b = JSON.parse(init.body); if (b.destination.address === "nowhere special") return ok({ routes: [] });
-    if (b.origin.location.latLng.latitude < 39) return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline(ROUTE_PTS.filter((p) => p.lng > -82.47)) }, distanceMeters: 30000, duration: "1500s" }] }); if (b.destination.address === "nowhere") return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline([{ lat: 46.5, lng: -84.3 }, { lat: 46.6, lng: -84.2 }]) }, distanceMeters: 12000, duration: "900s" }] }); return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline(ROUTE_PTS) }, distanceMeters: 640000, duration: "23400s" }] }); }
+    if (b.origin.location.latLng.latitude < 39) return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline(ROUTE_PTS.filter((p) => p.lng > -82.47)) }, distanceMeters: 30000, duration: "1500s" }] }); if (b.destination.address === "nowhere") return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline([{ lat: 46.5, lng: -84.3 }, { lat: 46.6, lng: -84.2 }]) }, distanceMeters: 12000, duration: "900s" }] }); /* v136: the fastest first (US-35), then the US-23 alternative with more along it */
+    return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline(ROUTE35) }, distanceMeters: 571000, duration: "20880s" }].concat(b.computeAlternativeRoutes ? [{ polyline: { encodedPolyline: encodePolyline(ROUTE_PTS) }, distanceMeters: 640000, duration: "23400s" }] : []) }); }
   if (/geocode\/json/.test(u)) { const south = /latlng=38\./.test(u); return ok({ results: [{ address_components: [{ long_name: south ? "Huntington" : "Novi", short_name: south ? "Huntington" : "Novi", types: ["locality", "political"] }, { long_name: south ? "West Virginia" : "Michigan", short_name: south ? "WV" : "MI", types: ["administrative_area_level_1", "political"] }] }] }); }
   const m = /\/v1\/places\/([^?]+)/.exec(u);
   if (m) { const p = SHOPS.concat([BLENKO]).find((x) => x.id === decodeURIComponent(m[1])); return ok(p ? { id: p.id, regularOpeningHours: p.regularOpeningHours, utcOffsetMinutes: -240 } : {}); }
@@ -88,7 +94,7 @@ function fakeGoogle(u, init) {
 /* ---- the worker's functions, with their helpers ---- */
 const SECRET = "s".repeat(40);
 const PRO = {};   /* cid -> paid Pro, the fake shop */
-const names = ["gKey", "gFetch", "gPlacesText", "gPlaceHours", "gRoute", "gTown", "nearNum", "tripCell", "nearAnswer", "nearRoute", "tripBuild", "tripRoute", "ppRoute",
+const names = ["gKey", "gFetch", "gPlacesText", "gPlaceHours", "gRoutes", "gTown", "nearNum", "tripCell", "nearAnswer", "nearRoute", "tripBuild", "tripRoute", "ppRoute",
   "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep",
   "b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessVerify", "sessMember", "pxHmac", "alSame", "alEmail", "sha16", "kvGet", "kvPut", "readJson", "vClean", "scrubPII", "ipKey", "ip6Parts", "cors", "json"];
 const pre = [constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
@@ -160,8 +166,12 @@ test("/trip: the reference route from Novi to Blenko, in drive order, the Centra
   assert.ok(!TRIP.hasStreet(JSON.stringify(b).replace(/1 Main St/g, "")), "no street address in the answer besides the shops' own");
   assert.ok(!/42\.48|83\.4755/.test(JSON.stringify(b.origin)), "the origin point is not echoed");
   assert.equal(b.route.km, 640); assert.equal(b.route.min, 390); assert.equal(b.empty, false);
+  assert.equal(b.route.slower, 42, "v136: the route with the most to see, 42 minutes longer than Google's fastest");
+  assert.equal(b.route.routes, 2);
+  assert.ok(!b.stops.find((s) => /Gaffney|Ellie Mills/.test(s.name)), "small shops are not anchors");
+  assert.deepEqual(b.more.map((m) => m.name), ["Gaffney's Treasures and Gifts"], "smaller shops along the way, listed apart");
   const searches = CALLS.filter((u) => /searchText/.test(u)).length;
-  assert.ok(searches >= 11 && searches <= 17, "one search a circle plus the destination: " + searches);
+  assert.ok(searches >= 20 && searches <= 60, "two routes, two queries a circle, shared circles asked once: " + searches);
   const again = await call(env, "GET", "/trip?" + NOVI + "&to=" + encodeURIComponent("blenko glass company, milton, wv") + "&day=2026-10-26");
   assert.equal(again.res.headers.get("X-Prowl-Cache"), "hit");
 });
@@ -317,6 +327,7 @@ test("the worker's own guards: routes are wired, the login links the account, th
   assert.match(INDEX, /url\.pathname\.startsWith\("\/finds\/"\) && request\.method === "GET"\) return findPhotoRoute/);
   assert.match(INDEX, /await tripAcctLink\(env, id, email\)/);
   assert.match(INDEX, /await tripSweep\(env\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v135"/);
-  for (const name of ["nearRoute", "tripRoute", "tripsRoute", "tripBuild"]) assert.ok(!/GOOGLE_MAPS_KEY|gKey\(env\)\s*\}/.test(indexFn(name).replace(/gKey\(env\)\)/g, "").replace(/!gKey\(env\)/g, "")), name + " only tests for the key");
+  assert.match(INDEX, /const WORKER_VERSION = "v136"/);
+  assert.equal((INDEX.match(/env\.GOOGLE_MAPS_KEY/g) || []).length, 1, "the key is read in one place (gKey) and never put in an answer");
+  for (const name of ["nearRoute", "tripRoute", "tripsRoute", "tripBuild", "ppRoute"]) assert.ok(!/GOOGLE_MAPS_KEY/.test(indexFn(name)), name + " never touches the key itself");
 });

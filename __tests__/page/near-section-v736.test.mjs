@@ -1,4 +1,4 @@
-// Page v7.38 / worker v132 (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). NEAR ME is its own screen
+// Page v7.39 / worker v132 (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). NEAR ME is its own screen
 // with two tabs: Around you (the shops around the phone, OPEN NOW / CLOSED worked out when the card is drawn) and Road
 // trip (one box, where to; the stops in drive order, one anchor a town with the rest nested, hours for the trip's day,
 // OPEN IN MAPS pinned, SHARE for the group, the Finds feed). The photo check gets SHARE THIS FIND while a trip is on.
@@ -29,7 +29,8 @@ const STOPS = [
 ];
 const DEST = card('D1', 'Blenko Glass Company', 'Milton, WV', 'Glass factory', H_BLENKO);
 const MAPS = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=Novi%2C%20MI&destination=Blenko%20Glass%20Company%2C%20Milton%2C%20WV&waypoints=Maumee%20Antique%20Mall%2C%20Maumee%2C%20OH%7CChillicothe%20Antique%20Emporium%2C%20Chillicothe%2C%20OH%7CCentral%20City%20Antiques%2C%20Huntington%2C%20WV';
-const trip = (d, empty) => ({ origin: { town: 'Novi, MI' }, dest: DEST, route: { km: 640, min: 390 }, day: d, weekday: new Date(d + 'T12:00:00Z').getUTCDay(), stops: empty ? [] : STOPS, maps: MAPS, empty: !!empty });
+const MORE = [card('M1', 'Gaffney\'s Treasures and Gifts', 'Marion, OH', 'Gift shop', H_DAILY), card('M2', 'Ellie Mills Mercantile', 'Jackson, OH', 'Home goods store', H_DAILY)];
+const trip = (d, empty) => ({ origin: { town: 'Novi, MI' }, dest: DEST, route: { km: 640, min: 390, slower: 42, routes: 2 }, day: d, weekday: new Date(d + 'T12:00:00Z').getUTCDay(), stops: empty ? [] : STOPS, more: empty ? [] : MORE, maps: MAPS, empty: !!empty });
 const VIEW = (d) => Object.assign(trip(d), { id: 'tabcdefghi', mine: true, org: true, members: 1, closes: '2026-12-01T00:00:00.000Z', finds: 0 });
 const FINDS = [{ id: 'fabcdefghi', by: '', name: 'Hark', at: '2026-10-26T18:00:00.000Z', item: 'Blenko 384 decanter, tangerine', price: '$45', verdict: 'FAIR', fair: '$40–$70', stop: 'Central City Antiques', town: 'Huntington, WV', photo: '/finds/tabcdefghi/fabcdefghi.jpg?e=1&s=abc' }];
 const J = (j, status) => Promise.resolve({ ok: !status || status < 400, status: status || 200, json: () => Promise.resolve(j), text: () => Promise.resolve(JSON.stringify(j)) });
@@ -299,7 +300,7 @@ test('the photo check: SHARE THIS FIND while a trip is on, one tap to the trip\'
   await none.close(); await old.close();
 });
 
-test('v7.38: FROM HERE rebuilds from where the phone is now; on your kept trip the worker saves it; Refresh re-reads Around you', async () => {
+test('v7.39: FROM HERE rebuilds from where the phone is now; on your kept trip the worker saves it; Refresh re-reads Around you', async () => {
   const calls = [];
   const p = loadPage({ storage: Object.assign({}, DEN, { 'prowl.session': sess() }), fetchImpl: nearFetch(calls), beforeLoad: (w) => phone(w) });
   await tick(30);
@@ -337,7 +338,7 @@ test('v7.38: FROM HERE rebuilds from where the phone is now; on your kept trip t
   await p.close();
 });
 
-test('v7.38: a Prowl Alerts sign-in (email code) shares trips too, with its email and token on the call', async () => {
+test('v7.39: a Prowl Alerts sign-in (email code) shares trips too, with its email and token on the call', async () => {
   const calls = [];
   const p = loadPage({ storage: Object.assign({}, DEN, { 'prowl.alertTok': 'tok-0123456789abcdef', 'prowl.alertEmail': 'matt@example.com', 'prowl.alertPro': '1' }), fetchImpl: nearFetch(calls), beforeLoad: (w) => phone(w) });
   await tick(60);
@@ -360,7 +361,7 @@ test('v7.38: a Prowl Alerts sign-in (email code) shares trips too, with its emai
   await p.close();
 });
 
-test('v7.38: the kinds to look for are chips on both tabs, and Skip takes a stop out of the list and the Maps link', async () => {
+test('v7.39: the kinds to look for are chips on both tabs, and Skip takes a stop out of the list and the Maps link', async () => {
   const calls = [];
   const p1 = loadPage({ storage: DEN, fetchImpl: nearFetch(calls), beforeLoad: (w) => phone(w) });
   await tick(30);
@@ -411,8 +412,44 @@ test('v7.38: the kinds to look for are chips on both tabs, and Skip takes a stop
   await p.close();
 });
 
-test('the page says v7.38, and keeps every old localStorage key (prowl.trip is the one new one)', () => {
-  assert.match(PAGE, /var PROWL_VERSION='v7\.38'/);
+test('v7.39: the road with the most to see is said; smaller shops sit apart and never in Maps; more than nine anchors become legs', async () => {
+  const calls = [];
+  const many = Array.from({ length: 11 }, (_, i) => card('L' + i, 'Stop ' + i, 'Town ' + i + ', OH', 'Antique mall', H_DAILY, { nested: [] }));
+  const fx = nearFetch(calls);
+  const p = loadPage({ storage: DEN, fetchImpl: (u, o) => (/to=eleven/.test(String(u)) ? J(Object.assign(trip('2026-10-26'), { stops: many, more: [] })) : fx(u, o)), beforeLoad: (w) => phone(w) });
+  await tick(30);
+  p.$('#otp-localBtn').click(); await tick(60);
+  p.$('#otp-nrT2').click();
+  p.$('#otp-nrTo').value = 'Blenko Glass Company, Milton, WV';
+  p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
+  await tick(120);
+  assert.equal(p.$('#otp-nrOut .nr-alt').textContent, 'The road with the most to see, 42 min longer than the fastest drive.');
+  const more = p.$('#otp-nrOut .nr-more');
+  assert.ok(more, 'the smaller shops');
+  assert.equal(more.querySelector('summary').textContent, 'Smaller shops along the way (2)');
+  assert.deepEqual([...more.querySelectorAll('.nr-n')].map((e) => e.textContent), ['Gaffney\'s Treasures and Gifts', 'Ellie Mills Mercantile']);
+  assert.equal(more.querySelector('.nr-skip'), null, 'nothing to skip there');
+  assert.doesNotMatch(p.$('#otp-nrMaps').href, /Gaffney/, 'never in the Maps link');
+  assert.equal(p.$$('#otp-nrLegs a').length, 1); assert.equal(p.$('#otp-nrMaps').textContent, 'OPEN IN MAPS');
+  p.$('#otp-nrTo').value = 'eleven';
+  p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
+  await tick(120);
+  const legs = p.$$('#otp-nrLegs a');
+  assert.deepEqual(legs.map((a) => a.textContent), ['LEG 1', 'LEG 2']);
+  const l1 = new URL(legs[0].href), l2 = new URL(legs[1].href);
+  assert.equal(l1.searchParams.get('origin'), 'Novi, MI');
+  assert.equal(l1.searchParams.get('waypoints').split('|').length, 9);
+  assert.equal(l1.searchParams.get('destination'), 'Stop 9, Town 9, OH', 'leg 1 ends at a stop');
+  assert.equal(l2.searchParams.get('origin'), 'Stop 9, Town 9, OH', 'leg 2 starts there');
+  assert.deepEqual(l2.searchParams.get('waypoints').split('|'), ['Stop 10, Town 10, OH']);
+  assert.equal(l2.searchParams.get('destination'), 'Blenko Glass Company, Milton, WV');
+  assert.equal(legs[0].id, 'otp-nrMaps');
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test('the page says v7.39, and keeps every old localStorage key (prowl.trip is the one new one)', () => {
+  assert.match(PAGE, /var PROWL_VERSION='v7\.39'/);
   assert.match(PAGE, /var TRIP_KEY='prowl\.trip'/);
   assert.match(PAGE, /var CATS_KEY='prowl\.nearCats',SKIP_KEY='prowl\.nearSkip'/);
   for (const k of ['prowl.v36', 'owlTwigSearches', 'prowl.likes', 'prowl.maps', 'prowl.salesPlace', 'prowl.session']) assert.ok(PAGE.includes("'" + k + "'") || PAGE.includes(k), k);
