@@ -86,9 +86,12 @@ export function huntSimilar(a, b) {
    words: "blue glaze" vs "green glaze" stays apart), the same numbers (sizes, years) and the same lot-ness (a pair is
    not the single). Never two listings on the same site. */
 const HUNT_LOT = /\b(lot|pair|set of|\d+\s*(pc|pcs|pieces))\b/i;
+/* v147: "180.00 CAD" and "$129.00" are not comparable numbers (the owner's Etsy lamp in Canadian dollars) */
+function huntCur(p) { const m = /\b([A-Z]{3})\s*$/.exec(String(p || "").trim()); return m ? m[1] : "USD"; }
 function huntNums(t) { return (String(t || "").match(/\d+/g) || []).sort().join(","); }
 export function huntSamePiece(a, b) {
   if (!a || !b || a.src === b.src || !a.priceN || !b.priceN || !huntSimilar(a.key, b.key)) return false;
+  if (huntCur(a.price) !== huntCur(b.price)) return false;   /* v147 */
   const gap = Math.max(a.priceN, b.priceN) / Math.min(a.priceN, b.priceN);
   if (gap <= 1.06) return true;
   if (gap > HUNT_XPOST_GAP) return false;

@@ -1,15 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.42 / v148).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.43 / v149).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.42** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v148** | |
+| Page | **v7.43** | 399,042 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v149** | |
 
 Recently shipped, newest first:
+
+- **v7.43 / v149: cross-posts are "similar", not "the same piece"** (the owner, on an Etsy panther lamp with a shade at
+  180.00 CAD that Prowl called the same as a $129 Poshmark TV lamp: "change to a similar one is on poshmark, go check it
+  out, vs saying it is the same"). A title can't prove it is the same piece, so the card says "Similar on Poshmark
+  $129.00" and the popup "A similar listing is on Poshmark … It may be the same piece or a lookalike: compare the
+  photos, size and marks." Worker `huntSamePiece`: prices in different currencies are never matched. Tests:
+  `worker/__tests__/hunt.test.mjs`, `__tests__/page/cross-post-v734.test.mjs`, `hunt-picks-v706.test.mjs`.
 
 - **v7.42 / v148: miles and mph, nowhere a kilometre** (the owner: "don't use km or km/hr, use miles and mph"). The
   worker measures everything in miles now: `haversineMi`, `nearestOnRoute` answers `mi`, the detour speed is 37 mph
@@ -18,6 +25,7 @@ Recently shipped, newest first:
   metres (`MI_M`). `/trip` sends `route.mi` (and `how.routes[].mi`); the page reads `mi`, and a trip saved before
   this version with `km` still draws (`nrMiles` converts). Cache keys v=9. Tests and docs say miles too. Tests:
   `worker/__tests__/trip.test.mjs`, `worker/__tests__/trips.test.mjs`, `__tests__/page/near-section-v736.test.mjs`.
+
 - **v7.40: one Filter sheet beside the search box** (the owner, after a look at how Shop, Vinted, Walmart, Airbnb,
   Fiverr and Tock draw their filters on Mobbin: "this is perfect, build it"). A sliders button beside the search box,
   with a count badge, opens the page's bottom sheet (`openSheet`) with four rows that show their value while closed:
@@ -784,7 +792,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.43, worker v149** (PR #194 holds v7.41 / v147). Claim one here when you start.
+Next free numbers: **page v7.44, worker v150**. Claim one here when you start.
 
 ## What's next
 
