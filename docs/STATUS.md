@@ -1,6 +1,6 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.57 / v156).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.57 / v156; the SGW digest removed).
 
 ## Live
 
@@ -11,6 +11,12 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.57 /
 
 Recently shipped, newest first:
 
+- **The daily ShopGoodwill digest is gone** (2026-10-21, the owner: "Delete it"). `.github/workflows/sgw-digest.yml`
+  scraped ShopGoodwill's "Ceramic Panther" search in a headless browser every morning and committed `sgw-digest.json`
+  straight to `main`; nothing has read that file since the panel it fed was removed. It cost Actions minutes daily,
+  fell under the same ShopGoodwill terms that park the sniper ("any ... script ... or other automated means"), and
+  was the only thing pushing to `main` outside a PR, which a required `build` check would have rejected. Removed the
+  workflow, `sgw_scrape.py` and `sgw-digest.json`. The worker's live ShopGoodwill results are unchanged.
 - **v7.57: near me means where you are; Road trip opens quietly and scrolls on an iPhone** (the owner, in Findlay with
   48377 saved: "This says near me but opens Google at zip code. It should be near me or zip. And road trip does not
   scroll on apple. When I open road trip the keyboard opens by default.").
