@@ -66,6 +66,15 @@ Facebook Marketplace finds from Prowl-the-agent's morning sweep of the locked hu
 each hunt's last 7 days; the page hides a sweep more than 2 days old, and keeps what it showed when a refresh fails.
 
 
+## Facebook watches (page v7.58, worker v157, extension 1.7.0)
+
+Each hunt in Den > Hunts shows its Facebook watch (`fwLine`, `fwEditor`; worker `GET|POST /watches`). The watches live
+on the worker and run in the member's own browser through the extension (`extension/watcher.js`); the page never asks
+Facebook for anything. Signed in means the store session or the Prowl Alerts pair (`fwH`, as group trips). The
+extension marks the page with `data-prowl-ext`; the page talks to it with `postMessage({ prowl: 'session' |
+'watches-changed' })`. Watch finds join Flock in `flockPool` (source `fbwatch`); a Flock discard of one posts
+`/watches/hide`, and the worker's `hidden` list joins `prowl.discarded`. No new localStorage key.
+
 ## CTBids (page v6.68, worker v96)
 
 CTBids (Caring Transitions' online estate sale auctions) is marketplace 29, in BOLO next to the other estate sales and

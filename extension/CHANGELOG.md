@@ -2,6 +2,11 @@
 
 Versions follow `extension/manifest.json`. Bump `version` there in the same change as any edit under `extension/`; the workflow builds the zip and publishes a GitHub release named `ext-vX.Y.Z` when it lands on main.
 
+## 1.7.0
+- Facebook watches. Turn a watch on for a saved hunt in Prowl's Den, and this browser checks Facebook Marketplace for it on its schedule (Weekly, Daily, or Hot every 30 minutes) while the browser is open, using your own Facebook login. Only listings Prowl has not seen for that watch are sent to your Prowl account, which emails the new ones and shows them in Flock.
+- New permissions: `alarms` (to schedule the checks) and the `www.facebook.com` site (to open the watch's Marketplace searches). No cookies permission and no browsing history: the extension never reads, keeps or sends a Facebook cookie, password or account id. If Facebook is not logged in, the check waits and tries again later.
+- The Prowl page now knows the extension is installed, so the Den can say whether watches can run in this browser.
+
 ## 1.6.4
 - Depop links are always the plain Depop search link. The Rakuten affiliate link, its publisher ID and the switch that read it from the Prowl admin area are removed, and the popup no longer has a commission note.
 

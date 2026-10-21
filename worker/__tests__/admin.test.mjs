@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHash, createHmac } from "node:crypto";
 import { adminFetch, signSession, verifySession, memberId, scrubHunt, memberSummary, memberDetail, giftActive, giftPro, looksPersonal } from "../admin.js";
+import { watchList } from "../watch.js";
 
 const KEY = "test-admin-key-0123456789";
 const ORIGIN = "https://prowl.example.workers.dev";
@@ -26,7 +27,8 @@ function fromIndex(names, deps = {}) {
 }
 const IX = fromIndex(["giftHash", "proList", "proListHas", "proListCount", "alEmail"]);
 /* v83: the shared purge, as index.js has it */
-const PURGE = fromIndex(["pushHash", "pushId", "pushList", "pushPurge", "alPurge"], { kvGet: async (env, k, d) => { const v = await env.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; }, console: { log() {} } });
+/* v157: with the store account's Facebook watches */
+const PURGE = fromIndex(["pushHash", "pushId", "pushList", "pushPurge", "sha16", "acctHash", "watchReg", "watchPurge", "alPurge"], { kvGet: async (env, k, d) => { const v = await env.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; }, watchList, console: { log() {}, error(...a) { throw new Error(a.join(" ")); } } });
 const giftHashOf = email => createHash("sha256").update("prowl-gift|" + email).digest("hex");
 
 /* ---------- fakes ---------- */

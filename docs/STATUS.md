@@ -1,16 +1,57 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.57 / v156).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.58 / v157 / extension 1.7.0).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.57** | 398,950 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v156** | |
+| Page | **v7.58** | 398,899 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v157** | |
 
 Recently shipped, newest first:
 
+- **v7.58 / v157 / extension 1.7.0: Facebook watches** (the spec, `docs/update-2026-10-21/prowl-facebook-watches-spec.md`).
+  A watch is a saved hunt plus 1 to 3 places, an optional price ceiling and skip-words, and a cadence. The watcher's
+  own browser checks it through the Prowl extension with their own Facebook login; the worker never asks Facebook for
+  anything and never sees a Facebook cookie, password or account id (the only thing reported is logged in or not).
+  - Worker (`worker/watch.js`, pure; routes in `index.js`): `GET|POST /watches`, `POST /watches/hide`, `POST
+    /fb-ingest` with a sign-in and no `X-Prowl-Ingest` (one check cycle; the sweep's keyed ingest is unchanged), `/watch-hide` (the email's one-tap Hide: the page posts itself, so a mail scanner hides nothing) and
+    `/watch-unsub`. Signed in means as group trips take it (`watchWho`, tripWho's rules without its `acct:` write): the
+    store session or the Prowl Alerts email and token, so a member who signed in with the emailed code needs no store
+    login (the page has had no store-login link since v6.86). The account id is the customer id when linked, else
+    `e<hash of the address>`; a code-only member who later links a store account starts a fresh list (group trips do
+    the same). Plans: Free 1 watch at Weekly; Pro 25 at Daily, 3 Hot. A plan that shrank keeps the oldest watch at
+    Weekly and rests the rest (nothing deleted). Baseline: a new watch, or new filters (term, places, ceiling,
+    skip-words), takes its first check silently. Dedupe: KV seen state plus a Caps claim per listing, so two browsers,
+    a race or a retry alert once. Seen ids age out after 30 days. Email: Hot one per new listing (8 a cycle, more join
+    the digest), Daily/Weekly one digest per cycle, to the Prowl Alerts address linked to the store account; each card
+    has the photo, title, price, city, the plain Facebook link, the price read and Hide. The price read is honest by
+    construction: the median of the asking prices the watcher's own searches just returned (5 at least, else "too
+    few to judge"), labeled "asking, not sold", a "below the usual asking price" line only when it is, the
+    condition-not-priced-in flag (title says chipped, cracked...) and the stale flag (Facebook says it was listed 14+
+    days ago). No AI. KV: `watch:<cid>`, `fbseen:<cid>:<wid>`, `fbfinds:<cid>:<wid>`, `fbhide:<cid>`; Delete my account
+    purges them. Writes: one per check cycle, plus one per watch that saw something new.
+  - Extension 1.7.0 (`extension/watcher.js` + `service-worker.js`): permissions `alarms` and host
+    `https://www.facebook.com/*` (no cookies, no history). Alarms per watch at its next check; Hot every 30 minutes
+    +/- 5 per watch; Daily on the first session of the day; Weekly on the first session on or after Monday; catch-up on
+    browser start. Not logged in: that check skips and retries (Hot 30 minutes, others 3 hours); the Den says "waiting
+    for Facebook login" after two. Reads the listings out of the Marketplace search page's JSON; reports only what the
+    worker's digest has not seen. `content.js` hands over the page's sign-ins as they are (store session and Prowl
+    Alerts pair; signed out on the page stops the watches) and marks the page `data-prowl-ext`.
+  - Page v7.58 (Den > Hunts): each hunt's watch (off, or tier, places, ceiling, skip-words, "checked 20 minutes ago",
+    "3 held back by your filters"), one-tap Hot with the 3-Hot limit beside it, an editor (Off / Weekly / Daily / Hot,
+    places, ceiling, skip-words, watch emails on/off). Signed out: one line with Prowl's own sign-in. No extension: "Install
+    the Prowl extension to turn this watch on" with the link; a phone says watches run from a computer. Finds join Flock
+    under their hunt; a Flock discard of one hides it on the worker; email Hides come back into `prowl.discarded`. No new
+    localStorage key.
+  - Docs: the store listing (`docs/chrome-store-listing.md`, permission justifications and the plain statement of what
+    the extension does) and the privacy item (`docs/privacy-policy-prowl-section.html`, "Facebook watches").
+  - Tests: `worker/__tests__/fb-watch.test.mjs`, `worker/__tests__/fb-watch-routes.test.mjs`,
+    `__tests__/extension/watcher.test.mjs`, `__tests__/page/fb-watches-v758.test.mjs`.
+  - **Not checked against real Facebook from here.** The reader follows the shape of Marketplace's search page
+    (listing objects with `marketplace_listing_title`, the viewer id "0" when logged out) and is tested on a fixture of
+    that shape. The first real check needs a logged-in Chrome with the 1.7.0 build (see Waiting on Matt).
 - **v7.57: near me means where you are; Road trip opens quietly and scrolls on an iPhone** (the owner, in Findlay with
   48377 saved: "This says near me but opens Google at zip code. It should be near me or zip. And road trip does not
   scroll on apple. When I open road trip the keyboard opens by default.").
@@ -919,7 +960,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.58, worker v157**. Claim one here when you start.
+Next free numbers: **page v7.59, worker v158, extension 1.7.1**. Claim one here when you start.
 
 ## What's next
 
@@ -933,6 +974,21 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 (the piece, then its mark or back), then community-lite.
 
 ## Waiting on Matt
+
+- **Facebook watches (v7.58 / v157 / extension 1.7.0) need three things before members see them work:**
+  1. Load the 1.7.0 build in your own Chrome (chrome://extensions, Developer mode, Load unpacked, the `extension/`
+     folder), log in to Facebook there, open Prowl signed in with your store account, and turn on a watch in Den >
+     Hunts. Its first check should say "Taking its first look", then "Checked just now", with no email. (The Den asks
+     the worker on opening, so close and reopen it to see each step.) This is the
+     first time the Marketplace reader meets the real page: if the watch says "waiting for Facebook login" while you are
+     logged in, or finds nothing for a hunt Facebook clearly has, tell Claude.
+  2. Upload `prowl-extension-1.7.0.zip` (the Extension workflow's release) to the Chrome Web Store with the updated
+     listing text and permission justifications in `docs/chrome-store-listing.md`, then send Claude the listing's link:
+     the page's install link (`FW_EXT_URL`) is a store search until then.
+  3. Paste the new "Facebook watches" item from `docs/privacy-policy-prowl-section.html` into the store's privacy
+     policy (before "Prowl Pro") and change its date.
+  Costs to know: each Hot watch writes KV about 48 times a day (one per check cycle), and each new Hot listing is one
+  Resend email. On the free Workers and Resend plans that is fine for a handful of members, not for hundreds.
 
 - **NEAR ME (v7.36 / v132) needs three things in Cloudflare before it does more than the old Maps links:**
   1. Done 2026-10-20: the worker secret **GOOGLE_MAPS_KEY** (Places API (New), Routes API, Geocoding API; API

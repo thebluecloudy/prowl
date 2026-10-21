@@ -11,10 +11,11 @@ function fakeChrome() {
     runtime: { onInstalled: ev('installed'), onMessage: ev('message'), onStartup: ev('startup'), getURL: (p) => p },
     contextMenus: { removeAll: async () => { menus.length = 0; }, create: (o) => { menus.push(o); }, onClicked: ev('clicked') },
     omnibox: { onInputStarted: ev('omniStart'), onInputChanged: ev('omniChange'), onInputEntered: ev('omniEnter'), setDefaultSuggestion() {} },
-    storage: { local: { get: async () => ({}), set: async () => {} } },
+    storage: { local: { get: async () => ({}), set: async () => {}, remove: async () => {} }, session: { get: async () => ({}), set: async () => {} } },
     tabs: { create: async (o) => o, query: async () => [], group: async () => 1 },
     tabGroups: { update: async () => {} },
     action: { setBadgeText() {} },
+    alarms: { create() {}, clear: async () => true, get: async () => null, getAll: async () => [], onAlarm: ev('alarm') },   // 1.7.0: Facebook watches
   };
   return { chrome, listeners, menus };
 }
@@ -45,6 +46,7 @@ test('service worker: no Amazon menu item while the switch is off', async () => 
   const ids = f.menus.map((m) => m.id);
   assert.ok(ids.includes('prowl-sold'));
   assert.ok(!ids.includes('prowl-amazon'));
+  await new Promise((r) => setTimeout(r, 20));   // 1.7.0: the first watch cycle onInstalled starts finishes first
   delete globalThis.chrome;
 });
 

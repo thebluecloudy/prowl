@@ -1,4 +1,4 @@
-# Prowl extension: Chrome Web Store listing (v1.5.0)
+# Prowl extension: Chrome Web Store listing (v1.7.0)
 
 Source is in `extension/`. Build the upload with: `cd extension && zip -r ../prowl-extension-X.Y.Z.zip . -x '.*'`
 
@@ -22,6 +22,10 @@ With Prowl Pro ($7 a month, first month free):
 - Field Guides: a researched collector's guide to a maker, line or kind of object.
 - Your Daily Prowl and Prowl's photo check, one click away.
 
+Facebook watches (with a Prowl account):
+- Turn on a watch for a saved hunt in Prowl, and this extension runs your saved Facebook Marketplace searches in your browser and sends matching listings to your Prowl account. Prowl then tells you only about listings that are new since the watch started, by email and in the app.
+- Watches check while your browser is open: weekly, daily, or every 30 minutes for a Hot watch. They use your own Facebook login in this browser. The extension never reads, stores or sends your Facebook password, cookies or account details.
+
 To use the Pro features, sign in once on the Prowl page (Den, Settings, Prowl Alerts). The extension unlocks by itself. The free features need no account.
 
 Prowl is an independent tool. It is not affiliated with, endorsed by, or sponsored by the marketplaces it searches. All trademarks belong to their owners.
@@ -33,19 +37,21 @@ affiliate claim. -->
 Shopping
 
 ## Single purpose
-Search vintage marketplaces for the text the user types or selects, and show live listings for it.
+Search vintage marketplaces for the text the user types or selects, show live listings for it, and keep checking the user's saved searches for new listings (Facebook watches).
 
 ## Permission justifications
 - contextMenus: adds the right-click "Prowl" search for selected text and the image-identify item.
 - tabGroups: groups the marketplace tabs opened by "every marketplace" into one named, collapsible group.
-- storage: keeps the last search for the browser session and the member sign-in used to unlock Pro.
+- storage: keeps the last search for the browser session, the member sign-in used to unlock Pro, and the Prowl sign-in that Facebook watches report with.
+- alarms (1.7.0): wakes the extension when a Facebook watch is due (weekly, daily, or every 30 minutes for a Hot watch), and once an hour to pick up watches set on another device.
+- Host permission https://www.facebook.com/* (1.7.0): opens the user's own saved Facebook Marketplace searches for their watches, in their browser and with their own Facebook login, and reads the listings on those search pages. It does not use the cookies permission and never reads, stores or sends Facebook cookies, passwords or account details; the only thing it reports about Facebook is whether the user was logged in when a check came due.
 - Host permission https://prowl.thebluecloud.workers.dev/*: Prowl's own search server, which returns live listings and confirms Prowl Pro membership.
-- Content script on owlandtwigvintage.com/pages/prowl*: reads the Prowl Alerts sign-in (email and token) that the Prowl page already holds, so a Pro member does not sign in twice. It reads nothing else.
+- Content script on owlandtwigvintage.com/pages/prowl*: reads the Prowl sign-in that the Prowl page already holds (the Prowl Alerts email and token, and the store sign-in key), so a member does not sign in twice and watches stop when they sign out there, and marks the page so Prowl knows the extension is installed. It reads nothing else.
 - omnibox keyword "prowl": address-bar search.
 
 ## Data use (privacy practices tab)
-- Collected: search words the user types or selects and chooses to search; the Prowl Alerts email and token, stored locally to confirm Prowl Pro.
-- Sent only to Prowl's server (prowl.thebluecloud.workers.dev), hosted by Cloudflare. Search words get live listings. The email and token confirm membership.
+- Collected: search words the user types or selects and chooses to search; the Prowl Alerts email and token, stored locally to confirm Prowl Pro; for Facebook watches, the Prowl sign-in (stored locally) and the Marketplace listings the user's own saved searches return (listing id, title, price, photo link, city), sent to the user's Prowl account. No Facebook credentials, cookies or account details.
+- Sent only to Prowl's server (prowl.thebluecloud.workers.dev), hosted by Cloudflare. Search words get live listings. The email and token confirm membership. A watch's new listings are stored against the user's Prowl account until the watch is deleted.
 - Not sold. Not used for advertising or unrelated purposes. No AI service is used (the extension asks the server to skip AI sorting).
 - No remote code. No analytics or trackers in the extension.
 
@@ -54,6 +60,7 @@ Use your Shopify privacy policy, which now has the section "Prowl, Prowl Alerts 
 https://owlandtwigvintage.com/policies/privacy-policy
 
 ## Test instructions (Privacy practices tab)
+Facebook watches need a Prowl account signed in on the Prowl page (owlandtwigvintage.com/pages/prowl, Den, Hunts, "Watch on Facebook") and a Facebook login in the same browser.
 No account is needed for the free features. Click the toolbar icon, type "ceramic panther" and press Search. The buttons below open the search on every marketplace in tabs, eBay sold prices and Google Images. Highlight text on any page and right-click to see the Prowl menu. The Pro features (live listings, Field Guide, Daily, photo check) need a Prowl Pro account; the toolbar shows how to sign in. Without one they are hidden and the popup explains Prowl Pro.
 
 ## Assets you need to provide

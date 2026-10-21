@@ -14,7 +14,8 @@ const LIVE = table({ "/": "shopgoodwill", "/ebay": "ebay", "/etsy": "etsy", "/ch
   "/salvation": "salvation" });   /* v80 */
 const NAMED = table({ "/verdict": "ai:fairprice", "/appraise": "ai:photo", "/research": "ai:research", "/guide": "ai:guide",
   "/where": "ai:where", "/hunt-check": "ai:huntcheck", "/shop-picks": "shop:picks", "/item": "item:popup",   /* v81: item */
-  "/fb-finds": "fb:finds", "/fb-ingest": "fb:ingest" });   /* v94: the Facebook sweep */
+  "/fb-finds": "fb:finds", "/fb-ingest": "fb:ingest",   /* v94: the Facebook sweep */
+  "/watches": "fb:watches", "/watches/hide": "fb:hide", "/watch-hide": "fb:hide", "/watch-unsub": "fb:unsub" });   /* v157: Facebook watches */
 const ALERTS = new Set(["subscribe", "confirm", "signin", "in", "status", "prefs", "mail", "delete", "move", "move-confirm", "unsub", "test", "gift", "giftstop", "likes", "code", "verify"]);   /* v85: likes, v108: code, verify */
 
 export function routeKey(pathname) {

@@ -19,6 +19,12 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v157: 2026-10-21. Facebook watches (docs/update-2026-10-21/prowl-facebook-watches-spec.md, watch.js): a saved hunt
+ *         plus metros, a price ceiling and skip-words, checked by the watcher's own browser through the Prowl extension
+ *         (their own Facebook login; this worker never asks Facebook for anything). GET|POST /watches, POST
+ *         /watches/hide, POST /fb-ingest with a sign-in as group trips take it (the sweep keeps X-Prowl-Ingest), /watch-hide and
+ *         /watch-unsub from the emails. Baseline first, then only new listings that pass the filters alert: Hot one
+ *         email each, Daily and Weekly one digest a cycle, each with the asking-price read and a one-tap Hide.
  *   v156: 2026-10-21. Group trips' POSTs reach tripsRoute: the "GET only" guard sat above its dispatch, so keeping a
  *         trip, adding a member, closing, rebuilding from here and posting a find were all 405 since v132 (the owner:
  *         "Group button doesn't work").
@@ -529,7 +535,7 @@ import { wkAdd, wkFresh, wkCur, letterShorters, letterBuild, letterText, letterQ
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v156";
+const WORKER_VERSION = "v157";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -5699,6 +5705,8 @@ async function alPurge(env, email, sub) {
     if (c && c.email === email) { await kv.delete("cid:" + cid); gone.push("cid:"); }
     await kv.delete("pro:cid:" + cid); gone.push("pro:cid:");
   }
+  /* v157: the account's Facebook watches, under its customer id and under its address's id (a member without one) */
+  try { if (cid) await watchPurge(env, cid); await watchPurge(env, "e" + await acctHash(email)); gone.push("watch:"); } catch (e) { console.error("watch purge", String(e && e.message || e)); }
   console.log("purge " + gone.join(" "));
   return gone;
 }
@@ -6439,6 +6447,245 @@ async function fbFinds(request, env, url, origin) {
   return json({ term: v.term, updated: v.updated, items: v.items }, 200, origin, hdr);
 }
 
+/* ---------- v157: Facebook watches ----------
+   The spec of 2026-10-21 (docs/update-2026-10-21/prowl-facebook-watches-spec.md); the logic is in watch.js (pure).
+   The watcher's own browser makes every Facebook request, through the Prowl extension and their own Facebook login.
+   This worker never asks Facebook for anything and never sees a Facebook cookie, password or account id: it keeps the
+   watches, diffs again, and sends the alerts. Who is asking is decided as for group trips (tripWho, v135): a store
+   session (Authorization: Bearer, v82) or a Prowl Alerts member (X-Prowl-Email + X-Prowl-Tok), so a member who signed
+   in with the emailed code needs no store login. Everything is keyed by that account id: the store customer id when
+   there is one, else "e" and the address's hash (the page and the extension send both sign-ins they hold).
+     GET  /watches[?seen=1][&finds=1]   { plan, mail, email, watches, hidden, finds? }. seen=1 (the extension) adds each
+                                        watch's seen digest; finds=1 (the page) each watch's finds for Flock and the Den.
+                                        email: whether a Prowl Alerts address is linked (the address is never sent)
+     POST /watches { id?, term | goal, metros, ceiling, skip, tier }   add or change one watch; tier "off" removes it
+     POST /watches { mail }             watch emails on (true) or off (false)
+     POST /watches/hide { id, on }      the page's discard of a watch find (Flock's ✕): hidden everywhere, emails too
+     POST /fb-ingest  a sign-in as above, no X-Prowl-Ingest   { results: [{ watch, gen, status, items, comps }] }
+                                        one check cycle from the extension. status "ok", "nologin" (only that: nothing
+                                        else about the Facebook account) or "error". items: the listings new to the
+                                        extension's digest (all of them on a baseline); comps: the asking prices of
+                                        everything its searches returned. -> { results: [{ watch, baseline, fresh,
+                                        finds, filtered }], mailed }. The sweep's own route (X-Prowl-Ingest) is fbIngest.
+     GET|POST /watch-hide?c&i&s[&undo=1]   an email's one-tap Hide (signed). The GET page posts itself, so a mail
+                                        scanner that only fetches links hides nothing
+     GET|POST /watch-unsub?c&s          watch emails off (one-click List-Unsubscribe POST, or the button)
+   KV: watch:<cid> { watches, mail }; fbseen:<cid>:<wid> { g, at, ids }; fbfinds:<cid>:<wid> { items }; fbhide:<cid>
+   { ids } (the persistent discard list: the page folds it into prowl.discarded, Flock's own). Seen ids age out after
+   30 days. Writes: one registry write per check cycle, one per watch that saw a new listing, one per watch with a
+   find. A listing reported twice (two browsers, a race, a retry) alerts once: KV's seen state, plus a Caps claim per
+   listing that is atomic while KV catches up.
+   Email (Resend), to the Prowl Alerts address of the account (the member's own, or the one linked to the store
+   account by cid:) while watch emails are on. Hot: one
+   email per new listing, on the check that found it (WATCH_HOT_EMAILS a cycle; any more join the digest). Daily and
+   Weekly: one digest per check cycle. A plan that shrank (Pro ended) keeps the oldest watch at Weekly; the rest wait. */
+const WATCH_INGEST_PER_DAY = 600, WATCH_GETS_PER_DAY = 2000, WATCH_POSTS_PER_DAY = 300, WATCH_BODY_MAX = 262144, WATCH_HOT_EMAILS = 8;
+const WATCH_SEEN_TTL = 60 * 86400, WATCH_FINDS_TTL = 31 * 86400;
+const WATCH_HDR = { "Cache-Control": "private, no-store" };
+async function watchReg(env, cid) { const v = await kvGet(env, "watch:" + cid, null); return { watches: watchList(v), mail: !(v && v.mail === false) }; }
+async function watchRegPut(env, cid, reg) { await kvPut(env, "watch:" + cid, { watches: reg.watches, mail: reg.mail }); }
+async function watchHid(env, cid) {
+  const v = await kvGet(env, "fbhide:" + cid, null);
+  return v && Array.isArray(v.ids) ? v.ids.map(String).filter(x => /^\d{5,20}$/.test(x)).slice(-WATCH_HIDE_MAX) : [];
+}
+async function watchHideSet(env, cid, id, on) {
+  const ids = (await watchHid(env, cid)).filter(x => x !== id);
+  if (on) ids.push(id);
+  await kvPut(env, "fbhide:" + cid, { ids: ids.slice(-WATCH_HIDE_MAX) });
+  return ids.length;
+}
+/* the account asking, { id, sub }, by tripWho's rules but without its acct: write (a check cycle would pay it each time) */
+async function watchWho(request, env) {
+  const cid = await sessVerify(request, env);
+  if (cid) return { id: cid, sub: null };
+  const email = alEmail(request.headers.get("X-Prowl-Email") || ""), t = String(request.headers.get("X-Prowl-Tok") || "");
+  if (!email || !t) return null;
+  const sub = await kvGet(env, "sub:" + email, null);
+  if (!sub || !alSame(t, String(sub.tok || ""))) return null;
+  const id = await tripMemberIdFor(sub, email);
+  return tripIdOk(id) ? { id: id, sub: sub } : null;
+}
+async function watchPro(env, request, who) { try { return await tripPro(env, request, who); } catch (e) { return false; } }
+/* the Prowl Alerts member the emails go to: the member who asked, or the one linked to the store account */
+async function watchSub(request, env, who) { return who.sub || await sessMember(request, env); }
+async function watchSig(env, kind, cid, id) { const k = sessKey(env); return k ? (await pxHmac(k, "prowl-watch-v1:" + kind + ":" + cid + ":" + id)).slice(0, 32) : ""; }
+async function watchUnsubUrl(env, cid) { return WORKER_BASE + "/watch-unsub?c=" + cid + "&s=" + await watchSig(env, "unsub", cid, "all"); }
+function watchFbUrl(id) { return "https://www.facebook.com/marketplace/item/" + id + "/"; }
+function watchView(w) {
+  return { id: w.id, term: w.term, metros: w.metros, ceiling: w.ceiling, skip: w.skip, tier: w.tier, runs: w.runs || w.tier, paused: !!w.paused, gen: w.gen,
+    created: w.created, activeAt: w.activeAt || "", checkedAt: w.checkedAt || "", skips: Number(w.skips) || 0, filtered: Number(w.filtered) || 0, found: Number(w.found) || 0 };
+}
+/* the Caps claim on one listing: false when another report already took it */
+async function watchClaim(cid, wid, id) {
+  try { const j = await capsCall("fbw:" + cid.slice(-1), "take", { k: cid + ":" + wid + ":" + id, lim: 1 }); return !(j && j.left < 0); }
+  catch (e) { return true; }   /* the counter is down: KV's seen state still holds it */
+}
+async function watchAnswer(env, request, who, reg, plan, url) {
+  const cid = who.id, hid = await watchHid(env, cid), sub = await watchSub(request, env, who), out = { plan: plan, mail: reg.mail, email: !!(sub && sub.mail !== "off"),
+    watches: watchFit(reg.watches, plan).map(watchView), hidden: hid.map(watchFbUrl) };
+  if (url && url.searchParams.get("seen") === "1") {
+    const now = Date.now();
+    for (const w of out.watches) w.seen = watchDigest(watchSeen(await kvGet(env, "fbseen:" + cid + ":" + w.id, null), now));
+  }
+  if (url && url.searchParams.get("finds") === "1") {
+    const hs = new Set(hid);
+    out.finds = {};
+    for (const w of out.watches) { const f = await kvGet(env, "fbfinds:" + cid + ":" + w.id, null); out.finds[w.id] = (f && Array.isArray(f.items) ? f.items : []).filter(x => x && !hs.has(String(x.id))); }
+  }
+  return out;
+}
+async function watchesGet(request, env, url, origin) {
+  if (!env.PROWL_ALERTS) return json({ error: "Watches are not on yet." }, 503, origin, WATCH_HDR);
+  const who = await watchWho(request, env);
+  if (!who) return json({ error: "Sign in to Prowl to use watches." }, 401, origin, WATCH_HDR);
+  if (!(await vCount("fbwg:" + who.id, WATCH_GETS_PER_DAY))) return json({ error: "slow down" }, 429, origin, WATCH_HDR);
+  const plan = watchPlan(await watchPro(env, request, who));
+  return json(await watchAnswer(env, request, who, await watchReg(env, who.id), plan, url), 200, origin, WATCH_HDR);
+}
+async function watchesPost(request, env, url, origin) {
+  if (!env.PROWL_ALERTS) return json({ error: "Watches are not on yet." }, 503, origin, WATCH_HDR);
+  const who = await watchWho(request, env), cid = who ? who.id : "";
+  if (!who) return json({ error: "Sign in to Prowl to use watches." }, 401, origin, WATCH_HDR);
+  if (!(await vCount("fbwp:" + cid, WATCH_POSTS_PER_DAY))) return json({ error: "That is a lot of changes for one day. Try again tomorrow." }, 429, origin, WATCH_HDR);
+  const b = await readJson(request, 8192);
+  if (b.big) return json({ error: "too large" }, 413, origin, WATCH_HDR);
+  if (url.pathname === "/watches/hide") {
+    const id = String(b.id == null ? "" : b.id);
+    if (!/^\d{5,20}$/.test(id)) return json({ error: "need id" }, 400, origin, WATCH_HDR);
+    return json({ ok: true, hidden: await watchHideSet(env, cid, id, b.on !== false) }, 200, origin, WATCH_HDR);
+  }
+  const reg = await watchReg(env, cid), plan = watchPlan(await watchPro(env, request, who));
+  if (typeof b.mail === "boolean" && b.id == null && b.tier == null && b.term == null && b.goal == null) {
+    reg.mail = b.mail;
+    await watchRegPut(env, cid, reg);
+    return json(Object.assign({ ok: true }, await watchAnswer(env, request, who, reg, plan, null)), 200, origin, WATCH_HDR);
+  }
+  const a = new Uint8Array(8); crypto.getRandomValues(a);
+  const r = watchUpsert(reg.watches, b, plan, Date.now(), watchId(a));
+  if (r.error) return json({ error: r.error }, r.status || 400, origin, WATCH_HDR);
+  reg.watches = r.list;
+  await watchRegPut(env, cid, reg);
+  if (r.removed) { await env.PROWL_ALERTS.delete("fbseen:" + cid + ":" + r.removed.id); await env.PROWL_ALERTS.delete("fbfinds:" + cid + ":" + r.removed.id); }
+  return json(Object.assign({ ok: true, watch: r.watch ? r.watch.id : null }, await watchAnswer(env, request, who, reg, plan, null)), 200, origin, WATCH_HDR);
+}
+/* one check cycle from the extension (see the top of this section) */
+async function watchIngestRoute(request, env) {
+  if (!env.PROWL_ALERTS) return json({ error: "no store" }, 503, "");
+  const who = await watchWho(request, env), cid = who ? who.id : "";
+  if (!who) return json({ error: "sign in" }, 401, "");
+  if (!(await vCount("fbw:" + cid, WATCH_INGEST_PER_DAY))) return json({ error: "slow down" }, 429, "");
+  const b = await readJson(request, WATCH_BODY_MAX);
+  if (b.big) return json({ error: "too large" }, 413, "");
+  if (!Array.isArray(b.results)) return json({ error: "need results" }, 400, "");
+  const now = Date.now(), iso = new Date(now).toISOString();
+  const reg = await watchReg(env, cid), plan = watchPlan(await watchPro(env, request, who)), fit = watchFit(reg.watches, plan);
+  const hid = Object.create(null);
+  for (const id of await watchHid(env, cid)) hid[id] = 1;
+  const out = [], hot = [], digest = [], done = Object.create(null), upd = Object.create(null);
+  for (const r of b.results.slice(0, WATCH_PRO_MAX)) {
+    if (!r || typeof r !== "object") continue;
+    const id = String(r.watch == null ? "" : r.watch), i = reg.watches.findIndex(w => w.id === id);
+    if (i < 0 || fit[i].paused || done[id]) { out.push({ watch: id.slice(0, 12), gone: true }); continue; }
+    done[id] = 1;
+    const w = reg.watches[i];
+    if (r.status === "nologin") { upd[id] = { gen: w.gen, skips: Math.min(99, (Number(w.skips) || 0) + 1) }; out.push({ watch: id, skips: upd[id].skips }); continue; }
+    if (r.status !== "ok") continue;
+    if (Number(r.gen) !== Number(w.gen)) { out.push({ watch: id, stale: true }); continue; }   /* its filters changed mid-check */
+    const seenKey = "fbseen:" + cid + ":" + id;
+    const res = watchIngest(w, await kvGet(env, seenKey, null), watchItems(r.items), hid, watchComps(r.comps), now);
+    const finds = [];
+    for (const x of res.finds) if (await watchClaim(cid, id, x.id)) finds.push(x);
+    if (res.fresh || res.baseline) await env.PROWL_ALERTS.put(seenKey, JSON.stringify(res.seen), { expirationTtl: WATCH_SEEN_TTL });
+    if (finds.length) {
+      const fk = "fbfinds:" + cid + ":" + id;
+      await env.PROWL_ALERTS.put(fk, JSON.stringify(watchFindsMerge(await kvGet(env, fk, null), finds, now)), { expirationTtl: WATCH_FINDS_TTL });
+      (fit[i].runs === "hot" ? hot : digest).push({ w: w, items: finds });
+    }
+    upd[id] = { gen: w.gen, checkedAt: iso, skips: 0, activeAt: res.seen.at || w.activeAt, filtered: res.filtered, found: finds.length };
+    out.push({ watch: id, baseline: res.baseline, fresh: res.fresh, finds: finds.length, filtered: res.filtered });
+  }
+  /* the counters go into the registry as it is now, so an edit made on the page during this cycle is kept (a watch
+     whose filters changed meanwhile keeps its new baseline) */
+  if (Object.keys(upd).length) {
+    const now2 = await watchReg(env, cid);
+    for (const w of now2.watches) {
+      const u = upd[w.id];
+      if (!u || Number(u.gen) !== Number(w.gen)) continue;
+      w.skips = u.skips;
+      if (u.checkedAt) { w.checkedAt = u.checkedAt; w.activeAt = u.activeAt; w.filtered = (Number(w.filtered) || 0) + u.filtered; w.found = (Number(w.found) || 0) + u.found; }
+    }
+    await watchRegPut(env, cid, now2);
+    reg.mail = now2.mail;
+  }
+  let mailed = 0;
+  try { mailed = await watchMail(env, request, who, reg, hot, digest); } catch (e) { console.error("watch mail", String(e && e.message || e)); }
+  return json({ ok: true, results: out, mailed: mailed }, 200, "");
+}
+function watchShell(env, inner, unsub) {
+  return alShell(env, inner, "You are getting this because you set a Facebook watch in Prowl. Your own browser checks Facebook through the Prowl extension, with your own Facebook login. Prowl never sees your Facebook password.",
+    '<a href="' + alEsc(PROWL_APP) + '" style="color:#8a4b1f">Open Prowl · change your watches</a> · <a href="' + alEsc(unsub) + '" style="color:#9a8b7a">Stop watch emails</a>');
+}
+async function watchMail(env, request, who, reg, hot, digest) {
+  if (!reg.mail || !(hot.length || digest.length)) return 0;
+  const cid = who.id, sub = await watchSub(request, env, who);
+  if (!sub || !sub.email || sub.mail === "off") return 0;   /* "Turn off Prowl emails" covers these too */
+  const hide = Object.create(null);
+  for (const g of hot.concat(digest)) for (const x of g.items) hide[x.id] = WORKER_BASE + "/watch-hide?c=" + cid + "&i=" + x.id + "&s=" + await watchSig(env, "hide", cid, x.id);
+  const urls = { hide: (x) => hide[x.id], watch: (w) => PROWL_APP + "?q=" + encodeURIComponent(w.term) };
+  const unsub = await watchUnsubUrl(env, cid), foot = "\n--\nProwl watches by Owl & Twig Vintage.\nStop watch emails: " + unsub + "\n" + alAddr(env);
+  const send = async (groups, inner) => {
+    const r = await alSend(env, sub.email, watchSubject(groups), watchShell(env, inner, unsub), watchText(groups, urls) + foot, unsub);
+    if (!r.ok) console.error("watch mail", r.error);
+    return r.ok ? 1 : 0;
+  };
+  let sent = 0, n = 0;
+  const late = [];
+  for (const g of hot) for (const x of g.items) {
+    if (n++ >= WATCH_HOT_EMAILS) { const l = late.find(o => o.w === g.w); if (l) l.items.push(x); else late.push({ w: g.w, items: [x] }); continue; }
+    sent += await send([{ w: g.w, items: [x] }], watchHotHtml(g.w, x, urls));
+  }
+  const groups = late.concat(digest);
+  if (groups.length) sent += await send(groups, watchDigestHtml(groups, urls));
+  return sent;
+}
+/* the email's one-tap Hide (signed with the session secret; nothing else is needed to use it) */
+async function watchHideLink(request, env, url) {
+  const cid = String(url.searchParams.get("c") || ""), id = String(url.searchParams.get("i") || ""), undo = url.searchParams.get("undo") === "1";
+  if (!tripIdOk(cid) || !/^\d{5,20}$/.test(id) || !env.PROWL_ALERTS || !sessKey(env) || !alSame(String(url.searchParams.get("s") || ""), await watchSig(env, "hide", cid, id)))
+    return alBadLink("This Hide link is not complete. Open Prowl and swipe the listing away in Flock instead.");
+  if (request.method !== "POST") {
+    const action = url.pathname + url.search;
+    return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hiding this listing</title>' +
+      '<body style="font:16px/1.5 Georgia,serif;background:#f6f1e8;color:#2b2118;padding:40px 20px;text-align:center">' +
+      '<form id="f" method="post" action="' + alEsc(action) + '"><h1 style="font-size:24px">Hiding this listing…</h1>' +
+      '<button type="submit" style="background:#8a4b1f;color:#fff;border:0;padding:12px 22px;border-radius:8px;font:bold 16px Arial,sans-serif;cursor:pointer">' + (undo ? "Bring it back" : "Hide it") + '</button></form>' +
+      '<script>document.getElementById("f").submit()</script></body>', { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+  }
+  await watchHideSet(env, cid, id, !undo);
+  if (undo) return alPage("It’s back", "That listing can show up in Prowl again.");
+  const back = url.pathname + url.search + "&undo=1";
+  return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hidden</title>' +
+    '<body style="font:16px/1.5 Georgia,serif;background:#f6f1e8;color:#2b2118;padding:40px 20px;text-align:center">' +
+    '<h1 style="font-size:24px">Hidden</h1><p>That listing won’t come back, in your emails or in Prowl.</p>' +
+    '<form method="post" action="' + alEsc(back) + '"><button type="submit" style="background:none;color:#8a4b1f;border:1px solid #8a4b1f;padding:8px 16px;border-radius:8px;font:14px Arial,sans-serif;cursor:pointer">Undo</button></form>' +
+    '<p style="margin-top:28px"><a href="' + PROWL_PAGE + '" style="color:#8a4b1f">Back to Prowl</a></p></body>', { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+}
+async function watchUnsub(request, env, url) {
+  const cid = String(url.searchParams.get("c") || "");
+  if (!tripIdOk(cid) || !env.PROWL_ALERTS || !sessKey(env) || !alSame(String(url.searchParams.get("s") || ""), await watchSig(env, "unsub", cid, "all")))
+    return alBadLink("This link is not complete. Turn watch emails off in Prowl under Den, then Hunts.");
+  if (request.method !== "POST") return alGate("Stop watch emails?", "Your watches keep checking, and their new finds still land in Prowl.", "Stop watch emails", url);
+  const reg = await watchReg(env, cid);
+  if (reg.mail) { reg.mail = false; await watchRegPut(env, cid, reg); }
+  return alPage("Watch emails are off", "Your watches keep checking, and their new finds still land in Prowl. Turn the emails back on in Prowl under Den, then Hunts.");
+}
+/* everything kept for one store account's watches */
+async function watchPurge(env, cid) {
+  const reg = await watchReg(env, cid), kv = env.PROWL_ALERTS;
+  for (const w of reg.watches) { await kv.delete("fbseen:" + cid + ":" + w.id); await kv.delete("fbfinds:" + cid + ":" + w.id); }
+  await kv.delete("watch:" + cid); await kv.delete("fbhide:" + cid);
+}
+
 /* ---------- v132: NEAR ME ----------
    The in-person prowl (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). The logic is in trip.js (pure);
    this part talks to Google and the stores. Everything needs the secret GOOGLE_MAPS_KEY (Places API (New), Routes API
@@ -6920,7 +7167,10 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/alerts/move" && request.method === "POST") return alMove(request, env, origin);   /* v54 */
     if (url.pathname === "/__alerts-preview" || url.pathname === "/__alerts-run") return alDebug(env, url);
     if (url.pathname === "/__alerts-why") return new Response(JSON.stringify(await alState(env), null, 1), { headers: { "Content-Type": "application/json" } });   /* v74 */
-    if (url.pathname === "/fb-ingest" && request.method === "POST") return fbIngest(request, env);   /* v94: server to server, no Origin, its own key */
+    /* v94: server to server, no Origin, its own key. v157: with a sign-in (store session or member token) and no key, a watch's check cycle from the extension */
+    if (url.pathname === "/fb-ingest" && request.method === "POST") return (request.headers.get("Authorization") || request.headers.get("X-Prowl-Tok")) && !request.headers.get("X-Prowl-Ingest") ? watchIngestRoute(request, env) : fbIngest(request, env);
+    if (url.pathname === "/watch-hide") return watchHideLink(request, env, url);   /* v157: from an email, before the Origin check */
+    if (url.pathname === "/watch-unsub") return watchUnsub(request, env, url);   /* v157 */
     if (request.method === "POST" && ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);
 
     if (request.method === "OPTIONS") {
@@ -6997,6 +7247,7 @@ async function handleFetch(request, env, ctx) {
     }
     /* v156: group trips take POSTs (keep, share, close, rebuild, finds); they must be routed before the GET-only guard */
     if ((url.pathname === "/trips" || url.pathname.startsWith("/trips/")) && request.method === "POST") return tripsRoute(request, env, url, origin);
+    if ((url.pathname === "/watches" || url.pathname === "/watches/hide") && request.method === "POST") return watchesPost(request, env, url, origin);   /* v157 */
     if (request.method !== "GET") {
       return json({ error: "GET only" }, 405, origin);
     }
@@ -7007,6 +7258,7 @@ async function handleFetch(request, env, ctx) {
       return itemRoute(env, url, origin, request);
     }
     if (url.pathname === "/fb-finds") return fbFinds(request, env, url, origin);   /* v94 */
+    if (url.pathname === "/watches") return watchesGet(request, env, url, origin);   /* v157: Facebook watches */
     if (url.pathname === "/near" && request.method === "GET") return nearRoute(request, env, url, origin);   /* v132: Around You */
     if (url.pathname === "/trip" && request.method === "GET") return tripRoute(request, env, url, origin);   /* v132: Road Trip */
     if (url.pathname === "/pp" && request.method === "GET") return ppRoute(request, env, url);   /* v132: a place's photo */

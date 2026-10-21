@@ -39,6 +39,10 @@ about a minute. No dashboard paste needed.
   page, not OWNER_KEY). Without it the route answers 403 to everyone. The contract (one POST per locked hunt per
   morning, sent even when nothing is new; each adds its finds to the term's last 7 days; kept 8 days after the last
   POST, hidden on the page after 2) is in the comment above `handleFetch`. `FB_FINDS` in `wrangler.toml` says who can read the finds: "owner" (default), "public" or "off".
+- Facebook watches (v157, `watch.js`) need nothing new: the KV namespace `PROWL_ALERTS`, `RESEND_API_KEY` and
+  `PROWL_SESSION_SECRET` (it signs the emails' Hide and unsubscribe links; without it those links answer "not
+  complete"). Members' own browsers do the Facebook checks through the extension and post to `/fb-ingest` with their
+  Prowl sign-in; `FB_INGEST_KEY` is the sweep's alone. The routes and KV keys are in the comment above `watchReg`.
 
 ## Rolling back
 

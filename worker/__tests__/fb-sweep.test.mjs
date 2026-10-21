@@ -169,7 +169,8 @@ test("finds: FB_FINDS public lets every visitor read (cached 15 minutes, counted
 
 test("wired in: ingest before the POST origin gate, finds before the search fallthrough, metrics names, config", () => {
   const gate = INDEX.indexOf('if (request.method === "POST" && ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);');
-  const ing = INDEX.indexOf('if (url.pathname === "/fb-ingest" && request.method === "POST") return fbIngest(request, env);');
+  /* v157: a request with a sign-in (store session or member token) and no X-Prowl-Ingest is a watch's check cycle; the sweep's key still goes to fbIngest */
+  const ing = INDEX.indexOf('if (url.pathname === "/fb-ingest" && request.method === "POST") return (request.headers.get("Authorization") || request.headers.get("X-Prowl-Tok")) && !request.headers.get("X-Prowl-Ingest") ? watchIngestRoute(request, env) : fbIngest(request, env);');
   assert.ok(ing > 0 && ing < gate, "the sweep posts with no Origin");
   const finds = INDEX.indexOf('if (url.pathname === "/fb-finds") return fbFinds(request, env, url, origin);');
   assert.ok(finds > 0 && finds < INDEX.indexOf('if (!term) return json({ error: "missing q" }, 400, origin);'));

@@ -6,6 +6,10 @@ Toolbar search, right-click search and the `prowl` address-bar keyword for the P
 - `sites.js`: marketplace links and live sources. Keep it in step with `page/prowl.html` when a marketplace is added.
 - `member.js` / `content.js`: Pro check (sign-in comes from the Prowl page).
 - `popup.*`, `service-worker.js`: the interface.
+- `watcher.js` (1.7.0): Facebook watches. Pure helpers (schedule, the Marketplace search link, reading the listings
+  out of the page, what to report); `service-worker.js` runs the cycle on the browser's alarms and posts to the
+  worker's `/fb-ingest` with the store sign-in that `content.js` hands over. Spec:
+  `docs/update-2026-10-21/prowl-facebook-watches-spec.md`.
 - Store listing text: `docs/chrome-store-listing.md`. Changes: `CHANGELOG.md`.
 
 ## Releasing a new version
