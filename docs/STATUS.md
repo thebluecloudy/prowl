@@ -1,16 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.54 / v155).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.55 / v155).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.54** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.55** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v155** | |
 
 Recently shipped, newest first:
 
+- **v7.55: the sold-price row on the hunt pills too** (the owner: "it doesn't show until i hit the hunt button, when i
+  click pills it is not there"). Tapping a Your favorite hunts pill draws that hunt's live listings on the home screen
+  without a search run, so v7.54's row was not there. `compsRow(t)` now draws it in both places (over the pill's live
+  listings, `sgwBody`), and one document listener opens the buttons by `data-comps` / `data-t` (the ids are gone, since
+  both can be on the page). The eBay note hides in Keep it simple in both. Tests: `sold-visible-v754.test.mjs`.
 - **v7.54: eBay Sold and Terapeak always visible** (the owner: "i had a hard time finding ebay sold and terapeak at
   the bottom of the search area, can you make sure that is always visible?"). The two sold-price buttons were in the
   results footer, which Keep it simple folds behind More places to look. They now sit right under the search title as
@@ -888,7 +893,6 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `ccr-0de21c46-yzs839` | Claude | **v7.55**: the sold-price row over a favorite hunt's live listings too | Building. |
 
 Next free numbers: **page v7.56, worker v156**. Claim one here when you start.
 
