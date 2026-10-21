@@ -1,13 +1,13 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.56 / v155).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.56 / v156).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.56** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v155** | |
+| Worker | **v156** | |
 
 Recently shipped, newest first:
 
@@ -17,6 +17,12 @@ Recently shipped, newest first:
   marketplace's own search for the hunt, in a new tab; no one-site run inside Prowl. A live block that can't load (busy,
   unreachable, offline) adds "Search Vinted yourself ↗" (`liveSelf`, `.lv-self`), on the hunt results and on Daily.
   Test: `__tests__/page/links-out-v756.test.mjs`.
+- **v156: group trips can be kept** (the owner: "Group button doesn't work"). Every POST to `/trips` (keep a trip,
+  add a member, close it, rebuild a kept trip from here, post a find) answered 405 "GET only" live: the worker's
+  GET-only guard sat above the `/trips` dispatch, so those calls never reached `tripsRoute` (the tests call it
+  directly and never saw it). Broken since group trips shipped in v132. The POST dispatch now sits above the guard,
+  after the cross-site origin check. Worker only. Test: the wiring test in `worker/__tests__/trips.test.mjs` checks
+  the order.
 - **v7.55: the sold-price row on the hunt pills too** (the owner: "it doesn't show until i hit the hunt button, when i
   click pills it is not there"). Tapping a Your favorite hunts pill draws that hunt's live listings on the home screen
   without a search run, so v7.54's row was not there. `compsRow(t)` now draws it in both places (over the pill's live
@@ -900,7 +906,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.57, worker v156**. Claim one here when you start.
+Next free numbers: **page v7.57, worker v157**. Claim one here when you start.
 
 ## What's next
 
