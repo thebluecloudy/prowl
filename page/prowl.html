@@ -2107,7 +2107,8 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .pp-secb>.pp-asp:first-child,.scout-app-wrapper .pp-secb>.pp-fp:first-child{margin-top:0}
 /* v7.36: NEAR ME, its own screen: Around you and Road trip */
 .scout-app-wrapper #otp-near .tabs{display:flex;gap:4px;padding:8px 8px 0}
-.scout-app-wrapper #otp-nearBody{flex:1;overflow:auto;display:flex;flex-direction:column;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.scout-app-wrapper #otp-nearBody{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.scout-app-wrapper #otp-nearBody>.denPane{flex:0 0 auto}   /* v7.57: older Safari shrank the panes to the box and nothing scrolled */
 .scout-app-wrapper #otp-nrAround>#otp-denLocal{padding:0}
 .scout-app-wrapper #otp-nrAround>#otp-denLocal>.nearblk:first-of-type{margin-top:0;padding-top:0;border-top:0}
 .scout-app-wrapper .nr-live:not(:empty){margin-bottom:18px;padding-bottom:4px;border-bottom:1px solid var(--ln)}
@@ -3155,6 +3156,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
         <h3 class="nearh">Stores near you <span id="otp-nearScope">near me</span>
 </h3>
         <p class="nearp" id="otp-nearNote">One tap opens Google Maps on your phone. Works standing in a parking lot.</p>
+        <div class="hubbar mapsw" id="otp-nearWhere" role="group" aria-label="Search around" hidden></div>
         <div class="hubbar mapsw" id="otp-nearMaps" role="group" aria-label="Maps app"></div>
         <div class="nearg" id="otp-nearGrid"></div>
       </div>
@@ -3288,7 +3290,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.56';
+var PROWL_VERSION='v7.57';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3795,17 +3797,24 @@ var NEARBY=[
    only (prowl.maps, like the theme), outside the backup and the frozen keys. */
 var MAPK='prowl.maps';
 function mapsPref(){var v='';try{v=localStorage.getItem(MAPK)||''}catch(e){}return v==='apple'?'apple':'google'}
+/* v7.57 (the owner, in Findlay: the store searches said near me but opened Google Maps at the ZIP; "near me or zip"): the
+   store searches go around where you are once the phone has said so (Around you's fix), or around the saved place;
+   both are a tap away when there is a saved place. The choice lasts the visit. */
+var NEAR_WHERE='';
+function nearWhere(){if(!st.city)return 'me';if(NEAR_WHERE)return NEAR_WHERE;return typeof nrYou==='function'&&nrYou()?'me':'place'}
 function nearUrl(qy){
+  var me=nearWhere()==='me';
   if(mapsPref()==='apple'){
     /* With no place given, Apple Maps searches around where you are standing. */
-    return 'https://maps.apple.com/?q='+E(st.city?(qy+' '+st.city):qy);
+    return 'https://maps.apple.com/?q='+E(me?qy:(qy+' '+st.city));
   }
-  var where=st.city?(' near '+st.city):' near me';
-  return 'https://www.google.com/maps/search/?api=1&query='+E(qy+where);
+  return 'https://www.google.com/maps/search/?api=1&query='+E(qy+(me?' near me':' near '+st.city));
 }
 function rNear(){
   var g=$('#otp-nearGrid');if(!g)return;
-  $('#otp-nearScope').textContent=st.city?('near '+st.city):'near me';
+  var wh=nearWhere(),ww=$('#otp-nearWhere');
+  $('#otp-nearScope').textContent=wh==='me'?'where you are':'near '+st.city;
+  if(ww){ww.hidden=!st.city;ww.innerHTML=st.city?'<button type=button class="hubc'+(wh==='me'?' on':'')+'" data-nw=me aria-pressed='+(wh==='me')+'>Where I am</button><button type=button class="hubc'+(wh!=='me'?' on':'')+'" data-nw=place aria-pressed='+(wh!=='me')+'>'+esc(st.city)+'</button>':''}
   var mp=mapsPref(),sw=$('#otp-nearMaps'),np=$('#otp-nearNote');
   if(sw)sw.innerHTML=
     '<button type=button class="hubc'+(mp==='google'?' on':'')+'" data-mp=google aria-pressed='+(mp==='google')+'>Google Maps</button>'+
@@ -3917,6 +3926,7 @@ function rSales(){
     try{localStorage.setItem(MAPK,b.getAttribute('data-mp'))}catch(x){}
     rNear();
   });
+  var nw=$('#otp-nearWhere');if(nw)nw.addEventListener('click',function(e){var b=e.target.closest('[data-nw]');if(!b)return;NEAR_WHERE=b.getAttribute('data-nw');rNear()});   /* v7.57 */
 })();
 
 function rDenOne(){
@@ -9969,7 +9979,8 @@ function nrMap(mode){
     var el2=$(id);if(!el2||!NR.mapOn[mode])return;
     if(err||!window.L||!window.L.map){el2.innerHTML='<p class="nearp nr-mapwait">The map could not load. The list still works.</p>';return}
     el2.innerHTML='';
-    var L=window.L,m=L.map(el2,{scrollWheelZoom:false}),b=[],you=nrYou();
+    var L=window.L,touch=!!(L.Browser&&L.Browser.mobile),m,b=[],you=nrYou();try{touch=touch||!!(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches)}catch(e){}
+    m=L.map(el2,{scrollWheelZoom:false,dragging:!touch,tap:false});   /* v7.57: on a phone one finger scrolls the screen (the owner: Road trip would not scroll on an iPhone); pinch to zoom */
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors · shops from Google Maps'}).addTo(m);
     pts.forEach(function(x){
       b.push([x.lat,x.lng]);
@@ -10012,6 +10023,7 @@ function nrSortGet(){try{return localStorage.getItem(NR_SORT_KEY)==='near'?'near
 function nrSortSet(v){try{localStorage.setItem(NR_SORT_KEY,v==='near'?'near':'')}catch(e){}NR.around&&nrAroundDraw()}
 function nrSortBar(srt){return '<div class="nr-sort" role="group" aria-label="Order"><button type="button" class="hubc'+(srt?'':' on')+'" data-nrsort="" aria-pressed="'+!srt+'">Biggest first</button><button type="button" class="hubc'+(srt?' on':'')+'" data-nrsort="near" aria-pressed="'+!!srt+'">Closest first</button></div>'}
 function nrAroundDraw(){
+  try{rNear()}catch(e){}   /* v7.57: a fix in hand, the store searches go around it */
   var you=nrYou(),srt=nrSortGet(),mi=function(p){return nrMiFrom(you,p)},L0=NR.around||[],L=L0.slice();
   if(srt==='near')L.sort(function(a,b){var x=mi(a),y=mi(b);return (x==null?1e9:x)-(y==null?1e9:y)});
   NR.aroundShown=L;   /* the map numbers its pins in this order */
@@ -10223,7 +10235,7 @@ function nrMode(m){
   if(t2){t2.classList.toggle('on',!a);t2.setAttribute('aria-selected',String(!a))}
   $('#otp-nrAround').hidden=!a;$('#otp-nrTrip').hidden=a;
   if(a){nrFoot(null);nrAroundLoad()}
-  else{rNrDays();nrTripsLoad();nrFoot(NR.view||NR.built);if(!NR.built&&!NR.view){var inp=$('#otp-nrTo');if(inp)try{inp.focus()}catch(e){}}}
+  else{rNrDays();nrTripsLoad();nrFoot(NR.view||NR.built)}   /* v7.57: no keyboard until the box is tapped (the owner) */
 }
 function openNear(){
   if(!near||near.classList.contains('on'))return;

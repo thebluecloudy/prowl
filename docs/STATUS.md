@@ -1,16 +1,29 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.56 / v156).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.57 / v156).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.56** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.57** | 398,950 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v156** | |
 
 Recently shipped, newest first:
 
+- **v7.57: near me means where you are; Road trip opens quietly and scrolls on an iPhone** (the owner, in Findlay with
+  48377 saved: "This says near me but opens Google at zip code. It should be near me or zip. And road trip does not
+  scroll on apple. When I open road trip the keyboard opens by default.").
+  - Stores near you: once the phone has a fix (Around you), the searches go around where you are ("antique stores near
+    me"; Apple Maps with no place at all), headed "where you are". With a saved place, **Where I am** / **48377** chips
+    switch between them for the visit (`nearWhere`, `NEAR_WHERE`, no new key). No fix: the saved place, headed "near
+    48377". Garage sales stay on the saved city (Craigslist works by city).
+  - Road trip no longer puts the cursor in the destination box on opening (`nrMode`), so the keyboard waits for a tap.
+  - Scrolling on an iPhone: on a phone (coarse pointer, or Leaflet's mobile flag) the map no longer takes one-finger
+    drags (`dragging: false`, `tap: false`), so a swipe over it scrolls the screen; pinch and the buttons zoom it. A
+    mouse still drags it. The scroll box gets `min-height: 0` and its panes `flex: 0 0 auto`, so older Safari cannot
+    squeeze the panes to the box. Not checked on a real iPhone from here.
+  - Test: `__tests__/page/near-where-v757.test.mjs`.
 - **v7.56: Best bets and a busy marketplace open the site itself** (Matt, 2026-10-21: "When I click ruby lane the screen
   changes to one hunt or something. I'm expecting it to open ruby lane", and Vinted busy again: "can you just put a link
   here to run it manually?"). The Best bets pills under a hunt (worker /where) are links (`a.sgw-wh`, ↗) to that
@@ -906,7 +919,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.57, worker v157**. Claim one here when you start.
+Next free numbers: **page v7.58, worker v157**. Claim one here when you start.
 
 ## What's next
 
