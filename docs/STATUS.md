@@ -1,16 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.57 / v156; the SGW digest removed).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.58 / v156; Den names wrap, starter chips labeled).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.57** | 398,950 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.58** | 398,849 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v156** | |
 
 Recently shipped, newest first:
 
+- **v7.58: Den hunt names stay in their row; the first-visit chips say they are ideas** (the owner, on a new phone:
+  "the letters are spilling out in the den", and the sample hunts "I couldn't delete them. I added one hunt and samples
+  went away", picked "label them"). `.tt` wraps long words (`overflow-wrap:anywhere`); at Large / Extra large text
+  under 480px the check, watch and remove columns slim down and the watch label hides, so the name keeps room. The
+  first-visit chips (`#otp-start`, OLD_DEF) are headed "Ideas to try" with a note that they are not saved and go away
+  once you keep a hunt (by design: they were never hunts, so there is nothing to delete). No new keys. Test:
+  `__tests__/page/den-wrap-ideas-v758.test.mjs`.
 - **The daily ShopGoodwill digest is gone** (2026-10-21, the owner: "Delete it"). `.github/workflows/sgw-digest.yml`
   scraped ShopGoodwill's "Ceramic Panther" search in a headless browser every morning and committed `sgw-digest.json`
   straight to `main`; nothing has read that file since the panel it fed was removed. It cost Actions minutes daily,
@@ -925,7 +932,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.58, worker v157**. Claim one here when you start.
+Next free numbers: **page v7.59, worker v157**. Claim one here when you start.
 
 ## What's next
 
