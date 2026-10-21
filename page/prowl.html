@@ -820,6 +820,10 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .rf p{font-size:15px}
 /* at 14px the comps labels wrapped inside their buttons; give each a full row on a phone */
 @media(max-width:420px){.scout-app-wrapper .comps .gh{flex:1 1 100% }}
+/* v7.54: under the title, both side by side even on a phone */
+.scout-app-wrapper .comps.comps-top{margin:0;padding:12px 18px 4px;align-items:center}
+.scout-app-wrapper .comps-h{flex-basis:100%;margin:0;font-size:15px;font-weight:700;color:var(--i1)}
+.scout-app-wrapper .comps.comps-top .gh{flex:1 1 0;min-width:0;padding:7px 6px;white-space:nowrap;font-size:14px}
 /* ---- app shell (v4.7) ----
    /pages/prowl-app renders this same body through a bare theme layout with no
    header, footer or store nav, so the app fills the screen. The landing page
@@ -3281,7 +3285,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.53';
+var PROWL_VERSION='v7.54';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4699,7 +4703,15 @@ function rRes(){
   }
   rows+='</ul>';
 
-  res.innerHTML='<div class=rc>'+head+huntBlock(r)+runLive(r)+rows+
+  /* v7.54 (the owner: "i had a hard time finding ebay sold and terapeak at the bottom"): sold prices sit under the
+     title, in Keep it simple too, not in the footer that waits behind More places to look */
+  var comps=r.terms.length===1?
+    '<div class="comps comps-top" role=group aria-label="What has it sold for?"><p class=comps-h>What has it sold for?</p>'+
+      '<button class=gh id=otp-comps90 type=button>eBay Sold · 90 days</button>'+
+      '<button class=gh id=otp-comps3y type=button>Terapeak · 3 years</button>'+
+      '<span class=comps-note>Both need you signed in to eBay — Terapeak also needs Seller Hub (free).</span>'+
+    '</div>':'';
+  res.innerHTML='<div class=rc>'+head+comps+huntBlock(r)+runLive(r)+rows+
     '<div class=oabar>'+
       (paused
         ?'<button class="b p" id=otp-next type=button>Open next '+nextN+'</button>'+
@@ -4716,12 +4728,6 @@ function rRes(){
       (fbOnPhone(L)?'<span class=oa-warn><i aria-hidden=true>!</i><span><b>Facebook on a phone:</b> Facebook rows open in your browser so the search sticks. Log in to Facebook in the browser the first time. Your term is copied too, in case it lands in the app \u2014 tap <b>Marketplace</b>, then the search box, and paste.</span></span>':'')+
       '<span class=oa-warn><i aria-hidden=true>!</i><span><b>Allow pop-ups for this site</b> before Open all. '+total+' tabs at once looks like a pop-up storm, so browsers block it. Tapping rows one at a time always works.</span></span>'+
       (ready&&total>BATCH?'<p style="margin:0 0 10px">Big run, so tabs open '+BATCH+' at a time. Check them, close them, then open the next batch. <b>Stop</b> works any time.</p>':'')+
-      (r.terms.length===1?
-        '<div class=comps>'+
-          '<button class=gh id=otp-comps90 type=button>eBay Sold · 90 days</button>'+
-          '<button class=gh id=otp-comps3y type=button>Terapeak · 3 years</button>'+
-          '<span class=comps-note>Both need you signed in to eBay — Terapeak also needs Seller Hub (free).</span>'+
-        '</div>':'')+
       (r.mode==='facebook'
         ?'<p>Facebook searches one city at a time, so each row is that same hunt in a different metro. Tap the cities you want, or <b>Open all</b> to sweep the country.</p>'
         :'<p>Each row is the real search URL on that marketplace. Tap one to open just that one, or <b>Open all</b> to launch every tab at once.</p>')+

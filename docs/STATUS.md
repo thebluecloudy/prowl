@@ -1,16 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-20 (v7.53 / v155).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.54 / v155).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.53** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.54** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v155** | |
 
 Recently shipped, newest first:
 
+- **v7.54: eBay Sold and Terapeak always visible** (the owner: "i had a hard time finding ebay sold and terapeak at
+  the bottom of the search area, can you make sure that is always visible?"). The two sold-price buttons were in the
+  results footer, which Keep it simple folds behind More places to look. They now sit right under the search title as
+  "What has it sold for?" (`.comps-top`), side by side on a phone, in both Keep it simple and Show everything; the
+  footer copy is gone. Tests: `__tests__/page/sold-visible-v754.test.mjs`.
 - **v7.53 / v155: SHARE sends the route, and a keep that fails says why** (the owner, on the road: "cannot share the
   map itinerary"; SHARE toasted "The trip could not be shared just now"). SHARE only ever kept a Pro group trip, and
   it built the whole trip again on the worker (about a hundred Google calls over a phone connection) and hid the
@@ -883,7 +888,6 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `ccr-0de21c46-yzs839` | Claude | **v7.54**: eBay Sold and Terapeak always visible, under the search title | Building. |
 
 Next free numbers: **page v7.55, worker v156**. Claim one here when you start.
 
