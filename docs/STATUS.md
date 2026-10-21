@@ -937,8 +937,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.60**: Den settings buttons keep their words inside | Building. |
 
-Next free numbers: **page v7.60, worker v157**. Claim one here when you start.
+Next free numbers: **page v7.61, worker v157**. Claim one here when you start.
 
 ## What's next
 
