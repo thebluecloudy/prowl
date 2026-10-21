@@ -494,7 +494,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .tb{flex:1;min-width:0;text-align:left;background:none;border:0;padding:11px 14px;display:flex;flex-direction:column;gap:3px;-webkit-tap-highlight-color:transparent}
 .scout-app-wrapper .tb:hover{background:var(--ac-soft)}
 .scout-app-wrapper .tb:focus-visible{outline:2px solid var(--ac);outline-offset:-2px}
-.scout-app-wrapper .tt{font-size:16px;font-weight:600;color:var(--ink)}
+.scout-app-wrapper .tt{font-size:16px;font-weight:600;color:var(--ink);overflow-wrap:anywhere;word-break:break-word}
 .scout-app-wrapper .tm{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);font-weight:800}
 .scout-app-wrapper .term.on .tm{color:var(--ac)}
 .scout-app-wrapper .sb{width:68px;flex:0 0 68px;border:0;border-left:1px solid var(--ln);background:transparent;color:var(--mu);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 4px;transition:box-shadow .2s,background .15s,color .15s}
@@ -1660,6 +1660,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* hunt rows, add box */
 .scout-app-wrapper.k2 .term{background:var(--k2-card);border:2.5px solid var(--k2-ln);box-shadow:0 3px 0 var(--k2-ln)}
 .scout-app-wrapper.k2 .term .sb{border-left:2px solid var(--k2-ln)}
+@media (max-width:480px){.scout-app-wrapper.tz .term .ck{width:40px;flex-basis:40px}.scout-app-wrapper.tz .term .sb{width:46px;flex-basis:46px;padding:8px 2px}.scout-app-wrapper.tz .term .sb b{display:none}.scout-app-wrapper.tz .term .rm{width:40px;flex-basis:40px;min-width:40px}.scout-app-wrapper.tz .term .tb{padding:10px 10px}}
 .scout-app-wrapper.k2 .addrow input{border:2.5px solid var(--k2-ln);border-radius:14px;background:var(--k2-card)}
 .scout-app-wrapper.k2 .addrow button{background:var(--k2-band);color:var(--k2-bandink);border:2.5px solid var(--k2-ln);border-radius:14px;box-shadow:0 4px 0 var(--k2-ln);font-family:var(--display);box-shadow:0 4px 0 var(--k2-ln)}
 /* settings */
@@ -2059,6 +2060,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper.is-new #otp-sgw,.scout-app-wrapper.is-new #otp-guide,.scout-app-wrapper.is-new #otp-alerts,.scout-app-wrapper.is-new .otp-getapp[data-mode=home],.scout-app-wrapper.is-run #otp-alerts{display:none!important}
 .scout-app-wrapper .start{margin:14px 0 6px}
 .scout-app-wrapper .start-steps{margin:0 0 6px;padding:0;list-style:none;counter-reset:st}
+.scout-app-wrapper .start-note{margin:8px 0 0;font-size:13.5px;line-height:1.4;color:var(--mu)}
 .scout-app-wrapper .start-steps li{counter-increment:st;position:relative;margin:0 0 8px;padding-left:38px;font-size:17px;line-height:1.4;color:var(--i2)}
 .scout-app-wrapper .start-steps li:before{content:counter(st);position:absolute;left:0;top:-1px;width:26px;height:26px;border-radius:50%;background:var(--ac);color:var(--onink);font:800 14px/26px var(--sans);text-align:center}
 .scout-app-wrapper .start-steps b{color:var(--ink)}
@@ -2289,8 +2291,9 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <li>
 <b>Prowl watches</b> and shows what is new in Daily.</li>
 </ol>
-<p class="bolo-l">Try one</p>
+<p class="bolo-l">Ideas to try</p>
 <div class="bolo-r" id="otp-startTry"></div>
+<p class="start-note">Just ideas, not saved. They go away once you keep a hunt of your own.</p>
 </div>
 
   <div class="gapp otp-getapp" data-mode="home" hidden></div>
@@ -3290,7 +3293,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.57';
+var PROWL_VERSION='v7.58';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
