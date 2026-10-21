@@ -22,7 +22,7 @@ test('simple is the default: the marketplace list folds behind one button, and t
 test('Show everything is saved and drops the simple class', async () => {
   const p = loadPage({ fetchImpl: liveFetch().impl, storage: ST });
   await tick(60);
-  assert.equal(p.$('#otp-detailBtn').textContent, 'Keep it simple');
+  assert.equal(p.$('#otp-detailBtn').textContent, 'Swipe', 'v7.59: Keep it simple is called Swipe');
   p.$('#otp-detailBtn').click();
   assert.equal(p.win.localStorage.getItem('prowl.detail'), 'all');
   assert.ok(!p.$('.scout-app-wrapper').classList.contains('dt-simple'));

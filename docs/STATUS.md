@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.58 / v156; Den names wrap, starter chips labeled).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.59 / v156).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.58** | 398,849 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.59** | 398,786 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v156** | |
 
 Recently shipped, newest first:
 
+- **v7.59: Swipe or Show everything, on the hunt page** (Matt: "I want two modes. I want the swipe mode or show
+  everything mode on the hunt page"). A switch over the live finds, in search results and over a favorite hunt pill's
+  listings (`viewSw`, `.view-sw`, `data-view`). **Swipe** (the default) keeps v7.31's one sideways row per
+  marketplace; **Show everything** lays every find out in a grid (two across on a phone) and opens the full
+  marketplace list. It is the v7.08 setting renamed (Keep it simple is now Swipe), same key `prowl.detail`, so the
+  Den's How much to show and the switch stay one setting. Tests: `__tests__/page/view-modes-v759.test.mjs`.
 - **v7.58: Den hunt names stay in their row; the first-visit chips say they are ideas** (the owner, on a new phone:
   "the letters are spilling out in the den", and the sample hunts "I couldn't delete them. I added one hunt and samples
   went away", picked "label them"). `.tt` wraps long words (`overflow-wrap:anywhere`); at Large / Extra large text
@@ -932,7 +938,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.59, worker v157**. Claim one here when you start.
+Next free numbers: **page v7.60, worker v157**. Claim one here when you start.
 
 ## What's next
 
