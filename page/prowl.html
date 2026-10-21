@@ -2031,6 +2031,16 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper #otp-res .sgw-grid,.scout-app-wrapper #otp-sgw .sgw-grid{display:flex!important;grid-template-columns:none!important;padding:2px 18px 12px!important;scroll-padding:0 18px;align-items:flex-start;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
 .scout-app-wrapper #otp-res .sgw-grid>*,.scout-app-wrapper #otp-sgw .sgw-grid>*{flex:0 0 min(42%,200px);scroll-snap-align:start}
 .scout-app-wrapper #otp-res .sgw-grid>.sgw-close,.scout-app-wrapper #otp-sgw .sgw-grid>.sgw-close{flex:0 0 76px;align-self:center;margin:0;padding:0 0 0 10px;border-top:0;border-left:1px dashed var(--ln)}
+/* v7.59: Show everything lays every find out in a grid (two across on a phone); Swipe keeps the rows above */
+.scout-app-wrapper:not(.dt-simple) #otp-res .sgw-grid,.scout-app-wrapper:not(.dt-simple) #otp-sgw .sgw-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))!important;overflow-x:visible;scroll-snap-type:none;padding:2px 18px 12px!important}
+.scout-app-wrapper:not(.dt-simple) #otp-res .sgw-grid>*,.scout-app-wrapper:not(.dt-simple) #otp-sgw .sgw-grid>*{flex:none;min-width:0}
+.scout-app-wrapper:not(.dt-simple) #otp-res .sgw-grid>.sgw-close,.scout-app-wrapper:not(.dt-simple) #otp-sgw .sgw-grid>.sgw-close{grid-column:1/-1;align-self:auto;margin:6px 0 0;padding:8px 0 0;border-left:0;border-top:1px dashed var(--ln)}
+@media(max-width:420px){.scout-app-wrapper:not(.dt-simple) #otp-res .sgw-grid,.scout-app-wrapper:not(.dt-simple) #otp-sgw .sgw-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px} }
+.scout-app-wrapper .view-sw{display:flex;margin:12px 18px 2px;max-width:380px;border:1px solid var(--l2);border-radius:12px;overflow:hidden}
+.scout-app-wrapper .view-sw button{flex:1 1 0;min-height:42px;padding:8px;border:0;background:var(--cd2);color:var(--i2);font:700 15px/1.2 var(--sans);cursor:pointer}
+.scout-app-wrapper .view-sw button+button{border-left:1px solid var(--l2)}
+.scout-app-wrapper .view-sw button[aria-pressed="true"]{background:var(--ac);color:var(--onink)}
+.scout-app-wrapper .view-sw button:focus-visible{outline:2px solid var(--ac);outline-offset:-2px}
 /* v7.35: the email ask: who it is from, what never happens to the address, what the email looks like */
 .scout-app-wrapper .mail-trust{margin:8px 0 0;font-size:13.5px;line-height:1.45;color:var(--mu)}
 .scout-app-wrapper .mail-trust b{color:var(--ink)}
@@ -3053,9 +3063,9 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <div class="setrow">
         <div>
 <h3>How much to show</h3>
-<p>Keep it simple shows Best picks and live finds first, with the full marketplace list one tap away.</p>
+<p>Swipe shows one sideways row of finds per marketplace, with the full marketplace list one tap away. Show everything lays every find out in a grid and opens the full list.</p>
 </div>
-        <button class="gh" id="otp-detailBtn" type="button">Keep it simple</button>
+        <button class="gh" id="otp-detailBtn" type="button">Swipe</button>
       </div>
       <details class="set-more"><summary>More settings</summary>
       <div class="setrow">
@@ -3293,7 +3303,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.58';
+var PROWL_VERSION='v7.59';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4640,6 +4650,10 @@ function sgwForRun(r){
 /* v7.54: What has it sold for?, under a search's title and (v7.55) over a favorite hunt's live listings when its pill
    is tapped. Both can be on the page at once, so the buttons carry the term and one listener opens them. Terapeak is
    free for any eBay Seller Hub account and dayRange=1095 returns 3-year sold data, better comps than eBay's APIs. */
+/* v7.59: Swipe or Show everything, over the live finds (the setting is prowl.detail, see detailApply) */
+function viewSw(){var d=detailGet();return '<div class="view-sw" role="group" aria-label="How to show the finds">'+
+  '<button type="button" data-view="simple" aria-pressed="'+(d==='simple')+'">Swipe</button>'+
+  '<button type="button" data-view="all" aria-pressed="'+(d==='all')+'">Show everything</button></div>'}
 function compsRow(t){
   return '<div class="comps comps-top" role=group aria-label="What has it sold for?"><p class=comps-h>What has it sold for?</p>'+
     '<button class=gh type=button data-comps=90 data-t="'+esc(t)+'">eBay Sold · 90 days</button>'+
@@ -4737,7 +4751,7 @@ function rRes(){
   /* v7.54 (the owner: "i had a hard time finding ebay sold and terapeak at the bottom"): sold prices sit under the
      title, in Keep it simple too, not in the footer that waits behind More places to look */
   var comps=r.terms.length===1?compsRow(r.terms[0]):'';
-  res.innerHTML='<div class=rc>'+head+comps+huntBlock(r)+runLive(r)+rows+
+  res.innerHTML='<div class=rc>'+head+comps+huntBlock(r)+viewSw()+runLive(r)+rows+
     '<div class=oabar>'+
       (paused
         ?'<button class="b p" id=otp-next type=button>Open next '+nextN+'</button>'+
@@ -5953,7 +5967,7 @@ function fbBlock(t){
 function sgwCont(t){
   return t?'<div class="sgw-cont"><p>These are the live listings. The full hunt searches all <b>'+TOTAL+'</b> marketplaces for <b>“'+esc(t)+'”</b>, from Facebook to estate sales and auctions.</p><button type="button" class="b p sgw-hunt" data-sgw="hunt">Continue the full hunt →</button></div>':'';
 }
-function sgwBody(){var t=sgwCurTerm();if(t&&sgw.terms.length)huntFetch(t,function(){huntPaint(t)});return (t&&sgw.terms.length?compsRow(t)+huntBox(t):'')+sgwBody0(t)+sgwCont(sgw.terms.length?t:'')}   /* v7.07: Best picks for the chosen hunt pill too */
+function sgwBody(){var t=sgwCurTerm();if(t&&sgw.terms.length)huntFetch(t,function(){huntPaint(t)});return (t&&sgw.terms.length?compsRow(t)+huntBox(t)+viewSw():'')+sgwBody0(t)+sgwCont(sgw.terms.length?t:'')}   /* v7.07: Best picks for the chosen hunt pill too */
 function sgwBody0(t){
   if(t)fbFetch(t);   /* v6.65 */
   if(!sgw.terms.length)return '<p class="sgw-note">Type something you hunt into the box above. It is saved to your hunts, locked for Daily, and checked on ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Vinted and Grailed right away.</p>';
@@ -10285,10 +10299,15 @@ if(near){
 load();counts();rQuick();rDenHunts();rDenLocal();rDenOne();rDrawer();rDock();rRes();
 applyDeepLink();
 Array.prototype.forEach.call(document.querySelectorAll('.prowl-version'),function(el){el.textContent=PROWL_VERSION});
-/* v7.08: Keep it simple (default) or Show everything. prowl.detail = 'all' shows everything; wrapper class dt-simple hides the long parts */
+/* v7.08: Keep it simple (default) or Show everything. prowl.detail = 'all' shows everything; wrapper class dt-simple hides the long parts.
+   v7.59 (Matt: "I want two modes. I want the swipe mode or show everything mode on the hunt page"): the simple mode is
+   Swipe (one sideways row per marketplace), Show everything lays every find out in a grid as well, and a switch over
+   the live finds sets it right on the hunt page. Same key, so the Den setting and the switch stay one setting. */
 function detailGet(){var v='';try{v=localStorage.getItem('prowl.detail')||''}catch(e){}return v==='all'?'all':'simple'}
-function detailApply(){var simple=detailGet()==='simple',w=document.querySelectorAll('.scout-app-wrapper'),i;for(i=0;i<w.length;i++)w[i].classList.toggle('dt-simple',simple);var b=document.getElementById('otp-detailBtn');if(b)b.textContent=simple?'Keep it simple':'Show everything'}
-try{detailApply();var dtb=$('#otp-detailBtn');if(dtb)dtb.addEventListener('click',function(){var n=detailGet()==='simple'?'all':'simple';try{localStorage.setItem('prowl.detail',n)}catch(e){}detailApply();if(typeof toast==='function')toast(n==='all'?'Showing everything.':'Keeping it simple.',1600)});}catch(e){}
+function detailApply(){var d=detailGet(),simple=d==='simple',w=document.querySelectorAll('.scout-app-wrapper'),i,v;for(i=0;i<w.length;i++)w[i].classList.toggle('dt-simple',simple);var b=document.getElementById('otp-detailBtn');if(b)b.textContent=simple?'Swipe':'Show everything';v=document.querySelectorAll('[data-view]');for(i=0;i<v.length;i++)v[i].setAttribute('aria-pressed',v[i].getAttribute('data-view')===d?'true':'false')}
+function detailSet(n){try{localStorage.setItem('prowl.detail',n)}catch(e){}detailApply();if(typeof toast==='function')toast(n==='all'?'Showing everything.':'Swipe mode.',1600)}
+try{detailApply();var dtb=$('#otp-detailBtn');if(dtb)dtb.addEventListener('click',function(){detailSet(detailGet()==='simple'?'all':'simple')});
+  document.addEventListener('click',function(e){var b=e.target&&e.target.closest?e.target.closest('[data-view]'):null;if(!b||b.getAttribute('data-view')===detailGet())return;detailSet(b.getAttribute('data-view'))});}catch(e){}
 try{textSizeApply(textSizeGet());var szb=$('#otp-sizeBtn');if(szb)szb.addEventListener('click',textSizeNext);var szt=$('#otp-sizeTop');if(szt)szt.addEventListener('click',textSizeNext);}catch(e){}
 /* v5.89: while the store's phone menu is open, hide Prowl's top bar and bottom
    dock, which otherwise sit on top of the menu. Works with the Horizon and Dawn
