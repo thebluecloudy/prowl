@@ -1,6 +1,6 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.60 / v156).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.60 / v156; CI-only PR, no version).
 
 ## Live
 
@@ -957,6 +957,14 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 ## Waiting on Matt
 
+- **Turn on a branch rule for `main`** (Settings > Branches > Add branch protection rule, branch name pattern `main`):
+  tick **Require status checks to pass before merging**, then **Require branches to be up to date before merging**,
+  and add **build** to the required checks. Leave the rest unticked. GitHub only enforces "up to date" when at least
+  one check is required, so `build` must be on the list. CI no longer runs on push to `main` (Actions minutes were at
+  90%), so this rule is what keeps the PR run testing the code that lands. Nothing pushes to `main` outside a PR any
+  more (the daily SGW digest that did was removed in #207), so the rule blocks nothing else. As of 2026-10-21 `main`
+  has no protection rule at all.
+
 - **NEAR ME (v7.36 / v132) needs three things in Cloudflare before it does more than the old Maps links:**
   1. Done 2026-10-20: the worker secret **GOOGLE_MAPS_KEY** (Places API (New), Routes API, Geocoding API; API
      restriction only, no website restriction, since only the worker calls Google). Cost: a Road Trip build is about
@@ -994,6 +1002,12 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 - **Estate sales check:** admin > Diagnose > "Check garage-sale sites", then Den > Local with "Novi, MI".
 
 ## Done
+
+- **CI uses about half the Actions minutes** (2026-10-21, Hark; fixed up by Claude): `.github/workflows/blank.yml` runs
+  on pull requests only (not again on push to `main`), a newer push cancels a PR's older run, npm is cached, and the
+  time limit is 15 minutes (the suite takes about 7.5). Every PR runs the suite, docs-only ones too: a path filter
+  would leave a required `build` check waiting forever on a PR it skipped, and every PR touches `docs/STATUS.md`,
+  which the tests read, so it saved nothing. Run it by hand from the Actions tab to re-check `main`.
 
 - **Free-month checkout test passed** (2026-10-11): "Start my free month" opened checkout with PROWLMONTH
   applied, $0.00 today, $7.00 a month after, card saved; Shopify's subscription page offers Pause, Skip and Cancel.

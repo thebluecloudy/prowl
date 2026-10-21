@@ -1,15 +1,30 @@
 name: CI
 
-# Checks the worker, page and extension on every pull request and push to main:
-# every file parses, the page has no Liquid openers, and the unit tests in
-# worker/__tests__ and __tests__ pass (Node's built-in test runner). The page
-# tests load page/prowl.html in jsdom, the one dev-only package (package.json).
+# Checks the worker, page and extension on every pull request: every file parses,
+# the page has no Liquid openers, and the unit tests in worker/__tests__ and
+# __tests__ pass (Node's built-in test runner). The page tests load
+# page/prowl.html in jsdom, the one dev-only package (package.json).
+#
+# Minutes-saving changes (Oct 2026, Actions minutes at 90%):
+# - No longer runs on push to main. Each merge used to run the full suite twice
+#   (the PR run and the main push run, same code). Run it by hand from the
+#   Actions tab (workflow_dispatch) if main ever needs a re-check.
+# - A newer push to the same PR cancels the older run still in progress.
+# - Every PR runs it, docs-only ones too: "build" is meant to be a required check,
+#   and a required check skipped by a path filter waits forever. Every PR edits
+#   docs/STATUS.md anyway, which the tests read, so a filter saved nothing.
+# - Safe only with a branch rule on main that requires "build" and "Require
+#   branches to be up to date before merging", so the PR run tests the same code
+#   that lands (docs/STATUS.md, Waiting on Matt).
+# - npm packages are cached between runs.
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -17,12 +32,13 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10   # the suite runs about 4.5 min and grew past 5 (runs 357, 361, 362 cancelled mid-test)
+    timeout-minutes: 15   # the suite now takes 7.3 to 7.5 min (was 4.5; runs 357, 361, 362 were cancelled at the old 5-min limit)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - name: Worker files parse
         run: |
           mkdir -p /tmp/w && cp worker/*.js /tmp/w/ && echo '{"type":"module"}' > /tmp/w/package.json
