@@ -390,6 +390,9 @@ test("the worker's own guards: routes are wired, the login links the account, th
   assert.match(INDEX, /url\.pathname === "\/near" && request\.method === "GET"\) return nearRoute/);
   assert.match(INDEX, /url\.pathname === "\/trip" && request\.method === "GET"\) return tripRoute/);
   assert.match(INDEX, /url\.pathname\.startsWith\("\/trips\/"\)\) return tripsRoute/);
+  /* v156: the POSTs (keep, share, close, rebuild, finds) were 405 "GET only" live since v132; their dispatch sits above that guard */
+  const postAt = INDEX.search(/url\.pathname\.startsWith\("\/trips\/"\)\) && request\.method === "POST"\) return tripsRoute/), guardAt = INDEX.indexOf('return json({ error: "GET only" }, 405, origin);');
+  assert.ok(postAt > 0 && guardAt > 0 && postAt < guardAt, "group trips' POSTs are routed before the GET-only guard");
   assert.match(INDEX, /url\.pathname\.startsWith\("\/finds\/"\) && request\.method === "GET"\) return findPhotoRoute/);
   assert.match(INDEX, /await tripAcctLink\(env, id, email\)/);
   assert.match(INDEX, /await tripSweep\(env\)/);
