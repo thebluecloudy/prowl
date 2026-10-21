@@ -1,12 +1,12 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.56 / v156; the SGW digest removed).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.57 / v156; the SGW digest removed).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.56** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.57** | 398,950 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v156** | |
 
 Recently shipped, newest first:
@@ -17,6 +17,19 @@ Recently shipped, newest first:
   fell under the same ShopGoodwill terms that park the sniper ("any ... script ... or other automated means"), and
   was the only thing pushing to `main` outside a PR, which a required `build` check would have rejected. Removed the
   workflow, `sgw_scrape.py` and `sgw-digest.json`. The worker's live ShopGoodwill results are unchanged.
+- **v7.57: near me means where you are; Road trip opens quietly and scrolls on an iPhone** (the owner, in Findlay with
+  48377 saved: "This says near me but opens Google at zip code. It should be near me or zip. And road trip does not
+  scroll on apple. When I open road trip the keyboard opens by default.").
+  - Stores near you: once the phone has a fix (Around you), the searches go around where you are ("antique stores near
+    me"; Apple Maps with no place at all), headed "where you are". With a saved place, **Where I am** / **48377** chips
+    switch between them for the visit (`nearWhere`, `NEAR_WHERE`, no new key). No fix: the saved place, headed "near
+    48377". Garage sales stay on the saved city (Craigslist works by city).
+  - Road trip no longer puts the cursor in the destination box on opening (`nrMode`), so the keyboard waits for a tap.
+  - Scrolling on an iPhone: on a phone (coarse pointer, or Leaflet's mobile flag) the map no longer takes one-finger
+    drags (`dragging: false`, `tap: false`), so a swipe over it scrolls the screen; pinch and the buttons zoom it. A
+    mouse still drags it. The scroll box gets `min-height: 0` and its panes `flex: 0 0 auto`, so older Safari cannot
+    squeeze the panes to the box. Not checked on a real iPhone from here.
+  - Test: `__tests__/page/near-where-v757.test.mjs`.
 - **v7.56: Best bets and a busy marketplace open the site itself** (Matt, 2026-10-21: "When I click ruby lane the screen
   changes to one hunt or something. I'm expecting it to open ruby lane", and Vinted busy again: "can you just put a link
   here to run it manually?"). The Best bets pills under a hunt (worker /where) are links (`a.sgw-wh`, ↗) to that
@@ -912,7 +925,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.57, worker v157**. Claim one here when you start.
+Next free numbers: **page v7.58, worker v157**. Claim one here when you start.
 
 ## What's next
 
@@ -926,14 +939,6 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 (the piece, then its mark or back), then community-lite.
 
 ## Waiting on Matt
-
-- **GitHub Actions stopped starting jobs on 2026-10-21 (most likely the month's Actions minutes ran out).** Every job
-  since 09:28 UTC "fails" in about 3 seconds with no runner and no log: CI on #206 and #207, and CI plus the Shopify
-  deploy for v7.56 (#209). Check GitHub > Settings > Billing and plans (reset date, or a small spending limit). Until
-  then: **do not merge page changes** expecting them live; the worker deploys through Cloudflare and serves the new
-  script and stylesheet under any hash, so v7.56 is in effect live, but the Shopify page body still names v7.55's
-  hashes (uncached loads) and any change outside `prowl-js` / `prowl-css` would not reach Shopify. When Actions is
-  back, re-run "Deploy Prowl page to Shopify" from the Actions tab.
 
 - **NEAR ME (v7.36 / v132) needs three things in Cloudflare before it does more than the old Maps links:**
   1. Done 2026-10-20: the worker secret **GOOGLE_MAPS_KEY** (Places API (New), Routes API, Geocoding API; API
