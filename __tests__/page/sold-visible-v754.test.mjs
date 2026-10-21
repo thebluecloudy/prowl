@@ -1,6 +1,7 @@
 // Page v7.54 (the owner, 2026-10-21: "i had a hard time finding ebay sold and terapeak at the bottom of the search
 // area, can you make sure that is always visible?"). The two sold-price buttons sit under the search title, in Keep it
-// simple too, not in the footer that waits behind More places to look.
+// simple too, not in the footer that waits behind More places to look. v7.55 ("it doesn't show until i hit the hunt
+// button, when i click pills it is not there"): and over a favorite hunt's live listings when its pill is tapped.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -32,9 +33,9 @@ test('eBay Sold and Terapeak sit under the title, before the live results, outsi
   assert.equal(box.previousElementSibling, rc.querySelector('.rh'), 'right under the title');
   assert.ok(box.compareDocumentPosition(rc.querySelector('.run-live')) & p.win.Node.DOCUMENT_POSITION_FOLLOWING, 'before the live results');
   assert.equal(rc.querySelector('.rf .comps'), null, 'no second copy in the footer');
-  assert.equal(p.$$('#otp-comps90').length, 1);
-  p.$('#otp-comps90').click();
-  p.$('#otp-comps3y').click();
+  assert.equal(rc.querySelectorAll('[data-comps="90"]').length, 1);
+  rc.querySelector('[data-comps="90"]').click();
+  rc.querySelector('[data-comps="3y"]').click();
   assert.match(opened[0], /ebay\.com\/sch\/i\.html\?_nkw=Pyrex%20butterprint&LH_Sold=1&LH_Complete=1/);
   assert.match(opened[1], /^https:\/\/www\.ebay\.com\/sh\/research\?marketplace=EBAY-US&tabName=SOLD&dayRange=1095&keywords=Pyrex%20butterprint$/);
   assert.deepEqual(p.errors, []);
@@ -48,3 +49,26 @@ test('Keep it simple hides the footer, never the sold-price buttons', () => {
   for (const s of sels) assert.doesNotMatch(s, /\.comps(?!-note)|#otp-comps|\.gh$/, s);
 });
 
+
+test('tapping a favorite-hunt pill shows the sold-price row over its live listings, for that hunt', async () => {
+  const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: ['catalin bracelet', 'rookwood vase'], lock: [0, 1] } } });
+  await tick(40);
+  const opened = [];
+  p.win.open = (u) => { opened.push(String(u)); return null; };
+  const pill = p.$$('.sgw-chip').find((c) => /rookwood vase/.test(c.textContent));
+  assert.ok(pill, 'the pill');
+  pill.click();
+  await tick(40);
+  assert.equal(p.$('#otp-res .rc'), null, 'no search run; the home panel');
+  const box = p.$('.sgw-body .comps-top');
+  assert.ok(box, 'the sold-price row in the pill\'s panel');
+  assert.equal(box.querySelector('.comps-h').textContent, 'What has it sold for?');
+  assert.deepEqual([...box.querySelectorAll('[data-comps]')].map((b) => b.getAttribute('data-t')), ['rookwood vase', 'rookwood vase']);
+  box.querySelector('[data-comps="90"]').click();
+  box.querySelector('[data-comps="3y"]').click();
+  assert.match(opened[0], /ebay\.com\/sch\/i\.html\?_nkw=rookwood%20vase&LH_Sold=1&LH_Complete=1/);
+  assert.match(opened[1], /dayRange=1095&keywords=rookwood%20vase$/);
+  assert.equal(opened.length, 2, 'one tab a tap');
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
