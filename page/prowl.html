@@ -1223,6 +1223,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .es-t b{font-size:15px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .scout-app-wrapper .whyp[hidden],.scout-app-wrapper #otp-alerts[hidden]{display:none!important}
 .scout-app-wrapper .sgw-hunt{height:44px;padding:0 18px;font-size:15px}
+.scout-app-wrapper a.sgw-wh{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:var(--ink)}   /* v7.56: Best bets are links */
+.scout-app-wrapper .lv-self{white-space:nowrap;font-weight:700}
 .scout-app-wrapper .sgw-ago{margin-left:auto;font-size:14px;color:var(--mu);font-weight:600}
 .scout-app-wrapper .alrt{margin:0 0 30px;padding:18px;border:1px solid var(--ac);border-radius:16px;background:var(--cd2)}
 .scout-app-wrapper .alrt h2{font-family:var(--display);font-size:18px;margin:0 0 6px;color:var(--ink)!important}
@@ -3286,7 +3288,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.55';
+var PROWL_VERSION='v7.56';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4370,7 +4372,7 @@ function liveRunStrip(name,t,c){
   if(!c){
     return '<div class="rlive">'+head+'</div><div class="sgw-grid"><div class="sgw-skel"></div><div class="sgw-skel"></div><div class="sgw-skel"></div><div class="sgw-skel"></div></div></div>';
   }
-  if(c.err)return '<div class="rlive">'+head+'</div><p class="sgw-note">'+esc(liveErrNote(name,c))+'</p></div>';   /* v6.33: was silent */
+  if(c.err)return '<div class="rlive">'+head+'</div><p class="sgw-note">'+esc(liveErrNote(name,c))+liveSelf(name,t)+'</p></div>';   /* v6.33: was silent. v7.56: and a link to search it yourself */
   var items=[],i;
   for(i=0;i<c.items.length;i++){if(c.items[i]&&c.items[i].url&&c.items[i].title)items.push(c.items[i])}
   if(!items.length)return '<div class="rlive">'+head+'</div><p class="sgw-note">Nothing live for <b>'+esc(t)+'</b> on '+name+' right now. More places to look still searches it everywhere else.</p></div>';
@@ -5818,6 +5820,13 @@ function liveErrNote(name,c){
   try{if(navigator.onLine===false)return 'You look offline. Live results come back when you reconnect.'}catch(e){}
   return 'Could not reach '+name+' just now. Try again in a couple of minutes. More places to look still searches every site directly.';
 }
+/* v7.56 (Matt, Vinted busy again: "can you just put a link here to run it manually?"): when a live block can't load,
+   a link opens the same search on that marketplace itself */
+function liveSelf(name,t){
+  var id,m=null;for(id in LIVE_NAME)if(LIVE_NAME[id]===name){m=mb(id);break}
+  if(!m||!t)return '';
+  return ' <a class="lnk lv-self" href="'+esc(m.u(t))+'" target="_blank" rel="noopener noreferrer">Search '+esc(name)+' yourself \u2197</a>';
+}
 /* v6.33: every live source answered and none had anything. One card instead of eight "nothing" lines:
    keep watching by email, or try the sites Prowl can only link to. */
 var EMPTY_LINKS=['facebook','heritage','liveauction','hibid','mercari','mercarijp','rubylane','ebaysold'];
@@ -5852,7 +5861,7 @@ function liveBlock(name,t,c,busy){
   var head='<div class="sgw-sub"><span class="sgw-live">Live on '+name+'</span>';
   if(busy)return head+'</div><p class="sgw-note"><span class="paws" aria-hidden="true"><i>🐾</i><i>🐾</i><i>🐾</i></span>Looking on '+name+'…</p>';
   if(!c)return head+'</div><p class="sgw-note">&nbsp;</p>';
-  if(c.err)return head+'</div><p class="sgw-note">'+esc(liveErrNote(name,c))+'</p>';
+  if(c.err)return head+'</div><p class="sgw-note">'+esc(liveErrNote(name,c))+liveSelf(name,t)+'</p>';   /* v7.56 */
   var items=[],i;
   for(i=0;i<c.items.length;i++){if(c.items[i]&&c.items[i].url&&c.items[i].title)items.push(c.items[i])}
   if(!items.length)return head+'</div><p class="sgw-note">Nothing live for <b>'+esc(t)+'</b> on '+name+' right now. The full hunt below still searches everywhere else.</p>';
@@ -7083,11 +7092,12 @@ function rSGW(){
   mailSync(false);
 }
 /* v5.67: worker /where has Jev name the best marketplaces for the picked hunt.
-   Shown as buttons that open just that one site. */
+   v7.56 (Matt: "When I click ruby lane ... I'm expecting it to open ruby lane"): each is a link that opens the hunt on
+   that marketplace's own site, not a one-site run inside Prowl. */
 var WHERE={c:Object.create(null)};
 function sgwWhereHtml(t,best){
   var h='',i,m;
-  for(i=0;i<best.length;i++){m=best[i]&&mb(best[i].id);if(m)h+='<button type="button" class="b sgw-hunt" data-sgw="where" data-m="'+esc(m.id)+'">'+esc(m.n)+'</button>';}
+  for(i=0;i<best.length;i++){m=best[i]&&mb(best[i].id);if(m)h+='<a class="b sgw-hunt sgw-wh" href="'+esc(m.u(t))+'" target="_blank" rel="noopener noreferrer" data-m="'+esc(m.id)+'">'+esc(m.n)+' \u2197</a>';}
   return h?'<span class="sgw-where">Best bets for '+esc(t)+':</span>'+h:'';
 }
 function sgwWhere(mount){

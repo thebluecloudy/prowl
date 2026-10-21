@@ -1,13 +1,13 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.55 / v155; no version, the SGW digest removed).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.56 / v156; the SGW digest removed).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.55** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v155** | |
+| Page | **v7.56** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v156** | |
 
 Recently shipped, newest first:
 
@@ -17,6 +17,18 @@ Recently shipped, newest first:
   fell under the same ShopGoodwill terms that park the sniper ("any ... script ... or other automated means"), and
   was the only thing pushing to `main` outside a PR, which a required `build` check would have rejected. Removed the
   workflow, `sgw_scrape.py` and `sgw-digest.json`. The worker's live ShopGoodwill results are unchanged.
+- **v7.56: Best bets and a busy marketplace open the site itself** (Matt, 2026-10-21: "When I click ruby lane the screen
+  changes to one hunt or something. I'm expecting it to open ruby lane", and Vinted busy again: "can you just put a link
+  here to run it manually?"). The Best bets pills under a hunt (worker /where) are links (`a.sgw-wh`, ↗) to that
+  marketplace's own search for the hunt, in a new tab; no one-site run inside Prowl. A live block that can't load (busy,
+  unreachable, offline) adds "Search Vinted yourself ↗" (`liveSelf`, `.lv-self`), on the hunt results and on Daily.
+  Test: `__tests__/page/links-out-v756.test.mjs`.
+- **v156: group trips can be kept** (the owner: "Group button doesn't work"). Every POST to `/trips` (keep a trip,
+  add a member, close it, rebuild a kept trip from here, post a find) answered 405 "GET only" live: the worker's
+  GET-only guard sat above the `/trips` dispatch, so those calls never reached `tripsRoute` (the tests call it
+  directly and never saw it). Broken since group trips shipped in v132. The POST dispatch now sits above the guard,
+  after the cross-site origin check. Worker only. Test: the wiring test in `worker/__tests__/trips.test.mjs` checks
+  the order.
 - **v7.55: the sold-price row on the hunt pills too** (the owner: "it doesn't show until i hit the hunt button, when i
   click pills it is not there"). Tapping a Your favorite hunts pill draws that hunt's live listings on the home screen
   without a search run, so v7.54's row was not there. `compsRow(t)` now draws it in both places (over the pill's live
@@ -900,7 +912,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.56, worker v156**. Claim one here when you start.
+Next free numbers: **page v7.57, worker v157**. Claim one here when you start.
 
 ## What's next
 
@@ -914,6 +926,14 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 (the piece, then its mark or back), then community-lite.
 
 ## Waiting on Matt
+
+- **GitHub Actions stopped starting jobs on 2026-10-21 (most likely the month's Actions minutes ran out).** Every job
+  since 09:28 UTC "fails" in about 3 seconds with no runner and no log: CI on #206 and #207, and CI plus the Shopify
+  deploy for v7.56 (#209). Check GitHub > Settings > Billing and plans (reset date, or a small spending limit). Until
+  then: **do not merge page changes** expecting them live; the worker deploys through Cloudflare and serves the new
+  script and stylesheet under any hash, so v7.56 is in effect live, but the Shopify page body still names v7.55's
+  hashes (uncached loads) and any change outside `prowl-js` / `prowl-css` would not reach Shopify. When Actions is
+  back, re-run "Deploy Prowl page to Shopify" from the Actions tab.
 
 - **NEAR ME (v7.36 / v132) needs three things in Cloudflare before it does more than the old Maps links:**
   1. Done 2026-10-20: the worker secret **GOOGLE_MAPS_KEY** (Places API (New), Routes API, Geocoding API; API
