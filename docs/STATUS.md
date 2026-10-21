@@ -883,8 +883,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.54**: eBay Sold and Terapeak always visible, under the search title | Building. |
 
-Next free numbers: **page v7.54, worker v156**. Claim one here when you start.
+Next free numbers: **page v7.55, worker v156**. Claim one here when you start.
 
 ## What's next
 
