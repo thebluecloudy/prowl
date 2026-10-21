@@ -494,7 +494,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .tb{flex:1;min-width:0;text-align:left;background:none;border:0;padding:11px 14px;display:flex;flex-direction:column;gap:3px;-webkit-tap-highlight-color:transparent}
 .scout-app-wrapper .tb:hover{background:var(--ac-soft)}
 .scout-app-wrapper .tb:focus-visible{outline:2px solid var(--ac);outline-offset:-2px}
-.scout-app-wrapper .tt{font-size:16px;font-weight:600;color:var(--ink)}
+.scout-app-wrapper .tt{font-size:16px;font-weight:600;color:var(--ink);overflow-wrap:anywhere;word-break:break-word}
 .scout-app-wrapper .tm{font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mu);font-weight:800}
 .scout-app-wrapper .term.on .tm{color:var(--ac)}
 .scout-app-wrapper .sb{width:68px;flex:0 0 68px;border:0;border-left:1px solid var(--ln);background:transparent;color:var(--mu);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 4px;transition:box-shadow .2s,background .15s,color .15s}
@@ -1223,6 +1223,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .es-t b{font-size:15px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .scout-app-wrapper .whyp[hidden],.scout-app-wrapper #otp-alerts[hidden]{display:none!important}
 .scout-app-wrapper .sgw-hunt{height:44px;padding:0 18px;font-size:15px}
+.scout-app-wrapper a.sgw-wh{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:var(--ink)}   /* v7.56: Best bets are links */
+.scout-app-wrapper .lv-self{white-space:nowrap;font-weight:700}
 .scout-app-wrapper .sgw-ago{margin-left:auto;font-size:14px;color:var(--mu);font-weight:600}
 .scout-app-wrapper .alrt{margin:0 0 30px;padding:18px;border:1px solid var(--ac);border-radius:16px;background:var(--cd2)}
 .scout-app-wrapper .alrt h2{font-family:var(--display);font-size:18px;margin:0 0 6px;color:var(--ink)!important}
@@ -1658,6 +1660,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* hunt rows, add box */
 .scout-app-wrapper.k2 .term{background:var(--k2-card);border:2.5px solid var(--k2-ln);box-shadow:0 3px 0 var(--k2-ln)}
 .scout-app-wrapper.k2 .term .sb{border-left:2px solid var(--k2-ln)}
+@media (max-width:480px){.scout-app-wrapper.tz .term .ck{width:40px;flex-basis:40px}.scout-app-wrapper.tz .term .sb{width:46px;flex-basis:46px;padding:8px 2px}.scout-app-wrapper.tz .term .sb b{display:none}.scout-app-wrapper.tz .term .rm{width:40px;flex-basis:40px;min-width:40px}.scout-app-wrapper.tz .term .tb{padding:10px 10px}}
 .scout-app-wrapper.k2 .addrow input{border:2.5px solid var(--k2-ln);border-radius:14px;background:var(--k2-card)}
 .scout-app-wrapper.k2 .addrow button{background:var(--k2-band);color:var(--k2-bandink);border:2.5px solid var(--k2-ln);border-radius:14px;box-shadow:0 4px 0 var(--k2-ln);font-family:var(--display);box-shadow:0 4px 0 var(--k2-ln)}
 /* settings */
@@ -2028,6 +2031,16 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper #otp-res .sgw-grid,.scout-app-wrapper #otp-sgw .sgw-grid{display:flex!important;grid-template-columns:none!important;padding:2px 18px 12px!important;scroll-padding:0 18px;align-items:flex-start;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
 .scout-app-wrapper #otp-res .sgw-grid>*,.scout-app-wrapper #otp-sgw .sgw-grid>*{flex:0 0 min(42%,200px);scroll-snap-align:start}
 .scout-app-wrapper #otp-res .sgw-grid>.sgw-close,.scout-app-wrapper #otp-sgw .sgw-grid>.sgw-close{flex:0 0 76px;align-self:center;margin:0;padding:0 0 0 10px;border-top:0;border-left:1px dashed var(--ln)}
+/* v7.59: Show everything lays every find out in a grid (two across on a phone); Swipe keeps the rows above */
+.scout-app-wrapper:not(.dt-simple) #otp-res .sgw-grid,.scout-app-wrapper:not(.dt-simple) #otp-sgw .sgw-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))!important;overflow-x:visible;scroll-snap-type:none;padding:2px 18px 12px!important}
+.scout-app-wrapper:not(.dt-simple) #otp-res .sgw-grid>*,.scout-app-wrapper:not(.dt-simple) #otp-sgw .sgw-grid>*{flex:none;min-width:0}
+.scout-app-wrapper:not(.dt-simple) #otp-res .sgw-grid>.sgw-close,.scout-app-wrapper:not(.dt-simple) #otp-sgw .sgw-grid>.sgw-close{grid-column:1/-1;align-self:auto;margin:6px 0 0;padding:8px 0 0;border-left:0;border-top:1px dashed var(--ln)}
+@media(max-width:420px){.scout-app-wrapper:not(.dt-simple) #otp-res .sgw-grid,.scout-app-wrapper:not(.dt-simple) #otp-sgw .sgw-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px} }
+.scout-app-wrapper .view-sw{display:flex;margin:12px 18px 2px;max-width:380px;border:1px solid var(--l2);border-radius:12px;overflow:hidden}
+.scout-app-wrapper .view-sw button{flex:1 1 0;min-height:42px;padding:8px;border:0;background:var(--cd2);color:var(--i2);font:700 15px/1.2 var(--sans);cursor:pointer}
+.scout-app-wrapper .view-sw button+button{border-left:1px solid var(--l2)}
+.scout-app-wrapper .view-sw button[aria-pressed="true"]{background:var(--ac);color:var(--onink)}
+.scout-app-wrapper .view-sw button:focus-visible{outline:2px solid var(--ac);outline-offset:-2px}
 /* v7.35: the email ask: who it is from, what never happens to the address, what the email looks like */
 .scout-app-wrapper .mail-trust{margin:8px 0 0;font-size:13.5px;line-height:1.45;color:var(--mu)}
 .scout-app-wrapper .mail-trust b{color:var(--ink)}
@@ -2057,6 +2070,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper.is-new #otp-sgw,.scout-app-wrapper.is-new #otp-guide,.scout-app-wrapper.is-new #otp-alerts,.scout-app-wrapper.is-new .otp-getapp[data-mode=home],.scout-app-wrapper.is-run #otp-alerts{display:none!important}
 .scout-app-wrapper .start{margin:14px 0 6px}
 .scout-app-wrapper .start-steps{margin:0 0 6px;padding:0;list-style:none;counter-reset:st}
+.scout-app-wrapper .start-note{margin:8px 0 0;font-size:13.5px;line-height:1.4;color:var(--mu)}
 .scout-app-wrapper .start-steps li{counter-increment:st;position:relative;margin:0 0 8px;padding-left:38px;font-size:17px;line-height:1.4;color:var(--i2)}
 .scout-app-wrapper .start-steps li:before{content:counter(st);position:absolute;left:0;top:-1px;width:26px;height:26px;border-radius:50%;background:var(--ac);color:var(--onink);font:800 14px/26px var(--sans);text-align:center}
 .scout-app-wrapper .start-steps b{color:var(--ink)}
@@ -2105,7 +2119,8 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .pp-secb>.pp-asp:first-child,.scout-app-wrapper .pp-secb>.pp-fp:first-child{margin-top:0}
 /* v7.36: NEAR ME, its own screen: Around you and Road trip */
 .scout-app-wrapper #otp-near .tabs{display:flex;gap:4px;padding:8px 8px 0}
-.scout-app-wrapper #otp-nearBody{flex:1;overflow:auto;display:flex;flex-direction:column;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.scout-app-wrapper #otp-nearBody{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.scout-app-wrapper #otp-nearBody>.denPane{flex:0 0 auto}   /* v7.57: older Safari shrank the panes to the box and nothing scrolled */
 .scout-app-wrapper #otp-nrAround>#otp-denLocal{padding:0}
 .scout-app-wrapper #otp-nrAround>#otp-denLocal>.nearblk:first-of-type{margin-top:0;padding-top:0;border-top:0}
 .scout-app-wrapper .nr-live:not(:empty){margin-bottom:18px;padding-bottom:4px;border-bottom:1px solid var(--ln)}
@@ -2286,8 +2301,9 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <li>
 <b>Prowl watches</b> and shows what is new in Daily.</li>
 </ol>
-<p class="bolo-l">Try one</p>
+<p class="bolo-l">Ideas to try</p>
 <div class="bolo-r" id="otp-startTry"></div>
+<p class="start-note">Just ideas, not saved. They go away once you keep a hunt of your own.</p>
 </div>
 
   <div class="gapp otp-getapp" data-mode="home" hidden></div>
@@ -3047,9 +3063,9 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <div class="setrow">
         <div>
 <h3>How much to show</h3>
-<p>Keep it simple shows Best picks and live finds first, with the full marketplace list one tap away.</p>
+<p>Swipe shows one sideways row of finds per marketplace, with the full marketplace list one tap away. Show everything lays every find out in a grid and opens the full list.</p>
 </div>
-        <button class="gh" id="otp-detailBtn" type="button">Keep it simple</button>
+        <button class="gh" id="otp-detailBtn" type="button">Swipe</button>
       </div>
       <details class="set-more"><summary>More settings</summary>
       <div class="setrow">
@@ -3153,6 +3169,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
         <h3 class="nearh">Stores near you <span id="otp-nearScope">near me</span>
 </h3>
         <p class="nearp" id="otp-nearNote">One tap opens Google Maps on your phone. Works standing in a parking lot.</p>
+        <div class="hubbar mapsw" id="otp-nearWhere" role="group" aria-label="Search around" hidden></div>
         <div class="hubbar mapsw" id="otp-nearMaps" role="group" aria-label="Maps app"></div>
         <div class="nearg" id="otp-nearGrid"></div>
       </div>
@@ -3286,7 +3303,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.55';
+var PROWL_VERSION='v7.59';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3793,17 +3810,24 @@ var NEARBY=[
    only (prowl.maps, like the theme), outside the backup and the frozen keys. */
 var MAPK='prowl.maps';
 function mapsPref(){var v='';try{v=localStorage.getItem(MAPK)||''}catch(e){}return v==='apple'?'apple':'google'}
+/* v7.57 (the owner, in Findlay: the store searches said near me but opened Google Maps at the ZIP; "near me or zip"): the
+   store searches go around where you are once the phone has said so (Around you's fix), or around the saved place;
+   both are a tap away when there is a saved place. The choice lasts the visit. */
+var NEAR_WHERE='';
+function nearWhere(){if(!st.city)return 'me';if(NEAR_WHERE)return NEAR_WHERE;return typeof nrYou==='function'&&nrYou()?'me':'place'}
 function nearUrl(qy){
+  var me=nearWhere()==='me';
   if(mapsPref()==='apple'){
     /* With no place given, Apple Maps searches around where you are standing. */
-    return 'https://maps.apple.com/?q='+E(st.city?(qy+' '+st.city):qy);
+    return 'https://maps.apple.com/?q='+E(me?qy:(qy+' '+st.city));
   }
-  var where=st.city?(' near '+st.city):' near me';
-  return 'https://www.google.com/maps/search/?api=1&query='+E(qy+where);
+  return 'https://www.google.com/maps/search/?api=1&query='+E(qy+(me?' near me':' near '+st.city));
 }
 function rNear(){
   var g=$('#otp-nearGrid');if(!g)return;
-  $('#otp-nearScope').textContent=st.city?('near '+st.city):'near me';
+  var wh=nearWhere(),ww=$('#otp-nearWhere');
+  $('#otp-nearScope').textContent=wh==='me'?'where you are':'near '+st.city;
+  if(ww){ww.hidden=!st.city;ww.innerHTML=st.city?'<button type=button class="hubc'+(wh==='me'?' on':'')+'" data-nw=me aria-pressed='+(wh==='me')+'>Where I am</button><button type=button class="hubc'+(wh!=='me'?' on':'')+'" data-nw=place aria-pressed='+(wh!=='me')+'>'+esc(st.city)+'</button>':''}
   var mp=mapsPref(),sw=$('#otp-nearMaps'),np=$('#otp-nearNote');
   if(sw)sw.innerHTML=
     '<button type=button class="hubc'+(mp==='google'?' on':'')+'" data-mp=google aria-pressed='+(mp==='google')+'>Google Maps</button>'+
@@ -3915,6 +3939,7 @@ function rSales(){
     try{localStorage.setItem(MAPK,b.getAttribute('data-mp'))}catch(x){}
     rNear();
   });
+  var nw=$('#otp-nearWhere');if(nw)nw.addEventListener('click',function(e){var b=e.target.closest('[data-nw]');if(!b)return;NEAR_WHERE=b.getAttribute('data-nw');rNear()});   /* v7.57 */
 })();
 
 function rDenOne(){
@@ -4370,7 +4395,7 @@ function liveRunStrip(name,t,c){
   if(!c){
     return '<div class="rlive">'+head+'</div><div class="sgw-grid"><div class="sgw-skel"></div><div class="sgw-skel"></div><div class="sgw-skel"></div><div class="sgw-skel"></div></div></div>';
   }
-  if(c.err)return '<div class="rlive">'+head+'</div><p class="sgw-note">'+esc(liveErrNote(name,c))+'</p></div>';   /* v6.33: was silent */
+  if(c.err)return '<div class="rlive">'+head+'</div><p class="sgw-note">'+esc(liveErrNote(name,c))+liveSelf(name,t)+'</p></div>';   /* v6.33: was silent. v7.56: and a link to search it yourself */
   var items=[],i;
   for(i=0;i<c.items.length;i++){if(c.items[i]&&c.items[i].url&&c.items[i].title)items.push(c.items[i])}
   if(!items.length)return '<div class="rlive">'+head+'</div><p class="sgw-note">Nothing live for <b>'+esc(t)+'</b> on '+name+' right now. More places to look still searches it everywhere else.</p></div>';
@@ -4625,6 +4650,10 @@ function sgwForRun(r){
 /* v7.54: What has it sold for?, under a search's title and (v7.55) over a favorite hunt's live listings when its pill
    is tapped. Both can be on the page at once, so the buttons carry the term and one listener opens them. Terapeak is
    free for any eBay Seller Hub account and dayRange=1095 returns 3-year sold data, better comps than eBay's APIs. */
+/* v7.59: Swipe or Show everything, over the live finds (the setting is prowl.detail, see detailApply) */
+function viewSw(){var d=detailGet();return '<div class="view-sw" role="group" aria-label="How to show the finds">'+
+  '<button type="button" data-view="simple" aria-pressed="'+(d==='simple')+'">Swipe</button>'+
+  '<button type="button" data-view="all" aria-pressed="'+(d==='all')+'">Show everything</button></div>'}
 function compsRow(t){
   return '<div class="comps comps-top" role=group aria-label="What has it sold for?"><p class=comps-h>What has it sold for?</p>'+
     '<button class=gh type=button data-comps=90 data-t="'+esc(t)+'">eBay Sold · 90 days</button>'+
@@ -4722,7 +4751,7 @@ function rRes(){
   /* v7.54 (the owner: "i had a hard time finding ebay sold and terapeak at the bottom"): sold prices sit under the
      title, in Keep it simple too, not in the footer that waits behind More places to look */
   var comps=r.terms.length===1?compsRow(r.terms[0]):'';
-  res.innerHTML='<div class=rc>'+head+comps+huntBlock(r)+runLive(r)+rows+
+  res.innerHTML='<div class=rc>'+head+comps+huntBlock(r)+viewSw()+runLive(r)+rows+
     '<div class=oabar>'+
       (paused
         ?'<button class="b p" id=otp-next type=button>Open next '+nextN+'</button>'+
@@ -5818,6 +5847,13 @@ function liveErrNote(name,c){
   try{if(navigator.onLine===false)return 'You look offline. Live results come back when you reconnect.'}catch(e){}
   return 'Could not reach '+name+' just now. Try again in a couple of minutes. More places to look still searches every site directly.';
 }
+/* v7.56 (Matt, Vinted busy again: "can you just put a link here to run it manually?"): when a live block can't load,
+   a link opens the same search on that marketplace itself */
+function liveSelf(name,t){
+  var id,m=null;for(id in LIVE_NAME)if(LIVE_NAME[id]===name){m=mb(id);break}
+  if(!m||!t)return '';
+  return ' <a class="lnk lv-self" href="'+esc(m.u(t))+'" target="_blank" rel="noopener noreferrer">Search '+esc(name)+' yourself \u2197</a>';
+}
 /* v6.33: every live source answered and none had anything. One card instead of eight "nothing" lines:
    keep watching by email, or try the sites Prowl can only link to. */
 var EMPTY_LINKS=['facebook','heritage','liveauction','hibid','mercari','mercarijp','rubylane','ebaysold'];
@@ -5852,7 +5888,7 @@ function liveBlock(name,t,c,busy){
   var head='<div class="sgw-sub"><span class="sgw-live">Live on '+name+'</span>';
   if(busy)return head+'</div><p class="sgw-note"><span class="paws" aria-hidden="true"><i>🐾</i><i>🐾</i><i>🐾</i></span>Looking on '+name+'…</p>';
   if(!c)return head+'</div><p class="sgw-note">&nbsp;</p>';
-  if(c.err)return head+'</div><p class="sgw-note">'+esc(liveErrNote(name,c))+'</p>';
+  if(c.err)return head+'</div><p class="sgw-note">'+esc(liveErrNote(name,c))+liveSelf(name,t)+'</p>';   /* v7.56 */
   var items=[],i;
   for(i=0;i<c.items.length;i++){if(c.items[i]&&c.items[i].url&&c.items[i].title)items.push(c.items[i])}
   if(!items.length)return head+'</div><p class="sgw-note">Nothing live for <b>'+esc(t)+'</b> on '+name+' right now. The full hunt below still searches everywhere else.</p>';
@@ -5931,7 +5967,7 @@ function fbBlock(t){
 function sgwCont(t){
   return t?'<div class="sgw-cont"><p>These are the live listings. The full hunt searches all <b>'+TOTAL+'</b> marketplaces for <b>“'+esc(t)+'”</b>, from Facebook to estate sales and auctions.</p><button type="button" class="b p sgw-hunt" data-sgw="hunt">Continue the full hunt →</button></div>':'';
 }
-function sgwBody(){var t=sgwCurTerm();if(t&&sgw.terms.length)huntFetch(t,function(){huntPaint(t)});return (t&&sgw.terms.length?compsRow(t)+huntBox(t):'')+sgwBody0(t)+sgwCont(sgw.terms.length?t:'')}   /* v7.07: Best picks for the chosen hunt pill too */
+function sgwBody(){var t=sgwCurTerm();if(t&&sgw.terms.length)huntFetch(t,function(){huntPaint(t)});return (t&&sgw.terms.length?compsRow(t)+huntBox(t)+viewSw():'')+sgwBody0(t)+sgwCont(sgw.terms.length?t:'')}   /* v7.07: Best picks for the chosen hunt pill too */
 function sgwBody0(t){
   if(t)fbFetch(t);   /* v6.65 */
   if(!sgw.terms.length)return '<p class="sgw-note">Type something you hunt into the box above. It is saved to your hunts, locked for Daily, and checked on ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Vinted and Grailed right away.</p>';
@@ -7083,11 +7119,12 @@ function rSGW(){
   mailSync(false);
 }
 /* v5.67: worker /where has Jev name the best marketplaces for the picked hunt.
-   Shown as buttons that open just that one site. */
+   v7.56 (Matt: "When I click ruby lane ... I'm expecting it to open ruby lane"): each is a link that opens the hunt on
+   that marketplace's own site, not a one-site run inside Prowl. */
 var WHERE={c:Object.create(null)};
 function sgwWhereHtml(t,best){
   var h='',i,m;
-  for(i=0;i<best.length;i++){m=best[i]&&mb(best[i].id);if(m)h+='<button type="button" class="b sgw-hunt" data-sgw="where" data-m="'+esc(m.id)+'">'+esc(m.n)+'</button>';}
+  for(i=0;i<best.length;i++){m=best[i]&&mb(best[i].id);if(m)h+='<a class="b sgw-hunt sgw-wh" href="'+esc(m.u(t))+'" target="_blank" rel="noopener noreferrer" data-m="'+esc(m.id)+'">'+esc(m.n)+' \u2197</a>';}
   return h?'<span class="sgw-where">Best bets for '+esc(t)+':</span>'+h:'';
 }
 function sgwWhere(mount){
@@ -9959,7 +9996,8 @@ function nrMap(mode){
     var el2=$(id);if(!el2||!NR.mapOn[mode])return;
     if(err||!window.L||!window.L.map){el2.innerHTML='<p class="nearp nr-mapwait">The map could not load. The list still works.</p>';return}
     el2.innerHTML='';
-    var L=window.L,m=L.map(el2,{scrollWheelZoom:false}),b=[],you=nrYou();
+    var L=window.L,touch=!!(L.Browser&&L.Browser.mobile),m,b=[],you=nrYou();try{touch=touch||!!(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches)}catch(e){}
+    m=L.map(el2,{scrollWheelZoom:false,dragging:!touch,tap:false});   /* v7.57: on a phone one finger scrolls the screen (the owner: Road trip would not scroll on an iPhone); pinch to zoom */
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors · shops from Google Maps'}).addTo(m);
     pts.forEach(function(x){
       b.push([x.lat,x.lng]);
@@ -10002,6 +10040,7 @@ function nrSortGet(){try{return localStorage.getItem(NR_SORT_KEY)==='near'?'near
 function nrSortSet(v){try{localStorage.setItem(NR_SORT_KEY,v==='near'?'near':'')}catch(e){}NR.around&&nrAroundDraw()}
 function nrSortBar(srt){return '<div class="nr-sort" role="group" aria-label="Order"><button type="button" class="hubc'+(srt?'':' on')+'" data-nrsort="" aria-pressed="'+!srt+'">Biggest first</button><button type="button" class="hubc'+(srt?' on':'')+'" data-nrsort="near" aria-pressed="'+!!srt+'">Closest first</button></div>'}
 function nrAroundDraw(){
+  try{rNear()}catch(e){}   /* v7.57: a fix in hand, the store searches go around it */
   var you=nrYou(),srt=nrSortGet(),mi=function(p){return nrMiFrom(you,p)},L0=NR.around||[],L=L0.slice();
   if(srt==='near')L.sort(function(a,b){var x=mi(a),y=mi(b);return (x==null?1e9:x)-(y==null?1e9:y)});
   NR.aroundShown=L;   /* the map numbers its pins in this order */
@@ -10213,7 +10252,7 @@ function nrMode(m){
   if(t2){t2.classList.toggle('on',!a);t2.setAttribute('aria-selected',String(!a))}
   $('#otp-nrAround').hidden=!a;$('#otp-nrTrip').hidden=a;
   if(a){nrFoot(null);nrAroundLoad()}
-  else{rNrDays();nrTripsLoad();nrFoot(NR.view||NR.built);if(!NR.built&&!NR.view){var inp=$('#otp-nrTo');if(inp)try{inp.focus()}catch(e){}}}
+  else{rNrDays();nrTripsLoad();nrFoot(NR.view||NR.built)}   /* v7.57: no keyboard until the box is tapped (the owner) */
 }
 function openNear(){
   if(!near||near.classList.contains('on'))return;
@@ -10260,10 +10299,15 @@ if(near){
 load();counts();rQuick();rDenHunts();rDenLocal();rDenOne();rDrawer();rDock();rRes();
 applyDeepLink();
 Array.prototype.forEach.call(document.querySelectorAll('.prowl-version'),function(el){el.textContent=PROWL_VERSION});
-/* v7.08: Keep it simple (default) or Show everything. prowl.detail = 'all' shows everything; wrapper class dt-simple hides the long parts */
+/* v7.08: Keep it simple (default) or Show everything. prowl.detail = 'all' shows everything; wrapper class dt-simple hides the long parts.
+   v7.59 (Matt: "I want two modes. I want the swipe mode or show everything mode on the hunt page"): the simple mode is
+   Swipe (one sideways row per marketplace), Show everything lays every find out in a grid as well, and a switch over
+   the live finds sets it right on the hunt page. Same key, so the Den setting and the switch stay one setting. */
 function detailGet(){var v='';try{v=localStorage.getItem('prowl.detail')||''}catch(e){}return v==='all'?'all':'simple'}
-function detailApply(){var simple=detailGet()==='simple',w=document.querySelectorAll('.scout-app-wrapper'),i;for(i=0;i<w.length;i++)w[i].classList.toggle('dt-simple',simple);var b=document.getElementById('otp-detailBtn');if(b)b.textContent=simple?'Keep it simple':'Show everything'}
-try{detailApply();var dtb=$('#otp-detailBtn');if(dtb)dtb.addEventListener('click',function(){var n=detailGet()==='simple'?'all':'simple';try{localStorage.setItem('prowl.detail',n)}catch(e){}detailApply();if(typeof toast==='function')toast(n==='all'?'Showing everything.':'Keeping it simple.',1600)});}catch(e){}
+function detailApply(){var d=detailGet(),simple=d==='simple',w=document.querySelectorAll('.scout-app-wrapper'),i,v;for(i=0;i<w.length;i++)w[i].classList.toggle('dt-simple',simple);var b=document.getElementById('otp-detailBtn');if(b)b.textContent=simple?'Swipe':'Show everything';v=document.querySelectorAll('[data-view]');for(i=0;i<v.length;i++)v[i].setAttribute('aria-pressed',v[i].getAttribute('data-view')===d?'true':'false')}
+function detailSet(n){try{localStorage.setItem('prowl.detail',n)}catch(e){}detailApply();if(typeof toast==='function')toast(n==='all'?'Showing everything.':'Swipe mode.',1600)}
+try{detailApply();var dtb=$('#otp-detailBtn');if(dtb)dtb.addEventListener('click',function(){detailSet(detailGet()==='simple'?'all':'simple')});
+  document.addEventListener('click',function(e){var b=e.target&&e.target.closest?e.target.closest('[data-view]'):null;if(!b||b.getAttribute('data-view')===detailGet())return;detailSet(b.getAttribute('data-view'))});}catch(e){}
 try{textSizeApply(textSizeGet());var szb=$('#otp-sizeBtn');if(szb)szb.addEventListener('click',textSizeNext);var szt=$('#otp-sizeTop');if(szt)szt.addEventListener('click',textSizeNext);}catch(e){}
 /* v5.89: while the store's phone menu is open, hide Prowl's top bar and bottom
    dock, which otherwise sit on top of the menu. Works with the Horizon and Dawn

@@ -1,16 +1,60 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.55 / v155; CI-only PR, no version).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.59 / v156; CI-only PR, no version).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.55** | 399,057 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v155** | |
+| Page | **v7.59** | 398,786 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v156** | |
 
 Recently shipped, newest first:
 
+- **v7.59: Swipe or Show everything, on the hunt page** (Matt: "I want two modes. I want the swipe mode or show
+  everything mode on the hunt page"). A switch over the live finds, in search results and over a favorite hunt pill's
+  listings (`viewSw`, `.view-sw`, `data-view`). **Swipe** (the default) keeps v7.31's one sideways row per
+  marketplace; **Show everything** lays every find out in a grid (two across on a phone) and opens the full
+  marketplace list. It is the v7.08 setting renamed (Keep it simple is now Swipe), same key `prowl.detail`, so the
+  Den's How much to show and the switch stay one setting. Tests: `__tests__/page/view-modes-v759.test.mjs`.
+- **v7.58: Den hunt names stay in their row; the first-visit chips say they are ideas** (the owner, on a new phone:
+  "the letters are spilling out in the den", and the sample hunts "I couldn't delete them. I added one hunt and samples
+  went away", picked "label them"). `.tt` wraps long words (`overflow-wrap:anywhere`); at Large / Extra large text
+  under 480px the check, watch and remove columns slim down and the watch label hides, so the name keeps room. The
+  first-visit chips (`#otp-start`, OLD_DEF) are headed "Ideas to try" with a note that they are not saved and go away
+  once you keep a hunt (by design: they were never hunts, so there is nothing to delete). No new keys. Test:
+  `__tests__/page/den-wrap-ideas-v758.test.mjs`.
+- **The daily ShopGoodwill digest is gone** (2026-10-21, the owner: "Delete it"). `.github/workflows/sgw-digest.yml`
+  scraped ShopGoodwill's "Ceramic Panther" search in a headless browser every morning and committed `sgw-digest.json`
+  straight to `main`; nothing has read that file since the panel it fed was removed. It cost Actions minutes daily,
+  fell under the same ShopGoodwill terms that park the sniper ("any ... script ... or other automated means"), and
+  was the only thing pushing to `main` outside a PR, which a required `build` check would have rejected. Removed the
+  workflow, `sgw_scrape.py` and `sgw-digest.json`. The worker's live ShopGoodwill results are unchanged.
+- **v7.57: near me means where you are; Road trip opens quietly and scrolls on an iPhone** (the owner, in Findlay with
+  48377 saved: "This says near me but opens Google at zip code. It should be near me or zip. And road trip does not
+  scroll on apple. When I open road trip the keyboard opens by default.").
+  - Stores near you: once the phone has a fix (Around you), the searches go around where you are ("antique stores near
+    me"; Apple Maps with no place at all), headed "where you are". With a saved place, **Where I am** / **48377** chips
+    switch between them for the visit (`nearWhere`, `NEAR_WHERE`, no new key). No fix: the saved place, headed "near
+    48377". Garage sales stay on the saved city (Craigslist works by city).
+  - Road trip no longer puts the cursor in the destination box on opening (`nrMode`), so the keyboard waits for a tap.
+  - Scrolling on an iPhone: on a phone (coarse pointer, or Leaflet's mobile flag) the map no longer takes one-finger
+    drags (`dragging: false`, `tap: false`), so a swipe over it scrolls the screen; pinch and the buttons zoom it. A
+    mouse still drags it. The scroll box gets `min-height: 0` and its panes `flex: 0 0 auto`, so older Safari cannot
+    squeeze the panes to the box. Not checked on a real iPhone from here.
+  - Test: `__tests__/page/near-where-v757.test.mjs`.
+- **v7.56: Best bets and a busy marketplace open the site itself** (Matt, 2026-10-21: "When I click ruby lane the screen
+  changes to one hunt or something. I'm expecting it to open ruby lane", and Vinted busy again: "can you just put a link
+  here to run it manually?"). The Best bets pills under a hunt (worker /where) are links (`a.sgw-wh`, ↗) to that
+  marketplace's own search for the hunt, in a new tab; no one-site run inside Prowl. A live block that can't load (busy,
+  unreachable, offline) adds "Search Vinted yourself ↗" (`liveSelf`, `.lv-self`), on the hunt results and on Daily.
+  Test: `__tests__/page/links-out-v756.test.mjs`.
+- **v156: group trips can be kept** (the owner: "Group button doesn't work"). Every POST to `/trips` (keep a trip,
+  add a member, close it, rebuild a kept trip from here, post a find) answered 405 "GET only" live: the worker's
+  GET-only guard sat above the `/trips` dispatch, so those calls never reached `tripsRoute` (the tests call it
+  directly and never saw it). Broken since group trips shipped in v132. The POST dispatch now sits above the guard,
+  after the cross-site origin check. Worker only. Test: the wiring test in `worker/__tests__/trips.test.mjs` checks
+  the order.
 - **v7.55: the sold-price row on the hunt pills too** (the owner: "it doesn't show until i hit the hunt button, when i
   click pills it is not there"). Tapping a Your favorite hunts pill draws that hunt's live listings on the home screen
   without a search run, so v7.54's row was not there. `compsRow(t)` now draws it in both places (over the pill's live
@@ -894,7 +938,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.56, worker v156**. Claim one here when you start.
+Next free numbers: **page v7.60, worker v157**. Claim one here when you start.
 
 ## What's next
 
@@ -909,11 +953,13 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 ## Waiting on Matt
 
-- **Turn on "Require branches to be up to date before merging" for `main`** (Settings > Branches > Add rule, branch
-  `main`, tick Require status checks to pass, then Require branches to be up to date; leave `build` off the required
-  list unless docs-only PRs get the skipped-check workaround). CI no longer runs on push to `main` (Actions minutes
-  were at 90%), so this rule is what keeps the PR run testing the code that lands. As of 2026-10-21 `main` has no
-  protection rule at all.
+- **Turn on a branch rule for `main`** (Settings > Branches > Add branch protection rule, branch name pattern `main`):
+  tick **Require status checks to pass before merging**, then **Require branches to be up to date before merging**,
+  and add **build** to the required checks. Leave the rest unticked. GitHub only enforces "up to date" when at least
+  one check is required, so `build` must be on the list. CI no longer runs on push to `main` (Actions minutes were at
+  90%), so this rule is what keeps the PR run testing the code that lands. Nothing pushes to `main` outside a PR any
+  more (the daily SGW digest that did was removed in #207), so the rule blocks nothing else. As of 2026-10-21 `main`
+  has no protection rule at all.
 
 - **NEAR ME (v7.36 / v132) needs three things in Cloudflare before it does more than the old Maps links:**
   1. Done 2026-10-20: the worker secret **GOOGLE_MAPS_KEY** (Places API (New), Routes API, Geocoding API; API
@@ -953,10 +999,11 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 ## Done
 
-- **CI uses about half the Actions minutes** (2026-10-21, Hark): `.github/workflows/blank.yml` runs on pull requests
-  only (not again on push to `main`), a newer push cancels a PR's older run, npm is cached, docs-only changes skip
-  the suite except `docs/STATUS.md` and `CLAUDE.md` (the tests read them), and the time limit is 15 minutes (the
-  suite takes about 7.5). Run it by hand from the Actions tab to re-check `main`.
+- **CI uses about half the Actions minutes** (2026-10-21, Hark; fixed up by Claude): `.github/workflows/blank.yml` runs
+  on pull requests only (not again on push to `main`), a newer push cancels a PR's older run, npm is cached, and the
+  time limit is 15 minutes (the suite takes about 7.5). Every PR runs the suite, docs-only ones too: a path filter
+  would leave a required `build` check waiting forever on a PR it skipped, and every PR touches `docs/STATUS.md`,
+  which the tests read, so it saved nothing. Run it by hand from the Actions tab to re-check `main`.
 
 - **Free-month checkout test passed** (2026-10-11): "Start my free month" opened checkout with PROWLMONTH
   applied, $0.00 today, $7.00 a month after, card saved; Shopify's subscription page offers Pause, Skip and Cancel.

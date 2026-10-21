@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v156: 2026-10-21. Group trips' POSTs reach tripsRoute: the "GET only" guard sat above its dispatch, so keeping a
+ *         trip, adding a member, closing, rebuilding from here and posting a find were all 405 since v132 (the owner:
+ *         "Group button doesn't work").
  *   v155: 2026-10-20. Keeping a trip for the group reuses the build already made for the page (the same cache key as
  *         /trip) instead of building it again, and a build or save that fails says so (502 / 503) instead of a bare
  *         500 (the owner: SHARE said "could not be shared").
@@ -526,7 +529,7 @@ import { wkAdd, wkFresh, wkCur, letterShorters, letterBuild, letterText, letterQ
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v155";
+const WORKER_VERSION = "v156";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6992,6 +6995,8 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/__musetest") {
       return museTest(env, url);
     }
+    /* v156: group trips take POSTs (keep, share, close, rebuild, finds); they must be routed before the GET-only guard */
+    if ((url.pathname === "/trips" || url.pathname.startsWith("/trips/")) && request.method === "POST") return tripsRoute(request, env, url, origin);
     if (request.method !== "GET") {
       return json({ error: "GET only" }, 405, origin);
     }

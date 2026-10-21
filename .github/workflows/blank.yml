@@ -10,21 +10,16 @@ name: CI
 #   (the PR run and the main push run, same code). Run it by hand from the
 #   Actions tab (workflow_dispatch) if main ever needs a re-check.
 # - A newer push to the same PR cancels the older run still in progress.
-# - Docs-only changes (*.md, docs/) skip the suite, except docs/STATUS.md and
-#   CLAUDE.md, which the tests read (status-doc, help-top-v711). paths-ignore
-#   can't make exceptions, so this uses paths with negations; later lines win.
-# - Safe only with "Require branches to be up to date before merging" on main,
-#   so the PR run tests the same code that lands (docs/STATUS.md, Waiting on Matt).
+# - Every PR runs it, docs-only ones too: "build" is meant to be a required check,
+#   and a required check skipped by a path filter waits forever. Every PR edits
+#   docs/STATUS.md anyway, which the tests read, so a filter saved nothing.
+# - Safe only with a branch rule on main that requires "build" and "Require
+#   branches to be up to date before merging", so the PR run tests the same code
+#   that lands (docs/STATUS.md, Waiting on Matt).
 # - npm packages are cached between runs.
 on:
   pull_request:
     branches: [ "main" ]
-    paths:
-      - "**"
-      - "!**/*.md"
-      - "!docs/**"
-      - "docs/STATUS.md"   # read by __tests__/status-doc.test.mjs
-      - "CLAUDE.md"        # read by __tests__/page/help-top-v711.test.mjs
   workflow_dispatch:
 
 concurrency:
