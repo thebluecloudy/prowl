@@ -569,6 +569,10 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .setrow:last-child{border-bottom:0}
 .scout-app-wrapper .setrow h3{margin:0 0 3px;font-size:15px;font-weight:700}
 .scout-app-wrapper .setrow p{margin:0;font-size:13px;color:var(--mu);line-height:1.5}
+/* v7.60 (the owner's screenshot: "Standard" spilling out of its button): a setting's button keeps its words on one
+   line and never shrinks below them; the description beside it wraps instead */
+.scout-app-wrapper .setrow>.gh,.scout-app-wrapper .setrow>button{flex:0 0 auto;white-space:nowrap}
+.scout-app-wrapper .setrow>div{flex:1 1 auto;min-width:0}
 .scout-app-wrapper .den-foot{display:flex;gap:8px;padding:14px 18px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--ln);background:var(--cd2)}
 .scout-app-wrapper .den-foot .b{flex:1;height:48px}
 .scout-app-wrapper .mo{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--scrim);opacity:0;pointer-events:none;transition:.22s}
@@ -3303,7 +3307,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.59';
+var PROWL_VERSION='v7.60';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};

@@ -1,16 +1,20 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.59 / v156; CI-only PR, no version).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.60 / v156; CI-only PR, no version).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.59** | 398,786 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.60** | 398,786 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v156** | |
 
 Recently shipped, newest first:
 
+- **v7.60: Den settings buttons keep their words inside** (the owner's screenshot: "Standard" spilling out of the Text
+  size button). Each settings row is a flex row; its button could shrink below its own label ("Standard", "Swipe",
+  "Export" overflowed at 390 and 1280 px). The button now keeps its size (`flex: 0 0 auto`, one line) and the
+  description wraps. Test: `__tests__/page/den-buttons-v760.test.mjs`.
 - **v7.59: Swipe or Show everything, on the hunt page** (Matt: "I want two modes. I want the swipe mode or show
   everything mode on the hunt page"). A switch over the live finds, in search results and over a favorite hunt pill's
   listings (`viewSw`, `.view-sw`, `data-view`). **Swipe** (the default) keeps v7.31's one sideways row per
@@ -938,7 +942,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.60, worker v157**. Claim one here when you start.
+Next free numbers: **page v7.61, worker v157**. Claim one here when you start.
 
 ## What's next
 
