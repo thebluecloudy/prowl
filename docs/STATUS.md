@@ -1,6 +1,6 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.55 / v155).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.55 / v155; no version, the SGW digest removed).
 
 ## Live
 
@@ -11,6 +11,12 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.55 /
 
 Recently shipped, newest first:
 
+- **The daily ShopGoodwill digest is gone** (2026-10-21, the owner: "Delete it"). `.github/workflows/sgw-digest.yml`
+  scraped ShopGoodwill's "Ceramic Panther" search in a headless browser every morning and committed `sgw-digest.json`
+  straight to `main`; nothing has read that file since the panel it fed was removed. It cost Actions minutes daily,
+  fell under the same ShopGoodwill terms that park the sniper ("any ... script ... or other automated means"), and
+  was the only thing pushing to `main` outside a PR, which a required `build` check would have rejected. Removed the
+  workflow, `sgw_scrape.py` and `sgw-digest.json`. The worker's live ShopGoodwill results are unchanged.
 - **v7.55: the sold-price row on the hunt pills too** (the owner: "it doesn't show until i hit the hunt button, when i
   click pills it is not there"). Tapping a Your favorite hunts pill draws that hunt's live listings on the home screen
   without a search run, so v7.54's row was not there. `compsRow(t)` now draws it in both places (over the pill's live
