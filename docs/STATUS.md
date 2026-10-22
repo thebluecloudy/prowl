@@ -34,6 +34,8 @@ Recently shipped, newest first:
     (optional)"; the bottom bar (`#otp-nrFoot`: OPEN IN MAPS, APPLE MAPS, FROM HERE, SHARE) shows only once a built trip
     has stops (`nrFoot`; an A-to-B route with no shops no longer offers it); FROM HERE is renamed **REBUILD FROM HERE**
     (what it always did: rebuild the trip from where the phone is now).
+  - Deploy note: Shopify stores a div holding an input and a button with each on its own line, so the first deploy
+    failed its md5 check even though the page went live. The From row is now written that way.
   - Some in-app browsers (WebViews) refuse geolocation outright and show no prompt; for them only Open in Chrome or typing
     a town helps. Not checked on a real phone from here.
   - Tests: `__tests__/page/use-my-location-v764.test.mjs`, `worker/__tests__/geo-reverse.test.mjs`; `in-a-location-v762`

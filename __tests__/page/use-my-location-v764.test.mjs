@@ -181,3 +181,10 @@ test('a built trip with stops shows the bar; a built trip with none does not', a
     await p.close();
   }
 });
+
+test('the From row is written the way Shopify stores it, so the deploy md5 check matches', async () => {
+  const { readFileSync } = await import('node:fs');
+  const html = readFileSync(new URL('../../page/prowl.html', import.meta.url), 'utf8');
+  assert.ok(html.includes('<div class="addrow nr-fromrow">\n<input id="otp-nrFrom"'), 'Shopify puts the input on its own line');
+  assert.ok(html.includes('📍 Use my location</button>\n</div>'), 'and the closing div');
+});
