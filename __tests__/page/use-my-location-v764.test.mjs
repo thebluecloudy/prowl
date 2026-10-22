@@ -158,7 +158,7 @@ test('the button sits on the From row and in the In a location box; From is righ
   assert.equal(p.$('#otp-nrTo').placeholder, 'To: town, City, ST or ZIP (optional)');
   p.$('#otp-nrT2').click(); await tick(30);
   assert.equal(p.$('#otp-nrFoot').hidden, true, 'nothing built: no OPEN IN MAPS / REBUILD FROM HERE / SHARE bar');
-  assert.equal(p.$('#otp-nrHere').textContent, 'REBUILD FROM HERE');
+  assert.equal(p.$('#otp-nrHere').textContent, 'REBUILD');
   await p.close();
 });
 

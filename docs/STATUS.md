@@ -1,16 +1,17 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.64 / v159).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.65 / v159).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.64** | 396,542 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.65** | 396,542 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v159** | |
 
 Recently shipped, newest first:
 
+- **v7.65: Road trip bar fits a phone** (the owner, 2026-10-22: words spilled out of the pills). Short labels GOOGLE / APPLE / REBUILD / SHARE (legs GOOGLE 1, APPLE 1…), equal-width pills with nowrap + ellipsis; aria-labels keep the full meaning. Page only.
 - **v7.64 / v159: 📍 Use my location** (the owner, 2026-10-22, in a car on Android in an app's built-in browser with
   location off for the site: "Location is off for this site ... Type a town" and he did not know what town he was in).
   - A **📍 Use my location** button on the From row itself, right of the field (`#otp-nrFromMe`), and in the In a location
@@ -1034,7 +1035,7 @@ Recently shipped, newest first:
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 | `ccr-0de21c46-yzs839` | Claude | **v7.63 / worker v158**: long hunts cut at a whole word; live rows search what Best picks does | Building. |
 
-Next free numbers: **page v7.65, worker v160**. Claim one here when you start.
+Next free numbers: **page v7.66, worker v160**. Claim one here when you start.
 
 ## What's next
 
