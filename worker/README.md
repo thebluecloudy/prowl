@@ -27,6 +27,10 @@ about a minute. No dashboard paste needed.
   it to those three, and set it with `wrangler secret put GOOGLE_MAPS_KEY` (or the dashboard). Without it those routes
   answer 503 "not set up" and the page keeps its plain Maps links. A Road Trip build is about 13 Text Search calls
   (one a 9-mile circle) plus a route and a reverse geocode, kept an hour per origin town, destination and day.
+  In a location (v157) uses the same key's Geocoding API for `/geo?q=` (a typed town, City, ST or ZIP, US only):
+  one forward geocode per new text, kept 30 days, plus Craigslist's public area list (reference.craigslist.org/Areas,
+  no key, kept 7 days) for the nearest Craigslist site. `/order` (v157, Optimize route) uses the public OSRM demo
+  router (no key, fair use only) and falls back to a straight-line estimate. Nothing new to set up.
 - `PRO_CIDS` (v132, plain-text variable) is the comp list for group trips: store customer ids, comma-separated, that
   count as Pro for building and sharing a trip and posting finds, the way the organizer arranges with the owner outside
   the app. A member's own paid Pro order (by customer id) or a linked Prowl Alerts member's Pro counts too. The page

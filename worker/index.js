@@ -19,6 +19,16 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v157: 2026-10-22. In a location (the owner, in Milton, WV with location off: the shops around you never listed and
+ *         Road trip had "no starting point"). GET /geo?q=<town, City, ST or ZIP> geocodes the typed place with the
+ *         Geocoding API already on GOOGLE_MAPS_KEY (US only) and answers { lat, lng, town, city, st, zip, cl }: cl is
+ *         the closest Craigslist site, from Craigslist's own area list (reference.craigslist.org/Areas, kept 7 days).
+ *         Kept 30 days per typed text; GEO_PER_IP a day. The page sends that point to /near and /trip as before.
+ *         Road Trip upgrades (the owner, the same day): /trip takes detour=5|15|30 (minutes off the route; the default
+ *         stays DETOUR_MIN, so the cache key and kept trips are unchanged without it) and answers line, the route thinned
+ *         to 160 points, for the page's estate sales along the way. GET /order?p=lat,lng|...[&loop=1][&keep=1] orders
+ *         the stops for the shortest drive (keep=1: the legs in the given order) with the public OSRM demo router
+ *         (router.project-osrm.org, no key, fair use only), falling back to a straight-line estimate; kept a day.
  *   v156: 2026-10-21. Group trips' POSTs reach tripsRoute: the "GET only" guard sat above its dispatch, so keeping a
  *         trip, adding a member, closing, rebuilding from here and posting a find were all 405 since v132 (the owner:
  *         "Group button doesn't work").
@@ -528,8 +538,9 @@ import { huntCombine, huntPriceN, craigslistNormalize, huntNeeds, huntRelevant }
 import { wkAdd, wkFresh, wkCur, letterShorters, letterBuild, letterText, letterQuiet } from "./letter.js";   /* v152: the weekly letter */
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
-  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX } from "./trip.js";   /* v132 */
-const WORKER_VERSION = "v156";
+  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
+  geoQuery, geoPlace, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
+const WORKER_VERSION = "v157";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6600,8 +6611,88 @@ async function nearRoute(request, env, url, origin) {
   try { await PCACHE.put(key, res.clone()); } catch (e) {}
   return res;
 }
+/* ---- v157: In a location ----
+     GET  /geo?q=<town, "City, ST" or ZIP>   the typed place as a point: { q, lat, lng, town, city, st, zip, cl }, US
+                                        only, from the Geocoding API on GOOGLE_MAPS_KEY. cl is the nearest Craigslist
+                                        site (CL_NEAR_MI). Kept 30 days per text; a miss is 404 and is not kept. The
+                                        typed text is never logged. */
+const GEO_PER_IP = 200, GEO_CACHE_SECONDS = 30 * 86400, CL_AREAS_SECONDS = 7 * 86400;
+async function gGeocode(env, q) {
+  const j = await gFetch("https://maps.googleapis.com/maps/api/geocode/json?address=" + encodeURIComponent(q) + "&components=country:US&region=us&key=" + encodeURIComponent(gKey(env)), { method: "GET" }, "", env);
+  for (const r of (j && Array.isArray(j.results) ? j.results : []).slice(0, 5)) { const p = geoPlace(r); if (p) return p; }
+  return null;
+}
+let CL_AREAS = null;   /* this isolate's copy of the slimmed area list */
+async function clAreas() {
+  if (CL_AREAS && CL_AREAS.length) return CL_AREAS;
+  const key = "https://prowl-clareas.invalid/v1";
+  const hit = await PCACHE.match(key);
+  if (hit) { try { const l = await hit.json(); if (Array.isArray(l) && l.length) { CL_AREAS = l; return l; } } catch (e) {} }
+  try {
+    const r = await fetch("https://reference.craigslist.org/Areas", { headers: { "User-Agent": "Prowl/1.0 (+https://owlandtwigvintage.com/pages/prowl)", "Accept": "application/json" }, cf: { cacheTtl: CL_AREAS_SECONDS, cacheEverything: true } });
+    if (!r.ok) return [];
+    const list = clAreasSlim(await r.json());
+    if (list.length) { CL_AREAS = list; try { await PCACHE.put(key, new Response(JSON.stringify(list), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=" + CL_AREAS_SECONDS } })); } catch (e) {} }
+    return list;
+  } catch (e) { console.error("clareas", String(e && e.message || e)); return []; }
+}
+async function geoRoute(request, env, url, origin) {
+  const q = geoQuery(url.searchParams.get("q"));
+  if (q.length < 2) return json({ error: "q required" }, 400, origin);
+  if (!gKey(env)) return json({ error: "not set up" }, 503, origin);
+  const key = url.origin + "/geo?q=" + encodeURIComponent(q.toLowerCase()) + "&v=1";
+  const hit = await PCACHE.match(key);
+  if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
+  if (!(await vCount("geo:" + ipKey(request.headers.get("CF-Connecting-IP")), GEO_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  const p = await gGeocode(env, q);
+  if (!p) return json({ error: "not found" }, 404, origin);
+  let cl = "";
+  try { cl = clNearest(await clAreas(), p, CL_NEAR_MI); } catch (e) {}
+  const res = json(Object.assign({ q: q }, p, { cl: cl }), 200, origin, { "Cache-Control": "private, max-age=" + GEO_CACHE_SECONDS });
+  try { await PCACHE.put(key, res.clone()); } catch (e) {}
+  return res;
+}
+/* ---- v157: Optimize route ----
+     GET  /order?p=lat,lng|lat,lng|...[&loop=1][&keep=1]   2 to ORDER_MAX points: the start first, the end last (a loop
+                                        comes back to the start). Answers { order, legs:[{min,mi}], src }: order is the
+                                        visit as indices into p; keep=1 keeps the given order and only times the legs.
+                                        src "osrm" (the public OSRM demo, router.project-osrm.org: no key, fair use, about
+                                        one request a second, no promise it stays up) or "est" (straight-line miles x1.25
+                                        at 45 mph when OSRM fails). Points are rounded to 3 decimals before they leave. */
+const ORDER_PER_IP = 300, ORDER_CACHE_SECONDS = 86400, OSRM_TIMEOUT_MS = 6000;
+async function osrmCall(svc, pts, loop) {
+  const coords = pts.map((p) => p.lng + "," + p.lat).join(";");
+  const q = svc === "trip" ? "?source=first" + (loop ? "&roundtrip=true" : "&destination=last&roundtrip=false") + "&overview=false" : "?overview=false";
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), OSRM_TIMEOUT_MS);
+  try {
+    const r = await fetch("https://router.project-osrm.org/" + svc + "/v1/driving/" + coords + q, { signal: ctl.signal, headers: { "User-Agent": "Prowl/1.0 (+https://owlandtwigvintage.com/pages/prowl)", "Accept": "application/json" } });
+    if (!r.ok) { console.error("osrm " + r.status); return null; }
+    return await r.json();
+  } catch (e) { console.error("osrm", String(e && e.message || e)); return null; }
+  finally { clearTimeout(timer); }
+}
+async function orderRoute(request, env, url, origin) {
+  const pts = orderPts(url.searchParams.get("p")), loop = url.searchParams.get("loop") === "1", keep = url.searchParams.get("keep") === "1";
+  if (!pts) return json({ error: "p needs 2 to 14 points" }, 400, origin);
+  const key = url.origin + "/order?p=" + pts.map((p) => p.lat + "," + p.lng).join("|") + "&loop=" + (loop ? 1 : 0) + "&keep=" + (keep ? 1 : 0) + "&v=1";
+  const hit = await PCACHE.match(key);
+  if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
+  if (!(await vCount("order:" + ipKey(request.headers.get("CF-Connecting-IP")), ORDER_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  let out = null;
+  if (keep) {
+    const seq = loop ? pts.concat([pts[0]]) : pts, r = osrmRead(await osrmCall("route", seq, false), seq.length, false);
+    if (r) out = { order: pts.map((_, i) => i), legs: r.legs, src: "osrm" };
+  } else if (pts.length >= 3) {
+    const r = osrmRead(await osrmCall("trip", pts, loop), pts.length, true);
+    if (r && r.order[0] === 0 && (loop || r.order[r.order.length - 1] === pts.length - 1)) out = { order: r.order, legs: r.legs, src: "osrm" };
+  }
+  if (!out) { const order = keep || pts.length < 3 ? pts.map((_, i) => i) : orderEst(pts, loop); out = { order: order, legs: estLegs(pts, order, loop), src: "est" }; }
+  const res = json(out, 200, origin, { "Cache-Control": "private, max-age=" + (out.src === "osrm" ? ORDER_CACHE_SECONDS : 600) });
+  try { await PCACHE.put(key, res.clone()); } catch (e) {}
+  return res;
+}
 /* build the trip: origin town, destination, route, the corridor's shops clustered in drive order */
-async function tripBuild(env, from, toText, day, cats, via) {
+async function tripBuild(env, from, toText, day, cats, via, detour) {
   cats = catsParse((cats || []).join ? (cats || []).join(",") : cats);
   const sv = splitVia(toText); toText = sv.to; via = (via && via.length ? via : sv.via).slice(0, 3);   /* v142 */
   const [town, destList] = await Promise.all([gTown(env, from.lat, from.lng), gPlacesText(env, toText, null, 0, 1)]);
@@ -6617,7 +6708,7 @@ async function tripBuild(env, from, toText, day, cats, via) {
     const lists = await Promise.all(centers.map((c) => ask(c)));
     const seen = Object.create(null), all = [];
     for (const p of [].concat(...lists)) { if (seen[p.id] || (dest && p.id === dest.id) || !kindAllowed(p, cats)) continue; seen[p.id] = 1; all.push(p); }
-    const split = splitAnchors(clusterStops(alongRoute(all, route.pts, DETOUR_MIN)));
+    const split = splitAnchors(clusterStops(alongRoute(all, route.pts, detour || DETOUR_MIN)));   /* v157: the page's detour */
     return { route: route, stops: split.stops, more: split.more, score: routeScore(split.stops), boxes: centers.map((c) => [Math.round(c.lat * 100) / 100, Math.round(c.lng * 100) / 100]), found: all.length };
   }));
   built.sort((a, b) => b.score - a.score || a.route.min - b.route.min);
@@ -6625,7 +6716,7 @@ async function tripBuild(env, from, toText, day, cats, via) {
   const destCard = dest ? placeCard(dest) : { id: "", name: vClean(toText, 120), town: "", why: "", hours: null, url: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(toText) };
   const destLabel = destCard.name + (destCard.town ? ", " + destCard.town : "");
   return { origin: { town: town }, dest: destCard, route: { mi: best.route.mi, min: best.route.min, slower: Math.max(0, best.route.min - routes[0].min), routes: routes.length }, day: day, weekday: weekdayOf(day), cats: cats,
-    stops: stops, more: best.more, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.length, via: via,
+    stops: stops, more: best.more, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.length, via: via, detour: detour || DETOUR_MIN, line: routeLine(best.route.pts.filter((p) => haversineMi(from, p) > 1)),   /* v157: never the first mile, so the start is not in it */
     how: { badTypes: Array.from(BAD_TYPES), routes: built.map((b) => ({ mi: b.route.mi, min: b.route.min, score: b.score, anchors: b.stops.length, found: b.found, boxes: b.boxes.length })), boxes: best.boxes, nearby: stat.nearby, text: stat.text, refused: stat.refused } };
 }
 async function tripRoute(request, env, url, origin) {
@@ -6634,12 +6725,12 @@ async function tripRoute(request, env, url, origin) {
   if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
   if (to.length < 2) return json({ error: "to required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, stops: [] }, 503, origin);
-  const day = tripDay(url.searchParams.get("day")), cats = catsParse(url.searchParams.get("cats"));
-  const key = tripKey(url.origin, lat, lng, to, day, cats);
+  const day = tripDay(url.searchParams.get("day")), cats = catsParse(url.searchParams.get("cats")), detour = detourParse(url.searchParams.get("detour"));
+  const key = tripKey(url.origin, lat, lng, to, day, cats) + (detour !== DETOUR_MIN ? "&d=" + detour : "");   /* v157 */
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("trip:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIP_PER_IP))) return json({ error: "slow down" }, 429, origin);
-  const built = await tripBuild(env, { lat: lat, lng: lng }, to, day, cats);
+  const built = await tripBuild(env, { lat: lat, lng: lng }, to, day, cats, null, detour);
   if (!built) return json({ error: "no route", empty: true, stops: [] }, 404, origin);
   const res = json(built, 200, origin, { "Cache-Control": "private, max-age=" + TRIP_CACHE_SECONDS });
   try { await PCACHE.put(key, res.clone()); } catch (e) {}
@@ -7009,6 +7100,8 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/fb-finds") return fbFinds(request, env, url, origin);   /* v94 */
     if (url.pathname === "/near" && request.method === "GET") return nearRoute(request, env, url, origin);   /* v132: Around You */
     if (url.pathname === "/trip" && request.method === "GET") return tripRoute(request, env, url, origin);   /* v132: Road Trip */
+    if (url.pathname === "/geo" && request.method === "GET") return geoRoute(request, env, url, origin);   /* v157: In a location */
+    if (url.pathname === "/order" && request.method === "GET") return orderRoute(request, env, url, origin);   /* v157: Optimize route */
     if (url.pathname === "/pp" && request.method === "GET") return ppRoute(request, env, url);   /* v132: a place's photo */
     if (url.pathname === "/trips" || url.pathname.startsWith("/trips/")) return tripsRoute(request, env, url, origin);   /* v132: group trips and finds */
     if (url.pathname.startsWith("/finds/") && request.method === "GET") return findPhotoRoute(request, env, url);   /* v132: a find's photo, signed */

@@ -152,7 +152,7 @@ test('Road trip: one box, the stops in drive order with the town\'s others neste
   await tick(120);
   const c = calls.find((x) => /\/trip\?/.test(x.url));
   assert.ok(c, 'one submit, straight to the worker');
-  assert.match(c.url, new RegExp('/trip\\?to=Blenko%20Glass%20Company%2C%20Milton%2C%20WV&lat=42\\.4806&lng=-83\\.4755&day=' + today() + '&cats=antiques%2Cvintage%2Cthrift$'));
+  assert.match(c.url, new RegExp('/trip\\?to=Blenko%20Glass%20Company%2C%20Milton%2C%20WV&lat=42\\.4806&lng=-83\\.4755&day=' + today() + '&cats=antiques%2Cvintage%2Cthrift&detour=15$'));   /* v7.62: the detour picked, 15 minutes by default */
   assert.equal(p.$('#otp-nrOut .nr-route').textContent, 'Novi, MI → Blenko Glass Company, Milton, WV');
   assert.match(p.$('#otp-nrOut .nr-head .nearp').textContent, /^398 mi · 6 h 30 min of driving · Trip day /);
   const anchors = p.$$('#otp-nrOut .nr-stops > .nr-stop > .nr-row > a.nr-anchor .nr-n').map((e) => e.textContent);
@@ -169,7 +169,8 @@ test('Road trip: one box, the stops in drive order with the town\'s others neste
   assert.equal(u.searchParams.get('origin'), 'Novi, MI', 'a town, never a street');
   assert.equal(u.searchParams.get('waypoints').split('|').length, 3, 'anchors only');
   assert.equal(p.$('#otp-nrShare').textContent, 'SHARE');
-  assert.doesNotMatch(p.$('#otp-near').textContent, /10 min|detour/i, 'the detour budget is internal');
+  assert.doesNotMatch(p.$('#otp-near').textContent, /10 min/i, 'the worker\'s own default budget is internal');
+  assert.deepEqual(p.$$('#otp-nrDetour [data-nrdet]').map((b) => b.textContent), ['5 min', '15 min', '30 min'], 'v7.62: the owner asked for a detour choice');
   assert.deepEqual(p.errors, []);
   await p.close();
 });
@@ -389,7 +390,7 @@ test('v7.39: the kinds to look for are chips on both tabs, and Skip takes a stop
   p.$('#otp-nrTo').value = 'Blenko Glass Company, Milton, WV';
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
-  assert.match(calls.filter((x) => /\/trip\?/.test(x.url)).pop().url, /&cats=antiques%2Cvintage%2Crecords$/);
+  assert.match(calls.filter((x) => /\/trip\?/.test(x.url)).pop().url, /&cats=antiques%2Cvintage%2Crecords&detour=15$/);
   assert.equal(p.$$('#otp-nrOut .nr-stops > .nr-stop').length, 3);
   assert.equal(p.$$('#otp-nrOut .nr-skip').length, 5, 'Skip on every anchor and nested stop; the final stop has none');
   /* skip Chillicothe: gone from the list and from the Maps link */

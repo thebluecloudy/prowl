@@ -1,16 +1,69 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.61 / v156).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.62 / v157).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.61** | 398,786 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v156** | |
+| Page | **v7.62** | 397,274 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v157** | |
 
 Recently shipped, newest first:
 
+- **v7.62 / v157: In a location, and Road Trip A to B, Optimize route, Open when you arrive** (the owner, 2026-10-22, testing Milton, WV with location off: only Craigslist and
+  Facebook moved, "Location is off for this site, so the shops around you cannot be listed" stayed, Refresh did
+  nothing, the shops never listed, and Road trip said "the trip has no starting point" with no way to give one).
+  - NEAR ME > Around you has an **In a location** box (`#otp-nrAtForm`): a town, City, ST or a ZIP. Worker **v157
+    `GET /geo?q=`** geocodes it with the Geocoding API already on `GOOGLE_MAPS_KEY` (`components=country:US`) and
+    answers `{ q, lat, lng, town, city, st, zip, cl }`; `cl` is the nearest Craigslist site within 120 miles, from
+    Craigslist's public area list (reference.craigslist.org/Areas, Prowl User-Agent, kept 7 days). Kept 30 days per
+    text, misses not kept, `GEO_PER_IP` 200 a day, the text never logged. Pure helpers in `trip.js` (`geoQuery`,
+    `geoPlace`, `clAreasSlim`, `clNearest`).
+  - The place centres everything NEAR ME shows (`atLive()`): Around you asks `/near` at its point ("Around Milton,
+    WV", miles from the middle of town, no "You are at", its own pin on the map instead of your dot); the store
+    searches go "near Milton, WV"; garage sales and every Craigslist link use its nearest site around its ZIP
+    (`clAt`); Facebook uses the nearest known metro within 60 miles (`FBXY`, `atFb`), else stays unscoped and says
+    so; estate sales (owner) load for its City, ST. The saved city (`st.city`) is untouched.
+  - Kept on the device in a new key, **`prowl.nearAt`** (`{q,town,city,st,zip,lat,lng,cl,fb,on}`), outside the backup.
+    Chips **Where I am** / **Milton, WV** switch between GPS and the place; the same text is never looked up twice.
+  - Location off is no longer a dead end (`nrNoFix`): it points to In a location and offers **Use Milton, WV** when a
+    place is kept; Refresh shows only when a retry can help (not when location is denied).
+  - Road trip has a **From** box (`#otp-nrFrom`, filled with the place when it is in use): a typed start is looked up
+    and kept as the last typed place (`nrStart`); empty means the phone. With location off it says to type a start and
+    offers **Start from Milton, WV** (`nrNoStart`). A typed start skips the "when you would get there" timing; FROM
+    HERE still means the phone (it clears From); Keep it for my group posts the point the trip was built from
+    (`NR.builtFrom`).
+  - **Road Trip upgrades** (approved by the owner the same day):
+    - **A to B, or a loop**: start (From, or the phone) and an optional end (To). No end makes a loop of the Around you
+      shops at the start (up to 8, skips honoured), ordered as a round trip, "Then back to". **Detour off the route**:
+      5 / 15 / 30 min chips (`#otp-nrDetour`, new key `prowl.nearDetour`, 15 by default), sent as `/trip?detour=`;
+      worker `detourParse` (anything else is DETOUR_MIN, 10, so the cache key and kept trips are unchanged without it).
+      The corridor search is still 9-mile circles, so a 30-minute detour can miss shops more than ~9 miles off the road.
+    - **Optimize route** (`nrOptimize`, button over the stops): worker **`GET /order?p=lat,lng|...[&loop=1][&keep=1]`**
+      orders the stops for the shortest drive with the start and end kept, through the public **OSRM demo router**
+      (router.project-osrm.org: no key, fair use about 1 request a second, no uptime promise, not for heavy production
+      traffic); when it fails, a straight-line nearest-neighbour + 2-opt estimate (`orderEst`, src "est"). 2 to 14
+      points (12 stops), rounded to 3 decimals before they leave; kept a day (an estimate 10 minutes). The order lives on
+      the trip in the page (`t.order`, applied in `nrVisible`), so the list, the pins and every Maps link follow it.
+      Kept group trips reorder only on the device.
+    - **Open when you arrive** (`nrEtas`, `nrLateAt`): every stop is timed along the drive from the start: router leg
+      times (`/order?keep=1`, one call per new order) or straight-line miles x1.25 at the trip's average speed, plus
+      the stop's own stay or 20 minutes. Leave at (`#otp-nrLeave`): empty is now on a trip today; another day needs a
+      time. Each card says "Get there ~11:40 AM" and OPEN / CLOSED for then, and a line names the shops closed by then.
+      Estate sales along the way (owner only, as EstateSales.net agreed; `nrSales`): `/sales` for up to 4 towns on the
+      trip, kept when open on the trip day and within the detour of `/trip`'s new `line` (the route thinned to 160
+      points, without its first mile so the start is not in it), each with "Get there" or "Ends before you get there"
+      (a date-only end counts as 4 PM).
+    - **Exports carry every stop**: Google Maps as before (9 waypoints a link, LEG 1, LEG 2… past that). **Apple Maps**
+      (`#otp-nrApple`, `nrAppleUrl`) uses Apple's unified Maps URL, `maps.apple.com/directions?source&destination&
+      waypoint…&mode=driving`, documented for iOS 18.4+ / macOS 15.4+ (developer.apple.com/documentation/mapkit/
+      unified-map-urls). Apple's docs give no URL limit; Apple Maps routes take 14 stops (support.apple.com), so a link
+      carries 13 waypoints and its end, and longer trips split into APPLE LEG 1, 2…, each starting where the last ended.
+      Older iOS may open the link without the waypoints: not checked on a real phone from here.
+  - Tests: `__tests__/page/in-a-location-v762.test.mjs`, `__tests__/page/road-upgrades-v762.test.mjs`,
+    `worker/__tests__/geo.test.mjs`, `worker/__tests__/order.test.mjs`; `near-section-v736` now expects `&detour=15` and
+    the detour chips (the detour used to be internal).
 - **v7.61: a flock of swallows while NEAR ME looks** (the owner: "there is a lag and small text saying finding. I need
   an animated butterfly or flock of birds while it is searching or something that indicates working in background").
   Around you, Road trip and FROM HERE show a card where five of the page's swallows (`#otp-swallow`) cross from left
@@ -951,7 +1004,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.62, worker v157**. Claim one here when you start.
+Next free numbers: **page v7.63, worker v158**. Claim one here when you start.
 
 ## What's next
 
