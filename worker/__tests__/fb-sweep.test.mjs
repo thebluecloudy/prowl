@@ -111,10 +111,11 @@ test("ingest: the week so far: each morning adds its finds, an empty morning kee
 test("the worker's key for a hunt is the page's key, for long hunts, half emoji and leading spaces too", async () => {
   const PAGE = readFileSync(new URL("../../page/prowl.html", import.meta.url), "utf8");
   const grab = (name) => { const i = PAGE.indexOf("function " + name + "("); return PAGE.slice(i, PAGE.indexOf("\n", i)); };
-  const page = new Function("var SGW_MAXLEN=60;" + grab("sgwClean") + "\n" + grab("fbKey") + "\nreturn function(h){return fbKey(sgwClean(h))};")();
+  const page = new Function("var SGW_MAXLEN=60;" + grab("cutWords") + "\n" + grab("sgwClean") + "\n" + grab("fbKey") + "\nreturn function(h){return fbKey(sgwClean(h))};")();
   const L = load(), kv = new FakeKV(), env = { PROWL_ALERTS: kv, FB_INGEST_KEY: KEY, OWNER_KEY: OWNER };
   const hunts = ["Ceramic Panther", "Vintage ceramic black panther TV lamp planter Royal Haegers mid century modern",
-    "x".repeat(59) + "\uD83D\uDC08 cat", "  pyrex 401 402 403 404", "Fiesta   ware\tturquoise"];
+    "x".repeat(59) + "\uD83D\uDC08 cat", "  pyrex 401 402 403 404", "Fiesta   ware\tturquoise",
+    "Pedlar of Dreams: The Story of Howard Kron and Texans Incorporated", "x".repeat(70)];   /* v158: cut at a whole word */
   for (const h of hunts) {
     assert.equal(L.fbTerm(h), page(h), JSON.stringify(h));
     assert.equal((await L.fbIngest(post({ term: h, items: [ITEM(123456)] }), env)).status, 200);
