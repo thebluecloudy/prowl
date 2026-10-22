@@ -1,16 +1,24 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.67 / v160).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.68 / v160).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.67** | 396,514 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.68** | 396,514 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v160** | |
 
 Recently shipped, newest first:
 
+- **v7.68: NEAR ME reads at Roadtrippers' size on a phone** (the owner, with Roadtrippers open beside it: "i think the
+  text needs to be bigger on the phone ... the font is a good size", then screenshots of its itinerary and screens).
+  Up to 600px wide, scoped to `#otp-near`: copy 16px (was 13), a shop's name 18px (14), its town and hours 15px
+  (12.5), headings 20px, chips and buttons 15px with 38px targets, the flock's line 16px, every input 16px so an
+  iPhone does not zoom in on a tap; nothing under 13px. The bigger words needed the width, so a shop restacks on a
+  phone: name, town and hours beside the photo, OPEN NOW and the miles on a line under them, Directions and Skip a
+  full-width row under the card; the four footer buttons are 14px so GOOGLE fits. Checked in Chromium at 390px. The
+  Aa text size still zooms on top. Page only. Test: `__tests__/page/near-type-v768.test.mjs`.
 - **v7.67 / v160: long hunts are cut at a whole word; the live rows search what Best picks does** (Matt, with "Pedlar of
   Dreams: The Story of Howard Kron and Texans Incorporated": "This description finds the item in Best picks but it
   doesn't show it live on eBay"). A run's live rows (`liveTermOf`) cut the term at 60 characters mid-word, "...Texans
@@ -1045,7 +1053,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.68, worker v161**. Claim one here when you start.
+Next free numbers: **page v7.69, worker v161**. Claim one here when you start.
 
 ## What's next
 

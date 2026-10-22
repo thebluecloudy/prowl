@@ -2239,6 +2239,54 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .apr-trip{margin-bottom:6px}
 .scout-app-wrapper.k2 .nr-card,.scout-app-wrapper.k2 .nr-find{border:2px solid var(--k2-ln);box-shadow:0 3px 0 var(--k2-ln);background:var(--k2-card)}
 .scout-app-wrapper.k2 .nr-card.nr-sub{box-shadow:none}
+/* v7.68 (the owner, beside Roadtrippers on the phone: "the text needs to be bigger on the phone ... the font is a good
+   size"): NEAR ME on a phone reads at Roadtrippers' sizes, about 16px for copy and 18px for a shop's name. Scoped to
+   #otp-near; the Aa text size still zooms on top. The inputs are 16px so an iPhone does not zoom in on a tap. */
+@media (max-width:600px){
+  .scout-app-wrapper #otp-near .tab{font-size:14px}
+  .scout-app-wrapper #otp-near .nearh{font-size:20px}
+  .scout-app-wrapper #otp-near .nearh span{font-size:13.5px}
+  .scout-app-wrapper #otp-near .nearp{font-size:16px;line-height:1.5}
+  .scout-app-wrapper #otp-near .nearc{font-size:15.5px}
+  .scout-app-wrapper #otp-near .hubc,.scout-app-wrapper #otp-near .nr-cats .hubc,.scout-app-wrapper #otp-near .nr-sort .hubc,.scout-app-wrapper #otp-near .nr-mapbar .hubc,.scout-app-wrapper #otp-near .nr-refresh{font-size:15px;min-height:38px;padding:8px 13px}
+  .scout-app-wrapper #otp-near input{font-size:16px}
+  .scout-app-wrapper #otp-near .addrow button{font-size:15px}
+  .scout-app-wrapper #otp-near .nr-foot .b{font-size:14px;padding-left:4px;padding-right:4px;min-width:0}   /* four across: the words stay inside */
+  .scout-app-wrapper #otp-near .nr-route{font-size:19px}
+  .scout-app-wrapper #otp-near .nr-n{font-size:18px}
+  .scout-app-wrapper #otp-near .nr-t,.scout-app-wrapper #otp-near .nr-h{font-size:15px}
+  .scout-app-wrapper #otp-near .nr-x{font-size:14px}
+  .scout-app-wrapper #otp-near .nr-mi{font-size:15px}
+  .scout-app-wrapper #otp-near .nr-st{font-size:13px}
+  .scout-app-wrapper #otp-near .nr-num{width:22px;height:22px;font-size:13.5px}
+  .scout-app-wrapper #otp-near .nr-ph{width:64px;height:64px}
+  .scout-app-wrapper #otp-near .nr-sub .nr-ph{width:46px;height:46px}
+  .scout-app-wrapper #otp-near .nr-skip,.scout-app-wrapper #otp-near .nr-row>.nr-go,.scout-app-wrapper #otp-near .nr-acts>.nr-go{font-size:15px}
+  .scout-app-wrapper #otp-near .nr-nesth{font-size:13.5px}
+  .scout-app-wrapper #otp-near .nr-skipped,.scout-app-wrapper #otp-near .nr-etan,.scout-app-wrapper #otp-near .nr-more summary,.scout-app-wrapper #otp-near .nr-steps{font-size:15px}
+  .scout-app-wrapper #otp-near .nr-flockt{font-size:16px}
+  .scout-app-wrapper #otp-near .nr-kindsoff,.scout-app-wrapper #otp-near .nr-kindsoff button{font-size:15px}
+  .scout-app-wrapper #otp-near .nr-pop{font-size:15px}
+  .scout-app-wrapper #otp-near .nr-pop .b{font-size:14px}
+  .scout-app-wrapper #otp-near .nr-findb{font-size:15px}
+  .scout-app-wrapper #otp-near .nr-findb b{font-size:16px}
+  .scout-app-wrapper #otp-near .nr-findw,.scout-app-wrapper #otp-near .nr-tripb .nr-tripm{font-size:14px}
+  .scout-app-wrapper #otp-near .lochelp>summary{font-size:16px}
+  .scout-app-wrapper #otp-near .lochelp li{font-size:15px}
+  .scout-app-wrapper #otp-near .lochelp .lh-note,.scout-app-wrapper #otp-near .cityhelp{font-size:14.5px}
+  /* bigger words need the width: a shop's name, town and hours span the card beside the photo; OPEN NOW and the miles
+     sit on a line under them; Directions and Skip are a row under the card */
+  .scout-app-wrapper #otp-near .nr-row{flex-wrap:wrap;gap:6px}
+  .scout-app-wrapper #otp-near .nr-row>.nr-card{flex:1 1 100%}
+  .scout-app-wrapper #otp-near .nr-card{flex-wrap:wrap;align-items:flex-start}
+  .scout-app-wrapper #otp-near .nr-body{flex:1 1 0}
+  .scout-app-wrapper #otp-near .nr-side{flex:1 1 100%;flex-direction:row;align-items:center;justify-content:space-between;padding-left:74px}
+  .scout-app-wrapper #otp-near .nr-sub .nr-side{padding-left:56px}
+  .scout-app-wrapper #otp-near .nr-row>.nr-go{flex:1 1 100%;min-height:44px}
+  .scout-app-wrapper #otp-near .nr-acts{flex:1 1 100%;flex-direction:row}
+  .scout-app-wrapper #otp-near .nr-acts>.nr-go{flex:1 1 auto;min-height:44px}
+  .scout-app-wrapper #otp-near .nr-acts>.nr-skip{flex:0 0 auto;min-height:44px;padding:0 16px}
+}
 /* v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
      shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
      under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing.
@@ -3360,7 +3408,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.67';
+var PROWL_VERSION='v7.68';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
