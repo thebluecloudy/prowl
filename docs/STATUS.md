@@ -1,16 +1,24 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.62 / v157).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.63 / v157).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.62** | 397,274 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.63** | 397,274 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v157** | |
 
 Recently shipped, newest first:
 
+- **v7.63: long hunts are cut at a whole word; the live rows search what Best picks does** (Matt, with "Pedlar of
+  Dreams: The Story of Howard Kron and Texans Incorporated": "This description finds the item in Best picks but it
+  doesn't show it live on eBay"). A run's live rows (`liveTermOf`) cut the term at 60 characters mid-word, "...Texans
+  Incorp", and eBay (every word must match) found 0; Best picks sends the whole title to `/hunt` and found 6. New
+  `cutWords(s, n)` cuts at the last whole word (one over-long word at n, never half an emoji). The live rows and Best
+  picks (`huntTermOf`) both search up to 80, the worker's own `MAX_TERM`; saved hunts (`sgwClean`, 60) end on a whole
+  word too, so keeping that title saves "...Texans", which finds the same 6. Already-saved hunts are 60 or fewer
+  characters and come out unchanged. Test: `__tests__/page/long-terms-v763.test.mjs`.
 - **v7.62 / v157: In a location, and Road Trip A to B, Optimize route, Open when you arrive** (the owner, 2026-10-22, testing Milton, WV with location off: only Craigslist and
   Facebook moved, "Location is off for this site, so the shops around you cannot be listed" stayed, Refresh did
   nothing, the shops never listed, and Road trip said "the trip has no starting point" with no way to give one).
@@ -1003,7 +1011,6 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `ccr-0de21c46-yzs839` | Claude | **v7.63**: long hunts cut at a whole word; live rows search what Best picks does | Building. |
 
 Next free numbers: **page v7.64, worker v158**. Claim one here when you start.
 

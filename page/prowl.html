@@ -3340,7 +3340,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.62';
+var PROWL_VERSION='v7.63';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -4485,7 +4485,7 @@ function launchRow(idx){
    cache, so the same term never fetches twice. Silent if the Worker fails. */
 function liveTermOf(r,mkt){
   if(!r||r.mode==='facebook'||!r.scope||r.scope.indexOf(mkt)===-1||!r.terms||!r.terms.length)return '';
-  return String(r.terms[0]).replace(/\s+/g,' ').slice(0,60).trim();
+  return cutWords(r.terms[0],80);   /* v7.63: was 60, cut mid-word ("...Texans Incorp" found nothing on eBay); 80 is the worker's own limit */
 }
 function sgwTermOf(r){return liveTermOf(r,'shopgoodwill')}
 function liveRunStrip(name,t,c){
@@ -4704,7 +4704,7 @@ function dgFetchAll(r){
 var HUNT={c:{},go:{}};
 var HUNT_NAME={hibid:'HiBid',craigslist:'Craigslist',ebaysold:'eBay Sold'};
 function huntSite(s){return (typeof LIVE_NAME!=='undefined'&&LIVE_NAME[s])||HUNT_NAME[s]||s}
-function huntTermOf(r){return (r&&r.terms&&r.terms.length===1&&r.mode!=='daily'&&r.mode!=='facebook')?String(r.terms[0]):''}
+function huntTermOf(r){return (r&&r.terms&&r.terms.length===1&&r.mode!=='daily'&&r.mode!=='facebook')?cutWords(r.terms[0],80):''}   /* v7.63: the same words the live rows search */
 function huntFetch(t,cb){
   var k=t.toLowerCase();
   if(HUNT.c[k]){if(cb)cb();return}
@@ -5770,7 +5770,11 @@ function slrClean(v){
   if(typeof v.pct==='number'&&pc>=0&&pc<=100)return {pct:pc,n:n};
   return undefined;
 }
-function sgwClean(v){return String(v||'').replace(/\s+/g,' ').slice(0,SGW_MAXLEN).replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g,'$1').trim()}   /* v6.61: never half an emoji (it cannot go in a URL) */
+/* v7.63 (Matt: "This description finds the item in Best picks but it doesn't show it live on eBay"): a term that is too
+   long is cut at the last whole word, never mid-word. "...Texans Incorporated" cut at 60 was "...Texans Incorp", and
+   eBay, which wants every word, found nothing; "...Texans" finds the same six. One word longer than n is cut at n. */
+function cutWords(v,n){var s=String(v||'').replace(/\s+/g,' ').replace(/^ /,''),i;if(s.length>n){i=s.lastIndexOf(' ',n);s=i>0?s.slice(0,i):s.slice(0,n)}return s.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g,'$1').trim()}   /* v6.61: never half an emoji (it cannot go in a URL) */
+function sgwClean(v){return cutWords(v,SGW_MAXLEN)}
 function huntIndex(t){
   var k=sgwClean(t).toLowerCase(),i;
   for(i=0;i<st.hunts.length;i++)if(sgwClean(st.hunts[i]).toLowerCase()===k)return i;
