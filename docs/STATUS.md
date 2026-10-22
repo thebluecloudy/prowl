@@ -1,16 +1,25 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-21 (v7.60 / v156; CI-only PR, no version).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.61 / v156).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.60** | 398,786 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.61** | 398,786 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v156** | |
 
 Recently shipped, newest first:
 
+- **v7.61: a flock of swallows while NEAR ME looks** (the owner: "there is a lag and small text saying finding. I need
+  an animated butterfly or flock of birds while it is searching or something that indicates working in background").
+  Around you, Road trip and FROM HERE show a card where five of the page's swallows (`#otp-swallow`) cross from left
+  to right, wings beating and bobbing (`nrFlock`, `nrFly`, `nrFlap`), and the line under it moves through what is
+  being done every few seconds (`nrFlockRun`): "Finding where you are…", "Looking for antique, vintage and thrift
+  shops nearby…", "Sorting them biggest first…", "Checking today's hours…"; on a trip "Mapping the drive to
+  Blenko wv…", "Searching the shops along the way…", "Picking the stops worth the time…", "Almost there…". The line
+  is a polite live region; the birds are hidden from screen readers. With reduced motion the birds sit still. The
+  results replace the card. Page only. Test: `__tests__/page/near-flock-v761.test.mjs`.
 - **v7.60: Den settings buttons keep their words inside** (the owner's screenshot: "Standard" spilling out of the Text
   size button). Each settings row is a flex row; its button could shrink below its own label ("Standard", "Swipe",
   "Export" overflowed at 390 and 1280 px). The button now keeps its size (`flex: 0 0 auto`, one line) and the
@@ -942,7 +951,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.61, worker v157**. Claim one here when you start.
+Next free numbers: **page v7.62, worker v157**. Claim one here when you start.
 
 ## What's next
 
