@@ -2135,7 +2135,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-atbar{margin:0 0 6px}
 .scout-app-wrapper .nr-aterr{margin:0 0 8px}
 .scout-app-wrapper .nr-fromrow{margin:0}
-.scout-app-wrapper .nr-route{display:flex;flex-direction:column;gap:8px}   /* v7.63: From sits right above To */
+.scout-app-wrapper .nr-route{display:flex;flex-direction:column;gap:8px}   /* v7.64: From sits right above To */
 .scout-app-wrapper .nr-route .addrow input{min-width:0}
 .scout-app-wrapper .nr-atform{flex-wrap:wrap}
 .scout-app-wrapper .nr-atform input{flex:1 1 100%}
@@ -3358,7 +3358,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.63';
+var PROWL_VERSION='v7.64';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3929,7 +3929,7 @@ function atSubmit(){
     atUse(a);
   });
 }
-/* v7.63 Use my location (the owner, in a car on Android in an app's built-in browser with location off for the site:
+/* v7.64 Use my location (the owner, in a car on Android in an app's built-in browser with location off for the site:
    "Location is off ... Type a town" and he did not know what town he was in). A button by In a location and by From
    asks the phone from the tap itself (so the browser can show its prompt), high accuracy, 10 s, a fix up to a minute
    old. Worker v158 /geo?lat&lng names the town (only the point rounded to ~1 km leaves the page); the box gets
@@ -10228,7 +10228,7 @@ function nrAroundLoad(force){
 }
 /* v7.62: no fix is no longer a dead end: the typed place is offered, and Refresh only where it can help */
 function nrNoFix(err){
-  var a=atGet(),blk=err==='denied'||err==='nogeo';   /* v7.63: blocked says how to allow it, with Use my location */
+  var a=atGet(),blk=err==='denied'||err==='nogeo';   /* v7.64: blocked says how to allow it, with Use my location */
   return '<div class="nearp nr-nofix">'+(blk?nrBlocked('at'):'Your location could not be read just now. Type a town, City, ST or ZIP in <b>In a location</b> above and Prowl lists the shops there.')+
     '<p class="nr-nofixb"><button type="button" class="sgw-ml" data-nrme="at">📍 Use my location</button>'+(a?' <button type="button" class="sgw-ml" data-nrat="on">Use '+esc(a.town)+'</button>':'')+(blk?'':' '+nrRefreshBtn())+'</p></div>';
 }
@@ -10428,7 +10428,7 @@ function nrDrawTrip(t,o){
 function nrFoot(t){
   var f=$('#otp-nrFoot'),m=$('#otp-nrMaps'),s=$('#otp-nrShare'),hb=$('#otp-nrHere');if(!f||!m||!s)return;
   if(hb)hb.hidden=!t||!t.dest||!t.dest.name;
-  if(!t||!t.maps||NR.mode!=='trip'||!(t.stops&&t.stops.length)){f.hidden=true;return}   /* v7.63: no stops, no bar (the owner) */
+  if(!t||!t.maps||NR.mode!=='trip'||!(t.stops&&t.stops.length)){f.hidden=true;return}   /* v7.64: no stops, no bar (the owner) */
   var legs=nrMapsLegs(t),lw=$('#otp-nrLegs');
   f.hidden=false;
   if(lw&&legs.length)lw.innerHTML=legs.map(function(l,i){return '<a class="b p" '+(i===0?'id="otp-nrMaps" ':'')+'href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer">'+esc(l.label)+'</a>'}).join('');
@@ -10609,7 +10609,7 @@ if(near){
   $('#otp-nrShare').addEventListener('click',nrShare);
   $('#otp-nrHere').addEventListener('click',nrHere);
   near.addEventListener('click',function(e){
-    var me=e.target.closest&&e.target.closest('[data-nrme]');if(me){meLocate(me.getAttribute('data-nrme'));return}   /* v7.63 */
+    var me=e.target.closest&&e.target.closest('[data-nrme]');if(me){meLocate(me.getAttribute('data-nrme'));return}   /* v7.64 */
     if(e.target.closest&&e.target.closest('#otp-nrRefresh')){NR.pos=null;NR.around=null;nrAroundLoad(true);return}   /* v7.37 */
     var dt=e.target.closest&&e.target.closest('[data-nrdet]');if(dt){nrDetourSet(+dt.getAttribute('data-nrdet'));return}   /* v7.62 */
     if(e.target.closest&&e.target.closest('[data-nropt]')){nrOptimize(false);return}

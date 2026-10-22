@@ -1,17 +1,17 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.63 / v158).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.64 / v158).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.63** | 396,542 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.64** | 396,542 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v158** | |
 
 Recently shipped, newest first:
 
-- **v7.63 / v158: 📍 Use my location** (the owner, 2026-10-22, in a car on Android in an app's built-in browser with
+- **v7.64 / v158: 📍 Use my location** (the owner, 2026-10-22, in a car on Android in an app's built-in browser with
   location off for the site: "Location is off for this site ... Type a town" and he did not know what town he was in).
   - A **📍 Use my location** button on the From row itself, right of the field (`#otp-nrFromMe`), and in the In a location
     box beside Look there (`#otp-nrAtMe`), and inside the no-fix messages (`data-nrme`). The tap itself calls `getCurrentPosition` (`meLocate`, high accuracy, 10 s timeout, a fix
@@ -36,7 +36,7 @@ Recently shipped, newest first:
     (what it always did: rebuild the trip from where the phone is now).
   - Some in-app browsers (WebViews) refuse geolocation outright and show no prompt; for them only Open in Chrome or typing
     a town helps. Not checked on a real phone from here.
-  - Tests: `__tests__/page/use-my-location-v763.test.mjs`, `worker/__tests__/geo-reverse.test.mjs`; `in-a-location-v762`
+  - Tests: `__tests__/page/use-my-location-v764.test.mjs`, `worker/__tests__/geo-reverse.test.mjs`; `in-a-location-v762`
     and `near-section-v736` now expect "Location is blocked for this site".
 - **v7.62 / v157: In a location, and Road Trip A to B, Optimize route, Open when you arrive** (the owner, 2026-10-22, testing Milton, WV with location off: only Craigslist and
   Facebook moved, "Location is off for this site, so the shops around you cannot be listed" stayed, Refresh did
@@ -1030,8 +1030,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.63**: long hunts cut at a whole word; live rows search what Best picks does | Building. |
 
-Next free numbers: **page v7.64, worker v159**. Claim one here when you start.
+Next free numbers: **page v7.65, worker v159**. Claim one here when you start.
 
 ## What's next
 
