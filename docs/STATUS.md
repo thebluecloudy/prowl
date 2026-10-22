@@ -1,16 +1,43 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.62 / v157).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.64 / v159).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.62** | 397,274 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v157** | |
+| Page | **v7.64** | 396,542 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v159** | |
 
 Recently shipped, newest first:
 
+- **v7.64 / v159: 📍 Use my location** (the owner, 2026-10-22, in a car on Android in an app's built-in browser with
+  location off for the site: "Location is off for this site ... Type a town" and he did not know what town he was in).
+  - A **📍 Use my location** button on the From row itself, right of the field (`#otp-nrFromMe`), and in the In a location
+    box beside Look there (`#otp-nrAtMe`), and inside the no-fix messages (`data-nrme`). The tap itself calls `getCurrentPosition` (`meLocate`, high accuracy, 10 s timeout, a fix
+    up to 60 s old), so the browser can show its prompt.
+  - Worker **v159 `GET /geo?lat=..&lng=..`** (`geoBackRoute`, `gReverse`; pure `geoReverse`, `geoRound` in `trip.js`) names
+    the town with the reverse Geocoding API on `GOOGLE_MAPS_KEY`, US only: `{ lat, lng, town, city, st, zip, cl }`. The
+    page sends the point rounded to 2 decimals (~1 km) and the worker rounds again before Google, the cache key (30 days)
+    and the answer; `GEO_PER_IP` shared with `/geo?q=`; no coordinates logged. A rural fix can name a township.
+  - The box reads "Chillicothe, OH 45601" and a line says "Using your location: Chillicothe, OH". The precise fix is kept
+    as the place in `prowl.nearAt` with a new field `me:1` (same key, older data loads as before), so the text is never
+    geocoded. Around you: it becomes the centre (`atUse`, on). From: kept with `on` unchanged, so Around you does not move;
+    the trip is timed like the phone (`fromAt` is empty for a `me` place). If the worker cannot name the town the fix is
+    still used, as "My location". It is a snapshot: after driving on, tap it again.
+  - Blocked (denied, no geolocation, or not a secure page) replaces the dead end with how to allow it (`nrBlocked`): an
+    app's built-in browser, ⋮ › Open in Chrome; Chrome, the icon left of the address › Permissions › Location › Allow;
+    iPhone, aA › Website Settings › Location › Allow; or type a town or ZIP. No fix in time says so and offers a retry.
+    Never the IP's guess (a phone's IP can sit in another state).
+  - Road trip layout (the owner's screenshot the same day: he took the bottom bar's FROM HERE for the new button, "this
+    isn't intuitive"): From sits right above To in one block (`.nr-route`), To reads "To: town, City, ST or ZIP
+    (optional)"; the bottom bar (`#otp-nrFoot`: OPEN IN MAPS, APPLE MAPS, FROM HERE, SHARE) shows only once a built trip
+    has stops (`nrFoot`; an A-to-B route with no shops no longer offers it); FROM HERE is renamed **REBUILD FROM HERE**
+    (what it always did: rebuild the trip from where the phone is now).
+  - Some in-app browsers (WebViews) refuse geolocation outright and show no prompt; for them only Open in Chrome or typing
+    a town helps. Not checked on a real phone from here.
+  - Tests: `__tests__/page/use-my-location-v764.test.mjs`, `worker/__tests__/geo-reverse.test.mjs`; `in-a-location-v762`
+    and `near-section-v736` now expect "Location is blocked for this site".
 - **v7.62 / v157: In a location, and Road Trip A to B, Optimize route, Open when you arrive** (the owner, 2026-10-22, testing Milton, WV with location off: only Craigslist and
   Facebook moved, "Location is off for this site, so the shops around you cannot be listed" stayed, Refresh did
   nothing, the shops never listed, and Road trip said "the trip has no starting point" with no way to give one).
@@ -1003,8 +1030,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.63 / worker v158**: long hunts cut at a whole word; live rows search what Best picks does | Building. |
 
-Next free numbers: **page v7.63, worker v158**. Claim one here when you start.
+Next free numbers: **page v7.65, worker v160**. Claim one here when you start.
 
 ## What's next
 

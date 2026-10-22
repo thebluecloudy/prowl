@@ -31,6 +31,8 @@ about a minute. No dashboard paste needed.
   one forward geocode per new text, kept 30 days, plus Craigslist's public area list (reference.craigslist.org/Areas,
   no key, kept 7 days) for the nearest Craigslist site. `/order` (v157, Optimize route) uses the public OSRM demo
   router (no key, fair use only) and falls back to a straight-line estimate. Nothing new to set up.
+  Use my location (v159) adds `/geo?lat=..&lng=..`: one reverse geocode per ~1 km point (rounded to 2 decimals
+  before it is sent or kept), kept 30 days, same daily cap as `/geo?q=`. Nothing new to set up.
 - `PRO_CIDS` (v132, plain-text variable) is the comp list for group trips: store customer ids, comma-separated, that
   count as Pro for building and sharing a trip and posting finds, the way the organizer arranges with the owner outside
   the app. A member's own paid Pro order (by customer id) or a linked Prowl Alerts member's Pro counts too. The page

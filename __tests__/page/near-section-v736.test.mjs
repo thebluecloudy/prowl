@@ -126,7 +126,7 @@ test('Around you without a fix or without the key: plain words, and the Maps lin
   await tick(30);
   denied.$('#otp-localBtn').click();
   await tick(120);
-  assert.match(denied.$('#otp-nrLive').textContent, /Location is off for this site/);
+  assert.match(denied.$('#otp-nrLive').textContent, /Location is blocked for this site/);   // v7.64
   assert.equal(denied.$('#otp-nrLive .nr-card'), null);
   assert.ok(denied.$$('#otp-nearGrid a.nearc').length >= 8);
   await denied.close();
@@ -204,7 +204,7 @@ test('Road trip on a Monday: Chillicothe renders CLOSED and Blenko shows its Mon
   await tick(120);
   assert.match(p.$('#otp-nrOut .nr-empty').textContent, /No shops of the kinds you picked are worth a stop inside this route/);
   assert.equal(p.$('#otp-nrOut .nr-stop'), null);
-  assert.equal(p.$('#otp-nrFoot').hidden, false, 'the route is still offered');
+  assert.equal(p.$('#otp-nrFoot').hidden, true, 'v7.64: no stops, no bar (the owner)');
   assert.deepEqual(p.errors, []);
   await p.close();
 });
@@ -319,7 +319,7 @@ test('v7.39: FROM HERE rebuilds from where the phone is now; on your kept trip t
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
   const here = p.$('#otp-nrHere');
-  assert.equal(here.hidden, false); assert.equal(here.textContent, 'FROM HERE');
+  assert.equal(here.hidden, false); assert.equal(here.textContent, 'REBUILD FROM HERE');   // v7.64: says what it does
   here.click();
   await tick(200);
   const trips = calls.filter((x) => /\/trip\?/.test(x.url));

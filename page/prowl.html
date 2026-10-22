@@ -2134,7 +2134,20 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-atform input{min-width:0}
 .scout-app-wrapper .nr-atbar{margin:0 0 6px}
 .scout-app-wrapper .nr-aterr{margin:0 0 8px}
-.scout-app-wrapper .nr-fromrow{margin:0 0 8px}
+.scout-app-wrapper .nr-fromrow{margin:0}
+.scout-app-wrapper .nr-route{display:flex;flex-direction:column;gap:8px}   /* v7.64: From sits right above To */
+.scout-app-wrapper .nr-route .addrow input{min-width:0}
+.scout-app-wrapper .nr-atform{flex-wrap:wrap}
+.scout-app-wrapper .nr-atform input{flex:1 1 100%}
+.scout-app-wrapper .nr-atform button{flex:1 1 0}
+.scout-app-wrapper .addrow button.nr-me{flex:0 0 auto;padding:0 12px;background:transparent;color:var(--ink);border:1.5px solid var(--ac);box-shadow:none;font-size:14px;font-weight:800;white-space:nowrap}
+.scout-app-wrapper .nr-atform button.nr-me{flex:1 1 0}
+.scout-app-wrapper .addrow button.nr-me:disabled{opacity:.6}
+.scout-app-wrapper .nr-memsg{margin:0}
+.scout-app-wrapper .nr-memsg.ok{color:var(--ink)}
+.scout-app-wrapper .nr-steps{margin:6px 0 0;padding-left:20px;font-size:13px;line-height:1.5}
+.scout-app-wrapper .nr-steps li{margin:2px 0}
+.scout-app-wrapper .nr-nofixb{margin:8px 0 0}
 .scout-app-wrapper .nr-detour{margin:8px 0 4px;align-items:center}
 .scout-app-wrapper .nr-detour .nr-dl{font-size:12.5px;font-weight:700;margin-right:2px}
 .scout-app-wrapper .nr-leave{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0 8px}
@@ -3171,8 +3184,10 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <div class="hubbar nr-cats" id="otp-nrCatsA" role="group" aria-label="What to look for"></div>
       <form class="addrow nr-atform" id="otp-nrAtForm" role="search" aria-label="In a location">
         <input id="otp-nrAtIn" type="text" placeholder="In a location: a town, City, ST or ZIP" aria-label="In a location: a town, City, ST or ZIP" autocomplete="off" enterkeyhint="go">
+        <button type="button" class="nr-me" id="otp-nrAtMe" data-nrme="at" aria-label="Use my location: fill in the town I am in">📍 Use my location</button>
         <button type="submit" id="otp-nrAtGo">Look there</button>
       </form>
+      <p class="nearp nr-memsg" id="otp-nrAtMeMsg" role="status" hidden></p>
       <div class="hubbar nr-atbar" id="otp-nrAtBar" role="group" aria-label="Centre on" hidden></div>
       <p class="nearp nr-aterr" id="otp-nrAtErr" role="status" hidden></p>
       <div class="nr-live" id="otp-nrLive"></div>
@@ -3187,7 +3202,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
           <li>
 <b>Pick your Facebook city.</b> Facebook only searches one city at a time. Choose your metro here, or All to cover every major metro. On a phone Facebook opens in your browser, so log in to Facebook there once.</li>
           <li>
-<b>Somewhere else?</b> Type a town, <b>City, ST</b> or a ZIP in <b>In a location</b> at the top. The shops, store searches, garage sales, Craigslist, Facebook and Road trip's start all move there, no GPS needed, and Prowl remembers it on this phone. <b>Where I am</b> goes back to your location.</li>
+<b>Somewhere else?</b> Type a town, <b>City, ST</b> or a ZIP in <b>In a location</b> at the top. The shops, store searches, garage sales, Craigslist, Facebook and Road trip's start all move there, no GPS needed, and Prowl remembers it on this phone. <b>Where I am</b> goes back to your location. Not sure where you are? Tap <b>📍 Use my location</b> and Prowl fills in the town for you.</li>
           <li>
 <b>Search just one local site.</b> Type a hunt up top or tap one of yours, then come back here and tap Craigslist or Facebook Marketplace at the bottom to search only there.</li>
         </ol>
@@ -3227,11 +3242,14 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <h3 class="nearh">Road trip</h3>
       <p class="nearp">Where are you headed? Prowl maps the drive from where you are (or the town you type in From) and lists the antique, vintage and thrift shops worth a stop on the way, in order, with their hours for the day. Nobody sees where you started from, only the town.</p>
       <div class="hubbar nr-cats" id="otp-nrCats" role="group" aria-label="What to look for"></div>
-      <div class="addrow nr-fromrow"><input id="otp-nrFrom" type="text" placeholder="From: where you are, or a town, City, ST or ZIP" aria-label="Starting from" autocomplete="off" enterkeyhint="next"></div>
+      <div class="nr-route">
+      <div class="addrow nr-fromrow"><input id="otp-nrFrom" type="text" placeholder="From: town, City, ST or ZIP" aria-label="Starting from: a town, City, ST or ZIP, or empty for where you are" autocomplete="off" enterkeyhint="next"><button type="button" class="nr-me" id="otp-nrFromMe" data-nrme="from" aria-label="Use my location: start from the town I am in">📍 Use my location</button></div>
+      <p class="nearp nr-memsg" id="otp-nrFromMsg" role="status" hidden></p>
       <form class="addrow" id="otp-nrForm">
-        <input id="otp-nrTo" type="text" placeholder="To: a town, a shop or an address (empty: a loop from the start)" aria-label="Destination, or empty for a loop" autocomplete="off" enterkeyhint="go">
+        <input id="otp-nrTo" type="text" placeholder="To: town, City, ST or ZIP (optional)" aria-label="Destination: a town, City, ST, ZIP, a shop or an address; empty for a loop from the start" autocomplete="off" enterkeyhint="go">
         <button type="submit" id="otp-nrGo">Build trip</button>
       </form>
+      </div>
       <div class="hubbar nr-detour" id="otp-nrDetour" role="group" aria-label="Detour off the route"></div>
       <div class="hubbar" id="otp-nrDays" role="group" aria-label="Trip day"></div>
       <p class="nearp nr-leave"><label for="otp-nrLeave">Leave at</label> <input type="time" id="otp-nrLeave" step="900"> <span class="nr-leaveh">Empty: now (today), or no arrival times on another day.</span></p>
@@ -3242,7 +3260,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   <div class="nr-foot" id="otp-nrFoot" hidden>
     <span class="nr-legs" id="otp-nrLegs"><a class="b p" id="otp-nrMaps" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">OPEN IN MAPS</a></span>
     <span class="nr-legs" id="otp-nrApple"></span>
-    <button type="button" class="b" id="otp-nrHere">FROM HERE</button>
+    <button type="button" class="b" id="otp-nrHere" aria-label="Rebuild this trip from where you are now">REBUILD FROM HERE</button>
     <button type="button" class="b" id="otp-nrShare">SHARE</button>
   </div>
 </aside>
@@ -3340,7 +3358,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.62';
+var PROWL_VERSION='v7.64';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3910,6 +3928,58 @@ function atSubmit(){
     if(inp){inp.value='';try{inp.blur()}catch(e){}}
     atUse(a);
   });
+}
+/* v7.64 Use my location (the owner, in a car on Android in an app's built-in browser with location off for the site:
+   "Location is off ... Type a town" and he did not know what town he was in). A button by In a location and by From
+   asks the phone from the tap itself (so the browser can show its prompt), high accuracy, 10 s, a fix up to a minute
+   old. Worker v159 /geo?lat&lng names the town (only the point rounded to ~1 km leaves the page); the box gets
+   "Chillicothe, OH 45601" and the precise fix is the centre or the start, kept as the place (me:1) so the text is never
+   looked up again. Never the IP's guess: a phone's IP can sit in another state. Blocked, it says how to allow it. */
+var NR_ME_OPT={enableHighAccuracy:true,timeout:10000,maximumAge:60000};
+function meBox(w){return w==='from'?'From':'In a location'}
+function meMsg(w,html,ok){var e=$(w==='from'?'#otp-nrFromMsg':'#otp-nrAtMeMsg');if(!e)return;e.hidden=!html;e.className='nearp nr-memsg'+(ok?' ok':'');e.innerHTML=html||''}
+/* how to let the site have the location, for Chrome on Android (and its in-app browsers) and for an iPhone */
+function nrBlocked(w){
+  return 'Location is blocked for this site in this browser, so Prowl cannot tell where you are.'+
+    '<ol class="nr-steps"><li>In an app’s built-in browser (a title bar and a <b>⋮</b> menu): tap <b>⋮</b>, then <b>Open in Chrome</b>.</li>'+
+    '<li>In Chrome: tap the icon left of the address, then <b>Permissions</b> › <b>Location</b> › <b>Allow</b>, and tap <b>📍 Use my location</b> again.</li>'+
+    '<li>On an iPhone: tap <b>aA</b> in the address bar › <b>Website Settings</b> › <b>Location</b> › <b>Allow</b>.</li>'+
+    '<li>Or type a town, City, ST or ZIP in <b>'+meBox(w)+'</b> above.</li></ol>';
+}
+function meFail(w,err){
+  if(err==='denied'||err==='nogeo')return nrBlocked(w);
+  return 'Your location could not be read just now (no GPS fix in time). Tap <b>📍 Use my location</b> to try again, or type a town, City, ST or ZIP in <b>'+meBox(w)+'</b> above.';
+}
+function meBtns(t){var i,b=document.querySelectorAll('[data-nrme]');for(i=0;i<b.length;i++){b[i].textContent=t;b[i].disabled=t!=='📍 Use my location'}}
+function meLabel(a){return a.zip&&a.town.indexOf(a.zip)===-1?a.town+' '+a.zip:a.town}
+/* the fix -> a place like a typed one, with the precise point; a town the worker cannot name still works, as My location */
+function mePlace(pos,cb){
+  nrFetch('/geo?lat='+pos.lat.toFixed(2)+'&lng='+pos.lng.toFixed(2)).then(function(r){
+    var j=r.j||{},old=atGet(),ok=r.ok&&j.town,a={town:ok?String(j.town).slice(0,80):'My location',city:ok?String(j.city||'').slice(0,60):'',st:ok&&/^[A-Z]{2}$/.test(j.st||'')?j.st:'',zip:ok&&/^\d{5}$/.test(j.zip||'')?j.zip:'',lat:pos.lat,lng:pos.lng,cl:ok&&/^[a-z0-9]{2,30}$/.test(j.cl||'')?j.cl:'',me:1,on:!!(old&&old.on)};
+    a.q=meLabel(a);a.fb=atFb(a);cb(a);
+  });
+}
+function meLocate(w){
+  if(NR.meBusy)return;
+  var g=navigator.geolocation;
+  if(!g||!g.getCurrentPosition||window.isSecureContext===false){meMsg(w,nrBlocked(w));return}
+  NR.meBusy=true;meBtns('Finding you…');meMsg(w,'');
+  var done=false;
+  function fin(pos,err){
+    if(done)return;done=true;
+    if(!pos){NR.meBusy=false;meBtns('📍 Use my location');meMsg(w,meFail(w,err));return}
+    NR.pos=pos;NR.posAt=Date.now();
+    mePlace(pos,function(a){
+      NR.meBusy=false;meBtns('📍 Use my location');
+      var lab=meLabel(a),fi=$('#otp-nrFrom'),ai=$('#otp-nrAtIn');
+      if(w==='from'){atSave(a);rAtBar();if(fi)fi.value=lab}
+      else{if(ai)ai.value=lab;atUse(a);if(fi)fi.value=lab}
+      meMsg(w,'Using your location: <b>'+esc(a.city&&a.st?a.city+', '+a.st:a.town)+'</b>'+(a.town==='My location'?' (the town could not be named, the point is used as is)':'')+'.',true);
+      var out=$('#otp-nrOut');if(w==='from'&&out&&out.querySelector('.nr-nofix'))out.innerHTML='';
+    });
+  }
+  try{g.getCurrentPosition(function(x){fin({lat:x.coords.latitude,lng:x.coords.longitude})},function(e){fin(null,e&&e.code===1?'denied':'fail')},NR_ME_OPT)}catch(e){fin(null,'fail')}
+  setTimeout(function(){fin(null,'fail')},12000);
 }
 var NEAR_WHERE='';
 function nearWhere(){if(atLive())return 'at';if(!st.city)return 'me';if(NEAR_WHERE)return NEAR_WHERE;return typeof nrYou==='function'&&nrYou()?'me':'place'}
@@ -10158,9 +10228,9 @@ function nrAroundLoad(force){
 }
 /* v7.62: no fix is no longer a dead end: the typed place is offered, and Refresh only where it can help */
 function nrNoFix(err){
-  var a=atGet();
-  return '<p class="nearp nr-nofix">'+(err==='denied'?'Location is off for this site, so Prowl cannot see where you are.':'Your location could not be read just now.')+' Type a town, City, ST or ZIP in <b>In a location</b> above and Prowl lists the shops there.'+
-    (a?' <button type="button" class="sgw-ml" data-nrat="on">Use '+esc(a.town)+'</button>':'')+(err==='denied'?'':' '+nrRefreshBtn())+'</p>';
+  var a=atGet(),blk=err==='denied'||err==='nogeo';   /* v7.64: blocked says how to allow it, with Use my location */
+  return '<div class="nearp nr-nofix">'+(blk?nrBlocked('at'):'Your location could not be read just now. Type a town, City, ST or ZIP in <b>In a location</b> above and Prowl lists the shops there.')+
+    '<p class="nr-nofixb"><button type="button" class="sgw-ml" data-nrme="at">📍 Use my location</button>'+(a?' <button type="button" class="sgw-ml" data-nrat="on">Use '+esc(a.town)+'</button>':'')+(blk?'':' '+nrRefreshBtn())+'</p></div>';
 }
 /* v7.47 (the owner, standing in Maumee Antique Mall with only Vintage on: "it doesn't come up"). The copy names the
    kinds that are on, never a fixed "antique, vintage and thrift"; a usual kind that is off is said, with one tap to
@@ -10199,9 +10269,10 @@ function nrStart(from,cb){
   nrPos(function(pos,err){cb(pos,err,null)});
 }
 function nrNoStart(err,msg){
-  var a=atGet();
+  var a=atGet(),blk=err==='denied'||err==='nogeo';
   if(err==='geo')return '<p class="nearp">'+esc(msg||'That place could not be found.')+'</p>';
-  return '<p class="nearp nr-nofix">'+(err==='denied'?'Location is off for this site, so Prowl cannot tell where you are starting.':'Your location could not be read just now.')+' Type a town, City, ST or ZIP in <b>From</b> above and build the trip again.'+(a?' <button type="button" class="sgw-ml" data-nrfrom="1">Start from '+esc(a.town)+'</button>':'')+'</p>';
+  return '<div class="nearp nr-nofix">'+(blk?nrBlocked('from'):'Your location could not be read just now. Type a town, City, ST or ZIP in <b>From</b> above and build the trip again.')+
+    '<p class="nr-nofixb"><button type="button" class="sgw-ml" data-nrme="from">📍 Use my location</button>'+(a?' <button type="button" class="sgw-ml" data-nrfrom="1">Start from '+esc(a.town)+'</button>':'')+'</p></div>';
 }
 function nrBuild(to){
   var out=$('#otp-nrOut'),fi=$('#otp-nrFrom'),from=fi?atClean(fi.value):'';if(!out||NR.busy)return;if(!to){nrLoop(from);return}   /* v7.62: no end, a loop */NR.busy=true;NR.view=null;NR.built=null;NR.lastTo=to;
@@ -10213,7 +10284,7 @@ function nrBuild(to){
       if(r.status===503){out.innerHTML='<p class="nearp">Road trips are not switched on yet. For now, search the map there: <a class="b" href="'+esc('https://www.google.com/maps/search/?api=1&query='+E('antique stores near '+to))+'" target="_blank" rel="noopener noreferrer">Antique stores near '+esc(to)+'</a></p>';return}
       if(r.status===404){out.innerHTML='<p class="nearp">No driving route to <b>'+esc(to)+'</b> could be found. Try the town’s name, or a street address.</p>';return}
       if(!r.ok){out.innerHTML='<p class="nearp">The trip could not be built just now. Try again in a moment.</p>';return}
-      NR.built=r.j;NR.built.to=to;NR.built.fromAt=pl?pl.town:'';NR.builtFrom={lat:pos.lat,lng:pos.lng};nrDrawTrip(r.j,{});   /* v7.62: where it started, for Keep */
+      NR.built=r.j;NR.built.to=to;NR.built.fromAt=pl&&!pl.me?pl.town:'';NR.builtFrom={lat:pos.lat,lng:pos.lng};nrDrawTrip(r.j,{});   /* v7.62: where it started, for Keep */
     });
   });
 }
@@ -10236,7 +10307,7 @@ function nrLoop(from){
       if(!r.ok){out.innerHTML='<p class="nearp">The shops for a loop could not be found just now. Type a place in To for a trip there.</p>';return}
       var sk=nrSkipGet(),town=pl?pl.town:(r.j.town||''),L=(r.j.places||[]).filter(function(p){return !sk[p.id]&&typeof p.lat==='number'}).slice(0,8).map(function(p){var o=nrCopy(p);o.nested=[];return o});
       var t={loop:true,origin:{town:town},dest:{name:town||'Back to the start',town:'',lat:pos.lat,lng:pos.lng,id:''},route:null,day:NR.day,stops:L,more:[],maps:'loop',to:''};
-      t.fromAt=pl?pl.town:'';NR.built=t;NR.builtFrom={lat:pos.lat,lng:pos.lng};nrDrawTrip(t,{});
+      t.fromAt=pl&&!pl.me?pl.town:'';NR.built=t;NR.builtFrom={lat:pos.lat,lng:pos.lng};nrDrawTrip(t,{});
       if(L.length>1)nrOptimize(true);
     });
   });
@@ -10277,7 +10348,7 @@ function nrLateAt(p,eta,day){if(!p||!p.hours||!eta)return false;var n=nrNext(p.h
 /* Optimize route: the shortest drive through the stops, the start and end kept */
 function nrOptimize(quiet){
   var t=NR.view||NR.built;if(!t||NR.optBusy)return;var vis=nrVisible(t),c=nrChain(t,vis.stops);
-  if(!c||c.ids.length<2){if(!quiet)toast(nrOrigin()?'Nothing to reorder: fewer than two stops.':'Prowl needs the start to reorder the stops. Tap FROM HERE first.',3000);return}
+  if(!c||c.ids.length<2){if(!quiet)toast(nrOrigin()?'Nothing to reorder: fewer than two stops.':'Prowl needs the start to reorder the stops. Tap REBUILD FROM HERE first.',3000);return}
   if(c.pts.length>14){if(!quiet)toast('Optimize takes up to 12 stops at a time. Skip a few and try again.',3600);return}
   NR.optBusy=true;var before=t.legs&&t.legsKey===nrPtsQ(c.pts)+(t.loop?'L':'')?t.legs.reduce(function(a,l){return a+l.min},0):0;
   nrFetch('/order?'+(t.loop?'loop=1&':'')+'p='+E(nrPtsQ(c.pts))).then(function(r){
@@ -10357,7 +10428,7 @@ function nrDrawTrip(t,o){
 function nrFoot(t){
   var f=$('#otp-nrFoot'),m=$('#otp-nrMaps'),s=$('#otp-nrShare'),hb=$('#otp-nrHere');if(!f||!m||!s)return;
   if(hb)hb.hidden=!t||!t.dest||!t.dest.name;
-  if(!t||!t.maps||NR.mode!=='trip'){f.hidden=true;return}
+  if(!t||!t.maps||NR.mode!=='trip'||!(t.stops&&t.stops.length)){f.hidden=true;return}   /* v7.64: no stops, no bar (the owner) */
   var legs=nrMapsLegs(t),lw=$('#otp-nrLegs');
   f.hidden=false;
   if(lw&&legs.length)lw.innerHTML=legs.map(function(l,i){return '<a class="b p" '+(i===0?'id="otp-nrMaps" ':'')+'href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer">'+esc(l.label)+'</a>'}).join('');
@@ -10426,7 +10497,7 @@ function nrKeep(){
   if(!nrSigned()){toast('Sign in to Prowl to share a trip with your group.',3600);nrSignin();return}
   var b=NR.built;if(!b||NR.busy)return;
   var o=NR.builtFrom||NR.pos;   /* v7.62: where the trip was built from, the phone or the From box */
-  if(!o){toast('Prowl needs your location to keep the trip. Tap FROM HERE, then try again.',3600);return}
+  if(!o){toast('Prowl needs your location to keep the trip. Tap REBUILD FROM HERE, then try again.',3600);return}
   NR.busy=true;toast('Keeping the trip for your group…',2400);
   nrFetch('/trips',{method:'POST',body:{to:b.to,lat:o.lat,lng:o.lng,day:NR.day,cats:nrCatsQ()}}).then(function(r){
     NR.busy=false;
@@ -10538,6 +10609,7 @@ if(near){
   $('#otp-nrShare').addEventListener('click',nrShare);
   $('#otp-nrHere').addEventListener('click',nrHere);
   near.addEventListener('click',function(e){
+    var me=e.target.closest&&e.target.closest('[data-nrme]');if(me){meLocate(me.getAttribute('data-nrme'));return}   /* v7.64 */
     if(e.target.closest&&e.target.closest('#otp-nrRefresh')){NR.pos=null;NR.around=null;nrAroundLoad(true);return}   /* v7.37 */
     var dt=e.target.closest&&e.target.closest('[data-nrdet]');if(dt){nrDetourSet(+dt.getAttribute('data-nrdet'));return}   /* v7.62 */
     if(e.target.closest&&e.target.closest('[data-nropt]')){nrOptimize(false);return}
