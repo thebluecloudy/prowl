@@ -164,7 +164,7 @@ test('Road trip: one box, the stops in drive order with the town\'s others neste
   const foot = p.$('#otp-nrFoot');
   assert.equal(foot.hidden, false);
   const maps = p.$('#otp-nrMaps');
-  assert.equal(maps.textContent, 'OPEN IN MAPS'); assert.equal(maps.href, MAPS);
+  assert.equal(maps.textContent, 'GOOGLE'); assert.equal(maps.href, MAPS);
   const u = new URL(maps.href);
   assert.equal(u.searchParams.get('origin'), 'Novi, MI', 'a town, never a street');
   assert.equal(u.searchParams.get('waypoints').split('|').length, 3, 'anchors only');
@@ -319,7 +319,7 @@ test('v7.39: FROM HERE rebuilds from where the phone is now; on your kept trip t
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
   const here = p.$('#otp-nrHere');
-  assert.equal(here.hidden, false); assert.equal(here.textContent, 'REBUILD FROM HERE');   // v7.64: says what it does
+  assert.equal(here.hidden, false); assert.equal(here.textContent, 'REBUILD');   // v7.65: short enough for the pill
   here.click();
   await tick(200);
   const trips = calls.filter((x) => /\/trip\?/.test(x.url));
@@ -435,12 +435,12 @@ test('v7.39: the road with the most to see is said; smaller shops sit apart and 
   assert.deepEqual([...more.querySelectorAll('.nr-n')].map((e) => e.textContent), ['Gaffney\'s Treasures and Gifts', 'Ellie Mills Mercantile']);
   assert.equal(more.querySelector('.nr-skip'), null, 'nothing to skip there');
   assert.doesNotMatch(p.$('#otp-nrMaps').href, /Gaffney/, 'never in the Maps link');
-  assert.equal(p.$$('#otp-nrLegs a').length, 1); assert.equal(p.$('#otp-nrMaps').textContent, 'OPEN IN MAPS');
+  assert.equal(p.$$('#otp-nrLegs a').length, 1); assert.equal(p.$('#otp-nrMaps').textContent, 'GOOGLE');
   p.$('#otp-nrTo').value = 'eleven';
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
   const legs = p.$$('#otp-nrLegs a');
-  assert.deepEqual(legs.map((a) => a.textContent), ['LEG 1', 'LEG 2']);
+  assert.deepEqual(legs.map((a) => a.textContent), ['GOOGLE 1', 'GOOGLE 2']);
   const l1 = new URL(legs[0].href), l2 = new URL(legs[1].href);
   assert.equal(l1.searchParams.get('origin'), 'Novi, MI');
   assert.equal(l1.searchParams.get('waypoints').split('|').length, 9);
