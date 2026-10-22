@@ -1,22 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.64 / v158).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.64 / v159).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.64** | 396,542 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v158** | |
+| Worker | **v159** | |
 
 Recently shipped, newest first:
 
-- **v7.64 / v158: 📍 Use my location** (the owner, 2026-10-22, in a car on Android in an app's built-in browser with
+- **v7.64 / v159: 📍 Use my location** (the owner, 2026-10-22, in a car on Android in an app's built-in browser with
   location off for the site: "Location is off for this site ... Type a town" and he did not know what town he was in).
   - A **📍 Use my location** button on the From row itself, right of the field (`#otp-nrFromMe`), and in the In a location
     box beside Look there (`#otp-nrAtMe`), and inside the no-fix messages (`data-nrme`). The tap itself calls `getCurrentPosition` (`meLocate`, high accuracy, 10 s timeout, a fix
     up to 60 s old), so the browser can show its prompt.
-  - Worker **v158 `GET /geo?lat=..&lng=..`** (`geoBackRoute`, `gReverse`; pure `geoReverse`, `geoRound` in `trip.js`) names
+  - Worker **v159 `GET /geo?lat=..&lng=..`** (`geoBackRoute`, `gReverse`; pure `geoReverse`, `geoRound` in `trip.js`) names
     the town with the reverse Geocoding API on `GOOGLE_MAPS_KEY`, US only: `{ lat, lng, town, city, st, zip, cl }`. The
     page sends the point rounded to 2 decimals (~1 km) and the worker rounds again before Google, the cache key (30 days)
     and the answer; `GEO_PER_IP` shared with `/geo?q=`; no coordinates logged. A rural fix can name a township.
@@ -1030,9 +1030,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `ccr-0de21c46-yzs839` | Claude | **v7.63**: long hunts cut at a whole word; live rows search what Best picks does | Building. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.63 / worker v158**: long hunts cut at a whole word; live rows search what Best picks does | Building. |
 
-Next free numbers: **page v7.65, worker v159**. Claim one here when you start.
+Next free numbers: **page v7.65, worker v160**. Claim one here when you start.
 
 ## What's next
 

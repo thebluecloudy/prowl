@@ -432,7 +432,7 @@ export function geoPlace(r) {
   if (!town) return null;
   return { lat: Math.round(lat * 1e4) / 1e4, lng: Math.round(lng * 1e4) / 1e4, town: town, city: t.town || "", st: /^[A-Z]{2}$/.test(t.state) ? t.state : "", zip: /^\d{5}$/.test(zip) ? zip : "" };
 }
-/* v158: a reverse Geocoding API answer (latlng=) -> { town, city, st, zip }, or null. The first US result with a town
+/* v159: a reverse Geocoding API answer (latlng=) -> { town, city, st, zip }, or null. The first US result with a town
    names it; the ZIP comes from that result or, when it has none, the first result that carries one. Never a street. */
 export function geoReverse(results) {
   const list = Array.isArray(results) ? results.slice(0, 10) : [];
@@ -453,7 +453,7 @@ export function geoReverse(results) {
   if (!best.zip) best.zip = zip;
   return best;
 }
-/* v158: a point rounded to ~1 km (2 decimals), or null when it is not a number in range */
+/* v159: a point rounded to ~1 km (2 decimals), or null when it is not a number in range */
 export function geoRound(lat, lng) {
   const a = Number(lat), b = Number(lng);
   if (lat == null || lng == null || lat === "" || lng === "" || !Number.isFinite(a) || !Number.isFinite(b) || a < -90 || a > 90 || b < -180 || b > 180) return null;

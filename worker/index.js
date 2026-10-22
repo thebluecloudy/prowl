@@ -19,7 +19,7 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
- *   v158: 2026-10-22. Use my location (the owner, in a car with location off in an in-app browser, not knowing the town).
+ *   v159: 2026-10-22. Use my location (the owner, in a car with location off in an in-app browser, not knowing the town).
  *         GET /geo?lat=..&lng=.. names the town a phone's fix is in (reverse Geocoding API on GOOGLE_MAPS_KEY, US only):
  *         { lat, lng, town, city, st, zip, cl }, the point rounded to ~1 km first, kept 30 days per rounded point,
  *         GEO_PER_IP shared, coordinates never logged.
@@ -544,7 +544,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v158";
+const WORKER_VERSION = "v159";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6626,7 +6626,7 @@ async function gGeocode(env, q) {
   for (const r of (j && Array.isArray(j.results) ? j.results : []).slice(0, 5)) { const p = geoPlace(r); if (p) return p; }
   return null;
 }
-/* v158: the town a phone's fix is in, for Use my location: { town, city, st, zip } or null. Only the rounded point is sent */
+/* v159: the town a phone's fix is in, for Use my location: { town, city, st, zip } or null. Only the rounded point is sent */
 async function gReverse(env, pt) {
   const j = await gFetch("https://maps.googleapis.com/maps/api/geocode/json?latlng=" + pt.lat.toFixed(2) + "," + pt.lng.toFixed(2) + "&key=" + encodeURIComponent(gKey(env)), { method: "GET" }, "", env);
   return geoReverse(j && j.results);
@@ -6646,7 +6646,7 @@ async function clAreas() {
   } catch (e) { console.error("clareas", String(e && e.message || e)); return []; }
 }
 async function geoRoute(request, env, url, origin) {
-  if (url.searchParams.has("lat") || url.searchParams.has("lng")) return geoBackRoute(request, env, url, origin);   /* v158 */
+  if (url.searchParams.has("lat") || url.searchParams.has("lng")) return geoBackRoute(request, env, url, origin);   /* v159 */
   const q = geoQuery(url.searchParams.get("q"));
   if (q.length < 2) return json({ error: "q required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up" }, 503, origin);
@@ -6662,7 +6662,7 @@ async function geoRoute(request, env, url, origin) {
   try { await PCACHE.put(key, res.clone()); } catch (e) {}
   return res;
 }
-/* ---- v158: Use my location ----
+/* ---- v159: Use my location ----
      GET  /geo?lat=..&lng=..   the town a phone's fix is in: { lat, lng, town, city, st, zip, cl }, US only. The point is
                                rounded to 2 decimals (~1 km) before anything else, for the cache key, for Google and in
                                the answer (the page keeps its own precise fix). Kept 30 days per rounded point; a miss is

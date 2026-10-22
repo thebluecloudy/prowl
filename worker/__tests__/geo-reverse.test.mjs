@@ -1,4 +1,4 @@
-/* v158 Use my location on the worker: GET /geo?lat=..&lng=.. names the town a phone's fix is in (reverse Google
+/* v159 Use my location on the worker: GET /geo?lat=..&lng=.. names the town a phone's fix is in (reverse Google
    Geocoding on GOOGLE_MAPS_KEY, US only), from the point rounded to ~1 km, with the nearest Craigslist site, against a
    fake Google and a fake Craigslist area list. Run: node --test worker/__tests__/geo-reverse.test.mjs */
 import { test } from "node:test";
@@ -113,5 +113,5 @@ test("/geo?q= still geocodes typed text; the reverse route never logs and never 
   assert.ok(!/console\.(log|error)/.test(indexFn("geoBackRoute")), "nothing logged");
   assert.ok(!/console\.(log|error)/.test(indexFn("gReverse")), "nothing logged");
   assert.ok(!/GOOGLE_MAPS_KEY/.test(indexFn("geoBackRoute")));
-  assert.match(INDEX, /^const WORKER_VERSION = "v158";/m);
+  assert.match(INDEX, /^const WORKER_VERSION = "v159";/m);
 });

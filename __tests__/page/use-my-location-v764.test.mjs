@@ -1,6 +1,6 @@
 // Page v7.64 Use my location (the owner, in a car on Android in an app's built-in browser, location off for the site:
 // "Location is off ... Type a town" and he did not know what town he was in). A 📍 Use my location button by In a
-// location and by From asks the phone from the tap (high accuracy, 10 s, a fix up to a minute old); worker v158
+// location and by From asks the phone from the tap (high accuracy, 10 s, a fix up to a minute old); worker v159
 // /geo?lat&lng names the town from a point rounded to ~1 km; the box reads "Chillicothe, OH 45601" and the precise fix
 // is the centre or the start (never looked up again as text). Blocked or missing, it says how to allow it.
 import { test } from 'node:test';
