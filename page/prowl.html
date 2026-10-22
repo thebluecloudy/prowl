@@ -2130,6 +2130,19 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-live:not(:empty){margin-bottom:18px;padding-bottom:4px;border-bottom:1px solid var(--ln)}
 .scout-app-wrapper .nr-refresh{margin-left:auto;min-height:30px;padding:6px 11px;font-size:12.5px}
 .scout-app-wrapper .nr-cats{margin:0 0 4px}
+.scout-app-wrapper .nr-atform{margin:8px 0 6px}
+.scout-app-wrapper .nr-atform input{min-width:0}
+.scout-app-wrapper .nr-atbar{margin:0 0 6px}
+.scout-app-wrapper .nr-aterr{margin:0 0 8px}
+.scout-app-wrapper .nr-fromrow{margin:0 0 8px}
+.scout-app-wrapper .nr-detour{margin:8px 0 4px;align-items:center}
+.scout-app-wrapper .nr-detour .nr-dl{font-size:12.5px;font-weight:700;margin-right:2px}
+.scout-app-wrapper .nr-leave{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0 8px}
+.scout-app-wrapper .nr-leave input{height:34px;padding:0 8px;border-radius:9px;border:1px solid var(--line,#ccc);font-size:14px}
+.scout-app-wrapper .nr-leaveh{font-size:12.5px;opacity:.75}
+.scout-app-wrapper .nr-late{color:#b3261e;font-weight:700}
+.scout-app-wrapper .nr-opt{margin:2px 0 6px}
+.scout-app-wrapper .nr-ended{color:#b3261e;font-weight:700}
 .scout-app-wrapper .nr-cats .hubc{min-height:32px;padding:7px 11px;font-size:12.5px}
 .scout-app-wrapper .nr-row{display:flex;align-items:stretch;gap:6px}
 .scout-app-wrapper .nr-row .nr-card{flex:1 1 auto;min-width:0}
@@ -3156,6 +3169,12 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   <div id="otp-nearBody">
     <div class="denPane" id="otp-nrAround">
       <div class="hubbar nr-cats" id="otp-nrCatsA" role="group" aria-label="What to look for"></div>
+      <form class="addrow nr-atform" id="otp-nrAtForm" role="search" aria-label="In a location">
+        <input id="otp-nrAtIn" type="text" placeholder="In a location: a town, City, ST or ZIP" aria-label="In a location: a town, City, ST or ZIP" autocomplete="off" enterkeyhint="go">
+        <button type="submit" id="otp-nrAtGo">Look there</button>
+      </form>
+      <div class="hubbar nr-atbar" id="otp-nrAtBar" role="group" aria-label="Centre on" hidden></div>
+      <p class="nearp nr-aterr" id="otp-nrAtErr" role="status" hidden></p>
       <div class="nr-live" id="otp-nrLive"></div>
       <div class="denPane" id="otp-denLocal">
       <details class="lochelp" id="otp-locHelp">
@@ -3167,6 +3186,8 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <b>Find stores near you.</b> Tap a type, like antique stores, estate sales or flea markets, and a map search opens around you. Pick Google Maps or Apple Maps once and Prowl remembers. <b>Garage sales</b> opens this week's garage and moving sales on Craigslist for your city.</li>
           <li>
 <b>Pick your Facebook city.</b> Facebook only searches one city at a time. Choose your metro here, or All to cover every major metro. On a phone Facebook opens in your browser, so log in to Facebook there once.</li>
+          <li>
+<b>Somewhere else?</b> Type a town, <b>City, ST</b> or a ZIP in <b>In a location</b> at the top. The shops, store searches, garage sales, Craigslist, Facebook and Road trip's start all move there, no GPS needed, and Prowl remembers it on this phone. <b>Where I am</b> goes back to your location.</li>
           <li>
 <b>Search just one local site.</b> Type a hunt up top or tap one of yours, then come back here and tap Craigslist or Facebook Marketplace at the bottom to search only there.</li>
         </ol>
@@ -3204,19 +3225,23 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     </div>
     <div class="denPane" id="otp-nrTrip" hidden>
       <h3 class="nearh">Road trip</h3>
-      <p class="nearp">Where are you headed? Prowl maps the drive from where you are and lists the antique, vintage and thrift shops worth a stop on the way, in order, with their hours for the day. Nobody sees where you started from, only the town.</p>
+      <p class="nearp">Where are you headed? Prowl maps the drive from where you are (or the town you type in From) and lists the antique, vintage and thrift shops worth a stop on the way, in order, with their hours for the day. Nobody sees where you started from, only the town.</p>
       <div class="hubbar nr-cats" id="otp-nrCats" role="group" aria-label="What to look for"></div>
+      <div class="addrow nr-fromrow"><input id="otp-nrFrom" type="text" placeholder="From: where you are, or a town, City, ST or ZIP" aria-label="Starting from" autocomplete="off" enterkeyhint="next"></div>
       <form class="addrow" id="otp-nrForm">
-        <input id="otp-nrTo" type="text" placeholder="Where to? A town, a shop or an address" aria-label="Destination" autocomplete="off" enterkeyhint="go">
+        <input id="otp-nrTo" type="text" placeholder="To: a town, a shop or an address (empty: a loop from the start)" aria-label="Destination, or empty for a loop" autocomplete="off" enterkeyhint="go">
         <button type="submit" id="otp-nrGo">Build trip</button>
       </form>
+      <div class="hubbar nr-detour" id="otp-nrDetour" role="group" aria-label="Detour off the route"></div>
       <div class="hubbar" id="otp-nrDays" role="group" aria-label="Trip day"></div>
+      <p class="nearp nr-leave"><label for="otp-nrLeave">Leave at</label> <input type="time" id="otp-nrLeave" step="900"> <span class="nr-leaveh">Empty: now (today), or no arrival times on another day.</span></p>
       <div id="otp-nrOut"></div>
       <div id="otp-nrTrips"></div>
     </div>
   </div>
   <div class="nr-foot" id="otp-nrFoot" hidden>
     <span class="nr-legs" id="otp-nrLegs"><a class="b p" id="otp-nrMaps" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">OPEN IN MAPS</a></span>
+    <span class="nr-legs" id="otp-nrApple"></span>
     <button type="button" class="b" id="otp-nrHere">FROM HERE</button>
     <button type="button" class="b" id="otp-nrShare">SHARE</button>
   </div>
@@ -3315,7 +3340,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.61';
+var PROWL_VERSION='v7.62';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -3457,6 +3482,8 @@ var CL_DEFAULT='annarbor';
    it on the default region's site, Craigslist's own postal search. */
 function clZip(){var m=/^\s*(\d{5})(-\d{4})?\s*$/.exec(String(st&&st.city?st.city:''));return m?m[1]:''}
 function clAt(cat,qs,view){
+  var a=typeof atLive==='function'?atLive():null,p=[];
+  if(a&&a.cl){if(qs)p.push(qs);if(a.zip)p.push('postal='+a.zip,'search_distance=25');return 'https://'+a.cl+'.craigslist.org/search/'+cat+(p.length?'?'+p.join('&'):'')+'#search=1~'+view+'~0~0'}   /* v7.62: the typed place's nearest site */
   var z=clZip();
   if(z)return 'https://'+CL_DEFAULT+'.craigslist.org/search/'+cat+'?'+(qs?qs+'&':'')+'postal='+z+'&search_distance=25#search=1~'+view+'~0~0';
   return 'https://www.craigslist.org/search/area/'+E(clSlug()||CL_DEFAULT)+'?cat='+cat+(qs?'&'+qs:'')+'#search=1~'+view+'~0~0';
@@ -3490,7 +3517,7 @@ function fbCity(){return String(st&&st.city?st.city:'').toLowerCase().replace(/[
    slug lands on Facebook's error page instead of Marketplace. Only use the
    city when it is one of the slugs we know resolve; otherwise leave the path
    unscoped and Facebook searches the area it already has for the account. */
-function fbSafeCity(){var c=fbCity(),i;if(!c)return '';for(i=0;i<FBHUBS.length;i++)if(FBHUBS[i].slug===c)return c;return ''}
+function fbSafeCity(){var a=typeof atLive==='function'?atLive():null;if(a)return a.fb||'';var c=fbCity(),i;if(!c)return '';for(i=0;i<FBHUBS.length;i++)if(FBHUBS[i].slug===c)return c;return ''}
 function fbHubObj(){var k=(st&&st.fbHub)||'local';for(var i=0;i<FBHUBS.length;i++)if(FBHUBS[i].key===k)return FBHUBS[i];return FBHUBS[0]}
 function fbRegions(){var o=[],i;for(i=0;i<FBHUBS.length;i++)if(FBHUBS[i].slug)o.push(FBHUBS[i]);return o}
 /* v5.20: SearchTempest's Facebook links keep the search term on phones, ours
@@ -3533,7 +3560,7 @@ function fbSpread(q){
   var out=[],seen={},c=fbSafeCity();
   /* A hunter in Detroit has Detroit both as their city and as a listed metro.
      Without this the All run opens that one twice. */
-  if(c){out.push({n:'Facebook \u00B7 '+st.city,u:fbCityUrl(c,q)});seen[c]=1}
+  if(c){out.push({n:'Facebook \u00B7 '+locLabel(),u:fbCityUrl(c,q)});seen[c]=1}
   else out.push({n:'Facebook \u00B7 near you',u:fbCityUrl('',q)});
   fbRegions().forEach(function(h){
     if(seen[h.slug])return;
@@ -3542,9 +3569,10 @@ function fbSpread(q){
   });
   return out;
 }
+function fbHubName(slug){for(var i=0;i<FBHUBS.length;i++)if(FBHUBS[i].slug===slug)return FBHUBS[i].label;return slug}
 function fbHubLabel(){
   var h=fbHubObj();
-  if(h.key==='local')return st.city||'my city';
+  if(h.key==='local')return locLabel()||'my city';
   if(h.key==='all')return 'all USA';
   return h.label;
 }
@@ -3825,21 +3853,79 @@ function mapsPref(){var v='';try{v=localStorage.getItem(MAPK)||''}catch(e){}retu
 /* v7.57 (the owner, in Findlay: the store searches said near me but opened Google Maps at the ZIP; "near me or zip"): the
    store searches go around where you are once the phone has said so (Around you's fix), or around the saved place;
    both are a tap away when there is a saved place. The choice lasts the visit. */
+/* v7.62 In a location (the owner, testing Milton, WV with location off: the shops around you never listed, the banner
+   stayed, Refresh did nothing and Road trip had "no starting point"). A typed place, a town, "City, ST" or a ZIP,
+   becomes the centre of everything NEAR ME shows: Around you's shops, the store searches, garage sales, Craigslist (its
+   nearest site), Facebook (the nearest metro Prowl knows, else unscoped), estate sales and Road trip's start. Worker
+   v157 /geo turns the text into a point with the worker's geocoder (the key stays on the worker). Kept on this device in
+   a new key, prowl.nearAt ({q,town,city,st,zip,lat,lng,cl,fb,on}); on says it is in use. Where I am turns it off and
+   keeps the place a tap away. */
+var AT_KEY='prowl.nearAt';
+var FBXY={nyc:[40.71,-74.01],la:[34.05,-118.24],sf:[37.77,-122.42],chicago:[41.88,-87.63],detroit:[42.33,-83.05],dallas:[32.78,-96.8],houston:[29.76,-95.37],phoenix:[33.45,-112.07],miami:[25.76,-80.19],atlanta:[33.75,-84.39],seattle:[47.61,-122.33]};
+function atGet(){var v=null;try{v=JSON.parse(localStorage.getItem(AT_KEY)||'null')}catch(e){}return v&&typeof v==='object'&&typeof v.lat==='number'&&typeof v.lng==='number'&&typeof v.town==='string'&&v.town?v:null}
+function atSave(a){try{if(a)localStorage.setItem(AT_KEY,JSON.stringify(a));else localStorage.removeItem(AT_KEY)}catch(e){}}
+function atLive(){var a=atGet();return a&&a.on?a:null}
+function locLabel(){var a=atLive();return a?a.town:(st.city||'')}
+function atClean(v){return String(v==null?'':v).replace(/\s+/g,' ').trim().slice(0,80)}
+function atSame(a,v){v=atClean(v).toLowerCase();return !!(a&&v&&(v===String(a.q||'').toLowerCase()||v===String(a.town||'').toLowerCase()))}
+/* the nearest Facebook metro Prowl has a working page for, within 60 miles; '' leaves Facebook on the account's area */
+function atFb(a){var b='',bd=60,k,i,d;if(!a)return '';for(k in FBXY){if(!Object.prototype.hasOwnProperty.call(FBXY,k))continue;d=nrKm(a,{lat:FBXY[k][0],lng:FBXY[k][1]})*0.621371;if(d<bd){bd=d;b=k}}if(!b)return '';for(i=0;i<FBHUBS.length;i++)if(FBHUBS[i].key===b)return FBHUBS[i].slug||'';return ''}
+/* typed text -> cb(place) or cb(null, plain words); the worker is asked only for text not already kept */
+function atLookup(v,cb){
+  v=atClean(v);var old=atGet();
+  if(v.length<2){cb(null,'Type a town, City, ST or a ZIP, like Milton, WV or 25541.');return}
+  if(atSame(old,v)){cb(old);return}
+  nrFetch('/geo?q='+E(v)).then(function(r){
+    var j=r.j||{};
+    if(r.ok&&typeof j.lat==='number'&&typeof j.lng==='number'&&j.town){var a={q:v,town:String(j.town).slice(0,80),city:String(j.city||'').slice(0,60),st:/^[A-Z]{2}$/.test(j.st||'')?j.st:'',zip:/^\d{5}$/.test(j.zip||'')?j.zip:'',lat:j.lat,lng:j.lng,cl:/^[a-z0-9]{2,30}$/.test(j.cl||'')?j.cl:'',on:!!(old&&old.on)};a.fb=atFb(a);cb(a);return}
+    if(r.status===404){cb(null,'Prowl could not find “'+v+'”. Try the town and its state, like Milton, WV, or a ZIP.');return}
+    if(r.status===503){cb(null,'Looking up a place is not switched on yet. The map searches below still work.');return}
+    if(r.status===429){cb(null,'Too many lookups just now. Try again in a little while.');return}
+    cb(null,r.status===0?'Prowl could not be reached. Check your signal and try again.':'That place could not be looked up just now. Try again in a moment.');
+  });
+}
+function rAtBar(){
+  var bar=$('#otp-nrAtBar'),a=atGet();if(!bar)return;
+  bar.hidden=!a;if(!a){bar.innerHTML='';return}
+  bar.innerHTML='<button type="button" class="hubc'+(a.on?'':' on')+'" data-nrat="off" aria-pressed="'+!a.on+'">Where I am</button><button type="button" class="hubc'+(a.on?' on':'')+'" data-nrat="on" aria-pressed="'+!!a.on+'">'+esc(a.town)+'</button>';
+}
+function atErr(msg){var e=$('#otp-nrAtErr');if(!e)return;e.hidden=!msg;e.textContent=msg||''}
+/* everything centred on the place (or back on you) at once */
+function atApplied(){
+  var a=atLive(),fi=$('#otp-nrFrom');
+  NR.around=null;atErr('');rAtBar();
+  if(fi)fi.value=a?a.town:'';
+  try{rDenLocal()}catch(e){}
+  if(a&&a.city&&a.st&&fbOwnerKey())esLoad(a.city+', '+a.st);
+  if(nearOpen()&&NR.mode==='around')nrAroundLoad(true);
+}
+function atUse(a){if(!a)return;a.on=true;atSave(a);atApplied()}
+function atOff(){var a=atGet();if(a){a.on=false;atSave(a)}atApplied()}
+function atSubmit(){
+  var inp=$('#otp-nrAtIn'),go=$('#otp-nrAtGo'),v=inp?inp.value:'';if(NR.atBusy)return;
+  NR.atBusy=true;if(go)go.textContent='Looking…';atErr('');
+  atLookup(v,function(a,msg){
+    NR.atBusy=false;if(go)go.textContent='Look there';
+    if(!a){atErr(msg);return}
+    if(inp){inp.value='';try{inp.blur()}catch(e){}}
+    atUse(a);
+  });
+}
 var NEAR_WHERE='';
-function nearWhere(){if(!st.city)return 'me';if(NEAR_WHERE)return NEAR_WHERE;return typeof nrYou==='function'&&nrYou()?'me':'place'}
+function nearWhere(){if(atLive())return 'at';if(!st.city)return 'me';if(NEAR_WHERE)return NEAR_WHERE;return typeof nrYou==='function'&&nrYou()?'me':'place'}
 function nearUrl(qy){
-  var me=nearWhere()==='me';
+  var wh=nearWhere(),me=wh==='me',pl=wh==='at'?atLive().town:st.city;   /* v7.62: or the typed place */
   if(mapsPref()==='apple'){
     /* With no place given, Apple Maps searches around where you are standing. */
-    return 'https://maps.apple.com/?q='+E(me?qy:(qy+' '+st.city));
+    return 'https://maps.apple.com/?q='+E(me?qy:(qy+' '+pl));
   }
-  return 'https://www.google.com/maps/search/?api=1&query='+E(qy+(me?' near me':' near '+st.city));
+  return 'https://www.google.com/maps/search/?api=1&query='+E(qy+(me?' near me':' near '+pl));
 }
 function rNear(){
   var g=$('#otp-nearGrid');if(!g)return;
   var wh=nearWhere(),ww=$('#otp-nearWhere');
-  $('#otp-nearScope').textContent=wh==='me'?'where you are':'near '+st.city;
-  if(ww){ww.hidden=!st.city;ww.innerHTML=st.city?'<button type=button class="hubc'+(wh==='me'?' on':'')+'" data-nw=me aria-pressed='+(wh==='me')+'>Where I am</button><button type=button class="hubc'+(wh!=='me'?' on':'')+'" data-nw=place aria-pressed='+(wh!=='me')+'>'+esc(st.city)+'</button>':''}
+  $('#otp-nearScope').textContent=wh==='me'?'where you are':'near '+(wh==='at'?atLive().town:st.city);
+  if(ww){ww.hidden=!st.city||wh==='at';ww.innerHTML=st.city?'<button type=button class="hubc'+(wh==='me'?' on':'')+'" data-nw=me aria-pressed='+(wh==='me')+'>Where I am</button><button type=button class="hubc'+(wh!=='me'?' on':'')+'" data-nw=place aria-pressed='+(wh!=='me')+'>'+esc(st.city)+'</button>':''}
   var mp=mapsPref(),sw=$('#otp-nearMaps'),np=$('#otp-nearNote');
   if(sw)sw.innerHTML=
     '<button type=button class="hubc'+(mp==='google'?' on':'')+'" data-mp=google aria-pressed='+(mp==='google')+'>Google Maps</button>'+
@@ -3896,7 +3982,7 @@ function rEs(){
      miles by default (a sale with no distance stays), the rest a tap away */
   var d=ES.data,all=esSorted(),items=ES.far?all:all.filter(function(x){return x.dist==null||x.dist<=30}),far=all.length-items.length,mapped=items.filter(function(x){return x.lat&&x.lon}).length;
   box.innerHTML='<h4 class="es-h">Estate sales near you <span class="es-own">Only you see this</span></h4>'+
-    '<div class="addrow es-form"><input id="otp-esIn" type="text" placeholder="City, ST (like Novi, MI)" aria-label="City and state for estate sales" value="'+esc(esPlaceGet())+'"><button type="button" id="otp-esGo">'+(ES.busy?'Looking…':'Show sales')+'</button></div>'+
+    '<div class="addrow es-form"><input id="otp-esIn" type="text" placeholder="City, ST (like Novi, MI)" aria-label="City and state for estate sales" value="'+esc(atLive()&&atLive().city&&atLive().st?atLive().city+', '+atLive().st:esPlaceGet())+'"><button type="button" id="otp-esGo">'+(ES.busy?'Looking…':'Show sales')+'</button></div>'+
     (ES.err?'<p class="nearp es-err" role="status">'+esc(ES.err)+'</p>':'')+
     (d&&all.length?'<p class="nearp">'+items.length+' sale'+(items.length===1?'':'s')+(ES.far||!all.some(function(x){return x.dist!=null})?' near ':' within 30 miles of ')+esc(d.city+', '+d.st)+' from EstateSales.net'+(d.stale?' (from earlier)':'')+'. Tap one to open it there.'+(far||ES.far?' <button type="button" class="es-mapb" id="otp-esFar">'+(ES.far?'Only within 30 miles':'Show '+far+' farther')+'</button>':'')+(mapped?' <button type="button" class="es-mapb" id="otp-esMapB">'+(ES.map?'Hide the map':'Show on a map')+'</button>':'')+'</p>'+
       '<div id="otp-esMap" class="es-map"'+(ES.map?'':' hidden')+'></div><div class="es-list">'+esList(items)+'</div>':'');
@@ -3938,7 +4024,7 @@ function esMap(items){
 function rSales(){
   rEs();   /* v6.76 */
   var g=$('#otp-salesGrid');if(!g)return;
-  var sc=$('#otp-salesScope');if(sc)sc.textContent=st.city?('near '+st.city):'near Ann Arbor';
+  var sc=$('#otp-salesScope'),lc=locLabel();if(sc)sc.textContent=lc?('near '+lc):'near Ann Arbor';
   g.innerHTML='<a class=nearc href="'+esc(gmsUrl('gms','map'))+'" target=_blank rel="noopener noreferrer">Garage sales on a map</a>'+
     '<a class=nearc href="'+esc(gmsUrl('gms'))+'" target=_blank rel="noopener noreferrer">Garage &amp; moving sales</a>'+
     '<a class=nearc href="'+esc(gmsUrl('zip'))+'" target=_blank rel="noopener noreferrer">Free stuff</a>';
@@ -3970,14 +4056,14 @@ $('#otp-oneSel').addEventListener('change',function(){
 });
 
 function rDenLocal(){
-  var c=st.city||'';
+  var c=st.city||'',lc=locLabel();
   /* OfferUp / EstateSales / HiBid ignore the city entirely and are already in the
      main 24 — listing them here again was pure duplication. Only the genuinely
      city-aware ones stay. */
   /* These ids have to match real marketplace ids — the results panel looks up
      its row icon by x.mkt. 'cl' and 'fb' drew the fallback glyph. */
   var L=[
-    {id:'craigslist',n:'Craigslist'+(c?' · '+c:''),t:'bolo',u:function(q){return clUrl(q)}},
+    {id:'craigslist',n:'Craigslist'+(lc?' · '+lc:''),t:'bolo',u:function(q){return clUrl(q)}},
     {id:'facebook',n:'Facebook Marketplace · '+fbHubLabel(),t:'shop',u:function(q){return fbUrl(q)},multi:function(q){return fbMulti(q)} }
   ];
   st._local=L;
@@ -4008,6 +4094,7 @@ function rFbHub(){
   var h=fbHubObj(),n=fbSpread('x').length,mm;
   if(h.key==='all'){mm=fbMulti('x');if(mm)n=mm.length}
   if(h.key==='all')note.textContent='Opens '+n+' Facebook tabs \u2014 one per metro, staggered so the pop-up blocker stays quiet. They show up as their own rows below the search.';
+  else if(h.key==='local'&&atLive())note.textContent=fbSafeCity()?('Searching Facebook in the '+fbHubName(fbSafeCity())+' marketplace, the closest Prowl knows to '+atLive().town+'.'):('Facebook has no page Prowl can use near '+atLive().town+', so it searches the area set on your Facebook account.');   /* v7.62 */
   else if(h.key==='local')note.textContent=st.city?(fbSafeCity()?('Searching Facebook in '+st.city+'.'):('Facebook has no page for \u201C'+st.city+'\u201D, so it searches the area set on your Facebook account. Pick a metro above to force one.')):'No city saved yet \u2014 Facebook will use whatever area it picks for you. Add your city above.';
   else note.textContent='Searching the '+h.label+' marketplace.';
 }
@@ -9855,8 +9942,9 @@ function nrVisible(t){
     a=t.stops[i];list=[a].concat(a.nested||[]);keep=[];
     for(j=0;j<list.length;j++){if(list[j]&&sk[list[j].id])hid++;else if(list[j])keep.push(list[j])}
     if(!keep.length)continue;
-    o=nrCopy(keep[0]);o.nested=keep.slice(1);out.push(o);
+    o=nrCopy(keep[0]);o.nested=keep.slice(1);o._k=a.id;out.push(o);
   }
+  if(t.order&&t.order.length){var ix=function(o){var k=t.order.indexOf(o._k);return k===-1?1e3+out.indexOf(o):k};out=out.slice().sort(function(x,y){return ix(x)-ix(y)})}   /* v7.62: Optimize route */
   return {stops:out,hidden:hid};
 }
 function nrMapsUrl(from,anchors,dest){var wp=anchors.slice(0,9).map(function(a){return a.name+(a.town?', '+a.town:'')}).join('|');return 'https://www.google.com/maps/dir/?api=1&travelmode=driving&origin='+E(from||'')+'&destination='+E(dest||'')+(wp?'&waypoints='+E(wp):'')}
@@ -9864,12 +9952,22 @@ function nrMapsUrl(from,anchors,dest){var wp=anchors.slice(0,9).map(function(a){
    ending at the next leg's first stop */
 function nrMapsLegs(t){
   if(!t)return [];var d=t.dest||{};if(!d.name)return t.maps?[{label:'OPEN IN MAPS',url:t.maps}]:[];
-  var from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),an=nrVisible(t).stops,destL=d.name+(d.town?', '+d.town:''),lab=function(a){return a.name+(a.town?', '+a.town:'')};
-  if(an.length<=9)return [{label:'OPEN IN MAPS',url:nrMapsUrl(from,an,destL)}];
+  return nrLegsGen(t,9,nrMapsUrl,'OPEN IN MAPS','LEG ');
+}
+/* v7.62: a route as links of at most cap stops each; each leg ends at the next leg's first stop, which starts the next */
+function nrLegsGen(t,cap,mk,one,lab0){
+  var d=t.dest||{},from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),an=nrVisible(t).stops,destL=d.name+(d.town?', '+d.town:''),lab=function(a){return a.name+(a.town?', '+a.town:'')};
+  if(an.length<=cap)return [{label:one,url:mk(from,an,destL)}];
   var legs=[],s=0,e,k=1,o=from;
-  while(s<an.length){e=Math.min(s+9,an.length);var last=e>=an.length;legs.push({label:'LEG '+k,url:nrMapsUrl(o,an.slice(s,e),last?destL:lab(an[e]))});if(last)break;o=lab(an[e]);s=e+1;k++}
+  while(s<an.length){e=Math.min(s+cap,an.length);var last=e>=an.length;legs.push({label:lab0+k,url:mk(o,an.slice(s,e),last?destL:lab(an[e]))});if(last)break;o=lab(an[e]);s=e+1;k++}
   return legs;
 }
+/* v7.62 (the owner: the Apple Maps export must carry every stop): Apple's unified Maps URL (iOS 18.4+, macOS 15.4+):
+   maps.apple.com/directions with source, destination and a repeated waypoint, driving. Apple Maps takes 14 stops on a
+   route, so a link carries at most 13 waypoints plus its destination and longer trips split into legs. */
+var APPLE_WP=13;
+function nrAppleUrl(from,anchors,dest){var w=anchors.slice(0,APPLE_WP).map(function(a){return '&waypoint='+E(a.name+(a.town?', '+a.town:''))}).join('');return 'https://maps.apple.com/directions?'+(from?'source='+E(from)+'&':'')+'destination='+E(dest||'')+w+'&mode=driving'}
+function nrAppleLegs(t){if(!t||!t.dest||!t.dest.name)return [];return nrLegsGen(t,APPLE_WP,nrAppleUrl,'APPLE MAPS','APPLE LEG ')}
 function nrMapsFor(t){if(!t)return '';var d=t.dest||{};if(!d.name)return t.maps||'';var from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||'');return nrMapsUrl(from,nrVisible(t).stops,d.name+(d.town?', '+d.town:''))}
 function nrH(){var h={},k=fbOwnerKey(),em=mGet('alertEmail'),tk=mGet('alertTok');if(k)h['X-Prowl-Owner']=k;if(em&&tk){h['X-Prowl-Email']=em;h['X-Prowl-Tok']=tk}return window.prowlAuth?window.prowlAuth(h):h}   /* v7.38: the alerts member too */
 /* v7.38 (the owner: "it took me to the den and tried to make me sign in, but i am pro"): a Prowl Alerts sign-in is a sign-in */
@@ -9936,7 +10034,7 @@ function nrNextText(n){
 function nrState(hrs,day,eta){
   var now=Date.now(),today=nrLocalDay(new Date(now)),wd=day?nrWeekday(day):new Date(now).getDay(),dh=nrDayHours(hrs,wd),o,n,at;
   if(dh.open===null)return {cls:'',tag:'',text:'Hours not listed'};
-  if(eta&&(!day||day===today)){
+  if(eta){   /* v7.62: any day with a leave time */
     n=nrNext(hrs,eta);at='Get there ~'+nrClock(eta);
     if(n&&n.open)return {cls:'nr-open',tag:'OPEN',text:at+' · '+nrNextText(n).replace(/^O/,'o')};
     if(n)return {cls:'nr-closed',tag:'CLOSED',text:at+' · '+(n.next&&n.next.day===n.today&&n.wait<1440?'opens '+nrHm(n.next):'closed by then')};
@@ -10008,7 +10106,7 @@ function nrMap(mode){
     var el2=$(id);if(!el2||!NR.mapOn[mode])return;
     if(err||!window.L||!window.L.map){el2.innerHTML='<p class="nearp nr-mapwait">The map could not load. The list still works.</p>';return}
     el2.innerHTML='';
-    var L=window.L,touch=!!(L.Browser&&L.Browser.mobile),m,b=[],you=nrYou();try{touch=touch||!!(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches)}catch(e){}
+    var L=window.L,touch=!!(L.Browser&&L.Browser.mobile),m,b=[],pl=mode==='around'?atLive():null,you=pl?null:nrYou();   /* v7.62: the typed place instead of your dot */try{touch=touch||!!(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches)}catch(e){}
     m=L.map(el2,{scrollWheelZoom:false,dragging:!touch,tap:false});   /* v7.57: on a phone one finger scrolls the screen (the owner: Road trip would not scroll on an iPhone); pinch to zoom */
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors · shops from Google Maps'}).addTo(m);
     pts.forEach(function(x){
@@ -10016,6 +10114,7 @@ function nrMap(mode){
       var sub=x.cls==='nr-pin-sub',sz=sub?16:26;
       L.marker([x.lat,x.lng],{icon:L.divIcon({className:'nr-pin'+(x.cls?' '+x.cls:''),html:String(x.num||''),iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],popupAnchor:[0,-sz/2-2]}),title:x.p.name||'',zIndexOffset:sub?0:400}).addTo(m).bindPopup(nrPop(x.p,day));
     });
+    if(pl){b.push([pl.lat,pl.lng]);L.circleMarker([pl.lat,pl.lng],{radius:9,weight:3,color:'#fff',fillColor:'#C2491F',fillOpacity:1}).addTo(m).bindPopup('<div class="nr-pop"><b>'+esc(pl.town)+'</b><br><span>In a location</span></div>')}
     if(you){b.push([you.lat,you.lng]);L.circleMarker([you.lat,you.lng],{radius:9,weight:3,color:'#fff',fillColor:'#1a73e8',fillOpacity:1}).addTo(m).bindPopup('<div class="nr-pop"><b>You are here</b>'+(NR.aroundTown?'<br><span>'+esc(NR.aroundTown)+'</span>':'')+'</div>')}
     if(b.length)m.fitBounds(b,{padding:[28,28],maxZoom:14});
     NR.lmap[mode]=m;
@@ -10041,17 +10140,27 @@ function nrFlockRun(id,stages){
 /* ---- Around you ---- */
 function nrRefreshBtn(){return '<button type="button" class="hubc nr-refresh" id="otp-nrRefresh">Refresh</button>'}
 function nrAroundLoad(force){
-  var el=$('#otp-nrLive');if(!el)return;
-  if(NR.around&&!force&&Date.now()-NR.aroundAt<120000){nrAroundDraw();return}
-  el.innerHTML=nrFlock('otp-nrFlockA',['Finding where you are…','Looking for '+nrKinds(nrCatsGet())+' nearby…','Sorting them biggest first…','Checking today’s hours…']);   /* v7.61 */
-  nrPos(function(pos,err){
-    if(!pos){el.innerHTML='<p class="nearp">'+(err==='denied'?'Location is off for this site, so the shops around you cannot be listed. The map searches below still work.':'Your location could not be read just now. The map searches below still work.')+' '+nrRefreshBtn()+'</p>';return}
+  var el=$('#otp-nrLive'),a=atLive(),fr=a?a.town:'';if(!el)return;
+  if(NR.around&&!force&&Date.now()-NR.aroundAt<120000&&NR.aroundFor===fr){nrAroundDraw();return}
+  el.innerHTML=nrFlock('otp-nrFlockA',[a?'Finding '+a.town+'…':'Finding where you are…','Looking for '+nrKinds(nrCatsGet())+(a?' around '+a.town:' nearby')+'…','Sorting them biggest first…','Checking today’s hours…']);   /* v7.61; v7.62 */
+  function go(pos){
     nrFetch('/near?lat='+pos.lat.toFixed(4)+'&lng='+pos.lng.toFixed(4)+'&cats='+E(nrCatsQ())).then(function(r){
       if(r.status===503){el.innerHTML='';return}   /* not switched on yet: the map searches below carry it */
-      if(!r.ok){el.innerHTML='<p class="nearp">The shops around you could not be listed just now. The map searches below still work.</p>';return}
-      NR.aroundAt=Date.now();NR.around=r.j.places||[];NR.aroundTown=r.j.town||'';nrAroundDraw();   /* v7.45: the town too */
+      if(!r.ok){el.innerHTML='<p class="nearp">The shops '+(a?'around '+esc(a.town):'around you')+' could not be listed just now. The map searches below still work.</p>';return}
+      NR.aroundAt=Date.now();NR.aroundFor=fr;NR.around=r.j.places||[];NR.aroundTown=a?a.town:(r.j.town||'');nrAroundDraw();   /* v7.45: the town too */
     });
+  }
+  if(a){go(a);return}   /* v7.62: In a location, no GPS asked */
+  nrPos(function(pos,err){
+    if(!pos){el.innerHTML=nrNoFix(err);return}
+    go(pos);
   },force);   /* v7.37: Refresh asks the phone for a fresh fix */
+}
+/* v7.62: no fix is no longer a dead end: the typed place is offered, and Refresh only where it can help */
+function nrNoFix(err){
+  var a=atGet();
+  return '<p class="nearp nr-nofix">'+(err==='denied'?'Location is off for this site, so Prowl cannot see where you are.':'Your location could not be read just now.')+' Type a town, City, ST or ZIP in <b>In a location</b> above and Prowl lists the shops there.'+
+    (a?' <button type="button" class="sgw-ml" data-nrat="on">Use '+esc(a.town)+'</button>':'')+(err==='denied'?'':' '+nrRefreshBtn())+'</p>';
 }
 /* v7.47 (the owner, standing in Maumee Antique Mall with only Vintage on: "it doesn't come up"). The copy names the
    kinds that are on, never a fixed "antique, vintage and thrift"; a usual kind that is off is said, with one tap to
@@ -10069,12 +10178,13 @@ function nrSortSet(v){try{localStorage.setItem(NR_SORT_KEY,v==='near'?'near':'')
 function nrSortBar(srt){return '<div class="nr-sort" role="group" aria-label="Order"><button type="button" class="hubc'+(srt?'':' on')+'" data-nrsort="" aria-pressed="'+!srt+'">Biggest first</button><button type="button" class="hubc'+(srt?' on':'')+'" data-nrsort="near" aria-pressed="'+!!srt+'">Closest first</button></div>'}
 function nrAroundDraw(){
   try{rNear()}catch(e){}   /* v7.57: a fix in hand, the store searches go around it */
-  var you=nrYou(),srt=nrSortGet(),mi=function(p){return nrMiFrom(you,p)},L0=NR.around||[],L=L0.slice();
+  var pl=atLive(),you=pl?{lat:pl.lat,lng:pl.lng}:nrYou(),srt=nrSortGet(),mi=function(p){return nrMiFrom(you,p)},L0=NR.around||[],L=L0.slice();   /* v7.62: miles from the typed place */
   if(srt==='near')L.sort(function(a,b){var x=mi(a),y=mi(b);return (x==null?1e9:x)-(y==null?1e9:y)});
   NR.aroundShown=L;   /* the map numbers its pins in this order */
-  var el=$('#otp-nrLive'),on=nrCatsGet(),kinds=nrKinds(on),at=nrAt(L),here=at?'You are at <b>'+esc(at.name)+'</b>'+(NR.aroundTown?' in '+esc(NR.aroundTown):'')+'. ':NR.aroundTown?'You are in <b>'+esc(NR.aroundTown)+'</b>. ':'',off=nrKindsOff(on);if(!el)return;
-  if(!L.length){el.innerHTML='<h3 class="nearh">Around you '+nrRefreshBtn()+'</h3><p class="nearp">'+here+'No '+esc(kinds)+' close by right now. Try a map search below, or plan a road trip.</p>'+off+nrMapBar('around');nrMap('around');return}
-  el.innerHTML='<h3 class="nearh">Around you '+nrRefreshBtn()+'</h3><p class="nearp">'+here+esc(nrCap(kinds))+' near where you are standing, '+(srt?'closest':'biggest')+' first. Directions starts the drive. Moved on? Tap Refresh.</p>'+off+nrSortBar(srt)+nrMapBar('around')+'<div class="nr-list">'+L.map(function(p,i){return nrRow(p,'',i+1,{mi:mi(p)})}).join('')+'</div>';
+  var el=$('#otp-nrLive'),on=nrCatsGet(),kinds=nrKinds(on),at=pl?null:nrAt(L),here=pl?'':at?'You are at <b>'+esc(at.name)+'</b>'+(NR.aroundTown?' in '+esc(NR.aroundTown):'')+'. ':NR.aroundTown?'You are in <b>'+esc(NR.aroundTown)+'</b>. ':'',off=nrKindsOff(on);if(!el)return;
+  var hd='<h3 class="nearh">'+(pl?'Around '+esc(pl.town):'Around you')+' '+nrRefreshBtn()+'</h3>';
+  if(!L.length){el.innerHTML=hd+'<p class="nearp">'+here+'No '+esc(kinds)+(pl?' around <b>'+esc(pl.town)+'</b>':' close by')+' right now. Try a map search below, or plan a road trip.</p>'+off+nrMapBar('around');nrMap('around');return}
+  el.innerHTML=hd+'<p class="nearp">'+here+esc(nrCap(kinds))+(pl?' around <b>'+esc(pl.town)+'</b>, '+(srt?'closest':'biggest')+' first. Miles are from the middle of town. Directions starts the drive. <b>Where I am</b> above goes back to you.':' near where you are standing, '+(srt?'closest':'biggest')+' first. Directions starts the drive. Moved on? Tap Refresh.')+'</p>'+off+nrSortBar(srt)+nrMapBar('around')+'<div class="nr-list">'+L.map(function(p,i){return nrRow(p,'',i+1,{mi:mi(p)})}).join('')+'</div>';
   nrMap('around');   /* v7.45 */
 }
 /* ---- Road trip ---- */
@@ -10082,32 +10192,151 @@ function nrDays(){var out=[],i,d,t=Date.now();for(i=0;i<7;i++){d=new Date(t+i*86
 function rNrDays(){var el=$('#otp-nrDays');if(!el)return;var D=nrDays();if(!NR.day||NR.day<D[0].day)NR.day=D[0].day;el.innerHTML=D.map(function(x){return '<button type="button" class="hubc'+(x.day===NR.day?' on':'')+'" data-nrday="'+x.day+'" aria-pressed="'+(x.day===NR.day)+'">'+x.label+'</button>'}).join('')}
 function nrMiles(r){return Math.round(r.mi!=null?r.mi:(r.km||0)*0.621371)}   /* v7.42: the worker sends miles; older saved trips carried km */
 function nrDur(min){var hh=Math.floor(min/60),mm=min%60;return (hh?hh+' h ':'')+(mm||!hh?mm+' min':'')}
+/* v7.62: where the trip starts: the From box when it has a place in it (looked up, and kept as the last typed place),
+   else the phone. cb(pos, err, place, words) */
+function nrStart(from,cb){
+  if(from){atLookup(from,function(a,msg){if(!a){cb(null,'geo',null,msg);return}var old=atGet();if(!old||(!old.on&&(old.q!==a.q||old.town!==a.town))){a.on=false;atSave(a);rAtBar()}cb({lat:a.lat,lng:a.lng},'',a)});return}
+  nrPos(function(pos,err){cb(pos,err,null)});
+}
+function nrNoStart(err,msg){
+  var a=atGet();
+  if(err==='geo')return '<p class="nearp">'+esc(msg||'That place could not be found.')+'</p>';
+  return '<p class="nearp nr-nofix">'+(err==='denied'?'Location is off for this site, so Prowl cannot tell where you are starting.':'Your location could not be read just now.')+' Type a town, City, ST or ZIP in <b>From</b> above and build the trip again.'+(a?' <button type="button" class="sgw-ml" data-nrfrom="1">Start from '+esc(a.town)+'</button>':'')+'</p>';
+}
 function nrBuild(to){
-  var out=$('#otp-nrOut');if(!to||NR.busy||!out)return;NR.busy=true;NR.view=null;NR.built=null;
-  out.innerHTML=nrFlock('otp-nrFlockT',['Finding where you are…','Mapping the drive to '+to+'…','Searching the shops along the way…','Picking the stops worth the time…','Almost there: a long drive takes a little longer…']);nrFoot(null);   /* v7.61 */
-  nrPos(function(pos,err){
-    if(!pos){NR.busy=false;out.innerHTML='<p class="nearp">'+(err==='denied'?'Location is off for this site, so the trip has no starting point. Turn it on and try again.':'Your location could not be read just now, so the trip has no starting point. Try again in a moment.')+'</p>';return}
-    nrFetch('/trip?to='+E(to)+'&lat='+pos.lat.toFixed(4)+'&lng='+pos.lng.toFixed(4)+'&day='+E(NR.day)+'&cats='+E(nrCatsQ())).then(function(r){
+  var out=$('#otp-nrOut'),fi=$('#otp-nrFrom'),from=fi?atClean(fi.value):'';if(!out||NR.busy)return;if(!to){nrLoop(from);return}   /* v7.62: no end, a loop */NR.busy=true;NR.view=null;NR.built=null;NR.lastTo=to;
+  out.innerHTML=nrFlock('otp-nrFlockT',[from?'Finding '+from+'…':'Finding where you are…','Mapping the drive to '+to+'…','Searching the shops along the way…','Picking the stops worth the time…','Almost there: a long drive takes a little longer…']);nrFoot(null);   /* v7.61 */
+  nrStart(from,function(pos,err,pl,msg){
+    if(!pos){NR.busy=false;out.innerHTML=nrNoStart(err,msg);return}
+    nrFetch('/trip?to='+E(to)+'&lat='+pos.lat.toFixed(4)+'&lng='+pos.lng.toFixed(4)+'&day='+E(NR.day)+'&cats='+E(nrCatsQ())+'&detour='+nrDetourGet()).then(function(r){
       NR.busy=false;
       if(r.status===503){out.innerHTML='<p class="nearp">Road trips are not switched on yet. For now, search the map there: <a class="b" href="'+esc('https://www.google.com/maps/search/?api=1&query='+E('antique stores near '+to))+'" target="_blank" rel="noopener noreferrer">Antique stores near '+esc(to)+'</a></p>';return}
       if(r.status===404){out.innerHTML='<p class="nearp">No driving route to <b>'+esc(to)+'</b> could be found. Try the town’s name, or a street address.</p>';return}
       if(!r.ok){out.innerHTML='<p class="nearp">The trip could not be built just now. Try again in a moment.</p>';return}
-      NR.built=r.j;NR.built.to=to;nrDrawTrip(r.j,{});
+      NR.built=r.j;NR.built.to=to;NR.built.fromAt=pl?pl.town:'';NR.builtFrom={lat:pos.lat,lng:pos.lng};nrDrawTrip(r.j,{});   /* v7.62: where it started, for Keep */
     });
   });
+}
+/* ---- v7.62 Road Trip upgrades (the owner, 2026-10-22): a detour of 5, 15 or 30 minutes; no end makes a loop of the
+   shops around the start; Optimize route reorders the stops for the shortest drive (worker /order: the public OSRM
+   router, else a straight-line estimate); every stop is timed from the start and the leave time, and a shop closed by
+   the time you get there, or an estate sale over by then, is flagged. Apple Maps carries the whole route too. ---- */
+var DETOUR_KEY='prowl.nearDetour',NR_DETOURS=[5,15,30],NR_STAY=20;   /* new key; minutes allowed at a stop with no stay of its own */
+function nrDetourGet(){var v=0;try{v=+localStorage.getItem(DETOUR_KEY)}catch(e){}return NR_DETOURS.indexOf(v)!==-1?v:15}
+function rNrDetour(){var el=$('#otp-nrDetour'),v=nrDetourGet();if(!el)return;el.innerHTML='<span class="nr-dl">Detour off the route</span>'+NR_DETOURS.map(function(m){return '<button type="button" class="hubc'+(m===v?' on':'')+'" data-nrdet="'+m+'" aria-pressed="'+(m===v)+'">'+m+' min</button>'}).join('')}
+function nrDetourSet(m){try{localStorage.setItem(DETOUR_KEY,String(m))}catch(e){}rNrDetour();if(NR.built&&NR.built.to)nrBuild(NR.built.to)}
+/* a loop: the shops around the start, then back. The worker's Around you list, ordered by /order loop=1 */
+function nrLoop(from){
+  var out=$('#otp-nrOut');if(!out||NR.busy)return;NR.busy=true;NR.view=null;NR.built=null;NR.lastTo='';
+  out.innerHTML=nrFlock('otp-nrFlockT',[from?'Finding '+from+'…':'Finding where you are…','Looking for the shops around there…','Planning a loop back to the start…']);nrFoot(null);
+  nrStart(from,function(pos,err,pl,msg){
+    if(!pos){NR.busy=false;out.innerHTML=nrNoStart(err,msg);return}
+    nrFetch('/near?lat='+pos.lat.toFixed(4)+'&lng='+pos.lng.toFixed(4)+'&cats='+E(nrCatsQ())).then(function(r){
+      NR.busy=false;
+      if(!r.ok){out.innerHTML='<p class="nearp">The shops for a loop could not be found just now. Type a place in To for a trip there.</p>';return}
+      var sk=nrSkipGet(),town=pl?pl.town:(r.j.town||''),L=(r.j.places||[]).filter(function(p){return !sk[p.id]&&typeof p.lat==='number'}).slice(0,8).map(function(p){var o=nrCopy(p);o.nested=[];return o});
+      var t={loop:true,origin:{town:town},dest:{name:town||'Back to the start',town:'',lat:pos.lat,lng:pos.lng,id:''},route:null,day:NR.day,stops:L,more:[],maps:'loop',to:''};
+      t.fromAt=pl?pl.town:'';NR.built=t;NR.builtFrom={lat:pos.lat,lng:pos.lng};nrDrawTrip(t,{});
+      if(L.length>1)nrOptimize(true);
+    });
+  });
+}
+function nrOrigin(){return NR.view?nrYou():(NR.builtFrom||null)}
+/* the points of the drive in the order shown: the start, the anchors with a position, the end (not on a loop) */
+function nrChain(t,stops){var o=nrOrigin(),pts=[],ids=[],i,d=t.dest||{};if(!o)return null;pts.push(o);for(i=0;i<stops.length;i++)if(typeof stops[i].lat==='number'&&typeof stops[i].lng==='number'){pts.push(stops[i]);ids.push(stops[i]._k||stops[i].id)}if(!t.loop&&typeof d.lat==='number'&&typeof d.lng==='number')pts.push(d);return {pts:pts,ids:ids,end:!t.loop&&pts.length>ids.length+1}}
+function nrPtsQ(pts){return pts.map(function(p){return p.lat.toFixed(3)+','+p.lng.toFixed(3)}).join('|')}
+function nrLegsOk(j,n){return j&&j.legs&&j.legs.length===n&&j.legs.every(function(l){return l&&typeof l.min==='number'})}
+/* the drive's leg times in the order shown, from the router (one call a new order; the worker keeps it a day) */
+function nrLegsFetch(t,stops){
+  var c=nrChain(t,stops);if(!c||c.pts.length<2||c.pts.length>14)return;var key=nrPtsQ(c.pts)+(t.loop?'L':'');if(t.legsKey===key||t.legsWait===key)return;
+  t.legsWait=key;
+  nrFetch('/order?keep=1'+(t.loop?'&loop=1':'')+'&p='+E(nrPtsQ(c.pts))).then(function(r){
+    if(t.legsWait!==key)return;t.legsWait='';
+    var n=c.pts.length-1+(t.loop?1:0);if(!r.ok||!nrLegsOk(r.j,n))return;
+    t.legs=r.j.legs;t.legsSrc=r.j.src;t.legsKey=key;if((NR.view||NR.built)===t)nrRedraw();
+  });
+}
+/* the leave time as a timestamp: the box on the trip's day, else now on a trip today, else none */
+function nrLeaveTs(day){
+  var v=($('#otp-nrLeave')||{}).value||'',m=/^(\d{1,2}):(\d{2})$/.exec(v),today=nrLocalDay(new Date()),dm=/^(\d{4})-(\d{2})-(\d{2})$/.exec(day||today);
+  if(m&&dm)return new Date(+dm[1],+dm[2]-1,+dm[3],+m[1],+m[2]).getTime();
+  return !day||day===today?Date.now():0;
+}
+/* when you get to each stop: legs from the router or estimated, NR_STAY (or the stop's own stay) at each */
+function nrEtas(t,stops){
+  var c=nrChain(t,stops),t0=nrLeaveTs(t.day),out={},i,cur,key,legs,mpm;if(!c||!t0||!c.ids.length)return null;
+  key=nrPtsQ(c.pts)+(t.loop?'L':'');legs=t.legsKey===key?t.legs:null;mpm=t.route&&t.route.min?nrMiles(t.route)/t.route.min:0.75;
+  function leg(i){return legs?legs[i].min:Math.round(nrKm(c.pts[i],c.pts[i+1])*0.621371*1.25/mpm)}
+  cur=t0;
+  for(i=0;i<c.ids.length;i++){cur+=leg(i)*60000;out[c.ids[i]]=cur;var s=null;for(var k=0;k<stops.length;k++)if((stops[k]._k||stops[k].id)===c.ids[i])s=stops[k];cur+=(s&&s.stay>0?s.stay:NR_STAY)*60000}
+  if(c.end)out._dest=cur+leg(c.ids.length)*60000;
+  return {at:out,leave:t0,routed:!!legs,src:t.legsSrc||''};
+}
+/* closed when you get there, on a day it opens at all */
+function nrLateAt(p,eta,day){if(!p||!p.hours||!eta)return false;var n=nrNext(p.hours,eta),wd=new Date(eta).getDay();return !!(n&&!n.open&&nrDayHours(p.hours,wd).open)}
+/* Optimize route: the shortest drive through the stops, the start and end kept */
+function nrOptimize(quiet){
+  var t=NR.view||NR.built;if(!t||NR.optBusy)return;var vis=nrVisible(t),c=nrChain(t,vis.stops);
+  if(!c||c.ids.length<2){if(!quiet)toast(nrOrigin()?'Nothing to reorder: fewer than two stops.':'Prowl needs the start to reorder the stops. Tap FROM HERE first.',3000);return}
+  if(c.pts.length>14){if(!quiet)toast('Optimize takes up to 12 stops at a time. Skip a few and try again.',3600);return}
+  NR.optBusy=true;var before=t.legs&&t.legsKey===nrPtsQ(c.pts)+(t.loop?'L':'')?t.legs.reduce(function(a,l){return a+l.min},0):0;
+  nrFetch('/order?'+(t.loop?'loop=1&':'')+'p='+E(nrPtsQ(c.pts))).then(function(r){
+    NR.optBusy=false;var n=c.pts.length-1+(t.loop?1:0);
+    if(!r.ok||!r.j.order||r.j.order.length!==c.pts.length||!nrLegsOk(r.j,n)){if(!quiet)toast('The stops could not be reordered just now.',3000);return}
+    var ids=[],i,k;for(i=0;i<r.j.order.length;i++){k=r.j.order[i];if(k>=1&&k<=c.ids.length)ids.push(c.ids[k-1])}
+    t.order=ids;
+    var pts=[c.pts[0]];for(i=0;i<r.j.order.length;i++){k=r.j.order[i];if(k>=1&&k<=c.ids.length)pts.push(c.pts[k])}if(c.end)pts.push(c.pts[c.pts.length-1]);
+    t.legs=r.j.legs;t.legsSrc=r.j.src;t.legsKey=nrPtsQ(pts)+(t.loop?'L':'');
+    var after=r.j.legs.reduce(function(a,l){return a+l.min},0);
+    nrRedraw();
+    if(!quiet)toast('Reordered for the shortest drive: about '+nrDurT(after)+' of driving'+(before>after?', '+nrDurT(before-after)+' less':'')+(r.j.src==='est'?' (estimated)':'')+'.',3600);
+  });
+}
+/* estate sales along the way (EstateSales.net through worker /sales, the owner's key only, as in Den > Local) */
+function nrSaleEnd(x){var e=String(x.end||x.start||'');if(!e)return 0;if(/T\d{2}:\d{2}/.test(e)){var d=Date.parse(e);return isNaN(d)?0:d}var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(e);return m?new Date(+m[1],+m[2]-1,+m[3],16,0).getTime():0}
+function nrSales(t){
+  if(!fbOwnerKey()||t.salesWait||t.sales)return;
+  var vis=nrVisible(t),seen={},towns=[],add=function(s){var p=esPlaceParse(s);if(p&&!seen[p.city+p.st]&&towns.length<4){seen[p.city+p.st]=1;towns.push(p)}},i;
+  add(t.origin&&t.origin.town||'');for(i=0;i<vis.stops.length;i++)add(vis.stops[i].town||'');add(t.dest&&t.dest.town||'');
+  if(!towns.length)return;t.salesWait=true;
+  var left=towns.length,all=[],urls={};
+  towns.forEach(function(p){
+    fetch(SGW_API+'sales?st='+encodeURIComponent(p.st)+'&city='+encodeURIComponent(p.city),{headers:{'X-Prowl-Owner':fbOwnerKey()},cache:'no-store'}).then(function(r){return r.json()}).then(function(j){(j&&j.items||[]).forEach(function(x){if(x&&x.url&&!urls[x.url]){urls[x.url]=1;all.push(x)}})},function(){})['catch'](function(){}).then(function(){if(--left)return;t.salesWait=false;t.sales=all;if((NR.view||NR.built)===t)nrSalesDraw(t)});
+  });
+}
+function nrSalesNear(t){
+  var vis=nrVisible(t),line=(t.line||[]).map(function(x){return {lat:x[0],lng:x[1]}}),o=nrOrigin(),day=t.day||nrLocalDay(new Date()),maxMi=Math.max(2,nrDetourGet()*37/120),pts;
+  pts=line.concat(vis.stops.filter(function(s){return typeof s.lat==='number'}));if(o)pts.push(o);if(t.dest&&typeof t.dest.lat==='number')pts.push(t.dest);
+  return (t.sales||[]).filter(function(x){
+    if(!x.lat||!x.lon)return false;var s=String(x.start||'').slice(0,10),e=String(x.end||x.start||'').slice(0,10);if(s&&s>day)return false;if(e&&e<day)return false;
+    for(var i=0;i<pts.length;i++)if(nrKm(pts[i],{lat:x.lat,lng:x.lon})*0.621371<=maxMi)return true;return false;
+  });
+}
+function nrSalesDraw(t){
+  var box=$('#otp-nrSales');if(!box)return;var L=nrSalesNear(t);if(!L.length){box.innerHTML='';return}
+  var vis=nrVisible(t),E2=nrEtas(t,vis.stops);
+  box.innerHTML='<details class="nr-more" open><summary>Estate sales along the way ('+L.length+')</summary><p class="nearp">From EstateSales.net, open on the trip day within the detour. Only you see this.</p><div class="es-list">'+L.map(function(x){
+    var eta=0,bd=1e9,i,s,d;if(E2)for(i=0;i<vis.stops.length;i++){s=vis.stops[i];if(typeof s.lat!=='number'||!E2.at[s._k||s.id])continue;d=nrKm(s,{lat:x.lat,lng:x.lon});if(d<bd){bd=d;eta=E2.at[s._k||s.id]}}
+    var end=nrSaleEnd(x),late=eta&&end&&eta>end;
+    return esList([x]).replace('</span></a>','</span>'+(eta?'<span class="'+(late?'nr-ended':'')+'">'+(late?'Ends before you get there (~'+nrClock(eta)+')':'Get there ~'+nrClock(eta))+'</span>':'')+'</span></a>');
+  }).join('')+'</div></details>';
 }
 /* the stop list, in drive order: anchors numbered, the rest of each town nested, the destination last */
 function nrDrawTrip(t,o){
   var out=$('#otp-nrOut'),h='',i,a,wd=nrWeekday(t.day),day=t.day||'',from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),dest=t.dest||{},vis=nrVisible(t),stops=vis.stops;
   /* v7.49: on today's drive each stop is judged at the time you would get there: straight-line miles from where you
      stand, a quarter more for the road, at the trip's own average speed. A stop gets Directions above its Skip. */
-  var you=nrYou(),now=Date.now(),mpm=t.route&&t.route.min?nrMiles(t.route)/t.route.min:0,live=(!day||day===nrLocalDay(new Date(now)))&&you&&mpm>0;
-  function eta(p){var m=live?nrMiFrom(you,p):null;return m==null?0:now+Math.round(m*1.25/mpm)*60000}
+  /* v7.62: timed along the drive from the start and the leave time (Open when you arrive) */
+  var ET=nrEtas(t,stops),live=!!ET,lateN=[];
+  function eta(p){if(!ET)return 0;if(p===dest)return ET.at._dest||0;var i,j,a;for(i=0;i<stops.length;i++){a=stops[i];if(a.id===p.id)return ET.at[a._k||a.id]||0;for(j=0;j<(a.nested||[]).length;j++)if(a.nested[j].id===p.id)return ET.at[a._k||a.id]||0}return 0}
+  if(ET)stops.forEach(function(a){[a].concat(a.nested||[]).forEach(function(p){if(nrLateAt(p,eta(p),day))lateN.push(p.name)})});
   function row(p,cls,num){return '<div class="nr-row">'+nrCard(p,day,cls,num,{eta:eta(p)})+'<span class="nr-acts">'+nrGo(p)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'">Skip</button></span></div>'}
-  h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):'')+'</p>'+
+  h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+(t.loop?'the shops around it and back':esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):''))+(t.loop?'</b>':'')+'</p>'+
      '<p class="nearp">'+(t.route&&(t.route.mi||t.route.km)?nrMiles(t.route)+' mi · '+nrDur(t.route.min||0)+' of driving · ':'')+'Trip day '+NR_DAYS[wd]+'<span id="otp-nrMembers">'+(o.members?' · '+o.members+' on this trip':'')+'</span></p>'+
      nrPlanSum(t,stops)+   /* v7.51 */
-     (live?'<p class="nearp nr-etan">Open or closed is for when you would get there, driving straight from here.</p>':'')+
+     (live?'<p class="nearp nr-etan">Open or closed is for when you would get there, leaving '+(($('#otp-nrLeave')||{}).value?'at '+nrClock(ET.leave):'now')+' and allowing about '+NR_STAY+' min at a stop'+(ET.routed&&ET.src==='osrm'?'.':' (drive times estimated).')+'</p>':'')+
+     (lateN.length?'<p class="nearp nr-late">Closed by the time you get there: '+esc(nrAnd(lateN.slice(0,4)))+(lateN.length>4?' and '+(lateN.length-4)+' more':'')+'. Optimize route, leave earlier, or Skip them.</p>':'')+
+     (stops.length>1&&nrOrigin()?'<button type="button" class="hubc nr-opt" data-nropt="1">Optimize route</button>':'')+
      (t.route&&t.route.slower>0?'<p class="nearp nr-alt">The road with the most to see, '+nrDur(t.route.slower)+' longer than the fastest drive.</p>':'')+'</div>'+nrMapBar('trip');   /* v7.45: the map, you and the stops */
   if(vis.hidden)h+='<p class="nr-skipped">'+vis.hidden+' skipped · <button type="button" class="sgw-ml" id="otp-nrUnskip">Show them again</button></p>';
   if(!stops.length)h+='<p class="nearp nr-empty">'+(vis.hidden?'Every stop on this route is skipped.':'No shops of the kinds you picked are worth a stop inside this route’s corridor.')+' The drive itself is ready: open it in Maps below.</p>';
@@ -10116,11 +10345,14 @@ function nrDrawTrip(t,o){
     for(i=0;i<stops.length;i++){a=stops[i];h+='<li class="nr-stop">'+row(a,'nr-anchor',i+1)+(a.nested&&a.nested.length?'<div class="nr-nest"><p class="nr-nesth">Also in '+esc((a.town||'town').split(',')[0])+'</p>'+a.nested.map(function(n){return row(n,'nr-sub')}).join('')+'</div>':'')+'</li>'}
     h+='</ol>';
   }
-  if(dest.name)h+='<div class="nr-dest"><p class="nr-nesth">Final stop</p><div class="nr-row">'+nrCard(dest,day,'nr-anchor','',{eta:eta(dest)})+nrGo(dest)+'</div></div>';
+  if(t.loop)h+='<p class="nearp nr-back">Then back to <b>'+esc(from||'the start')+'</b>'+(ET&&ET.at._dest?' (~'+nrClock(ET.at._dest)+')':'')+'.</p>';
+  else if(dest.name)h+='<div class="nr-dest"><p class="nr-nesth">Final stop</p><div class="nr-row">'+nrCard(dest,day,'nr-anchor','',{eta:eta(dest)})+nrGo(dest)+'</div></div>';
   if(t.more&&t.more.length)h+='<details class="nr-more"><summary>Smaller shops along the way ('+t.more.length+')</summary><p class="nearp">Not worth planning around, but there if you pass. These never go into the Maps link.</p><div class="nr-list">'+t.more.map(function(p){return nrCard(p,day,'nr-sub')}).join('')+'</div></details>';   /* v7.39 */
+  h+='<div id="otp-nrSales"></div>';   /* v7.62 */
   out.innerHTML=h;
   nrFoot(t);
   nrMap('trip');   /* v7.45 */
+  nrLegsFetch(t,stops);if(t.sales)nrSalesDraw(t);else nrSales(t);   /* v7.62 */
 }
 function nrFoot(t){
   var f=$('#otp-nrFoot'),m=$('#otp-nrMaps'),s=$('#otp-nrShare'),hb=$('#otp-nrHere');if(!f||!m||!s)return;
@@ -10130,6 +10362,7 @@ function nrFoot(t){
   f.hidden=false;
   if(lw&&legs.length)lw.innerHTML=legs.map(function(l,i){return '<a class="b p" '+(i===0?'id="otp-nrMaps" ':'')+'href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer">'+esc(l.label)+'</a>'}).join('');
   else m.href=nrMapsFor(t)||t.maps;
+  var aw=$('#otp-nrApple');if(aw)aw.innerHTML=nrAppleLegs(t).map(function(l){return '<a class="b" href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer">'+esc(l.label)+'</a>'}).join('');   /* v7.62 */
   if(NR.view){s.hidden=!NR.view.org;s.textContent='SHARE'}else{s.hidden=false;s.textContent='SHARE'}
 }
 /* v7.37 (the owner: "each time i visit a location, i may want to rebuild"): FROM HERE reads where you stand now and
@@ -10137,11 +10370,12 @@ function nrFoot(t){
    so everyone on the trip sees the new list; on a built trip, or someone else's, it redraws your own view. */
 function nrHere(){
   var t=NR.view||NR.built;if(!t||NR.busy)return;
+  if(t.loop){var lf=$('#otp-nrFrom');if(lf)lf.value='';nrLoop('');return}   /* v7.62: a loop starts again from the phone */
   var dest=t.dest||{},to=NR.built&&NR.built.to?NR.built.to:(dest.name||'')+(dest.town?', '+dest.town:''),out=$('#otp-nrOut');if(!to||!out)return;
   NR.busy=true;out.insertAdjacentHTML('afterbegin','<div id="otp-nrHereWait">'+nrFlock('otp-nrFlockH',['Finding where you are…','Finding the stops still ahead…','Picking the stops worth the time…'])+'</div>');   /* v7.61 */
   function fail(msg){NR.busy=false;var w=$('#otp-nrHereWait');if(w)w.innerHTML='<p class="nearp nr-wait">'+msg+'</p>'}   /* msg: plain words, or already escaped */
   nrPos(function(pos,err){
-    if(!pos){fail(err==='denied'?'Location is off for this site, so Prowl cannot tell where you are. Turn it on and try again.':'Your location could not be read just now. Try again in a moment.');return}
+    if(!pos){fail(err==='denied'?'Location is off for this site, so Prowl cannot tell where you are. Type where you are in From and tap Build trip.':'Your location could not be read just now. Try again in a moment.');return}
     if(NR.view&&NR.view.org){
       nrFetch('/trips/'+E(NR.view.id)+'/rebuild',{method:'POST',body:{lat:pos.lat,lng:pos.lng}}).then(function(r){
         if(!r.ok){fail(esc((r.j&&r.j.error)||'The trip could not be rebuilt just now.'));return}
@@ -10150,7 +10384,7 @@ function nrHere(){
       });
       return;
     }
-    NR.busy=false;NR.view=null;nrBuild(to);
+    NR.busy=false;NR.view=null;var fi=$('#otp-nrFrom');if(fi)fi.value='';nrBuild(to);   /* v7.62: FROM HERE is the phone, not the From box */
   },true);
 }
 function nrSignin(){var e2;try{e2=new Event('prowl-signin')}catch(x){e2=document.createEvent('Event');e2.initEvent('prowl-signin',true,true)}closeNear();document.dispatchEvent(e2)}
@@ -10161,7 +10395,7 @@ function nrSignin(){var e2;try{e2=new Event('prowl-signin')}catch(x){e2=document
 function nrShare(){
   var t=NR.view||NR.built,out=$('#otp-nrOut'),box=$('#otp-nrSendBox');if(!t||!out)return;
   if(box){box.parentNode.removeChild(box);return}
-  var keep=NR.view?(NR.view.org?'<button type="button" class="b" id="otp-nrKeep">Add a member</button>':''):'<button type="button" class="b" id="otp-nrKeep">Keep it for my group</button>';
+  var keep=t.loop?'':NR.view?(NR.view.org?'<button type="button" class="b" id="otp-nrKeep">Add a member</button>':''):'<button type="button" class="b" id="otp-nrKeep">Keep it for my group</button>';
   out.insertAdjacentHTML('afterbegin','<div class="nr-sendbox" id="otp-nrSendBox"><div class="nr-sendrow"><button type="button" class="b p" id="otp-nrSend">Send the route</button>'+keep+'</div><p class="nearp nr-shnote"><b>Send the route</b>: the stops and the Google Maps link, by text or any app. '+(NR.view?'':'<b>Keep it for my group</b>: everyone you add sees this trip in Prowl, with live hours and Finds (Prowl Pro).')+'</p></div>');
   try{out.scrollIntoView({block:'start'})}catch(e){}
 }
@@ -10191,9 +10425,10 @@ function nrKeep(){
   if(NR.view){var row=$('#otp-nrShareRow');if(row){row.hidden=!row.hidden;if(!row.hidden){var inp=$('#otp-nrEmail');if(inp)try{inp.focus()}catch(e){}}}return}
   if(!nrSigned()){toast('Sign in to Prowl to share a trip with your group.',3600);nrSignin();return}
   var b=NR.built;if(!b||NR.busy)return;
-  if(!NR.pos){toast('Prowl needs your location to keep the trip. Tap FROM HERE, then try again.',3600);return}
+  var o=NR.builtFrom||NR.pos;   /* v7.62: where the trip was built from, the phone or the From box */
+  if(!o){toast('Prowl needs your location to keep the trip. Tap FROM HERE, then try again.',3600);return}
   NR.busy=true;toast('Keeping the trip for your group…',2400);
-  nrFetch('/trips',{method:'POST',body:{to:b.to,lat:NR.pos.lat,lng:NR.pos.lng,day:NR.day,cats:nrCatsQ()}}).then(function(r){
+  nrFetch('/trips',{method:'POST',body:{to:b.to,lat:o.lat,lng:o.lng,day:NR.day,cats:nrCatsQ()}}).then(function(r){
     NR.busy=false;
     if(r.status===401){toast('Sign in to your Owl & Twig account to share a trip.',3600);nrSignin();return}
     if(r.status===403){toast('Group trips come with Prowl Pro. <a href="/products/prowl-pro">Try it free for a month</a>',5200);return}
@@ -10280,12 +10515,12 @@ function nrMode(m){
   if(t2){t2.classList.toggle('on',!a);t2.setAttribute('aria-selected',String(!a))}
   $('#otp-nrAround').hidden=!a;$('#otp-nrTrip').hidden=a;
   if(a){nrFoot(null);nrAroundLoad()}
-  else{rNrDays();nrTripsLoad();nrFoot(NR.view||NR.built)}   /* v7.57: no keyboard until the box is tapped (the owner) */
+  else{rNrDays();rNrDetour();nrTripsLoad();nrFoot(NR.view||NR.built);var fi=$('#otp-nrFrom'),pl=atLive();if(fi&&!fi.value&&pl)fi.value=pl.town}   /* v7.62 */   /* v7.57: no keyboard until the box is tapped (the owner) */
 }
 function openNear(){
   if(!near||near.classList.contains('on'))return;
   if(den.classList.contains('on'))closeDen();if(dw.classList.contains('on'))closeDw();if(pho&&pho.classList.contains('on'))closePhoto();
-  NR.lf=document.activeElement;near.hidden=false;rDenLocal();rNrCats();nrMode(NR.mode);
+  NR.lf=document.activeElement;near.hidden=false;rDenLocal();rNrCats();rAtBar();atErr('');nrMode(NR.mode);
   requestAnimationFrame(function(){sc.classList.add('on');near.classList.add('on')});
   var c=$('#otp-nearClose');if(c)c.focus();
 }
@@ -10295,12 +10530,19 @@ if(near){
   $('#otp-nearClose').addEventListener('click',closeNear);
   $('#otp-nrT1').addEventListener('click',function(){nrMode('around')});
   $('#otp-nrT2').addEventListener('click',function(){nrMode('trip')});
+  $('#otp-nrAtForm').addEventListener('submit',function(e){e.preventDefault();atSubmit()});   /* v7.62 */
+  $('#otp-nrFrom').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();var t=$('#otp-nrTo');if(t&&t.value.trim())$('#otp-nrGo').click();else if(t)try{t.focus()}catch(x){}}});
   $('#otp-nrForm').addEventListener('submit',function(e){e.preventDefault();var inp=$('#otp-nrTo');nrBuild(inp?inp.value.replace(/\s+/g,' ').trim().slice(0,160):'')});
-  $('#otp-nrDays').addEventListener('click',function(e){var b=e.target.closest('[data-nrday]');if(!b)return;NR.day=b.getAttribute('data-nrday');rNrDays();if(NR.built&&NR.built.to)nrBuild(NR.built.to)});
+  $('#otp-nrDays').addEventListener('click',function(e){var b=e.target.closest('[data-nrday]');if(!b)return;NR.day=b.getAttribute('data-nrday');rNrDays();if(NR.built&&NR.built.to)nrBuild(NR.built.to);else if(NR.built&&NR.built.loop){NR.built.day=NR.day;nrRedraw()}});
+  $('#otp-nrLeave').addEventListener('change',function(){if(NR.view||NR.built)nrRedraw()});   /* v7.62 */
   $('#otp-nrShare').addEventListener('click',nrShare);
   $('#otp-nrHere').addEventListener('click',nrHere);
   near.addEventListener('click',function(e){
     if(e.target.closest&&e.target.closest('#otp-nrRefresh')){NR.pos=null;NR.around=null;nrAroundLoad(true);return}   /* v7.37 */
+    var dt=e.target.closest&&e.target.closest('[data-nrdet]');if(dt){nrDetourSet(+dt.getAttribute('data-nrdet'));return}   /* v7.62 */
+    if(e.target.closest&&e.target.closest('[data-nropt]')){nrOptimize(false);return}
+    var at=e.target.closest&&e.target.closest('[data-nrat]');if(at){if(at.getAttribute('data-nrat')==='on')atUse(atGet());else atOff();return}   /* v7.62 */
+    if(e.target.closest&&e.target.closest('[data-nrfrom]')){var fa=atGet(),ff=$('#otp-nrFrom');if(fa&&ff){ff.value=fa.town;nrBuild(NR.lastTo||'')}return}
     var cat=e.target.closest&&e.target.closest('[data-nrcat]');if(cat){nrCatToggle(cat.getAttribute('data-nrcat'));return}
     if(e.target.closest&&e.target.closest('#otp-nrCatsAll')){nrCatsAll();return}   /* v7.47 */
     if(e.target.closest&&e.target.closest('#otp-nrSend')){nrSend();return}   /* v7.53 */

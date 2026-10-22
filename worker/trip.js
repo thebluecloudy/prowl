@@ -407,3 +407,119 @@ export function findRecord(id, cid, by, b, now) {
     item: clean(b.item, 160), price: /^\$?\s?\d[\d,]*(\.\d{1,2})?$|^free$/i.test(price) ? price : "", verdict: clean(b.verdict, 40), fair: clean(b.fair, 40),
     stop: clean(b.stop, 120), town: clean(b.town, 80) };
 }
+
+/* ---------- v157: In a location (GET /geo) ----------
+   The page's typed place ("Milton, WV", "Huntington", "48377") as one point, so Around you, the store searches,
+   Craigslist, Facebook and a Road trip's start can all be centred there instead of on the phone's GPS. */
+export const GEO_Q_MAX = 80, CL_NEAR_MI = 120;
+/* the typed text, tidied: no control characters or angle brackets, one space, at most GEO_Q_MAX */
+export function geoQuery(s) { return String(s == null ? "" : s).replace(/[\u0000-\u001f\u007f<>]+/g, " ").replace(/\s+/g, " ").trim().slice(0, GEO_Q_MAX).trim(); }
+/* one Geocoding API result -> { lat, lng, town, city, st, zip }, or null (no point, or outside the US) */
+export function geoPlace(r) {
+  const loc = r && r.geometry && r.geometry.location;
+  if (!loc) return null;
+  const lat = Number(loc.lat), lng = Number(loc.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  const comps = Array.isArray(r.address_components) ? r.address_components : [];
+  let zip = "", country = "";
+  for (const c of comps) {
+    const types = c.types || [];
+    if (types.indexOf("postal_code") !== -1) zip = String(c.short_name || c.long_name || "");
+    if (types.indexOf("country") !== -1) country = String(c.short_name || "");
+  }
+  if (country && country !== "US") return null;
+  const t = townOf(comps), town = townLabel(t);
+  if (!town) return null;
+  return { lat: Math.round(lat * 1e4) / 1e4, lng: Math.round(lng * 1e4) / 1e4, town: town, city: t.town || "", st: /^[A-Z]{2}$/.test(t.state) ? t.state : "", zip: /^\d{5}$/.test(zip) ? zip : "" };
+}
+/* Craigslist's own list of areas (reference.craigslist.org/Areas) slimmed to the US sites: [[hostname, lat, lng]] */
+export function clAreasSlim(list) {
+  const out = [];
+  for (const a of Array.isArray(list) ? list : []) {
+    if (!a || a.Country !== "US") continue;
+    const h = String(a.Hostname || ""), lat = Number(a.Latitude), lng = Number(a.Longitude);
+    if (/^[a-z0-9]{2,30}$/.test(h) && Number.isFinite(lat) && Number.isFinite(lng)) out.push([h, lat, lng]);
+  }
+  return out;
+}
+/* the Craigslist site closest to a point, within maxMi; "" when none is */
+export function clNearest(areas, pt, maxMi) {
+  let best = "", bd = maxMi == null ? CL_NEAR_MI : maxMi;
+  for (const a of Array.isArray(areas) ? areas : []) {
+    const d = haversineMi(pt, { lat: a[1], lng: a[2] });
+    if (d <= bd) { bd = d; best = a[0]; }
+  }
+  return best;
+}
+
+/* ---------- v157: Road Trip upgrades (the owner, 2026-10-22: A-to-B with a detour slider, Optimize route, Open when you
+   arrive) ---------- */
+export const DETOUR_CHOICES = [5, 15, 30];   /* minutes off the route the page offers; anything else is DETOUR_MIN */
+export function detourParse(v) { const n = Number(v); return DETOUR_CHOICES.indexOf(n) !== -1 ? n : DETOUR_MIN; }
+/* the route for the page, thinned to at most max points, 3 decimals (about 100 m): enough to find estate sales near it */
+export function routeLine(pts, max) {
+  pts = Array.isArray(pts) ? pts : []; max = max || 160;
+  if (pts.length <= max) return pts.map((p) => [Math.round(p.lat * 1000) / 1000, Math.round(p.lng * 1000) / 1000]);
+  const out = [], step = (pts.length - 1) / (max - 1);
+  for (let i = 0; i < max; i++) { const p = pts[Math.round(i * step)]; out.push([Math.round(p.lat * 1000) / 1000, Math.round(p.lng * 1000) / 1000]); }
+  return out;
+}
+export const ORDER_MAX = 14, EST_MPH = 45, ROAD_FACTOR = 1.25;
+/* "lat,lng|lat,lng|..." -> [{ lat, lng }] (2 to ORDER_MAX points, 3 decimals), or null */
+export function orderPts(s) {
+  const parts = String(s || "").split("|"), out = [];
+  if (parts.length < 2 || parts.length > ORDER_MAX) return null;
+  for (const x of parts) {
+    const m = /^(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)$/.exec(x.trim());
+    if (!m) return null;
+    const lat = Number(m[1]), lng = Number(m[2]);
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+    out.push({ lat: Math.round(lat * 1000) / 1000, lng: Math.round(lng * 1000) / 1000 });
+  }
+  return out;
+}
+/* minutes for a leg when no router answers: straight-line miles, a quarter more for the road, at EST_MPH */
+export function estLeg(a, b) { const mi = haversineMi(a, b) * ROAD_FACTOR; return { min: Math.round(mi / EST_MPH * 60), mi: Math.round(mi * 10) / 10 }; }
+/* the visiting order without a router: the first point fixed (and the last, unless loop), nearest neighbour, then 2-opt on
+   straight-line distance. Returns indices into pts, in visiting order (a loop does not repeat the start). */
+export function orderEst(pts, loop) {
+  const n = pts.length; if (n < 3) return pts.map((_, i) => i);
+  const end = loop ? -1 : n - 1, left = [];
+  for (let i = 1; i < n; i++) if (i !== end) left.push(i);
+  const order = [0];
+  while (left.length) {
+    const cur = pts[order[order.length - 1]]; let bi = 0, bd = Infinity;
+    for (let k = 0; k < left.length; k++) { const d = haversineMi(cur, pts[left[k]]); if (d < bd) { bd = d; bi = k; } }
+    order.push(left.splice(bi, 1)[0]);
+  }
+  if (!loop) order.push(end);
+  const path = loop ? order.concat([0]) : order.slice(), D = (i, j) => haversineMi(pts[path[i]], pts[path[j]]);
+  let better = true, guard = 0;
+  while (better && guard++ < 50) {
+    better = false;
+    for (let i = 1; i < path.length - 2; i++) for (let j = i + 1; j < path.length - 1; j++) {
+      if (D(i - 1, j) + D(i, j + 1) < D(i - 1, i) + D(j, j + 1) - 1e-9) { const mid = path.slice(i, j + 1).reverse(); path.splice(i, mid.length, ...mid); better = true; }
+    }
+  }
+  return loop ? path.slice(0, -1) : path;
+}
+/* the legs of a path through pts (indices), estimated; a loop adds the leg home */
+export function estLegs(pts, order, loop) {
+  const legs = [], seq = loop ? order.concat([order[0]]) : order;
+  for (let i = 1; i < seq.length; i++) legs.push(estLeg(pts[seq[i - 1]], pts[seq[i]]));
+  return legs;
+}
+/* an OSRM answer (trip or route service) -> { order, legs } or null. trip: waypoints[i].waypoint_index is input i's place
+   in the visit; route: the order is the input order. */
+export function osrmRead(j, n, trip) {
+  if (!j || j.code !== "Ok") return null;
+  const r = trip ? (j.trips && j.trips[0]) : (j.routes && j.routes[0]);
+  if (!r || !Array.isArray(r.legs)) return null;
+  let order = [];
+  if (trip) {
+    if (!Array.isArray(j.waypoints) || j.waypoints.length !== n) return null;
+    order = j.waypoints.map((w, i) => ({ i: i, at: Number(w.waypoint_index) })).sort((a, b) => a.at - b.at).map((x) => x.i);
+  } else for (let i = 0; i < n; i++) order.push(i);
+  const legs = r.legs.map((l) => ({ min: Math.round(Number(l.duration || 0) / 60), mi: Math.round(Number(l.distance || 0) / MI_M * 10) / 10 }));
+  return { order: order, legs: legs };
+}
