@@ -1003,8 +1003,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.63**: long hunts cut at a whole word; live rows search what Best picks does | Building. |
 
-Next free numbers: **page v7.63, worker v158**. Claim one here when you start.
+Next free numbers: **page v7.64, worker v158**. Claim one here when you start.
 
 ## What's next
 
