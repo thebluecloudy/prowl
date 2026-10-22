@@ -432,6 +432,33 @@ export function geoPlace(r) {
   if (!town) return null;
   return { lat: Math.round(lat * 1e4) / 1e4, lng: Math.round(lng * 1e4) / 1e4, town: town, city: t.town || "", st: /^[A-Z]{2}$/.test(t.state) ? t.state : "", zip: /^\d{5}$/.test(zip) ? zip : "" };
 }
+/* v158: a reverse Geocoding API answer (latlng=) -> { town, city, st, zip }, or null. The first US result with a town
+   names it; the ZIP comes from that result or, when it has none, the first result that carries one. Never a street. */
+export function geoReverse(results) {
+  const list = Array.isArray(results) ? results.slice(0, 10) : [];
+  let best = null, zip = "";
+  for (const r of list) {
+    const comps = r && Array.isArray(r.address_components) ? r.address_components : [];
+    let country = "", z = "";
+    for (const c of comps) {
+      const types = c.types || [];
+      if (types.indexOf("country") !== -1) country = String(c.short_name || "");
+      if (types.indexOf("postal_code") !== -1) z = String(c.short_name || c.long_name || "");
+    }
+    if (country && country !== "US") continue;
+    if (!zip && /^\d{5}$/.test(z)) zip = z;
+    if (!best) { const t = townOf(comps), town = townLabel(t); if (t.town && town) best = { town: town, city: t.town, st: /^[A-Z]{2}$/.test(t.state) ? t.state : "", zip: /^\d{5}$/.test(z) ? z : "" }; }
+  }
+  if (!best) return null;
+  if (!best.zip) best.zip = zip;
+  return best;
+}
+/* v158: a point rounded to ~1 km (2 decimals), or null when it is not a number in range */
+export function geoRound(lat, lng) {
+  const a = Number(lat), b = Number(lng);
+  if (lat == null || lng == null || lat === "" || lng === "" || !Number.isFinite(a) || !Number.isFinite(b) || a < -90 || a > 90 || b < -180 || b > 180) return null;
+  return { lat: Math.round(a * 100) / 100, lng: Math.round(b * 100) / 100 };
+}
 /* Craigslist's own list of areas (reference.craigslist.org/Areas) slimmed to the US sites: [[hostname, lat, lng]] */
 export function clAreasSlim(list) {
   const out = [];

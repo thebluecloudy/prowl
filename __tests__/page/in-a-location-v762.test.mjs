@@ -33,7 +33,7 @@ test('location off: the banner offers In a location instead of a dead end, and a
   const calls = [], gps = { asked: 0, denied: true };
   const p = loadPage({ storage: DEN, fetchImpl: fixture(calls), beforeLoad: (w) => phone(w, gps) });
   await open(p);
-  assert.match(live(p), /Location is off for this site, so Prowl cannot see where you are\. Type a town, City, ST or ZIP in In a location above/);
+  assert.match(live(p), /Location is blocked for this site in this browser.*Or type a town, City, ST or ZIP in In a location above/);   // v7.63: says how to allow it
   assert.equal(p.$('#otp-nrLive #otp-nrRefresh'), null, 'no Refresh that cannot help');
   assert.equal(p.$('#otp-nrAtBar').hidden, true, 'nothing typed yet, no chips');
   p.$('#otp-nrAtIn').value = '  Milton,   WV ';
@@ -75,7 +75,7 @@ test('the typed place is remembered: it opens there with no lookup and no GPS; W
   p.$('#otp-nrAtBar [data-nrat="off"]').click(); await tick(120);
   assert.equal(gps.asked, 1, 'Where I am asks the phone');
   assert.equal(JSON.parse(p.win.localStorage.getItem('prowl.nearAt')).on, false, 'the place is kept, not in use');
-  assert.match(live(p), /Location is off/);
+  assert.match(live(p), /Location is blocked/);   // v7.63
   const use = p.$('#otp-nrLive [data-nrat="on"]');
   assert.equal(use.textContent, 'Use Milton, WV', 'the banner offers the remembered place');
   assert.equal(p.$('#otp-nearScope').textContent, 'where you are');
@@ -130,7 +130,7 @@ test('Road trip: no GPS needed. With location off it points to From; a typed Fro
   p.$('#otp-nrTo').value = 'Blenko Glass Company, Milton, WV';
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { cancelable: true, bubbles: true }));
   await tick(60);
-  assert.match(p.$('#otp-nrOut').textContent, /Location is off for this site, so Prowl cannot tell where you are starting\. Type a town, City, ST or ZIP in From above/);
+  assert.match(p.$('#otp-nrOut').textContent, /Location is blocked for this site in this browser.*Or type a town, City, ST or ZIP in From above/);   // v7.63
   assert.ok(!/no starting point/.test(p.$('#otp-nrOut').textContent));
   p.$('#otp-nrFrom').value = 'Milton, WV';
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { cancelable: true, bubbles: true }));

@@ -126,7 +126,7 @@ test('Around you without a fix or without the key: plain words, and the Maps lin
   await tick(30);
   denied.$('#otp-localBtn').click();
   await tick(120);
-  assert.match(denied.$('#otp-nrLive').textContent, /Location is off for this site/);
+  assert.match(denied.$('#otp-nrLive').textContent, /Location is blocked for this site/);   // v7.63
   assert.equal(denied.$('#otp-nrLive .nr-card'), null);
   assert.ok(denied.$$('#otp-nearGrid a.nearc').length >= 8);
   await denied.close();
