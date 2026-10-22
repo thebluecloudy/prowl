@@ -20,6 +20,8 @@ Recently shipped, newest first:
   word too, so keeping that title saves "...Texans", which finds the same 6. Already-saved hunts are 60 or fewer
   characters and come out unchanged. Worker v160: `fbTerm`, the worker's copy of the page's hunt key for Facebook
   finds, cuts the same way. Tests: `__tests__/page/long-terms-v767.test.mjs`, `worker/__tests__/fb-sweep.test.mjs`.
+  Also `near-flock-v761.test.mjs` no longer races the clock: it failed #217's CI because the flock's 40 ms steps beat a
+  fixed 60 ms wait on a slow runner (it saw two steps). It now records every line in order and waits for the last.
 - **v7.64 / v159: 📍 Use my location** (the owner, 2026-10-22, in a car on Android in an app's built-in browser with
   location off for the site: "Location is off for this site ... Type a town" and he did not know what town he was in).
   - A **📍 Use my location** button on the From row itself, right of the field (`#otp-nrFromMe`), and in the In a location
