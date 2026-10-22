@@ -3243,7 +3243,9 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <p class="nearp">Where are you headed? Prowl maps the drive from where you are (or the town you type in From) and lists the antique, vintage and thrift shops worth a stop on the way, in order, with their hours for the day. Nobody sees where you started from, only the town.</p>
       <div class="hubbar nr-cats" id="otp-nrCats" role="group" aria-label="What to look for"></div>
       <div class="nr-route">
-      <div class="addrow nr-fromrow"><input id="otp-nrFrom" type="text" placeholder="From: town, City, ST or ZIP" aria-label="Starting from: a town, City, ST or ZIP, or empty for where you are" autocomplete="off" enterkeyhint="next"><button type="button" class="nr-me" id="otp-nrFromMe" data-nrme="from" aria-label="Use my location: start from the town I am in">📍 Use my location</button></div>
+      <div class="addrow nr-fromrow">
+<input id="otp-nrFrom" type="text" placeholder="From: town, City, ST or ZIP" aria-label="Starting from: a town, City, ST or ZIP, or empty for where you are" autocomplete="off" enterkeyhint="next"><button type="button" class="nr-me" id="otp-nrFromMe" data-nrme="from" aria-label="Use my location: start from the town I am in">📍 Use my location</button>
+</div>
       <p class="nearp nr-memsg" id="otp-nrFromMsg" role="status" hidden></p>
       <form class="addrow" id="otp-nrForm">
         <input id="otp-nrTo" type="text" placeholder="To: town, City, ST or ZIP (optional)" aria-label="Destination: a town, City, ST, ZIP, a shop or an address; empty for a loop from the start" autocomplete="off" enterkeyhint="go">
