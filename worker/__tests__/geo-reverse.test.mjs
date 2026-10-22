@@ -113,5 +113,5 @@ test("/geo?q= still geocodes typed text; the reverse route never logs and never 
   assert.ok(!/console\.(log|error)/.test(indexFn("geoBackRoute")), "nothing logged");
   assert.ok(!/console\.(log|error)/.test(indexFn("gReverse")), "nothing logged");
   assert.ok(!/GOOGLE_MAPS_KEY/.test(indexFn("geoBackRoute")));
-  assert.match(INDEX, /^const WORKER_VERSION = "v159";/m);
+  assert.ok(Number(/^const WORKER_VERSION = "v(\d+)";/m.exec(INDEX)[1]) >= 159, "v159 or later (a later worker keeps this route)");
 });
