@@ -145,3 +145,39 @@ test('a town the worker cannot name still gives a start at the fix, as My locati
   assert.deepEqual(p.errors, []);
   await p.close();
 });
+
+test('the button sits on the From row and in the In a location box; From is right above To; no trip, no bottom bar', async () => {
+  const calls = [], gps = newGps('denied');
+  const p = loadPage({ storage: DEN, fetchImpl: fixture(calls), beforeLoad: (w) => phone(w, gps) });
+  await open(p);
+  assert.equal(p.$('#otp-nrFromMe').parentElement, p.$('#otp-nrFrom').parentElement, 'on the From row itself');
+  assert.equal(p.$('#otp-nrAtMe').closest('form'), p.$('#otp-nrAtForm'), 'in the In a location box');
+  assert.equal(p.$('#otp-nrAtMe').type, 'button', 'never submits the typed text');
+  const route = p.$('.nr-route');
+  assert.ok(route.contains(p.$('#otp-nrFrom')) && route.contains(p.$('#otp-nrForm')), 'From and To share one block');
+  assert.equal(p.$('#otp-nrTo').placeholder, 'To: town, City, ST or ZIP (optional)');
+  p.$('#otp-nrT2').click(); await tick(30);
+  assert.equal(p.$('#otp-nrFoot').hidden, true, 'nothing built: no OPEN IN MAPS / REBUILD FROM HERE / SHARE bar');
+  assert.equal(p.$('#otp-nrHere').textContent, 'REBUILD FROM HERE');
+  await p.close();
+});
+
+test('a built trip with stops shows the bar; a built trip with none does not', async () => {
+  const stop = { id: 'S1', name: 'Chillicothe Antique Mall', town: 'Chillicothe, OH', why: '', photo: '', url: 'https://www.google.com/maps/search/?api=1&query=s', lat: 39.4, lng: -82.9, hours: null };
+  for (const [stops, shown] of [[[stop], true], [[], false]]) {
+    const calls = [], gps = newGps('ok');
+    const base = fixture(calls);
+    const f = (u) => /\/trip\?/.test(String(u)) ? (calls.push(String(u)), J({ origin: { town: 'Chillicothe, OH' }, dest: { name: 'Columbus, OH', town: 'Columbus, OH', lat: 39.96, lng: -83 }, route: { mi: 45, min: 50 }, day: '', stops, more: [], empty: !stops.length, maps: 'https://www.google.com/maps/dir/?api=1' })) : base(u);
+    const p = loadPage({ storage: DEN, fetchImpl: f, beforeLoad: (w) => phone(w, gps) });
+    await open(p);
+    p.$('#otp-nrT2').click(); await tick(30);
+    p.$('#otp-nrFromMe').click(); await tick(150);
+    p.$('#otp-nrTo').value = 'Columbus, OH';
+    p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { cancelable: true, bubbles: true }));
+    await tick(200);
+    assert.ok(calls.some((u) => /\/trip\?/.test(u)), 'the trip was built');
+    assert.equal(p.$('#otp-nrFoot').hidden, !shown, stops.length + ' stops');
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  }
+});

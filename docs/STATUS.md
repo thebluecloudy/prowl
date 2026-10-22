@@ -6,15 +6,15 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.63 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.63** | 396,751 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.63** | 396,542 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v158** | |
 
 Recently shipped, newest first:
 
 - **v7.63 / v158: 📍 Use my location** (the owner, 2026-10-22, in a car on Android in an app's built-in browser with
   location off for the site: "Location is off for this site ... Type a town" and he did not know what town he was in).
-  - A **📍 Use my location** button under In a location (`#otp-nrAtMe`) and under From (`#otp-nrFromMe`), and inside the
-    no-fix messages (`data-nrme`). The tap itself calls `getCurrentPosition` (`meLocate`, high accuracy, 10 s timeout, a fix
+  - A **📍 Use my location** button on the From row itself, right of the field (`#otp-nrFromMe`), and in the In a location
+    box beside Look there (`#otp-nrAtMe`), and inside the no-fix messages (`data-nrme`). The tap itself calls `getCurrentPosition` (`meLocate`, high accuracy, 10 s timeout, a fix
     up to 60 s old), so the browser can show its prompt.
   - Worker **v158 `GET /geo?lat=..&lng=..`** (`geoBackRoute`, `gReverse`; pure `geoReverse`, `geoRound` in `trip.js`) names
     the town with the reverse Geocoding API on `GOOGLE_MAPS_KEY`, US only: `{ lat, lng, town, city, st, zip, cl }`. The
@@ -29,6 +29,11 @@ Recently shipped, newest first:
     app's built-in browser, ⋮ › Open in Chrome; Chrome, the icon left of the address › Permissions › Location › Allow;
     iPhone, aA › Website Settings › Location › Allow; or type a town or ZIP. No fix in time says so and offers a retry.
     Never the IP's guess (a phone's IP can sit in another state).
+  - Road trip layout (the owner's screenshot the same day: he took the bottom bar's FROM HERE for the new button, "this
+    isn't intuitive"): From sits right above To in one block (`.nr-route`), To reads "To: town, City, ST or ZIP
+    (optional)"; the bottom bar (`#otp-nrFoot`: OPEN IN MAPS, APPLE MAPS, FROM HERE, SHARE) shows only once a built trip
+    has stops (`nrFoot`; an A-to-B route with no shops no longer offers it); FROM HERE is renamed **REBUILD FROM HERE**
+    (what it always did: rebuild the trip from where the phone is now).
   - Some in-app browsers (WebViews) refuse geolocation outright and show no prompt; for them only Open in Chrome or typing
     a town helps. Not checked on a real phone from here.
   - Tests: `__tests__/page/use-my-location-v763.test.mjs`, `worker/__tests__/geo-reverse.test.mjs`; `in-a-location-v762`

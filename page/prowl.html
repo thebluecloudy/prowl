@@ -2134,10 +2134,16 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-atform input{min-width:0}
 .scout-app-wrapper .nr-atbar{margin:0 0 6px}
 .scout-app-wrapper .nr-aterr{margin:0 0 8px}
-.scout-app-wrapper .nr-fromrow{margin:0 0 6px}
-.scout-app-wrapper .nr-merow{display:flex;margin:0 0 8px}
-.scout-app-wrapper .nr-me{min-height:40px;font-size:14px;font-weight:800}
-.scout-app-wrapper .nr-memsg{margin:0 0 10px}
+.scout-app-wrapper .nr-fromrow{margin:0}
+.scout-app-wrapper .nr-route{display:flex;flex-direction:column;gap:8px}   /* v7.63: From sits right above To */
+.scout-app-wrapper .nr-route .addrow input{min-width:0}
+.scout-app-wrapper .nr-atform{flex-wrap:wrap}
+.scout-app-wrapper .nr-atform input{flex:1 1 100%}
+.scout-app-wrapper .nr-atform button{flex:1 1 0}
+.scout-app-wrapper .addrow button.nr-me{flex:0 0 auto;padding:0 12px;background:transparent;color:var(--ink);border:1.5px solid var(--ac);box-shadow:none;font-size:14px;font-weight:800;white-space:nowrap}
+.scout-app-wrapper .nr-atform button.nr-me{flex:1 1 0}
+.scout-app-wrapper .addrow button.nr-me:disabled{opacity:.6}
+.scout-app-wrapper .nr-memsg{margin:0}
 .scout-app-wrapper .nr-memsg.ok{color:var(--ink)}
 .scout-app-wrapper .nr-steps{margin:6px 0 0;padding-left:20px;font-size:13px;line-height:1.5}
 .scout-app-wrapper .nr-steps li{margin:2px 0}
@@ -3178,9 +3184,9 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <div class="hubbar nr-cats" id="otp-nrCatsA" role="group" aria-label="What to look for"></div>
       <form class="addrow nr-atform" id="otp-nrAtForm" role="search" aria-label="In a location">
         <input id="otp-nrAtIn" type="text" placeholder="In a location: a town, City, ST or ZIP" aria-label="In a location: a town, City, ST or ZIP" autocomplete="off" enterkeyhint="go">
+        <button type="button" class="nr-me" id="otp-nrAtMe" data-nrme="at" aria-label="Use my location: fill in the town I am in">📍 Use my location</button>
         <button type="submit" id="otp-nrAtGo">Look there</button>
       </form>
-      <div class="nr-merow"><button type="button" class="hubc nr-me" id="otp-nrAtMe" data-nrme="at">📍 Use my location</button></div>
       <p class="nearp nr-memsg" id="otp-nrAtMeMsg" role="status" hidden></p>
       <div class="hubbar nr-atbar" id="otp-nrAtBar" role="group" aria-label="Centre on" hidden></div>
       <p class="nearp nr-aterr" id="otp-nrAtErr" role="status" hidden></p>
@@ -3236,13 +3242,14 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <h3 class="nearh">Road trip</h3>
       <p class="nearp">Where are you headed? Prowl maps the drive from where you are (or the town you type in From) and lists the antique, vintage and thrift shops worth a stop on the way, in order, with their hours for the day. Nobody sees where you started from, only the town.</p>
       <div class="hubbar nr-cats" id="otp-nrCats" role="group" aria-label="What to look for"></div>
-      <div class="addrow nr-fromrow"><input id="otp-nrFrom" type="text" placeholder="From: where you are, or a town, City, ST or ZIP" aria-label="Starting from" autocomplete="off" enterkeyhint="next"></div>
-      <div class="nr-merow"><button type="button" class="hubc nr-me" id="otp-nrFromMe" data-nrme="from">📍 Use my location</button></div>
+      <div class="nr-route">
+      <div class="addrow nr-fromrow"><input id="otp-nrFrom" type="text" placeholder="From: town, City, ST or ZIP" aria-label="Starting from: a town, City, ST or ZIP, or empty for where you are" autocomplete="off" enterkeyhint="next"><button type="button" class="nr-me" id="otp-nrFromMe" data-nrme="from" aria-label="Use my location: start from the town I am in">📍 Use my location</button></div>
       <p class="nearp nr-memsg" id="otp-nrFromMsg" role="status" hidden></p>
       <form class="addrow" id="otp-nrForm">
-        <input id="otp-nrTo" type="text" placeholder="To: a town, a shop or an address (empty: a loop from the start)" aria-label="Destination, or empty for a loop" autocomplete="off" enterkeyhint="go">
+        <input id="otp-nrTo" type="text" placeholder="To: town, City, ST or ZIP (optional)" aria-label="Destination: a town, City, ST, ZIP, a shop or an address; empty for a loop from the start" autocomplete="off" enterkeyhint="go">
         <button type="submit" id="otp-nrGo">Build trip</button>
       </form>
+      </div>
       <div class="hubbar nr-detour" id="otp-nrDetour" role="group" aria-label="Detour off the route"></div>
       <div class="hubbar" id="otp-nrDays" role="group" aria-label="Trip day"></div>
       <p class="nearp nr-leave"><label for="otp-nrLeave">Leave at</label> <input type="time" id="otp-nrLeave" step="900"> <span class="nr-leaveh">Empty: now (today), or no arrival times on another day.</span></p>
@@ -3253,7 +3260,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   <div class="nr-foot" id="otp-nrFoot" hidden>
     <span class="nr-legs" id="otp-nrLegs"><a class="b p" id="otp-nrMaps" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">OPEN IN MAPS</a></span>
     <span class="nr-legs" id="otp-nrApple"></span>
-    <button type="button" class="b" id="otp-nrHere">FROM HERE</button>
+    <button type="button" class="b" id="otp-nrHere" aria-label="Rebuild this trip from where you are now">REBUILD FROM HERE</button>
     <button type="button" class="b" id="otp-nrShare">SHARE</button>
   </div>
 </aside>
@@ -10341,7 +10348,7 @@ function nrLateAt(p,eta,day){if(!p||!p.hours||!eta)return false;var n=nrNext(p.h
 /* Optimize route: the shortest drive through the stops, the start and end kept */
 function nrOptimize(quiet){
   var t=NR.view||NR.built;if(!t||NR.optBusy)return;var vis=nrVisible(t),c=nrChain(t,vis.stops);
-  if(!c||c.ids.length<2){if(!quiet)toast(nrOrigin()?'Nothing to reorder: fewer than two stops.':'Prowl needs the start to reorder the stops. Tap FROM HERE first.',3000);return}
+  if(!c||c.ids.length<2){if(!quiet)toast(nrOrigin()?'Nothing to reorder: fewer than two stops.':'Prowl needs the start to reorder the stops. Tap REBUILD FROM HERE first.',3000);return}
   if(c.pts.length>14){if(!quiet)toast('Optimize takes up to 12 stops at a time. Skip a few and try again.',3600);return}
   NR.optBusy=true;var before=t.legs&&t.legsKey===nrPtsQ(c.pts)+(t.loop?'L':'')?t.legs.reduce(function(a,l){return a+l.min},0):0;
   nrFetch('/order?'+(t.loop?'loop=1&':'')+'p='+E(nrPtsQ(c.pts))).then(function(r){
@@ -10421,7 +10428,7 @@ function nrDrawTrip(t,o){
 function nrFoot(t){
   var f=$('#otp-nrFoot'),m=$('#otp-nrMaps'),s=$('#otp-nrShare'),hb=$('#otp-nrHere');if(!f||!m||!s)return;
   if(hb)hb.hidden=!t||!t.dest||!t.dest.name;
-  if(!t||!t.maps||NR.mode!=='trip'){f.hidden=true;return}
+  if(!t||!t.maps||NR.mode!=='trip'||!(t.stops&&t.stops.length)){f.hidden=true;return}   /* v7.63: no stops, no bar (the owner) */
   var legs=nrMapsLegs(t),lw=$('#otp-nrLegs');
   f.hidden=false;
   if(lw&&legs.length)lw.innerHTML=legs.map(function(l,i){return '<a class="b p" '+(i===0?'id="otp-nrMaps" ':'')+'href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer">'+esc(l.label)+'</a>'}).join('');
@@ -10490,7 +10497,7 @@ function nrKeep(){
   if(!nrSigned()){toast('Sign in to Prowl to share a trip with your group.',3600);nrSignin();return}
   var b=NR.built;if(!b||NR.busy)return;
   var o=NR.builtFrom||NR.pos;   /* v7.62: where the trip was built from, the phone or the From box */
-  if(!o){toast('Prowl needs your location to keep the trip. Tap FROM HERE, then try again.',3600);return}
+  if(!o){toast('Prowl needs your location to keep the trip. Tap REBUILD FROM HERE, then try again.',3600);return}
   NR.busy=true;toast('Keeping the trip for your group…',2400);
   nrFetch('/trips',{method:'POST',body:{to:b.to,lat:o.lat,lng:o.lng,day:NR.day,cats:nrCatsQ()}}).then(function(r){
     NR.busy=false;
