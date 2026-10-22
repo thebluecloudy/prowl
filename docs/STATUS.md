@@ -1,16 +1,27 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.65 / v159).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.67 / v160).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.65** | 396,542 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v159** | |
+| Page | **v7.67** | 396,514 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v160** | |
 
 Recently shipped, newest first:
 
+- **v7.67 / v160: long hunts are cut at a whole word; the live rows search what Best picks does** (Matt, with "Pedlar of
+  Dreams: The Story of Howard Kron and Texans Incorporated": "This description finds the item in Best picks but it
+  doesn't show it live on eBay"). A run's live rows (`liveTermOf`) cut the term at 60 characters mid-word, "...Texans
+  Incorp", and eBay (every word must match) found 0; Best picks sends the whole title to `/hunt` and found 6. New
+  `cutWords(s, n)` cuts at the last whole word (one over-long word at n, never half an emoji). The live rows and Best
+  picks (`huntTermOf`) both search up to 80, the worker's own `MAX_TERM`; saved hunts (`sgwClean`, 60) end on a whole
+  word too, so keeping that title saves "...Texans", which finds the same 6. Already-saved hunts are 60 or fewer
+  characters and come out unchanged. Worker v160: `fbTerm`, the worker's copy of the page's hunt key for Facebook
+  finds, cuts the same way. Tests: `__tests__/page/long-terms-v767.test.mjs`, `worker/__tests__/fb-sweep.test.mjs`.
+  Also `near-flock-v761.test.mjs` no longer races the clock: it failed #217's CI because the flock's 40 ms steps beat a
+  fixed 60 ms wait on a slow runner (it saw two steps). It now records every line in order and waits for the last.
 - **v7.65: Road trip bar fits a phone** (the owner, 2026-10-22: words spilled out of the pills). Short labels GOOGLE / APPLE / REBUILD / SHARE (legs GOOGLE 1, APPLE 1…), equal-width pills with nowrap + ellipsis; aria-labels keep the full meaning. Page only.
 - **v7.64 / v159: 📍 Use my location** (the owner, 2026-10-22, in a car on Android in an app's built-in browser with
   location off for the site: "Location is off for this site ... Type a town" and he did not know what town he was in).
@@ -1033,9 +1044,8 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `ccr-0de21c46-yzs839` | Claude | **v7.63 / worker v158**: long hunts cut at a whole word; live rows search what Best picks does | Building. |
 
-Next free numbers: **page v7.66, worker v160**. Claim one here when you start.
+Next free numbers: **page v7.68, worker v161**. Claim one here when you start.
 
 ## What's next
 

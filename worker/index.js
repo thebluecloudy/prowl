@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v160: 2026-10-22. fbTerm cuts a long hunt at its last whole word, as the page's sgwClean now does (page v7.67:
+ *         "...Texans Incorp" found nothing on eBay), so the Facebook finds key still matches the page's.
  *   v159: 2026-10-22. Use my location (the owner, in a car with location off in an in-app browser, not knowing the town).
  *         GET /geo?lat=..&lng=.. names the town a phone's fix is in (reverse Geocoding API on GOOGLE_MAPS_KEY, US only):
  *         { lat, lng, town, city, st, zip, cl }, the point rounded to ~1 km first, kept 30 days per rounded point,
@@ -544,7 +546,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v159";
+const WORKER_VERSION = "v160";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6390,10 +6392,12 @@ export default {
        account), "public", or "off". */
 const FB_KEY_MIN = 24, FB_BODY_MAX = 131072, FB_ITEMS_MAX = 60, FB_DAYS = 7, FB_TTL = 8 * 86400, FB_INGEST_PER_DAY = 300, FB_FINDS_PER_IP = 1000;
 const FB_IMG = /^https:\/\/([a-z0-9-]+\.)*fbcdn\.net\//i;
-/* the page's own key for a hunt, fbKey(sgwClean(hunt)): single spaces, cut to 60, no half of an emoji, trimmed, lowercased */
+/* the page's own key for a hunt, fbKey(sgwClean(hunt)): single spaces, cut to 60 at the last whole word (v160, as the
+   page's cutWords; one longer word at 60), no half of an emoji, trimmed, lowercased */
 function fbTerm(s) {
-  return String(s == null ? "" : s).replace(/\s+/g, " ").slice(0, 60)
-    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "$1").trim().toLowerCase().slice(0, 60);
+  let t = String(s == null ? "" : s).replace(/\s+/g, " ").replace(/^ /, "");
+  if (t.length > 60) { const i = t.lastIndexOf(" ", 60); t = i > 0 ? t.slice(0, i) : t.slice(0, 60); }
+  return t.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "$1").trim().toLowerCase().slice(0, 60);
 }
 function fbMode(env) { const m = String((env && env.FB_FINDS) || "owner").toLowerCase(); return m === "public" || m === "off" ? m : "owner"; }
 function fbItems(arr, day) {
