@@ -1,4 +1,4 @@
-// Page v7.63 (Matt, 2026-10-22: "This description finds the item in Best picks but it doesn't show it live on eBay").
+// Page v7.67 (Matt, 2026-10-22: "This description finds the item in Best picks but it doesn't show it live on eBay").
 // A run's live rows cut the term at 60 characters mid-word ("...Texans Incorp"), and eBay, which wants every word,
 // found nothing, while Best picks sent the whole title to /hunt and found six. Now a long term is cut at the last whole
 // word, the live rows search up to the worker's own 80 characters (the same words as Best picks), and a kept hunt
