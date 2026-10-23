@@ -3518,7 +3518,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.73';
+var PROWL_VERSION='v7.74';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -9232,6 +9232,42 @@ function openApp(){
   try{win.focus()}catch(e){}
 }
 
+/* v7.74 iPhone install (Matt: adding Prowl on an iPhone took three tries, the first icon kept the shop's bar, and each
+   icon asked him to sign in again). iOS gives every home-screen icon its own storage, empty, but copies Safari's cookies
+   into it once, when the icon is added. So on the app page in Safari on an iPhone or iPad, Prowl keeps two short-lived
+   cookies scoped to /pages/prowl-app: prowl_c1 (the sign-in: email, token, session, Pro) and prowl_c2 (this device's
+   hunts, when they fit). The installed app reads them on its first open, before load(), only into an empty store, then
+   deletes its copies. Nothing new in localStorage; nothing leaves the shop's own domain. */
+function iosSteps(){
+  var ua=navigator.userAgent||'',chrome=/CriOS/.test(ua),
+    s=chrome?'In Chrome, tap <b>Share</b> (the box with the arrow, beside the address) and pick <b>Add to Home Screen</b>.'
+      :'In Safari, tap <b>Share</b> (the box with the arrow; tap ••• first if you do not see it), scroll down, then <b>Add to Home Screen</b>.';
+  return s+' If it shows <b>Open as Web App</b>, leave it on. Tap <b>Add</b>. Prowl then opens full screen'+(mGet('alertTok')?', still signed in':'')+'.';
+}
+var CARRY_PATH='/pages/prowl-app',CARRY_DAYS=7;
+function carryGet(n){var m=new RegExp('(?:^|; )'+n+'=([^;]*)').exec(document.cookie||'');if(!m)return '';try{return decodeURIComponent(m[1])}catch(e){return ''} }
+function carrySet(n,v,days){try{document.cookie=n+'='+(v?encodeURIComponent(v):'')+'; Path='+CARRY_PATH+'; Max-Age='+(v?days*86400:0)+'; SameSite=Strict; Secure'}catch(e){} }
+function carryOut(){
+  if(!isApple()||!onAppPage()||inStandalone())return;
+  var t=mGet('alertTok'),e=mGet('alertEmail');
+  if(t&&e)carrySet('prowl_c1',JSON.stringify({e:e,t:t,s:mGet('session'),p:mGet('alertPro')==='1'?1:0}),CARRY_DAYS);else carrySet('prowl_c1','',0);
+  var raw='';try{raw=localStorage.getItem(LS)||''}catch(x){}
+  if(raw&&encodeURIComponent(raw).length<=3000)carrySet('prowl_c2',raw,CARRY_DAYS);else carrySet('prowl_c2','',0);
+}
+function carryIn(){
+  if(!inStandalone())return 0;
+  var n=0,a=carryGet('prowl_c1'),b=carryGet('prowl_c2'),j=null,h=null;
+  if(a){try{j=JSON.parse(a)}catch(e){}
+    if(j&&!mGet('alertTok')&&typeof j.e==='string'&&/^[^\s@]{1,80}@[^\s@]{1,120}$/.test(j.e)&&typeof j.t==='string'&&/^[A-Za-z0-9_.-]{8,200}$/.test(j.t)){
+      mSet('alertEmail',j.e.toLowerCase());mSet('alertTok',j.t);mSet('alertPro',j.p?'1':'');mSet('alertNoAuto','');sessSet(j.s);n++}}
+  if(b){var had='';try{had=localStorage.getItem(LS)||''}catch(e){}
+    try{h=JSON.parse(b)}catch(e){}
+    if(!had&&h&&Array.isArray(h.hunts)){try{localStorage.setItem(LS,b);n++}catch(e){} } }
+  carrySet('prowl_c1','',0);carrySet('prowl_c2','',0);
+  return n;
+}
+try{carryOut();document.addEventListener('visibilitychange',function(){if(document.hidden)carryOut()});window.addEventListener('pagehide',carryOut)}catch(e){}
+
 var installEvt=null;
 window.addEventListener('beforeinstallprompt',function(e){
   /* hold onto it so the install happens from a real tap, not on page load */
@@ -9250,8 +9286,7 @@ function doInstall(){
       return;
     }catch(e){}
   }
-  if(isApple()){
-    appNote('On iPhone and iPad: tap the <b>Share</b> button in Safari, scroll down, then tap <b>Add to Home Screen</b>. Prowl opens without the browser bar after that.');
+  if(isApple()){appNote(iosSteps());carryOut();
   }else{
     appNote('In your browser menu, choose <b>Install app</b> or <b>Add to Home screen</b>. Prowl then opens in its own window with no browser bar.');
   }
@@ -9288,7 +9323,7 @@ var GA_HIDE='prowl.appCardHide';
 function gaHidden(){try{var t=Number(localStorage.getItem(GA_HIDE)||0);return t&&Date.now()-t<30*86400000}catch(e){return false} }
 function gaSteps(){
   return '<ul class="gapp-steps">'+
-    '<li class="ga-ios"><b>iPhone / iPad:</b> open it in Safari, tap <b>Share</b>, then <b>Add to Home Screen</b>.</li>'+
+    '<li class="ga-ios"><b>iPhone / iPad:</b> '+(onAppPage()?iosSteps():'tap <b>Get the app</b> first. Add Prowl from that page, not this one: from here the icon opens with the shop\u2019s bar on top.')+'</li>'+
     '<li class="ga-and"><b>Android:</b> tap <b>Install</b> below, or the \u22ee menu, then <b>Install app</b>.</li>'+
     '<li class="ga-pc"><b>Computer:</b> in Chrome or Edge, tap <b>Install</b> below, or the install icon at the right end of the address bar.</li></ul>';
 }
@@ -9315,7 +9350,7 @@ document.addEventListener('click',function(e){
 });
 rGetApp();
 /* arriving from "Get the app": point at the install button */
-try{if(onAppPage()&&/[?&]install=1/.test(location.search)&&!inStandalone()){setTimeout(function(){var g=document.querySelector('.otp-getapp[data-mode="home"]');if(g&&!g.hidden){g.classList.add('gapp-hi');try{g.scrollIntoView({block:'center'})}catch(e){} } },600)} }catch(e){}
+try{if(onAppPage()&&/[?&]install=1/.test(location.search)&&!inStandalone()){setTimeout(function(){var g=document.querySelector('.otp-getapp[data-mode="home"]');if(g&&!g.hidden){g.classList.add('gapp-hi');try{g.scrollIntoView({block:'center'})}catch(e){} }if(isApple())appNote(iosSteps()) },600)} }catch(e){}
 
 /* v5.92: the email's "See every hunt live on Prowl Daily" button opens with
    ?daily=1. Wait for the sign-in to settle (it brings the hunts), then run Daily. */
@@ -10999,6 +11034,7 @@ if(near){
     }
   });
 }
+var CARRIED=0;try{CARRIED=carryIn()}catch(e){}   /* v7.74 */
 load();counts();rQuick();rDenHunts();rDenLocal();rDenOne();rDrawer();rDock();rRes();
 applyDeepLink();
 Array.prototype.forEach.call(document.querySelectorAll('.prowl-version'),function(el){el.textContent=PROWL_VERSION});

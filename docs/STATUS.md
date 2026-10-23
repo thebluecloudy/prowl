@@ -1,16 +1,25 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.73 / v162; the merge rule in CLAUDE.md).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.74 / v162).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.73** | 395,918 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.74** | 395,918 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v162** | |
 
 Recently shipped, newest first:
 
+- **v7.74: iPhone install** (Matt: adding Prowl on an iPhone took three tries; the first icon kept the shop's bar and
+  every icon asked him to sign in again). iOS gives each home-screen icon its own empty storage but copies Safari's
+  cookies into it once, when it is added. On /pages/prowl-app in Safari or Chrome on an iPhone or iPad, the page keeps
+  two cookies scoped to that path, 7 days: `prowl_c1` (email, token, session, Pro) and `prowl_c2` (the prowl.v36 save
+  when it is 3 KB or less). The installed app takes them on its first open, before load(), only into an empty store,
+  then deletes them. No new localStorage keys. Install steps now say to add from the app page (from /pages/prowl the
+  icon keeps the shop's bar), with Safari or Chrome wording and "leave Open as Web App on". Not tried on a real
+  iPhone yet: if cookies are not copied, the in-app 6-digit code sign-in is still there. Test
+  `__tests__/page/ios-install-v774.test.mjs`.
 - **v7.73: NEAR ME benchmarked, polish** (release 3 of 3, after v7.71 Around you and v7.72 Road trip).
   - **The glance check for the car**: on a phone every main Near me button is 48px tall with its words at 17px: the
     tabs, Directions, Build trip / Look there, Change, Use my location, Done and the trip bar (Skip and Reviews are
@@ -1138,7 +1147,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.74, worker v163**. Claim one here when you start.
+Next free numbers: **page v7.75, worker v163**. Claim one here when you start.
 
 ## What's next
 
