@@ -57,7 +57,7 @@ test('Around you: the town you are in, numbered rows with Directions, and Show o
   await tick(30);
   p.$('#otp-localBtn').click();
   await tick(120);
-  assert.match(p.$('#otp-nrLive .nearp').textContent, /^You are in Novi, MI\. /, 'the worker named the town');
+  assert.match(p.$('#otp-nrWhere').textContent, /\(Novi, MI\)/, 'the worker named the town (v7.71: on the location pill)');
   assert.deepEqual(p.$$('#otp-nrLive .nr-list .nr-num').map((e) => e.textContent), ['1', '2', '3'], 'the list is numbered like the pins');
   const go = p.$$('#otp-nrLive .nr-row a.nr-go');
   assert.equal(go.length, 3);

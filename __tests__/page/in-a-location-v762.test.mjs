@@ -33,9 +33,12 @@ test('location off: the banner offers In a location instead of a dead end, and a
   const calls = [], gps = { asked: 0, denied: true };
   const p = loadPage({ storage: DEN, fetchImpl: fixture(calls), beforeLoad: (w) => phone(w, gps) });
   await open(p);
-  assert.match(live(p), /Location is blocked for this site in this browser.*Or type a town, City, ST or ZIP in In a location above/);   // v7.64: says how to allow it
-  assert.equal(p.$('#otp-nrLive #otp-nrRefresh'), null, 'no Refresh that cannot help');
+  assert.match(live(p), /Location is blocked for this site in this browser.*Or tap Change above and type a town, City, ST or ZIP/);   // v7.64: says how to allow it; v7.71: Change
+  assert.equal(p.$('#otp-nrLive #otp-nrRefresh'), null, 'no Refresh that cannot help: Use my location asks again');
   assert.equal(p.$('#otp-nrAtBar').hidden, true, 'nothing typed yet, no chips');
+  assert.equal(p.$('#otp-nrWhereBox').hidden, true, 'v7.71: the town box waits behind Change');
+  p.$('#otp-nrLive [data-nrwhere]').click();
+  assert.equal(p.$('#otp-nrWhereBox').hidden, false, 'Type a town or ZIP opens it');
   p.$('#otp-nrAtIn').value = '  Milton,   WV ';
   p.$('#otp-nrAtForm').dispatchEvent(new p.win.Event('submit', { cancelable: true, bubbles: true }));
   await tick(120);
@@ -45,16 +48,18 @@ test('location off: the banner offers In a location instead of a dead end, and a
   const near = calls.filter((u) => /\/near\?/.test(u)).pop();
   assert.match(near, /lat=38\.4345&lng=-82\.1322/, 'Around you asks at the typed place');
   assert.match(p.$('#otp-nrLive h3').textContent, /^Around Milton, WV/);
-  assert.match(live(p), /around Milton, WV, biggest first\. Miles are from the middle of town/);
+  assert.match(live(p), /biggest first\. Miles are from the middle of town/);
+  assert.match(p.$('#otp-nrWhere').textContent, /Shops near Milton, WV/, 'v7.71: the pill names the place');
+  assert.equal(p.$('#otp-nrWhereBox').hidden, true, 'and the box closes');
   assert.ok(!/You are at/.test(live(p)), 'never "you are at" a shop you are not standing in');
   assert.equal(p.$$('#otp-nrLive .nr-card').length, 2);
   const saved = JSON.parse(p.win.localStorage.getItem('prowl.nearAt'));
   assert.equal(saved.town, 'Milton, WV'); assert.equal(saved.on, true); assert.equal(saved.cl, 'huntington'); assert.equal(saved.q, 'Milton, WV');
-  assert.deepEqual(p.$$('#otp-nrAtBar button').map((b) => b.textContent + ':' + b.getAttribute('aria-pressed')), ['Where I am:false', 'Milton, WV:true']);
+  assert.equal(p.$('#otp-nrAtBar').hidden, true, 'v7.71: the place in use is on the pill, not a chip too');
   // the store searches, garage sales and Craigslist move there too
   assert.equal(p.$('#otp-nearScope').textContent, 'near Milton, WV');
-  assert.equal(p.$('#otp-nearWhere').hidden, true);
-  assert.equal(p.$('#otp-nearGrid a.nearc').href, 'https://www.google.com/maps/search/?api=1&query=antique%20stores%20near%20Milton%2C%20WV');
+  assert.equal(p.$('#otp-nearWhere'), null, 'v7.71: no second Where I am bar');
+  assert.equal(p.$('#otp-nearGrid a.nearc').href, 'https://www.google.com/maps/search/?api=1&query=thrift%20stores%20near%20Milton%2C%20WV');
   assert.equal(p.$('#otp-salesScope').textContent, 'near Milton, WV');
   const gms = p.$$('#otp-salesGrid a').map((a) => a.href);
   assert.equal(gms[1], 'https://huntington.craigslist.org/search/gms?postal=25541&search_distance=25#search=1~list~0~0', 'its nearest Craigslist site, around its ZIP');
@@ -72,13 +77,16 @@ test('the typed place is remembered: it opens there with no lookup and no GPS; W
   assert.equal(calls.filter((u) => /\/geo\?/.test(u)).length, 0);
   assert.equal(gps.asked, 0);
   assert.match(calls.filter((u) => /\/near\?/.test(u)).pop(), /lat=38\.4345&lng=-82\.1322/);
-  p.$('#otp-nrAtBar [data-nrat="off"]').click(); await tick(120);
+  p.$('#otp-nrWhereGo').click();
+  assert.equal(p.$('#otp-nrAtMe').textContent, '📍 Use my location');
+  p.$('#otp-nrAtMe').click(); await tick(120);   // v7.71: Where I am is Change › Use my location
   assert.equal(gps.asked, 1, 'Where I am asks the phone');
   assert.equal(JSON.parse(p.win.localStorage.getItem('prowl.nearAt')).on, false, 'the place is kept, not in use');
   assert.match(live(p), /Location is blocked/);   // v7.64
   const use = p.$('#otp-nrLive [data-nrat="on"]');
   assert.equal(use.textContent, 'Use Milton, WV', 'the banner offers the remembered place');
   assert.equal(p.$('#otp-nearScope').textContent, 'where you are');
+  assert.equal(p.$('#otp-nrAtBar [data-nrat="on"]').textContent, 'Milton, WV', 'and it is a Recent chip under Change');
   use.click(); await tick(120);
   assert.match(p.$('#otp-nrLive h3').textContent, /^Around Milton, WV/);
   assert.equal(JSON.parse(p.win.localStorage.getItem('prowl.nearAt')).on, true);

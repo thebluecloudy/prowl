@@ -64,7 +64,7 @@ test('no city yet: the Ann Arbor area, as Craigslist does elsewhere in Prowl, an
   p.$('#otp-dock .db[data-m="den"]').click();
   await tick(50);
   assert.match(links(p)[0][1], /\/search\/area\/annarbor\?cat=gms/);
-  assert.equal(p.$('#otp-salesScope').textContent, 'near Ann Arbor');
+  assert.equal(p.$('#otp-salesScope').textContent, 'near Ann Arbor (set your city below)', 'v7.71: and how to change it');
   await p.close();
 });
 

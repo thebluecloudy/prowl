@@ -115,7 +115,7 @@ test('Around you: the shops around the phone, with OPEN NOW / CLOSED worked out 
   assert.equal(cards[2].querySelector('.nr-st'), null, 'no hours, no claim');
   assert.equal(cards[2].querySelector('.nr-h').textContent, 'Hours not listed');
   assert.ok(cards[2].querySelector('.nr-ph.nr-nop'), 'a placeholder where there is no photo');
-  assert.ok(p.$$('#otp-nearGrid a.nearc').length >= 8, 'the Maps links are still under the cards');
+  assert.ok(p.$$('#otp-nearGrid a.nearc').length >= 7, 'the Maps links are still under the cards');
   assert.doesNotMatch(p.$('#otp-near').textContent, /v7\.\d|\b\d+ marketplaces/, 'no version, no marketplace count');
   assert.deepEqual(p.errors, []);
   await p.close();
@@ -128,14 +128,15 @@ test('Around you without a fix or without the key: plain words, and the Maps lin
   await tick(120);
   assert.match(denied.$('#otp-nrLive').textContent, /Location is blocked for this site/);   // v7.64
   assert.equal(denied.$('#otp-nrLive .nr-card'), null);
-  assert.ok(denied.$$('#otp-nearGrid a.nearc').length >= 8);
+  assert.ok(denied.$$('#otp-nearGrid a.nearc').length >= 7);
   await denied.close();
   const off = loadPage({ storage: DEN, fetchImpl: nearFetch([], { near503: true }), beforeLoad: (w) => phone(w) });
   await tick(30);
   off.$('#otp-localBtn').click();
   await tick(120);
-  assert.equal(off.$('#otp-nrLive').innerHTML, '', 'not set up yet: nothing said, the links below do the job');
-  assert.ok(off.$$('#otp-nearGrid a.nearc').length >= 8);
+  assert.match(off.$('#otp-nrLive').textContent, /^Prowl cannot list the shops here yet\. Search antique stores in Google Maps/, 'v7.71: not set up yet: said, with a Maps search, never a blank list');
+  assert.equal(off.$('#otp-nrLive a.sgw-ml').href, 'https://www.google.com/maps/search/?api=1&query=antique%20stores%20near%20me');
+  assert.ok(off.$$('#otp-nearGrid a.nearc').length >= 7);
   assert.deepEqual(off.errors, []);
   await off.close();
 });

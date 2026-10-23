@@ -25,7 +25,7 @@ test('v7.09: dock LOCAL with a hunt opens the Maps links for stores near you, no
   p.$('#otp-localBtn').click();
   await tick(120);
   assert.equal(p.$('#otp-denLocal').hidden, false);
-  assert.ok(p.$$('#otp-nearGrid a.nearc').length >= 8);
+  assert.ok(p.$$('#otp-nearGrid a.nearc').length >= 7, 'v7.71: less the kinds the chips list');
   assert.equal(p.$('#otp-res a.hit'), null, 'no marketplace run');
   assert.deepEqual(p.errors, []);
   await p.close();

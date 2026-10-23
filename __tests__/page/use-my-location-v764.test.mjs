@@ -32,7 +32,7 @@ function phone(win, gps) {
 const open = async (p) => { await tick(30); p.$('#otp-localBtn').click(); await tick(120); };
 const newGps = (mode) => ({ asked: 0, opts: [], mode });
 
-test('the buttons are there by In a location and by From, and the help names how to allow location', async () => {
+test('the buttons are there by Change and by From, and the help names how to allow location', async () => {
   const calls = [], gps = newGps('denied');
   const p = loadPage({ storage: DEN, fetchImpl: fixture(calls), beforeLoad: (w) => phone(w, gps) });
   await open(p);
@@ -43,7 +43,7 @@ test('the buttons are there by In a location and by From, and the help names how
   assert.match(t, /Location is blocked for this site in this browser/);
   assert.match(t, /tap ⋮, then Open in Chrome/);
   assert.match(t, /Permissions › Location › Allow/);
-  assert.match(t, /Or type a town, City, ST or ZIP in In a location above/);
+  assert.match(t, /Or tap Change above and type a town, City, ST or ZIP/);   // v7.71
   assert.ok(!/Location is off for this site/.test(t), 'the old dead end is gone');
   assert.ok(p.$('#otp-nrLive [data-nrme="at"]'), 'the banner offers Use my location too');
   assert.equal(p.$('#otp-nrLive #otp-nrRefresh'), null);
@@ -51,31 +51,22 @@ test('the buttons are there by In a location and by From, and the help names how
   await p.close();
 });
 
-test('Around you: a tap asks the phone from the gesture, names the town, and centres on the precise fix', async () => {
+test('Around you: a tap asks the phone from the gesture and lists the shops where it is, live (v7.71: no snapshot, no lookup)', async () => {
   const calls = [], gps = newGps('ok');
   const p = loadPage({ storage: DEN, fetchImpl: fixture(calls), beforeLoad: (w) => phone(w, gps) });
   await open(p);
+  p.$('#otp-nrWhereGo').click();
+  assert.equal(p.$('#otp-nrWhereBox').hidden, false);
   p.$('#otp-nrAtMe').click(); await tick(150);
-  assert.equal(gps.asked, 2);
-  assert.deepEqual(JSON.parse(JSON.stringify(gps.opts[1])), { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
-  const geo = calls.filter((u) => /\/geo\?/.test(u));
-  assert.equal(geo.length, 1);
-  assert.match(geo[0], /\/geo\?lat=39\.33&lng=-82\.98$/, 'only a point rounded to ~1 km leaves the page');
-  assert.equal(p.$('#otp-nrAtIn').value, 'Chillicothe, OH 45601');
-  const msg = p.$('#otp-nrAtMeMsg');
-  assert.equal(msg.hidden, false);
-  assert.equal(msg.textContent, 'Using your location: Chillicothe, OH.');
-  const saved = JSON.parse(p.win.localStorage.getItem('prowl.nearAt'));
-  assert.equal(saved.lat, FIX.latitude); assert.equal(saved.lng, FIX.longitude);
-  assert.equal(saved.on, true); assert.equal(saved.me, 1); assert.equal(saved.q, 'Chillicothe, OH 45601'); assert.equal(saved.cl, 'chillicothe');
+  assert.equal(gps.asked, 2, 'asked again, from the tap');
+  assert.equal(calls.filter((u) => /\/geo\?/.test(u)).length, 0, 'where you are is not looked up as a town');
   assert.match(calls.filter((u) => /\/near\?/.test(u)).pop(), /lat=39\.3331&lng=-82\.9823/, 'Around you asks at the fix itself');
-  assert.match(p.$('#otp-nrLive h3').textContent, /^Around Chillicothe, OH/);
+  assert.equal(p.win.localStorage.getItem('prowl.nearAt'), null, 'nothing kept: it follows the phone');
+  assert.match(p.$('#otp-nrLive h3').textContent, /^Around you/);
+  assert.match(p.$('#otp-nrWhere').textContent, /Shops near where you are \(Somewhere, ZZ\)/, 'the pill names the town the worker found');
+  assert.equal(p.$('#otp-nrWhereBox').hidden, true, 'the box closes');
   assert.equal(p.$('#otp-nrAtMe').textContent, '📍 Use my location');
   assert.equal(p.$('#otp-nrAtMe').disabled, false);
-  // the box text, looked up again, is never re-geocoded
-  p.$('#otp-nrAtForm').dispatchEvent(new p.win.Event('submit', { cancelable: true, bubbles: true }));
-  await tick(60);
-  assert.equal(calls.filter((u) => /\/geo\?/.test(u)).length, 1);
   assert.deepEqual(p.errors, []);
   await p.close();
 });
@@ -123,13 +114,14 @@ test('no fix in time: says so, offers a retry; no geolocation at all: the same h
   const p = loadPage({ storage: DEN, fetchImpl: fixture(calls), beforeLoad: (w) => phone(w, gps) });
   await open(p);
   p.$('#otp-nrAtMe').click(); await tick(80);
-  assert.match(p.$('#otp-nrAtMeMsg').textContent, /^Your location could not be read just now/);
+  assert.match(p.$('#otp-nrLive').textContent, /^Your location could not be read just now/);   // v7.71: said where the shops go
+  assert.ok(p.$('#otp-nrLive #otp-nrRefresh'), 'with a Refresh');
   await p.close();
   const q = loadPage({ storage: DEN, fetchImpl: fixture([]), beforeLoad: (w) => Object.defineProperty(w.navigator, 'geolocation', { configurable: true, value: undefined }) });
   await open(q);
   assert.equal(q.$('#otp-nrAtMe').hidden, false);
   q.$('#otp-nrAtMe').click(); await tick(30);
-  assert.match(q.$('#otp-nrAtMeMsg').textContent, /Location is blocked for this site in this browser/);
+  assert.match(q.$('#otp-nrLive').textContent, /Location is blocked for this site in this browser/);
   await q.close();
 });
 
@@ -146,12 +138,13 @@ test('a town the worker cannot name still gives a start at the fix, as My locati
   await p.close();
 });
 
-test('the button sits on the From row and in the In a location box; From is right above To; no trip, no bottom bar', async () => {
+test('the button sits on the From row and in the Change box; From is right above To; no trip, no bottom bar', async () => {
   const calls = [], gps = newGps('denied');
   const p = loadPage({ storage: DEN, fetchImpl: fixture(calls), beforeLoad: (w) => phone(w, gps) });
   await open(p);
   assert.equal(p.$('#otp-nrFromMe').parentElement, p.$('#otp-nrFrom').parentElement, 'on the From row itself');
-  assert.equal(p.$('#otp-nrAtMe').closest('form'), p.$('#otp-nrAtForm'), 'in the In a location box');
+  assert.ok(p.$('#otp-nrAtMe').closest('#otp-nrWhereBox'), 'v7.71: in the Change box, over the town box');
+  assert.equal(p.$('#otp-nrAtMe').nextElementSibling, p.$('#otp-nrAtForm'));
   assert.equal(p.$('#otp-nrAtMe').type, 'button', 'never submits the typed text');
   const route = p.$('.nr-route');
   assert.ok(route.contains(p.$('#otp-nrFrom')) && route.contains(p.$('#otp-nrForm')), 'From and To share one block');

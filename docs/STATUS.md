@@ -1,16 +1,40 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.70 / v162).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.71 / v162).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.70** | 395,820 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.71** | 396,895 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v162** | |
 
 Recently shipped, newest first:
 
+- **v7.71: NEAR ME benchmarked, Around you** (the owner: "Using benchmark review the near me feature to make it more
+  intuitive"; compared with Google Maps, Apple Maps, Yelp, Waze, Roadtrippers, EstateSales.NET, FB Marketplace and
+  NN/g; release 1 of 3, Road trip and polish follow as v7.72 and v7.73).
+  - **One place to say where**: a pill at the top, "📍 Shops near where you are (Novi, MI)" or "near Milton, WV",
+    with **Change**. It opens Use my location (live, from the tap; no snapshot, no lookup), the town box and the
+    recent place as one chip. It replaces the In a location form on show, the Where I am / town bar and the store
+    finder's second Where I am bar (`#otp-nearWhere`, gone).
+  - **Location asked from a tap, with one line of why**: when the browser has never been asked (Permissions API
+    "prompt"), a card says "Prowl uses your location only to find … near you." with Use my location and Type a town
+    or ZIP. Said yes before: the shops at once. Blocked: the steps, the same two buttons.
+  - **Open now**: off when Near me opens; one tap shows only the shops open now, from the hours already on each place
+    (no new search), kept on this device in a new key, `prowl.nearOpen`. Nothing open says so, with Show closed ones
+    too.
+  - **Cards**: open or closed in words and colour right under the name; **Directions** opens the maps app picked
+    (Google, or Apple Maps `?daddr=`); Reviews a quieter link.
+  - **More ways to look**: the old Local block in one closed fold at the bottom, nothing removed. Its help ("How these
+    work", one short paragraph) never opens by itself. The store searches drop Antique stores, Vintage shops, Flea
+    markets, Used books and Record stores, which the chips list in Prowl; **Thrift stores stays** (the owner: "Don't
+    remove the thrift from Google map direct").
+  - **No dead ends**: a `/near` 503 says "Prowl cannot list the shops here yet." with a Maps search for the first kind
+    on; other failures keep Refresh and the same search. The members note on a kept trip points to NEAR ME › TRIPS.
+  - No change to old keys (`prowl.nearAt`, `prowl.nearCats`, `prowl.nearSort`, the city stay). Tests:
+    `__tests__/page/near-bench-v771.test.mjs`, and the near-me, in-a-location, use-my-location and near-where tests
+    moved to the pill.
 - **v7.70 / v162: group trips can be deleted or left** (the owner: "i need a way to delete the shared trips"). Each
   row in TRIPS has **Delete** on your own trip and **Leave** on a friend's; the first tap asks ("Delete for
   everyone?" / "Leave this trip?", back after 4 seconds), the second does it (`nrTripDel`). Worker
@@ -1082,7 +1106,7 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `ccr-0de21c46-yzs839` | Claude | **v7.71**: NEAR ME benchmarked, Around you: one location control, Open now, cards, More ways to look (then v7.72 Road trip, v7.73 polish) | Building. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.72**: NEAR ME benchmarked, Road trip: where to first, options folded, lettered stops with +min, one Start in Maps (then v7.73 polish: glance sizes, recent destinations, sentence case) | Next, after v7.71 is live. |
 
 Next free numbers: **page v7.74, worker v163**. Claim one here when you start.
 

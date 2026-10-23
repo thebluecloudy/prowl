@@ -39,7 +39,7 @@ test('v7.09: the dock\'s Near me opens the Maps links for stores near you, with 
     assert.equal(p.$('#otp-den').hidden, true, 'not through the Den');
     assert.equal(p.$('#otp-denLocal').hidden, false);
     const links = p.$$('#otp-nearGrid a.nearc');
-    assert.ok(links.length >= 8, 'store types: ' + links.length);
+    assert.ok(links.length >= 7, 'store types: ' + links.length);
     for (const a of links) assert.match(a.href, /^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=.+near%20me$/, a.href);
     assert.equal(p.$('#otp-res a.hit'), null, 'no marketplace run');
     assert.deepEqual(p.errors, []);

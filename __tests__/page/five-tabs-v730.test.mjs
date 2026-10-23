@@ -64,7 +64,7 @@ test('NEAR ME opens its own screen (v7.36: #otp-near, not the Den), stores first
   assert.equal(p.$('#otp-nearClose').getAttribute('aria-label'), 'Close Near me');
   assert.equal(p.$('#otp-denLocal').hidden, false);
   assert.ok(near.contains(p.$('#otp-denLocal')), 'the store finder lives in Near me now');
-  assert.ok(p.$$('#otp-nearGrid a.nearc').length >= 8, 'the store types');
+  assert.ok(p.$$('#otp-nearGrid a.nearc').length >= 7, 'the store types (v7.71: less the kinds the chips list, Thrift stores kept)');
   p.$('#otp-nearClose').click();
   await tick(350);
   assert.equal(near.hidden, true);
