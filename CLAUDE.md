@@ -45,3 +45,7 @@ sees the others' conversations. The repo is the only shared memory, so:
 - Conventional Commits (`feat:`, `fix:`, `chore:`…), with the page/worker version in the title.
 - Merging to main deploys both: the page by `.github/workflows/deploy-page.yml` (md5-checks the live page), the worker
   by Cloudflare Workers Builds. Never edit the live page by hand.
+- **Never merge to main unless the `build` check is green on the PR's latest commit and the branch is up to date with
+  main.** Merge main in first if it moved, then wait for `build` to pass again. No direct pushes to main. GitHub does
+  not enforce this for us (the repo is private on the free plan, so the branch rule Matt set is saved but not
+  enforced), and every merge goes live at once, so each AI holds to it by hand.

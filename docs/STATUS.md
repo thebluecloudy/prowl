@@ -1,6 +1,6 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.73 / v162).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.73 / v162; the merge rule in CLAUDE.md).
 
 ## Live
 
@@ -1153,13 +1153,11 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 ## Waiting on Matt
 
-- **Turn on a branch rule for `main`** (Settings > Branches > Add branch protection rule, branch name pattern `main`):
-  tick **Require status checks to pass before merging**, then **Require branches to be up to date before merging**,
-  and add **build** to the required checks. Leave the rest unticked. GitHub only enforces "up to date" when at least
-  one check is required, so `build` must be on the list. CI no longer runs on push to `main` (Actions minutes were at
-  90%), so this rule is what keeps the PR run testing the code that lands. Nothing pushes to `main` outside a PR any
-  more (the daily SGW digest that did was removed in #207), so the rule blocks nothing else. As of 2026-10-21 `main`
-  has no protection rule at all.
+- **The branch rule for `main` is set but not enforced** (2026-10-23). Matt added it (require **build**, require up
+  to date), but GitHub enforces branch rules on private repositories only on a paid plan (GitHub Pro, about $4 a month);
+  on the free plan the rule is saved and ignored (`GET /branches/main` says `protected: false`). Upgrading turns it on
+  with nothing else to set. Until then the rule lives in `CLAUDE.md` (Checks and shipping): never merge unless
+  `build` is green on the latest commit and the branch is up to date with main.
 
 - **NEAR ME (v7.36 / v132) needs three things in Cloudflare before it does more than the old Maps links:**
   1. Done 2026-10-20: the worker secret **GOOGLE_MAPS_KEY** (Places API (New), Routes API, Geocoding API; API
