@@ -2189,8 +2189,13 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-footm .nr-start{flex:2 1 0;min-height:52px}
 .scout-app-wrapper .nr-footm .nr-moreb{flex:1 1 0;min-height:52px}
 .scout-app-wrapper .nr-footp{display:flex;flex-direction:column;gap:6px;padding-bottom:10px;border-bottom:1px solid var(--ln)}
-.scout-app-wrapper .nr-footp[hidden],.scout-app-wrapper .nr-footl[hidden]{display:none}
-.scout-app-wrapper .nr-footl{margin:2px 0 0;font-size:13px;font-weight:800;color:var(--mu)}
+.scout-app-wrapper .nr-footp[hidden]{display:none}
+.scout-app-wrapper .nr-footp .nr-legs{flex-wrap:wrap}
+.scout-app-wrapper .nr-footp .nr-legs .b{flex:1 1 40%}
+.scout-app-wrapper #otp-near .tab{letter-spacing:.01em;font-size:15px}   /* v7.73: sentence case, like the drawer's Near me */
+.scout-app-wrapper .nr-recent{margin:0;align-items:center}
+.scout-app-wrapper .nr-recent[hidden]{display:none}
+.scout-app-wrapper .nr-recent .hubc{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .scout-app-wrapper .nr-footx{display:flex;gap:8px;margin-top:4px}
 .scout-app-wrapper .nr-steps{margin:6px 0 0;padding-left:20px;font-size:13px;line-height:1.5}
 .scout-app-wrapper .nr-steps li{margin:2px 0}
@@ -2363,6 +2368,13 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   .scout-app-wrapper #otp-near .nr-acts>.nr-skip,.scout-app-wrapper #otp-near .nr-acts>.nr-rvb{flex:0 0 auto;min-height:44px;padding:0 16px}
 }
 .scout-app-wrapper #otp-near .nr-footm .nr-start{font-size:17px}   /* v7.72: after the phone rules, which make the bar's buttons 14px */
+@media (max-width:600px){   /* v7.73 glance check for the car (NHTSA: a glance, not a read): every main button 48px tall, its words 17px */
+  .scout-app-wrapper #otp-near .tab{font-size:17px;letter-spacing:0;min-height:48px}
+  .scout-app-wrapper #otp-near .nr-row>.nr-go,.scout-app-wrapper #otp-near .nr-acts>.nr-go{font-size:17px;min-height:48px}
+  .scout-app-wrapper #otp-near .nr-acts>.nr-skip,.scout-app-wrapper #otp-near .nr-acts>.nr-rvb{min-height:48px}
+  .scout-app-wrapper #otp-near .addrow button,.scout-app-wrapper #otp-near .nr-wc,.scout-app-wrapper #otp-near .b.nr-mebig,.scout-app-wrapper #otp-near .nr-optdone{font-size:17px;min-height:48px}
+  .scout-app-wrapper #otp-near .nr-foot .b{font-size:17px;min-height:48px}
+}
 /* v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
      shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
      under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing.
@@ -3300,9 +3312,9 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <button class="ic" id="otp-nearClose" aria-label="Close Near me">✕</button>
 </div>
   <div class="tabs" role="tablist" aria-label="Near me">
-    <button class="tab on" id="otp-nrT1" role="tab" aria-selected="true">AROUND YOU</button>
-    <button class="tab" id="otp-nrT2" role="tab" aria-selected="false">ROAD TRIP</button>
-    <button class="tab" id="otp-nrT3" role="tab" aria-selected="false">TRIPS</button>
+    <button class="tab on" id="otp-nrT1" role="tab" aria-selected="true">Around you</button>
+    <button class="tab" id="otp-nrT2" role="tab" aria-selected="false">Road trip</button>
+    <button class="tab" id="otp-nrT3" role="tab" aria-selected="false">Trips</button>
   </div>
   <div id="otp-nearBody">
     <div class="denPane" id="otp-nrAround">
@@ -3364,6 +3376,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
         <button type="submit" id="otp-nrGo">Build trip</button>
       </form>
       <div class="nr-sug" id="otp-nrSug" role="listbox" aria-label="Suggested places" hidden></div>
+      <div class="hubbar nr-recent" id="otp-nrRecent" role="group" aria-label="Recent destinations" hidden></div>
       <div class="nr-where nr-fromp" id="otp-nrFromP"></div>
       <div class="nr-wbox" id="otp-nrFromBox" hidden>
       <div class="addrow nr-fromrow">
@@ -3391,20 +3404,18 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     </div>
     <div class="denPane" id="otp-nrTripsPane" hidden>
       <h3 class="nearh">Trips</h3>
-      <p class="nearp">Road trips kept for a group: yours, and the ones friends invite you to. Open one for its stops, live hours and the group's Finds. To start one, build it under Road trip, then More › SHARE › Keep it for my group, and send your friends the invite link.</p>
+      <p class="nearp">Road trips kept for a group: yours, and the ones friends invite you to. Open one for its stops, live hours and the group's Finds. To start one, build it under Road trip, then More › Share › Keep it for my group, and send your friends the invite link.</p>
       <div id="otp-nrJoin"></div>
       <div id="otp-nrTrips"></div>
     </div>
   </div>
   <div class="nr-foot" id="otp-nrFoot" hidden>
     <div class="nr-footp" id="otp-nrFootP" hidden>
-      <p class="nr-footl">Google Maps</p>
-      <span class="nr-legs" id="otp-nrLegs"><a class="b" id="otp-nrMaps" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" aria-label="Open the trip in Google Maps">GOOGLE</a></span>
-      <p class="nr-footl" id="otp-nrAppleL">Apple Maps</p>
+      <span class="nr-legs" id="otp-nrLegs"><a class="b" id="otp-nrMaps" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" aria-label="Open the trip in Google Maps">Google Maps</a></span>
       <span class="nr-legs" id="otp-nrApple"></span>
       <div class="nr-footx">
-        <button type="button" class="b" id="otp-nrHere" aria-label="Rebuild this trip from where you are now">REBUILD</button>
-        <button type="button" class="b" id="otp-nrShare">SHARE</button>
+        <button type="button" class="b" id="otp-nrHere" aria-label="Rebuild this trip from where you are now">Rebuild from here</button>
+        <button type="button" class="b" id="otp-nrShare">Share</button>
       </div>
     </div>
     <div class="nr-footm">
@@ -3507,7 +3518,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.72';
+var PROWL_VERSION='v7.73';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -10186,8 +10197,8 @@ function nrMapsUrl(from,anchors,dest){var wp=anchors.slice(0,9).map(function(a){
 /* v7.39 (Meta's two legs): Google Maps takes about nine waypoints, so more anchors than that become legs, each leg
    ending at the next leg's first stop */
 function nrMapsLegs(t){
-  if(!t)return [];var d=t.dest||{};if(!d.name)return t.maps?[{label:'GOOGLE',url:t.maps}]:[];
-  return nrLegsGen(t,9,nrMapsUrl,'GOOGLE','GOOGLE ');
+  if(!t)return [];var d=t.dest||{};if(!d.name)return t.maps?[{label:'Google Maps',url:t.maps}]:[];
+  return nrLegsGen(t,9,nrMapsUrl,'Google Maps','Google Maps ');   /* v7.73: sentence case, the words fit in More */
 }
 /* v7.62: a route as links of at most cap stops each; each leg ends at the next leg's first stop, which starts the next */
 function nrLegsGen(t,cap,mk,one,lab0){
@@ -10202,7 +10213,7 @@ function nrLegsGen(t,cap,mk,one,lab0){
    route, so a link carries at most 13 waypoints plus its destination and longer trips split into legs. */
 var APPLE_WP=13;
 function nrAppleUrl(from,anchors,dest){var w=anchors.slice(0,APPLE_WP).map(function(a){return '&waypoint='+E(a.name+(a.town?', '+a.town:''))}).join('');return 'https://maps.apple.com/directions?'+(from?'source='+E(from)+'&':'')+'destination='+E(dest||'')+w+'&mode=driving'}
-function nrAppleLegs(t){if(!t||!t.dest||!t.dest.name)return [];return nrLegsGen(t,APPLE_WP,nrAppleUrl,'APPLE','APPLE ')}
+function nrAppleLegs(t){if(!t||!t.dest||!t.dest.name)return [];return nrLegsGen(t,APPLE_WP,nrAppleUrl,'Apple Maps','Apple Maps ')}
 function nrMapsFor(t){if(!t)return '';var d=t.dest||{};if(!d.name)return t.maps||'';var from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||'');return nrMapsUrl(from,nrVisible(t).stops,d.name+(d.town?', '+d.town:''))}
 function nrH(){var h={},k=fbOwnerKey(),em=mGet('alertEmail'),tk=mGet('alertTok');if(k)h['X-Prowl-Owner']=k;if(em&&tk){h['X-Prowl-Email']=em;h['X-Prowl-Tok']=tk}return window.prowlAuth?window.prowlAuth(h):h}   /* v7.38: the alerts member too */
 /* v7.38 (the owner: "it took me to the den and tried to make me sign in, but i am pro"): a Prowl Alerts sign-in is a sign-in */
@@ -10492,7 +10503,7 @@ function nrBuild(to){
       if(r.status===503){out.innerHTML='<p class="nearp">Road trips are not switched on yet. For now, search the map there: <a class="b" href="'+esc('https://www.google.com/maps/search/?api=1&query='+E('antique stores near '+to))+'" target="_blank" rel="noopener noreferrer">Antique stores near '+esc(to)+'</a></p>';return}
       if(r.status===404){out.innerHTML='<p class="nearp">No driving route to <b>'+esc(to)+'</b> could be found. Try the town’s name, or a street address.</p>';return}
       if(!r.ok){out.innerHTML='<p class="nearp">The trip could not be built just now. Try again in a moment.</p>';return}
-      NR.built=r.j;NR.built.to=to;NR.built.fromAt=pl&&!pl.me?pl.town:'';NR.builtFrom={lat:pos.lat,lng:pos.lng};nrDrawTrip(r.j,{});   /* v7.62: where it started, for Keep */
+      nrToAdd(to);NR.built=r.j;NR.built.to=to;NR.built.fromAt=pl&&!pl.me?pl.town:'';NR.builtFrom={lat:pos.lat,lng:pos.lng};nrDrawTrip(r.j,{});   /* v7.62: where it started, for Keep */
     });
   });
 }
@@ -10528,6 +10539,12 @@ function nrOptsApply(){
   var t=NR.built,fi=$('#otp-nrFrom');if(!t||NR.view)return;
   if(t.to)nrBuild(t.to);else if(t.loop)nrLoop(fi?atClean(fi.value):'');
 }
+/* v7.73: the last places a trip was built to, one tap each (no typing in the car after the first trip). A new key,
+   prowl.nearTo, on this device only */
+var NR_TO_KEY='prowl.nearTo';
+function nrToGet(){var v=null;try{v=JSON.parse(localStorage.getItem(NR_TO_KEY)||'null')}catch(e){}return v&&v.length?v.filter(function(x){return typeof x==='string'&&x}).slice(0,5):[]}
+function nrToAdd(to){var L=nrToGet().filter(function(x){return x.toLowerCase()!==String(to).toLowerCase()});L.unshift(String(to).slice(0,160));try{localStorage.setItem(NR_TO_KEY,JSON.stringify(L.slice(0,5)))}catch(e){}rNrRecent()}
+function rNrRecent(){var el=$('#otp-nrRecent'),L=nrToGet().slice(0,3);if(!el)return;el.hidden=!L.length;el.innerHTML=L.length?'<span class="nr-recl">Recent</span>'+L.map(function(x,i){return '<button type="button" class="hubc" data-nrto="'+i+'">'+esc(x)+'</button>'}).join(''):''}
 function nrLetter(i){return i<26?String.fromCharCode(65+i):String(i+1)}
 function nrFootMore(open){var p=$('#otp-nrFootP'),b=$('#otp-nrFootMore');if(p)p.hidden=!open;if(b){b.setAttribute('aria-expanded',String(!!open));b.textContent=open?'Close':'⋯ More'}}
 /* Start in Maps: the app picked (Apple Maps needs a named end), its first leg when the trip is split */
@@ -10668,14 +10685,13 @@ function nrFoot(t){
   var f=$('#otp-nrFoot'),m=$('#otp-nrMaps'),s=$('#otp-nrShare'),hb=$('#otp-nrHere'),st=$('#otp-nrStart');if(!f||!m||!s)return;
   if(hb)hb.hidden=!t||!t.dest||!t.dest.name;
   if(!t||!t.maps||NR.mode!=='trip'||!(t.stops&&t.stops.length)){f.hidden=true;nrFootMore(false);return}   /* v7.64: no stops, no bar (the owner) */
-  var legs=nrMapsLegs(t),lw=$('#otp-nrLegs'),ap=nrAppleLegs(t),aw=$('#otp-nrApple'),al=$('#otp-nrAppleL'),go=nrStartLeg(t);
+  var legs=nrMapsLegs(t),lw=$('#otp-nrLegs'),ap=nrAppleLegs(t),aw=$('#otp-nrApple'),go=nrStartLeg(t);
   f.hidden=false;
   if(lw&&legs.length)lw.innerHTML=legs.map(function(l,i){return '<a class="b" '+(i===0?'id="otp-nrMaps" ':'')+'href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer">'+esc(l.label)+'</a>'}).join('');
   else m.href=nrMapsFor(t)||t.maps;
   if(aw)aw.innerHTML=ap.map(function(l){return '<a class="b" href="'+esc(l.url)+'" target="_blank" rel="noopener noreferrer">'+esc(l.label)+'</a>'}).join('');   /* v7.62 */
-  if(al)al.hidden=!ap.length;
   if(st){st.href=go.url;st.textContent=go.label;st.setAttribute('aria-label',go.label.replace('Maps',go.app))}   /* v7.72: one main button */
-  if(NR.view){s.hidden=!NR.view.org;s.textContent='SHARE'}else{s.hidden=false;s.textContent='SHARE'}
+  s.hidden=!!NR.view&&!NR.view.org;s.textContent='Share'
 }
 /* v7.37 (the owner: "each time i visit a location, i may want to rebuild"): FROM HERE reads where you stand now and
    rebuilds the trip to the same destination: the stops behind you drop. On your own kept trip the worker saves it,
@@ -10708,7 +10724,7 @@ function nrShare(){
   var t=NR.view||NR.built,out=$('#otp-nrOut'),box=$('#otp-nrSendBox');if(!t||!out)return;
   if(box){box.parentNode.removeChild(box);return}
   var org=NR.view&&NR.view.org,keep=t.loop?'':NR.view?(org?'<button type="button" class="b" id="otp-nrInvite">Invite link</button><button type="button" class="b" id="otp-nrKeep">Add by email</button>':''):'<button type="button" class="b" id="otp-nrKeep">Keep it for my group</button>';   /* v7.69: the invite link */
-  out.insertAdjacentHTML('afterbegin','<div class="nr-sendbox" id="otp-nrSendBox"><div class="nr-sendrow"><button type="button" class="b p" id="otp-nrSend">Send the route</button>'+keep+'</div><p class="nearp nr-shnote"><b>Send the route</b>: the stops and the Google Maps link, by text or any app. '+(NR.view?(org?'<b>Invite link</b>: text it to friends; they tap it, sign in to Prowl, and they are on the trip under TRIPS.':''):'<b>Keep it for my group</b>: a trip your friends join with an invite link, with live hours and Finds (Prowl Pro).')+'</p></div>');
+  out.insertAdjacentHTML('afterbegin','<div class="nr-sendbox" id="otp-nrSendBox"><div class="nr-sendrow"><button type="button" class="b p" id="otp-nrSend">Send the route</button>'+keep+'</div><p class="nearp nr-shnote"><b>Send the route</b>: the stops and the Google Maps link, by text or any app. '+(NR.view?(org?'<b>Invite link</b>: text it to friends; they tap it, sign in to Prowl, and they are on the trip under Trips.':''):'<b>Keep it for my group</b>: a trip your friends join with an invite link, with live hours and Finds (Prowl Pro).')+'</p></div>');
   try{out.scrollIntoView({block:'start'})}catch(e){}
 }
 /* the route as words: the drive, the stops in order (skipped ones left out), the final stop, the Maps link(s). The
@@ -10773,7 +10789,7 @@ function nrJoinDraw(){
   var el=$('#otp-nrJoin'),code=nrInvGet();if(!el)return;
   if(!code){el.innerHTML='';return}
   var id=code.split('.')[0];
-  if(!nrSigned()){el.innerHTML='<div class="nr-joincard"><p class="nearp"><b>You are invited to a road trip.</b> Sign in to Prowl to join it, then come back to NEAR ME › TRIPS.</p><button type="button" class="b p" id="otp-nrJoinIn">Sign in to join</button></div>';return}
+  if(!nrSigned()){el.innerHTML='<div class="nr-joincard"><p class="nearp"><b>You are invited to a road trip.</b> Sign in to Prowl to join it, then come back to NEAR ME › Trips.</p><button type="button" class="b p" id="otp-nrJoinIn">Sign in to join</button></div>';return}
   el.innerHTML='<div class="nr-joincard"><p class="nearp">Opening the invite…</p></div>';
   nrFetch('/trips/'+E(id)+'/peek?c='+E(code)).then(function(r){
     if(!r.ok){el.innerHTML='<div class="nr-joincard"><p class="nearp">'+esc((r.j&&r.j.error)||'The invite could not be opened just now.')+'</p>'+(r.status===403||r.status===404?'<button type="button" class="b" id="otp-nrJoinX">Dismiss</button>':'')+'</div>';return}
@@ -10802,7 +10818,7 @@ function nrKeep(){
   if(!nrSigned()){toast('Sign in to Prowl to share a trip with your group.',3600);nrSignin();return}
   var b=NR.built;if(!b||NR.busy)return;
   var o=NR.builtFrom||NR.pos;   /* v7.62: where the trip was built from, the phone or the From box */
-  if(!o){toast('Prowl needs your location to keep the trip. Tap REBUILD, then try again.',3600);return}
+  if(!o){toast('Prowl needs your location to keep the trip. Tap More › Rebuild from here, then try again.',3600);return}
   NR.busy=true;toast('Keeping the trip for your group…',2400);
   nrFetch('/trips',{method:'POST',body:{to:b.to,lat:o.lat,lng:o.lng,day:NR.day,cats:nrCatsQ()}}).then(function(r){
     NR.busy=false;
@@ -10810,7 +10826,7 @@ function nrKeep(){
     if(r.status===403){toast('Group trips come with Prowl Pro. <a href="/products/prowl-pro">Try it free for a month</a>',5200);return}
     if(!r.ok){toast((r.status===0?'Prowl could not be reached. Check your signal and try again.':esc((r.j&&r.j.error)||'The trip could not be kept just now.')+' ('+r.status+')')+' Send the route still works.',5200);return}   /* v7.53: say why */
     NR.trips=null;nrOpenTrip(r.j,true);nrTripsLoad();
-    toast('Trip kept for your group. SHARE › Invite link sends it to your friends.',3600);
+    toast('Trip kept for your group. More › Share › Invite link sends it to your friends.',3600);
   });
 }
 function nrStopsSlim(stops){var out=[],i,j,a;for(i=0;i<(stops||[]).length&&out.length<60;i++){a=stops[i];out.push({name:a.name,town:a.town,lat:a.lat,lng:a.lng,url:a.url});for(j=0;j<(a.nested||[]).length&&out.length<60;j++)out.push({name:a.nested[j].name,town:a.nested[j].town,lat:a.nested[j].lat,lng:a.nested[j].lng,url:a.nested[j].url})}return out}
@@ -10820,7 +10836,7 @@ function nrOpenTrip(v,fresh){
   nrTripSet({id:v.id,name:(v.dest&&v.dest.name)||'',day:v.day,stops:nrStopsSlim(v.stops)});
   nrDrawTrip(v,{members:v.members});
   var out=$('#otp-nrOut');if(!out)return;
-  if(v.org)out.insertAdjacentHTML('afterbegin','<div class="nr-sharebox"><div class="addrow" id="otp-nrShareRow"'+(fresh?'':' hidden')+'><input id="otp-nrEmail" type="email" placeholder="Their account email" aria-label="Add a member by account email" autocomplete="off"><button type="button" id="otp-nrAdd">Add</button></div><p class="nearp nr-shnote">Members see this same trip, stops and live hours, under NEAR ME › TRIPS. Someone who has not used Prowl yet joins the moment they sign in.</p></div>');
+  if(v.org)out.insertAdjacentHTML('afterbegin','<div class="nr-sharebox"><div class="addrow" id="otp-nrShareRow"'+(fresh?'':' hidden')+'><input id="otp-nrEmail" type="email" placeholder="Their account email" aria-label="Add a member by account email" autocomplete="off"><button type="button" id="otp-nrAdd">Add</button></div><p class="nearp nr-shnote">Members see this same trip, stops and live hours, under NEAR ME › Trips. Someone who has not used Prowl yet joins the moment they sign in.</p></div>');
   out.insertAdjacentHTML('beforeend','<div class="nr-finds" id="otp-nrFinds"><h3 class="nearh">Finds</h3><p class="nearp">What the group finds on the road: a photo check’s photo, what it is, the asking price and the call. Share one from any photo check with <b>SHARE THIS FIND</b>. Photos go away a week after the trip.</p><div class="nr-findlist" id="otp-nrFindList"><p class="nearp">Loading…</p></div></div>');
   nrFindsLoad(v.id);
   nrFoot(v);
@@ -10833,7 +10849,7 @@ function nrTripsLoad(){
 }
 function nrTripsDraw(){
   var el=$('#otp-nrTrips'),L=NR.trips||[],act=nrTripGet();if(!el)return;
-  if(!L.length){el.innerHTML='<p class="nearp nr-empty">No group trips yet. Build one under ROAD TRIP, then SHARE › Keep it for my group; a friend\u2019s invite link lands here too.</p>';return}   /* v7.69 */
+  if(!L.length){el.innerHTML='<p class="nearp nr-empty">No group trips yet. Build one under Road trip, then More › Share › Keep it for my group; a friend\u2019s invite link lands here too.</p>';return}   /* v7.69 */
   el.innerHTML='<h3 class="nearh">Your trips</h3><div class="nr-triplist">'+L.map(function(t){var d=t.dest||{};return '<div class="nr-triprow"><button type="button" class="tb nr-tripb'+(act&&act.id===t.id?' on':'')+'" data-nrtrip="'+esc(t.id)+'"><span class="tt">'+esc(t.origin||'Here')+' → '+esc(d.name||'')+'</span><span class="nr-tripm">'+esc(nrDayLabel(t.day))+' · '+t.members+(t.members===1?' member':' members')+(t.org?' · yours':'')+'</span></button><button type="button" class="nr-rvb nr-tripdel" data-nrdel="'+esc(t.id)+'" data-org="'+(t.org?1:0)+'" aria-label="'+(t.org?'Delete':'Leave')+' the trip to '+esc(d.name||'')+'">'+(t.org?'Delete':'Leave')+'</button></div>'}).join('')+'</div>';   /* v7.70: Delete (yours) or Leave (a friend's) */
 }
 /* v7.70 (the owner: "i need a way to delete the shared trips"): Delete takes your own trip away for everyone, its
@@ -10906,7 +10922,7 @@ function nrMode(m){
   for(k in T){tb=$(T[k][0]);pn=$(T[k][1]);if(tb){tb.classList.toggle('on',k===m);tb.setAttribute('aria-selected',String(k===m))}if(pn)pn.hidden=k!==m}
   if(a){nrFoot(null);nrAroundLoad()}
   else if(m==='trips'){nrFoot(null);nrTripsLoad();nrJoinDraw()}
-  else{rNrDays();rNrDetour();nrTripsLoad();nrFoot(NR.view||NR.built);var fi=$('#otp-nrFrom'),pl=atLive();if(fi&&!fi.value&&pl)fi.value=pl.town;rNrFrom();rNrTripL();rNrOpts()}   /* v7.62 */   /* v7.57: no keyboard until the box is tapped (the owner) */
+  else{rNrDays();rNrDetour();nrTripsLoad();nrFoot(NR.view||NR.built);var fi=$('#otp-nrFrom'),pl=atLive();if(fi&&!fi.value&&pl)fi.value=pl.town;rNrFrom();rNrTripL();rNrOpts();rNrRecent()}   /* v7.62 */   /* v7.57: no keyboard until the box is tapped (the owner) */
 }
 function openNear(){
   if(!near||near.classList.contains('on'))return;
@@ -10944,6 +10960,7 @@ if(near){
   near.addEventListener('click',function(e){
     var me=e.target.closest&&e.target.closest('[data-nrme]');if(me){if(me.getAttribute('data-nrme')==='at')nrHereLive();else meLocate('from');return}   /* v7.64; v7.71: Around you's is where the phone is, live */
     if(e.target.closest&&e.target.closest('#otp-nrWhereGo')){nrWhereToggle();return}   /* v7.71 */
+    var rt=e.target.closest&&e.target.closest('[data-nrto]');if(rt){var tv=nrToGet()[+rt.getAttribute('data-nrto')],ti=$('#otp-nrTo');if(tv){if(ti)ti.value=tv;nrBuild(tv)}return}   /* v7.73 */
     if(e.target.closest&&e.target.closest('#otp-nrFromGo')){NR.fromOpen=!NR.fromOpen;rNrFrom();return}   /* v7.72 */
     if(e.target.closest&&e.target.closest('[data-nrfromopen]')){NR.fromOpen=true;rNrFrom();var fo=$('#otp-nrFrom');if(fo)try{fo.focus()}catch(x){}return}
     if(e.target.closest&&e.target.closest('[data-nrwhere]')){if(NR.mode!=='around')nrMode('around');nrWhereToggle(true);var wi=$('#otp-nrAtIn');if(wi)try{wi.focus()}catch(x){}return}

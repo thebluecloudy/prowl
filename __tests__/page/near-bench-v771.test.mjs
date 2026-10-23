@@ -166,6 +166,6 @@ test('the place cannot be listed yet: said, with a Maps search for the first kin
 });
 
 test('the members note points to TRIPS, where kept trips are now', () => {
-  assert.ok(PAGE.includes('under NEAR ME › TRIPS.'));
+  assert.ok(PAGE.includes('under NEAR ME › Trips.'), 'v7.73: the tab in sentence case');
   assert.ok(!PAGE.includes('under NEAR ME › Road trip'));
 });

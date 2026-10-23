@@ -74,7 +74,7 @@ test('the dock\'s NEAR ME opens its own screen with two tabs; the Den is not inv
   const near = p.$('#otp-near');
   assert.equal(near.hidden, false);
   assert.equal(p.$('#otp-den').hidden, true);
-  assert.deepEqual(p.$$('#otp-near .tab').map((b) => b.textContent), ['AROUND YOU', 'ROAD TRIP', 'TRIPS'], 'v7.69: a third tab for group trips');
+  assert.deepEqual(p.$$('#otp-near .tab').map((b) => b.textContent), ['Around you', 'Road trip', 'Trips'], 'v7.69: a third tab for group trips; v7.73: sentence case');
   assert.equal(p.$('#otp-nrAround').hidden, false); assert.equal(p.$('#otp-nrTrip').hidden, true);
   assert.ok(near.contains(p.$('#otp-nearGrid')), 'the store finder is inside Around you');
   assert.ok(near.contains(p.$('#otp-salesGrid')) && near.contains(p.$('#otp-fbHubBar')), 'and garage sales and the Facebook city');
@@ -165,11 +165,11 @@ test('Road trip: one box, the stops in drive order with the town\'s others neste
   const foot = p.$('#otp-nrFoot');
   assert.equal(foot.hidden, false);
   const maps = p.$('#otp-nrMaps');
-  assert.equal(maps.textContent, 'GOOGLE'); assert.equal(maps.href, MAPS);
+  assert.equal(maps.textContent, 'Google Maps'); assert.equal(maps.href, MAPS);
   const u = new URL(maps.href);
   assert.equal(u.searchParams.get('origin'), 'Novi, MI', 'a town, never a street');
   assert.equal(u.searchParams.get('waypoints').split('|').length, 3, 'anchors only');
-  assert.equal(p.$('#otp-nrShare').textContent, 'SHARE');
+  assert.equal(p.$('#otp-nrShare').textContent, 'Share');
   assert.doesNotMatch(p.$('#otp-near').textContent, /10 min/i, 'the worker\'s own default budget is internal');
   assert.deepEqual(p.$$('#otp-nrDetour [data-nrdet]').map((b) => b.textContent), ['5 min', '15 min', '30 min'], 'v7.62: the owner asked for a detour choice');
   assert.deepEqual(p.errors, []);
@@ -323,7 +323,7 @@ test('v7.39: FROM HERE rebuilds from where the phone is now; on your kept trip t
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
   const here = p.$('#otp-nrHere');
-  assert.equal(here.hidden, false); assert.equal(here.textContent, 'REBUILD');   // v7.65: short enough for the pill
+  assert.equal(here.hidden, false); assert.equal(here.textContent, 'Rebuild from here');   // v7.73: in More, the words fit
   here.click();
   await tick(200);
   const trips = calls.filter((x) => /\/trip\?/.test(x.url));
@@ -439,12 +439,12 @@ test('v7.39: the road with the most to see is said; smaller shops sit apart and 
   assert.deepEqual([...more.querySelectorAll('.nr-n')].map((e) => e.textContent), ['Gaffney\'s Treasures and Gifts', 'Ellie Mills Mercantile']);
   assert.equal(more.querySelector('.nr-skip'), null, 'nothing to skip there');
   assert.doesNotMatch(p.$('#otp-nrMaps').href, /Gaffney/, 'never in the Maps link');
-  assert.equal(p.$$('#otp-nrLegs a').length, 1); assert.equal(p.$('#otp-nrMaps').textContent, 'GOOGLE');
+  assert.equal(p.$$('#otp-nrLegs a').length, 1); assert.equal(p.$('#otp-nrMaps').textContent, 'Google Maps');
   p.$('#otp-nrTo').value = 'eleven';
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
   const legs = p.$$('#otp-nrLegs a');
-  assert.deepEqual(legs.map((a) => a.textContent), ['GOOGLE 1', 'GOOGLE 2']);
+  assert.deepEqual(legs.map((a) => a.textContent), ['Google Maps 1', 'Google Maps 2']);
   const l1 = new URL(legs[0].href), l2 = new URL(legs[1].href);
   assert.equal(l1.searchParams.get('origin'), 'Novi, MI');
   assert.equal(l1.searchParams.get('waypoints').split('|').length, 9);

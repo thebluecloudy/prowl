@@ -152,7 +152,7 @@ test('the button sits on the From row and in the Change box; To first, From unde
   assert.equal(p.$('#otp-nrTo').placeholder, 'Town, City, ST, ZIP or a shop');
   p.$('#otp-nrT2').click(); await tick(30);
   assert.equal(p.$('#otp-nrFoot').hidden, true, 'nothing built: no OPEN IN MAPS / REBUILD FROM HERE / SHARE bar');
-  assert.equal(p.$('#otp-nrHere').textContent, 'REBUILD');
+  assert.equal(p.$('#otp-nrHere').textContent, 'Rebuild from here');
   await p.close();
 });
 

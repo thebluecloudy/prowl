@@ -1,16 +1,28 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.72 / v162).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.73 / v162).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.72** | 395,946 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.73** | 395,918 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v162** | |
 
 Recently shipped, newest first:
 
+- **v7.73: NEAR ME benchmarked, polish** (release 3 of 3, after v7.71 Around you and v7.72 Road trip).
+  - **The glance check for the car**: on a phone every main Near me button is 48px tall with its words at 17px: the
+    tabs, Directions, Build trip / Look there, Change, Use my location, Done and the trip bar (Skip and Reviews are
+    48px tall too).
+  - **No typing after the first trip**: the last three places a trip was built to sit under Where are you headed? as
+    Recent chips; one tap builds the trip there. Kept on this device in a new key, `prowl.nearTo` (five at most, the
+    same place once, a place with no route never).
+  - **Sentence case** for Near me's own tabs and buttons: Around you · Road trip · Trips; in More, Google Maps
+    (Google Maps 1, 2 on a split trip), Apple Maps, Rebuild from here, Share; the copy that names them follows. The
+    dock's NEAR ME and the app's other tabs keep their capitals.
+  - Tests: `__tests__/page/near-polish-v773.test.mjs`; trip-bar-labels, near-section, road-upgrades, near-road-v772,
+    near-bench-v771 and use-my-location take the new words.
 - **v7.72: NEAR ME benchmarked, Road trip** (release 2 of 3, after v7.71's Around you; against Google and Apple
   Maps' directions, Waze and Roadtrippers).
   - **Where are you headed? first**: the heading is the destination box's label ("Town, City, ST, ZIP or a shop"),
@@ -1125,7 +1137,6 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `ccr-0de21c46-yzs839` | Claude | **v7.73**: NEAR ME benchmarked, polish: glance sizes for the car, recent destinations as chips, sentence case for tabs and buttons | Next, after v7.72 is live. |
 
 Next free numbers: **page v7.74, worker v163**. Claim one here when you start.
 
