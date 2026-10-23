@@ -109,7 +109,7 @@ test('stops are lettered A, B, C, each with what it adds to the drive; Skip has 
   await p.close();
 });
 
-test('the bar is one Start in Maps and More; More holds every Maps link, REBUILD and SHARE', async () => {
+test('the bar is one Start in Maps and More; More holds every Maps link, Rebuild from here and Share', async () => {
   const { p } = await roadTrip();
   await build(p, 'Blenko');
   assert.equal(p.$('#otp-nrFoot').hidden, false);
@@ -126,8 +126,7 @@ test('the bar is one Start in Maps and More; More holds every Maps link, REBUILD
   assert.equal(more.textContent, 'Close'); assert.equal(more.getAttribute('aria-expanded'), 'true');
   const panel = p.$('#otp-nrFootP');
   assert.ok(panel.contains(p.$('#otp-nrMaps')) && panel.contains(p.$('#otp-nrHere')) && panel.contains(p.$('#otp-nrShare')));
-  assert.equal(p.$('#otp-nrApple a').textContent, 'APPLE');
-  assert.equal(p.$('#otp-nrAppleL').hidden, false);
+  assert.equal(p.$('#otp-nrApple a').textContent, 'Apple Maps');
   more.click();
   assert.equal(p.$('#otp-nrFootP').hidden, true);
   await p.close();
