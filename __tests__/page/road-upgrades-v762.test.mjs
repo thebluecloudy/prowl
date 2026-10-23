@@ -43,7 +43,9 @@ test('the detour: 5, 15 or 30 minutes, 15 by default, remembered, and the trip i
   await toTrip(p, 'Blenko');
   assert.match(calls.filter((u) => /\/trip\?/.test(u)).pop(), /&detour=15$/);
   assert.equal(p.$('#otp-nrDetour [aria-pressed="true"]').textContent, '15 min');
-  p.$('#otp-nrDetour [data-nrdet="30"]').click(); await tick(200);
+  p.$('#otp-nrDetour [data-nrdet="30"]').click(); await tick(60);
+  assert.match(calls.filter((u) => /\/trip\?/.test(u)).pop(), /&detour=15$/, 'v7.72: not yet');
+  p.$('#otp-nrOptsDone').click(); await tick(200);
   assert.match(calls.filter((u) => /\/trip\?/.test(u)).pop(), /&detour=30$/);
   assert.equal(p.win.localStorage.getItem('prowl.nearDetour'), '30');
   assert.deepEqual(p.errors, []);

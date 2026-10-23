@@ -28,7 +28,8 @@ test('a road trip says how long to allow at each stop, what a detour costs, what
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
   const lines = p.$$('#otp-nrOut .nr-stops > .nr-stop > .nr-row .nr-anchor .nr-x').map((e) => e.textContent);
-  assert.deepEqual(lines, ['Allow about 1 h 30 min', 'Allow about 4 h · Worth the detour: adds about 22 min', 'Allow about 2 h']);
+  assert.deepEqual(lines, ['Allow about 1 h 30 min', 'Allow about 4 h · Worth the detour', 'Allow about 2 h']);
+  assert.equal(p.$$('#otp-nrOut .nr-stops > .nr-stop > .nr-row .nr-anchor .nr-det')[1].textContent, '+22 min', 'v7.72: what it adds is on the card');
   const nested = p.$$('#otp-nrOut .nr-nest .nr-card').map((c) => (c.querySelector('.nr-x') || { textContent: '' }).textContent);
   assert.deepEqual(nested, ['A short walk from the stop', ''], 'Village Antiques is a walk; the other one a drive');
   assert.equal(p.$('#otp-nrOut .nr-dest .nr-x'), null, 'the final stop has no time to allow from the worker');

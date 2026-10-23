@@ -138,7 +138,7 @@ test('Road trip: no GPS needed. With location off it points to From; a typed Fro
   p.$('#otp-nrTo').value = 'Blenko Glass Company, Milton, WV';
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { cancelable: true, bubbles: true }));
   await tick(60);
-  assert.match(p.$('#otp-nrOut').textContent, /Location is blocked for this site in this browser.*Or type a town, City, ST or ZIP in From above/);   // v7.64
+  assert.match(p.$('#otp-nrOut').textContent, /Location is blocked for this site in this browser.*Or tap Change by From above and type a town, City, ST or ZIP/);   // v7.64
   assert.ok(!/no starting point/.test(p.$('#otp-nrOut').textContent));
   p.$('#otp-nrFrom').value = 'Milton, WV';
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { cancelable: true, bubbles: true }));

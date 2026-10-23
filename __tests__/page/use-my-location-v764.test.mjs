@@ -99,7 +99,7 @@ test('Road trip with location blocked: the help, and the Use my location button 
   await tick(60);
   const out = p.$('#otp-nrOut').textContent;
   assert.match(out, /Location is blocked for this site in this browser/);
-  assert.match(out, /Or type a town, City, ST or ZIP in From above/);
+  assert.match(out, /Or tap Change by From above and type a town, City, ST or ZIP/);   // v7.72
   p.$('#otp-nrOut [data-nrme="from"]').click(); await tick(80);
   const msg = p.$('#otp-nrFromMsg');
   assert.equal(msg.hidden, false);
@@ -138,7 +138,7 @@ test('a town the worker cannot name still gives a start at the fix, as My locati
   await p.close();
 });
 
-test('the button sits on the From row and in the Change box; From is right above To; no trip, no bottom bar', async () => {
+test('the button sits on the From row and in the Change box; To first, From under it; no trip, no bottom bar', async () => {
   const calls = [], gps = newGps('denied');
   const p = loadPage({ storage: DEN, fetchImpl: fixture(calls), beforeLoad: (w) => phone(w, gps) });
   await open(p);
@@ -148,7 +148,8 @@ test('the button sits on the From row and in the Change box; From is right above
   assert.equal(p.$('#otp-nrAtMe').type, 'button', 'never submits the typed text');
   const route = p.$('.nr-route');
   assert.ok(route.contains(p.$('#otp-nrFrom')) && route.contains(p.$('#otp-nrForm')), 'From and To share one block');
-  assert.equal(p.$('#otp-nrTo').placeholder, 'To: town, City, ST or ZIP (optional)');
+  assert.ok(p.$('#otp-nrForm').compareDocumentPosition(p.$('#otp-nrFrom')) & p.win.Node.DOCUMENT_POSITION_FOLLOWING, 'v7.72: where to first, From under it');
+  assert.equal(p.$('#otp-nrTo').placeholder, 'Town, City, ST, ZIP or a shop');
   p.$('#otp-nrT2').click(); await tick(30);
   assert.equal(p.$('#otp-nrFoot').hidden, true, 'nothing built: no OPEN IN MAPS / REBUILD FROM HERE / SHARE bar');
   assert.equal(p.$('#otp-nrHere').textContent, 'REBUILD');

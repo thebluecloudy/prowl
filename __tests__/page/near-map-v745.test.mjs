@@ -97,7 +97,7 @@ test('Around you: the town you are in, numbered rows with Directions, and Show o
   await p.close();
 });
 
-test('Road trip: the map shows the anchors numbered, the nested shops as small dots, the final stop as a flag, and you; popups use the trip day; a skipped stop leaves the map', async () => {
+test('Road trip: the map shows the anchors lettered, the nested shops as small dots, the final stop as a flag, and you; popups use the trip day; a skipped stop leaves the map', async () => {
   const R = rec(), calls = [];
   const p = loadPage({ storage: DEN, fetchImpl: nearFetch(calls), beforeLoad: (w) => phone(w, R) });
   await tick(30);
@@ -109,14 +109,14 @@ test('Road trip: the map shows the anchors numbered, the nested shops as small d
   p.$('#otp-nrTo').value = 'Blenko Glass Company, Milton, WV';
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
-  assert.deepEqual(p.$$('#otp-nrOut .nr-stops > .nr-stop > .nr-row > a.nr-anchor .nr-num').map((e) => e.textContent), ['1', '2', '3'], 'the anchors are numbered');
+  assert.deepEqual(p.$$('#otp-nrOut .nr-stops > .nr-stop > .nr-row > a.nr-anchor .nr-num').map((e) => e.textContent), ['A', 'B', 'C'], 'v7.72: the anchors are lettered');
   assert.equal(p.$$('#otp-nrOut .nr-nest .nr-num').length, 0, 'the nested shops are not');
   assert.equal(p.$('#otp-nrMapT').hidden, true);
   assert.deepEqual(R.maps, []);
   p.$('#otp-nrOut [data-nrmap="trip"]').click();
   await tick(20);
   assert.deepEqual(R.maps, ['otp-nrMapT']);
-  assert.deepEqual(R.markers.map((m) => m.icon.html), ['1', '2', '3', '', '', '⚑']);
+  assert.deepEqual(R.markers.map((m) => m.icon.html), ['A', 'B', 'C', '', '', '⚑'], 'v7.72: the pins match the lettered stops');
   assert.deepEqual(R.markers.map((m) => m.icon.className), ['nr-pin', 'nr-pin', 'nr-pin', 'nr-pin nr-pin-sub', 'nr-pin nr-pin-sub', 'nr-pin nr-pin-dest']);
   same(R.markers[3].icon.iconSize, [16, 16]);
   same(R.markers[5].ll, [38.43, -82.13]);
@@ -128,7 +128,7 @@ test('Road trip: the map shows the anchors numbered, the nested shops as small d
   p.$('#otp-nrOut [data-nrskip="S2"]').click();
   await tick(20);
   assert.equal(R.removed, 1, 'redrawn: the old map goes');
-  assert.deepEqual(R.markers.slice(6).map((m) => m.icon.html), ['1', '2', '', '', '⚑'], 'Chillicothe is off the map and the numbers close up');
+  assert.deepEqual(R.markers.slice(6).map((m) => m.icon.html), ['A', 'B', '', '', '⚑'], 'Chillicothe is off the map and the letters close up');
   assert.equal(p.$('#otp-nrOut [data-nrmap="trip"]').textContent, 'Hide the map', 'the map stays open through a redraw');
   assert.deepEqual(p.errors, []);
   await p.close();

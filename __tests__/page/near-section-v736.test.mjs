@@ -188,6 +188,9 @@ test('Road trip on a Monday: Chillicothe renders CLOSED and Blenko shows its Mon
   await tick(120);
   const monday = p.$$('#otp-nrDays .hubc').find((b) => new Date(b.getAttribute('data-nrday') + 'T12:00:00Z').getUTCDay() === 1);
   monday.click();
+  await tick(60);
+  assert.ok(!calls.some((x) => new RegExp('&day=' + monday.getAttribute('data-nrday')).test(x.url)), 'v7.72: nothing rebuilt until Done');
+  p.$('#otp-nrOptsDone').click();
   await tick(120);
   assert.equal(p.$('#otp-nrDays .hubc.on').getAttribute('data-nrday'), monday.getAttribute('data-nrday'), 'the day pill sticks');
   const c = calls.filter((x) => /\/trip\?/.test(x.url)).pop();
