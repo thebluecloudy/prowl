@@ -17,21 +17,16 @@ function phone(win, opt) {
 }
 const links = (p) => p.$$('#otp-nearGrid a.nearc').map((a) => a.href);
 
-test('with a fix the store searches go around where you are; 48377 is one tap away; Apple Maps gets no place for where you are', async () => {
+test('with a fix the store searches go around where you are; Apple Maps gets no place for where you are', async () => {
   const p = loadPage({ storage: DEN, fetchImpl: fx, beforeLoad: (w) => phone(w) });
   await tick(30);
   p.$('#otp-localBtn').click(); await tick(120);
   assert.equal(p.$('#otp-nearScope').textContent, 'where you are');
-  assert.deepEqual(p.$$('#otp-nearWhere button').map((b) => b.textContent + ':' + b.getAttribute('aria-pressed')), ['Where I am:true', '48377:false']);
-  assert.equal(links(p)[0], 'https://www.google.com/maps/search/?api=1&query=antique%20stores%20near%20me');
+  assert.equal(p.$('#otp-nearWhere'), null, 'v7.71: one place to say where, the pill at the top; no second Where I am / 48377 bar');
+  assert.equal(links(p)[0], 'https://www.google.com/maps/search/?api=1&query=thrift%20stores%20near%20me', 'v7.71: Thrift stores stays in the grid (the owner)');
   assert.ok(links(p).every((u) => /near%20me$/.test(u) && !/48377/.test(u)), 'no ZIP while you are somewhere else');
-  p.$('#otp-nearWhere [data-nw="place"]').click();
-  assert.equal(p.$('#otp-nearScope').textContent, 'near 48377');
-  assert.equal(links(p)[0], 'https://www.google.com/maps/search/?api=1&query=antique%20stores%20near%2048377');
   p.$('#otp-nearMaps [data-mp="apple"]').click();
-  assert.equal(links(p)[0], 'https://maps.apple.com/?q=antique%20stores%2048377');
-  p.$('#otp-nearWhere [data-nw="me"]').click();
-  assert.equal(links(p)[0], 'https://maps.apple.com/?q=antique%20stores', 'Apple Maps searches around where you stand');
+  assert.equal(links(p)[0], 'https://maps.apple.com/?q=thrift%20stores', 'Apple Maps searches around where you stand');
   assert.deepEqual(p.errors, []);
   await p.close();
 });
@@ -41,14 +36,14 @@ test('no fix: the saved place, said as such; no saved place: no chips, near me',
   await tick(30);
   p.$('#otp-localBtn').click(); await tick(120);
   assert.equal(p.$('#otp-nearScope').textContent, 'near 48377');
-  assert.equal(links(p)[0], 'https://www.google.com/maps/search/?api=1&query=antique%20stores%20near%2048377');
+  assert.equal(links(p)[0], 'https://www.google.com/maps/search/?api=1&query=thrift%20stores%20near%2048377');
   await p.close();
   const q = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [] } }, fetchImpl: fx, beforeLoad: (w) => phone(w, { denied: true }) });
   await tick(30);
   q.$('#otp-localBtn').click(); await tick(120);
-  assert.equal(q.$('#otp-nearWhere').hidden, true);
+  assert.equal(q.$('#otp-nearWhere'), null);
   assert.equal(q.$('#otp-nearScope').textContent, 'where you are');
-  assert.equal(links(q)[0], 'https://www.google.com/maps/search/?api=1&query=antique%20stores%20near%20me');
+  assert.equal(links(q)[0], 'https://www.google.com/maps/search/?api=1&query=thrift%20stores%20near%20me');
   assert.deepEqual(q.errors, []);
   await q.close();
 });

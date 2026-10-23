@@ -25,19 +25,20 @@ test('only Vintage on: the line says vintage shops, says Antiques and Thrift are
   const calls = [];
   const p = await open({ 'prowl.nearCats': ['vintage'] }, calls);
   const lede = p.$('#otp-nrLive .nearp').textContent;
-  assert.match(lede, /^You are in Maumee, OH\. Vintage shops near where you are standing, biggest first\./);
+  assert.match(lede, /^Vintage shops, biggest first\./);
+  assert.match(p.$('#otp-nrWhere').textContent, /where you are \(Maumee, OH\)/, 'v7.71: the town is on the location pill');
   assert.doesNotMatch(p.$('#otp-nrLive').textContent, /Antique, vintage and thrift/, 'never the fixed list');
   const off = p.$('#otp-nrLive .nr-kindsoff');
   assert.ok(off, 'the kinds that are off are said');
   assert.equal(off.textContent, 'Antiques and Thrift are off, so antique malls are not listed. Show them too');
   assert.equal(p.$('#otp-nrCatsAll').tagName, 'BUTTON', 'v7.48: a real button');
-  assert.match(p.$('#otp-nrLive .nearp').textContent, /^You are in Maumee, OH\./, 'v7.48: a shop the worker called close is miles from this phone, so not "You are at"');
+  assert.doesNotMatch(p.$('#otp-nrLive .nearp').textContent, /You are at/, 'v7.48: a shop the worker called close is miles from this phone, so not "You are at"');
   p.$('#otp-nrCatsAll').click();
   await tick(60);
   assert.equal(JSON.parse(p.win.localStorage.getItem('prowl.nearCats')).join(','), 'antiques,vintage,thrift', 'the same key, the usual kinds added, in chip order');
   assert.match(calls.filter((u) => /\/near\?/.test(u)).pop(), /cats=antiques%2Cvintage%2Cthrift$/);
   assert.deepEqual(p.$$('#otp-nrCatsA [aria-pressed="true"]').map((b) => b.getAttribute('data-nrcat')), ['antiques', 'vintage', 'thrift'], 'the chips light up');
-  assert.match(p.$('#otp-nrLive .nearp').textContent, /^You are at Maumee Antique Mall in Maumee, OH\. Antique, vintage and thrift shops near where you are standing/);
+  assert.match(p.$('#otp-nrLive .nearp').textContent, /^You are at Maumee Antique Mall\. Antique, vintage and thrift shops, biggest first\./);
   assert.equal(p.$('#otp-nrLive .nr-kindsoff'), null, 'nothing off any more');
   assert.equal(p.$('#otp-nrLive .nr-card .nr-n').textContent, 'Maumee Antique Mall');
   assert.deepEqual(p.errors, []);
@@ -46,11 +47,11 @@ test('only Vintage on: the line says vintage shops, says Antiques and Thrift are
 
 test('the usual kinds on: no note; records alone and nothing near: the empty line names records and offers the usual kinds', async () => {
   const a = await open({}, []);
-  assert.match(a.$('#otp-nrLive .nearp').textContent, /^You are at Maumee Antique Mall in Maumee, OH\. Antique, vintage and thrift shops near/);
+  assert.match(a.$('#otp-nrLive .nearp').textContent, /^You are at Maumee Antique Mall\. Antique, vintage and thrift shops/);
   assert.equal(a.$('#otp-nrLive .nr-kindsoff'), null);
   await a.close();
   const b = await open({ 'prowl.nearCats': ['records', 'flea'] }, []);
-  assert.match(b.$('#otp-nrLive .nearp').textContent, /^You are in Maumee, OH\. No record shops and flea markets close by right now\./);
+  assert.match(b.$('#otp-nrLive .nearp').textContent, /^No record shops and flea markets close by right now\./);
   assert.equal(b.$('#otp-nrLive .nr-kindsoff').textContent, 'Antiques, Vintage and Thrift are off, so antique malls are not listed. Show them too');
   assert.deepEqual(b.errors, []);
   await b.close();
