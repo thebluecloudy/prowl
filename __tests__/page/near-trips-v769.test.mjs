@@ -157,3 +157,30 @@ test('places as you type a destination; a tap fills To and builds the trip there
   assert.deepEqual(p.errors, []);
   await p.close();
 });
+
+test('v7.70: TRIPS has Delete on your own trip and Leave on a friend\'s; the first tap asks, the second does it', async () => {
+  const calls = [];
+  const base = fx(calls);
+  const LIST = { trips: [{ id: 'tabcdefghi', day: '2026-10-26', origin: 'Novi, MI', dest: DEST, members: 2, stops: 1, org: true }, { id: 'tzyxwvutsr', day: '2026-10-27', origin: 'Findlay, OH', dest: Object.assign({}, DEST, { name: 'Heart of Ohio' }), members: 3, stops: 4, org: false }] };
+  const p = loadPage({ storage: Object.assign({}, DEN, { 'prowl.session': sess(), 'prowl.trip': { id: 'tabcdefghi', name: 'Blenko', day: '2026-10-26', stops: [] } }), fetchImpl: (u, o) => { const url = String(u); if (/\/trips$/.test(url) && !(o && o.method === 'POST')) { calls.push({ url, o: o || {} }); return J(LIST); } if (/\/(delete|leave)$/.test(url)) { calls.push({ url, o: o || {} }); return J({ ok: true }); } return base(u, o); }, beforeLoad: (w) => phone(w) });
+  await tick(30);
+  p.$('#otp-localBtn').click(); await tick(60);
+  p.$('#otp-nrT3').click(); await tick(40);
+  const del = p.$('#otp-nrTrips [data-nrdel="tabcdefghi"]'), leave = p.$('#otp-nrTrips [data-nrdel="tzyxwvutsr"]');
+  assert.equal(del.textContent, 'Delete'); assert.equal(leave.textContent, 'Leave');
+  del.click();
+  assert.equal(del.textContent, 'Delete for everyone?', 'the first tap asks');
+  assert.equal(calls.filter((x) => /\/delete$/.test(x.url)).length, 0);
+  del.click(); await tick(30);
+  assert.equal(calls.filter((x) => /\/trips\/tabcdefghi\/delete$/.test(x.url)).length, 1);
+  assert.equal(p.$('#otp-nrTrips [data-nrdel="tabcdefghi"]'), null, 'gone from the list');
+  assert.equal(p.win.localStorage.getItem('prowl.trip'), null, 'no longer the trip you are on');
+  assert.match(p.$('#otp-toast').textContent, /Trip deleted for everyone/);
+  const lv = p.$('#otp-nrTrips [data-nrdel="tzyxwvutsr"]');
+  lv.click(); assert.equal(lv.textContent, 'Leave this trip?');
+  lv.click(); await tick(30);
+  assert.ok(calls.find((x) => /\/trips\/tzyxwvutsr\/leave$/.test(x.url) && x.o.method === 'POST'));
+  assert.match(p.$('#otp-nrTrips').textContent, /No group trips yet/);
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});

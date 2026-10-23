@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v162: 2026-10-23. Group trips can be deleted by their organizer (POST /trips/<id>/delete: the trip, its Finds and
+ *         their photos go now, for everyone) and left by a member (POST /trips/<id>/leave); a trip gone from the store
+ *         drops off a member's list (the owner: "i need a way to delete the shared trips").
  *   v161: 2026-10-23. Cards carry Google's line about a place (about); /reviews?id= gives a place's stars and a few of
  *         its Google reviews on a tap, an hour in the cache; group trips get invite links: POST /trips/<id>/invite (the
  *         organizer) signs a code, GET /trips/<id>/peek?c= shows the trip to whoever holds it, POST /trips/<id>/join adds
@@ -551,7 +554,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v161";
+const WORKER_VERSION = "v162";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6907,13 +6910,15 @@ async function tripsRoute(request, env, url, origin) {
   if (!who) return json({ error: "Sign in to Prowl to share trips.", signin: true }, 401, origin);
   const cid = who.id;
   if (!(await vCount("trips:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIPS_PER_IP))) return json({ error: "slow down" }, 429, origin);
-  const m = /^\/trips(?:\/(t[a-z0-9]{9})(?:\/(share|close|finds|rebuild|invite|peek|join))?)?$/.exec(url.pathname);
+  const m = /^\/trips(?:\/(t[a-z0-9]{9})(?:\/(share|close|finds|rebuild|invite|peek|join|delete|leave))?)?$/.exec(url.pathname);
   if (!m) return json({ error: "not found" }, 404, origin);
   const id = m[1] || "", act = m[2] || "", post = request.method === "POST";
   if (!id) {
     if (!post) {
       const ids = await kvGet(env, "trips:" + cid, []), out = [];
-      for (const tid of ids.slice(0, 20)) { const t = await tripGet(env, tid); if (t && tripMember(t, cid) && !tripExpired(t)) out.push(tripSummary(t, cid)); }
+      const gone = [];
+      for (const tid of ids.slice(0, 20)) { const t = await tripGet(env, tid); if (t && tripMember(t, cid) && !tripExpired(t)) out.push(tripSummary(t, cid)); else if (!t || !tripMember(t, cid)) gone.push(tid); }
+      if (gone.length) { try { await kvPut(env, "trips:" + cid, ids.filter((x) => gone.indexOf(x) === -1)); } catch (e) {} }   /* v162: deleted or left, off the list */
       return nearAnswer({ trips: out }, 200, origin);
     }
     if (!(await tripPro(env, request, who))) return json({ error: "Group trips come with Prowl Pro.", pro: false }, 403, origin);
@@ -6982,6 +6987,22 @@ async function tripsRoute(request, env, url, origin) {
     await env.PROWL_ALERTS.put("tripinv:" + h, JSON.stringify({ ids: inv.ids.slice(-20) }), { expirationTtl: TRIPINV_TTL });
     return nearAnswer({ ok: true, added: false, pending: true, members: trip.members.length }, 200, origin);
   }
+  if (act === "delete") {   /* v162: the organizer deletes the trip for everyone, its Finds and their photos with it */
+    if (!post || !org) return json({ error: "Only the organizer deletes a trip. Leave it instead." }, 403, origin);
+    try {
+      await tripPurge(env, id);
+      const all = await kvGet(env, "trips:all", []); await kvPut(env, "trips:all", all.filter((e) => e && e.id !== id));
+      await tripIndexRemove(env, cid, id);
+    } catch (e) { console.error("trips delete", String(e && e.message || e)); return json({ error: "The trip could not be deleted just now." }, 503, origin); }
+    return nearAnswer({ ok: true, deleted: id }, 200, origin);
+  }
+  if (act === "leave") {   /* v162: a member takes the trip off their own list */
+    if (!post) return json({ error: "POST only" }, 405, origin);
+    if (org) return json({ error: "You organized this trip: delete it instead." }, 409, origin);
+    trip.members = trip.members.filter((m) => m !== String(cid));
+    try { await tripPut(env, trip); await tripIndexRemove(env, cid, id); } catch (e) { console.error("trips leave", String(e && e.message || e)); return json({ error: "You could not leave just now." }, 503, origin); }
+    return nearAnswer({ ok: true, left: id }, 200, origin);
+  }
   if (act === "close") {
     if (!post || !org) return json({ error: "Only the organizer closes a trip." }, 403, origin);
     trip.closes = new Date().toISOString(); trip.expires = tripExpires(trip.closes);
@@ -7046,14 +7067,22 @@ async function tripSweep(env) {
     if (!e || !e.id) continue;
     if (Date.parse(e.expires || "") > now) { keep.push(e); continue; }
     try {
-      if (env.PROWL_FINDS) { let cursor; do { const l = await env.PROWL_FINDS.list({ prefix: "finds/" + e.id + "/", cursor: cursor }); if (l.objects.length) await env.PROWL_FINDS.delete(l.objects.map((o) => o.key)); cursor = l.truncated ? l.cursor : null; } while (cursor); }
-      await env.PROWL_ALERTS.delete("tripfinds:" + e.id);
-      await env.PROWL_ALERTS.delete("trip:" + e.id);
+      await tripPurge(env, e.id);
       swept++;
     } catch (err) { console.error("trip sweep", e.id, String(err && err.message || err)); keep.push(e); }
   }
   if (swept) await kvPut(env, "trips:all", keep);
   return { swept: swept };
+}
+/* v162: a trip, its Finds and their photos, gone (the sweep after it expires, or its organizer's Delete) */
+async function tripPurge(env, id) {
+  if (env.PROWL_FINDS) { let cursor; do { const l = await env.PROWL_FINDS.list({ prefix: "finds/" + id + "/", cursor: cursor }); if (l.objects.length) await env.PROWL_FINDS.delete(l.objects.map((o) => o.key)); cursor = l.truncated ? l.cursor : null; } while (cursor); }
+  await env.PROWL_ALERTS.delete("tripfinds:" + id);
+  await env.PROWL_ALERTS.delete("trip:" + id);
+}
+async function tripIndexRemove(env, cid, id) {
+  const ids = await kvGet(env, "trips:" + cid, []);
+  if (ids.indexOf(id) !== -1) await kvPut(env, "trips:" + cid, ids.filter((x) => x !== id));
 }
 
 /* v111: GET /css/prowl.<hash>.css, the page's main stylesheet. The deployed page links to it instead of carrying
