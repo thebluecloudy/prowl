@@ -1082,8 +1082,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.71**: NEAR ME benchmarked, Around you: one location control, Open now, cards, More ways to look (then v7.72 Road trip, v7.73 polish) | Building. |
 
-Next free numbers: **page v7.71, worker v163**. Claim one here when you start.
+Next free numbers: **page v7.74, worker v163**. Claim one here when you start.
 
 ## What's next
 
