@@ -304,7 +304,8 @@ test("the trip record: the organizer is its first member, the origin is a town, 
   assert.equal(tripExpired(t, now), false);
   assert.equal(tripExpired(t, Date.parse("2026-11-05T00:00:00Z")), true);
   assert.equal(t.stops.length, 7); assert.equal(t.stops[6].nested.length, 3);
-  assert.ok(!JSON.stringify(t).match(/summary|rating/), "the record keeps only what a stop needs");
+  assert.ok(!JSON.stringify(t).match(/"summary"/), "the record keeps only what a stop needs");
+  assert.ok(t.stops.every((s) => s.rating == null || (s.rating > 0 && s.rating <= 5)), "v161: the stars come along, for the group too");
   assert.equal(tripMember(t, "1234567"), true); assert.equal(tripMember(t, 1234567), true); assert.equal(tripMember(t, "999"), false);
   const v = tripView(t, { p_maumeeantiquemall: EMPORIUM });
   assert.equal(v.members, 1); assert.equal(v.stops[0].hours, EMPORIUM); assert.equal(v.stops[1].hours, null);

@@ -19,6 +19,11 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v161: 2026-10-23. Cards carry Google's line about a place (about); /reviews?id= gives a place's stars and a few of
+ *         its Google reviews on a tap, an hour in the cache; group trips get invite links: POST /trips/<id>/invite (the
+ *         organizer) signs a code, GET /trips/<id>/peek?c= shows the trip to whoever holds it, POST /trips/<id>/join adds
+ *         them (the owner: sharing a trip with friends was complicated); /suggest?q= gives places as you type a
+ *         destination, from Google's Autocomplete, a day in the cache.
  *   v160: 2026-10-22. fbTerm cuts a long hunt at its last whole word, as the page's sgwClean now does (page v7.67:
  *         "...Texans Incorp" found nothing on eBay), so the Facebook finds key still matches the page's.
  *   v159: 2026-10-22. Use my location (the owner, in a car with location off in an in-app browser, not knowing the town).
@@ -546,7 +551,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v160";
+const WORKER_VERSION = "v161";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6494,6 +6499,7 @@ async function fbFinds(request, env, url, origin) {
    deleted FINDS_GRACE_DAYS later by tripSweep (the alert clock, once an hour), and /finds refuses them from the moment
    the trip expires whatever R2 still holds. The bucket's own lifecycle rule (wrangler.toml) is the backstop. */
 const NEAR_HERE_M = Math.round(3 * MI_M);   /* v153: the distance-ranked ask looks this far */
+const REVIEWS_PER_IP = 300, SUGGEST_PER_IP = 1500;   /* v161: suggestions asked a day per address */   /* v161: reviews asked a day per address */
 const NEAR_PER_IP = 120, TRIP_PER_IP = 30, PP_PER_IP = 1500, TRIPS_PER_IP = 400, NEAR_CACHE_SECONDS = 600, TRIP_CACHE_SECONDS = 3600, HOURS_CACHE_SECONDS = 600;
 const G_PLACE_FIELDS = "id,displayName,formattedAddress,addressComponents,location,rating,userRatingCount,regularOpeningHours,utcOffsetMinutes,photos,editorialSummary,primaryType,primaryTypeDisplayName,googleMapsUri";
 const G_TIMEOUT_MS = 9000, FIND_SIG_SECONDS = 3600, FIND_BODY_MAX = 1024 * 1024, TRIPINV_TTL = 30 * 86400;
@@ -6771,6 +6777,53 @@ async function tripRoute(request, env, url, origin) {
   try { await PCACHE.put(key, res.clone()); } catch (e) {}
   return res;
 }
+/* v161 (the owner, on Road trip: "i may want to go to a store or something, or a city where i don't know exactly where
+   it is ... it has a screen that shows you suggested places, and then you click on that place"): places as you type,
+   from Google's Autocomplete, biased to where you are; each one a name and the town under it. A day in the cache per
+   word and area. */
+async function suggestRoute(request, env, url, origin) {
+  const q = vClean(url.searchParams.get("q"), 80).replace(/\s+/g, " ").trim();
+  if (q.length < 3) return json({ places: [] }, 200, origin);
+  if (!gKey(env)) return json({ error: "not set up", places: [] }, 503, origin);
+  const lat = nearNum(url.searchParams.get("lat"), -90, 90), lng = nearNum(url.searchParams.get("lng"), -180, 180), near = lat != null && lng != null;
+  const key = "https://prowl-suggest.invalid/" + encodeURIComponent(q.toLowerCase()) + (near ? "?c=" + lat.toFixed(1) + "," + lng.toFixed(1) : "") + "&v=1";
+  const hit = await PCACHE.match(key);
+  if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
+  if (!(await vCount("sg:" + ipKey(request.headers.get("CF-Connecting-IP")), SUGGEST_PER_IP))) return json({ error: "slow down", places: [] }, 429, origin);
+  const body = { input: q, includedRegionCodes: ["us"], languageCode: "en" };
+  if (near) body.locationBias = { circle: { center: { latitude: lat, longitude: lng }, radius: 50000 } };
+  const j = await gFetch("https://places.googleapis.com/v1/places:autocomplete", { method: "POST", body: JSON.stringify(body) }, "", env);
+  if (!j) return json({ error: "Suggestions could not be read just now.", places: [] }, 502, origin);
+  const places = (Array.isArray(j.suggestions) ? j.suggestions : []).map((x) => x && x.placePrediction).filter((p) => p && p.placeId).slice(0, 6).map((p) => {
+    const f = p.structuredFormat || {}, main = String(f.mainText && f.mainText.text || p.text && p.text.text || "").slice(0, 120), sub = String(f.secondaryText && f.secondaryText.text || "").replace(/,\s*USA$/, "").slice(0, 120);
+    return { id: String(p.placeId).slice(0, 200), main: main, sub: sub };
+  }).filter((p) => p.main);
+  const res = json({ places: places }, 200, origin, { "Cache-Control": "private, max-age=86400" });
+  try { await PCACHE.put(key, res.clone()); } catch (e) {}
+  return res;
+}
+/* v161 (the owner: "pull the description, reviews, review stars for each area? I want to see that quickly before I
+   decide to even go"): one place's stars, count, Google's line about it and up to three of its Google reviews, each
+   with its author's name and when, as Google asks; an hour in the cache */
+async function reviewsRoute(request, env, url, origin) {
+  const id = String(url.searchParams.get("id") || "");
+  if (!/^[A-Za-z0-9_-]{5,200}$/.test(id)) return json({ error: "id required" }, 400, origin);
+  if (!gKey(env)) return json({ error: "not set up" }, 503, origin);
+  const key = "https://prowl-reviews.invalid/" + id + "?v=1";
+  const hit = await PCACHE.match(key);
+  if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
+  if (!(await vCount("rv:" + ipKey(request.headers.get("CF-Connecting-IP")), REVIEWS_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  const j = await gFetch("https://places.googleapis.com/v1/places/" + encodeURIComponent(id), { method: "GET" }, "id,rating,userRatingCount,editorialSummary,reviews,googleMapsUri", env);
+  if (!j) return json({ error: "Reviews could not be read just now." }, 502, origin);
+  const reviews = (Array.isArray(j.reviews) ? j.reviews : []).filter((r) => r && r.text && r.text.text).slice(0, 3).map((r) => ({
+    stars: Math.max(1, Math.min(5, Math.round(Number(r.rating) || 0))), text: String(r.text.text).replace(/\s+/g, " ").trim().slice(0, 320),
+    author: String(r.authorAttribution && r.authorAttribution.displayName || "A Google reviewer").slice(0, 60), when: String(r.relativePublishTimeDescription || "").slice(0, 40) }));
+  const body = { id: id, rating: Number(j.rating) || 0, n: Number(j.userRatingCount) || 0, about: String(j.editorialSummary && j.editorialSummary.text || "").slice(0, 300),
+    url: /^https:\/\/(maps\.google\.com|www\.google\.com)\//.test(String(j.googleMapsUri || "")) ? String(j.googleMapsUri) : "https://www.google.com/maps/place/?q=place_id:" + encodeURIComponent(id), reviews: reviews };
+  const res = json(body, 200, origin, { "Cache-Control": "private, max-age=3600" });
+  try { await PCACHE.put(key, res.clone()); } catch (e) {}
+  return res;
+}
 /* v155: one key for a built trip, so keeping it for the group finds the build the page is showing */
 function tripKey(o, lat, lng, to, day, cats) { return o + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(String(to).toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + "&v=10"; }   /* v137 to v154: the answer changed */
 /* a place's photo: Google's media endpoint needs the key, so the page asks here */
@@ -6844,6 +6897,9 @@ async function tripAcctLink(env, cid, email) {
   await env.PROWL_ALERTS.delete("tripinv:" + h);
 }
 async function findSig(env, trip, find, exp) { return (await pxHmac(sessKey(env) || String(env.ADMIN_KEY || "prowl"), "prowl-find-v1:" + trip + "." + find + "." + exp)).slice(0, 32); }
+/* v161: a trip's invite code, good while the trip lasts */
+async function inviteSig(env, id) { return (await pxHmac(sessKey(env) || String(env.ADMIN_KEY || "prowl"), "prowl-invite-v1:" + id)).slice(0, 24); }
+async function inviteOk(env, id, code) { const m = /^(t[a-z0-9]{9})\.([0-9a-f]{24})$/.exec(String(code || "")); return !!m && m[1] === id && alSame(m[2], await inviteSig(env, id)); }
 async function findUrl(env, trip, find) { const exp = Math.floor(Date.now() / 1000) + FIND_SIG_SECONDS; return "/finds/" + trip + "/" + find + ".jpg?e=" + exp + "&s=" + await findSig(env, trip, find, exp); }
 async function tripsRoute(request, env, url, origin) {
   if (!env.PROWL_ALERTS) return json({ error: "no store" }, 503, origin);
@@ -6851,7 +6907,7 @@ async function tripsRoute(request, env, url, origin) {
   if (!who) return json({ error: "Sign in to Prowl to share trips.", signin: true }, 401, origin);
   const cid = who.id;
   if (!(await vCount("trips:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIPS_PER_IP))) return json({ error: "slow down" }, 429, origin);
-  const m = /^\/trips(?:\/(t[a-z0-9]{9})(?:\/(share|close|finds|rebuild))?)?$/.exec(url.pathname);
+  const m = /^\/trips(?:\/(t[a-z0-9]{9})(?:\/(share|close|finds|rebuild|invite|peek|join))?)?$/.exec(url.pathname);
   if (!m) return json({ error: "not found" }, 404, origin);
   const id = m[1] || "", act = m[2] || "", post = request.method === "POST";
   if (!id) {
@@ -6883,6 +6939,21 @@ async function tripsRoute(request, env, url, origin) {
     return nearAnswer(Object.assign(tripView(trip, null), { mine: true, org: true, stops: built.stops, maps: built.maps, empty: built.empty }), 200, origin);
   }
   const trip = await tripGet(env, id);
+  /* v161: an invite link carries a signed code; whoever holds it can see the trip and join it, no account email needed */
+  if (act === "peek" || act === "join") {
+    if (!trip || tripExpired(trip)) return json({ error: "This trip has ended." }, 404, origin);
+    const code = act === "peek" ? String(url.searchParams.get("c") || "") : String((await readJson(request, 512)).c || "");
+    if (!(await inviteOk(env, id, code))) return json({ error: "That invite link does not look right." }, 403, origin);
+    if (act === "peek") return nearAnswer(Object.assign(tripSummary(trip, cid), { member: tripMember(trip, cid) }), 200, origin);
+    if (!post) return json({ error: "POST only" }, 405, origin);
+    if (!tripMember(trip, cid)) {
+      if (trip.members.length >= TRIP_MEMBERS_MAX) return json({ error: "This trip is full." }, 409, origin);
+      trip.members.push(String(cid));
+      try { await tripPut(env, trip); } catch (e) { console.error("trips join", String(e && e.message || e)); return json({ error: "Trips cannot be saved just now." }, 503, origin); }
+    }
+    try { await tripIndexAdd(env, cid, id); } catch (e) {}
+    return nearAnswer(Object.assign(tripSummary(trip, cid), { member: true }), 200, origin);
+  }
   if (!trip || !tripMember(trip, cid) || tripExpired(trip)) return json({ error: "not found" }, 404, origin);
   const org = trip.org === String(cid);
   if (!act) {
@@ -6891,6 +6962,10 @@ async function tripsRoute(request, env, url, origin) {
     const hours = {}; if (gKey(env)) (await Promise.all(ids.slice(0, 60).map((pid) => gPlaceHours(env, pid)))).forEach((h, i) => { if (h) hours[ids[i]] = h; });
     const finds = await kvGet(env, "tripfinds:" + id, []);
     return nearAnswer(Object.assign(tripView(trip, hours), { mine: true, org: org, weekday: weekdayOf(trip.day), finds: finds.length }), 200, origin);
+  }
+  if (act === "invite") {   /* v161: the organizer's invite link */
+    if (!org) return json({ error: "Only the organizer invites." }, 403, origin);
+    return nearAnswer({ code: id + "." + await inviteSig(env, id), dest: trip.dest, day: trip.day }, 200, origin);
   }
   if (act === "share") {
     if (!post || !org) return json({ error: "Only the organizer adds members." }, 403, origin);
@@ -7138,6 +7213,8 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/geo" && request.method === "GET") return geoRoute(request, env, url, origin);   /* v157: In a location */
     if (url.pathname === "/order" && request.method === "GET") return orderRoute(request, env, url, origin);   /* v157: Optimize route */
     if (url.pathname === "/pp" && request.method === "GET") return ppRoute(request, env, url);   /* v132: a place's photo */
+    if (url.pathname === "/reviews" && request.method === "GET") return reviewsRoute(request, env, url, origin);   /* v161: stars and reviews on a tap */
+    if (url.pathname === "/suggest" && request.method === "GET") return suggestRoute(request, env, url, origin);   /* v161: places as you type */
     if (url.pathname === "/trips" || url.pathname.startsWith("/trips/")) return tripsRoute(request, env, url, origin);   /* v132: group trips and finds */
     if (url.pathname.startsWith("/finds/") && request.method === "GET") return findPhotoRoute(request, env, url);   /* v132: a find's photo, signed */
     if (url.pathname === "/sales" && request.method === "GET") return esSales(request, env, url, origin);   /* v103 */

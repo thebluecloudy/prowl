@@ -246,6 +246,7 @@ export function placeCard(p, near) {
   const c = { id: p.id, name: p.name, town: townLabel(p), why: differentiator(p), rating: p.rating, n: p.n, photo: p.photo ? "/pp?n=" + encodeURIComponent(p.photo) : "",
     url: pinUrl(p), lat: p.lat, lng: p.lng, hours: p.hours, near: near == null ? (p.near == null ? null : p.near) : near };
   if (p.worth) c.worth = true;   /* v154: off the road, but worth it */
+  if (p.summary) c.about = String(p.summary).slice(0, 200);   /* v161: Google's line about the place, on the card (the owner: "the description ... before I decide to even go") */
   return c;
 }
 export function pinUrl(p) {
@@ -385,8 +386,9 @@ export function tripRecord(id, org, built, day, now) {
     route: built.route || null, stops: stops };
 }
 function stopRef(a) {
-  const r = { id: a.id, name: a.name, town: a.town, lat: a.lat, lng: a.lng, why: a.why, url: a.url, photo: a.photo,
-    nested: (a.nested || []).map((n) => { const q = { id: n.id, name: n.name, town: n.town, lat: n.lat, lng: n.lng, why: n.why, url: n.url, photo: n.photo }; if (n.walk === true) q.walk = true; return q; }) };
+  const rv = (p, q) => { const st = Number(p.rating), n = Number(p.n); if (st > 0 && st <= 5) q.rating = Math.round(st * 10) / 10; if (n > 0) q.n = Math.round(n); if (p.about) q.about = String(p.about).slice(0, 200); return q; };   /* v161: stars, reviews and the line about it, for the group too */
+  const r = rv(a, { id: a.id, name: a.name, town: a.town, lat: a.lat, lng: a.lng, why: a.why, url: a.url, photo: a.photo,
+    nested: (a.nested || []).map((n) => { const q = rv(n, { id: n.id, name: n.name, town: n.town, lat: n.lat, lng: n.lng, why: n.why, url: n.url, photo: n.photo }); if (n.walk === true) q.walk = true; return q; }) });
   const st = Number(a.stay); if (Number.isFinite(st) && st >= 15 && st <= 480) r.stay = Math.round(st);   /* v154: kept for the group too */
   if (a.worth === true) r.worth = true;
   return r;

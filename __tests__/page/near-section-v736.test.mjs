@@ -74,7 +74,7 @@ test('the dock\'s NEAR ME opens its own screen with two tabs; the Den is not inv
   const near = p.$('#otp-near');
   assert.equal(near.hidden, false);
   assert.equal(p.$('#otp-den').hidden, true);
-  assert.deepEqual(p.$$('#otp-near .tab').map((b) => b.textContent), ['AROUND YOU', 'ROAD TRIP']);
+  assert.deepEqual(p.$$('#otp-near .tab').map((b) => b.textContent), ['AROUND YOU', 'ROAD TRIP', 'TRIPS'], 'v7.69: a third tab for group trips');
   assert.equal(p.$('#otp-nrAround').hidden, false); assert.equal(p.$('#otp-nrTrip').hidden, true);
   assert.ok(near.contains(p.$('#otp-nearGrid')), 'the store finder is inside Around you');
   assert.ok(near.contains(p.$('#otp-salesGrid')) && near.contains(p.$('#otp-fbHubBar')), 'and garage sales and the Facebook city');

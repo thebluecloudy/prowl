@@ -104,7 +104,8 @@ test('a road trip today: each stop is open or closed for when you would get ther
   for (const a of p.$$('#otp-nrOut .nr-stops .nr-acts')) {
     assert.equal(a.children[0].textContent, 'Directions'); assert.match(a.children[0].href, /^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&travelmode=driving&destination=/);
     assert.doesNotMatch(a.children[0].href, /origin=/, 'Maps starts from the phone');
-    assert.equal(a.children[1].textContent, 'Skip');
+    assert.equal(a.children[1].textContent, 'Reviews', 'v7.69: Reviews between them');
+    assert.equal(a.children[2].textContent, 'Skip');
   }
   assert.ok(p.$('#otp-nrOut .nr-dest a.nr-go'), 'the final stop has Directions too');
   assert.deepEqual(p.errors, []);
