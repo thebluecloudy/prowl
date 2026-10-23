@@ -1,16 +1,35 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.71 / v162).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.72 / v162).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.71** | 396,895 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.72** | 395,946 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v162** | |
 
 Recently shipped, newest first:
 
+- **v7.72: NEAR ME benchmarked, Road trip** (release 2 of 3, after v7.71's Around you; against Google and Apple
+  Maps' directions, Waze and Roadtrippers).
+  - **Where are you headed? first**: the heading is the destination box's label ("Town, City, ST, ZIP or a shop"),
+    and From sits under it as the same pill as Around you: "📍 From where you are" with **Change** (the From box, Use
+    my location, its suggestions). One line under them names the kinds that are on, and says an empty destination is
+    a loop.
+  - **The options in one line**: "Today · leave now · stops up to 15 min off the road · Antiques, Vintage, Thrift"
+    with Change. Inside are the kinds, how far off the road, the day and Leave at; changes rebuild the trip **once, on
+    Done** (or when the line is folded), not on every chip. Leave at only re-times, as before.
+  - **Stops lettered A, B, C** (the map's pins too), with no second counter, and a **+12 min** badge for what each
+    adds to the drive (the worker's detour minutes; a loop has none). "Worth the detour" no longer repeats the
+    minutes. Skip reads "− Skip".
+  - **One Start in Maps**: the bar is Start in Maps (the Google/Apple pick; "(1 of 2)" on a split trip) and More, which
+    holds every Google and Apple link, REBUILD and SHARE. A trip with no stops links the drive right in its line
+    instead of "open it in Maps below".
+  - Fixed on the way: the trip's "Novi, MI → Milton, WV" line no longer breaks into a column (a v7.64 rule meant for
+    the From/To block caught it); the blocked and no-fix messages say to tap Change by From, with Type where you start.
+  - No new keys. Tests: `__tests__/page/near-road-v772.test.mjs`; near-map, near-plan, near-road, near-section,
+    road-upgrades, in-a-location and use-my-location follow the new layout.
 - **v7.71: NEAR ME benchmarked, Around you** (the owner: "Using benchmark review the near me feature to make it more
   intuitive"; compared with Google Maps, Apple Maps, Yelp, Waze, Roadtrippers, EstateSales.NET, FB Marketplace and
   NN/g; release 1 of 3, Road trip and polish follow as v7.72 and v7.73).
@@ -1106,7 +1125,7 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `ccr-0de21c46-yzs839` | Claude | **v7.72**: NEAR ME benchmarked, Road trip: where to first, options folded, lettered stops with +min, one Start in Maps (then v7.73 polish: glance sizes, recent destinations, sentence case) | Next, after v7.71 is live. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.73**: NEAR ME benchmarked, polish: glance sizes for the car, recent destinations as chips, sentence case for tabs and buttons | Next, after v7.72 is live. |
 
 Next free numbers: **page v7.74, worker v163**. Claim one here when you start.
 
