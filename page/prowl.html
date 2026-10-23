@@ -2187,6 +2187,10 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-sgb:first-child{border-top:0}
 .scout-app-wrapper .nr-sgb b{font-size:14px}
 .scout-app-wrapper .nr-sgb span{font-size:12.5px;color:var(--mu)}
+.scout-app-wrapper .nr-triprow{display:flex;gap:8px;align-items:stretch}
+.scout-app-wrapper .nr-triprow .nr-tripb{flex:1 1 auto;min-width:0}
+.scout-app-wrapper .nr-tripdel{min-height:44px;padding:0 12px}
+.scout-app-wrapper .nr-tripdel.arm{border-color:#b3261e;color:#b3261e;background:transparent}
 .scout-app-wrapper .nr-joincard{margin:0 0 14px;padding:12px;border:1.5px solid var(--ac);border-radius:12px;display:flex;flex-direction:column;gap:6px}
 .scout-app-wrapper .nr-joincard .nearp,.scout-app-wrapper .nr-joincard .nr-route{margin:0}
 .scout-app-wrapper .nr-joint{margin:0;font-size:12.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ac)}
@@ -3441,7 +3445,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.69';
+var PROWL_VERSION='v7.70';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -10706,7 +10710,22 @@ function nrTripsLoad(){
 function nrTripsDraw(){
   var el=$('#otp-nrTrips'),L=NR.trips||[],act=nrTripGet();if(!el)return;
   if(!L.length){el.innerHTML='<p class="nearp nr-empty">No group trips yet. Build one under ROAD TRIP, then SHARE › Keep it for my group; a friend\u2019s invite link lands here too.</p>';return}   /* v7.69 */
-  el.innerHTML='<h3 class="nearh">Your trips</h3><div class="nr-triplist">'+L.map(function(t){var d=t.dest||{};return '<button type="button" class="tb nr-tripb'+(act&&act.id===t.id?' on':'')+'" data-nrtrip="'+esc(t.id)+'"><span class="tt">'+esc(t.origin||'Here')+' → '+esc(d.name||'')+'</span><span class="nr-tripm">'+esc(nrDayLabel(t.day))+' · '+t.members+(t.members===1?' member':' members')+(t.org?' · yours':'')+'</span></button>'}).join('')+'</div>';
+  el.innerHTML='<h3 class="nearh">Your trips</h3><div class="nr-triplist">'+L.map(function(t){var d=t.dest||{};return '<div class="nr-triprow"><button type="button" class="tb nr-tripb'+(act&&act.id===t.id?' on':'')+'" data-nrtrip="'+esc(t.id)+'"><span class="tt">'+esc(t.origin||'Here')+' → '+esc(d.name||'')+'</span><span class="nr-tripm">'+esc(nrDayLabel(t.day))+' · '+t.members+(t.members===1?' member':' members')+(t.org?' · yours':'')+'</span></button><button type="button" class="nr-rvb nr-tripdel" data-nrdel="'+esc(t.id)+'" data-org="'+(t.org?1:0)+'" aria-label="'+(t.org?'Delete':'Leave')+' the trip to '+esc(d.name||'')+'">'+(t.org?'Delete':'Leave')+'</button></div>'}).join('')+'</div>';   /* v7.70: Delete (yours) or Leave (a friend's) */
+}
+/* v7.70 (the owner: "i need a way to delete the shared trips"): Delete takes your own trip away for everyone, its
+   Finds and their photos with it; Leave takes a friend's trip off your list. The first tap asks, the second does it. */
+function nrTripDel(b){
+  var id=b.getAttribute('data-nrdel'),org=b.getAttribute('data-org')==='1';
+  if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent=org?'Delete for everyone?':'Leave this trip?';setTimeout(function(){if(b.parentNode&&b.classList.contains('arm')&&!b.disabled){b.classList.remove('arm');b.textContent=org?'Delete':'Leave'}},4000);return}
+  b.disabled=true;
+  nrFetch('/trips/'+E(id)+'/'+(org?'delete':'leave'),{method:'POST',body:{}}).then(function(r){
+    b.disabled=false;
+    if(!r.ok){b.classList.remove('arm');b.textContent=org?'Delete':'Leave';toast(esc((r.j&&r.j.error)||'That could not be done just now.')+(r.status?' ('+r.status+')':''),4200);return}
+    var a=nrTripGet();if(a&&a.id===id)nrTripSet(null);
+    if(NR.view&&NR.view.id===id){NR.view=null;var o=$('#otp-nrOut');if(o)o.innerHTML='';nrFoot(null)}
+    NR.trips=(NR.trips||[]).filter(function(t){return t.id!==id});nrTripsDraw();
+    toast(org?'Trip deleted for everyone, with its Finds.':'You left the trip.',3200);
+  });
 }
 function nrStopUrl(name){var t=nrTripGet(),i;if(!t||!t.stops||!name)return '';for(i=0;i<t.stops.length;i++)if(t.stops[i].name===name)return t.stops[i].url||'';return ''}
 function nrFindsLoad(id){
@@ -10812,6 +10831,7 @@ if(near){
     var b=e.target.closest&&e.target.closest('[data-nrtrip]');
     if(b){var id=b.getAttribute('data-nrtrip');if(NR.busy)return;NR.busy=true;b.disabled=true;nrFetch('/trips/'+E(id)).then(function(r){NR.busy=false;b.disabled=false;if(!r.ok){toast('That trip could not be opened just now.',2800);return}if(NR.mode!=='trip')nrMode('trip');nrOpenTrip(r.j,false)});return}
     var rv=e.target.closest&&e.target.closest('[data-nrrv]');if(rv){e.preventDefault();nrRvToggle(rv);return}   /* v7.69 */
+    var dl=e.target.closest&&e.target.closest('[data-nrdel]');if(dl){nrTripDel(dl);return}   /* v7.70 */
     if(e.target.closest&&e.target.closest('#otp-nrInvite')){nrInvite();return}
     if(e.target.closest&&e.target.closest('#otp-nrJoinGo')){nrJoin();return}
     if(e.target.closest&&e.target.closest('#otp-nrJoinIn,#otp-nrTripsIn')){nrSignin();return}

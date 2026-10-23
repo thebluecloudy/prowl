@@ -1,16 +1,24 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.69 / v161).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.70 / v162).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.69** | 395,820 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v161** | |
+| Page | **v7.70** | 395,820 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v162** | |
 
 Recently shipped, newest first:
 
+- **v7.70 / v162: group trips can be deleted or left** (the owner: "i need a way to delete the shared trips"). Each
+  row in TRIPS has **Delete** on your own trip and **Leave** on a friend's; the first tap asks ("Delete for
+  everyone?" / "Leave this trip?", back after 4 seconds), the second does it (`nrTripDel`). Worker
+  `POST /trips/<id>/delete` (the organizer only): the trip, its Finds and their photos in R2 go now, and it leaves
+  `trips:all`; this is the expiry sweep's purge, now `tripPurge`. `POST /trips/<id>/leave` (a member; the organizer
+  is told to delete instead) takes them off the trip and their list. A deleted trip drops off the other members'
+  lists, and out of their index, the next time they look (`GET /trips`). The trip you were on (`prowl.trip`) is
+  cleared when it goes. Tests: `worker/__tests__/trips.test.mjs`, `__tests__/page/near-trips-v769.test.mjs`.
 - **v7.69 / v161: stars and reviews on every stop, a TRIPS tab with invite links, places as you type** (the owner, on
   the road: "are you able to pull the description, reviews, review stars for each area? I want to see that quickly
   before I decide to even go. And ... sharing a trip to my friends and then them looking it up, it's complicated ...
@@ -1075,7 +1083,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.70, worker v162**. Claim one here when you start.
+Next free numbers: **page v7.71, worker v163**. Claim one here when you start.
 
 ## What's next
 

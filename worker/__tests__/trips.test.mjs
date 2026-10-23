@@ -116,7 +116,7 @@ function fakeGoogle(u, init) {
 const SECRET = "s".repeat(40);
 const PRO = {};   /* cid -> paid Pro, the fake shop */
 const names = ["gKey", "gFetch", "gPlacesText", "gPlacesAll", "gPlacesPage", "gPlacesNearby", "kindSearches", "gPlaceHours", "gRoutes", "gTown", "nearNum", "tripCell", "nearAnswer", "nearRoute", "tripBuild", "tripRoute", "tripKey", "ppRoute",
-  "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "inviteSig", "inviteOk", "reviewsRoute", "suggestRoute", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep",
+  "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "inviteSig", "inviteOk", "reviewsRoute", "suggestRoute", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep", "tripPurge", "tripIndexRemove",
   "b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessVerify", "sessMember", "pxHmac", "alSame", "alEmail", "sha16", "kvGet", "kvPut", "readJson", "vClean", "scrubPII", "ipKey", "ip6Parts", "cors", "json"];
 const pre = ["const BAD_TYPES = new Set();", constLine("REVIEWS_PER_IP"), constLine("NEAR_HERE_M"), constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
 const W = fromIndex(names, Object.assign({ fetch: fakeGoogle, PCACHE, vCount: async () => true, isOwner: (r) => r.headers.get("x-prowl-owner") === "owner-key-0123456789", alProShop: async (env, email, c, cid) => ({ pro: !!PRO[cid] }), console: { error() {} } }, TRIP), pre);
@@ -490,4 +490,34 @@ test("v161: places as you type a destination: a name and its town, biased to whe
   assert.equal(again.res.headers.get("X-Prowl-Cache"), "hit", "the same words in the same area");
   assert.equal(SUG.length, 1);
   assert.equal((await call(envWith({ GOOGLE_MAPS_KEY: "" }), "GET", "/suggest?q=milton%20wv")).status, 503);
+});
+
+test("v162: a member leaves a trip; the organizer deletes it for everyone, its Finds and their photos with it", async () => {
+  const env = envWith({ PRO_CIDS: "9009" }); PCACHE.m.clear();
+  env.PROWL_FINDS = new FakeR2();
+  const made = await call(env, "POST", "/trips", { to: "Blenko Glass Company, Milton, WV", lat: 42.4806, lng: -83.4755, day: "2026-10-26" }, "9009");
+  const id = made.body.id, code = (await call(env, "POST", "/trips/" + id + "/invite", {}, "9009")).body.code;
+  for (const cid of ["1111", "2222"]) assert.equal((await call(env, "POST", "/trips/" + id + "/join", { c: code }, cid)).status, 200);
+  await env.PROWL_FINDS.put("finds/" + id + "/fabcdefghi.jpg", "jpeg");
+  await env.PROWL_ALERTS.put("tripfinds:" + id, JSON.stringify([{ id: "fabcdefghi" }]));
+  /* a member leaves: off their list, still on the others' */
+  assert.equal((await call(env, "POST", "/trips/" + id + "/delete", {}, "1111")).status, 403, "only the organizer deletes");
+  const left = await call(env, "POST", "/trips/" + id + "/leave", {}, "1111");
+  assert.equal(left.status, 200);
+  assert.deepEqual((await call(env, "GET", "/trips", null, "1111")).body.trips, []);
+  assert.equal((await call(env, "GET", "/trips/" + id, null, "1111")).status, 404, "no longer theirs to open");
+  assert.equal(JSON.parse(env.PROWL_ALERTS.m.get("trip:" + id)).members.length, 2);
+  assert.equal((await call(env, "POST", "/trips/" + id + "/leave", {}, "9009")).status, 409, "the organizer deletes instead");
+  /* the organizer deletes it: gone for everyone */
+  const del = await call(env, "POST", "/trips/" + id + "/delete", {}, "9009");
+  assert.equal(del.status, 200); assert.equal(del.body.deleted, id);
+  assert.equal(env.PROWL_ALERTS.m.has("trip:" + id), false);
+  assert.equal(env.PROWL_ALERTS.m.has("tripfinds:" + id), false);
+  assert.equal(env.PROWL_FINDS.m.size, 0, "the photos too");
+  assert.ok(!JSON.parse(env.PROWL_ALERTS.m.get("trips:all")).find((e) => e.id === id));
+  assert.deepEqual((await call(env, "GET", "/trips", null, "9009")).body.trips, []);
+  assert.ok(JSON.parse(env.PROWL_ALERTS.m.get("trips:2222")).indexOf(id) !== -1, "still in the other member's index until they look");
+  assert.deepEqual((await call(env, "GET", "/trips", null, "2222")).body.trips, [], "a deleted trip drops off their list");
+  assert.equal(JSON.parse(env.PROWL_ALERTS.m.get("trips:2222")).indexOf(id), -1, "and out of their index");
+  assert.equal((await call(env, "GET", "/trips/" + id, null, "2222")).status, 404);
 });
