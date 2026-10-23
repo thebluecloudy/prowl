@@ -1,16 +1,38 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-22 (v7.68 / v160).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.69 / v161).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.68** | 396,514 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v160** | |
+| Page | **v7.69** | 395,820 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v161** | |
 
 Recently shipped, newest first:
 
+- **v7.69 / v161: stars and reviews on every stop, a TRIPS tab with invite links, places as you type** (the owner, on
+  the road: "are you able to pull the description, reviews, review stars for each area? I want to see that quickly
+  before I decide to even go. And ... sharing a trip to my friends and then them looking it up, it's complicated ...
+  a third tab at the top with shared trips"; then "in the roadtripper app, it has a screen that shows you suggested
+  places, and then you click on that place, is that possible").
+  - **Stars and the line about a place**: every card shows its stars, rating and review count under the name
+    (`nrRate`) and Google Maps' line about it, two lines at most (`about`, from the editorial summary the search
+    already returned; `placeCard`, kept on group trips by `stopRef` with the rating and count). **Reviews** beside
+    Directions opens three of its reviews under the card, each with its author and when, and a link to all of them
+    (`nrRvToggle`; worker `GET /reviews?id=`, Place Details, an hour in the cache, 300 a day per address).
+  - **TRIPS**, a third tab (`#otp-nrT3`, `nrMode('trips')`): the group trips you are on, yours and friends'; one opens
+    on ROAD TRIP. Signed out it says so, with Sign in. The organizer's SHARE on a kept trip has **Invite link**
+    (`nrInvite`; worker `POST /trips/<id>/invite`, a code signed like the find links, good while the trip lasts):
+    "Join my road trip to Blenko Glass Company, Milton, WV on Mon Oct 26 in Prowl: <page>?trip=<code>" through the
+    share sheet. A friend who taps it lands on NEAR ME › TRIPS with the trip shown (`GET /trips/<id>/peek?c=`) and
+    **Join this trip** (`POST /trips/<id>/join`, no Pro needed to join, the 24-member cap holds); signed out, the
+    invite waits in a new key, `prowl.tripInvite`, through the sign-in. Add by email stays.
+  - **Places as you type** in To and From (`nrSugWire`; worker `GET /suggest?q=`, Google's Autocomplete biased to
+    where you are, US only, a day in the cache per words and area, 1,500 a day per address): a name with its town
+    under it; a tap in To fills it and builds the trip there, in From it fills the box. Not for a "via" trip.
+  - Tests: `__tests__/page/near-trips-v769.test.mjs`, `worker/__tests__/trips.test.mjs`, `trip.test.mjs`; the
+    NEAR ME tab and button-order tests now expect three tabs and Directions, Reviews, Skip.
 - **v7.68: NEAR ME reads at Roadtrippers' size on a phone** (the owner, with Roadtrippers open beside it: "i think the
   text needs to be bigger on the phone ... the font is a good size", then screenshots of its itinerary and screens).
   Up to 600px wide, scoped to `#otp-near`: copy 16px (was 13), a shop's name 18px (14), its town and hours 15px
@@ -1053,7 +1075,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.69, worker v161**. Claim one here when you start.
+Next free numbers: **page v7.70, worker v162**. Claim one here when you start.
 
 ## What's next
 

@@ -69,11 +69,12 @@ const SHOPS = [
   gPlace("Hillbilly Flea Market", "Ashland", "KY", 38.4795, -82.6410, { userRatingCount: 970, rating: 3.9, primaryTypeDisplayName: { text: "Flea Market" } }),   /* v138: out unless Flea markets is on */
 ];
 const BLENKO = gPlace("Blenko Glass Company", "Milton", "WV", 38.4345, -82.1322, { regularOpeningHours: { periods: [1, 2, 3, 4, 5].map((d) => ({ open: { day: d, hour: 9, minute: 0 }, close: { day: d, hour: 15, minute: 30 } })), weekdayDescriptions: ["Monday: 9:00 AM – 3:30 PM", "Tuesday: 9:00 AM – 3:30 PM", "Wednesday: 9:00 AM – 3:30 PM", "Thursday: 9:00 AM – 3:30 PM", "Friday: 9:00 AM – 3:30 PM", "Saturday: Closed", "Sunday: Closed"] } });
-const CALLS = [], DIST = [];
+const CALLS = [], DIST = [], SUG = [];
 let DROP_HERE = false;   /* v153: Google's relevance answer leaves out the shop at the very spot asked about */
 function fakeGoogle(u, init) {
   u = String(u); CALLS.push(u);
   const ok = (j) => Promise.resolve({ ok: true, status: 200, json: async () => j, headers: new Headers({ "Content-Type": "application/json" }) });
+  if (/places:autocomplete/.test(u)) { const b = JSON.parse(init.body); SUG.push(b); return ok({ suggestions: [{ placePrediction: { placeId: "ChIJblenko", text: { text: "Blenko Glass Company, Milton, WV, USA" }, structuredFormat: { mainText: { text: "Blenko Glass Company" }, secondaryText: { text: "Milton, WV, USA" } } } }, { queryPrediction: { text: { text: "blenko glass for sale" } } }, { placePrediction: { placeId: "ChIJmilton", text: { text: "Milton, WV, USA" }, structuredFormat: { mainText: { text: "Milton" }, secondaryText: { text: "WV, USA" } } } }] }); }   /* v161 */
   if (/places:searchText/.test(u)) {
     const b = JSON.parse(init.body);
     if (/paged test/.test(b.textQuery)) {   /* v139: 45 shops over three pages */
@@ -107,7 +108,7 @@ function fakeGoogle(u, init) {
     return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline(ROUTE35) }, distanceMeters: 571000, duration: "20880s" }].concat(b.computeAlternativeRoutes ? [{ polyline: { encodedPolyline: encodePolyline(ROUTE_PTS) }, distanceMeters: 640000, duration: "23400s" }] : []) }); }
   if (/geocode\/json/.test(u)) { const south = /latlng=38\./.test(u); return ok({ results: [{ address_components: [{ long_name: south ? "Huntington" : "Novi", short_name: south ? "Huntington" : "Novi", types: ["locality", "political"] }, { long_name: south ? "West Virginia" : "Michigan", short_name: south ? "WV" : "MI", types: ["administrative_area_level_1", "political"] }] }] }); }
   const m = /\/v1\/places\/([^?]+)/.exec(u);
-  if (m) { const p = SHOPS.concat([BLENKO]).find((x) => x.id === decodeURIComponent(m[1])); return ok(p ? { id: p.id, regularOpeningHours: p.regularOpeningHours, utcOffsetMinutes: -240 } : {}); }
+  if (m) { const p = SHOPS.concat([BLENKO]).find((x) => x.id === decodeURIComponent(m[1])); return ok(p ? { id: p.id, regularOpeningHours: p.regularOpeningHours, utcOffsetMinutes: -240, rating: p.rating, userRatingCount: p.userRatingCount, editorialSummary: p.editorialSummary, googleMapsUri: "https://maps.google.com/?cid=1", reviews: [1, 2, 3, 4].map((i) => ({ rating: 6 - i, text: { text: "Review " + i + " of " + p.displayName.text + ".\n Lots   to see." }, authorAttribution: { displayName: "Reviewer " + i }, relativePublishTimeDescription: i + " weeks ago" })).concat([{ rating: 5, text: null }]) } : {}); }   /* v161: and its reviews */
   return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
 }
 
@@ -115,9 +116,9 @@ function fakeGoogle(u, init) {
 const SECRET = "s".repeat(40);
 const PRO = {};   /* cid -> paid Pro, the fake shop */
 const names = ["gKey", "gFetch", "gPlacesText", "gPlacesAll", "gPlacesPage", "gPlacesNearby", "kindSearches", "gPlaceHours", "gRoutes", "gTown", "nearNum", "tripCell", "nearAnswer", "nearRoute", "tripBuild", "tripRoute", "tripKey", "ppRoute",
-  "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep",
+  "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "inviteSig", "inviteOk", "reviewsRoute", "suggestRoute", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep",
   "b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessVerify", "sessMember", "pxHmac", "alSame", "alEmail", "sha16", "kvGet", "kvPut", "readJson", "vClean", "scrubPII", "ipKey", "ip6Parts", "cors", "json"];
-const pre = ["const BAD_TYPES = new Set();", constLine("NEAR_HERE_M"), constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
+const pre = ["const BAD_TYPES = new Set();", constLine("REVIEWS_PER_IP"), constLine("NEAR_HERE_M"), constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
 const W = fromIndex(names, Object.assign({ fetch: fakeGoogle, PCACHE, vCount: async () => true, isOwner: (r) => r.headers.get("x-prowl-owner") === "owner-key-0123456789", alProShop: async (env, email, c, cid) => ({ pro: !!PRO[cid] }), console: { error() {} } }, TRIP), pre);
 
 function envWith(o) { return Object.assign({ PROWL_ALERTS: new FakeKV(), PROWL_SESSION_SECRET: SECRET, GOOGLE_MAPS_KEY: "k".repeat(30) }, o || {}); }
@@ -129,7 +130,7 @@ async function req(env, method, path, body, cid, hdr) {
 }
 async function call(env, method, path, body, cid, hdr) {
   const r = await req(env, method, path, body, cid, hdr), url = new URL(r.url);
-  const res = path.startsWith("/near") ? await W.nearRoute(r, env, url, ORIGIN) : path.startsWith("/trip?") ? await W.tripRoute(r, env, url, ORIGIN)
+  const res = path.startsWith("/suggest") ? await W.suggestRoute(r, env, url, ORIGIN) : path.startsWith("/reviews") ? await W.reviewsRoute(r, env, url, ORIGIN) : path.startsWith("/near") ? await W.nearRoute(r, env, url, ORIGIN) : path.startsWith("/trip?") ? await W.tripRoute(r, env, url, ORIGIN)
     : path.startsWith("/trips") ? await W.tripsRoute(r, env, url, ORIGIN) : path.startsWith("/finds/") ? await W.findPhotoRoute(r, env, url) : await W.ppRoute(r, env, url);
   const type = res.headers.get("Content-Type") || "";
   return { status: res.status, body: /json/.test(type) ? await res.json() : null, res, type };
@@ -429,4 +430,64 @@ test("v155: keeping a trip reuses the build the page is showing, and a save that
   const bad = await call(full, "POST", "/trips", body, "5005");
   assert.equal(bad.status, 503);
   assert.equal(bad.body.error, "Trips cannot be saved just now.", "said, not a bare server error");
+});
+
+test("v161: a place's stars, Google's line about it and three reviews with their authors, on a tap; an hour in the cache", async () => {
+  const env = envWith(); PCACHE.m.clear(); CALLS.length = 0;
+  const id = SHOPS[0].id;
+  const r = await call(env, "GET", "/reviews?id=" + id);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.rating, SHOPS[0].rating); assert.equal(r.body.n, SHOPS[0].userRatingCount);
+  assert.equal(r.body.reviews.length, 3, "three, and none without words");
+  assert.deepEqual(r.body.reviews[0], { stars: 5, text: "Review 1 of " + SHOPS[0].displayName.text + ". Lots to see.", author: "Reviewer 1", when: "1 weeks ago" });
+  assert.equal(r.body.url, "https://maps.google.com/?cid=1");
+  const again = await call(env, "GET", "/reviews?id=" + id);
+  assert.equal(again.res.headers.get("X-Prowl-Cache"), "hit");
+  assert.equal(CALLS.filter((u) => /\/v1\/places\//.test(u)).length, 1, "Google asked once");
+  assert.equal((await call(env, "GET", "/reviews?id=a b")).status, 400);
+  assert.equal((await call(envWith({ GOOGLE_MAPS_KEY: "" }), "GET", "/reviews?id=" + id + "x")).status, 503);
+});
+
+test("v161: the organizer's invite link lets a friend see the trip and join it, no account email; a wrong code, never", async () => {
+  const env = envWith({ PRO_CIDS: "7007" }); PCACHE.m.clear();
+  const made = await call(env, "POST", "/trips", { to: "Blenko Glass Company, Milton, WV", lat: 42.4806, lng: -83.4755, day: "2026-10-26" }, "7007");
+  assert.equal(made.status, 200);
+  const id = made.body.id;
+  assert.equal((await call(env, "POST", "/trips/" + id + "/invite", {}, "8008")).status, 404, "not a member: no such trip");
+  const inv = await call(env, "POST", "/trips/" + id + "/invite", {}, "7007");
+  assert.equal(inv.status, 200);
+  assert.match(inv.body.code, new RegExp("^" + id + "\\.[0-9a-f]{24}$"));
+  const peek = await call(env, "GET", "/trips/" + id + "/peek?c=" + inv.body.code, null, "8008");
+  assert.equal(peek.status, 200);
+  assert.equal(peek.body.dest.name, "Blenko Glass Company"); assert.equal(peek.body.member, false); assert.equal(peek.body.members, 1);
+  const bad = await call(env, "POST", "/trips/" + id + "/join", { c: id + ".0123456789abcdef01234567" }, "8008");
+  assert.equal(bad.status, 403);
+  assert.equal((await call(env, "GET", "/trips/" + id + "/peek?c=" + inv.body.code)).status, 401, "signed out: sign in first");
+  const joined = await call(env, "POST", "/trips/" + id + "/join", { c: inv.body.code }, "8008");
+  assert.equal(joined.status, 200); assert.equal(joined.body.member, true); assert.equal(joined.body.members, 2);
+  const twice = await call(env, "POST", "/trips/" + id + "/join", { c: inv.body.code }, "8008");
+  assert.equal(twice.body.members, 2, "joining twice is once");
+  const mine = await call(env, "GET", "/trips", null, "8008");
+  assert.deepEqual(mine.body.trips.map((t) => t.id), [id], "on the friend's list");
+  const view = await call(env, "GET", "/trips/" + id, null, "8008");
+  assert.equal(view.status, 200, "the friend opens it");
+  assert.equal(view.body.org, false);
+  const other = await call(env, "POST", "/trips", { to: "Blenko Glass Company, Milton, WV", lat: 42.4807, lng: -83.4756, day: "2026-10-27" }, "7007");
+  assert.equal((await call(env, "POST", "/trips/" + other.body.id + "/join", { c: inv.body.code }, "8008")).status, 403, "a code is for its own trip");
+});
+
+test("v161: places as you type a destination: a name and its town, biased to where you are, a day in the cache", async () => {
+  const env = envWith(); PCACHE.m.clear(); SUG.length = 0;
+  const short = await call(env, "GET", "/suggest?q=bl");
+  assert.deepEqual(short.body.places, [], "two letters: nothing asked");
+  assert.equal(SUG.length, 0);
+  const r = await call(env, "GET", "/suggest?q=Blenko%20gl&lat=41.04&lng=-83.72");
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.places, [{ id: "ChIJblenko", main: "Blenko Glass Company", sub: "Milton, WV" }, { id: "ChIJmilton", main: "Milton", sub: "WV" }], "places only, without USA");
+  assert.equal(SUG[0].input, "Blenko gl"); assert.deepEqual(SUG[0].includedRegionCodes, ["us"]);
+  assert.equal(SUG[0].locationBias.circle.center.latitude, 41.04);
+  const again = await call(env, "GET", "/suggest?q=blenko%20GL&lat=41.01&lng=-83.68");
+  assert.equal(again.res.headers.get("X-Prowl-Cache"), "hit", "the same words in the same area");
+  assert.equal(SUG.length, 1);
+  assert.equal((await call(envWith({ GOOGLE_MAPS_KEY: "" }), "GET", "/suggest?q=milton%20wv")).status, 503);
 });
