@@ -278,7 +278,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper button,.scout-app-wrapper input,.scout-app-wrapper textarea,.scout-app-wrapper select{-webkit-appearance:none;appearance:none;outline:none;
   font-family:inherit;font-size:inherit;line-height:inherit}
 .scout-app-wrapper button{cursor:pointer}
-/* v7.78 (the design brief: "Focused: the same for keyboard focus everywhere"): the reset above takes the outline off
+/* v7.79 (the design brief: "Focused: the same for keyboard focus everywhere"): the reset above takes the outline off
    every button, so a keyboard user saw no focus on most of them. One accent outline for whatever takes focus by
    keyboard; rules further down that draw their own focus still win. Mouse and touch taps show nothing. */
 .scout-app-wrapper a:focus-visible,.scout-app-wrapper button:focus-visible,.scout-app-wrapper [role=button]:focus-visible,.scout-app-wrapper summary:focus-visible,.scout-app-wrapper [tabindex]:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
@@ -952,7 +952,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .bar-menu .gh[data-l]::after{content:attr(data-l);font-weight:700}
 .scout-app-wrapper .bar-menu .gh[hidden]{display:none!important}
 .scout-app-wrapper .near-chip{height:40px;padding:0 14px;border-radius:99px;font-size:14px;flex:0 0 auto}
-@media (max-width:600px){.scout-app-wrapper #otp-sf>button[type=submit]{flex:1 1 100%;min-height:52px;font-size:17px}}   /* v7.78: on a phone Hunt is the full-width button under the box, not a small one alone on a row (the design brief) */
+@media (max-width:600px){.scout-app-wrapper #otp-sf>button[type=submit]{flex:1 1 100%;min-height:52px;font-size:17px}}   /* v7.79: on a phone Hunt is the full-width button under the box, not a small one alone on a row (the design brief) */
 .scout-app-wrapper .sgw-morep{width:100%}
 .scout-app-wrapper .sgw-morep>summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;font-size:15px;font-weight:700;color:var(--ac)}
 .scout-app-wrapper .sgw-morep>summary::-webkit-details-marker{display:none}
@@ -1033,7 +1033,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-form input:focus{border-style:solid;border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-ring)}
 .scout-app-wrapper .sgw-go{height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--ac);background:var(--ac);color:var(--onink);font-size:15px;font-weight:800}
 .scout-app-wrapper .sgw-go:hover{filter:brightness(.94)}
-.scout-app-wrapper .sgw-chip{min-height:44px;font-size:15px}   /* v7.78: 44px, as everywhere (the design brief) */
+.scout-app-wrapper .sgw-chip{min-height:44px;font-size:15px}   /* v7.79: 44px, as everywhere (the design brief) */
 .scout-app-wrapper .sgw-lock{color:var(--go);font-size:12.5px;line-height:1}
 .scout-app-wrapper .sgw-chip.on .sgw-lock{color:inherit}
 .scout-app-wrapper .sgw-chip .sgw-x{width:22px;height:22px;font-size:16px}
@@ -2224,7 +2224,8 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-cats .hubc{min-height:32px;padding:7px 11px;font-size:12.5px}
 .scout-app-wrapper .nr-row{display:flex;align-items:stretch;gap:6px}
 .scout-app-wrapper .nr-row .nr-card{flex:1 1 auto;min-width:0}
-.scout-app-wrapper .nr-skip,.scout-app-wrapper .nr-rvb{flex:0 0 auto;border:1px solid var(--l2);background:transparent;color:var(--mu);border-radius:10px;padding:0 9px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
+.scout-app-wrapper .nr-skip,.scout-app-wrapper .nr-rvb,.scout-app-wrapper .nr-addv{flex:0 0 auto;border:1px solid var(--l2);background:transparent;color:var(--mu);border-radius:10px;padding:0 9px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
+.scout-app-wrapper .nr-acts>.nr-addv{color:var(--ac);border-color:var(--ac);min-height:36px}
 .scout-app-wrapper .nr-skipped{margin:0 0 10px;font-size:13px;color:var(--mu)}
 .scout-app-wrapper .nr-sendbox{margin:0 0 12px;padding:10px;border:1px solid var(--ac);border-radius:12px}
 .scout-app-wrapper .nr-sendrow{display:flex;gap:8px;flex-wrap:wrap}
@@ -2366,7 +2367,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   .scout-app-wrapper #otp-near .nr-num{width:22px;height:22px;font-size:13.5px}
   .scout-app-wrapper #otp-near .nr-ph{width:64px;height:64px}
   .scout-app-wrapper #otp-near .nr-sub .nr-ph{width:46px;height:46px}
-  .scout-app-wrapper #otp-near .nr-skip,.scout-app-wrapper #otp-near .nr-rvb,.scout-app-wrapper #otp-near .nr-row>.nr-go,.scout-app-wrapper #otp-near .nr-acts>.nr-go{font-size:15px}
+  .scout-app-wrapper #otp-near .nr-skip,.scout-app-wrapper #otp-near .nr-rvb,.scout-app-wrapper #otp-near .nr-addv,.scout-app-wrapper #otp-near .nr-row>.nr-go,.scout-app-wrapper #otp-near .nr-acts>.nr-go{font-size:15px}
   .scout-app-wrapper #otp-near .nr-nesth{font-size:13.5px}
   .scout-app-wrapper #otp-near .nr-skipped,.scout-app-wrapper #otp-near .nr-etan,.scout-app-wrapper #otp-near .nr-more summary,.scout-app-wrapper #otp-near .nr-steps{font-size:15px}
   .scout-app-wrapper #otp-near .nr-flockt{font-size:16px}
@@ -2390,13 +2391,16 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   .scout-app-wrapper #otp-near .nr-row>.nr-go{flex:1 1 100%;min-height:44px}
   .scout-app-wrapper #otp-near .nr-acts{flex:1 1 100%;flex-direction:row}
   .scout-app-wrapper #otp-near .nr-acts>.nr-go{flex:1 1 auto;min-height:44px}
-  .scout-app-wrapper #otp-near .nr-acts>.nr-skip,.scout-app-wrapper #otp-near .nr-acts>.nr-rvb{flex:0 0 auto;min-height:44px;padding:0 16px}
+  .scout-app-wrapper #otp-near .nr-acts>.nr-skip,.scout-app-wrapper #otp-near .nr-acts>.nr-rvb,.scout-app-wrapper #otp-near .nr-acts>.nr-addv{flex:0 0 auto;min-height:44px;padding:0 16px}
+  .scout-app-wrapper #otp-near .nr-acts4{flex-wrap:wrap}   /* v7.78: Directions on its own line, Reviews, + Stop and Skip under it */
+  .scout-app-wrapper #otp-near .nr-acts4>.nr-go{flex:1 1 100%}
+  .scout-app-wrapper #otp-near .nr-acts4>.nr-skip,.scout-app-wrapper #otp-near .nr-acts4>.nr-rvb,.scout-app-wrapper #otp-near .nr-acts4>.nr-addv{flex:1 1 0;padding:0 8px}
 }
 .scout-app-wrapper #otp-near .nr-footm .nr-start{font-size:17px}   /* v7.72: after the phone rules, which make the bar's buttons 14px */
 @media (max-width:600px){   /* v7.73 glance check for the car (NHTSA: a glance, not a read): every main button 48px tall, its words 17px */
   .scout-app-wrapper #otp-near .tab{font-size:17px;letter-spacing:0;min-height:48px}
   .scout-app-wrapper #otp-near .nr-row>.nr-go,.scout-app-wrapper #otp-near .nr-acts>.nr-go{font-size:17px;min-height:48px}
-  .scout-app-wrapper #otp-near .nr-acts>.nr-skip,.scout-app-wrapper #otp-near .nr-acts>.nr-rvb{min-height:48px}
+  .scout-app-wrapper #otp-near .nr-acts>.nr-skip,.scout-app-wrapper #otp-near .nr-acts>.nr-rvb,.scout-app-wrapper #otp-near .nr-acts>.nr-addv{min-height:48px}
   .scout-app-wrapper #otp-near .addrow button,.scout-app-wrapper #otp-near .nr-wc,.scout-app-wrapper #otp-near .b.nr-mebig,.scout-app-wrapper #otp-near .nr-optdone{font-size:17px;min-height:48px}
   .scout-app-wrapper #otp-near .nr-foot .b{font-size:17px;min-height:48px}
 }
@@ -3575,7 +3579,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.78';
+var PROWL_VERSION='v7.79';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -5053,7 +5057,7 @@ function viewSw(){var d=detailGet();return '<div class="view-sw" role="group" ar
   '<button type="button" data-view="simple" aria-pressed="'+(d==='simple')+'">Swipe</button>'+
   '<button type="button" data-view="all" aria-pressed="'+(d==='all')+'">Show everything</button></div>'}
 function compsRow(t){
-  return '<div class="comps comps-top" role=group aria-label="What has '+esc(t)+' sold for?"><p class=comps-h>What has <b>'+esc(t)+'</b> sold for?</p>'+   /* v7.78: names the hunt it follows (the design brief) */
+  return '<div class="comps comps-top" role=group aria-label="What has '+esc(t)+' sold for?"><p class=comps-h>What has <b>'+esc(t)+'</b> sold for?</p>'+   /* v7.79: names the hunt it follows (the design brief) */
     '<button class=gh type=button data-comps=90 data-t="'+esc(t)+'">eBay Sold · 90 days</button>'+
     '<button class=gh type=button data-comps=3y data-t="'+esc(t)+'">Terapeak · 3 years</button>'+
     '<span class=comps-note>Both need you signed in to eBay — Terapeak also needs Seller Hub (free).</span></div>';
@@ -6131,7 +6135,7 @@ function sgwSync(){
    rebuilt from nothing if it is ever missing or broken. */
 var CHIP_FEW=8,CHIP_FEW_WIDE=12,SEEN_KEY='prowl.seenUrls',SEEN=null;
 function isNarrow(){try{return window.innerWidth<=640}catch(e){return false}}
-function chipFew(){return isNarrow()?CHIP_FEW:CHIP_FEW_WIDE}   /* v7.78 (the design brief): 31 pills were a wall on a desktop too */
+function chipFew(){return isNarrow()?CHIP_FEW:CHIP_FEW_WIDE}   /* v7.79 (the design brief): 31 pills were a wall on a desktop too */
 function seenLoad(){if(SEEN)return SEEN;try{SEEN=JSON.parse(localStorage.getItem(SEEN_KEY)||'{}')||{}}catch(e){SEEN={}}if(typeof SEEN!=='object'||Object.prototype.toString.call(SEEN)==='[object Array]')SEEN={};return SEEN}
 function seenSave(){try{var ks=Object.keys(SEEN);if(ks.length>60)ks.slice(0,ks.length-60).forEach(function(k){delete SEEN[k]});localStorage.setItem(SEEN_KEY,JSON.stringify(SEEN))}catch(e){}}
 function seenUrls(k){
@@ -10452,7 +10456,30 @@ function nrRvToggle(b){
   nrFetch('/reviews?id='+E(id)).then(function(r){if(r.ok)NR.rv[id]=r.j;if(box.parentNode)nrRvDraw(box,r.ok?r.j:null)});
 }
 function nrGo(p){return '<a class="nr-go" href="'+esc(nrDirUrl(p))+'" target="_blank" rel="noopener noreferrer" aria-label="Directions to '+esc(p.name||'')+'">Directions</a>'}
-function nrRow(p,day,num,o){return '<div class="nr-row">'+nrCard(p,day,'',num,o)+'<span class="nr-acts">'+nrGo(p)+nrRvBtn(p)+'</span></div>'}
+function nrRow(p,day,num,o){return '<div class="nr-row">'+nrCard(p,day,'',num,o)+'<span class="nr-acts">'+nrGo(p)+nrRvBtn(p)+nrStopBtn(p)+'</span></div>'}
+/* v7.78 (the owner: "i may want to go to a store ... and then you click on that place"): + Stop on a shop in Around you,
+   in a trip's list or among the smaller shops makes it one of your stops on the way. On a trip you just built, the trip
+   is built again through it, put in drive order among your other stops; from Around you it waits under Road trip. */
+function nrStopTxt(p){return String((p.name||'')+(p.town?', '+p.town:'')).replace(/\s+/g,' ').replace(/\|/g,' ').trim().slice(0,120)}
+function nrStopBtn(p){var v=p&&!p.pin?nrStopTxt(p):'';return v.length>=2?'<button type="button" class="nr-addv" data-nradd="'+esc(v)+'" data-nraddid="'+esc(p.id||'')+'" aria-label="Make '+esc(p.name||'')+' one of your stops on the way">+ Stop</button>':''}
+function nrStopAt(t,id,v){   /* where the new stop goes among your stops: by the drive order of the list, else at the end */
+  var flat=[],pins=[],i,j,a,k=-1,V=nrViasGet();if(!t)return V.length;
+  for(i=0;i<(t.stops||[]).length;i++){a=t.stops[i];flat.push(a);for(j=0;j<(a.nested||[]).length;j++)flat.push(a.nested[j])}
+  for(i=0;i<flat.length;i++){if(flat[i].pin)pins.push(i);if(id&&flat[i].id===id)k=i}
+  if(k<0&&id)for(i=0;i<(t.more||[]).length;i++)if(t.more[i].id===id){a=t.more[i];var best=1e9;for(j=0;j<flat.length;j++){var d=typeof a.lat==='number'&&typeof flat[j].lat==='number'?nrKm(a,flat[j]):1e9;if(d<best){best=d;k=j}}break}
+  if(k<0||pins.length!==V.length)return V.length;   /* a stop not found, or the list does not match: last */
+  for(i=0;i<pins.length;i++)if(pins[i]>k)return i;return pins.length;
+}
+function nrStopAdd(v,id){
+  var V=nrViasGet(),low=String(v).toLowerCase(),i,t=NR.built;if(!v)return;
+  for(i=0;i<V.length;i++)if(V[i].toLowerCase()===low){toast('That one is already a stop on the way.',2600);return}
+  if(V.length>=3){if(NR.mode!=='trip')nrMode('trip');toast('Three stops on the way is the most. Take one out with × first.',3600);return}
+  var at=NR.mode==='trip'&&t?nrStopAt(t,id,v):V.length;V.splice(at,0,v);NR.vias=V;
+  if(NR.mode==='trip'&&t&&NR.lastTo){rNrVias();nrBuild(NR.lastTo);toast('Building the trip again by way of '+esc(v.split(',')[0])+'.',3000);return}
+  if(NR.mode!=='trip')nrMode('trip');else rNrVias();
+  toast((NR.lastTo||($('#otp-nrTo')||{}).value?'Added as a stop on the way. Tap Build trip to go by way of it.':'Added as a stop on the way. Now say where you are headed, then Build trip.'),3800);
+  var vb=$('#otp-nrVias');if(vb&&vb.scrollIntoView)try{vb.scrollIntoView({block:'center'})}catch(e){}
+}
 function nrMapBar(mode){var on=!!NR.mapOn[mode];return '<div class="nr-mapbar"><button type="button" class="hubc nr-mapb'+(on?' on':'')+'" data-nrmap="'+mode+'" aria-pressed="'+on+'">'+(on?'Hide the map':'Show on a map')+'</button></div><div class="nr-map" id="otp-nrMap'+(mode==='around'?'A':'T')+'"'+(on?'':' hidden')+'></div>'}
 function nrYou(){return NR.pos&&Date.now()-NR.posAt<900000?NR.pos:null}
 function nrPt(p,num,cls){return typeof p.lat==='number'&&typeof p.lng==='number'?{lat:p.lat,lng:p.lng,num:num,cls:cls,p:p}:null}
@@ -10773,7 +10800,7 @@ function nrDrawTrip(t,o){
   function eta(p){if(!ET)return 0;if(p===dest)return ET.at._dest||0;var i,j,a;for(i=0;i<stops.length;i++){a=stops[i];if(a.id===p.id)return ET.at[a._k||a.id]||0;for(j=0;j<(a.nested||[]).length;j++)if(a.nested[j].id===p.id)return ET.at[a._k||a.id]||0}return 0}
   if(ET)stops.forEach(function(a){[a].concat(a.nested||[]).forEach(function(p){if(nrLateAt(p,eta(p),day))lateN.push(p.name)})});
   var inMaps={},mp=nrMapsPick(stops,mapsPref()==='apple'?APPLE_WP:9),off=stops.length-mp.length;mp.forEach(function(a){inMaps[a.id]=1});   /* v7.77 */
-  function row(p,cls,num,det){return '<div class="nr-row'+(p.pin?' nr-pinrow':'')+'">'+nrCard(p,day,cls,num,{eta:eta(p),det:det,off:cls==='nr-anchor'&&off>0&&!inMaps[p.id]})+'<span class="nr-acts">'+nrGo(p)+nrRvBtn(p)+(p.pin?'':'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'"><span aria-hidden="true">−</span> Skip</button>')+'</span></div>'}   /* v7.75: a stop you named is not skipped; take it out above */
+  function row(p,cls,num,det){return '<div class="nr-row'+(p.pin?' nr-pinrow':'')+'">'+nrCard(p,day,cls,num,{eta:eta(p),det:det,off:cls==='nr-anchor'&&off>0&&!inMaps[p.id]})+'<span class="nr-acts'+(p.pin?'':' nr-acts4')+'">'+nrGo(p)+nrRvBtn(p)+(p.pin?'':nrStopBtn(p)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'"><span aria-hidden="true">−</span> Skip</button>')+'</span></div>'}   /* v7.78: + Stop; v7.75: a stop you named is not skipped; take it out above */
   h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+(t.loop?'the shops around it and back':esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):''))+(t.loop?'</b>':'')+'</p>'+
      (t.via&&t.via.length?'<p class="nearp nr-viah">By way of '+esc(nrAnd(t.via.map(function(v){return String(v).split(',')[0]})))+'</p>':'')+   /* v7.75 */
      (t.missing&&t.missing.length?'<p class="nearp nr-late">Not found on the map: '+esc(nrAnd(t.missing.map(function(v){return String(v).split(',')[0]})))+'. The drive still goes there, but it is not in the list or in Maps; check the name.</p>':'')+   /* v7.77 */
@@ -10793,7 +10820,7 @@ function nrDrawTrip(t,o){
   }
   if(t.loop)h+='<p class="nearp nr-back">Then back to <b>'+esc(from||'the start')+'</b>'+(ET&&ET.at._dest?' (~'+nrClock(ET.at._dest)+')':'')+'.</p>';
   else if(dest.name)h+='<div class="nr-dest"><p class="nr-nesth">Final stop</p><div class="nr-row">'+nrCard(dest,day,'nr-anchor','',{eta:eta(dest)})+nrGo(dest)+'</div></div>';
-  if(t.more&&t.more.length)h+='<details class="nr-more"><summary>Smaller shops along the way ('+t.more.length+')</summary><p class="nearp">Not worth planning around, but there if you pass. These never go into the Maps link.</p><div class="nr-list">'+t.more.map(function(p){return nrCard(p,day,'nr-sub')}).join('')+'</div></details>';   /* v7.39 */
+  if(t.more&&t.more.length)h+='<details class="nr-more"><summary>Smaller shops along the way ('+t.more.length+')</summary><p class="nearp">Not worth planning around, but there if you pass. These never go into the Maps link, unless you make one a stop with + Stop.</p><div class="nr-list">'+t.more.map(function(p){return '<div class="nr-row">'+nrCard(p,day,'nr-sub')+'<span class="nr-acts">'+nrStopBtn(p)+'</span></div>'}).join('')+'</div></details>';   /* v7.39 */
   h+='<div id="otp-nrSales"></div>';   /* v7.62 */
   out.innerHTML=h;
   nrFoot(t);
@@ -11106,6 +11133,7 @@ if(near){
     if(e.target.closest&&e.target.closest('#otp-nrJoinGo')){nrJoin();return}
     if(e.target.closest&&e.target.closest('#otp-nrJoinIn,#otp-nrTripsIn')){nrSignin();return}
     if(e.target.closest&&e.target.closest('#otp-nrViaAdd')){nrViaAdd();return}   /* v7.75 */
+    var av=e.target.closest&&e.target.closest('[data-nradd]');if(av){e.preventDefault();nrStopAdd(av.getAttribute('data-nradd'),av.getAttribute('data-nraddid'));return}   /* v7.78 */
     var vx=e.target.closest&&e.target.closest('[data-viax]');if(vx){NR.vias.splice(+vx.getAttribute('data-viax'),1);rNrVias();return}
     if(e.target.closest&&e.target.closest('#otp-nrJoinX')){nrInvSet('');nrJoinDraw();return}
     var ad=e.target.closest&&e.target.closest('#otp-nrAdd');
