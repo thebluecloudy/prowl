@@ -129,7 +129,7 @@ test('Den > LIKES lists likes, shows what Prowl learned, and lets you mute a wor
   await tick(40);
   p.$('#otp-denBtn').click();
   const tab = p.$('#otp-denT5');
-  assert.equal(tab.textContent, 'LIKES 2');
+  assert.equal(tab.textContent, 'Likes 2');
   tab.click();
   const pane = p.$('#otp-denLikes');
   assert.equal(pane.hidden, false);
@@ -143,7 +143,7 @@ test('Den > LIKES lists likes, shows what Prowl learned, and lets you mute a wor
   assert.match(pane.textContent, /Ignoring: haeger/);
   pane.querySelector('[data-unlike="https://www.ebay.com/itm/5550001"]').click();
   assert.equal(ls(p, LIKES).length, 1);
-  assert.equal(p.$('#otp-denT5').textContent, 'LIKES 1');
+  assert.equal(p.$('#otp-denT5').textContent, 'Likes 1');
   pane.querySelector('[data-lkclear]').click();
   assert.deepEqual(ls(p, LIKES), []);
   assert.match(p.$('#otp-denLikes').textContent, /Tap ♡ on a Flock card/);

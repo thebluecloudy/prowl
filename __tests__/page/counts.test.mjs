@@ -33,7 +33,7 @@ test('every count written into the HTML is the real number of marketplaces', asy
   const spans = [...SHELL.matchAll(/<span data-t>(\d+)<\/span>/g)].map((m) => Number(m[1]));
   assert.ok(spans.length >= 10, 'the hero, the intro, the ALL button, the footer and the rest');
   for (const v of spans) assert.equal(v, n.total, '<span data-t>' + v + '</span>');
-  assert.match(SHELL, new RegExp('SHOP <u>' + n.shop + '</u>'));
+  assert.match(SHELL, new RegExp('Shop <u>' + n.shop + '</u>'));
   assert.match(SHELL, new RegExp('BOLO <u>' + n.bolo + '</u>'));
   /* plain-text counts too: "28 vintage marketplaces", "28 marketplaces" */
   for (const m of TEXT.matchAll(/\b(\d+) (?:vintage )?marketplaces\b/g)) assert.equal(Number(m[1]), n.total, m[0]);

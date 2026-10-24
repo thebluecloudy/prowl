@@ -23,7 +23,7 @@ test('the row under the search box is Hunt, and Just ShopGoodwill once turned on
   assert.deepEqual(p.$$('#otp-sf > button.b:not(.flt-b)').filter((b) => !b.hidden).map((b) => b.textContent.replace(/[^A-Za-z ]/g, '').trim()), ['Hunt', 'Just ShopGoodwill']);
   assert.equal(p.$('#otp-sf > button.flt-b').getAttribute('aria-haspopup'), 'dialog');
   assert.equal(p.$('#otp-fb'), null, 'Facebook USA left the row');
-  assert.equal(p.$('#otp-localBtn span').textContent, 'NEAR ME', 'the dock\'s Near me');
+  assert.equal(p.$('#otp-localBtn span').textContent, 'Near me', 'the dock\'s Near me');
   assert.doesNotMatch(PAGE, /\.b\.fb[{:]/, 'its styles went with it');
   await p.close();
 });

@@ -12,7 +12,7 @@ const hosts = (p) => p.$$('#otp-res a.hit').map((a) => new URL(a.href).hostname.
 test('five tabs with plain names; no GOODWILL tab', async () => {
   const p = loadPage({ storage: DEN });
   await tick(30);
-  assert.deepEqual(p.$$('#otp-dock .db span').map((s) => s.textContent), ['HUNT', 'DAILY', 'FLOCK', 'NEAR ME', 'DEN']);
+  assert.deepEqual(p.$$('#otp-dock .db span').map((s) => s.textContent), ['Hunt', 'Daily', 'Flock', 'Near me', 'Den']);
   assert.equal(p.$('#otp-oneBtn'), null);
   assert.equal(p.$('#otp-dock .db[data-m="one"]'), null);
   assert.match(p.$('#otp-dock .db[data-m="prowl"]').getAttribute('aria-label'), /^Hunt/);
