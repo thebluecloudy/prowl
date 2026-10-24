@@ -1,16 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.80 / v165).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.80 / v166).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v7.80** | 393,771 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v165** | |
+| Worker | **v166** | |
 
 Recently shipped, newest first:
 
+- **v166: Around You keeps the closest shops, however small.** Bluegrass Collectors, 0.1 mi away in Ashland, KY with
+  11 reviews, was in the list with Antiques alone but cut with the default Antiques, Vintage and Thrift: the answer was
+  the 24 biggest, so not even Closest first could show it. Now it is the 24 biggest plus the 8 closest not among them,
+  in rank order (`nearKeep`, `NEAR_CLOSE_KEEP` in `worker/trip.js`). Near cache key v=12. Worker only. Tests:
+  `worker/__tests__/trip.test.mjs`.
 - **v7.80: ✓ Been there and Next stop, for the day of the trip** (the owner, on the road: "i stopped at one, now i want
   to find the next one"). Before, Start in Maps always started from the trip's starting town and went through every
   stop, even the ones behind you. Now, on the trip's day, every stop has **✓ Been**: the stop stays in the list, dimmed
@@ -1214,7 +1219,7 @@ Recently shipped, newest first:
 | `ccr-0de21c46-yzs839` | Claude | Hunt screen from the design brief (#232, draft) | Page v7.79. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.81, worker v166** (v7.79 is #232's). Claim one here when you start.
+Next free numbers: **page v7.81, worker v167** (v7.79 is #232's). Claim one here when you start.
 
 ## What's next
 
