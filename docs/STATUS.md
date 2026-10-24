@@ -1333,8 +1333,10 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| (another session) | Claude | **v7.92**: How Prowl works covers Near me, the road, reordering pills and Flock's Saved/Likes | PR #243 open. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.93 / v168**: Saved forever, a Prowl Pro perk: saved finds follow the account for a year, photos kept | Draft PR, building. |
 
-Next free numbers: **page v7.92, worker v168**. Claim one here when you start.
+Next free numbers: **page v7.94, worker v169**. Claim one here when you start.
 
 ## What's next
 
