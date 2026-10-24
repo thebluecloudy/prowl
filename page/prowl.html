@@ -399,7 +399,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper h1 em{color:var(--ac);font-style:italic;font-weight:600}
 [data-theme=uranium] .scout-app-wrapper h1{text-shadow:0 0 22px rgba(57,255,20,.4)}
 [data-theme=uranium] .scout-app-wrapper h1 em{text-shadow:0 0 14px rgba(57,255,20,.9)}
-.scout-app-wrapper .lede{margin:0;color:var(--i3);max-width:54ch;font-size:16px}
+.scout-app-wrapper .lede{margin:0;color:var(--i3);max-width:54ch;font-size:16px;text-wrap:balance}   /* v7.81: no word left alone on a line */
 .scout-app-wrapper form{display:flex;gap:8px;margin:22px 0 10px;flex-wrap:wrap}
 .scout-app-wrapper input[type=search],.scout-app-wrapper input[type=text]{flex:1 1 220px;min-width:0;height:50px;padding:0 16px;border:1px solid var(--l2);border-radius:12px;background:var(--cd2);font:inherit;font-size:16px;font-weight:500;color:var(--ink);transition:border-color .15s,box-shadow .15s,background .15s}
 .scout-app-wrapper input::placeholder{color:var(--mu2)}
@@ -984,7 +984,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .shl{text-align:right}
 .scout-app-wrapper .whyp p b{font-weight:800!important}
 @media(max-width:380px){.scout-app-wrapper #otp-dock .db>span{font-size:12.5px!important;letter-spacing:0!important}}
-.scout-app-wrapper .db .bd{position:absolute;top:6px;left:calc(50% + 14px);min-width:17px;height:17px;padding:0 5px;border-radius:99px;background:var(--ac);color:var(--onink);font-size:12.5px;font-weight:800;font-style:normal;display:flex;align-items:center;justify-content:center}
+.scout-app-wrapper .db .bd{position:absolute;top:6px;left:calc(50% + 14px);min-width:17px;height:17px;padding:0 5px;white-space:nowrap;border-radius:99px;background:var(--ac);color:var(--onink);font-size:12.5px;font-weight:800;font-style:normal;display:flex;align-items:center;justify-content:center}
 .scout-app-wrapper .db.on{color:var(--ac)}
 .scout-app-wrapper .db.on>span:first-of-type{color:var(--ink)}
 .scout-app-wrapper .db.on::before{width:36px;height:3px}
@@ -1235,7 +1235,22 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper a.sgw-wh{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:var(--ink)}   /* v7.56: Best bets are links */
 .scout-app-wrapper .lv-self{white-space:nowrap;font-weight:700}
 .scout-app-wrapper .sgw-ago{margin-left:auto;font-size:14px;color:var(--mu);font-weight:600}
+.scout-app-wrapper .sgw-status{display:flex;align-items:baseline;gap:8px;margin:0 18px 12px;font-size:14px;line-height:1.45;color:var(--mu)}   /* v7.81 */
+.scout-app-wrapper .sgw-status i{flex:0 0 auto;width:9px;height:9px;border-radius:50%;background:var(--l2);transform:translateY(-1px)}
+.scout-app-wrapper .sgw-status b{font-weight:800;color:var(--ink)}
+.scout-app-wrapper .sgw-st-on i{background:var(--suc)}
+.scout-app-wrapper .sgw-st-on b{color:var(--suc)}
+.scout-app-wrapper .sgw-st-wait i{background:var(--ac)}
+@media(prefers-reduced-motion:no-preference){.scout-app-wrapper .sgw-st-wait i{animation:otpPaw 1.2s ease-in-out infinite}}
 .scout-app-wrapper .alrt{margin:0 0 30px;padding:18px;border:1px solid var(--ac);border-radius:16px;background:var(--cd2)}
+/* v7.81 (the design brief, idea 4): the Alerts card is one line until it is wanted */
+.scout-app-wrapper .alrt.is-mini>:not(.alrt-mini),.scout-app-wrapper .alrt:not(.is-mini)>.alrt-mini{display:none!important}
+.scout-app-wrapper .alrt.is-mini{padding:0!important;border-color:var(--l2)}
+.scout-app-wrapper .alrt-mini{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:12px 16px;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.scout-app-wrapper .alrt-mi{font-size:20px;line-height:1}
+.scout-app-wrapper .alrt-mt{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;font-size:15px;line-height:1.35}
+.scout-app-wrapper .alrt-mt span{font-size:14px;color:var(--mu)}
+.scout-app-wrapper .alrt-mg{flex:0 0 auto;font-weight:800;color:var(--ac);white-space:nowrap}
 .scout-app-wrapper .alrt h2{font-family:var(--display);font-size:18px;margin:0 0 6px;color:var(--ink)!important}
 .scout-app-wrapper .alrt p{margin:0 0 12px;font-size:15px;line-height:1.5;color:var(--i2)}
 .scout-app-wrapper .alrt form{display:flex;flex-wrap:wrap;gap:8px;margin:0}
@@ -1648,6 +1663,11 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper.k2 .gd>h2,.scout-app-wrapper.k2 .alrt>h2,.scout-app-wrapper.k2 .b.p,.scout-app-wrapper.k2 a.b.p{background:var(--k2-band)}
 .scout-app-wrapper.k2 h1,.scout-app-wrapper.k2 #otp-sgw>.sgw-head b,.scout-app-wrapper.k2 .found-title,.scout-app-wrapper.k2 .flock-head b,
 .scout-app-wrapper.k2 .gd>h2,.scout-app-wrapper.k2 .alrt>h2{font-family:var(--k2-slab);font-style:normal;font-weight:400;letter-spacing:.01em}
+/* v7.81 (the design brief, idea 2): a card's header is a heading, not a band; orange is kept for what you tap */
+.scout-app-wrapper.k2 #otp-sgw>.sgw-head,.scout-app-wrapper.k2 .found-title,.scout-app-wrapper.k2 .flock-head,
+.scout-app-wrapper.k2 .gd>h2,.scout-app-wrapper.k2 .alrt>h2{background:none;border-bottom:1px solid var(--ln)}
+.scout-app-wrapper.k2 #otp-sgw>.sgw-head b,.scout-app-wrapper.k2 .found-title,.scout-app-wrapper.k2 .flock-head b,
+.scout-app-wrapper.k2 .gd>h2,.scout-app-wrapper.k2 .alrt>h2{color:var(--ink)!important}
 .scout-app-wrapper.k2 h1{font-size:clamp(34px,7vw,50px);color:var(--k2-ln)}
 .scout-app-wrapper.k2 #otp-sgw>.sgw-head b,.scout-app-wrapper.k2 .found-title,.scout-app-wrapper.k2 .flock-head b,.scout-app-wrapper.k2 .gd>h2,.scout-app-wrapper.k2 .alrt>h2{font-size:20px}
 .scout-app-wrapper.k2 .sgw-chip.on{background:#C2491F;border-color:#3B1E12;color:#FFF6EC}
@@ -1987,7 +2007,8 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper main#otp-main.otp-in{animation:otpVtIn 240ms cubic-bezier(0,0,.2,1) both}
 @media(prefers-reduced-motion:reduce){.scout-app-wrapper main#otp-main.otp-in{animation:none}}
 .scout-app-wrapper .paws{display:inline-flex;gap:3px;margin-right:6px;vertical-align:-1px}
-.scout-app-wrapper .paws i{font-style:normal;font-size:13px;opacity:.25}
+.scout-app-wrapper .paws i{font-style:normal;font-size:13px;opacity:.25;display:inline-block;line-height:0}
+.scout-app-wrapper .paws i svg{width:16px;height:16px;color:var(--ac);display:block}   /* v7.81: the page's swallows, not paw prints */
 @media(prefers-reduced-motion:no-preference){.scout-app-wrapper .paws i{animation:otpPaw 1.2s ease-in-out infinite}.scout-app-wrapper .paws i:nth-child(2){animation-delay:.2s}.scout-app-wrapper .paws i:nth-child(3){animation-delay:.4s}}
 @keyframes otpPaw{0%,100%{opacity:.2;transform:translateY(0)}40%{opacity:1;transform:translateY(-2px)}}
 .scout-app-wrapper .apr-tips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0;padding:0;list-style:none}
@@ -2009,6 +2030,14 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .pk-card b{font-size:17px;color:var(--ac)}
 .scout-app-wrapper .pk-t{font-size:13px;line-height:1.3;max-height:3.9em;overflow:hidden}
 .scout-app-wrapper .pk-card small{font-size:12.5px;color:var(--mu)}
+/* v7.81 (the design brief, idea 6: one card everywhere): a Best pick is drawn like the result cards Matt chose in
+   v7.26 (from Jellycat's shop): the title centred in normal case, the price under it in ink, then where it is */
+.scout-app-wrapper .pk-card{text-align:center;padding:6px 6px 10px}
+.scout-app-wrapper .pk-card img,.scout-app-wrapper .pk-card .pk-noimg{order:1}
+.scout-app-wrapper .pk-card .pk-t{order:2;margin:6px 4px 0;font-size:15px;font-weight:600;line-height:1.3;max-height:2.6em}
+.scout-app-wrapper .pk-card b{order:3;font-size:17px;font-weight:600;color:var(--ink)}
+.scout-app-wrapper .pk-card small{order:4;font-size:13px}
+.scout-app-wrapper .pk-card .sgw-also{order:5}
 .scout-app-wrapper .pk-dupe{margin:4px 15px;font-size:13px;color:var(--i2)}
 .scout-app-wrapper .pk-sites{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:6px 15px 0;padding:0}
 .scout-app-wrapper .pk-sites li{padding:3px 9px;border-radius:999px;font-size:12.5px;background:var(--cd2);color:var(--mu);border:1px solid var(--l2)}
@@ -2057,7 +2086,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .view-sw{display:flex;margin:12px 18px 2px;max-width:380px;border:1px solid var(--l2);border-radius:12px;overflow:hidden}
 .scout-app-wrapper .view-sw button{flex:1 1 0;min-height:42px;padding:8px;border:0;background:var(--cd2);color:var(--i2);font:700 15px/1.2 var(--sans);cursor:pointer}
 .scout-app-wrapper .view-sw button+button{border-left:1px solid var(--l2)}
-.scout-app-wrapper .view-sw button[aria-pressed="true"]{background:var(--ac);color:var(--onink)}
+.scout-app-wrapper .view-sw button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}   /* v7.81: a choice, not an action, so ink, not orange */
 .scout-app-wrapper .view-sw button:focus-visible{outline:2px solid var(--ac);outline-offset:-2px}
 /* v7.35: the email ask: who it is from, what never happens to the address, what the email looks like */
 .scout-app-wrapper .mail-trust{margin:8px 0 0;font-size:13.5px;line-height:1.45;color:var(--mu)}
@@ -2404,6 +2433,11 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   .scout-app-wrapper #otp-near .addrow button,.scout-app-wrapper #otp-near .nr-wc,.scout-app-wrapper #otp-near .b.nr-mebig,.scout-app-wrapper #otp-near .nr-optdone{font-size:17px;min-height:48px}
   .scout-app-wrapper #otp-near .nr-foot .b{font-size:17px;min-height:48px}
 }
+/* v7.81 (the design brief, idea 9): one style for the small labels over a group ("What has … sold for?", "Or try",
+   "Try one", "Looks like these on eBay", Road trip's option titles); last in the sheet, so it wins. A hunt's name
+   inside one stays as typed. */
+.scout-app-wrapper .comps-h,.scout-app-wrapper .sgw-rel-h,.scout-app-wrapper .bolo-l,.scout-app-wrapper .apr-lkh,.scout-app-wrapper .nr-optt{font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mu)}
+.scout-app-wrapper .comps-h b{text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink)}
 /* v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
      shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
      under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing.
@@ -2480,7 +2514,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   </div>
 
   <h1>Find the prey</h1>
-  <p class="lede k2-only">Search <span data-t>29</span> vintage marketplaces at once. Free.</p>
+  <p class="lede k2-only"><span data-t>29</span> vintage marketplaces, one search. Free.</p>
   <p class="lede k2-hide"><strong>Prowl by Owl &amp; Twig</strong> is a free search tool for vintage collectors. Type a hunt or tap one of yours below, and it builds the same search for all <span data-t>29</span> vintage marketplaces on one screen — open them one at a time, or all at once.</p>
 
   <form id="otp-sf" autocomplete="off">
@@ -2552,7 +2586,8 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   </div>
 
 
-  <section class="alrt" id="otp-alerts" aria-labelledby="otp-alertsT">
+  <section class="alrt is-mini" id="otp-alerts" aria-labelledby="otp-alertsT">
+    <button type="button" class="alrt-mini" id="otp-alertsMini" aria-expanded="false" aria-controls="otp-alerts"><span class="alrt-mi" aria-hidden="true">✉</span><span class="alrt-mt"><b>New finds by email</b><span>Free for 3 hunts</span></span><span class="alrt-mg">Set up →</span></button>
     <h2 id="otp-alertsT">Prowl Alerts</h2>
     <p class="k2-short k2-only">New finds for your hunts, in your inbox. Only what you have not seen.</p>
     <div class="k2-pills k2-only">
@@ -2650,7 +2685,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   function note(t){while(O.firstChild)O.removeChild(O.firstChild);var p=document.createElement('p');p.className='apr-note';p.textContent=t;O.appendChild(p);}
   var TM=null,ST=['Looking at your photo\u2026','Working out what it is\u2026','Checking the maker and marks\u2026','Checking sold prices\u2026','Almost there\u2026'];
   function stopT(){if(TM){clearInterval(TM);TM=null;}}
-  function startT(){var i=0;note(ST[0]+' (up to 40 seconds)');var p=O.firstChild;if(p&&p.parentNode){var pw=document.createElement('span');pw.className='paws';pw.setAttribute('aria-hidden','true');for(var pi=0;pi<3;pi++){var pe=document.createElement('i');pe.textContent='\uD83D\uDC3E';pw.appendChild(pe)}O.insertBefore(pw,p);}var bar=document.createElement('div');bar.className='apr-bar';bar.appendChild(document.createElement('i'));O.appendChild(bar);TM=setInterval(function(){i=Math.min(i+1,ST.length-1);if(p&&p.parentNode)p.textContent=ST[i];},7000);}
+  function startT(){var i=0;note(ST[0]+' (up to 40 seconds)');var p=O.firstChild;if(p&&p.parentNode){var pw=document.createElement('span');pw.className='paws';pw.setAttribute('aria-hidden','true');for(var pi=0;pi<3;pi++){var pe=document.createElement('i'),sv=document.createElementNS('http://www.w3.org/2000/svg','svg'),us=document.createElementNS('http://www.w3.org/2000/svg','use');sv.setAttribute('viewBox','0 0 24 24');us.setAttribute('href','#otp-swallow');sv.appendChild(us);pe.appendChild(sv);pw.appendChild(pe)}   /* v7.81: swallows, as everywhere */O.insertBefore(pw,p);}var bar=document.createElement('div');bar.className='apr-bar';bar.appendChild(document.createElement('i'));O.appendChild(bar);TM=setInterval(function(){i=Math.min(i+1,ST.length-1);if(p&&p.parentNode)p.textContent=ST[i];},7000);}
   function cardLines(x,t,mw,maxL){var w=String(t||'').split(/\s+/),out=[],line='';for(var i=0;i<w.length;i++){var tt=line?line+' '+w[i]:w[i];if(x.measureText(tt).width>mw&&line){out.push(line);line=w[i];}else line=tt;}if(line)out.push(line);if(out.length>maxL){out=out.slice(0,maxL);out[maxL-1]=out[maxL-1].replace(/\s*\S*$/,'')+'\u2026';}return out;}
   /* v5.99: the photo card (photo + item + fair price + Prowl footer) is drawn
      once here, so "Share this find" and "Share this research" send the same
@@ -3046,6 +3081,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   var f=document.getElementById('otp-alertsF');if(!f)return;
   var box=document.getElementById('otp-alerts');
   function done(first){
+    if(box)box.classList.remove('is-mini');   /* v7.81: the thank-you is inside the full card */
     while(f.firstChild)f.removeChild(f.firstChild);
     var p=document.createElement('p');p.className='ok';p.setAttribute('role','status');
     p.textContent=first?'Thank you, you are on the Owl & Twig list!':'You are on the Owl & Twig list.';
@@ -3579,8 +3615,11 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.79';
+var PROWL_VERSION='v7.81';
 var E=encodeURIComponent;
+/* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
+   swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
+var FLY3='<span class="paws" aria-hidden="true">'+[0,1,2].map(function(){return '<i><svg viewbox="0 0 24 24"><use href="#otp-swallow"></use></svg></i>'}).join('')+'</span>',PK_FLOCK=0;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
@@ -4922,7 +4961,7 @@ function dgNew(T){
   }
   var hd='<h3>'+(x.base?'What’s new'+(x.since?' <small>'+esc(x.since)+'</small>':''):'A first look')+'</h3>';
   if(!x.base)h='<p class="sgw-note">Your first daily prowl on this device: a few live listings from each hunt. From tomorrow, Daily shows only what is new.</p>';
-  else if(!x.n)h='<p class="sgw-note">'+(x.wait?'<span class="paws" aria-hidden="true"><i>🐾</i><i>🐾</i><i>🐾</i></span>Checking what is new…':'Nothing new '+esc(x.since)+'. Your hunts are quiet; See all opens any of them.')+'</p>';
+  else if(!x.n)h='<p class="sgw-note">'+(x.wait?FLY3+'Checking what is new…':'Nothing new '+esc(x.since)+'. Your hunts are quiet; See all opens any of them.')+'</p>';
   x.html='<div class="dg-new" id="otp-dgNew">'+hd+h+'</div>';
   return x;
 }
@@ -5020,7 +5059,7 @@ function huntFetch(t,cb){
 function huntLink(it){var u=String(it.url||'');if(it.src==='ebay'&&window.prowlEpn)u=window.prowlEpn(u,'prowl-picks');return /^https:\/\//.test(u)?u:'#'}
 function huntInner(t){
   var d=HUNT.c[t.toLowerCase()],h='',i,it,r;
-  if(!d)return '<p class="pk-wait"><span class="paws" aria-hidden="true"><i>🐾</i><i>🐾</i><i>🐾</i></span>Finding the best picks across every marketplace…</p>';
+  if(!d)return '<div class="pk-wait">'+nrFlock('otp-pkFlock'+(++PK_FLOCK),['Finding the best picks across every marketplace…','Weighing price, condition and seller…','Almost there…'])+'</div>';   /* v7.81: the flock, as Near me */
   if(d.fail||!d.picks||!d.picks.length)return '';
   var picks=fltOnly(d.picks);   /* v7.40: the filters shape the picks too */
   if(!picks.length)h+='<p class="pk-hid">Best picks: all '+d.picks.length+' hidden by your <button type="button" class="lnk" data-flt="open">filters</button>.</p>';
@@ -5221,7 +5260,7 @@ function clearRun(){
 /* ---------- DOCK ---------- */
 function rDock(){
   var n=st.lock.size;
-  var dsb=$('#otp-ds');if(dsb){dsb.textContent=n;dsb.hidden=n===0;}
+  dockNew();   /* v7.81: the Daily badge is what is new, not how many hunts */
   flBadge();   /* v6.38 */
   var ol=$('#otp-oneLab'),ob=$('#otp-one');   /* v7.30: a pill under the search box, no longer a dock tab */
   if(ol)ol.textContent=oneName();
@@ -6280,7 +6319,7 @@ function liveEmptyCard(t,fb){
   for(i=0;i<EMPTY_LINKS.length;i++){if(fb&&EMPTY_LINKS[i]==='facebook')continue;m=mb(EMPTY_LINKS[i]);if(!m)continue;   /* v6.65: fb, the Facebook strip is above */try{u=m.u(t)}catch(e){u=''}if(!/^https:\/\//.test(u)&&u.charAt(0)!=='/')continue;links+=(links?' · ':'')+'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(m.n)+'</a>'}
   return '<div class="sgw-empty"><p class="sgw-empty-h">'+(fb?'Nothing on Goodwill or the other live sites yet for':'Nothing live yet for')+' <b>“'+esc(t)+'”</b>.</p>'+
     '<p>Rare pieces come and go. Prowl can keep watching and email you when one is listed.</p>'+
-    '<button type="button" class="b p" data-empty="watch" data-t="'+esc(t)+'">Email me when it shows up</button>'+
+    '<button type="button" class="b" data-empty="watch" data-t="'+esc(t)+'">Email me when it shows up</button>'+   /* v7.81: outlined; the card's one orange button is Continue the full hunt (the design brief) */
     (relTerms(t).length?'<p class="sgw-rel-h">Or try</p><div class="bolo-r">'+relTerms(t).map(boloChip).join('')+'</div>':'')+   /* v7.23 */
     (links?'<details class="sgw-morep"><summary>More places to look</summary><p class="sgw-empty-l">'+links+'</p></details>':'')+'</div>';   /* v7.03 */
 }
@@ -6293,7 +6332,7 @@ function liveSummary(t){
 }
 function liveBlock(name,t,c,busy){
   var head='<div class="sgw-sub"><span class="sgw-live">Live on '+name+'</span>';
-  if(busy)return head+'</div><p class="sgw-note"><span class="paws" aria-hidden="true"><i>🐾</i><i>🐾</i><i>🐾</i></span>Looking on '+name+'…</p>';
+  if(busy)return head+'</div><p class="sgw-note">'+FLY3+'Looking on '+name+'…</p>';
   if(!c)return head+'</div><p class="sgw-note">&nbsp;</p>';
   if(c.err)return head+'</div><p class="sgw-note">'+esc(liveErrNote(name,c))+liveSelf(name,t)+'</p>';   /* v7.56 */
   var items=[],i;
@@ -6374,7 +6413,16 @@ function fbBlock(t){
 function sgwCont(t){
   return t?'<div class="sgw-cont"><p>These are the live listings. The full hunt searches all <b>'+TOTAL+'</b> marketplaces for <b>“'+esc(t)+'”</b>, from Facebook to estate sales and auctions.</p><button type="button" class="b p sgw-hunt" data-sgw="hunt">Continue the full hunt →</button></div>':'';
 }
-function sgwBody(){var t=sgwCurTerm();if(t&&sgw.terms.length)huntFetch(t,function(){huntPaint(t)});return (t&&sgw.terms.length?compsRow(t)+huntBox(t)+viewSw():'')+sgwBody0(t)+sgwCont(sgw.terms.length?t:'')}   /* v7.07: Best picks for the chosen hunt pill too */
+/* v7.81 (the design brief, idea 3): one line says what is live and when the full hunt last ran, at the top, where
+   "Nothing live yet" sat above and "Not run yet" in grey at the foot */
+function liveLine(t){
+  var sm=liveSummary(t),ts=slog()[t.toLowerCase()],a=ts?ago(ts):'',run=ts?'full hunt run '+esc(a.charAt(0).toLowerCase()+a.slice(1)):'full hunt not run yet',st,w;
+  if(!sm.done){st='wait';w='Checking live listings'+(sm.n?' · '+sm.n+' so far':'')+'…'}
+  else if(sm.n){st='on';w='<b>Live now</b> · '+sm.n+' listing'+(sm.n===1?'':'s')}
+  else{st='off';w='<b>Nothing live right now</b>'}
+  return '<p class="sgw-status sgw-st-'+st+'" role="status"><i aria-hidden="true"></i><span>'+w+' · '+run+'</span></p>';
+}
+function sgwBody(){var t=sgwCurTerm();if(t&&sgw.terms.length)huntFetch(t,function(){huntPaint(t)});return (t&&sgw.terms.length?liveLine(t)+compsRow(t)+huntBox(t)+viewSw():'')+sgwBody0(t)+sgwCont(sgw.terms.length?t:'')}   /* v7.07: Best picks for the chosen hunt pill too */
 function sgwBody0(t){
   if(t)fbFetch(t);   /* v6.65 */
   if(!sgw.terms.length)return '<p class="sgw-note">Type something you hunt into the box above. It is saved to your hunts, locked for Daily, and checked on ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Vinted and Grailed right away.</p>';
@@ -6397,7 +6445,7 @@ function sgwActs(){
   return '<details class="sgw-morep"><summary>Facebook and Instagram</summary><div class="sgw-morepb">'+
     '<button type="button" class="b sgw-hunt sgw-fb" data-sgw="fb">Facebook \u00b7 '+fbAllUsa().multi(x.t).length+' cities</button>'+
     igLink(x.t,'b sgw-hunt sgw-ig')+'</div></details>'+   /* v7.03 */
-    '<span class="sgw-ago">'+(ts?'Last run '+esc(a.charAt(0).toLowerCase()+a.slice(1)):'Not run yet')+'</span>';
+    '';   /* v7.81: when the full hunt last ran is on the status line at the top (liveLine) */
 }
 
 /* The shell is drawn once and never redrawn, so the add box keeps its text
@@ -6527,7 +6575,7 @@ function mailInit(mount){
       if(a==='open'){MAIL.open=!MAIL.open;MAIL.msg='';rMail();return}
       if(a==='code'){var ci0=box.querySelector('input[data-k=code]');mailCode('code',b.getAttribute('data-v')||(ci0?ci0.value:''));return}   /* v6.86 */
       if(a==='verify'){var vi=box.querySelector('input[data-k=verify]');mailCode('verify',vi?vi.value:'');return}
-      if(a==='soon'){e.preventDefault();var ws=$('#otp-alerts');if(den&&!den.hidden&&typeof closeDen==='function')closeDen();if(ws)try{ws.scrollIntoView({behavior:'smooth',block:'start'})}catch(x){ws.scrollIntoView()}return}
+      if(a==='soon'){e.preventDefault();var ws=$('#otp-alerts');alertsOpen();if(den&&!den.hidden&&typeof closeDen==='function')closeDen();if(ws)try{ws.scrollIntoView({behavior:'smooth',block:'start'})}catch(x){ws.scrollIntoView()}return}
       if(a==='join'){shopJoin();return}
       if(a==='signout'){mailSignout();return}
       if(a==='chg'){MAIL.chg=!MAIL.chg;MAIL.chgTo=b.getAttribute('data-to')||'';MAIL.msg='';rMail();var ci=document.getElementById('otp-chgTo');if(ci&&MAIL.chg)try{ci.focus()}catch(x){}return}   /* v6.04 */
@@ -6742,7 +6790,7 @@ function letterSetHtml(p){
 function letterPeek(){
   var tok=mGet('alertTok'),em=mGet('alertEmail');
   if(!tok||!em||typeof fetch!=='function')return;
-  openSheet('Your week so far','<p class="pk-wait"><span class="paws" aria-hidden="true"><i>\ud83d\udc3e</i><i>\ud83d\udc3e</i><i>\ud83d\udc3e</i></span>The panther is writing\u2026</p>');
+  openSheet('Your week so far','<p class="pk-wait">'+FLY3+'The panther is writing\u2026</p>');
   fetch(SGW_API+'alerts/letter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,tok:tok,preview:1})})
     .then(function(r){return r.json()['catch'](function(){return null})}).then(function(j){
       var b=$('#otp-sheetB');if(!b)return;
@@ -7141,6 +7189,7 @@ function alertsSoonPage(){
     sec.setAttribute('data-soon','1');
     var h=sec.querySelector('h2'),ps=sec.querySelectorAll('p'),go=$('#otp-alertsGo');
     if(h)h.textContent='Prowl Alerts \u00b7 coming soon';
+    var mt=sec.querySelector('.alrt-mt');if(mt)mt.innerHTML='<b>New finds by email</b><span>Coming soon: leave your email</span>';
     if(ps[0])ps[0].textContent='One email with new finds for your hunts on ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted and Grailed, only listings you have not seen. We are putting the finishing touches on it.';
     if(go&&go.parentNode){go.parentNode.hidden=true;go.parentNode.style.display='none'}
     var f=sec.querySelector('p.fine');if(f)f.textContent='Leave your email and we will tell you the day it opens:';
@@ -7486,6 +7535,10 @@ function homeNewLine(NEWN){
   if(!n)return '';
   return '<p class="hn-line"><span>New in your other hunts:</span>'+h+'</p>';
 }
+/* v7.81 (the design brief, idea 5): Daily's badge said how many hunts were locked (31), which read as 31 of
+   something new. It now adds up the "N new" on the hunt pills, and is hidden when nothing is new. */
+var DOCK_NEW=0;
+function dockNew(){var b=$('#otp-ds');if(!b)return;b.textContent=(DOCK_NEW>99?'99+':DOCK_NEW)+' new';b.hidden=!DOCK_NEW;b.setAttribute('aria-label',DOCK_NEW+' new in your hunts')}
 function rSGW(){
   var mount=$('#otp-sgw');
   if(!mount)return;
@@ -7503,6 +7556,7 @@ function rSGW(){
   if(sgw.cur){seenFresh(sgw.cur);seenMark(sgw.cur)}
   var lim=chipFew(),NEWN=[],few=!sgw.more&&sgw.terms.length>lim+1,shown=0,hid=0;
   for(i=0;i<sgw.terms.length;i++){x=sgw.terms[i];NEWN.push(x.t.toLowerCase()===sgw.cur?0:seenNew(x.t.toLowerCase()));}
+  DOCK_NEW=NEWN.reduce(function(a,v){return a+v},0);dockNew();
   for(i=0;i<sgw.terms.length;i++){
     x=sgw.terms[i];on=x.t.toLowerCase()===sgw.cur;
     if(few&&shown>=lim&&!on&&!NEWN[i]){hid++;continue}
@@ -9458,6 +9512,10 @@ try{var gdm=/[?&]guide=([^&#]+)/.exec(location.search);if(gdm){var gds='';try{gd
 } }catch(e){}
 /* v5.80: the old waitlist section now opens the live Prowl Alerts settings */
 var aGo=$('#otp-alertsGo');if(aGo)aGo.addEventListener('click',function(){openMailSettings()});
+/* v7.81: the one-line Alerts strip opens the full card; so does a link to it (#otp-alerts) */
+function alertsOpen(){var ws=$('#otp-alerts'),m=$('#otp-alertsMini');if(ws)ws.classList.remove('is-mini');if(m)m.setAttribute('aria-expanded','true')}
+var aMini=$('#otp-alertsMini');if(aMini)aMini.addEventListener('click',function(){alertsOpen();var g=$('#otp-alertsGo');try{(g&&g.offsetParent?g:$('#otp-alertsT')).focus()}catch(e){}});
+if(/^#otp-alerts\b/.test(String(location.hash||'')))alertsOpen();
 /* ---------- AI HELPERS SWITCH (v6.33) ----------
    Prowl uses AI in two ways. Tap-to-use: Fair price, Check a photo, Research this piece and Field Guides run
    only when you press their button. Small helpers run by themselves: matching our shop pieces to your hunts,
