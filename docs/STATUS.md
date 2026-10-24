@@ -1241,8 +1241,9 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 | `claude/new-session-pffeiw` | Claude | **v7.80 / v166**: Been there and Next stop on the trip day; Around You keeps the closest shops | PR #234 open. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.82**: Matt's next 10 (heart on the photo, photo check More, Recent searches, sentence case, a hunt's marketplaces in order, Daily's x…) | Draft PR, building. |
 
-Next free numbers: **page v7.82, worker v167**. Claim one here when you start.
+Next free numbers: **page v7.83, worker v167**. Claim one here when you start.
 
 ## What's next
 
