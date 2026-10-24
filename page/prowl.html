@@ -3669,7 +3669,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.86';
+var PROWL_VERSION='v7.87';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -7629,7 +7629,12 @@ var DOCK_NEW=0;
 function dockNew(){var b=$('#otp-ds');if(!b)return;b.textContent=(DOCK_NEW>99?'99+':DOCK_NEW)+' new';b.hidden=!DOCK_NEW;b.setAttribute('aria-label',DOCK_NEW+' new in your hunts')}
 function rSGW(){
   var mount=$('#otp-sgw');
-  if(!mount||sgw.dragging)return;   /* v7.86: the drop redraws */
+  if(!mount)return;
+  /* v7.86: the drop redraws. v7.87 (Matt: "It blinks and it vibrates but it doesn't lift and move"): listings landing
+     while a finger was still on a pill redrew the pills and took the held one away, so nothing waits from the touch
+     until the finger lifts (sgw.holding), then the pills catch up. 15 seconds at most, should the lift never come. */
+  if((sgw.dragging||sgw.holding)&&Date.now()-(sgw.holdAt||0)<15000){sgw.redraw=1;return}
+  sgw.dragging=false;sgw.holding=false;sgw.redraw=0;
   if(!mount.querySelector('#otp-sgwIn'))sgwShell(mount);
   var t=sgwCurTerm(),k=t.toLowerCase(),c=t?sgw.cache[k]:null,i,x,on,html='';
   var up=mount.querySelector('.sgw-upd'),tot=liveCount(c);
@@ -9289,8 +9294,10 @@ function sgwDragWire(mount){
   function pt(e){var t=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])||e;return {x:t.clientX,y:t.clientY}}
   function chipOf(el){if(el&&el.closest&&el.closest('.sgw-x'))return null;while(el&&el!==mount){if(el.classList&&el.classList.contains('sgw-chip')&&el.getAttribute('data-sgw')==='pick')return el;el=el.parentNode}return null}
   function stop(){if(timer){clearTimeout(timer);timer=0}}
+  function hold(){sgw.holding=true;sgw.holdAt=Date.now()}
+  function free(){sgw.holding=false;if(sgw.redraw&&!sgw.dragging){sgw.redraw=0;rSGW()}}   /* v7.87: the pills catch up */
   function unmark(){var m=mount.querySelectorAll('.sgw-dropb,.sgw-dropa'),i;for(i=0;i<m.length;i++){m[i].classList.remove('sgw-dropb');m[i].classList.remove('sgw-dropa')}}
-  function begin(){D.on=true;sgw.dragging=true;D.el.classList.add('sgw-drag');mount.classList.add('sgw-dragging');try{if(navigator.vibrate)navigator.vibrate(12)}catch(x){}}
+  function begin(){if(!mount.contains(D.el)){D=null;free();return}D.on=true;sgw.dragging=true;D.el.classList.add('sgw-drag');mount.classList.add('sgw-dragging');try{if(navigator.vibrate)navigator.vibrate(12)}catch(x){}}
   /* the pill under the finger, or the nearest one within 60px */
   function hit(p){
     var L=mount.querySelectorAll('.sgw-chip[data-sgw="pick"]'),i,r,cx,cy,d,best=null,bd=3600;
@@ -9309,27 +9316,27 @@ function sgwDragWire(mount){
   }
   function end(){
     var from,at,after,moved=-1;stop();if(!D)return;
-    if(!D.on){D=null;return}
+    if(!D.on){D=null;free();return}
     from=+D.el.getAttribute('data-i');at=D.at;after=D.after;
     unmark();D.el.classList.remove('sgw-drag');D.el.style.transform='';mount.classList.remove('sgw-dragging');
-    D=null;sgw.dragging=false;sgw.dragAt=Date.now();
+    D=null;sgw.dragging=false;sgw.holding=false;sgw.redraw=0;sgw.dragAt=Date.now();
     if(at>-1)moved=sgwMove(from,at,after);
     if(moved>-1)toast('Order saved. Daily and Prowl Alerts go through your hunts in this order.',2600);else rSGW();
   }
   mount.addEventListener('touchstart',function(e){
-    var c=chipOf(e.target),p;if(!c||(e.touches&&e.touches.length>1)){stop();D=null;return}
-    p=pt(e);stop();D={el:c,x:p.x,y:p.y,on:false,at:-1};
+    var c=chipOf(e.target),p;if(!c||(e.touches&&e.touches.length>1)){stop();if(D&&!D.on){D=null;free()}return}
+    p=pt(e);stop();D={el:c,x:p.x,y:p.y,on:false,at:-1};hold();
     timer=setTimeout(function(){timer=0;if(D&&!D.on)begin()},SGW_HOLD);
   },{passive:true});
   mount.addEventListener('touchmove',function(e){
     if(!D)return;var p=pt(e);
-    if(!D.on){if(Math.abs(p.x-D.x)>10||Math.abs(p.y-D.y)>10){stop();D=null}return}   /* a scroll, not a hold */
+    if(!D.on){if(Math.abs(p.x-D.x)>10||Math.abs(p.y-D.y)>10){stop();D=null;free()}return}   /* a scroll, not a hold */
     if(e.cancelable)e.preventDefault();drag(p);
   },{passive:false});
   mount.addEventListener('touchend',end);
   mount.addEventListener('touchcancel',function(){if(D)D.at=-1;end()});
   mount.addEventListener('contextmenu',function(e){if(D||sgw.dragging)e.preventDefault()});   /* Android's long-press menu */
-  mount.addEventListener('mousedown',function(e){var c;if(e.button||D)return;c=chipOf(e.target);if(c)D={el:c,x:e.clientX,y:e.clientY,on:false,at:-1,m:1}});
+  mount.addEventListener('mousedown',function(e){var c;if(e.button||D)return;c=chipOf(e.target);if(c){D={el:c,x:e.clientX,y:e.clientY,on:false,at:-1,m:1};hold()}});
   document.addEventListener('mousemove',function(e){
     if(!D||!D.m)return;var p={x:e.clientX,y:e.clientY};
     if(!D.on){if(Math.abs(p.x-D.x)+Math.abs(p.y-D.y)<6)return;begin()}
