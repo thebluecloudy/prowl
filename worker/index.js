@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v167: 2026-10-24. Group trips share ✓ Been: POST /trips/<id>/been { stop, on } by any member marks a stop or a
+ *         shop in its town; the trip view carries been (place ids only). (tripBeen, tripBeenSet)
  *   v166: 2026-10-24. Around You keeps the 8 closest shops besides the 24 biggest (nearKeep): Bluegrass Collectors,
  *         0.1 mi from the owner in Ashland, KY, was cut once Vintage and Thrift filled the list. Near cache key v=12.
  *   v165: 2026-10-24. Stops on the way are looked up first, with the destination, and once more if Google says no;
@@ -566,9 +568,9 @@ import { huntCombine, huntPriceN, craigslistNormalize, huntNeeds, huntRelevant }
 import { wkAdd, wkFresh, wkCur, letterShorters, letterBuild, letterText, letterQuiet } from "./letter.js";   /* v152: the weekly letter */
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
-  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
+  DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v166";
+const WORKER_VERSION = "v167";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6542,6 +6544,8 @@ async function fbFinds(request, env, url, origin) {
                                         at every store sign-in, holds the customer id); an address that never signed in
                                         waits in tripinv:<hash> and joins at its next sign-in. The address is never kept.
      POST /trips/<id>/close             the organizer closes it now (finds expire FINDS_GRACE_DAYS later)
+     POST /trips/<id>/been { stop, on }  a member marks a stop (or a shop in its town) ✓ Been for everyone, or not (v167);
+                                        kept on the trip as place ids; GET /trips/<id> carries been
      POST /trips/<id>/rebuild { lat, lng }   the organizer rebuilds it from where they stand (v134): the same destination
                                         and day, the stops still ahead, the origin now that town; members see it
      POST /trips/<id>/finds { img, item, price, verdict, fair, stop, town, name }   a member posts a photo check's find
@@ -6978,7 +6982,7 @@ async function tripsRoute(request, env, url, origin) {
   if (!who) return json({ error: "Sign in to Prowl to share trips.", signin: true }, 401, origin);
   const cid = who.id;
   if (!(await vCount("trips:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIPS_PER_IP))) return json({ error: "slow down" }, 429, origin);
-  const m = /^\/trips(?:\/(t[a-z0-9]{9})(?:\/(share|close|finds|rebuild|invite|peek|join|delete|leave))?)?$/.exec(url.pathname);
+  const m = /^\/trips(?:\/(t[a-z0-9]{9})(?:\/(share|close|finds|rebuild|invite|peek|join|delete|leave|been))?)?$/.exec(url.pathname);
   if (!m) return json({ error: "not found" }, 404, origin);
   const id = m[1] || "", act = m[2] || "", post = request.method === "POST";
   if (!id) {
@@ -7070,6 +7074,13 @@ async function tripsRoute(request, env, url, origin) {
     trip.members = trip.members.filter((m) => m !== String(cid));
     try { await tripPut(env, trip); await tripIndexRemove(env, cid, id); } catch (e) { console.error("trips leave", String(e && e.message || e)); return json({ error: "You could not leave just now." }, 503, origin); }
     return nearAnswer({ ok: true, left: id }, 200, origin);
+  }
+  if (act === "been") {   /* v167: a member marks a stop ✓ Been (or not) for the whole group */
+    if (!post) return json({ error: "POST only" }, 405, origin);
+    const b = await readJson(request, 512);
+    if (!tripBeenSet(trip, b.stop, b.on === true)) return json({ error: "That stop is not on this trip." }, 400, origin);
+    try { await tripPut(env, trip); } catch (e) { console.error("trips been", String(e && e.message || e)); return json({ error: "That could not be saved just now." }, 503, origin); }
+    return nearAnswer({ ok: true, been: tripBeen(trip) }, 200, origin);
   }
   if (act === "close") {
     if (!post || !org) return json({ error: "Only the organizer closes a trip." }, 403, origin);

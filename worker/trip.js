@@ -428,12 +428,24 @@ function stopRef(a) {
   if (a.pin === true) r.pin = true;   /* v163: a stop you named */
   return r;
 }
+/* v167: the stops the group has marked ✓ Been, kept on the trip as place ids only (no one's name). Only ids that are
+   a stop or a shop also in its town count; a rebuild keeps the marks of the stops still on it. */
+export function tripStopIds(trip) { const ids = []; (trip && trip.stops || []).forEach((a) => { ids.push(String(a.id)); (a.nested || []).forEach((n) => ids.push(String(n.id))); }); return ids; }
+export function tripBeen(trip) { const ok = tripStopIds(trip), b = trip && trip.been && typeof trip.been === "object" ? trip.been : {}; return ok.filter((id) => b[id] === 1); }
+export function tripBeenSet(trip, stop, on) {
+  const id = String(stop == null ? "" : stop);
+  if (tripStopIds(trip).indexOf(id) === -1) return false;
+  const b = {}; tripBeen(trip).forEach((x) => { b[x] = 1; });
+  if (on) b[id] = 1; else delete b[id];
+  trip.been = b;
+  return true;
+}
 export function tripMember(trip, cid) { return !!trip && Array.isArray(trip.members) && trip.members.indexOf(String(cid)) !== -1; }
 /* the trip as the page gets it: the record, plus the hours now known for each stop (hoursById: id -> hours) */
 export function tripView(trip, hoursById) {
   const h = (p) => Object.assign({}, p, { hours: (hoursById && hoursById[p.id]) || null });
   return { id: trip.id, mine: false, org: false, day: trip.day, closes: trip.closes, origin: trip.origin, dest: trip.dest, route: trip.route, members: trip.members.length, cats: trip.cats || CATS_DEFAULT.slice(),
-    stops: trip.stops.map((a) => Object.assign(h(a), { nested: (a.nested || []).map(h) })),
+    stops: trip.stops.map((a) => Object.assign(h(a), { nested: (a.nested || []).map(h) })), been: tripBeen(trip),
     maps: mapsDirUrl(trip.origin, trip.stops, trip.dest.name + (trip.dest.town ? ", " + trip.dest.town : "")) };
 }
 /* a find as posted: the photo is checked by the caller; this keeps the lines */
