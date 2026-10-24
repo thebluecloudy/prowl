@@ -20,7 +20,7 @@ test('How Prowl works (from the menu since v7.31; it no longer opens by itself) 
   assert.ok(card.querySelector('[data-ga="open"]'), 'Open it now');
   assert.equal(card.querySelector('[data-ga="x"]'), null, 'nothing to hide it with here');
   assert.doesNotMatch([...ms.querySelectorAll('.mi h3')].map((h) => h.textContent).join('|'), /Get the app/, 'no second copy at the end');
-  assert.deepEqual([...ms.querySelectorAll('.mi u')].map((u) => u.textContent), ['1', '2', '3', '4', '5', '6']);
+  assert.deepEqual([...ms.querySelectorAll('.mi u')].map((u) => u.textContent), ['1', '2', '3', '4', '5', '6', '7', '8', '9']);
   assert.deepEqual(p.errors, []);
   await p.close();
 });
