@@ -1,22 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.91 / v167).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.92 / v167).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.91** | 390,496 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.92** | 390,496 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v167** | |
 
 Recently shipped, newest first:
 
-- **v7.91: How Prowl works catches up** (Matt: "Update how prowl works section with all the new features of near me,
+- **v7.92: How Prowl works catches up** (Matt: "Update how prowl works section with all the new features of near me,
   moving pills, etc"). Nine steps (were six): search with the marketplaces in order and recent searches; favorite
   hunts as pills; **Put your hunts in order** (Reorder, press and hold); **Near me** (Around you, a town or ZIP, Open
   now, + Stop, Road trip, ↑, Share, Trips); **On the road** (✓ Been for the group, Next stop's distance and arrival,
   Hide the … closed by then, Carry on in Maps, Delete or Leave); Daily (its badge counts new finds); Alerts; Photo
-  (Hunt it on Prowl, share on a trip); Make it yours. Prowl's words adds Pill and Been. Help text only, no new key.
+  (Hunt it on Prowl, share on a trip); Make it yours. Prowl's words adds Pill and Been; Den and Flock follow #244 (likes and saved finds in Flock's Saved and Likes tabs), so this merges after #244. Help text only, no new key.
   Test: `__tests__/page/help-update-v791.test.mjs`.
 - **v7.90 / v167: on the road, three more** (the owner: "do all 3").
   - **✓ Been is the group's on a group trip.** Worker v167: `POST /trips/<id>/been { stop, on }` by any member marks

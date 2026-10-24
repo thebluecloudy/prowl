@@ -3602,7 +3602,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <div class="mi">
 <u>2</u><div>
 <h3>Your favorite hunts</h3>
-<p>Type into <b style="color:var(--ink)">+ add a hunt</b> on the home screen. Prowl checks ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed and Salvation Army right away, with photos, and marks what is new since you last looked. Each hunt is a pill; tap it to see its finds. The <b style="color:var(--ink)">Den</b> holds every hunt you have saved.</p>
+<p>Type into <b style="color:var(--ink)">+ add a hunt</b> on the home screen. Prowl checks ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed and Salvation Army right away, with photos, and marks what is new since you last looked. Each hunt is a pill; tap it to see its finds. The <b style="color:var(--ink)">Den</b> holds every hunt you have saved. Hearts and saved finds live in <b style="color:var(--ink)">Flock</b>, under Saved and Likes.</p>
 </div>
 </div>
     <div class="mi">
@@ -3654,7 +3654,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <dt>Hunt</dt>
 <dd>Something you are after, like Pyrex Butterprint. Your hunts live in your Den.</dd>
 <dt>Den</dt>
-<dd>Your lair: your hunts, likes, settings and alerts.</dd>
+<dd>Your lair: your hunts, settings and alerts.</dd>
 <dt>Locked on</dt>
 <dd>An active hunt. It shows in Daily and on your home page. A bell means your alerts watch it too.</dd>
 <dt>Hiding</dt>
@@ -3662,7 +3662,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <dt>Daily</dt>
 <dd>Your daily prowl: only what is new since yesterday in the hunts you are locked on.</dd>
 <dt>Flock</dt>
-<dd>A feed of finds drawn from your hunts and likes. Like what you love; pass on the rest.</dd>
+<dd>Finds drawn from your hunts and likes, in three tabs: Feed to like what you love and pass on the rest, Saved for the finds you kept, and Likes for everything you hearted.</dd>
 <dt>Near me</dt>
 <dd>The shops around you or around any town, open or closed right now, and road trips: the stops worth making on the way somewhere, shared with your group, with the finds you each check along the way.</dd>
 <dt>Pill</dt>
@@ -3702,7 +3702,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.91';
+var PROWL_VERSION='v7.92';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */

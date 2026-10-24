@@ -14,6 +14,7 @@ test('How Prowl works covers reordering pills, Near me and the day on the road',
   assert.match(ms, /✓ Been/);
   assert.match(ms, /Next stop at the top says how far/);
   assert.match(ms, /closed by then/);
+  assert.match(ms, /Hearts and saved finds live in Flock/);
   const words = p.$$('#otp-ms .gloss dt').map((d) => d.textContent);
   assert.ok(words.includes('Pill') && words.includes('Been'));
   assert.deepEqual(p.errors, []);
