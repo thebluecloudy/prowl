@@ -1,4 +1,4 @@
-// Page v7.84 (Matt: "for the pills for the hunt, i want to reorder them, can i rearrange those? on phone press and hold
+// Page v7.86 (Matt: "for the pills for the hunt, i want to reorder them, can i rearrange those? on phone press and hold
 // and move?"). Press and hold a hunt pill, then drag it where it goes; a mouse drags it; the keyboard moves it with Alt
 // and an arrow. The order is the hunt list's own (no new key): the lock set keeps its places, a selection follows its
 // hunt, Goodwill-only terms move only among themselves, and Daily and Prowl Alerts go through the hunts in that order.
