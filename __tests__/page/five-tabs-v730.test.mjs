@@ -103,7 +103,7 @@ test('Daily: one email line after the finds (v7.31: the big alerts card left Dai
 test('How Prowl works and Prowl\'s words name the new tabs', async () => {
   const p = loadPage({ storage: DEN });
   const ms = p.$('#otp-ms').textContent;
-  assert.match(ms, /NEAR ME in the footer is for when you are out in the car/);
+  assert.match(ms, /Near me in the footer is for when you are out in the car/);
   assert.match(ms, /Just ShopGoodwill under the box searches that one site/);
   assert.match(ms, /shows only what is new since yesterday/);
   const words = p.$$('#otp-ms .gloss dt').map((d) => d.textContent);
