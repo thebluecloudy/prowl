@@ -61,7 +61,7 @@ test('add up to three stops on the way, with suggestions; the drive is built thr
   await p.close();
 });
 
-test('v7.76: Build trip comes after the stops; your stops are always in the one Maps link; a stop not found is said', async () => {
+test('v7.77: Build trip comes after the stops; your stops are always in the one Maps link; a stop not found is said', async () => {
   const calls = [];
   const many = Array.from({ length: 11 }, (_, i) => card('S' + i, 'Shop ' + i, 'Town ' + i + ', OH', { n: 1000 + i, tier: 2 }));
   const pins = [card('P1', 'Rookwood Pottery', 'Cincinnati, OH', { pin: true, n: 5, tier: 0 }), card('P2', 'Mosser Glass Warehouse', 'Cambridge, OH', { pin: true, n: 3, tier: 0 })];

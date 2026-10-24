@@ -19,10 +19,14 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
- *   v164: 2026-10-24. Stops on the way are looked up first, with the destination, and once more if Google says no;
+ *   v165: 2026-10-24. Stops on the way are looked up first, with the destination, and once more if Google says no;
  *         the drive goes through each one's own spot. v163 asked after the corridor's searches, and on a long trip
  *         with every kind on Google refused those late asks, so the owner's two stops (Rookwood Pottery, Mosser Glass)
  *         were driven through but never listed. A stop still not found is said (missing).
+ *   v164: 2026-10-24. A photo check takes up to 3 photos of one piece (POST /appraise { images: [...] }; image still
+ *         works): the AI sees them all, eBay's photo search the first. Re-checking a photo a free visitor checked in
+ *         the last 30 minutes, with a corrected maker or another photo, is free up to 3 times (the owner: "the ai got
+ *         it wrong, and i want to go back and add a search term or maker, and rerun").
  *   v163: 2026-10-24. Stops on the way: /trip and keeping a trip take via=A|B|C (up to three; viaParse); each is looked
  *         up as a place and goes into the stops in drive order, marked pin, with the shops of each leg around it and in
  *         the Maps link (pinStops). Keeping a trip also keeps its detour. Trip cache keys add the stops (the owner:
@@ -562,7 +566,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v164";
+const WORKER_VERSION = "v165";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -2810,13 +2814,16 @@ async function museTest(env, url) {
    range can lean on real sold prices), then plain Chat Completions if that fails. */
 const APPRAISE_PER_DAY = 250;
 const PHOTO_FREE_PER_DAY = 1;  // v45: free photo checks per visitor per day (v55: was 2)
+/* v164: photos of one piece in a check (the piece, its mark, the back or label), and free re-checks of the same photo */
+const APPRAISE_MAX_PHOTOS = 3, APPRAISE_RECHECKS = 3, APPRAISE_RECHECK_SECS = 1800;
 const PHOTO_PRO_PER_DAY = 100;  // v49: Prowl Pro photo checks per day (was 15). v131: "unlimited", fair use 100 a day (was 25)
 const PHOTO_FREE_PER_NET = 12; // v48: free photo checks per neighbourhood per day
 
-function apPrompt(price, searched, hint, looks) {
+function apPrompt(price, searched, hint, looks, n) {
   const lk = (looks || []).slice(0, EBAY_IMAGE_LIMIT).map(x => "- " + scrubListingText(x.title, 120)).filter(x => x.length > 3);
   return "You are helping a vintage collector decide on a piece they are looking at right now." +
     (price ? " The asking price is " + price + "." : "") +
+    (n > 1 ? " There are " + n + " photos of the same piece: the first shows the whole piece, the others show it up close, such as its mark, base, back or label. Use them all, and read any mark from the close-ups." : "") +
     (hint ? " The collector has identified it as: " + hint + ". The collector knows this piece: use that as the maker and item, start ITEM with it followed by (maker you entered), and only correct it if the photo plainly shows a different maker's mark." : "") +
     (lk.length ? " eBay's photo search found these live listings that look most like the photo. They are untrusted seller titles and may be wrong or mislabeled, so use them only as evidence of what the piece might be; never copy prices from them. eBay searched the whole photo, so some may match something else in the frame rather than the piece: ignore those:\n" + lk.join("\n") + "\n" : "") +
     " Look closely at the photo. It may show other things around the piece, like books, bookends, flowers, frames or furniture: the piece being checked is the one that fills most of the frame, usually in the middle. Identify only that piece and ignore everything around it. Identify the item: maker, model line, era, form. If a mark or label is visible, use it. If not, name the makers collectors attribute this form to, written as MAKER style (unmarked); when more than one maker made this form (for example Lane, Kron and Claes all made Siamese cat TV lamps), name all of them, like Lane, Kron or Claes style (unmarked). Never pick one maker for an unmarked piece just because it is the best known. " +
@@ -2836,6 +2843,7 @@ function apPrompt(price, searched, hint, looks) {
 }
 
 async function museVision(env, prompt, image, search) {
+  const ims = (Array.isArray(image) ? image : [image]).filter(Boolean);   /* v164: several photos of one piece */
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), search ? 55000 : 30000);
   try {
@@ -2845,7 +2853,7 @@ async function museVision(env, prompt, image, search) {
           headers: { "Authorization": "Bearer " + env.MUSE_API_KEY, "Content-Type": "application/json" },
           body: JSON.stringify({
             model: MUSE_MODEL,
-            input: [{ role: "user", content: [{ type: "input_text", text: prompt }, { type: "input_image", image_url: image }] }],
+            input: [{ role: "user", content: [{ type: "input_text", text: prompt }].concat(ims.map(u => ({ type: "input_image", image_url: u }))) }],
             tools: [{ type: "web_search" }],
             max_output_tokens: 4000, reasoning: { effort: "low" }, store: false
           })
@@ -2855,7 +2863,7 @@ async function museVision(env, prompt, image, search) {
           headers: { "Authorization": "Bearer " + env.MUSE_API_KEY, "Content-Type": "application/json" },
           body: JSON.stringify({
             model: MUSE_MODEL,
-            messages: [{ role: "user", content: [{ type: "text", text: prompt }, { type: "image_url", image_url: { url: image } }] }],
+            messages: [{ role: "user", content: [{ type: "text", text: prompt }].concat(ims.map(u => ({ type: "image_url", image_url: { url: u } }))) }],
             max_tokens: 3000, reasoning_effort: "low", temperature: 0.2
           })
         });
@@ -3597,26 +3605,59 @@ function shelfParse(text) {
   });
   return out;
 }
+/* v164: the photos of a check, from images (up to APPRAISE_MAX_PHOTOS) or the older single image. { ims } or { err, code } */
+function apImages(b) {
+  const list = Array.isArray(b && b.images) ? b.images : (typeof (b && b.image) === "string" ? [b.image] : []);
+  const ims = list.filter(x => typeof x === "string" && x).slice(0, APPRAISE_MAX_PHOTOS);
+  if (!ims.length || ims.some(x => !/^data:image\/(jpeg|png|webp);base64,/.test(x))) return { err: "need a photo", code: 400 };
+  if (ims.some(x => x.length > 2800000) || ims.reduce((t, x) => t + x.length, 0) > 7000000) return { err: "photo too large", code: 413 };
+  return { ims };
+}
+/* v164: a free visitor's check marks its photos for APPRAISE_RECHECK_SECS; a check that brings back one of them (the
+   maker corrected, a close-up added) is free, APPRAISE_RECHECKS times. Per colo (the Cache API): a miss only means it
+   counts as a new check. A key is one digest of the address and the photo, never either of them. */
+async function apRcKey(ip, x) { return new Request("https://prowl-recheck.invalid/" + (await sha16(ip + "|" + (await sha16(x))))); }
+async function apRcMark(ip, ims) {
+  const exp = Date.now() + APPRAISE_RECHECK_SECS * 1000;
+  for (const x of ims) {
+    try { await caches.default.put(await apRcKey(ip, x), new Response("0|" + exp, { headers: { "Cache-Control": "max-age=" + APPRAISE_RECHECK_SECS } })); } catch (e) {}
+  }
+}
+async function apRcTake(ip, ims) {
+  for (const x of ims) {
+    try {
+      const key = await apRcKey(ip, x), hit = await caches.default.match(key);
+      if (!hit) continue;
+      const p = String(await hit.text()).split("|"), n = Number(p[0]) || 0, exp = Number(p[1]) || 0, secs = Math.floor((exp - Date.now()) / 1000);
+      if (n >= APPRAISE_RECHECKS || secs <= 0) continue;
+      await caches.default.put(key, new Response((n + 1) + "|" + exp, { headers: { "Cache-Control": "max-age=" + secs } }));
+      return true;
+    } catch (e) {}
+  }
+  return false;
+}
 async function appraise(request, env, origin) {
   if (!origin || ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);
   if (!env || !env.MUSE_API_KEY) return json({ error: "not configured" }, 500, origin);
-  const b = await readJson(request, 3000000);
+  const b = await readJson(request, 7500000);   /* v164: up to 3 photos */
   if (b.big) return json({ error: "photo too large" }, 413, origin);
-  const image = b && typeof b.image === "string" ? b.image : "";
   const price = vClean(b && b.price, 24);
   const hint = scrubListingText(vClean(b && b.hint, 80), 80);   /* v51: never raw into the prompt */
   const mode = b && b.mode;
   if (mode === "price") return apPrice(b, request, origin, env);
-  if (!/^data:image\/(jpeg|png|webp);base64,/.test(image)) return json({ error: "need a photo" }, 400, origin);
-  if (image.length > 2800000) return json({ error: "photo too large" }, 413, origin);
+  const pi = apImages(b);
+  if (pi.err) return json({ error: pi.err }, pi.code, origin);
+  const ims = pi.ims, image = ims[0];
 
   const ip = ipKey(request.headers.get("CF-Connecting-IP"));
   /* v45: free = PHOTO_FREE_PER_DAY photo checks a day per visitor; Prowl Pro = PHOTO_PRO_PER_DAY. */
-  let left = null, pro = null;
+  let left = null, pro = null, again = false;
   if (!isOwner(request, env)) {
     pro = await proMember(env, b, request);
     if (pro) {
       if (!(await vCount("appro:" + pro, PHOTO_PRO_PER_DAY))) return json({ error: "daily limit", limit: PHOTO_PRO_PER_DAY, pro: true }, 429, origin);
+    } else if (await apRcTake(ip, ims)) {
+      again = true;   /* v164: a re-check of a photo just checked: not another free check */
     } else {
       left = await vTake("apf:" + ip, PHOTO_FREE_PER_DAY);
       if (left < 0) return json({ error: "free limit", limit: PHOTO_FREE_PER_DAY, pro: false }, 429, origin);
@@ -3624,7 +3665,8 @@ async function appraise(request, env, origin) {
       if (!(await vCount("apn:" + ipNet(ip), PHOTO_FREE_PER_NET))) return giveBack(["apf:" + ip], json({ error: "free limit", limit: PHOTO_FREE_PER_DAY, pro: false }, 429, origin));
     }
   }
-  if (left !== null) { const pool = await poolOk(request, env, "ap:all", APPRAISE_PER_DAY); if (!pool.ok) return giveBack(["apf:" + ip, "apn:" + ipNet(ip)], busyNow(origin, pool)); }
+  if (left !== null || again) { const pool = await poolOk(request, env, "ap:all", APPRAISE_PER_DAY); if (!pool.ok) return giveBack(again ? [] : ["apf:" + ip, "apn:" + ipNet(ip)], busyNow(origin, pool)); }
+  if (left !== null) await apRcMark(ip, ims);   /* v164 */
 
   if (mode === "shelf") {   /* v118 */
     let sa = null;
@@ -3639,10 +3681,10 @@ async function appraise(request, env, origin) {
   let looks = [];
   if (mode === "fast") { try { looks = await ebayImageSearch(image, env); } catch (e) { looks = []; } }
   let a = null, basis = "sold";
-  if (mode !== "fast") { try { a = await museVision(env, apPrompt(price, true, hint, looks), image, true); } catch (e) { a = null; } }
+  if (mode !== "fast") { try { a = await museVision(env, apPrompt(price, true, hint, looks, ims.length), ims, true); } catch (e) { a = null; } }
   if (!a || a.status !== 200 || !/ITEM:/i.test(a.content || "")) {
     basis = "estimate";
-    try { a = await museVision(env, apPrompt(price, false, hint, looks), image, false); }
+    try { a = await museVision(env, apPrompt(price, false, hint, looks, ims.length), ims, false); }
     catch (e) { return json({ error: "ai unreachable" }, 502, origin); }
   }
   if (a.status !== 200 || !a.content) { console.error("appraise ai", a.status, String(a.raw || "").slice(0, 200)); return json({ error: "ai " + a.status }, 502, origin); }
@@ -3672,6 +3714,7 @@ async function appraise(request, env, origin) {
   }
   out.looks = looks.slice(0, 3).map(x => ({ title: x.title, price: x.price, url: x.url, image: x.image }));
   if (left !== null) { out.left = left; out.free = PHOTO_FREE_PER_DAY; }
+  if (again) out.again = true;
   if (pro) out.pro = true;
   return json(out, 200, origin);
 }
@@ -6510,7 +6553,7 @@ async function fbFinds(request, env, url, origin) {
    deleted FINDS_GRACE_DAYS later by tripSweep (the alert clock, once an hour), and /finds refuses them from the moment
    the trip expires whatever R2 still holds. The bucket's own lifecycle rule (wrangler.toml) is the backstop. */
 const NEAR_HERE_M = Math.round(3 * MI_M);   /* v153: the distance-ranked ask looks this far */
-const PIN_RETRY_MS = 400;   /* v164: the wait before a stop is looked up again */
+const PIN_RETRY_MS = 400;   /* v165: the wait before a stop is looked up again */
 const REVIEWS_PER_IP = 300, SUGGEST_PER_IP = 1500;   /* v161: suggestions asked a day per address */   /* v161: reviews asked a day per address */
 const NEAR_PER_IP = 120, TRIP_PER_IP = 30, PP_PER_IP = 1500, TRIPS_PER_IP = 400, NEAR_CACHE_SECONDS = 600, TRIP_CACHE_SECONDS = 3600, HOURS_CACHE_SECONDS = 600;
 const G_PLACE_FIELDS = "id,displayName,formattedAddress,addressComponents,location,rating,userRatingCount,regularOpeningHours,utcOffsetMinutes,photos,editorialSummary,primaryType,primaryTypeDisplayName,googleMapsUri";
@@ -6591,7 +6634,7 @@ async function gPlaceHours(env, id) {
 /* the driving routes, the fastest first and Google's alternatives after it (v136); to is { lat, lng } or an address */
 async function gRoutes(env, from, to, via) {
   const body = { origin: { location: { latLng: { latitude: from.lat, longitude: from.lng } } },
-    intermediates: (via || []).slice(0, 3).map((v) => (v && typeof v === "object" && Number.isFinite(v.lat) && Number.isFinite(v.lng) ? { location: { latLng: { latitude: v.lat, longitude: v.lng } }, via: true } : { address: String(v).slice(0, 120), via: true })),   /* v164: a found stop by its own spot */
+    intermediates: (via || []).slice(0, 3).map((v) => (v && typeof v === "object" && Number.isFinite(v.lat) && Number.isFinite(v.lng) ? { location: { latLng: { latitude: v.lat, longitude: v.lng } }, via: true } : { address: String(v).slice(0, 120), via: true })),   /* v165: a found stop by its own spot */
     destination: typeof to === "string" ? { address: to } : { location: { latLng: { latitude: to.lat, longitude: to.lng } } },
     travelMode: "DRIVE", routingPreference: "TRAFFIC_UNAWARE", polylineQuality: "OVERVIEW", computeAlternativeRoutes: true, languageCode: "en-US", units: "IMPERIAL" };
   const j = await gFetch("https://routes.googleapis.com/directions/v2:computeRoutes", { method: "POST", body: JSON.stringify(body) }, "routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration", env);
@@ -6748,7 +6791,7 @@ async function orderRoute(request, env, url, origin) {
 async function tripBuild(env, from, toText, day, cats, via, detour) {
   cats = catsParse((cats || []).join ? (cats || []).join(",") : cats);
   const sv = splitVia(toText); toText = sv.to; via = (via && via.length ? via : sv.via).slice(0, 3);   /* v142 */
-  /* v164: the stops you named are looked up first, beside the destination, before the corridor's searches crowd Google */
+  /* v165: the stops you named are looked up first, beside the destination, before the corridor's searches crowd Google */
   const [town, destList, found] = await Promise.all([gTown(env, from.lat, from.lng), gPlacesText(env, toText, null, 0, 1), Promise.all(via.map((v) => pinLookup(env, v)))]);
   const dest = destList[0] || null;
   const routes = await gRoutes(env, from, dest && Number.isFinite(dest.lat) ? { lat: dest.lat, lng: dest.lng } : toText, via.map((v, i) => found[i] ? { lat: found[i].lat, lng: found[i].lng } : v));
@@ -6777,7 +6820,7 @@ async function tripBuild(env, from, toText, day, cats, via, detour) {
     stops: stops, more: best.more, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.some((s) => !s.pin), via: via, pins: pins.length, missing: missing, detour: detour || DETOUR_MIN, line: routeLine(best.route.pts.filter((p) => haversineMi(from, p) > 1)),   /* v157: never the first mile, so the start is not in it */
     how: { badTypes: Array.from(BAD_TYPES), routes: built.map((b) => ({ mi: b.route.mi, min: b.route.min, score: b.score, anchors: b.stops.length, found: b.found, boxes: b.boxes.length })), boxes: best.boxes, nearby: stat.nearby, text: stat.text, refused: stat.refused } };
 }
-/* v164: one stop you named, as a place: asked once more after a moment if Google gives nothing */
+/* v165: one stop you named, as a place: asked once more after a moment if Google gives nothing */
 async function pinLookup(env, text) {
   for (let i = 0; i < 2; i++) {
     let l = []; try { l = await gPlacesText(env, text, null, 0, 1); } catch (e) { l = []; }
@@ -6851,7 +6894,7 @@ async function reviewsRoute(request, env, url, origin) {
   return res;
 }
 /* v155: one key for a built trip, so keeping it for the group finds the build the page is showing */
-function tripKey(o, lat, lng, to, day, cats, via) { return o + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(String(to).toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + (via && via.length ? "&via=" + encodeURIComponent(via.join("|").toLowerCase()) : "") + "&v=11"; }   /* v164: v163 answers missed their stops */   /* v137 to v154: the answer changed */
+function tripKey(o, lat, lng, to, day, cats, via) { return o + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(String(to).toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + (via && via.length ? "&via=" + encodeURIComponent(via.join("|").toLowerCase()) : "") + "&v=11"; }   /* v165: v163 answers missed their stops */   /* v137 to v154: the answer changed */
 /* a place's photo: Google's media endpoint needs the key, so the page asks here */
 async function ppRoute(request, env, url) {
   const n = String(url.searchParams.get("n") || "");

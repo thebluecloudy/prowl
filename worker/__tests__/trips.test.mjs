@@ -75,7 +75,7 @@ function fakeGoogle(u, init) {
   u = String(u); CALLS.push(u);
   const ok = (j) => Promise.resolve({ ok: true, status: 200, json: async () => j, headers: new Headers({ "Content-Type": "application/json" }) });
   if (/places:autocomplete/.test(u)) { const b = JSON.parse(init.body); SUG.push(b); return ok({ suggestions: [{ placePrediction: { placeId: "ChIJblenko", text: { text: "Blenko Glass Company, Milton, WV, USA" }, structuredFormat: { mainText: { text: "Blenko Glass Company" }, secondaryText: { text: "Milton, WV, USA" } } } }, { queryPrediction: { text: { text: "blenko glass for sale" } } }, { placePrediction: { placeId: "ChIJmilton", text: { text: "Milton, WV, USA" }, structuredFormat: { mainText: { text: "Milton" }, secondaryText: { text: "WV, USA" } } } }] }); }   /* v161 */
-  if (/places:searchText/.test(u)) { const q = JSON.parse(init.body).textQuery; if (PIN_FAIL[q] > 0) { PIN_FAIL[q]--; return Promise.resolve({ ok: false, status: 429, json: async () => ({ error: { message: "quota" } }) }); } }   /* v164: Google says no, once */
+  if (/places:searchText/.test(u)) { const q = JSON.parse(init.body).textQuery; if (PIN_FAIL[q] > 0) { PIN_FAIL[q]--; return Promise.resolve({ ok: false, status: 429, json: async () => ({ error: { message: "quota" } }) }); } }   /* v165: Google says no, once */
   if (/places:searchText/.test(u)) {
     const b = JSON.parse(init.body);
     if (/paged test/.test(b.textQuery)) {   /* v139: 45 shops over three pages */
@@ -538,7 +538,7 @@ test("v163: stops on the way: each named stop is a place in the list, in drive o
   assert.match(decodeURIComponent(r.body.maps), /Maumee Antique Mall, Maumee, OH\|.*Central City Antiques, Huntington, WV/, "in the Maps link, in order");
   const rb = ROUTE_BODIES[ROUTE_BODIES.length - 1];
   const at = (n) => SHOPS.find((p) => p.displayName.text === n).location.latitude;
-  assert.deepEqual(rb.intermediates.map((x) => x.location.latLng.latitude), [at("Central City Antiques"), at("Maumee Antique Mall")], "the drive goes through them, in the order given, by their spots (v164)");
+  assert.deepEqual(rb.intermediates.map((x) => x.location.latLng.latitude), [at("Central City Antiques"), at("Maumee Antique Mall")], "the drive goes through them, in the order given, by their spots (v165)");
   const again = await call(env, "GET", "/trip?to=" + encodeURIComponent("Blenko Glass Company, Milton, WV") + "&" + NOVI + "&day=2026-10-27");
   assert.equal(again.res.headers.get("X-Prowl-Cache"), null, "another set of stops is another trip");
   assert.equal(again.body.pins, 0);
@@ -565,7 +565,7 @@ test("v163: every trip.js helper the worker calls is imported (the tests hand th
   assert.deepEqual(missing, []);
 });
 
-test("v164: stops are looked up first and once more if Google says no; the drive goes through their own spots; a stop never found is said", async () => {
+test("v165: stops are looked up first and once more if Google says no; the drive goes through their own spots; a stop never found is said", async () => {
   const env = envWith(); PCACHE.m.clear(); ROUTE_BODIES.length = 0;
   const A = "Maumee Antique Mall, Maumee, OH", B = "Central City Antiques, Huntington, WV";
   PIN_FAIL[A] = 1;   /* refused the first time */

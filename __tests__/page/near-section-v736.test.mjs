@@ -279,6 +279,9 @@ test('the photo check: SHARE THIS FIND while a trip is on, one tap to the trip\'
   await tick(30);
   p.$('#otp-aprP').value = '$45';
   p.win.prowlPhotoFile(new p.win.File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3])], 'find.jpg', { type: 'image/jpeg' }));
+  await tick(150);
+  assert.ok(!calls.find((x) => /\/appraise$/.test(x.url)), 'v7.76: into the tray, not sent yet');
+  p.$('#otp-aprRun').click();
   await tick(300);
   assert.ok(calls.find((x) => /\/appraise$/.test(x.url)), 'the photo check ran');
   const btn = p.$$('#otp-aprOut button').find((b) => b.textContent === 'SHARE THIS FIND');
@@ -298,6 +301,8 @@ test('the photo check: SHARE THIS FIND while a trip is on, one tap to the trip\'
   const none = loadPage({ storage: Object.assign({}, DEN, { 'prowl.session': sess() }), fetchImpl: nearFetch([]), beforeLoad: (w) => phone(w) });
   await tick(30);
   none.win.prowlPhotoFile(new none.win.File([new Uint8Array([0xff, 0xd8, 0xff])], 'find.jpg', { type: 'image/jpeg' }));
+  await tick(150);
+  none.$('#otp-aprRun').click();
   await tick(300);
   assert.ok(none.$$('#otp-aprOut button').length > 0, 'the result drew');
   assert.equal(none.$$('#otp-aprOut button').find((b) => b.textContent === 'SHARE THIS FIND'), undefined, 'no trip, no button');
@@ -444,7 +449,7 @@ test('v7.39: the road with the most to see is said; smaller shops sit apart and 
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
   const legs = p.$$('#otp-nrLegs a');
-  assert.deepEqual(legs.map((a) => a.textContent), ['Google Maps'], 'v7.76: one link for the whole drive');
+  assert.deepEqual(legs.map((a) => a.textContent), ['Google Maps'], 'v7.77: one link for the whole drive');
   const l1 = new URL(legs[0].href);
   assert.equal(l1.searchParams.get('origin'), 'Novi, MI');
   assert.equal(l1.searchParams.get('waypoints').split('|').length, 9, 'Google Maps takes nine');

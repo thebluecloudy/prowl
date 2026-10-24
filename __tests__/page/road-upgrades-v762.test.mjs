@@ -116,7 +116,7 @@ test('no end: a loop of the shops around the start, ordered by the router, then 
   await p.close();
 });
 
-test('v7.76: Apple Maps and Google Maps are one link each, the whole drive; past their caps the biggest shops go in, the rest Listed only', async () => {
+test('v7.77: Apple Maps and Google Maps are one link each, the whole drive; past their caps the biggest shops go in, the rest Listed only', async () => {
   const calls = [];
   const S = [];
   for (let i = 1; i <= 15; i++) S.push(shop('S' + i, 'Shop ' + i, 'Town ' + i + ', OH', 41.6 - i * 0.2, -83.5 + i * 0.05, null, { n: 100 + i }));

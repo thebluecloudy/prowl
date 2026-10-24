@@ -137,7 +137,7 @@ test('the bar is one Start in Maps and More; More holds every Maps link, Rebuild
   await a.p.close();
 });
 
-test('v7.76: a trip past nine stops is still one Start in Maps, the whole drive (the owner: "it should just build the entire trip")', async () => {
+test('v7.77: a trip past nine stops is still one Start in Maps, the whole drive (the owner: "it should just build the entire trip")', async () => {
   const many = Array.from({ length: 12 }, (_, i) => shop('M' + i, 'Shop ' + i, 'Town ' + i + ', OH', 41 - i * 0.2, -83.6, { near: 5 }));
   const { p } = await roadTrip({ stops: many });
   await build(p, 'Blenko');
