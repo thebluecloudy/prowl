@@ -1,16 +1,34 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.75 / v163).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.76 / v164).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.75** | 395,868 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v163** | |
+| Page | **v7.76** | 395,849 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v164** | |
 
 Recently shipped, newest first:
 
+- **v7.76 / v164: your stops always land, Build trip after them, one Maps link** (the owner, trying v7.75 with Rookwood
+  Pottery and Mosser Glass on the way: "the build trip button is up at the top, and when i built the trip, it missed my
+  two stops ... they should be a destination. also it split it into two, it should just build the entire trip").
+  - Worker: v163 looked the stops up after the corridor's searches (up to a hundred on a long trip with every kind on),
+    and Google refused those late asks: the drive went through Cincinnati and Cambridge but neither stop was listed
+    (live: each stop alone, or two with antiques only, worked; the owner's pair with all three kinds did not). Now they
+    are looked up first, beside the destination (`pinLookup`, asked once more after 400 ms), and the drive goes through
+    each one's own spot (Routes intermediates by latLng). A stop still not found is `missing` in the answer and said on
+    the page; the drive still goes there by its words. Trip cache key v=11, so no v163 answer is served.
+  - Page: **Build trip** is a full-width button after the stops, From and the options (`#otp-nrGo`, moved out of the
+    To form; Enter in To still builds). **One Maps link** for the whole drive, Google and Apple (`nrMapsPick` in
+    `nrLegsGen`; no more "Google Maps 1 / 2"): every stop you named, then the biggest shops up to the app's limit (9 in
+    Google Maps, 13 in Apple Maps), in drive order; the rest say "Listed only, not in the Maps route" and a line says
+    how many, with Skip to bring another in. This replaces v7.62's Apple legs ("must carry every stop") at the owner's
+    newer word.
+  - Tests: `worker/__tests__/trips.test.mjs` (Google says no once; by their spots; a stop never found),
+    `__tests__/page/near-via-v775.test.mjs`; the legs tests in `near-section-v736`, `near-road-v772` and
+    `road-upgrades-v762` now expect one link.
 - **v7.75 / v163: stops on the way** (the owner: "i would like to make a specific stop on the way from one city to the
   other ... maybe one or two or three, we can go from pin to pin, and find things in between"). Under Where are you
   headed, **+ Add a stop on the way** opens up to three numbered boxes, each with places as you type and a × (`rNrVias`,
@@ -1159,7 +1177,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.76, worker v164**. Claim one here when you start.
+Next free numbers: **page v7.77, worker v165**. Claim one here when you start.
 
 ## What's next
 

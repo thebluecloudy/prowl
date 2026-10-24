@@ -2242,6 +2242,8 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-triprow .nr-tripb{flex:1 1 auto;min-width:0}
 .scout-app-wrapper .nr-tripdel{min-height:44px;padding:0 12px}
 .scout-app-wrapper .nr-tripdel.arm{border-color:#b3261e;color:#b3261e;background:transparent}
+.scout-app-wrapper .nr-gobig{display:block;width:100%;min-height:52px;margin:4px 0 14px;font-size:17px}
+.scout-app-wrapper .nr-nm{display:block;margin-top:2px;font-size:12.5px;font-weight:700;color:var(--mu)}
 .scout-app-wrapper .nr-vias{display:flex;flex-direction:column;gap:8px;margin:2px 0 10px}
 .scout-app-wrapper .nr-vias .nr-optt{margin:0}
 .scout-app-wrapper .nr-viarow{display:flex;align-items:center;gap:8px;margin:0}
@@ -3382,7 +3384,6 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <div class="nr-route">
       <form class="addrow" id="otp-nrForm">
         <input id="otp-nrTo" type="text" placeholder="Town, City, ST, ZIP or a shop" aria-label="Destination: a town, City, ST, ZIP, a shop or an address; empty for a loop from the start" autocomplete="off" enterkeyhint="go">
-        <button type="submit" id="otp-nrGo">Build trip</button>
       </form>
       <div class="nr-sug" id="otp-nrSug" role="listbox" aria-label="Suggested places" hidden></div>
       <div class="hubbar nr-recent" id="otp-nrRecent" role="group" aria-label="Recent destinations" hidden></div>
@@ -3410,6 +3411,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
         <button type="button" class="b p nr-optdone" id="otp-nrOptsDone">Done</button>
         </div>
       </details>
+      <button type="button" class="b p nr-gobig" id="otp-nrGo">Build trip</button>
       <div id="otp-nrOut"></div>
     </div>
     <div class="denPane" id="otp-nrTripsPane" hidden>
@@ -3528,7 +3530,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.75';
+var PROWL_VERSION='v7.76';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -10246,12 +10248,19 @@ function nrMapsLegs(t){
   return nrLegsGen(t,9,nrMapsUrl,'Google Maps','Google Maps ');   /* v7.73: sentence case, the words fit in More */
 }
 /* v7.62: a route as links of at most cap stops each; each leg ends at the next leg's first stop, which starts the next */
+/* v7.76 (the owner: "it split it into two, it should just build the entire trip"): one Maps link for the whole drive.
+   A link holds cap stops (9 in Google Maps, 13 in Apple Maps), so it carries every stop you named and then the biggest shops, in drive
+   order; the rest stay in the list, marked Listed only. Skip one to bring another in. */
+function nrMapsPick(an,cap){
+  if(an.length<=cap)return an;
+  var pins=an.filter(function(a){return a.pin}),rest=an.filter(function(a){return !a.pin}).map(function(a,i){return {a:a,i:i}});
+  rest.sort(function(x,y){return ((y.a.tier||0)-(x.a.tier||0))||((y.a.n||0)-(x.a.n||0))||(x.i-y.i)});
+  var keep={},i;for(i=0;i<pins.length;i++)keep[pins[i].id]=1;for(i=0;i<rest.length&&i<cap-pins.length;i++)keep[rest[i].a.id]=1;
+  return an.filter(function(a){return keep[a.id]});
+}
 function nrLegsGen(t,cap,mk,one,lab0){
-  var d=t.dest||{},from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),an=nrVisible(t).stops,destL=d.name+(d.town?', '+d.town:''),lab=function(a){return a.name+(a.town?', '+a.town:'')};
-  if(an.length<=cap)return [{label:one,url:mk(from,an,destL)}];
-  var legs=[],s=0,e,k=1,o=from;
-  while(s<an.length){e=Math.min(s+cap,an.length);var last=e>=an.length;legs.push({label:lab0+k,url:mk(o,an.slice(s,e),last?destL:lab(an[e]))});if(last)break;o=lab(an[e]);s=e+1;k++}
-  return legs;
+  var d=t.dest||{},from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),an=nrVisible(t).stops,destL=d.name+(d.town?', '+d.town:'');
+  return [{label:one,url:mk(from,nrMapsPick(an,cap),destL)}];   /* v7.76: one link */
 }
 /* v7.62 (the owner: the Apple Maps export must carry every stop): Apple's unified Maps URL (iOS 18.4+, macOS 15.4+):
    maps.apple.com/directions with source, destination and a repeated waypoint, driving. Apple Maps takes 14 stops on a
@@ -10259,7 +10268,7 @@ function nrLegsGen(t,cap,mk,one,lab0){
 var APPLE_WP=13;
 function nrAppleUrl(from,anchors,dest){var w=anchors.slice(0,APPLE_WP).map(function(a){return '&waypoint='+E(a.name+(a.town?', '+a.town:''))}).join('');return 'https://maps.apple.com/directions?'+(from?'source='+E(from)+'&':'')+'destination='+E(dest||'')+w+'&mode=driving'}
 function nrAppleLegs(t){if(!t||!t.dest||!t.dest.name)return [];return nrLegsGen(t,APPLE_WP,nrAppleUrl,'Apple Maps','Apple Maps ')}
-function nrMapsFor(t){if(!t)return '';var d=t.dest||{};if(!d.name)return t.maps||'';var from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||'');return nrMapsUrl(from,nrVisible(t).stops,d.name+(d.town?', '+d.town:''))}
+function nrMapsFor(t){if(!t)return '';var d=t.dest||{};if(!d.name)return t.maps||'';var from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||'');return nrMapsUrl(from,nrMapsPick(nrVisible(t).stops,9),d.name+(d.town?', '+d.town:''))}
 function nrH(){var h={},k=fbOwnerKey(),em=mGet('alertEmail'),tk=mGet('alertTok');if(k)h['X-Prowl-Owner']=k;if(em&&tk){h['X-Prowl-Email']=em;h['X-Prowl-Tok']=tk}return window.prowlAuth?window.prowlAuth(h):h}   /* v7.38: the alerts member too */
 /* v7.38 (the owner: "it took me to the den and tried to make me sign in, but i am pro"): a Prowl Alerts sign-in is a sign-in */
 function nrSigned(){return !!((window.prowlSess&&window.prowlSess())||(mGet('alertTok')&&mGet('alertEmail')))}
@@ -10344,7 +10353,7 @@ function nrClock(ts){var d=new Date(Math.round(ts/300000)*300000);return nrTime(
 function nrCard(p,day,cls,num,o){
   o=o||{};var s=nrState(p.hours,day,o.eta),ph=(num?'<span class="nr-num" aria-hidden="true">'+num+'</span>':'')+(p.photo?'<img class="nr-ph" src="'+esc(NR_API+p.photo)+'" alt="" loading="lazy">':'<span class="nr-ph nr-nop" aria-hidden="true">🛒</span>');
   return '<a class="nr-card'+(cls?' '+cls:'')+'" href="'+esc(p.url||('https://www.google.com/maps/search/?api=1&query='+E(p.name+' '+(p.town||''))))+'" target="_blank" rel="noopener noreferrer">'+ph+
-    '<span class="nr-body">'+(p.pin?'<span class="nr-yours">Your stop</span>':'')+'<b class="nr-n">'+esc(p.name||'')+'</b><span class="nr-h'+(s.cls?' '+s.cls:'')+'">'+esc(s.text)+'</span>'+nrRate(p)+'<span class="nr-t">'+esc(p.town||'')+(p.why?' · '+esc(p.why):'')+'</span>'+(p.about?'<span class="nr-about">'+esc(p.about)+'</span>':'')+nrPlanLine(p)+'</span>'+
+    '<span class="nr-body">'+(p.pin?'<span class="nr-yours">Your stop</span>':'')+'<b class="nr-n">'+esc(p.name||'')+'</b><span class="nr-h'+(s.cls?' '+s.cls:'')+'">'+esc(s.text)+'</span>'+nrRate(p)+'<span class="nr-t">'+esc(p.town||'')+(p.why?' · '+esc(p.why):'')+'</span>'+(p.about?'<span class="nr-about">'+esc(p.about)+'</span>':'')+nrPlanLine(p)+(o.off?'<span class="nr-nm">Listed only, not in the Maps route</span>':'')+'</span>'+
     (s.tag||o.mi!=null||typeof o.det==='number'?'<span class="nr-side">'+(s.tag?'<span class="nr-st '+s.cls+'">'+s.tag+'</span>':'')+(o.mi!=null?'<span class="nr-mi">'+nrMiTxt(o.mi)+'</span>':'')+(typeof o.det==='number'?'<span class="nr-det" title="Adds about '+Math.max(1,Math.round(o.det))+' min to the drive">+'+Math.max(1,Math.round(o.det))+' min</span>':'')+'</span>':'')+'</a>';   /* v7.72: +12 min, what the stop adds */
 }
 /* v7.51 (the owner, from Gemini's Findlay to Milton run: time to allow, worth the detour, walkable): the worker's
@@ -10717,9 +10726,12 @@ function nrDrawTrip(t,o){
   var ET=nrEtas(t,stops),live=!!ET,lateN=[];
   function eta(p){if(!ET)return 0;if(p===dest)return ET.at._dest||0;var i,j,a;for(i=0;i<stops.length;i++){a=stops[i];if(a.id===p.id)return ET.at[a._k||a.id]||0;for(j=0;j<(a.nested||[]).length;j++)if(a.nested[j].id===p.id)return ET.at[a._k||a.id]||0}return 0}
   if(ET)stops.forEach(function(a){[a].concat(a.nested||[]).forEach(function(p){if(nrLateAt(p,eta(p),day))lateN.push(p.name)})});
-  function row(p,cls,num,det){return '<div class="nr-row'+(p.pin?' nr-pinrow':'')+'">'+nrCard(p,day,cls,num,{eta:eta(p),det:det})+'<span class="nr-acts">'+nrGo(p)+nrRvBtn(p)+(p.pin?'':'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'"><span aria-hidden="true">−</span> Skip</button>')+'</span></div>'}   /* v7.75: a stop you named is not skipped; take it out above */
+  var inMaps={},mp=nrMapsPick(stops,mapsPref()==='apple'?APPLE_WP:9),off=stops.length-mp.length;mp.forEach(function(a){inMaps[a.id]=1});   /* v7.76 */
+  function row(p,cls,num,det){return '<div class="nr-row'+(p.pin?' nr-pinrow':'')+'">'+nrCard(p,day,cls,num,{eta:eta(p),det:det,off:cls==='nr-anchor'&&off>0&&!inMaps[p.id]})+'<span class="nr-acts">'+nrGo(p)+nrRvBtn(p)+(p.pin?'':'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'"><span aria-hidden="true">−</span> Skip</button>')+'</span></div>'}   /* v7.75: a stop you named is not skipped; take it out above */
   h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+(t.loop?'the shops around it and back':esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):''))+(t.loop?'</b>':'')+'</p>'+
      (t.via&&t.via.length?'<p class="nearp nr-viah">By way of '+esc(nrAnd(t.via.map(function(v){return String(v).split(',')[0]})))+'</p>':'')+   /* v7.75 */
+     (t.missing&&t.missing.length?'<p class="nearp nr-late">Not found on the map: '+esc(nrAnd(t.missing.map(function(v){return String(v).split(',')[0]})))+'. The drive still goes there, but it is not in the list or in Maps; check the name.</p>':'')+   /* v7.76 */
+     (off>0?'<p class="nearp nr-mapsn">Maps takes '+(stops.length-off)+' stops in one route: your stops and the biggest shops. The other '+off+' are marked Listed only; Skip one to bring another in.</p>':'')+
      '<p class="nearp">'+(t.route&&(t.route.mi||t.route.km)?nrMiles(t.route)+' mi · '+nrDur(t.route.min||0)+' of driving · ':'')+'Trip day '+NR_DAYS[wd]+'<span id="otp-nrMembers">'+(o.members?' · '+o.members+' on this trip':'')+'</span></p>'+
      nrPlanSum(t,stops)+   /* v7.51 */
      (live?'<p class="nearp nr-etan">Open or closed is for when you would get there, leaving '+(($('#otp-nrLeave')||{}).value?'at '+nrClock(ET.leave):'now')+' and allowing about '+NR_STAY+' min at a stop'+(ET.routed&&ET.src==='osrm'?'.':' (drive times estimated).')+'</p>':'')+
@@ -11008,6 +11020,7 @@ if(near){
   $('#otp-nrAtForm').addEventListener('submit',function(e){e.preventDefault();atSubmit()});   /* v7.62 */
   $('#otp-nrFrom').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();var t=$('#otp-nrTo');if(t&&t.value.trim())$('#otp-nrGo').click();else if(t)try{t.focus()}catch(x){}}});
   $('#otp-nrForm').addEventListener('submit',function(e){e.preventDefault();var inp=$('#otp-nrTo');nrBuild(inp?inp.value.replace(/\s+/g,' ').trim().slice(0,160):'')});
+  $('#otp-nrGo').addEventListener('click',function(){var inp=$('#otp-nrTo');nrBuild(inp?inp.value.replace(/\s+/g,' ').trim().slice(0,160):'')});   /* v7.76: Build trip after the stops (the owner) */
   nrSugWire($('#otp-nrTo'),$('#otp-nrSug'),function(v){nrBuild(v.slice(0,160))});   /* v7.69: a tap on a place builds the trip */
   nrSugWire($('#otp-nrFrom'),$('#otp-nrSugF'),function(){var f=$('#otp-nrFrom'),ev;try{ev=new Event('change',{bubbles:true})}catch(x){ev=document.createEvent('Event');ev.initEvent('change',true,true)}if(f)f.dispatchEvent(ev)});
   $('#otp-nrDays').addEventListener('click',function(e){var b=e.target.closest('[data-nrday]');if(!b)return;NR.day=b.getAttribute('data-nrday');rNrDays();nrOptsChanged()});   /* v7.72: on Done */

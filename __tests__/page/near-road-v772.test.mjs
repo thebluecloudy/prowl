@@ -137,13 +137,14 @@ test('the bar is one Start in Maps and More; More holds every Maps link, Rebuild
   await a.p.close();
 });
 
-test('a trip split into legs starts with the first, and says so', async () => {
+test('v7.76: a trip past nine stops is still one Start in Maps, the whole drive (the owner: "it should just build the entire trip")', async () => {
   const many = Array.from({ length: 12 }, (_, i) => shop('M' + i, 'Shop ' + i, 'Town ' + i + ', OH', 41 - i * 0.2, -83.6, { near: 5 }));
   const { p } = await roadTrip({ stops: many });
   await build(p, 'Blenko');
-  assert.equal(p.$$('#otp-nrLegs a').length, 2);
-  assert.equal(p.$('#otp-nrStart').textContent, 'Start in Maps (1 of 2)');
+  assert.equal(p.$$('#otp-nrLegs a').length, 1);
+  assert.equal(p.$('#otp-nrStart').textContent, 'Start in Maps');
   assert.equal(p.$('#otp-nrStart').href, p.$('#otp-nrLegs a').href);
+  assert.equal(new URL(p.$('#otp-nrStart').href).searchParams.get('waypoints').split('|').length, 9);
   await p.close();
 });
 

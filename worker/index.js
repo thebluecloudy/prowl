@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v164: 2026-10-24. Stops on the way are looked up first, with the destination, and once more if Google says no;
+ *         the drive goes through each one's own spot. v163 asked after the corridor's searches, and on a long trip
+ *         with every kind on Google refused those late asks, so the owner's two stops (Rookwood Pottery, Mosser Glass)
+ *         were driven through but never listed. A stop still not found is said (missing).
  *   v163: 2026-10-24. Stops on the way: /trip and keeping a trip take via=A|B|C (up to three; viaParse); each is looked
  *         up as a place and goes into the stops in drive order, marked pin, with the shops of each leg around it and in
  *         the Maps link (pinStops). Keeping a trip also keeps its detour. Trip cache keys add the stops (the owner:
@@ -558,7 +562,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v163";
+const WORKER_VERSION = "v164";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6506,6 +6510,7 @@ async function fbFinds(request, env, url, origin) {
    deleted FINDS_GRACE_DAYS later by tripSweep (the alert clock, once an hour), and /finds refuses them from the moment
    the trip expires whatever R2 still holds. The bucket's own lifecycle rule (wrangler.toml) is the backstop. */
 const NEAR_HERE_M = Math.round(3 * MI_M);   /* v153: the distance-ranked ask looks this far */
+const PIN_RETRY_MS = 400;   /* v164: the wait before a stop is looked up again */
 const REVIEWS_PER_IP = 300, SUGGEST_PER_IP = 1500;   /* v161: suggestions asked a day per address */   /* v161: reviews asked a day per address */
 const NEAR_PER_IP = 120, TRIP_PER_IP = 30, PP_PER_IP = 1500, TRIPS_PER_IP = 400, NEAR_CACHE_SECONDS = 600, TRIP_CACHE_SECONDS = 3600, HOURS_CACHE_SECONDS = 600;
 const G_PLACE_FIELDS = "id,displayName,formattedAddress,addressComponents,location,rating,userRatingCount,regularOpeningHours,utcOffsetMinutes,photos,editorialSummary,primaryType,primaryTypeDisplayName,googleMapsUri";
@@ -6586,7 +6591,7 @@ async function gPlaceHours(env, id) {
 /* the driving routes, the fastest first and Google's alternatives after it (v136); to is { lat, lng } or an address */
 async function gRoutes(env, from, to, via) {
   const body = { origin: { location: { latLng: { latitude: from.lat, longitude: from.lng } } },
-    intermediates: (via || []).slice(0, 3).map((v) => ({ address: String(v).slice(0, 120), via: true })),
+    intermediates: (via || []).slice(0, 3).map((v) => (v && typeof v === "object" && Number.isFinite(v.lat) && Number.isFinite(v.lng) ? { location: { latLng: { latitude: v.lat, longitude: v.lng } }, via: true } : { address: String(v).slice(0, 120), via: true })),   /* v164: a found stop by its own spot */
     destination: typeof to === "string" ? { address: to } : { location: { latLng: { latitude: to.lat, longitude: to.lng } } },
     travelMode: "DRIVE", routingPreference: "TRAFFIC_UNAWARE", polylineQuality: "OVERVIEW", computeAlternativeRoutes: true, languageCode: "en-US", units: "IMPERIAL" };
   const j = await gFetch("https://routes.googleapis.com/directions/v2:computeRoutes", { method: "POST", body: JSON.stringify(body) }, "routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration", env);
@@ -6743,9 +6748,10 @@ async function orderRoute(request, env, url, origin) {
 async function tripBuild(env, from, toText, day, cats, via, detour) {
   cats = catsParse((cats || []).join ? (cats || []).join(",") : cats);
   const sv = splitVia(toText); toText = sv.to; via = (via && via.length ? via : sv.via).slice(0, 3);   /* v142 */
-  const [town, destList] = await Promise.all([gTown(env, from.lat, from.lng), gPlacesText(env, toText, null, 0, 1)]);
+  /* v164: the stops you named are looked up first, beside the destination, before the corridor's searches crowd Google */
+  const [town, destList, found] = await Promise.all([gTown(env, from.lat, from.lng), gPlacesText(env, toText, null, 0, 1), Promise.all(via.map((v) => pinLookup(env, v)))]);
   const dest = destList[0] || null;
-  const routes = await gRoutes(env, from, dest && Number.isFinite(dest.lat) ? { lat: dest.lat, lng: dest.lng } : toText, via);
+  const routes = await gRoutes(env, from, dest && Number.isFinite(dest.lat) ? { lat: dest.lat, lng: dest.lng } : toText, via.map((v, i) => found[i] ? { lat: found[i].lat, lng: found[i].lng } : v));
   if (!routes.length) return null;
   /* v136: every route's corridor is searched (a circle and a query asked once, however many routes share it), and the
      route with the most to see wins; the fastest is the tie-break */
@@ -6762,16 +6768,23 @@ async function tripBuild(env, from, toText, day, cats, via, detour) {
   built.sort((a, b) => b.score - a.score || a.route.min - b.route.min);
   const best = built[0];
   /* v163: the stops you named, looked up as places and put in the list in drive order */
-  const pins = via.length ? (await Promise.all(via.map((v) => gPlacesText(env, v, null, 0, 1).catch(() => [])))).map((l, i) => {
-    const p = l && l[0]; if (!p || !Number.isFinite(p.lat)) return null;
-    return Object.assign(placeCard(p), { pin: true, viaText: via[i], tier: sizeTier(p), stay: stayMinutes(p), nested: [] });
-  }).filter(Boolean) : [];
+  const pins = found.map((p, i) => (p ? Object.assign(placeCard(p), { pin: true, viaText: via[i], tier: sizeTier(p), stay: stayMinutes(p), nested: [] }) : null)).filter(Boolean);
+  const missing = via.filter((v, i) => !found[i]);
   const stops = pins.length ? pinStops(best.stops, pins, best.route.pts) : best.stops;
   const destCard = dest ? placeCard(dest) : { id: "", name: vClean(toText, 120), town: "", why: "", hours: null, url: "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(toText) };
   const destLabel = destCard.name + (destCard.town ? ", " + destCard.town : "");
   return { origin: { town: town }, dest: destCard, route: { mi: best.route.mi, min: best.route.min, slower: Math.max(0, best.route.min - routes[0].min), routes: routes.length }, day: day, weekday: weekdayOf(day), cats: cats,
-    stops: stops, more: best.more, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.some((s) => !s.pin), via: via, pins: pins.length, detour: detour || DETOUR_MIN, line: routeLine(best.route.pts.filter((p) => haversineMi(from, p) > 1)),   /* v157: never the first mile, so the start is not in it */
+    stops: stops, more: best.more, maps: mapsDirUrl(town, stops, destLabel), empty: !stops.some((s) => !s.pin), via: via, pins: pins.length, missing: missing, detour: detour || DETOUR_MIN, line: routeLine(best.route.pts.filter((p) => haversineMi(from, p) > 1)),   /* v157: never the first mile, so the start is not in it */
     how: { badTypes: Array.from(BAD_TYPES), routes: built.map((b) => ({ mi: b.route.mi, min: b.route.min, score: b.score, anchors: b.stops.length, found: b.found, boxes: b.boxes.length })), boxes: best.boxes, nearby: stat.nearby, text: stat.text, refused: stat.refused } };
+}
+/* v164: one stop you named, as a place: asked once more after a moment if Google gives nothing */
+async function pinLookup(env, text) {
+  for (let i = 0; i < 2; i++) {
+    let l = []; try { l = await gPlacesText(env, text, null, 0, 1); } catch (e) { l = []; }
+    const p = l && l[0]; if (p && Number.isFinite(p.lat) && Number.isFinite(p.lng)) return p;
+    if (i === 0) await new Promise((r) => setTimeout(r, PIN_RETRY_MS));
+  }
+  return null;
 }
 async function tripRoute(request, env, url, origin) {
   const lat = nearNum(url.searchParams.get("lat"), -90, 90), lng = nearNum(url.searchParams.get("lng"), -180, 180);
@@ -6838,7 +6851,7 @@ async function reviewsRoute(request, env, url, origin) {
   return res;
 }
 /* v155: one key for a built trip, so keeping it for the group finds the build the page is showing */
-function tripKey(o, lat, lng, to, day, cats, via) { return o + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(String(to).toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + (via && via.length ? "&via=" + encodeURIComponent(via.join("|").toLowerCase()) : "") + "&v=10"; }   /* v137 to v154: the answer changed */
+function tripKey(o, lat, lng, to, day, cats, via) { return o + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(String(to).toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + (via && via.length ? "&via=" + encodeURIComponent(via.join("|").toLowerCase()) : "") + "&v=11"; }   /* v164: v163 answers missed their stops */   /* v137 to v154: the answer changed */
 /* a place's photo: Google's media endpoint needs the key, so the page asks here */
 async function ppRoute(request, env, url) {
   const n = String(url.searchParams.get("n") || "");

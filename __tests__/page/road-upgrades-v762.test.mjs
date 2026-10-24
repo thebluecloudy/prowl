@@ -116,32 +116,32 @@ test('no end: a loop of the shops around the start, ordered by the router, then 
   await p.close();
 });
 
-test('Apple Maps and Google Maps carry every stop: one link up to their caps, legs past them, each starting where the last ended', async () => {
+test('v7.76: Apple Maps and Google Maps are one link each, the whole drive; past their caps the biggest shops go in, the rest Listed only', async () => {
   const calls = [];
   const S = [];
-  for (let i = 1; i <= 15; i++) S.push(shop('S' + i, 'Shop ' + i, 'Town ' + i + ', OH', 41.6 - i * 0.2, -83.5 + i * 0.05));
+  for (let i = 1; i <= 15; i++) S.push(shop('S' + i, 'Shop ' + i, 'Town ' + i + ', OH', 41.6 - i * 0.2, -83.5 + i * 0.05, null, { n: 100 + i }));
   const p = loadPage({ storage: DEN, fetchImpl: fx(calls, { trip: () => mkTrip(S) }), beforeLoad: phone });
   await toTrip(p, 'Blenko');
   const apple = p.$$('#otp-nrApple a');
-  assert.deepEqual(apple.map((a) => a.textContent), ['Apple Maps 1', 'Apple Maps 2']);
-  const a1 = new URL(apple[0].href), a2 = new URL(apple[1].href);
+  assert.deepEqual(apple.map((a) => a.textContent), ['Apple Maps'], 'one link, not legs (the owner)');
+  const a1 = new URL(apple[0].href);
   assert.equal(a1.origin + a1.pathname, 'https://maps.apple.com/directions');
   assert.equal(a1.searchParams.get('source'), 'Novi, MI');
-  assert.equal(a1.searchParams.getAll('waypoint').length, 13, 'Apple Maps takes 14 stops: 13 on the way and the end');
-  assert.equal(a1.searchParams.get('waypoint'), 'Shop 1, Town 1, OH');
-  assert.equal(a1.searchParams.get('destination'), 'Shop 14, Town 14, OH', 'leg 1 ends at the next leg\'s first stop');
+  assert.equal(a1.searchParams.get('destination'), 'Blenko Glass Company, Milton, WV', 'to the end, in one');
+  assert.equal(a1.searchParams.getAll('waypoint').length, 13, 'Apple Maps takes 13 on the way');
   assert.equal(a1.searchParams.get('mode'), 'driving');
-  assert.equal(a2.searchParams.get('source'), 'Shop 14, Town 14, OH');
-  assert.deepEqual(a2.searchParams.getAll('waypoint'), ['Shop 15, Town 15, OH']);
-  assert.equal(a2.searchParams.get('destination'), 'Blenko Glass Company, Milton, WV');
+  assert.deepEqual(a1.searchParams.getAll('waypoint').map((w) => +/Shop (\d+)/.exec(w)[1]), [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], 'the biggest thirteen, in drive order');
   const g = p.$$('#otp-nrLegs a');
-  assert.deepEqual(g.map((a) => a.textContent), ['Google Maps 1', 'Google Maps 2'], 'Google takes 9 waypoints a link');
-  const all = [];
-  for (const a of apple) { const u = new URL(a.href); all.push(...u.searchParams.getAll('waypoint')); }
-  assert.equal(all.length + 1, 15, 'every stop is in an Apple link (Shop 14 as leg 1\'s end)');
+  assert.deepEqual(g.map((a) => a.textContent), ['Google Maps'], 'one Google link too');
+  const gu = new URL(g[0].href);
+  assert.equal(gu.searchParams.get('waypoints').split('|').length, 9, 'Google Maps takes 9');
+  assert.equal(gu.searchParams.get('destination'), 'Blenko Glass Company, Milton, WV');
+  assert.match(p.$('#otp-nrOut .nr-mapsn').textContent, /^Maps takes 9 stops in one route: your stops and the biggest shops\. The other 6 are marked Listed only; Skip one to bring another in\.$/);
+  assert.equal(p.$$('#otp-nrOut .nr-nm').length, 6);
   assert.deepEqual(p.errors, []);
   await p.close();
 });
+
 
 test('estate sales along the way (owner): within the detour, open on the trip day; one over before you get there says so', async () => {
   const calls = [];
