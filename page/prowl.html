@@ -2930,7 +2930,9 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     var card=document.createElement('div');card.className='apr-card';
     var im=document.createElement('img');im.src=src;im.alt='';card.appendChild(im);
     var dl=document.createElement('dl');
-    var rows=[['Item',r.item],['How sure',r.sure?String(r.sure).charAt(0)+String(r.sure).slice(1).toLowerCase():''],['Condition',r.condition],['Flaws',r.flaws],['Fair price',r.fair],['Call',r.verdict],['Why',r.why]];
+    /* v7.95: the worker's "(maker you entered)" marker stays on r.item (priceIt reads it) but is not shown; the call is
+       in sentence case like the rest of the app (the share card keeps its capitals) */
+    var rows=[['Item',String(r.item||'').replace(/\s*\((maker you entered|your ID)\)/g,'')],['How sure',r.sure?String(r.sure).charAt(0)+String(r.sure).slice(1).toLowerCase():''],['Condition',r.condition],['Flaws',r.flaws],['Fair price',r.fair],['Call',r.verdict?String(r.verdict).charAt(0)+String(r.verdict).slice(1).toLowerCase():''],['Why',r.why]];
     for(var i=0;i<rows.length;i++){if(!rows[i][1])continue;var dt=document.createElement('dt');dt.textContent=rows[i][0];var dd=document.createElement('dd');dd.textContent=rows[i][1];dl.appendChild(dt);dl.appendChild(dd);}
     card.appendChild(dl);O.appendChild(card);
     /* v5.59 eBay photo search: the closest-looking live listings, so the ID
@@ -2969,7 +2971,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       var mvB=document.createElement('div');mvB.className='apr-moreb';for(mvI=0;mvI<mvL.length;mvI++)mvB.appendChild(mvL[mvI]);mvD.appendChild(mvB);L.appendChild(mvD);}
     if(L.firstChild)O.appendChild(L);
     if(r.basis!=='pending'&&hq)guideLink(hq);
-    var n=document.createElement('p');n.className='apr-note';n.textContent=r.basis==='pending'?'Found it. Now checking recent sold prices\u2026':r.basis==='sold'?'A gut check from the photo, not an appraisal.':r.basis==='limit'?'You have used today\u2019s price lookups. They reset tomorrow.':r.basis==='busy'?'Prowl is busy right now. Try again in a little while.':r.fair?'Estimate only: sold prices could not be checked just now.':'Sold prices could not be checked just now.';   /* v6.64: limit, busy */O.appendChild(n);
+    var n=document.createElement('p');n.className='apr-note';n.textContent=r.basis==='pending'?'Found it. Now checking recent sold prices\u2026':r.basis==='sold'?'A gut check from the photo, not an appraisal.':r.basis==='listed'?'No recent sales found, so this range comes from asking prices, which usually run higher than what pieces sell for.':r.basis==='limit'?'You have used today\u2019s price lookups. They reset tomorrow.':r.basis==='busy'?'Prowl is busy right now. Try again in a little while.':r.fair?'Estimate only: sold prices could not be checked just now.':'Sold prices could not be checked just now.';   /* v6.64: limit, busy */O.appendChild(n);
   }
   /* v5.53 Research this piece: the Worker runs a web-search model (Meta Muse) and returns plain fields plus sources. */
   var RESEARCH_ON=true,RAPI='https://prowl.thebluecloud.workers.dev/research';

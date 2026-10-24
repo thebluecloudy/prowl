@@ -6,7 +6,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.95 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.95** | 389,715 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.95** | 389,445 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v169** | |
 
 Recently shipped, newest first:
@@ -17,8 +17,11 @@ Recently shipped, newest first:
   data-u, -t, -p, -s, -h = the photo's search, -m = "Sold on Poshmark Oct 3, 2026" under the price), and a plain tap
   opens the popup over Photo check (eBay's full one, Poshmark's light one); a modifier click or long-press still links
   out. The popup's Save button now shares its row with **♡ Like / ♥ Liked** (`popLkBtn`, `popLikeTap`), which un-likes
-  too; the double-tap like turns it on. Saving still asks a visitor to sign in first. No new key.
-  Test: `__tests__/page/photo-popup-v795.test.mjs`.
+  too; the double-tap like turns it on. Saving still asks a visitor to sign in first. Matt then asked "Find anything
+  else in photo check?": the answer's Item no longer shows the worker's "(maker you entered)" marker, the Call is in
+  sentence case ("Worth a look"; the share card keeps capitals), and a range from asking prices (worker basis
+  `listed`) says "No recent sales found, so this range comes from asking prices..." instead of "sold prices could not
+  be checked just now". No new key. Test: `__tests__/page/photo-popup-v795.test.mjs`.
 - **v7.94 / v169: Saved finds say when a listing is over** (Matt: "build the sold and ended check next"). Each run of
   the alert clock takes one Pro member's list not looked at in 20 hours (`savedCheckTick`) and reads up to 15 of its
   finds, the longest unchecked first, with the listing popup's readers (`savedRead`: itemEbay, itemEtsy, itemSgw,

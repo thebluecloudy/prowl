@@ -12,11 +12,11 @@ const PM = 'https://poshmark.com/listing/Royal-Haeger-Black-Panther-65a1b2c3d4e5
 const ls = (p, k) => JSON.parse(p.win.localStorage.getItem(k) || 'null');
 const J = (j, status) => Promise.resolve({ ok: !status || status < 400, status: status || 200, json: () => Promise.resolve(j), text: () => Promise.resolve(JSON.stringify(j)) });
 
-function setup() {
+function setup(over) {
   const items = [];
   const fetchImpl = (u) => {
     const url = String(u);
-    if (/\/appraise$/.test(url)) return J({ item: 'Royal Haeger sitting panther', fair: '$55-115', basis: 'asking', sure: 'HIGH', search: 'Royal Haeger panther',
+    if (/\/appraise$/.test(url)) return J({ item: 'Royal Haeger sitting panther', fair: '$55-115', basis: 'sold', sure: 'HIGH', search: 'Royal Haeger panther', ...over,
       looks: [{ url: EB, title: 'Rare ROYAL HAEGER Art Deco SITTING SPOTTED Panther', price: '$139.99', image: 'https://i.ebayimg.com/images/g/abc/s-l500.jpg' }] });
     if (/\/poshsold\?/.test(url)) return J({ items: [{ url: PM, title: 'Vintage Royal Haeger black panther', price: '$45', image: 'https://di2ponv0v5otw.cloudfront.net/posts/a.jpg', sold: '2026-10-03' }] });
     if (/\/item\?url=/.test(url)) { items.push(decodeURIComponent(url.split('url=')[1])); return J({ title: 'Rare ROYAL HAEGER Art Deco SITTING SPOTTED Panther', price: '$139.99', images: ['https://i.ebayimg.com/images/g/abc/s-l1600.jpg'], url: EB }); }
@@ -118,5 +118,17 @@ test('a click with a modifier key still opens the marketplace', async () => {
   card(p, EB).dispatchEvent(ev);
   await tick(20);
   assert.ok(sheet(p).hidden !== false || !sheet(p).classList.contains('pop'), 'no popup');
+  await p.close();
+});
+
+test('the answer reads plainly: no "(maker you entered)", the call in sentence case, and an asking-price range says so', async () => {
+  const { p } = setup({ item: 'Haeger (maker you entered), Royal Haeger mid-century sitting panther sculpture', verdict: 'WORTH A LOOK', basis: 'listed', why: 'No matching eBay sold found, asking $65 to $140 for same sitting panther.' });
+  await check(p);
+  const row = (t) => { const dt = p.$$('#otp-aprOut .apr-card dt').find((d) => d.textContent === t); return dt && dt.nextElementSibling.textContent; };
+  assert.equal(row('Item'), 'Haeger, Royal Haeger mid-century sitting panther sculpture');
+  assert.equal(row('Call'), 'Worth a look');
+  const notes = p.$$('#otp-aprOut > .apr-note').map((n) => n.textContent);
+  assert.ok(notes.includes('No recent sales found, so this range comes from asking prices, which usually run higher than what pieces sell for.'), notes.join(' | '));
+  assert.ok(!notes.some((n) => /could not be checked/.test(n)), 'not "sold prices could not be checked": they were, and none were found');
   await p.close();
 });
