@@ -1,7 +1,7 @@
-// Page v7.74 (the owner: "when i do the photo search, the tool searches immediately, but i want to add a picture and
+// Page v7.76 (the owner: "when i do the photo search, the tool searches immediately, but i want to add a picture and
 // then add words, or even another picture, and then hit search. or, the ai got it wrong, and i want to go back and add
 // a search term or maker, and rerun"). A photo goes into a tray of up to 3; nothing is sent until Check it; after the
-// answer the photos stay, and Check again sends them with the corrected words (worker v163: images[], free re-check).
+// answer the photos stay, and Check again sends them with the corrected words (worker v164: images[], free re-check).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPage, tick } from '../helpers/loadPage.mjs';

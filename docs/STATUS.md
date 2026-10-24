@@ -1,17 +1,17 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.74 / v163).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.76 / v164).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.74** | 393,840 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v163** | |
+| Page | **v7.76** | 393,790 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v164** | |
 
 Recently shipped, newest first:
 
-- **v7.74 / v163: the photo check waits for Check it, takes up to 3 photos, and checks again with a fixed maker**
+- **v7.76 / v164: the photo check waits for Check it, takes up to 3 photos, and checks again with a fixed maker**
   (the owner: "the tool searches immediately, but i want to add a picture and then add words, or even another picture,
   and then hit search. or, the ai got it wrong, and i want to go back and add a search term or maker, and rerun").
   - **A tray**: Take a photo / Choose from photos (several at once now) put the photo in a tray of up to 3 (the
@@ -20,14 +20,35 @@ Recently shipped, newest first:
   - **Check again**: after the answer the photos stay. Fix the words or add a close-up and Check again; the AI sees
     the photos again with the words. "Wrong item? Re-price" (text only, it never looked at the photo again) is now
     "Wrong? Fix the maker and check again", which puts the cursor in Maker or words. **Start over** empties the tray.
-  - **Worker v163**: `POST /appraise { images: [...] }` (up to `APPRAISE_MAX_PHOTOS` 3; `image` still works); the AI
+  - **Worker v164**: `POST /appraise { images: [...] }` (up to `APPRAISE_MAX_PHOTOS` 3; `image` still works); the AI
     gets every photo with a line saying they are one piece, eBay's photo search the first. A free visitor's re-check
     of a photo checked in the last 30 minutes is free, 3 times a photo (Matt's call); it still counts against the
     shared daily pool. The marker is per colo (the Cache API) and keyed by one digest of the address and the photo.
     The answer says `again: true`, and the page tells them the re-check was free.
   - Shared photos from Android (v7.15) land in the tray too. No new keys. Tests:
-    `__tests__/page/photo-tray-v774.test.mjs`, `worker/__tests__/photo-tray-v163.test.mjs`; reprice-limit drives the
+    `__tests__/page/photo-tray-v776.test.mjs`, `worker/__tests__/photo-tray-v164.test.mjs`; reprice-limit drives the
     price step directly now.
+- **v7.75 / v163: stops on the way** (the owner: "i would like to make a specific stop on the way from one city to the
+  other ... maybe one or two or three, we can go from pin to pin, and find things in between"). Under Where are you
+  headed, **+ Add a stop on the way** opens up to three numbered boxes, each with places as you type and a × (`rNrVias`,
+  `NR.vias`, kept for the visit, no new key). The page sends them on their own (`via=A|B|C`), so a name with "and" in it
+  stays one stop. The worker (`viaParse`) routes through them in order, as before, finds the shops of each leg, looks
+  each stop up as a place and puts it in the list in drive order (`pinStops`: by segment and how far into it), marked
+  `pin` ("Your stop", outlined, no Skip; take it out above), once, never also nested, and in the Maps link. The trip
+  head says "By way of Maumee Antique Mall and Central City Antiques". Keeping a trip for the group sends its stops and
+  its detour (it used to drop the detour); kept trips keep `pin`. Trip cache keys add the stops. A new worker test
+  checks every `trip.js` helper the worker calls is imported (the tests hand them all in, so a missing import, as
+  `sizeTier` and `stayMinutes` were in this change, only broke live). Tests: `worker/__tests__/trips.test.mjs`,
+  `__tests__/page/near-via-v775.test.mjs`.
+- **v7.74: iPhone install** (Matt: adding Prowl on an iPhone took three tries; the first icon kept the shop's bar and
+  every icon asked him to sign in again). iOS gives each home-screen icon its own empty storage but copies Safari's
+  cookies into it once, when it is added. On /pages/prowl-app in Safari or Chrome on an iPhone or iPad, the page keeps
+  two cookies scoped to that path, 7 days: `prowl_c1` (email, token, session, Pro) and `prowl_c2` (the prowl.v36 save
+  when it is 3 KB or less). The installed app takes them on its first open, before load(), only into an empty store,
+  then deletes them. No new localStorage keys. Install steps now say to add from the app page (from /pages/prowl the
+  icon keeps the shop's bar), with Safari or Chrome wording and "leave Open as Web App on". Not tried on a real
+  iPhone yet: if cookies are not copied, the in-app 6-digit code sign-in is still there. Test
+  `__tests__/page/ios-install-v774.test.mjs`.
 - **v7.73: NEAR ME benchmarked, polish** (release 3 of 3, after v7.71 Around you and v7.72 Road trip).
   - **The glance check for the car**: on a phone every main Near me button is 48px tall with its words at 17px: the
     tabs, Directions, Build trip / Look there, Change, Use my location, Done and the trip bar (Skip and Reviews are
@@ -1155,7 +1176,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.75, worker v164**. Claim one here when you start.
+Next free numbers: **page v7.77, worker v165**. Claim one here when you start.
 
 ## What's next
 

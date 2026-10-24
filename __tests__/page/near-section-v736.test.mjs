@@ -243,7 +243,7 @@ test('SHARE: signed out it asks for the store sign-in; signed in it keeps the tr
   await tick(150);
   const post = calls.find((x) => /\/trips$/.test(x.url) && x.o.method === 'POST');
   assert.ok(post, 'one tap keeps the trip');
-  assert.deepEqual(JSON.parse(post.o.body), { to: 'Blenko Glass Company, Milton, WV', lat: 42.4806, lng: -83.4755, day: today(), cats: 'antiques,vintage,thrift' });
+  assert.deepEqual(JSON.parse(post.o.body), { to: 'Blenko Glass Company, Milton, WV', lat: 42.4806, lng: -83.4755, day: today(), cats: 'antiques,vintage,thrift', via: [], detour: 15 }, 'v7.75: with its stops on the way and its detour');
   assert.match(post.o.headers.Authorization, /^Bearer /);
   assert.equal(p.$('#otp-nrShareRow').hidden, false, 'the add-member row is open');
   assert.match(p.$('#otp-nrMembers').textContent, /1 on this trip/);
@@ -280,7 +280,7 @@ test('the photo check: SHARE THIS FIND while a trip is on, one tap to the trip\'
   p.$('#otp-aprP').value = '$45';
   p.win.prowlPhotoFile(new p.win.File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3])], 'find.jpg', { type: 'image/jpeg' }));
   await tick(150);
-  assert.ok(!calls.find((x) => /\/appraise$/.test(x.url)), 'v7.74: into the tray, not sent yet');
+  assert.ok(!calls.find((x) => /\/appraise$/.test(x.url)), 'v7.76: into the tray, not sent yet');
   p.$('#otp-aprRun').click();
   await tick(300);
   assert.ok(calls.find((x) => /\/appraise$/.test(x.url)), 'the photo check ran');

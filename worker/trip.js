@@ -54,6 +54,31 @@ export const ANCHOR_REVIEWS_ANTIQUES = 75;   /* ... and an antiques shop with th
 export const NEARBY_TYPES = { books: ["book_store"], toys: ["toy_store"] };   /* v143: Google refused antique_store and thrift_store (how.badTypes on the live build); those are text searches */
 /* v142: "Blenko Glass Company, Milton, WV via Portsmouth, OH" steers the road through a town (or towns, joined by
    "and"); Google's alternatives alone do not always offer the road a collector wants */
+/* v163: the stops the page sends on their own (via=A|B|C), up to three, so a name with "and" in it stays one stop */
+export function viaParse(v) {
+  const list = Array.isArray(v) ? v : String(v || "").split("|");
+  return list.map((x) => String(x == null ? "" : x).replace(/[<>"]/g, "").replace(/\s+/g, " ").trim().slice(0, 120)).filter((x) => x.length >= 2).slice(0, 3);
+}
+/* v163 (the owner: "make a specific stop on the way from one city to the other ... one or two or three, we can go from
+   pin to pin, and find things in between"): the stops you named go into the list in drive order, marked pin, among the
+   shops found on each leg; a shop you named is not listed twice */
+export function pinStops(stops, pins, route) {
+  const ids = Object.create(null); for (const p of pins) if (p.id) ids[p.id] = 1;
+  const at = (p) => {   /* how far along the road: the segment, and how far into it */
+    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lng) || !route || !route.length) return 0;
+    const i = nearestOnRoute(route, p).idx; if (i < 0) return 0;
+    const seg = route[i + 1] ? haversineMi(route[i], route[i + 1]) : 0;
+    return i + (seg > 0 ? Math.min(1, haversineMi(route[i], p) / seg) : 0);
+  };
+  const kept = [];
+  for (const s of stops) {
+    if (ids[s.id]) { const left = (s.nested || []).filter((n) => !ids[n.id]); if (left.length) kept.push(Object.assign({}, left[0], { nested: left.slice(1) })); continue; }
+    kept.push(Object.assign({}, s, { nested: (s.nested || []).filter((n) => !ids[n.id]) }));
+  }
+  const all = kept.map((s, i) => ({ s: s, k: at(s), o: i, pin: 0 })).concat(pins.map((p, i) => ({ s: p, k: at(p), o: i, pin: 1 })));
+  all.sort((a, b) => a.k - b.k || b.pin - a.pin || a.o - b.o);
+  return all.map((x) => x.s);
+}
 export function splitVia(text) {
   const m = /^(.*?)\s+via\s+(.+)$/i.exec(String(text || "").trim());
   if (!m) return { to: String(text || "").trim(), via: [] };
@@ -391,6 +416,7 @@ function stopRef(a) {
     nested: (a.nested || []).map((n) => { const q = rv(n, { id: n.id, name: n.name, town: n.town, lat: n.lat, lng: n.lng, why: n.why, url: n.url, photo: n.photo }); if (n.walk === true) q.walk = true; return q; }) });
   const st = Number(a.stay); if (Number.isFinite(st) && st >= 15 && st <= 480) r.stay = Math.round(st);   /* v154: kept for the group too */
   if (a.worth === true) r.worth = true;
+  if (a.pin === true) r.pin = true;   /* v163: a stop you named */
   return r;
 }
 export function tripMember(trip, cid) { return !!trip && Array.isArray(trip.members) && trip.members.indexOf(String(cid)) !== -1; }

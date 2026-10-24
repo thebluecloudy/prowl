@@ -1,6 +1,6 @@
-/* v163: a photo check takes up to 3 photos of one piece (POST /appraise { images }), the AI sees them all, and a free
+/* v164: a photo check takes up to 3 photos of one piece (POST /appraise { images }), the AI sees them all, and a free
    visitor's re-check of a photo checked in the last 30 minutes (a corrected maker, a close-up added) is free 3 times.
-   Run: node --test worker/__tests__/photo-tray-v163.test.mjs */
+   Run: node --test worker/__tests__/photo-tray-v164.test.mjs */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -36,7 +36,7 @@ test("apImages: up to 3 photos from images, the older single image still works, 
   const { W } = load();
   assert.deepEqual(W.apImages({ images: [IMG(1), IMG(2)] }).ims, [IMG(1), IMG(2)]);
   assert.deepEqual(W.apImages({ images: [IMG(1), IMG(2), IMG(3), IMG(4)] }).ims, [IMG(1), IMG(2), IMG(3)], "a fourth is left out");
-  assert.deepEqual(W.apImages({ image: IMG(9) }).ims, [IMG(9)], "the page before v7.74");
+  assert.deepEqual(W.apImages({ image: IMG(9) }).ims, [IMG(9)], "the page before v7.76");
   assert.deepEqual(W.apImages({}), { err: "need a photo", code: 400 });
   assert.deepEqual(W.apImages({ images: [] }), { err: "need a photo", code: 400 });
   assert.deepEqual(W.apImages({ images: [IMG(1), "https://example.com/x.jpg"] }), { err: "need a photo", code: 400 }, "every one must be a photo");

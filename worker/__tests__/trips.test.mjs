@@ -69,7 +69,7 @@ const SHOPS = [
   gPlace("Hillbilly Flea Market", "Ashland", "KY", 38.4795, -82.6410, { userRatingCount: 970, rating: 3.9, primaryTypeDisplayName: { text: "Flea Market" } }),   /* v138: out unless Flea markets is on */
 ];
 const BLENKO = gPlace("Blenko Glass Company", "Milton", "WV", 38.4345, -82.1322, { regularOpeningHours: { periods: [1, 2, 3, 4, 5].map((d) => ({ open: { day: d, hour: 9, minute: 0 }, close: { day: d, hour: 15, minute: 30 } })), weekdayDescriptions: ["Monday: 9:00 AM – 3:30 PM", "Tuesday: 9:00 AM – 3:30 PM", "Wednesday: 9:00 AM – 3:30 PM", "Thursday: 9:00 AM – 3:30 PM", "Friday: 9:00 AM – 3:30 PM", "Saturday: Closed", "Sunday: Closed"] } });
-const CALLS = [], DIST = [], SUG = [];
+const CALLS = [], DIST = [], SUG = [], ROUTE_BODIES = [];
 let DROP_HERE = false;   /* v153: Google's relevance answer leaves out the shop at the very spot asked about */
 function fakeGoogle(u, init) {
   u = String(u); CALLS.push(u);
@@ -88,7 +88,7 @@ function fakeGoogle(u, init) {
       if (r.low.latitude > 44) return ok({ places: [] });
       return ok({ places: SHOPS.filter((p) => p.location.latitude >= r.low.latitude && p.location.latitude <= r.high.latitude && p.location.longitude >= r.low.longitude && p.location.longitude <= r.high.longitude) });
     }
-    if (!c) return ok({ places: [] });
+    if (!c) { const t = String(b.textQuery || "").toLowerCase(), hit = SHOPS.find((p) => t.indexOf(p.displayName.text.toLowerCase()) === 0); return ok({ places: hit ? [hit] : [] }); }   /* v163: a stop on the way, looked up by its name */
     const here = { lat: c.center.latitude, lng: c.center.longitude }, mi = (p) => TRIP.haversineMi(here, { lat: p.location.latitude, lng: p.location.longitude });
     if (here.lat > 44) return ok({ places: [] });   /* the far north: no shops at all */
     if (b.rankPreference === "DISTANCE") { DIST.push(b); return ok({ places: SHOPS.filter((p) => mi(p) <= c.radius / 1609.344).sort((x, y) => mi(x) - mi(y)).slice(0, b.maxResultCount) }); }
@@ -102,7 +102,7 @@ function fakeGoogle(u, init) {
     hits.sort((a, b2) => (b2.userRatingCount || 0) - (a.userRatingCount || 0));
     return ok({ places: hits.slice(0, 20) });
   }
-  if (/computeRoutes/.test(u)) { const b = JSON.parse(init.body); if (b.destination.address === "nowhere special") return ok({ routes: [] });
+  if (/computeRoutes/.test(u)) { const b = JSON.parse(init.body); ROUTE_BODIES.push(b); if (b.destination.address === "nowhere special") return ok({ routes: [] });
     if (b.intermediates && b.intermediates.length && /Portsmouth/.test(b.intermediates[0].address)) return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline(ROUTE_PTS) }, distanceMeters: 640000, duration: "23400s" }] });   /* v142: via Portsmouth is the US-23 road */
     if (b.origin.location.latLng.latitude < 39) return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline(ROUTE_PTS.filter((p) => p.lng > -82.47)) }, distanceMeters: 30000, duration: "1500s" }] }); if (b.destination.address === "nowhere") return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline([{ lat: 46.5, lng: -84.3 }, { lat: 46.6, lng: -84.2 }]) }, distanceMeters: 12000, duration: "900s" }] }); /* v136: the fastest first (US-35), then the US-23 alternative with more along it */
     return ok({ routes: [{ polyline: { encodedPolyline: encodePolyline(ROUTE35) }, distanceMeters: 571000, duration: "20880s" }].concat(b.computeAlternativeRoutes ? [{ polyline: { encodedPolyline: encodePolyline(ROUTE_PTS) }, distanceMeters: 640000, duration: "23400s" }] : []) }); }
@@ -520,4 +520,45 @@ test("v162: a member leaves a trip; the organizer deletes it for everyone, its F
   assert.deepEqual((await call(env, "GET", "/trips", null, "2222")).body.trips, [], "a deleted trip drops off their list");
   assert.equal(JSON.parse(env.PROWL_ALERTS.m.get("trips:2222")).indexOf(id), -1, "and out of their index");
   assert.equal((await call(env, "GET", "/trips/" + id, null, "2222")).status, 404);
+});
+
+test("v163: stops on the way: each named stop is a place in the list, in drive order, marked pin, once, and in the Maps link", async () => {
+  const env = envWith(); PCACHE.m.clear(); CALLS.length = 0; ROUTE_BODIES.length = 0;
+  const r = await call(env, "GET", "/trip?to=" + encodeURIComponent("Blenko Glass Company, Milton, WV") + "&via=" + encodeURIComponent("Central City Antiques, Huntington, WV|Maumee Antique Mall, Maumee, OH") + "&" + NOVI + "&day=2026-10-27");
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.via, ["Central City Antiques, Huntington, WV", "Maumee Antique Mall, Maumee, OH"]);
+  assert.equal(r.body.pins, 2);
+  const names = r.body.stops.map((s) => s.name), pins = r.body.stops.filter((s) => s.pin);
+  assert.deepEqual(pins.map((s) => s.name).sort(), ["Central City Antiques", "Maumee Antique Mall"]);
+  assert.ok(names.indexOf("Maumee Antique Mall") < names.indexOf("Central City Antiques"), "in drive order, Maumee first: " + names.join(", "));
+  assert.equal(names.filter((n) => n === "Maumee Antique Mall").length, 1, "never twice");
+  assert.ok(!r.body.stops.some((s) => (s.nested || []).some((n) => n.name === "Maumee Antique Mall" || n.name === "Central City Antiques")), "nor nested");
+  assert.ok(r.body.stops.some((s) => !s.pin), "the shops between them are still found");
+  assert.match(decodeURIComponent(r.body.maps), /Maumee Antique Mall, Maumee, OH\|.*Central City Antiques, Huntington, WV/, "in the Maps link, in order");
+  const rb = ROUTE_BODIES[ROUTE_BODIES.length - 1];
+  assert.deepEqual(rb.intermediates.map((x) => x.address), ["Central City Antiques, Huntington, WV", "Maumee Antique Mall, Maumee, OH"], "the drive goes through them");
+  const again = await call(env, "GET", "/trip?to=" + encodeURIComponent("Blenko Glass Company, Milton, WV") + "&" + NOVI + "&day=2026-10-27");
+  assert.equal(again.res.headers.get("X-Prowl-Cache"), null, "another set of stops is another trip");
+  assert.equal(again.body.pins, 0);
+});
+
+test("v163: viaParse keeps up to three stops, whole, and pinStops puts a named stop in drive order without its twin", () => {
+  assert.deepEqual(TRIP.viaParse("Antiques and Collectibles Mall, Findlay, OH|Maumee, OH|a|Columbus|Dayton"), ["Antiques and Collectibles Mall, Findlay, OH", "Maumee, OH", "Columbus"]);
+  assert.deepEqual(TRIP.viaParse(["  Milton,  WV ", "<xy>"]), ["Milton, WV", "xy"]);
+  assert.deepEqual(TRIP.viaParse(""), []);
+  const route = [{ lat: 42, lng: -83 }, { lat: 41, lng: -83 }, { lat: 40, lng: -83 }, { lat: 39, lng: -83 }];
+  const st = (id, lat, nested) => ({ id, name: id, lat, lng: -83, nested: nested || [] });
+  const out = TRIP.pinStops([st("a", 41.9), st("b", 40.5, [st("p2", 40.5)]), st("c", 39.2)], [Object.assign(st("p1", 41.2), { pin: true }), Object.assign(st("p2", 40.5), { pin: true })], route);
+  assert.deepEqual(out.map((s) => s.id), ["a", "p1", "p2", "b", "c"]);
+  assert.deepEqual(out.find((s) => s.id === "b").nested, [], "the named shop is not also nested");
+  assert.deepEqual(TRIP.pinStops([Object.assign(st("p1", 41), { nested: [st("n", 41)] })], [Object.assign(st("p1", 41), { pin: true })], route).map((s) => s.id), ["p1", "n"], "a named anchor gives way; its town's next shop stays");
+});
+
+test("v163: every trip.js helper the worker calls is imported (the tests hand them all in, so a missing import only breaks live)", () => {
+  const TRIPJS = readFileSync(new URL("../trip.js", import.meta.url), "utf8");
+  const exported = [...TRIPJS.matchAll(/^export (?:async )?function (\w+)/gm)].map((m) => m[1]);
+  const imp = /import \{([^}]*)\} from "\.\/trip\.js"/.exec(INDEX)[1].split(",").map((x) => x.trim().split(/\s+as\s+/).pop());
+  const local = new Set([...INDEX.matchAll(/^(?:async )?function (\w+)/gm)].map((m) => m[1]));
+  const missing = exported.filter((n) => !imp.includes(n) && !local.has(n) && new RegExp("[^.\\w]" + n + "\\(").test(INDEX));
+  assert.deepEqual(missing, []);
 });

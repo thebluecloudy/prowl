@@ -1,7 +1,7 @@
 // Page v6.64: "Wrong item? Re-price" when the price step has no answer. The placeholder "Checking sold prices…" used to
 // stay as the Fair price, and Share drew it on the card; a daily limit read "could not be checked just now". Worker v93
 // gives a free visitor 5 price lookups a day, so the limit is easy to reach. Runs the page's own show / priceIt.
-// v7.74: Re-price became "Wrong? Fix the maker and check again" (the photos stay and Check again sends them with the
+// v7.76: Re-price became "Wrong? Fix the maker and check again" (the photos stay and Check again sends them with the
 // words), so the price step is driven directly here, as a check's answer drives it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
