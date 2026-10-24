@@ -2292,6 +2292,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-triprow{display:flex;gap:8px;align-items:stretch}
 .scout-app-wrapper .nr-triprow .nr-tripb{flex:1 1 auto;min-width:0}
 .scout-app-wrapper .nr-tripdel{min-height:44px;padding:0 12px}
+.scout-app-wrapper .nr-tripend{margin:18px 0 6px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .scout-app-wrapper .nr-tripdel.arm{border-color:#b3261e;color:#b3261e;background:transparent}
 .scout-app-wrapper .nr-gobig{display:block;width:100%;min-height:52px;margin:4px 0 14px;font-size:17px}
 .scout-app-wrapper .nr-nm{display:block;margin-top:2px;font-size:12.5px;font-weight:700;color:var(--mu)}
@@ -3662,7 +3663,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.84';
+var PROWL_VERSION='v7.85';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -11149,6 +11150,7 @@ function nrOpenTrip(v,fresh){
   if(v.org)out.insertAdjacentHTML('afterbegin','<div class="nr-sharebox"><div class="addrow" id="otp-nrShareRow"'+(fresh?'':' hidden')+'><input id="otp-nrEmail" type="email" placeholder="Their account email" aria-label="Add a member by account email" autocomplete="off"><button type="button" id="otp-nrAdd">Add</button></div><p class="nearp nr-shnote">Members see this same trip, stops and live hours, under NEAR ME › Trips. Someone who has not used Prowl yet joins the moment they sign in.</p></div>');
   out.insertAdjacentHTML('beforeend','<div class="nr-finds" id="otp-nrFinds"><h3 class="nearh">Finds</h3><p class="nearp">What the group finds on the road: a photo check’s photo, what it is, the asking price and the call. Share one from any photo check with <b>SHARE THIS FIND</b>. Photos go away a week after the trip.</p><div class="nr-findlist" id="otp-nrFindList"><p class="nearp">Loading…</p></div></div>');
   nrFindsLoad(v.id);
+  if(v.id)out.insertAdjacentHTML('beforeend','<p class="nearp nr-tripend">'+(v.org?'Done with this trip? Delete takes it away for everyone, with its Finds.':'Done with this trip?')+' <button type="button" class="nr-rvb nr-tripdel" data-nrdel="'+esc(v.id)+'" data-org="'+(v.org?1:0)+'" aria-label="'+(v.org?'Delete':'Leave')+' this trip">'+(v.org?'Delete':'Leave')+'</button></p>');   /* v7.85: Delete or Leave from the open trip too, not only from the list */
   nrFoot(v);
 }
 function nrTripsLoad(){
