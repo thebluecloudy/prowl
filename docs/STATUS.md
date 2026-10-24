@@ -1312,8 +1312,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `claude/new-session-pffeiw` | Claude | NEAR ME: ✓ Been shared on group trips, Next stop distance and arrival, Open when you get there | Page v7.90, worker v167, PR open. |
 
-Next free numbers: **page v7.90, worker v167**. Claim one here when you start.
+Next free numbers: **page v7.91, worker v168** (v7.90 / v167 are claimed in flight). Claim one here when you start.
 
 ## What's next
 
