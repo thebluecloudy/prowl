@@ -1,16 +1,33 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.75 / v163).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.76 / v164).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.75** | 395,868 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v163** | |
+| Page | **v7.76** | 393,790 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v164** | |
 
 Recently shipped, newest first:
 
+- **v7.76 / v164: the photo check waits for Check it, takes up to 3 photos, and checks again with a fixed maker**
+  (the owner: "the tool searches immediately, but i want to add a picture and then add words, or even another picture,
+  and then hit search. or, the ai got it wrong, and i want to go back and add a search term or maker, and rerun").
+  - **A tray**: Take a photo / Choose from photos (several at once now) put the photo in a tray of up to 3 (the
+    piece, its mark, the back), each with ×; nothing is sent until **Check it**. Maker is now **Maker or words**.
+    With a photo in, Check it is the one orange button.
+  - **Check again**: after the answer the photos stay. Fix the words or add a close-up and Check again; the AI sees
+    the photos again with the words. "Wrong item? Re-price" (text only, it never looked at the photo again) is now
+    "Wrong? Fix the maker and check again", which puts the cursor in Maker or words. **Start over** empties the tray.
+  - **Worker v164**: `POST /appraise { images: [...] }` (up to `APPRAISE_MAX_PHOTOS` 3; `image` still works); the AI
+    gets every photo with a line saying they are one piece, eBay's photo search the first. A free visitor's re-check
+    of a photo checked in the last 30 minutes is free, 3 times a photo (Matt's call); it still counts against the
+    shared daily pool. The marker is per colo (the Cache API) and keyed by one digest of the address and the photo.
+    The answer says `again: true`, and the page tells them the re-check was free.
+  - Shared photos from Android (v7.15) land in the tray too. No new keys. Tests:
+    `__tests__/page/photo-tray-v776.test.mjs`, `worker/__tests__/photo-tray-v164.test.mjs`; reprice-limit drives the
+    price step directly now.
 - **v7.75 / v163: stops on the way** (the owner: "i would like to make a specific stop on the way from one city to the
   other ... maybe one or two or three, we can go from pin to pin, and find things in between"). Under Where are you
   headed, **+ Add a stop on the way** opens up to three numbered boxes, each with places as you type and a × (`rNrVias`,
@@ -1159,7 +1176,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.76, worker v164**. Claim one here when you start.
+Next free numbers: **page v7.77, worker v165**. Claim one here when you start.
 
 ## What's next
 
