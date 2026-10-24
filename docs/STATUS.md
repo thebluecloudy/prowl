@@ -1,16 +1,33 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.73 / v162; the merge rule in CLAUDE.md).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.74 / v163).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.73** | 395,918 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v162** | |
+| Page | **v7.74** | 393,840 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v163** | |
 
 Recently shipped, newest first:
 
+- **v7.74 / v163: the photo check waits for Check it, takes up to 3 photos, and checks again with a fixed maker**
+  (the owner: "the tool searches immediately, but i want to add a picture and then add words, or even another picture,
+  and then hit search. or, the ai got it wrong, and i want to go back and add a search term or maker, and rerun").
+  - **A tray**: Take a photo / Choose from photos (several at once now) put the photo in a tray of up to 3 (the
+    piece, its mark, the back), each with ×; nothing is sent until **Check it**. Maker is now **Maker or words**.
+    With a photo in, Check it is the one orange button.
+  - **Check again**: after the answer the photos stay. Fix the words or add a close-up and Check again; the AI sees
+    the photos again with the words. "Wrong item? Re-price" (text only, it never looked at the photo again) is now
+    "Wrong? Fix the maker and check again", which puts the cursor in Maker or words. **Start over** empties the tray.
+  - **Worker v163**: `POST /appraise { images: [...] }` (up to `APPRAISE_MAX_PHOTOS` 3; `image` still works); the AI
+    gets every photo with a line saying they are one piece, eBay's photo search the first. A free visitor's re-check
+    of a photo checked in the last 30 minutes is free, 3 times a photo (Matt's call); it still counts against the
+    shared daily pool. The marker is per colo (the Cache API) and keyed by one digest of the address and the photo.
+    The answer says `again: true`, and the page tells them the re-check was free.
+  - Shared photos from Android (v7.15) land in the tray too. No new keys. Tests:
+    `__tests__/page/photo-tray-v774.test.mjs`, `worker/__tests__/photo-tray-v163.test.mjs`; reprice-limit drives the
+    price step directly now.
 - **v7.73: NEAR ME benchmarked, polish** (release 3 of 3, after v7.71 Around you and v7.72 Road trip).
   - **The glance check for the car**: on a phone every main Near me button is 48px tall with its words at 17px: the
     tabs, Directions, Build trip / Look there, Change, Use my location, Done and the trip bar (Skip and Reviews are
@@ -1137,7 +1154,6 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `ccr-0de21c46-yzs839` | Claude | **v7.74 / v163**: photo check takes up to 3 photos and words before it runs (Check it), and Check again re-runs with a corrected maker; re-checking the same photo is free for 30 minutes (3 times) | Building. |
 
 Next free numbers: **page v7.75, worker v164**. Claim one here when you start.
 

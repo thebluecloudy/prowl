@@ -1,6 +1,8 @@
 // Page v6.64: "Wrong item? Re-price" when the price step has no answer. The placeholder "Checking sold prices…" used to
 // stay as the Fair price, and Share drew it on the card; a daily limit read "could not be checked just now". Worker v93
 // gives a free visitor 5 price lookups a day, so the limit is easy to reach. Runs the page's own show / priceIt.
+// v7.74: Re-price became "Wrong? Fix the maker and check again" (the photos stay and Check again sends them with the
+// words), so the price step is driven directly here, as a check's answer drives it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -22,15 +24,13 @@ function card(answer) {
   const dom = new JSDOM('<div id="O"></div><input id="H">', { runScripts: 'outside-only' });
   const w = dom.window;
   w.ANSWER = answer;
-  w.eval(`var O=document.getElementById('O'),H=document.getElementById('H'),P={value:''},API='x',RESEARCH_ON=true;
+  w.eval(`var O=document.getElementById('O'),H=document.getElementById('H'),P={value:''},API='x',RESEARCH_ON=true,TRAY=['data:image/jpeg;base64,AAAA'];
     function OH(){return {}} function lsG(){return ''} window.prowlAff=function(u){return u}; function guideLink(){} function researchIt(){}
     function poshBox(){return document.createElement('div')} function shareCard(r){window.SHARED=r.fair}
     window.fetch=function(){var a=window.ANSWER;return Promise.resolve({ok:a.status===200,status:a.status,json:function(){return Promise.resolve(a.body)}})};
     ` + grab('shortQ') + grab('priceIt') + grab('show'));
-  /* a priced card is showing; the visitor types what it really is and taps Re-price */
-  w.eval(`show({item:'Hull cookie jar',fair:'$40-60',basis:'sold',search:'hull jar'},'data:image/jpeg;base64,AAAA');`);
-  w.document.getElementById('H').value = 'McCoy owl cookie jar';
-  [...w.document.querySelectorAll('button')].find((b) => b.textContent === 'Wrong item? Re-price').click();
+  /* a check's answer is showing while its price is looked up */
+  w.eval(`var nj={item:'McCoy owl cookie jar (maker you entered)',search:'McCoy owl cookie jar',basis:'pending',fair:'Checking sold prices\u2026'};show(nj,'data:image/jpeg;base64,AAAA');priceIt(nj,'data:image/jpeg;base64,AAAA');`);
   return new Promise((r) => setTimeout(() => r(w), 60));
 }
 const text = (w) => w.document.getElementById('O').textContent;
@@ -42,7 +42,7 @@ test('a daily limit: no stand-in price, no Share, and the note says why', async 
   assert.doesNotMatch(text(w), /Checking sold prices/);
   assert.equal(shareBtn(w), undefined, 'nothing to share without a price');
   assert.equal(note(w), 'You have used today’s price lookups. They reset tomorrow.');
-  assert.ok([...w.document.querySelectorAll('button')].some((b) => b.textContent === 'Wrong item? Re-price'), 'Re-price is still there');
+  assert.ok([...w.document.querySelectorAll('button')].some((b) => b.textContent === 'Wrong? Fix the maker and check again'), 'the way to correct it is still there');
 });
 
 test('busy now: the note says busy, not a limit', async () => {
