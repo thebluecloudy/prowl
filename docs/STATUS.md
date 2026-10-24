@@ -6,7 +6,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.83 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.83** | 393,208 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.83** | 392,511 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v166** | |
 
 Recently shipped, newest first:
@@ -27,6 +27,24 @@ Recently shipped, newest first:
   for another day. Also `__tests__/page/fn-names-v783.test.mjs`: no top-level page function is declared twice (the
   first Next stop was silently replaced by the hours helper `nrNext`). Page only. Tests:
   `__tests__/page/near-been-v783.test.mjs`. Checked in Chromium at 390px. v7.79, v7.81 and v7.82 went to the design-brief PRs (#232, #235, #236).
+- **v7.82: Matt's next 10** ("all are good, daily does similar to 10 already, should do that in hunt as well. i just
+  wanted each marketplace organized a bit"). No worker change.
+  - **A hunt's marketplaces in order** (`sgwBody0`, the way Daily lays out each hunt): a row of the marketplaces with
+    listings and their counts (`.lv-jump`, a tap scrolls to the block), their blocks in that order, and the ones still
+    asking or with nothing in one line at the foot ("Looking on …", "Nothing live for t on Etsy, Vinted and Grailed
+    right now"), not a heading each. A marketplace that failed keeps its own block and its link to search it there.
+  - **The heart sits on the photo's corner** of every live card (the row under the card is gone).
+  - **Photo check**: the answer has one main button (Hunt it on Prowl; on a trip, Share this find too) and the rest
+    under **More**; the tips and "Free: 1 photo check a day" fold once a photo is in the tray (`.apr-has`).
+  - **Recent searches** under the search box: the last searches not kept as hunts, three shown, one tap each, Clear.
+    A new key, `prowl.recentQ` (five kept, this device only).
+  - **Near me**: no blank gap with two lines over More ways to look.
+  - **The favorites card** lost "✉ Prowl Alerts: off ›" (the Alerts strip under it covers that).
+  - **An empty hunt** offers Or try first, then Email me when it shows up.
+  - **Daily**: no "Your daily prowl: N hunts, live." toast; Close is a small ✕ in the card's corner (`#otp-cr`, aria
+    "Close Daily").
+  - **Sentence case** for the dock (Hunt, Daily, Flock, Near me, Den) and the tabs (All hunts, Likes, About, Stats,
+    Settings; Shop). BOLO stays in capitals: it is an acronym.
 - **v7.81: the design brief's next 10 ideas, all of them** (Matt, shown each one mocked before and after: "i love them
   all"). v7.80 is #234's (Been there), open when this was built.
   - **One orange button per card**: in a hunt's card only Continue the full hunt is orange; Email me when it shows up
@@ -1255,10 +1273,9 @@ Recently shipped, newest first:
 | Branch | Owner | What | State |
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
-| `ccr-0de21c46-yzs839` | Claude | Matt's next 10 (#236, draft) | Page v7.82. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.84, worker v167** (v7.82 is #236's). Claim one here when you start.
+Next free numbers: **page v7.84, worker v167**. Claim one here when you start.
 
 ## What's next
 

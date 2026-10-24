@@ -36,7 +36,7 @@ test('after sign-in the page sends its likes and takes in likes from other devic
   assert.deepEqual(ls(p, 'prowl.likes').map((l) => l.u), [like(2).u, like(1).u]);
   assert.deepEqual(ls(p, 'prowl.likeMute'), ['pyrex']);
   assert.equal(p.win.localStorage.getItem('prowl.likeMuteAt'), '9');
-  assert.equal(p.$('#otp-denT5').textContent, 'LIKES 2', 'the Den tab counts them');
+  assert.equal(p.$('#otp-denT5').textContent, 'Likes 2', 'the Den tab counts them');
   p.$('#otp-denT5').click();
   assert.match(p.$('#otp-denLikes').textContent, /your likes follow you to your other devices/);
   await p.close();
