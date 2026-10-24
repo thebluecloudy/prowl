@@ -12,15 +12,15 @@ const OUT = { u: 'https://www.chairish.com/product/987654/howard-kron-cats', t: 
 async function openLikes() {
   const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [] }, 'prowl.likes': [SGW, OUT] } });
   await tick(80);
-  p.$('#otp-denBtn').click();
+  p.$('#otp-dock .db[data-m="flock"]').click();   /* v7.91: Likes is in Flock */
   await tick(40);
-  p.$('#otp-denT5').click();
+  p.$('#otp-flock [data-fv="likes"]').click();
   await tick(40);
   return p;
 }
 const z = (p, el) => Number(p.win.getComputedStyle(el).zIndex) || 0;
 
-test('a liked ShopGoodwill find (eBay, Etsy, Salvation Army too) opens its popup above the Den', async () => {
+test('a liked ShopGoodwill find (eBay, Etsy, Salvation Army too) opens its popup above Flock', async () => {
   const p = await openLikes();
   const cards = p.$$('#otp-denLikes .lk-cell');
   assert.equal(cards.length, 2);
@@ -28,16 +28,16 @@ test('a liked ShopGoodwill find (eBay, Etsy, Salvation Army too) opens its popup
   const ev = new p.win.MouseEvent('click', { bubbles: true, cancelable: true });
   a.dispatchEvent(ev);
   await tick(40);
-  const sheet = p.$('#otp-sheet'), den = p.$('#otp-den');
+  const sheet = p.$('#otp-sheet'), fl = p.$('#otp-flock');
   assert.equal(ev.defaultPrevented, true, 'the popup, not a new tab');
   assert.equal(sheet.hidden, false, 'the popup is open');
-  assert.equal(den.hidden, false, 'over the Den, which stays open');
-  assert.ok(z(p, sheet) > z(p, den), 'and above it (' + z(p, sheet) + ' over ' + z(p, den) + ')');
+  assert.ok(fl.classList.contains('as-feed'), 'over Flock, which stays open (v7.91: Likes is in Flock)');
+  assert.ok(z(p, sheet) > z(p, fl), 'and above it (' + z(p, sheet) + ' over ' + z(p, fl) + ')');
   assert.match(p.$('#otp-sheetT').textContent, /ShopGoodwill/i);
   p.$('#otp-sheetClose').click();
   await tick(20);
-  assert.equal(p.$('#otp-sc').classList.contains('on'), true, 'back in the Den, its scrim stays');
-  assert.equal(den.classList.contains('on'), true);
+  assert.ok(fl.classList.contains('as-feed'), 'back in Flock › Likes');
+  assert.equal(p.$('#otp-denLikes').hidden, false);
   assert.deepEqual(p.errors, []);
   await p.close();
 });
