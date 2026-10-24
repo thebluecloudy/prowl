@@ -1,16 +1,26 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.93 / v168).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.94 / v169).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.93** | 390,215 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v168** | |
+| Page | **v7.94** | 390215 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v169** | |
 
 Recently shipped, newest first:
 
+- **v7.94 / v169: Saved finds say when a listing is over** (Matt: "build the sold and ended check next"). Each run of
+  the alert clock takes one Pro member's list not looked at in 20 hours (`savedCheckTick`) and reads up to 15 of its
+  finds, the longest unchecked first, with the listing popup's readers (`savedRead`: itemEbay, itemEtsy, itemSgw,
+  itemSalvation); one KV write per list per day. What it marks (`end`, saved.js `savedEndFrom`): ShopGoodwill and
+  Salvation Army ended with bids is **sold at the last bid**, without bids **ended**; Etsy `sold_out` is **sold** at its
+  price (itemEtsy now passes `state`), anything else gone is **ended**; eBay gone is **ended** (eBay gives no price for
+  an ended listing). Other marketplaces are not looked at. A find over is not read again; a reader that fails says
+  nothing and the find is read the next day. The card's green line starts "Sold for $61.00 · Oct 20" (orange) or
+  "Ended · Oct 21" (grey), then Kept until. Tests: `worker/__tests__/saved-ended-v169.test.mjs`,
+  `__tests__/page/saved-ended-v794.test.mjs`.
 - **v7.93 / v168: Saved forever, a Prowl Pro perk, kept a year** (Matt: "Let's build the forever save but a prowl
   perk and let's trim it to a year"). A Pro member's saved finds (Flock › Saved) sync like likes: POST /alerts/saved
   sends the device's finds and its removals (new key `prowl.findsGone`); the worker keeps them in `saved:<email>` a
@@ -19,7 +29,7 @@ Recently shipped, newest first:
   and hands back a signed photo link (GET /saved/..., a day) and the day each leaves. A daily sweep (07:00 UTC) drops
   finds past their year with their photos; Delete takes them all. Free members get 402 and keep saving on the device;
   Saved says, on one line under the tabs, what Pro does. Each Pro card says "Kept until Oct 24, 2027". The page uses
-  the kept photo, which outlives the listing's. Not built yet: a sold/ended check per marketplace.
+  the kept photo, which outlives the listing's. The sold/ended check followed in v7.94 / v169.
   Tests: `worker/__tests__/saved-v168.test.mjs`, `__tests__/page/saved-forever-v793.test.mjs`.
 - **v7.92: How Prowl works catches up** (Matt: "Update how prowl works section with all the new features of near me,
   moving pills, etc"). Nine steps (were six): search with the marketplaces in order and recent searches; favorite
@@ -1351,7 +1361,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.94, worker v169**. Claim one here when you start.
+Next free numbers: **page v7.95, worker v170**. Claim one here when you start.
 
 ## What's next
 
