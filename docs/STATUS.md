@@ -1,16 +1,27 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.94 / v169).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.95 / v169).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.94** | 390,215 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.95** | 389,445 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v169** | |
 
 Recently shipped, newest first:
 
+- **v7.95: Photo check's cards open the listing popup, and the popup has a Like button** (Matt: "When I search for an
+  image and these 6 come up and I click it goes straight to eBay. Can we have the pop-up come up and let me save and
+  like as well"). The "Looks like these on eBay" and "Sold on Poshmark" cards carry what the popup reads (`aprCell`:
+  data-u, -t, -p, -s, -h = the photo's search, -m = "Sold on Poshmark Oct 3, 2026" under the price), and a plain tap
+  opens the popup over Photo check (eBay's full one, Poshmark's light one); a modifier click or long-press still links
+  out. The popup's Save button now shares its row with **♡ Like / ♥ Liked** (`popLkBtn`, `popLikeTap`), which un-likes
+  too; the double-tap like turns it on. Saving still asks a visitor to sign in first. Matt then asked "Find anything
+  else in photo check?": the answer's Item no longer shows the worker's "(maker you entered)" marker, the Call is in
+  sentence case ("Worth a look"; the share card keeps capitals), and a range from asking prices (worker basis
+  `listed`) says "No recent sales found, so this range comes from asking prices..." instead of "sold prices could not
+  be checked just now". No new key. Test: `__tests__/page/photo-popup-v795.test.mjs`.
 - **v7.94 / v169: Saved finds say when a listing is over** (Matt: "build the sold and ended check next"). Each run of
   the alert clock takes one Pro member's list not looked at in 20 hours (`savedCheckTick`) and reads up to 15 of its
   finds, the longest unchecked first, with the listing popup's readers (`savedRead`: itemEbay, itemEtsy, itemSgw,
@@ -1361,7 +1372,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.95, worker v170**. Claim one here when you start.
+Next free numbers: **page v7.96, worker v170**. Claim one here when you start.
 
 ## What's next
 
