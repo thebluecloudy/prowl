@@ -2292,6 +2292,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-triprow{display:flex;gap:8px;align-items:stretch}
 .scout-app-wrapper .nr-triprow .nr-tripb{flex:1 1 auto;min-width:0}
 .scout-app-wrapper .nr-tripdel{min-height:44px;padding:0 12px}
+.scout-app-wrapper .nr-tripend{margin:18px 0 6px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .scout-app-wrapper .nr-tripdel.arm{border-color:#b3261e;color:#b3261e;background:transparent}
 .scout-app-wrapper .nr-gobig{display:block;width:100%;min-height:52px;margin:4px 0 14px;font-size:17px}
 .scout-app-wrapper .nr-nm{display:block;margin-top:2px;font-size:12.5px;font-weight:700;color:var(--mu)}
@@ -2301,6 +2302,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-vian{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--ac);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center}
 .scout-app-wrapper .nr-viarow input{flex:1 1 auto;min-width:0}
 .scout-app-wrapper .nr-viax{flex:0 0 auto;width:44px;min-height:44px;border:1px solid var(--l2);border-radius:10px;background:transparent;color:var(--mu);font-size:20px;line-height:1;cursor:pointer}
+.scout-app-wrapper .nr-viaup{color:var(--ink)}
 .scout-app-wrapper .nr-viaadd{align-self:flex-start;font-weight:700}
 .scout-app-wrapper .nr-yours{align-self:flex-start;margin-bottom:3px;padding:2px 8px;border-radius:99px;background:var(--ac);color:#fff;font-size:12.5px;font-weight:800;letter-spacing:.03em}
 .scout-app-wrapper .nr-pinrow .nr-card{border-color:var(--ac);border-width:1.5px}
@@ -3661,7 +3663,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.83';
+var PROWL_VERSION='v7.85';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -10741,11 +10743,13 @@ function nrViasGet(){return (NR.vias||[]).map(function(v){return String(v||'').r
 function rNrVias(){
   var el=$('#otp-nrVias'),V=NR.vias=NR.vias||[],h='',i;if(!el)return;
   if(V.length)h+='<p class="nr-optt">Stops on the way, in order</p>';
-  for(i=0;i<V.length;i++)h+='<div class="addrow nr-viarow"><span class="nr-vian" aria-hidden="true">'+(i+1)+'</span><input type="text" id="otp-nrVia'+i+'" value="'+esc(V[i])+'" placeholder="A shop or a town" aria-label="Stop '+(i+1)+' on the way" autocomplete="off" enterkeyhint="next"><button type="button" class="nr-viax" data-viax="'+i+'" aria-label="Remove stop '+(i+1)+'">×</button></div><div class="nr-sug" id="otp-nrSugV'+i+'" role="listbox" aria-label="Suggested places" hidden></div>';
+  for(i=0;i<V.length;i++)h+='<div class="addrow nr-viarow"><span class="nr-vian" aria-hidden="true">'+(i+1)+'</span><input type="text" id="otp-nrVia'+i+'" value="'+esc(V[i])+'" placeholder="A shop or a town" aria-label="Stop '+(i+1)+' on the way" autocomplete="off" enterkeyhint="next">'+(i?'<button type="button" class="nr-viax nr-viaup" data-viaup="'+i+'" aria-label="Move stop '+(i+1)+' up">↑</button>':'')+'<button type="button" class="nr-viax" data-viax="'+i+'" aria-label="Remove stop '+(i+1)+'">×</button></div><div class="nr-sug" id="otp-nrSugV'+i+'" role="listbox" aria-label="Suggested places" hidden></div>';
   if(V.length<3)h+='<button type="button" class="sgw-ml nr-viaadd" id="otp-nrViaAdd">+ Add a stop on the way</button>';
   el.innerHTML=h;
   for(i=0;i<V.length;i++)(function(k){var inp=$('#otp-nrVia'+k);if(!inp)return;inp.addEventListener('input',function(){NR.vias[k]=inp.value});nrSugWire(inp,$('#otp-nrSugV'+k),function(v){NR.vias[k]=v})})(i);
 }
+/* v7.84: ↑ moves a stop up one place; the drive goes through them in this order */
+function nrViaUp(i){var V=NR.vias||[],t;if(!(i>0&&i<V.length))return;t=V[i-1];V[i-1]=V[i];V[i]=t;rNrVias();var b=$('[data-viaup="'+(i-1)+'"]')||$('#otp-nrVia0');if(b)try{b.focus()}catch(e){}}
 function nrViaAdd(){NR.vias=NR.vias||[];if(NR.vias.length>=3)return;NR.vias.push('');rNrVias();var inp=$('#otp-nrVia'+(NR.vias.length-1));if(inp)try{inp.focus()}catch(e){}}
 function nrAnd(a){return a.length<2?(a[0]||''):a.slice(0,-1).join(', ')+' and '+a[a.length-1]}
 function nrKinds(on){var w=[],i,s;for(i=0;i<on.length;i++)if(NR_NOUN[on[i]])w.push(NR_NOUN[on[i]]);s=w.length?nrAnd(w)+' shops':'';if(on.indexOf('flea')!==-1)s=s?s+' and flea markets':'flea markets';return s}
@@ -11146,6 +11150,7 @@ function nrOpenTrip(v,fresh){
   if(v.org)out.insertAdjacentHTML('afterbegin','<div class="nr-sharebox"><div class="addrow" id="otp-nrShareRow"'+(fresh?'':' hidden')+'><input id="otp-nrEmail" type="email" placeholder="Their account email" aria-label="Add a member by account email" autocomplete="off"><button type="button" id="otp-nrAdd">Add</button></div><p class="nearp nr-shnote">Members see this same trip, stops and live hours, under NEAR ME › Trips. Someone who has not used Prowl yet joins the moment they sign in.</p></div>');
   out.insertAdjacentHTML('beforeend','<div class="nr-finds" id="otp-nrFinds"><h3 class="nearh">Finds</h3><p class="nearp">What the group finds on the road: a photo check’s photo, what it is, the asking price and the call. Share one from any photo check with <b>SHARE THIS FIND</b>. Photos go away a week after the trip.</p><div class="nr-findlist" id="otp-nrFindList"><p class="nearp">Loading…</p></div></div>');
   nrFindsLoad(v.id);
+  if(v.id)out.insertAdjacentHTML('beforeend','<p class="nearp nr-tripend">'+(v.org?'Done with this trip? Delete takes it away for everyone, with its Finds.':'Done with this trip?')+' <button type="button" class="nr-rvb nr-tripdel" data-nrdel="'+esc(v.id)+'" data-org="'+(v.org?1:0)+'" aria-label="'+(v.org?'Delete':'Leave')+' this trip">'+(v.org?'Delete':'Leave')+'</button></p>');   /* v7.85: Delete or Leave from the open trip too, not only from the list */
   nrFoot(v);
 }
 function nrTripsLoad(){
@@ -11296,6 +11301,7 @@ if(near){
     if(e.target.closest&&e.target.closest('#otp-nrViaAdd')){nrViaAdd();return}   /* v7.75 */
     var bv=e.target.closest&&e.target.closest('[data-nrbeen]');if(bv){e.preventDefault();var bt=NR.view||NR.built;if(bt){nrBeenToggle(bt,bv.getAttribute('data-nrbeen'));nrRedraw()}return}   /* v7.83 */
     var av=e.target.closest&&e.target.closest('[data-nradd]');if(av){e.preventDefault();nrStopAdd(av.getAttribute('data-nradd'),av.getAttribute('data-nraddid'));return}   /* v7.78 */
+    var vu=e.target.closest&&e.target.closest('[data-viaup]');if(vu){nrViaUp(+vu.getAttribute('data-viaup'));return}   /* v7.84 */
     var vx=e.target.closest&&e.target.closest('[data-viax]');if(vx){NR.vias.splice(+vx.getAttribute('data-viax'),1);rNrVias();return}
     if(e.target.closest&&e.target.closest('#otp-nrJoinX')){nrInvSet('');nrJoinDraw();return}
     var ad=e.target.closest&&e.target.closest('#otp-nrAdd');
