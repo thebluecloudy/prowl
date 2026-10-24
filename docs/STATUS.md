@@ -1,16 +1,24 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.77 / v165).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.78 / v165).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.77** | 393,771 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.78** | 393,771 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v165** | |
 
 Recently shipped, newest first:
 
+- **v7.78: + Stop makes any shop one of your stops on the way** (the owner, on Roadtrippers: "i may want to go to a
+  store ... and then you click on that place"). Every shop in Around you, in a trip's list (anchors and Also in town)
+  and among the smaller shops has **+ Stop** (`nrStopBtn`, `nrStopAdd`). From Around you the shop waits under Road trip
+  as a stop on the way (no keyboard, nothing built yet). On a trip you just built, the trip is built again through it,
+  put in drive order among your stops (`nrStopAt`: by where it sits in the list, a smaller shop by the nearest stop;
+  last if a stop was not found). The same shop twice is one stop; three is still the most, and it says so. Your own
+  stops have none. On phones a trip row's Directions takes its own line, Reviews, + Stop and Skip under it. Page only, no
+  new key, worker unchanged. Tests: `__tests__/page/near-addstop-v778.test.mjs`. Checked in Chromium at 390px.
 - **v7.77 / v165: your stops always land, Build trip after them, one Maps link** (the owner, trying v7.75 with Rookwood
   Pottery and Mosser Glass on the way: "the build trip button is up at the top, and when i built the trip, it missed my
   two stops ... they should be a destination. also it split it into two, it should just build the entire trip").
@@ -1194,7 +1202,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.78, worker v166**. Claim one here when you start.
+Next free numbers: **page v7.79, worker v166**. Claim one here when you start.
 
 ## What's next
 
