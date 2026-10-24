@@ -1137,8 +1137,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.74 / v163**: photo check takes up to 3 photos and words before it runs (Check it), and Check again re-runs with a corrected maker; re-checking the same photo is free for 30 minutes (3 times) | Building. |
 
-Next free numbers: **page v7.74, worker v163**. Claim one here when you start.
+Next free numbers: **page v7.75, worker v164**. Claim one here when you start.
 
 ## What's next
 
