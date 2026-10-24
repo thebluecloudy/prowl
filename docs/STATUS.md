@@ -1324,8 +1324,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.91**: Likes into Flock (Feed · Saved · Likes); a swipe-away no longer deletes a saved find | Draft PR, building. |
 
-Next free numbers: **page v7.91, worker v168**. Claim one here when you start.
+Next free numbers: **page v7.92, worker v168**. Claim one here when you start.
 
 ## What's next
 
