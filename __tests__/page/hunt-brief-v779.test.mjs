@@ -83,3 +83,7 @@ test('on a phone Hunt is the full-width 52px button; pills are 44px with 15px wo
   assert.ok(reset > 0 && ring > reset, 'right after the reset that takes the outline off');
   assert.match(PAGE.slice(ring, PAGE.indexOf('}', ring)), /\{outline:2px solid var\(--ac\);outline-offset:2px$/);
 });
+
+test('Near me\'s ask: Use my location and Type a town or ZIP each take a row on a phone (v7.73\'s 17px cut the first short)', () => {
+  assert.match(PAGE, /\.scout-app-wrapper \.nr-askb \.b\{flex:1 1 220px;min-height:48px;justify-content:center\}/);
+});

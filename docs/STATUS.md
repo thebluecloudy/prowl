@@ -25,6 +25,8 @@ Recently shipped, newest first:
     outline. Taps show nothing.
   - Left out on purpose: the brief's navy and gold palette (the default is the cream Owl & Twig look; Dark is close to
     it already) and a desktop top tab bar. Test: `__tests__/page/hunt-brief-v779.test.mjs`.
+  - Fixed on the way: Near me's "Find the shops around you" card cut **📍 Use my location** short on a 390px phone
+    since v7.73's 17px buttons; the two buttons now take a row each on a phone.
 - **v7.78: + Stop makes any shop one of your stops on the way** (the owner, on Roadtrippers: "i may want to go to a
   store ... and then you click on that place"). Every shop in Around you, in a trip's list (anchors and Also in town)
   and among the smaller shops has **+ Stop** (`nrStopBtn`, `nrStopAdd`). From Around you the shop waits under Road trip
