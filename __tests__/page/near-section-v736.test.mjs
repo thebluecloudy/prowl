@@ -243,7 +243,7 @@ test('SHARE: signed out it asks for the store sign-in; signed in it keeps the tr
   await tick(150);
   const post = calls.find((x) => /\/trips$/.test(x.url) && x.o.method === 'POST');
   assert.ok(post, 'one tap keeps the trip');
-  assert.deepEqual(JSON.parse(post.o.body), { to: 'Blenko Glass Company, Milton, WV', lat: 42.4806, lng: -83.4755, day: today(), cats: 'antiques,vintage,thrift' });
+  assert.deepEqual(JSON.parse(post.o.body), { to: 'Blenko Glass Company, Milton, WV', lat: 42.4806, lng: -83.4755, day: today(), cats: 'antiques,vintage,thrift', via: [], detour: 15 }, 'v7.75: with its stops on the way and its detour');
   assert.match(post.o.headers.Authorization, /^Bearer /);
   assert.equal(p.$('#otp-nrShareRow').hidden, false, 'the add-member row is open');
   assert.match(p.$('#otp-nrMembers').textContent, /1 on this trip/);
