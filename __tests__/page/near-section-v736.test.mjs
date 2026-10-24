@@ -426,7 +426,7 @@ test('v7.39: the kinds to look for are chips on both tabs, and Skip takes a stop
   await p.close();
 });
 
-test('v7.39: the road with the most to see is said; smaller shops sit apart and never in Maps; more than nine anchors become legs', async () => {
+test('v7.39: the road with the most to see is said; smaller shops sit apart and never in Maps; more than nine anchors are one Maps link, the rest Listed only', async () => {
   const calls = [];
   const many = Array.from({ length: 11 }, (_, i) => card('L' + i, 'Stop ' + i, 'Town ' + i + ', OH', 'Antique mall', H_DAILY, { nested: [] }));
   const fx = nearFetch(calls);
@@ -449,14 +449,12 @@ test('v7.39: the road with the most to see is said; smaller shops sit apart and 
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
   const legs = p.$$('#otp-nrLegs a');
-  assert.deepEqual(legs.map((a) => a.textContent), ['Google Maps 1', 'Google Maps 2']);
-  const l1 = new URL(legs[0].href), l2 = new URL(legs[1].href);
+  assert.deepEqual(legs.map((a) => a.textContent), ['Google Maps'], 'v7.77: one link for the whole drive');
+  const l1 = new URL(legs[0].href);
   assert.equal(l1.searchParams.get('origin'), 'Novi, MI');
-  assert.equal(l1.searchParams.get('waypoints').split('|').length, 9);
-  assert.equal(l1.searchParams.get('destination'), 'Stop 9, Town 9, OH', 'leg 1 ends at a stop');
-  assert.equal(l2.searchParams.get('origin'), 'Stop 9, Town 9, OH', 'leg 2 starts there');
-  assert.deepEqual(l2.searchParams.get('waypoints').split('|'), ['Stop 10, Town 10, OH']);
-  assert.equal(l2.searchParams.get('destination'), 'Blenko Glass Company, Milton, WV');
+  assert.equal(l1.searchParams.get('waypoints').split('|').length, 9, 'Google Maps takes nine');
+  assert.equal(l1.searchParams.get('destination'), 'Blenko Glass Company, Milton, WV', 'to the end');
+  assert.equal(p.$$('#otp-nrOut .nr-nm').length, 2, 'the two left out say so');
   assert.equal(legs[0].id, 'otp-nrMaps');
   assert.deepEqual(p.errors, []);
   await p.close();
