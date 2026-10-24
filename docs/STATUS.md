@@ -6,7 +6,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.92 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.92** | 390,496 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.92** | 390,264 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v167** | |
 
 Recently shipped, newest first:
@@ -16,8 +16,17 @@ Recently shipped, newest first:
   hunts as pills; **Put your hunts in order** (Reorder, press and hold); **Near me** (Around you, a town or ZIP, Open
   now, + Stop, Road trip, ↑, Share, Trips); **On the road** (✓ Been for the group, Next stop's distance and arrival,
   Hide the … closed by then, Carry on in Maps, Delete or Leave); Daily (its badge counts new finds); Alerts; Photo
-  (Hunt it on Prowl, share on a trip); Make it yours. Prowl's words adds Pill and Been; Den and Flock follow #244 (likes and saved finds in Flock's Saved and Likes tabs), so this merges after #244. Help text only, no new key.
+  (Hunt it on Prowl, share on a trip); Make it yours. Prowl's words adds Pill and Been; Den and Flock follow #244 (likes and saved finds in Flock's Saved and Likes tabs). Help text only, no new key.
   Test: `__tests__/page/help-update-v791.test.mjs`.
+- **v7.91: Likes is in Flock; a swipe no longer deletes a saved find** (Matt: "move likes into flock feed saved likes.
+  They are different. The likes are feeding the algorithm ... Some things I was saving don't seem to be there
+  anymore"). Flock's switch is **Flock · Saved · Likes**, each with its count (the feed's tab says Flock: "it should be flock or some bird gathering term"); Likes is the old Den pane (What Prowl
+  learned, mute, unlike, Forget all) moved into Flock as `#otp-denLikes` (same id, same handlers). The Den has four
+  tabs (two by two on a phone); a remembered Likes tab opens All hunts. The cause of the vanishing saves: `flDiscard`
+  (✕ or a swipe in the Flock feed) also deleted the find from Saved and dropped its price watch. In the feed it keeps
+  both now; the ✕ in Saved still removes ("Removed from Saved. Undo"), and Saved no longer hides finds that are on the
+  discard list. Finds already deleted that way cannot come back. Saved finds are still per device (likes sync, saves
+  do not). Test: `__tests__/page/flock-likes-v791.test.mjs`.
 - **v7.90 / v167: on the road, three more** (the owner: "do all 3").
   - **✓ Been is the group's on a group trip.** Worker v167: `POST /trips/<id>/been { stop, on }` by any member marks
     a stop (or a shop in its town) or takes a mark off, for everyone; kept on the trip as place ids only, nothing about
@@ -1332,7 +1341,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.91, worker v168**. Claim one here when you start.
+Next free numbers: **page v7.93, worker v168**. Claim one here when you start.
 
 ## What's next
 

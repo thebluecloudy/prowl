@@ -122,13 +122,13 @@ test('a swipe-away drops the like and is remembered against its words; Undo brin
   await p.close();
 });
 
-test('Den > LIKES lists likes, shows what Prowl learned, and lets you mute a word or unlike', async () => {
+test('Flock > Likes (v7.91; the Den before) lists likes, shows what Prowl learned, and lets you mute a word or unlike', async () => {
   const f = liveFetch();
   const p = loadPage({ fetchImpl: f.impl, storage: { [LIKES]: [like('Haeger panther lamp', 'pyrex'), like('Haeger planter', 'pyrex', { u: 'https://www.ebay.com/itm/5550001' })] } });
   p.win.confirm = () => true;
   await tick(40);
-  p.$('#otp-denBtn').click();
-  const tab = p.$('#otp-denT5');
+  p.$('#otp-dock .db[data-m="flock"]').click();   /* v7.91: Likes is in Flock */
+  const tab = p.$('#otp-flock [data-fv="likes"]');
   assert.equal(tab.textContent, 'Likes 2');
   tab.click();
   const pane = p.$('#otp-denLikes');
@@ -143,7 +143,7 @@ test('Den > LIKES lists likes, shows what Prowl learned, and lets you mute a wor
   assert.match(pane.textContent, /Ignoring: haeger/);
   pane.querySelector('[data-unlike="https://www.ebay.com/itm/5550001"]').click();
   assert.equal(ls(p, LIKES).length, 1);
-  assert.equal(p.$('#otp-denT5').textContent, 'Likes 1');
+  assert.equal(p.$('#otp-flock [data-fv="likes"]').textContent, 'Likes 1');
   pane.querySelector('[data-lkclear]').click();
   assert.deepEqual(ls(p, LIKES), []);
   assert.match(p.$('#otp-denLikes').textContent, /Tap ♡ on a Flock card/);
