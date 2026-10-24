@@ -37,7 +37,7 @@ test('the phone takes the touch back after the hold: the pill stays picked up, a
   const bar = p.$('#otp-sgw .sgw-pickbar');
   assert.ok(bar, 'the line');
   assert.equal(bar.getAttribute('role'), 'status');
-  assert.equal(bar.textContent, 'Tap where mccoy planter goes. Cancel');
+  assert.equal(bar.textContent, 'Moving mccoy planter: tap where it goes.Cancel');   /* v7.89 wording */
   assert.ok(p.$('#otp-sgw .sgw-chips').firstElementChild === bar, 'above the pills');
   assert.ok(pills(p)[3].classList.contains('sgw-pickd'));
   layout(p);
@@ -47,7 +47,7 @@ test('the phone takes the touch back after the hold: the pill stays picked up, a
   assert.equal(p.$('#otp-sgw .sgw-pickbar'), null);
   assert.equal(p.$('.sgw-pickd'), null);
   assert.deepEqual(JSON.parse(p.win.localStorage.getItem('prowl.v36')).hunts, ['mccoy planter', 'rookwood vase', 'catalin bracelet', 'pyrex butterprint']);
-  assert.match(p.$('#otp-toast').textContent, /Order saved/);
+  assert.equal(p.$('#otp-toast').textContent, 'Moved mccoy planter to spot 1 of 4. Saved.');
   assert.deepEqual(p.errors, []);
   await p.close();
 });

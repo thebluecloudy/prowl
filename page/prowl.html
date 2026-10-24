@@ -2482,9 +2482,15 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .lv-rest p{margin:0 0 6px}
 /* v7.86: a hunt pill held, then dragged, to change the order (sgwDragWire) */
 .scout-app-wrapper .sgw-chip[data-sgw="pick"]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.scout-app-wrapper .sgw-chip[data-sgw="pick"] *{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.scout-app-wrapper .sgw-denln .sgw-ro{margin-left:14px}
+.scout-app-wrapper .sgw-reordering .sgw-x{display:none}
+.scout-app-wrapper .sgw-reordering .sgw-chip[data-sgw="pick"]:not(.sgw-pickd){border-style:dashed;border-color:var(--ac)}
 .scout-app-wrapper .sgw-chip.sgw-pickd{box-shadow:0 0 0 3px var(--ac),0 6px 16px var(--shadow);transform:translateY(-2px)}
-.scout-app-wrapper .sgw-pickbar{flex:1 1 100%;margin:2px 0;font-size:15px;line-height:1.4;color:var(--ink)}
-.scout-app-wrapper .sgw-pickbar button{margin-left:6px;min-height:36px;padding:4px 12px;border:1.5px solid var(--l2);border-radius:999px;background:var(--cd);color:var(--ink);font-weight:700;cursor:pointer}
+.scout-app-wrapper .sgw-pickbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));z-index:55;width:min(92vw,520px);box-sizing:border-box;margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 16px;border-radius:16px;background:var(--toast-bg);color:var(--toast-fg);font-size:16px;line-height:1.35;box-shadow:0 8px 24px var(--shadow)}   /* v7.89: on screen however far the pills are scrolled */
+.scout-app-wrapper .sgw-pickbar span{flex:1 1 180px}
+.scout-app-wrapper .sgw-pickbar button{flex:none;min-height:40px;padding:6px 16px;border:1.5px solid currentColor;border-radius:999px;background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer}
+.scout-app-wrapper .sgw-chip.sgw-moved{box-shadow:0 0 0 3px var(--go),0 0 0 7px var(--go-soft);transition:box-shadow .3s}
 .scout-app-wrapper .sgw-chip.sgw-drag{position:relative;z-index:5;pointer-events:none;box-shadow:0 8px 22px var(--shadow);transform-origin:center;opacity:1;background-color:var(--bg);transition:none}
 .scout-app-wrapper .sgw-dragging .sgw-chip:not(.sgw-drag){transition:box-shadow .12s}
 .scout-app-wrapper .sgw-chip.sgw-dropb{box-shadow:-6px 0 0 var(--ac)}
@@ -3672,7 +3678,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.88';
+var PROWL_VERSION='v7.89';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -6545,7 +6551,7 @@ function sgwActs(){
 function sgwShell(mount){
   mount.innerHTML='<div class="sgw-head"><b>Your favorite hunts</b><span class="sgw-live">Live on Goodwill, eBay, Chairish, Etsy, Poshmark, Vinted, Grailed</span><span class="sgw-upd"></span></div>'+
     '<div class="sgw-cols"><div class="sgw-left">'+
-    '<p class="sgw-denln"><button type="button" data-sgw="den">All your hunts \u2192</button></p>'+
+    '<p class="sgw-denln"><button type="button" data-sgw="den">All your hunts \u2192</button><button type="button" class="sgw-ro" data-sgw="reorder" aria-pressed="false">Reorder</button></p>'+   /* v7.89 */
     '<div class="sgw-chips"><span class="sgw-form">'+
       '<input id="otp-sgwIn" type="text" maxlength="60" autocomplete="off" enterkeyhint="done" placeholder="+ add a hunt" aria-label="Add a hunt. It is locked for Daily and checked on ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Vinted and Grailed right away.">'+
       '<button type="button" class="sgw-go" data-sgw="go">Add</button>'+
@@ -7653,7 +7659,14 @@ function rSGW(){
   var lim=chipFew(),NEWN=[],few=!sgw.more&&sgw.terms.length>lim+1,shown=0,hid=0,pk;
   /* v7.88: a picked-up pill says so above the pills */
   if(sgw.picking&&!(pk=sgwFind(sgw.picking)))sgw.picking='';
-  if(sgw.picking)html+='<p class="sgw-pickbar" role="status">Tap where <b>'+esc(pk.t)+'</b> goes. <button type="button" data-sgw="pickx">Cancel</button></p>';
+  if(sgw.reorder&&sgw.terms.length<2)sgw.reorder=false;
+  if(sgw.reorder)few=false;   /* v7.89: every pill, while reordering */
+  mount.classList.toggle('sgw-reordering',!!sgw.reorder);
+  var rob=mount.querySelector('[data-sgw="reorder"]');if(rob){rob.setAttribute('aria-pressed',String(!!sgw.reorder));rob.textContent=sgw.reorder?'Done':'Reorder'}
+  /* v7.89 (Matt: "It does highlight now and move to new spot but nothing says what it is doing"): one bar over the dock
+     says what is happening, and what just happened */
+  if(sgw.picking)html+='<p class="sgw-pickbar" role="status"><span>Moving <b>'+esc(pk.t)+'</b>: tap where it goes.</span><button type="button" data-sgw="pickx">'+(sgw.reorder?'Not this one':'Cancel')+'</button></p>';
+  else if(sgw.reorder)html+='<p class="sgw-pickbar" role="status"><span>'+(sgw.lastMove?'Moved <b>'+esc(sgw.lastMove.t)+'</b> to spot '+sgw.lastMove.n+'. Saved. Tap another to move, or Done.':'Tap the hunt you want to move.')+'</span><button type="button" data-sgw="reorder">Done</button></p>';
   for(i=0;i<sgw.terms.length;i++){x=sgw.terms[i];NEWN.push(x.t.toLowerCase()===sgw.cur?0:seenNew(x.t.toLowerCase()));}
   DOCK_NEW=NEWN.reduce(function(a,v){return a+v},0);dockNew();
   for(i=0;i<sgw.terms.length;i++){
@@ -9227,7 +9240,11 @@ function sgwWire(mount){
     if(act==='del'){e.stopPropagation();sgwDel(i);return}
     if(act==='pick'&&sgw.dragAt&&Date.now()-sgw.dragAt<600&&sgw.terms[i]&&sgw.terms[i].t.toLowerCase()===sgw.dragT)return;   /* v7.86: the end of a drag is not a tap (v7.88: on that pill only) */
     if(act==='pickx'){sgw.picking='';rSGW();return}
+    if(act==='reorder'){   /* v7.89: tap to pick up, tap to place; no long press, so no phone text selection */
+      if(!sgw.reorder&&sgw.terms.length<2){toast('Add another hunt first, then put them in the order you like.',2600);return}
+      sgw.reorder=!sgw.reorder;sgw.picking='';sgw.lastMove=null;rSGW();return}
     if(act==='pick'&&sgw.picking){sgwPlace(i,e);return}   /* v7.88 */
+    if(act==='pick'&&sgw.reorder){if(sgw.terms[i]){sgw.picking=sgw.terms[i].t.toLowerCase();sgw.lastMove=null;rSGW()}return}
     if(act==='pick'){sgwSugHide();sgwPick(i);sgwToBody();return}   /* v7.02: a tapped hunt brings its finds into view */
     if(act==='go'){sgwSubmit();return}
     if(act==='sug'){sgwUseSug(i);return}
@@ -9250,7 +9267,7 @@ function sgwWire(mount){
     /* v7.86: Alt and an arrow moves a hunt pill */
     if(e.altKey&&(e.key==='ArrowLeft'||e.key==='ArrowRight')&&el&&el.getAttribute&&el.getAttribute('data-sgw')==='pick'){
       e.preventDefault();var ki=+el.getAttribute('data-i'),kn=sgwNear(ki,e.key==='ArrowRight'?1:-1),kw;
-      if(kn>-1&&(kw=sgwMove(ki,kn,e.key==='ArrowRight'))>-1){var kc=mount.querySelector('.sgw-chip[data-sgw="pick"][data-i="'+kw+'"]');if(kc)kc.focus()}
+      if(kn>-1&&(kw=sgwMove(ki,kn,e.key==='ArrowRight'))>-1){sgwMoved(kw);var kc=mount.querySelector('.sgw-chip[data-sgw="pick"][data-i="'+kw+'"]');if(kc)kc.focus()}
       return;
     }
     /* chips and their x are spans, so give them the keys a button gets */
@@ -9297,6 +9314,14 @@ function sgwMove(from,at,after){
   for(i=0;i<sgw.terms.length;i++)if(sgw.terms[i].t.toLowerCase()===t)return i;
   return -1;
 }
+/* v7.89: say where a pill landed (the bar while reordering, else a toast) and let it glow there a moment */
+function sgwMoved(w){
+  var x=sgw.terms[w],el,m;if(!x)return;
+  sgw.lastMove={t:x.t,n:w+1};
+  if(sgw.reorder)rSGW();else toast('Moved <b>'+esc(x.t)+'</b> to spot '+(w+1)+' of '+sgw.terms.length+'. Saved.',3000);
+  m=$('#otp-sgw');el=m&&m.querySelector('.sgw-chip[data-sgw="pick"][data-i="'+w+'"]');
+  if(el){el.classList.add('sgw-moved');setTimeout(function(){if(el)el.classList.remove('sgw-moved')},1600)}
+}
 /* v7.88: a picked-up pill goes before the hunt tapped next (after it, on its right half); the same pill puts it down */
 function sgwPlace(i,e){
   var k=sgw.picking,from=-1,j,el,r,after=false,moved;sgw.picking='';
@@ -9305,7 +9330,7 @@ function sgwPlace(i,e){
   el=e&&e.target&&e.target.closest?e.target.closest('.sgw-chip'):null;
   if(el&&e.clientX!=null){r=el.getBoundingClientRect();after=r.width>0&&e.clientX>r.left+r.width/2}
   moved=sgwMove(from,i,after);
-  if(moved>-1)toast('Order saved. Daily and Prowl Alerts go through your hunts in this order.',2600);
+  if(moved>-1)sgwMoved(moved);
   else{rSGW();toast(sgw.terms[from]&&sgw.terms[from].hunt>-1?'Locked hunts stay ahead of the others. Pick one of them.':'This one moves only among the hunts without the lock.',3000)}
 }
 function sgwDragWire(mount){
@@ -9316,7 +9341,7 @@ function sgwDragWire(mount){
   function hold(){sgw.holding=true;sgw.holdAt=Date.now()}
   function free(){sgw.holding=false;if(sgw.redraw&&!sgw.dragging){sgw.redraw=0;rSGW()}}   /* v7.87: the pills catch up */
   function unmark(){var m=mount.querySelectorAll('.sgw-dropb,.sgw-dropa'),i;for(i=0;i<m.length;i++){m[i].classList.remove('sgw-dropb');m[i].classList.remove('sgw-dropa')}}
-  function begin(){if(!mount.contains(D.el)){D=null;free();return}D.on=true;sgw.dragging=true;D.el.classList.add('sgw-drag');mount.classList.add('sgw-dragging');try{if(navigator.vibrate)navigator.vibrate(12)}catch(x){}}
+  function begin(){if(!mount.contains(D.el)){D=null;free();return}try{var sl=window.getSelection&&window.getSelection();if(sl&&sl.removeAllRanges)sl.removeAllRanges()}catch(x){}D.on=true;sgw.dragging=true;D.el.classList.add('sgw-drag');mount.classList.add('sgw-dragging');try{if(navigator.vibrate)navigator.vibrate(12)}catch(x){}}
   /* the pill under the finger, or the nearest one within 60px */
   function hit(p){
     var L=mount.querySelectorAll('.sgw-chip[data-sgw="pick"]'),i,r,cx,cy,d,best=null,bd=3600;
@@ -9340,7 +9365,7 @@ function sgwDragWire(mount){
     unmark();D.el.classList.remove('sgw-drag');D.el.style.transform='';mount.classList.remove('sgw-dragging');
     D=null;sgw.dragging=false;sgw.holding=false;sgw.redraw=0;sgw.dragAt=Date.now();
     if(at>-1)moved=sgwMove(from,at,after);
-    if(moved>-1){toast('Order saved. Daily and Prowl Alerts go through your hunts in this order.',2600);return}
+    if(moved>-1){sgwMoved(moved);return}
     /* v7.88 (Matt, on v7.87: "Some worked some didn't. It still blinks and vibrates"): some phones take the touch back
        after the hold (their own long-press menu), so the drag never arrives. A touch that lifts or is taken back without
        a landing place leaves the pill picked up: the next tap on a hunt puts it there. */
@@ -9360,6 +9385,9 @@ function sgwDragWire(mount){
   mount.addEventListener('touchend',end);
   mount.addEventListener('touchcancel',function(){if(D)D.at=-1;end()});
   mount.addEventListener('contextmenu',function(e){if(D||sgw.dragging)e.preventDefault()});   /* Android's long-press menu */
+  /* v7.89 (Matt: "It is trying to copy the text"): a phone that selects a held pill's words anyway is told no, and any
+     selection made is dropped when the pill lifts */
+  mount.addEventListener('selectstart',function(e){if(D||sgw.dragging||sgw.reorder||chipOf(e.target&&e.target.nodeType===3?e.target.parentNode:e.target))e.preventDefault()});
   mount.addEventListener('mousedown',function(e){var c;if(e.button||D)return;c=chipOf(e.target);if(c){D={el:c,x:e.clientX,y:e.clientY,on:false,at:-1,m:1};hold()}});
   document.addEventListener('mousemove',function(e){
     if(!D||!D.m)return;var p={x:e.clientX,y:e.clientY};
@@ -9367,7 +9395,7 @@ function sgwDragWire(mount){
     e.preventDefault();drag(p);
   });
   document.addEventListener('mouseup',function(){if(D&&D.m)end()});
-  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&sgw.picking){sgw.picking='';rSGW()}});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&(sgw.picking||sgw.reorder)){if(sgw.picking)sgw.picking='';else sgw.reorder=false;rSGW()}});
 }
 
 function loadSGW(){

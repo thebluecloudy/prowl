@@ -1,16 +1,26 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.88 / v166).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.89 / v166).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.88** | 392,511 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.89** | 392,511 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v166** | |
 
 Recently shipped, newest first:
 
+- **v7.89: Reorder with taps** (Matt, on v7.88: "It is trying to copy the text"). His phone selects a held pill's
+  words despite `user-select:none`, so the long press became a copy. A **Reorder** button beside "All your hunts →"
+  (`data-sgw="reorder"`, `sgw.reorder`) moves pills with taps alone: tap the hunt, tap where it goes (its right half:
+  after), Done. While reordering every pill shows (no "+ more"), the ×'s hide, pills are dashed and a tap never opens a
+  hunt; "Not this one" puts the picked one down, Escape leaves. The long press stays, now with `selectstart` refused on
+  pills, `user-select:none` on their insides too, and any selection dropped when a pill lifts.
+  Then (Matt: "It does highlight now and move to new spot but nothing says what it is doing"): one dark bar fixed over
+  the dock says what is happening ("Moving t: tap where it goes", "Tap the hunt you want to move") and what just
+  happened ("Moved t to spot 1. Saved."); outside Reorder a move says "Moved t to spot 1 of 4. Saved." and the pill
+  glows green where it landed (`sgwMoved`). Test: `__tests__/page/pill-reorder-v789.test.mjs`.
 - **v7.88: tap to place a held pill** (Matt, on v7.87: "Some worked some didn't. It still blinks and vibrates").
   Some phones take a touch back after a long press (their own menu), so the hold buzzed and the drag never came. A
   held pill let go or taken back without a landing place now stays picked up (orange ring, "Tap where … goes. Cancel"
@@ -1303,7 +1313,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.89, worker v167**. Claim one here when you start.
+Next free numbers: **page v7.90, worker v167**. Claim one here when you start.
 
 ## What's next
 
