@@ -1,16 +1,27 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.78 / v165).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.80 / v165).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.78** | 393,771 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.80** | 393,771 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v165** | |
 
 Recently shipped, newest first:
 
+- **v7.80: ✓ Been there and Next stop, for the day of the trip** (the owner, on the road: "i stopped at one, now i want
+  to find the next one"). Before, Start in Maps always started from the trip's starting town and went through every
+  stop, even the ones behind you. Now, on the trip's day, every stop has **✓ Been**: the stop stays in the list, dimmed
+  and marked Been there (Undo puts it back); it leaves the Maps link, which then starts from the phone (no origin, so
+  Maps uses where you are; your position never goes into a link) and reads **Carry on in Maps**; and **Next stop** at
+  the top names the first stop still ahead, with Directions (a shop in a stop's town counts as being in that town).
+  All done says "Every stop done. On to …". Kept per trip in a **new key `prowl.nearBeen`** (a kept trip by its id, a
+  built one by where to, from and the day; the last 10 trips; a broken value is ignored). No ✓ Been on a trip planned
+  for another day. Also `__tests__/page/fn-names-v780.test.mjs`: no top-level page function is declared twice (the
+  first Next stop was silently replaced by the hours helper `nrNext`). Page only. Tests:
+  `__tests__/page/near-been-v780.test.mjs`. Checked in Chromium at 390px. v7.79 was left for #232.
 - **v7.78: + Stop makes any shop one of your stops on the way** (the owner, on Roadtrippers: "i may want to go to a
   store ... and then you click on that place"). Every shop in Around you, in a trip's list (anchors and Also in town)
   and among the smaller shops has **+ Stop** (`nrStopBtn`, `nrStopAdd`). From Around you the shop waits under Road trip
@@ -1200,9 +1211,10 @@ Recently shipped, newest first:
 | Branch | Owner | What | State |
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
+| `ccr-0de21c46-yzs839` | Claude | Hunt screen from the design brief (#232, draft) | Page v7.79. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.79, worker v166**. Claim one here when you start.
+Next free numbers: **page v7.81, worker v166** (v7.79 is #232's). Claim one here when you start.
 
 ## What's next
 
