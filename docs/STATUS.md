@@ -1175,8 +1175,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `ccr-0de21c46-yzs839` | Claude | **v7.77**: Hunt screen from the design brief: full-width Hunt on phones, desktop hunt pills collapse to 12, 44px/15px pills, the sold-price row and Best picks name the hunt, one focus outline | Building (draft PR open). |
 
-Next free numbers: **page v7.77, worker v165**. Claim one here when you start.
+Next free numbers: **page v7.78, worker v165**. Claim one here when you start.
 
 ## What's next
 
