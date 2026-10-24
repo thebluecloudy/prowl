@@ -80,7 +80,7 @@ test('the dock\'s NEAR ME opens its own screen with two tabs; the Den is not inv
   assert.ok(near.contains(p.$('#otp-salesGrid')) && near.contains(p.$('#otp-fbHubBar')), 'and garage sales and the Facebook city');
   assert.equal(p.$('#otp-denT2'), null);
   assert.doesNotMatch(PAGE, /den-near/, 'the Den dress is gone');
-  assert.deepEqual(p.$$('#otp-den .tab').map((b) => b.textContent), ['ALL HUNTS', 'LIKES', 'ABOUT', 'STATS', 'SETTINGS']);
+  assert.deepEqual(p.$$('#otp-den .tab').map((b) => b.textContent), ['All hunts', 'Likes', 'About', 'Stats', 'Settings']);
   p.$('#otp-nrT2').click();
   assert.equal(p.$('#otp-nrTrip').hidden, false); assert.equal(p.$('#otp-nrAround').hidden, true);
   assert.equal(p.$$('#otp-nrDays .hubc').length, 7, 'seven day pills');

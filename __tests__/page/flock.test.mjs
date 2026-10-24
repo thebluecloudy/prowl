@@ -35,7 +35,7 @@ test('dock: five tabs, Hunt · Daily · Flock · Near me · Den (v7.30); PHOTO i
   await tick(30);
   const modes = p.$$('#otp-dock .db').map((b) => b.dataset.m);
   assert.deepEqual(modes, ['prowl', 'daily', 'flock', 'local', 'den'], 'v7.30: Matt\'s order; GOODWILL left the dock');
-  assert.deepEqual(p.$$('#otp-dock .db span').map((s) => s.textContent), ['HUNT', 'DAILY', 'FLOCK', 'NEAR ME', 'DEN']);
+  assert.deepEqual(p.$$('#otp-dock .db span').map((s) => s.textContent), ['Hunt', 'Daily', 'Flock', 'Near me', 'Den']);
   assert.equal(p.$('#otp-photoBtn'), null);
   assert.ok(p.$('#otp-flockBtn use[href="#otp-swallow"]'));
   assert.ok(p.$('#otp-cam'));
