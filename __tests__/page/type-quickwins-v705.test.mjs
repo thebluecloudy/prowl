@@ -14,9 +14,11 @@ test('no text in the main stylesheet is smaller than 12.5px', () => {
   assert.deepEqual(tiny, []);
 });
 
-test('live results and the photo check show paw prints while they load, and they stop for reduced motion', () => {
-  assert.match(PAGE, /class="sgw-note"><span class="paws"/);
+test('live results and the photo check show a little flock while they load (v7.81: swallows, were paw prints), still for reduced motion', () => {
+  assert.match(PAGE, /var FLY3='<span class="paws" aria-hidden="true">'\+\[0,1,2\]\.map\(function\(\)\{return '<i><svg viewbox="0 0 24 24"><use href="#otp-swallow"><\/use><\/svg><\/i>'\}\)/);
+  assert.match(PAGE, /class="sgw-note">'\+FLY3\+'Looking on /);
   assert.match(PAGE, /pw\.className='paws'/);
+  assert.ok(!PAGE.includes('<i>🐾</i>'), 'no paw prints left');
   assert.match(CSS, /prefers-reduced-motion:no-preference\)\{\.scout-app-wrapper \.paws i\{animation/);
 });
 
