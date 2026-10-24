@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.86 / v166).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.87 / v166).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.86** | 392,511 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.87** | 392,511 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v166** | |
 
 Recently shipped, newest first:
 
+- **v7.87: a held pill stays put** (Matt, on v7.86: "It blinks and it vibrates but it doesn't lift and move the
+  pills"). On the live page listings keep landing after it opens, and each redrew the pills: a pill held at that moment
+  was swapped for a new one, so the lift (and the buzz) went to a pill no longer on screen. Now `rSGW` waits from the
+  touch until the finger lifts (`sgw.holding`, 15 s at most), then the pills catch up; a scroll that starts on a pill
+  lets them catch up at once. Reproduced in Chromium with real touch events and listings released mid-hold, before and
+  after. Test: `__tests__/page/pill-hold-v787.test.mjs` (fails on v7.86).
 - **v7.86: reorder the hunt pills** (Matt: "for the pills for the hunt, i want to reorder them ... on phone press and
   hold and move?"). Press and hold a pill (450 ms), then drag it; the place it lands is marked, the pill rides above
   the finger and the page does not scroll while it moves. A mouse drags it without the hold; the keyboard moves it with
@@ -1290,7 +1296,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.87, worker v167**. Claim one here when you start.
+Next free numbers: **page v7.88, worker v167**. Claim one here when you start.
 
 ## What's next
 
