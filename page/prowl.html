@@ -2481,7 +2481,10 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .lv-rest{margin:16px 15px 8px;padding-top:14px;border-top:1px solid var(--ln);font-size:14px;line-height:1.5;color:var(--mu)}
 .scout-app-wrapper .lv-rest p{margin:0 0 6px}
 /* v7.86: a hunt pill held, then dragged, to change the order (sgwDragWire) */
-.scout-app-wrapper .sgw-chip[data-sgw="pick"]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.scout-app-wrapper .sgw-chip[data-sgw="pick"]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.scout-app-wrapper .sgw-chip.sgw-pickd{box-shadow:0 0 0 3px var(--ac),0 6px 16px var(--shadow);transform:translateY(-2px)}
+.scout-app-wrapper .sgw-pickbar{flex:1 1 100%;margin:2px 0;font-size:15px;line-height:1.4;color:var(--ink)}
+.scout-app-wrapper .sgw-pickbar button{margin-left:6px;min-height:36px;padding:4px 12px;border:1.5px solid var(--l2);border-radius:999px;background:var(--cd);color:var(--ink);font-weight:700;cursor:pointer}
 .scout-app-wrapper .sgw-chip.sgw-drag{position:relative;z-index:5;pointer-events:none;box-shadow:0 8px 22px var(--shadow);transform-origin:center;opacity:1;background-color:var(--bg);transition:none}
 .scout-app-wrapper .sgw-dragging .sgw-chip:not(.sgw-drag){transition:box-shadow .12s}
 .scout-app-wrapper .sgw-chip.sgw-dropb{box-shadow:-6px 0 0 var(--ac)}
@@ -3669,7 +3672,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.87';
+var PROWL_VERSION='v7.88';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -7641,20 +7644,23 @@ function rSGW(){
   if(t)for(i=0;i<LIVE_SRC.length;i++)tot+=liveCount(lv[LIVE_SRC[i].id].cache[k]);
   if(up)up.textContent=tot?tot+' live now':'';
   var row=mount.querySelector('.sgw-chips'),form=mount.querySelector('.sgw-form');
-  var old=row.querySelectorAll('.sgw-chip');
+  var old=row.querySelectorAll('.sgw-chip,.sgw-pickbar');   /* v7.88: and the picked-up line */
   for(i=0;i<old.length;i++)row.removeChild(old[i]);
   /* v5.69: what the visitor is looking at now counts as seen; every other
      hunt with results in hand gets a count of listings not seen before.
      v6.69: the ones new since the last look are noted first (FRESH), so their cards can say so (data-fresh) */
   if(sgw.cur){seenFresh(sgw.cur);seenMark(sgw.cur)}
-  var lim=chipFew(),NEWN=[],few=!sgw.more&&sgw.terms.length>lim+1,shown=0,hid=0;
+  var lim=chipFew(),NEWN=[],few=!sgw.more&&sgw.terms.length>lim+1,shown=0,hid=0,pk;
+  /* v7.88: a picked-up pill says so above the pills */
+  if(sgw.picking&&!(pk=sgwFind(sgw.picking)))sgw.picking='';
+  if(sgw.picking)html+='<p class="sgw-pickbar" role="status">Tap where <b>'+esc(pk.t)+'</b> goes. <button type="button" data-sgw="pickx">Cancel</button></p>';
   for(i=0;i<sgw.terms.length;i++){x=sgw.terms[i];NEWN.push(x.t.toLowerCase()===sgw.cur?0:seenNew(x.t.toLowerCase()));}
   DOCK_NEW=NEWN.reduce(function(a,v){return a+v},0);dockNew();
   for(i=0;i<sgw.terms.length;i++){
     x=sgw.terms[i];on=x.t.toLowerCase()===sgw.cur;
     if(few&&shown>=lim&&!on&&!NEWN[i]){hid++;continue}
     shown++;
-    html+='<span class="sgw-chip'+(on?' on':'')+'" role="button" tabindex="0" aria-pressed="'+on+'" data-sgw="pick" data-i="'+i+'">'+
+    html+='<span class="sgw-chip'+(on?' on':'')+(sgw.picking===x.t.toLowerCase()?' sgw-pickd':'')+'" role="button" tabindex="0" aria-pressed="'+on+'" data-sgw="pick" data-i="'+i+'">'+
       (x.hunt>-1?'<s class="sgw-lock" aria-hidden="true">◉</s>':'')   /* v6.58: own class; .sgw-lk is the result-card heart since v6.54 */+esc(x.t)+
       (NEWN[i]?'<em class="sgw-new" aria-label="'+NEWN[i]+' new">'+(NEWN[i]>9?'9+':NEWN[i])+' new</em>':'')+
       '<span class="sgw-x" data-sgw="del" data-i="'+i+'" role="button" tabindex="0" aria-label="'+(x.hunt>-1?'Unlock ':'Remove ')+esc(x.t)+'">×</span></span>';
@@ -9219,7 +9225,9 @@ function sgwWire(mount){
     var el=actOf(e.target);if(!el)return;
     var act=el.getAttribute('data-sgw'),i=parseInt(el.getAttribute('data-i'),10);
     if(act==='del'){e.stopPropagation();sgwDel(i);return}
-    if(act==='pick'&&sgw.dragAt&&Date.now()-sgw.dragAt<600)return;   /* v7.86: the end of a drag is not a tap */
+    if(act==='pick'&&sgw.dragAt&&Date.now()-sgw.dragAt<600&&sgw.terms[i]&&sgw.terms[i].t.toLowerCase()===sgw.dragT)return;   /* v7.86: the end of a drag is not a tap (v7.88: on that pill only) */
+    if(act==='pickx'){sgw.picking='';rSGW();return}
+    if(act==='pick'&&sgw.picking){sgwPlace(i,e);return}   /* v7.88 */
     if(act==='pick'){sgwSugHide();sgwPick(i);sgwToBody();return}   /* v7.02: a tapped hunt brings its finds into view */
     if(act==='go'){sgwSubmit();return}
     if(act==='sug'){sgwUseSug(i);return}
@@ -9289,6 +9297,17 @@ function sgwMove(from,at,after){
   for(i=0;i<sgw.terms.length;i++)if(sgw.terms[i].t.toLowerCase()===t)return i;
   return -1;
 }
+/* v7.88: a picked-up pill goes before the hunt tapped next (after it, on its right half); the same pill puts it down */
+function sgwPlace(i,e){
+  var k=sgw.picking,from=-1,j,el,r,after=false,moved;sgw.picking='';
+  for(j=0;j<sgw.terms.length;j++)if(sgw.terms[j].t.toLowerCase()===k){from=j;break}
+  if(from<0||from===i){rSGW();return}
+  el=e&&e.target&&e.target.closest?e.target.closest('.sgw-chip'):null;
+  if(el&&e.clientX!=null){r=el.getBoundingClientRect();after=r.width>0&&e.clientX>r.left+r.width/2}
+  moved=sgwMove(from,i,after);
+  if(moved>-1)toast('Order saved. Daily and Prowl Alerts go through your hunts in this order.',2600);
+  else{rSGW();toast(sgw.terms[from]&&sgw.terms[from].hunt>-1?'Locked hunts stay ahead of the others. Pick one of them.':'This one moves only among the hunts without the lock.',3000)}
+}
 function sgwDragWire(mount){
   var D=null,timer=0;
   function pt(e){var t=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])||e;return {x:t.clientX,y:t.clientY}}
@@ -9315,13 +9334,18 @@ function sgwDragWire(mount){
     h.el.classList.add(after?'sgw-dropa':'sgw-dropb');
   }
   function end(){
-    var from,at,after,moved=-1;stop();if(!D)return;
+    var from,at,after,moved=-1,m;stop();if(!D)return;m=D.m;
     if(!D.on){D=null;free();return}
-    from=+D.el.getAttribute('data-i');at=D.at;after=D.after;
+    from=+D.el.getAttribute('data-i');at=D.at;after=D.after;sgw.dragT=sgw.terms[from]?sgw.terms[from].t.toLowerCase():'';
     unmark();D.el.classList.remove('sgw-drag');D.el.style.transform='';mount.classList.remove('sgw-dragging');
     D=null;sgw.dragging=false;sgw.holding=false;sgw.redraw=0;sgw.dragAt=Date.now();
     if(at>-1)moved=sgwMove(from,at,after);
-    if(moved>-1)toast('Order saved. Daily and Prowl Alerts go through your hunts in this order.',2600);else rSGW();
+    if(moved>-1){toast('Order saved. Daily and Prowl Alerts go through your hunts in this order.',2600);return}
+    /* v7.88 (Matt, on v7.87: "Some worked some didn't. It still blinks and vibrates"): some phones take the touch back
+       after the hold (their own long-press menu), so the drag never arrives. A touch that lifts or is taken back without
+       a landing place leaves the pill picked up: the next tap on a hunt puts it there. */
+    if(!m&&sgw.terms[from])sgw.picking=sgw.terms[from].t.toLowerCase();
+    rSGW();
   }
   mount.addEventListener('touchstart',function(e){
     var c=chipOf(e.target),p;if(!c||(e.touches&&e.touches.length>1)){stop();if(D&&!D.on){D=null;free()}return}
@@ -9343,6 +9367,7 @@ function sgwDragWire(mount){
     e.preventDefault();drag(p);
   });
   document.addEventListener('mouseup',function(){if(D&&D.m)end()});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&sgw.picking){sgw.picking='';rSGW()}});
 }
 
 function loadSGW(){

@@ -1,16 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.87 / v166).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.88 / v166).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.87** | 392,511 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.88** | 392,511 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v166** | |
 
 Recently shipped, newest first:
 
+- **v7.88: tap to place a held pill** (Matt, on v7.87: "Some worked some didn't. It still blinks and vibrates").
+  Some phones take a touch back after a long press (their own menu), so the hold buzzed and the drag never came. A
+  held pill let go or taken back without a landing place now stays picked up (orange ring, "Tap where … goes. Cancel"
+  above the pills, `sgw.picking`); the next tap on a hunt puts it before that hunt, after it on its right half
+  (`sgwPlace`). Cancel, Escape or the same pill puts it down; a locked hunt tapped onto an unlocked one says why.
+  The phone's own tap flash on pills is off (`-webkit-tap-highlight-color`). The drag itself is unchanged.
+  Test: `__tests__/page/pill-pick-v788.test.mjs`.
 - **v7.87: a held pill stays put** (Matt, on v7.86: "It blinks and it vibrates but it doesn't lift and move the
   pills"). On the live page listings keep landing after it opens, and each redrew the pills: a pill held at that moment
   was swapped for a new one, so the lift (and the buzz) went to a pill no longer on screen. Now `rSGW` waits from the
@@ -1296,7 +1303,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.88, worker v167**. Claim one here when you start.
+Next free numbers: **page v7.89, worker v167**. Claim one here when you start.
 
 ## What's next
 
