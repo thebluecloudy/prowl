@@ -148,7 +148,7 @@ test('sentence case: the dock and every tab', async () => {
   const p = loadPage({ storage: DEN() });
   await tick(60);
   assert.deepEqual(p.$$('#otp-dock .db span').map((s) => s.textContent), ['Hunt', 'Daily', 'Flock', 'Near me', 'Den']);
-  assert.deepEqual(p.$$('#otp-den .tab').map((b) => b.textContent), ['All hunts', 'Likes', 'About', 'Stats', 'Settings']);
+  assert.deepEqual(p.$$('#otp-den .tab').map((b) => b.textContent), ['All hunts', 'About', 'Stats', 'Settings']);
   assert.match(p.$('#otp-ts').textContent, /^Shop/);
   await p.close();
 });

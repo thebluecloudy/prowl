@@ -112,7 +112,7 @@ test('no hunts at all: a friendly full-screen card with a way back', async () =>
   await p.close();
 });
 
-test('✕ discards for good, unstars, and Undo brings it back', async () => {
+test('✕ in the feed discards for good but keeps a saved find saved (v7.91), and Undo brings the card back', async () => {
   const p = await openFeed({ storage: { 'prowl.alertTok': 'tok', 'prowl.alertEmail': 'a@b.co' } });
   await waitFor(() => cards(p).length >= 2);
   const c = cards(p)[0];
@@ -122,7 +122,7 @@ test('✕ discards for good, unstars, and Undo brings it back', async () => {
   c.querySelector('.fl-x').click();
   assert.ok(!cards(p).some((x) => x.getAttribute('data-u') === u), 'card left the feed');
   assert.deepEqual(ls(p, DIS), [u]);
-  assert.ok(!ls(p, FINDS).some((f) => f.url === u), 'discard unstars');
+  assert.ok(ls(p, FINDS).some((f) => f.url === u), 'v7.91: a swipe in the feed no longer deletes a saved find (Matt: "Some things I was saving don\'t seem to be there anymore")');
   assert.ok(p.$('#otp-toast').classList.contains('act'));
   // shuffle: it never comes back
   p.$('#otp-flockShuf').click();
@@ -131,7 +131,7 @@ test('✕ discards for good, unstars, and Undo brings it back', async () => {
   // undo
   p.$('#otp-undis').click();
   assert.deepEqual(ls(p, DIS), []);
-  assert.ok(ls(p, FINDS).some((f) => f.url === u), 'undo restores the star');
+  assert.ok(ls(p, FINDS).some((f) => f.url === u), 'still saved');
   await p.close();
 });
 

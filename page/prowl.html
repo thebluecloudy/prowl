@@ -2497,6 +2497,12 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .sgw-dragging .sgw-chip:not(.sgw-drag){transition:box-shadow .12s}
 .scout-app-wrapper .sgw-chip.sgw-dropb{box-shadow:-6px 0 0 var(--ac)}
 .scout-app-wrapper .sgw-chip.sgw-dropa{box-shadow:6px 0 0 var(--ac)}
+/* v7.91: Likes is Flock's third view, a scrolling pane beside the feed. The feed's tab says Flock, not Feed (Matt: "it should be flock or some bird gathering term") */
+.scout-app-wrapper #otp-flock.fl-likesv #otp-flockRow{display:none!important}
+.scout-app-wrapper #otp-flock #otp-denLikes{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:12px 16px 28px}
+.scout-app-wrapper #otp-flock #otp-denLikes[hidden]{display:none}
+.scout-app-wrapper #otp-flock #otp-denLikes .lk-h{margin-top:14px}
+@media (max-width:480px){.scout-app-wrapper #otp-den .tab{flex:1 1 40%}}   /* v7.91: four Den tabs, two by two on a phone */
 /* v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
      shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
      under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing.
@@ -2617,12 +2623,13 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <span class="fl-birds" aria-hidden="true"><svg class="fl-ico fl-b1" viewbox="0 0 24 24"><use href="#otp-swallow"></use></svg><svg class="fl-ico fl-b2" viewbox="0 0 24 24"><use href="#otp-swallow"></use></svg><svg class="fl-ico fl-b3" viewbox="0 0 24 24"><use href="#otp-swallow"></use></svg></span>
       <b>Flock</b>
       <div class="fl-seg" role="tablist" aria-label="Flock view">
-<button type="button" role="tab" data-fv="feed" aria-selected="true">Feed</button><button type="button" role="tab" data-fv="saved" aria-selected="false">Saved</button>
+<button type="button" role="tab" data-fv="feed" aria-selected="true">Flock</button><button type="button" role="tab" data-fv="saved" aria-selected="false">Saved</button><button type="button" role="tab" data-fv="likes" aria-selected="false">Likes</button>
 </div>
       <button type="button" class="gh" id="otp-flockShuf">Shuffle</button>
     </div>
     <p class="flock-sub k2-hide">A look across your hunts: a find or two from each.</p>
     <div id="otp-flockRow" role="feed" aria-label="Finds across your hunts" tabindex="0"></div>
+    <div class="fl-likesP" id="otp-denLikes" role="region" aria-label="Your likes" hidden></div>
   </section>
 
   <section id="otp-guide" class="gd" aria-labelledby="otp-guideT">
@@ -3235,7 +3242,6 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 </div>
   <div class="tabs" role="tablist">
     <button class="tab on" id="otp-denT1" role="tab">All hunts</button>
-    <button class="tab" id="otp-denT5" role="tab">Likes</button>
     <button class="tab" id="otp-denT4" role="tab">About</button>
     <button class="tab" id="otp-denT6" role="tab">Stats</button>
     <button class="tab" id="otp-denT3" role="tab">Settings</button>
@@ -3252,7 +3258,6 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <div class="dx-wrap" id="otp-denRes"></div>
       <div class="dx-wrap" id="otp-denRuns"></div>
     </div>
-    <div class="denPane" id="otp-denLikes" hidden></div>
     <div class="denPane" id="otp-denAbout" hidden>
 <p class="ab-lead">Prowl searches <span data-t>29</span> vintage marketplaces at once, free, with no account. Built by Matt at Owl &amp; Twig Vintage, a family shop in Michigan.</p>
 <p class="otp-fbk" id="otp-fbk">Testing Prowl? <a id="otp-fbkA" href="/pages/contact">Tell me what is missing or broken</a>. Say what you searched and which phone or computer you used.</p>
@@ -3680,7 +3685,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.90';
+var PROWL_VERSION='v7.91';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -4527,14 +4532,13 @@ $('#otp-cityIn').addEventListener('keydown',function(e){if(e.key==='Enter'){e.pr
 
 /* ---------- DEN TABS ---------- */
 function setDenTab(t){
+  if(t==='likes')t='hunts';   /* v7.91: Likes moved to Flock (Feed · Saved · Likes) */
   denTab=t;   /* v7.36: Near me is its own screen (#otp-near), no longer a Den tab or a Den dress */
   $('#otp-denT1').classList.toggle('on',t==='hunts');
   $('#otp-denT4').classList.toggle('on',t==='about');
   $('#otp-denT3').classList.toggle('on',t==='settings');
-  $('#otp-denT5').classList.toggle('on',t==='likes');   /* v6.47 */
   $('#otp-denT6').classList.toggle('on',t==='stats');   /* v7.22 */
   $('#otp-denStatsP').hidden=t!=='stats';
-  $('#otp-denLikes').hidden=t!=='likes';
   $('#otp-denTerms').hidden=t!=='hunts';
   $('#otp-denAbout').hidden=t!=='about';
   $('#otp-denSettings').hidden=t!=='settings';
@@ -4542,13 +4546,11 @@ function setDenTab(t){
   /* the marquee only animates once it has been laid out, so kick it here */
   if(t==='about')loadFoundStrip();
   if(t==='settings'){rMail();rGetApp();}
-  if(t==='likes')rDenLikes();
   if(t==='stats'){rDenStats();rDenMine();rDenOwn()}
 }
 $('#otp-denT1').addEventListener('click',function(){setDenTab('hunts')});
 $('#otp-denT4').addEventListener('click',function(){setDenTab('about')});
 $('#otp-denT3').addEventListener('click',function(){setDenTab('settings')});
-$('#otp-denT5').addEventListener('click',function(){setDenTab('likes')});   /* v6.47 */
 $('#otp-denT6').addEventListener('click',function(){setDenTab('stats')});   /* v7.22 */
 
 var lf=null;
@@ -6131,7 +6133,7 @@ document.addEventListener('click',function(e){
   if(!c&&t&&t.closest&&(c=t.closest('.pk-card'))){if(popOpen(c))e.preventDefault();return}
   if(!c)return;
   cell=c.closest('.sgw-cell');if(!cell||cell.closest('.fl-card'))return;
-  if(popOpen(cell,!cell.closest('#otp-den')))e.preventDefault();   /* v7.31: lite for the sites the popup cannot read, on results (the Den's likes link out as before) */
+  if(popOpen(cell,!cell.closest('#otp-den,#otp-denLikes')))e.preventDefault();   /* v7.31: lite for the sites the popup cannot read, on results (the Den's likes link out as before) */
 });
 
 /* ---------- YOUR HUNTS, LIVE ON GOODWILL (v5.10) ----------
@@ -8101,7 +8103,7 @@ function flAfterDiscard(card){
   return k;
 }
 function flSavedHtml(dm){
-  var a=findsGet().filter(function(f){return !dm[f.url]}),w=watchGet().filter(function(x){return !dm[x.u]}),h='',i,f;
+  var a=findsGet(),w=watchGet(),h='',i,f;   /* v7.91: everything saved shows, swiped away in the feed or not */
   a.sort(function(x,y){return (y.at||0)-(x.at||0)});
   if(!a.length&&!w.length)return flNote('fl-empty','<p>Nothing saved yet. Tap the star on any find to keep it here.</p>');
   for(i=0;i<a.length;i++){f=a[i];h+=flockCardHtml({t:f.hunt,it:{title:f.title,price:f.price,url:f.url,image:f.image,src:f.src}})}
@@ -8124,6 +8126,7 @@ function flAnchor(row){
 function flockRender(top){
   var sec=$('#otp-flock'),row=$('#otp-flockRow');if(!sec||!row)return;
   var dm=disMap(),h='',i,cards,y=row.scrollTop,anchor=top?'':flAnchor(row);
+  if(FLOCK.view==='likes'){rDenLikes();return}   /* v7.91: its own pane (#otp-denLikes) */
   if(FLOCK.view==='saved')h=flSavedHtml(dm);
   else if(!flockTerms().length)h=flNote('fl-empty','<p>Add a hunt in the Den and the flock takes flight.</p><button type="button" class="gh" data-fl="home">Back to Prowl</button>');   /* v6.61 */
   else{
@@ -8236,13 +8239,17 @@ function flockHunts(){
 function flSeg(){
   if(FLOCK.view!=='feed'&&typeof flyStop==='function')flyStop();   /* v6.56: Fly is for the feed */
   var sec=$('#otp-flock');if(!sec)return;
-  sec.classList.toggle('fl-saved',FLOCK.view==='saved');
+  sec.classList.toggle('fl-saved',FLOCK.view!=='feed');   /* v7.91: Saved and Likes both quiet the feed's head */
+  sec.classList.toggle('fl-likesv',FLOCK.view==='likes');
+  var lp=$('#otp-denLikes');if(lp)lp.hidden=FLOCK.view!=='likes';
+  if(FLOCK.view==='likes')rDenLikes();
   $$('#otp-flock .fl-seg [data-fv]').forEach(function(b){b.setAttribute('aria-selected',String(b.getAttribute('data-fv')===FLOCK.view))});
 }
 function flBadge(){
   var b=$('#otp-flbd');if(!b||typeof FINDS_KEY!=='string')return;   /* rDock runs before the finds store is set up */
   var n=findsGet().length;b.textContent=n;b.hidden=n===0;
   var sb=$('#otp-flock .fl-seg [data-fv=saved]');if(sb)sb.textContent=n?'Saved '+n:'Saved';
+  var lb=$('#otp-flock .fl-seg [data-fv=likes]'),ln;if(lb&&typeof LIKE_KEY==='string'){ln=likesGet().length;lb.textContent=ln?'Likes '+ln:'Likes'}   /* v7.91 */
 }
 function openFlock(){
   var sec=$('#otp-flock'),w=sec&&sec.closest('.scout-app-wrapper');if(!sec||flockOpen())return;
@@ -8293,18 +8300,21 @@ function closeFlock(){
   rDock();
 }
 function flShuffle(){FLOCK.view='feed';flSeg();flockStart()}
-/* discard: the card leaves, its URL is never shown again, and a starred find is unstarred too */
+/* discard: the card leaves the feed and its URL is never shown there again.
+   v7.91 (Matt: "Some things I was saving don't seem to be there anymore"): it also took a saved find out of Saved, and a
+   price watch with it, so a swipe in the feed quietly deleted what was kept. In the feed they stay now; the ✕ in the
+   Saved view (or the ★) is what takes them out. */
 function flDiscard(card){
   var u=card&&card.getAttribute('data-u');if(!u)return;
-  var i=findIdx(u),was=null,a;
+  var sv=FLOCK.view==='saved',i=sv?findIdx(u):-1,was=null,a;
   if(i>-1){a=findsGet();was=a[i];a.splice(i,1);findsPut(a);svPaint(u)}
   disAdd(u);disTAdd(u,card.getAttribute('data-t')||card.getAttribute('aria-label')||'');   /* v6.47: swipe-aways teach Flock too */
   var nk=flAfterDiscard(card);   /* v6.61 */
-  FLOCK.last={u:u,f:was,w:watchDrop(u),l:likeDrop(u),nk:nk};
+  FLOCK.last={u:u,f:was,w:sv?watchDrop(u):null,l:likeDrop(u),nk:nk};
   if(card.parentNode)card.parentNode.removeChild(card);
   var row=$('#otp-flockRow');if(row&&!row.querySelector('.fl-card'))flockRender();
   flBadge();
-  toast('Discarded. <button type="button" class="gh" id="otp-undis">Undo</button>',5000);
+  toast((was||FLOCK.last.w?'Removed from Saved. ':'Discarded. ')+'<button type="button" class="gh" id="otp-undis">Undo</button>',5000);   /* v7.91: says which */
 }
 function flUndo(){
   var L=FLOCK.last,a;if(!L)return;
@@ -8614,7 +8624,7 @@ try{
 function popLike(){
   var P=POP;if(!P)return;
   var hr=$('#otp-sheetB .pp-heart');if(hr&&!flReduced()){hr.classList.remove('on');void hr.offsetWidth;hr.classList.add('on')}
-  if(likeHas(P.u)){toast('Already liked. It is in the Den, under Likes.',2200);return}
+  if(likeHas(P.u)){toast('Already liked. It is in Flock, under Likes.',2200);return}
   var S=P.share||{},l=likeClean({u:P.u,t:S.t||P.t,p:S.p||P.p,s:P.s||P.src,i:S.img||P.img,h:'',at:Date.now()});if(!l)return;
   var a=likesGet();a.unshift(l);likesPut(a);likePaint(P.u);rDenLikes();
   toast('\u2665 Liked. Flock will show you more like this.',2400);
@@ -8778,14 +8788,14 @@ function likeToggle(card){
     l=likeClean({u:u,t:card.getAttribute('data-t')||card.getAttribute('aria-label')||'',p:card.getAttribute('data-p')||'',s:card.getAttribute('data-s')||'',
       i:img?img.getAttribute('src')||'':'',h:card.getAttribute('data-h')||'',at:Date.now()});
     if(!l)return;a.unshift(l);likesPut(a);
-    if(first)toast('Liked. Flock will show you more like this. Your likes are in the Den.',4200);
+    if(first)toast('Liked. Flock will show you more like this. Your likes are in Flock, under Likes.',4200);
   }
   likePaint(u);rDenLikes();
 }
 function likeDrop(u){var a=likesGet(),i;for(i=0;i<a.length;i++)if(a[i].u===u){var was=a.splice(i,1)[0];likesPut(a);return was}return null}
 function likeLearned(M){var ws=[],w;for(w in M.w)ws.push([w,M.w[w]]);ws.sort(function(a,b){return b[1]-a[1]||(a[0]<b[0]?-1:1)});return ws.slice(0,8)}
 function rDenLikes(){
-  var el=$('#otp-denLikes'),tab=$('#otp-denT5');if(!el)return;
+  var el=$('#otp-denLikes'),tab=$('#otp-flock .fl-seg [data-fv=likes]');if(!el)return;   /* v7.91: in Flock */
   var L=likesGet(),M=likeModel(),mute=muteGet(),top=likeLearned(M),h='',i,l;
   if(tab)tab.textContent=L.length?'Likes '+L.length:'Likes';   /* v7.82: sentence case */
   if(!L.length){el.innerHTML='<p class="lk-empty">Tap \u2661 on a Flock card to like it. Prowl learns from your likes and shows you more finds like them.</p>';return}
@@ -9843,7 +9853,7 @@ function flyStep(){
   var sec=$('#otp-flock'),row=$('#otp-flockRow'),tst=$('#otp-toast');if(!sec||!row)return;
   sec.addEventListener('click',function(e){
     var b=e.target.closest&&e.target.closest('[data-fv]');if(!b||!sec.contains(b))return;
-    var v=b.getAttribute('data-fv')==='saved'?'saved':'feed';if(v===FLOCK.view)return;
+    var fv=b.getAttribute('data-fv'),v=fv==='saved'||fv==='likes'?fv:'feed';if(v===FLOCK.view)return;   /* v7.91: Likes */
     FLOCK.view=v;flSeg();
     if(v==='feed'&&(!FLOCK.started||FLOCK.key!==flTermsKey()))flockStart();else{flockRender(true);if(v==='feed')flockWarm()}
   });

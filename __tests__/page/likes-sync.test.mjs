@@ -36,18 +36,18 @@ test('after sign-in the page sends its likes and takes in likes from other devic
   assert.deepEqual(ls(p, 'prowl.likes').map((l) => l.u), [like(2).u, like(1).u]);
   assert.deepEqual(ls(p, 'prowl.likeMute'), ['pyrex']);
   assert.equal(p.win.localStorage.getItem('prowl.likeMuteAt'), '9');
-  assert.equal(p.$('#otp-denT5').textContent, 'Likes 2', 'the Den tab counts them');
-  p.$('#otp-denT5').click();
+  assert.equal(p.$('#otp-flock [data-fv="likes"]').textContent, 'Likes 2', 'the Flock tab counts them');
+  p.$('#otp-flock [data-fv="likes"]').click();
   assert.match(p.$('#otp-denLikes').textContent, /your likes follow you to your other devices/);
   await p.close();
 });
 
-test('an unlike in the Den is remembered with its time and sent a moment later', async () => {
+test('an unlike in Likes is remembered with its time and sent a moment later', async () => {
   const f = memberFetch((b) => ({ ok: true, likes: b.likes, gone: b.gone, mute: b.mute, muteAt: b.muteAt }));
   const p = loadPage({ fetchImpl: f.impl, storage: { ...MEMBER, 'prowl.likes': [like(1, 100), like(2, 200)] } });
   await waitFor(() => f.sent.length === 1);
   await tick(20);
-  p.$('#otp-denT5').click();
+  p.$('#otp-flock [data-fv="likes"]').click();
   const t0 = Date.now();
   p.$('#otp-denLikes [data-unlike="' + like(1).u + '"]').click();
   const gone = ls(p, 'prowl.likesGone');
@@ -62,7 +62,7 @@ test('an unlike in the Den is remembered with its time and sent a moment later',
 test('Stop boosting a word stamps the word list, so the newest list wins across devices', async () => {
   const p = loadPage({ storage: { 'prowl.likes': [like(1, 100), like(2, 200)] } });
   await tick(30);
-  p.$('#otp-denT5').click();
+  p.$('#otp-flock [data-fv="likes"]').click();
   const t0 = Date.now();
   p.$('#otp-denLikes [data-lkmute]').click();
   assert.equal(ls(p, 'prowl.likeMute').length, 1);
@@ -79,7 +79,7 @@ test('an answer to a sync is not applied over a change made while it was out', a
   };
   const p = loadPage({ fetchImpl: slow, storage: { ...MEMBER, 'prowl.likes': [like(1, 100), like(2, 200)] } });
   await waitFor(() => release);
-  p.$('#otp-denT5').click();
+  p.$('#otp-flock [data-fv="likes"]').click();
   p.$('#otp-denLikes [data-unlike="' + like(1).u + '"]').click();
   release(); await tick(40);
   assert.deepEqual(ls(p, 'prowl.likes').map((l) => l.u), [like(2).u], 'the unlike stays; the next sync sends it');
@@ -90,7 +90,7 @@ test('signed out: likes stay on this device, nothing is sent', async () => {
   const f = memberFetch(() => ({ ok: true, likes: [], gone: [], mute: [], muteAt: 0 }));
   const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.likes': [like(1, 100)] } });
   await tick(40);
-  p.$('#otp-denT5').click();
+  p.$('#otp-flock [data-fv="likes"]').click();
   p.$('#otp-denLikes [data-unlike="' + like(1).u + '"]').click();
   assert.equal(ls(p, 'prowl.likesGone')[0].u, like(1).u);
   await new Promise((r) => setTimeout(r, 2800));
