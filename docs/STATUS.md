@@ -1,12 +1,12 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.80 / v166).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.83 / v166).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.80** | 393,771 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.83** | 393,208 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v166** | |
 
 Recently shipped, newest first:
@@ -16,7 +16,7 @@ Recently shipped, newest first:
   the 24 biggest, so not even Closest first could show it. Now it is the 24 biggest plus the 8 closest not among them,
   in rank order (`nearKeep`, `NEAR_CLOSE_KEEP` in `worker/trip.js`). Near cache key v=12. Worker only. Tests:
   `worker/__tests__/trip.test.mjs`.
-- **v7.80: ✓ Been there and Next stop, for the day of the trip** (the owner, on the road: "i stopped at one, now i want
+- **v7.83: ✓ Been there and Next stop, for the day of the trip** (the owner, on the road: "i stopped at one, now i want
   to find the next one"). Before, Start in Maps always started from the trip's starting town and went through every
   stop, even the ones behind you. Now, on the trip's day, every stop has **✓ Been**: the stop stays in the list, dimmed
   and marked Been there (Undo puts it back); it leaves the Maps link, which then starts from the phone (no origin, so
@@ -24,9 +24,32 @@ Recently shipped, newest first:
   the top names the first stop still ahead, with Directions (a shop in a stop's town counts as being in that town).
   All done says "Every stop done. On to …". Kept per trip in a **new key `prowl.nearBeen`** (a kept trip by its id, a
   built one by where to, from and the day; the last 10 trips; a broken value is ignored). No ✓ Been on a trip planned
-  for another day. Also `__tests__/page/fn-names-v780.test.mjs`: no top-level page function is declared twice (the
+  for another day. Also `__tests__/page/fn-names-v783.test.mjs`: no top-level page function is declared twice (the
   first Next stop was silently replaced by the hours helper `nrNext`). Page only. Tests:
-  `__tests__/page/near-been-v780.test.mjs`. Checked in Chromium at 390px. v7.79 was left for #232.
+  `__tests__/page/near-been-v783.test.mjs`. Checked in Chromium at 390px. v7.79, v7.81 and v7.82 went to the design-brief PRs (#232, #235, #236).
+- **v7.81: the design brief's next 10 ideas, all of them** (Matt, shown each one mocked before and after: "i love them
+  all"). v7.80 is #234's (Been there), open when this was built.
+  - **One orange button per card**: in a hunt's card only Continue the full hunt is orange; Email me when it shows up
+    is outlined and the Swipe / Show everything switch is ink.
+  - **Quiet card headers**: Your favorite hunts, Prowl Alerts, the guide and Flock's heads are headings with a thin
+    rule, not orange bands (the k2 band stays on buttons, tabs and drawer heads).
+  - **One live status line** at the top of a hunt (`liveLine`): "● Live now · 16 listings · full hunt run 2 days ago",
+    "Nothing live right now · …" or "Checking live listings…"; "Not run yet" at the foot is gone.
+  - **The Alerts card is one line** ("✉ New finds by email · Free for 3 hunts · Set up →", `#otp-alertsMini`) until it
+    is tapped, linked to (#otp-alerts) or the list's thank-you shows; the full card, its sign-up and the newsletter form
+    are unchanged inside.
+  - **Daily's badge is what is new**: it counted the hunts in Daily ("31"); it now adds up the hunt pills' "N new"
+    (`DOCK_NEW`, `dockNew`) and hides at none.
+  - **Best picks look like the result cards** Matt chose in v7.26 (title centred, the price in ink under it, then where
+    it is). The brief's own card (accent price on top) was left out: Matt's v7.26 choice stands.
+  - **One loading look**: the paw prints became three of the page's swallows (`FLY3`, the photo check too), and Best
+    picks wait under Near me's flock card (`nrFlock`).
+  - **The line under the title**: "29 vintage marketplaces, one search. Free." with balanced lines, so "Free." is not
+    alone on a phone.
+  - **One label style**: What has … sold for?, Or try, Try one, Looks like these on eBay and Road trip's option titles
+    are 12.5px small caps; a hunt's name in one stays as typed.
+  - Idea 10 (text size reaches everything) was already true: the setting zooms the whole app. Tests:
+    `__tests__/page/hunt-ideas-v781.test.mjs`; type-quickwins expects the swallows.
 - **v7.79: the Hunt screen, from the owner's design brief** ("Prowl design system and UX brief", written against
   v7.60; Matt: "take any of the ideas and see if it is useful"). Most of its Hunt-screen list had already shipped
   (search in the first screen, no "Just Facebook" button, filter chips under the box, pills collapsing on a phone, the
@@ -1232,10 +1255,10 @@ Recently shipped, newest first:
 | Branch | Owner | What | State |
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
-| `ccr-0de21c46-yzs839` | Claude | The design brief's next 10 ideas (#235) | Page v7.81. |
+| `ccr-0de21c46-yzs839` | Claude | Matt's next 10 (#236, draft) | Page v7.82. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.82, worker v167** (v7.81 is #235's). Claim one here when you start.
+Next free numbers: **page v7.84, worker v167** (v7.82 is #236's). Claim one here when you start.
 
 ## What's next
 

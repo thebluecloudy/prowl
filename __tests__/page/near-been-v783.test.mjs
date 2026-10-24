@@ -1,4 +1,4 @@
-// Page v7.80 (the owner: "i stopped at one, now i want to find the next one but i don't know where i am"). On the trip's
+// Page v7.83 (the owner: "i stopped at one, now i want to find the next one but i don't know where i am"). On the trip's
 // day, ✓ Been marks a stop done: it stays in the list, dimmed; it leaves the Maps link, which then starts from the phone
 // (no origin); Next stop names the first one still ahead. Kept per trip in a new key, prowl.nearBeen.
 import { test } from 'node:test';
@@ -40,7 +40,7 @@ async function built(storage, trip, pickDay) {
 const rows = (p) => p.$$('#otp-nrOut .nr-stops > .nr-stop > .nr-row');
 const been = (p, id) => p.$(`#otp-nrOut .nr-stops [data-nrbeen="${id}"]`);
 
-test('v7.80: ✓ Been marks a stop done: dimmed, out of the Maps link, which starts from the phone; Next stop is the one after', async () => {
+test('v7.83: ✓ Been marks a stop done: dimmed, out of the Maps link, which starts from the phone; Next stop is the one after', async () => {
   const p = await built();
   assert.equal(p.$('#otp-nrStart').textContent, 'Start in Maps');
   assert.match(p.$('#otp-nrStart').href, /origin=Novi/, 'before: from where the trip starts');
@@ -68,7 +68,7 @@ test('v7.80: ✓ Been marks a stop done: dimmed, out of the Maps link, which sta
   assert.deepEqual(p.errors, []);
 });
 
-test('v7.80: a shop also in town counts as being there; every stop done says so; kept for the same trip after a reload', async () => {
+test('v7.83: a shop also in town counts as being there; every stop done says so; kept for the same trip after a reload', async () => {
   const p = await built();
   p.$('#otp-nrOut .nr-nest [data-nrbeen="N1"]').click(); await tick(20);
   assert.equal(p.$('#otp-nrOut .nr-next .nr-n').textContent, 'Maumee Antique Mall', 'in Maumee: the big one there is still next');
@@ -80,7 +80,7 @@ test('v7.80: a shop also in town counts as being there; every stop done says so;
   assert.deepEqual(q.errors, []);
 });
 
-test('v7.80: not on a trip planned for another day; a mark kept for one trip does not touch another', async () => {
+test('v7.83: not on a trip planned for another day; a mark kept for one trip does not touch another', async () => {
   const p = await built(null, null, 2);
   assert.equal(p.$$('#otp-nrOut [data-nrbeen]').length, 0, 'no ✓ Been on a day still to come');
   const other = { 'prowl.nearBeen': { o: ['b:somewhere|novi, mi|'], s: { 'b:somewhere|novi, mi|': { S1: 1 } } } };
@@ -89,7 +89,7 @@ test('v7.80: not on a trip planned for another day; a mark kept for one trip doe
   assert.deepEqual(q.errors, []);
 });
 
-test('v7.80: a broken or old prowl.nearBeen is ignored, and only the last 10 trips are kept', async () => {
+test('v7.83: a broken or old prowl.nearBeen is ignored, and only the last 10 trips are kept', async () => {
   const p = await built({ 'prowl.nearBeen': [1, 2] });
   assert.equal(p.$$('#otp-nrOut .nr-beenrow').length, 0);
   const s = {}, o = [];

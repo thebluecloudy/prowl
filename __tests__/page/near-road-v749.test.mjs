@@ -105,7 +105,7 @@ test('a road trip today: each stop is open or closed for when you would get ther
     assert.equal(a.children[0].textContent, 'Directions'); assert.match(a.children[0].href, /^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&travelmode=driving&destination=/);
     assert.doesNotMatch(a.children[0].href, /origin=/, 'Maps starts from the phone');
     assert.equal(a.children[1].textContent, 'Reviews', 'v7.69: Reviews between them');
-    assert.equal(a.children[2].textContent, '✓ Been', 'v7.80: on the trip day');
+    assert.equal(a.children[2].textContent, '✓ Been', 'v7.83: on the trip day');
     assert.equal(a.children[3].textContent, '+ Stop', 'v7.78: + Stop before Skip');
     assert.equal(a.children[4].textContent, '− Skip', 'v7.72: the sign and the word');
   }
