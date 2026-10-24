@@ -182,9 +182,9 @@ test("Delete in Prowl takes every saved photo and the index entry", async () => 
   assert.match(INDEX, /await savedPurge\(env, email\); gone\.push\("saved\/"\);/);
 });
 
-test("the routes are wired and the version says v168", () => {
+test("the routes are wired and the version is v168 or later", () => {
   assert.match(INDEX, /url\.pathname === "\/alerts\/saved" && request\.method === "POST"\) return alSaved\(/);
   assert.match(INDEX, /url\.pathname\.startsWith\("\/saved\/"\) && request\.method === "GET"\) return savedPhotoRoute\(/);
   assert.match(INDEX, /await savedSweep\(env\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v168";/);
+  assert.ok(Number(/const WORKER_VERSION = "v(\d+)";/.exec(INDEX)[1]) >= 168, "v168 or later");
 });

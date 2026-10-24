@@ -2509,6 +2509,8 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .fl-svn b{color:var(--ink)}
 .scout-app-wrapper .fl-svn a{color:var(--ac);font-weight:700}
 .scout-app-wrapper .fl-kept{margin:2px 0 0;font-size:13px;font-weight:700;color:var(--go)}
+.scout-app-wrapper .fl-end{color:var(--mu)}
+.scout-app-wrapper .fl-end.fl-sold{color:var(--ac)}
 /* v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
      shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
      under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing.
@@ -3714,7 +3716,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.93';
+var PROWL_VERSION='v7.94';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -8141,7 +8143,9 @@ function flSavedHtml(dm){
     :'Saved finds stay on this device. <a href="'+PRO_URL+'">Prowl Pro</a> keeps them a year, photos and all, on every device, even after the listing is gone.';   /* a line under the tabs (in the feed it would take a whole page) */
   if(!a.length&&!w.length)return flNote('fl-empty','<p>Nothing saved yet. Tap the star on any find to keep it here.</p>');
   for(i=0;i<a.length;i++){f=a[i];c=flockCardHtml({t:f.hunt,it:{title:f.title,price:f.price,url:f.url,image:f.ph||f.image,src:f.src}});
-    kd=pro?keptDay(f.until):'';if(kd)c=c.indexOf('<div class="fl-for">')>-1?c.replace('<div class="fl-for">','<div class="fl-kept">Kept until '+kd+'</div><div class="fl-for">'):c.replace('</a>','<div class="fl-kept">Kept until '+kd+'</div></a>');
+    kd=pro?keptDay(f.until):'';
+    if(kd){kd='<div class="fl-kept">'+(pro&&f.end?'<span class="fl-end fl-'+f.end.st+'">'+esc(endLine(f.end))+'</span> \u00b7 ':'')+'Kept until '+kd+'</div>';   /* v7.94: sold or ended first */
+      c=c.indexOf('<div class="fl-for">')>-1?c.replace('<div class="fl-for">',kd+'<div class="fl-for">'):c.replace('</a>',kd+'</a>')}
     h+=c}
   if(w.length){   /* v6.39: price-drop watches sit under their own heading */
     h+='<div class="fl-group" role="heading" aria-level="3">Watching</div>';
@@ -10141,7 +10145,15 @@ function findCleanPro(f){
   var c=findClean(f);if(!c)return null;
   if(typeof f.ph==='string'&&f.ph.indexOf(SGW_API+'saved/')===0)c.ph=f.ph.slice(0,400);
   if(/^\d{4}-\d{2}-\d{2}$/.test(String(f.until||'')))c.until=String(f.until);
+  var e=f.end;   /* v7.94: the listing is over (worker v169) */
+  if(e&&(e.st==='sold'||e.st==='ended')&&/^\d{4}-\d{2}-\d{2}$/.test(String(e.at||'')))c.end={st:e.st,at:String(e.at),p:e.st==='sold'&&typeof e.p==='string'?e.p.slice(0,24):''};
   return c;
+}
+/* v7.94: "Sold for $45 · Oct 20" or "Ended · Oct 20" */
+function endLine(e){
+  if(!e)return '';
+  var d=keptDay(e.at).replace(/, \d{4}$/,'');
+  return e.st==='sold'?'Sold'+(e.p?' for '+e.p:'')+' \u00b7 '+d:'Ended \u00b7 '+d;
 }
 function findsGet(){
   if(FC)return FC.slice();

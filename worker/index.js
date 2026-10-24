@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v169: 2026-10-24. Saved forever says when a listing is over: each alert-clock run looks at one Pro member's list
+ *         (once a day, up to 15 finds) with the popup's readers and marks end = { st: "sold"|"ended", at, p }. ShopGoodwill
+ *         and Salvation Army: ended with bids is sold at the last bid; Etsy: sold_out is sold (itemEtsy now passes its
+ *         state); eBay: gone is ended. /alerts/saved hands the end to the page. (savedCheckTick, savedRead)
  *   v168: 2026-10-24. Saved forever, a Prowl Pro perk: POST /alerts/saved merges a Pro member's saved finds into
  *         saved:<email> (newest of saved or removed wins, kept 365 days from saving) and copies each one's photo to R2
  *         saved/<sha16 email>/<sha16 url>.jpg, served signed at GET /saved/...; a daily sweep drops finds past the year
@@ -569,13 +573,13 @@ import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize, huntNeeds, huntRelevant } from "./hunt.js";
-import { SAVED_BODY_MAX, SAVED_SYNCS_PER_DAY, SAVED_PHOTOS_PER_SYNC, SAVED_PHOTO_MAX, SAVED_SIG_SECONDS, savedMerge, savedToCopy, savedUntil, photoKey } from "./saved.js";   /* v168 */   /* v117; v152: huntNeeds, huntRelevant */
+import { SAVED_BODY_MAX, SAVED_SYNCS_PER_DAY, SAVED_PHOTOS_PER_SYNC, SAVED_PHOTO_MAX, SAVED_SIG_SECONDS, SAVED_CHECKS_PER_LIST, savedMerge, savedToCopy, savedUntil, photoKey, savedDue, savedListDue, savedEndFrom, savedSrc } from "./saved.js";   /* v168 */   /* v117; v152: huntNeeds, huntRelevant */
 import { wkAdd, wkFresh, wkCur, letterShorters, letterBuild, letterText, letterQuiet } from "./letter.js";   /* v152: the weekly letter */
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v168";
+const WORKER_VERSION = "v169";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -1889,7 +1893,7 @@ async function itemEtsy(id, env) {
     aspects: aspects,
     url: "https://www.etsy.com/listing/" + id,
   };
-  if (j.state && j.state !== "active") out.gone = true;
+  if (j.state && j.state !== "active") { out.gone = true; out.state = String(j.state).slice(0, 20); }   /* v169: sold_out tells a sale from an expiry */
   const ra = j.shop ? Number(j.shop.review_average) : NaN, rc = j.shop ? Number(j.shop.review_count) : NaN;   /* v126 */
   if (ra > 0 && ra <= 5 && rc > 0) out.seller = { stars: Math.round(ra * 10) / 10, n: Math.floor(rc) };
   const from = itemFrom(j.shop && j.shop.shop_location_country_iso);   /* v128 */
@@ -5870,10 +5874,11 @@ async function alSaved(request, env, origin) {
     for (const u of m.dropped.slice(0, 50)) { try { await env.PROWL_FINDS.delete(photoKey(h, await sha16(u))); } catch (e) {} }
   }
   const keep = { saved: m.saved, gone: m.gone };
+  if (m.ckd) keep.ckd = m.ckd;   /* v169 */
   if (JSON.stringify(keep) !== JSON.stringify(had)) await kvPut(env, key, keep);   /* no write when nothing changed */
   if (m.saved.length) await savedIndex(env, email, true);
   const out = [];
-  for (const f of m.saved) out.push(Object.assign({}, f, { until: savedUntil(f.at), ph: f.ph ? await savedPhotoUrl(env, h, await sha16(f.url)) : "" }));
+  for (const f of m.saved) { const o = Object.assign({}, f, { until: savedUntil(f.at), ph: f.ph ? await savedPhotoUrl(env, h, await sha16(f.url)) : "" }); delete o.ck; out.push(o); }   /* v169: end goes, ck stays here */
   return json({ ok: true, pro: true, saved: out, gone: m.gone }, 200, origin);
 }
 /* the photo of one find, into R2: an image the marketplace serves over https, at most SAVED_PHOTO_MAX, 8 seconds */
@@ -5919,10 +5924,47 @@ async function savedSweep(env, now) {
     if (env.PROWL_FINDS) for (const u of m.dropped.slice(0, 50)) { try { await env.PROWL_FINDS.delete(photoKey(h, await sha16(u))); } catch (e) {} }
     swept += m.dropped.length;
     const keep = { saved: m.saved, gone: m.gone };
+    if (m.ckd) keep.ckd = m.ckd;
     if (!m.saved.length) { await env.PROWL_ALERTS.delete(key); await savedIndex(env, email, false); }
     else if (JSON.stringify(keep) !== JSON.stringify(had)) await kvPut(env, key, keep);
   }
   return { swept };
+}
+/* v169: the sold and ended check. Each run of the alert clock takes the next member whose list was not looked at in
+   SAVED_CHECK_HOURS and looks at up to SAVED_CHECKS_PER_LIST of its finds with the listing popup's readers (no cache: a
+   day-old answer is what is being replaced). One KV write per member per day. A reader that fails says nothing; the
+   find is looked at again the next day. */
+async function savedRead(env, url) {
+  const ref = itemRef(url);
+  if (!ref) return null;
+  try {
+    if (ref.src === "ebay") return await itemEbay(ref.id, env);
+    if (ref.src === "etsy") return await itemEtsy(ref.id, env);
+    if (ref.src === "shopgoodwill") return await itemSgw(ref.id);
+    if (ref.src === "salvation") return await itemSalvation(ref);
+  } catch (e) { return { error: String(e && e.message || e).slice(0, 80) }; }
+  return null;
+}
+async function savedCheckTick(env, now) {
+  if (!env || !env.PROWL_ALERTS) return { checked: 0 };
+  now = now || Date.now();
+  const all = await kvGet(env, "saved:all", []);
+  if (!all.length) return { checked: 0 };
+  const start = Math.floor(now / 300000) % all.length;
+  for (let i = 0; i < Math.min(all.length, 50); i++) {
+    const email = all[(start + i) % all.length], key = "saved:" + email, had = await kvGet(env, key, null);
+    if (!savedListDue(had, now)) continue;
+    const m = savedMerge(had, null, now);
+    let checked = 0, ended = 0;
+    for (const f of savedDue(m.saved, now, SAVED_CHECKS_PER_LIST)) {
+      const e = savedEndFrom(savedSrc(f.url), await savedRead(env, f.url), now);
+      f.ck = now; checked++;
+      if (e && e !== "live") { f.end = e; ended++; }
+    }
+    await kvPut(env, key, { saved: m.saved, gone: m.gone, ckd: now });
+    return { checked, ended };   /* one list a run */
+  }
+  return { checked: 0 };
 }
 /* Delete in Prowl and the admin's delete: every saved photo of this member, and the index entry */
 async function savedPurge(env, email) {
@@ -6500,7 +6542,8 @@ async function cronRun(env) {
   let r = null, err = "";
   try { r = await alTick(env); } catch (e) { err = String(e && e.message || e); console.error("alTick", err); }   /* v51: never silent */
   if (new Date().getUTCMinutes() < 5) { try { await tripSweep(env); } catch (e) { console.error("trip sweep", String(e && e.message || e)); } }   /* v132: once an hour */
-  if (new Date().getUTCHours() === 7 && new Date().getUTCMinutes() < 5) { try { await savedSweep(env); } catch (e) { console.error("saved sweep", String(e && e.message || e)); } }   /* v168: once a day */
+  if (new Date().getUTCHours() === 7 && new Date().getUTCMinutes() < 5) { try { await savedSweep(env); } catch (e) { console.error("saved sweep", String(e && e.message || e)); } }
+  try { await savedCheckTick(env); } catch (e) { console.error("saved check", String(e && e.message || e)); }   /* v169: sold or ended, one list a run */   /* v168: once a day */
   try {
     await capsCall("metrics", "mrec", { c: { t: t0, ms: Date.now() - t0, members: (r && r.members) || 0, checked: (r && r.checked) || 0,
       sent: (r && r.sent) || 0, failed: ((r && r.failed) || 0) + (err ? 1 : 0), errors: err ? [scrubPII("alert clock crashed: " + err).slice(0, 160)] : ((r && r.errors) || []), skipped: (r && r.skipped) || "",
