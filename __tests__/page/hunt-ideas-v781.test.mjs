@@ -16,7 +16,7 @@ const J = (j) => Promise.resolve({ ok: true, status: 200, json: () => Promise.re
 function fx(opt) {
   opt = opt || {};
   return (u) => {
-    const url = new URL(String(u));
+    const url = new URL(String(u), 'https://www.owlandtwigvintage.com');
     if (opt.asked) opt.asked.push(url.searchParams.get('q') || '');
     if (url.pathname === '/hunt') return opt.hold ? new Promise(() => {}) : J({ rows: [], picks: [] });
     const q = url.searchParams.get('q');
