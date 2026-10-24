@@ -1,16 +1,26 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.91 / v167).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.93 / v168).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.91** | 392,511 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v167** | |
+| Page | **v7.93** | 392,401 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v168** | |
 
 Recently shipped, newest first:
 
+- **v7.93 / v168: Saved forever, a Prowl Pro perk, kept a year** (Matt: "Let's build the forever save but a prowl
+  perk and let's trim it to a year"). A Pro member's saved finds (Flock › Saved) sync like likes: POST /alerts/saved
+  sends the device's finds and its removals (new key `prowl.findsGone`); the worker keeps them in `saved:<email>` a
+  year from the day each was saved (newest of saved or removed wins), copies each photo to R2
+  `saved/<sha16 email>/<sha16 url>.jpg` (prowl-finds; the bucket's 30-day rule is for `finds/` only, so leave it so),
+  and hands back a signed photo link (GET /saved/..., a day) and the day each leaves. A daily sweep (07:00 UTC) drops
+  finds past their year with their photos; Delete takes them all. Free members get 402 and keep saving on the device;
+  Saved says, on one line under the tabs, what Pro does. Each Pro card says "Kept until Oct 24, 2027". The page uses
+  the kept photo, which outlives the listing's. Not built yet: a sold/ended check per marketplace.
+  Tests: `worker/__tests__/saved-v168.test.mjs`, `__tests__/page/saved-forever-v793.test.mjs`.
 - **v7.91: Likes is in Flock; a swipe no longer deletes a saved find** (Matt: "move likes into flock feed saved likes.
   They are different. The likes are feeding the algorithm ... Some things I was saving don't seem to be there
   anymore"). Flock's switch is **Flock · Saved · Likes**, each with its count (the feed's tab says Flock: "it should be flock or some bird gathering term"); Likes is the old Den pane (What Prowl
@@ -1334,7 +1344,6 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 | (another session) | Claude | **v7.92**: How Prowl works covers Near me, the road, reordering pills and Flock's Saved/Likes | PR #243 open. |
-| `ccr-0de21c46-yzs839` | Claude | **v7.93 / v168**: Saved forever, a Prowl Pro perk: saved finds follow the account for a year, photos kept | Draft PR, building. |
 
 Next free numbers: **page v7.94, worker v169**. Claim one here when you start.
 

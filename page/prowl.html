@@ -2503,6 +2503,12 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper #otp-flock #otp-denLikes[hidden]{display:none}
 .scout-app-wrapper #otp-flock #otp-denLikes .lk-h{margin-top:14px}
 @media (max-width:480px){.scout-app-wrapper #otp-den .tab{flex:1 1 40%}}   /* v7.91: four Den tabs, two by two on a phone */
+/* v7.93: Saved forever */
+.scout-app-wrapper .fl-svn{flex:none;margin:0;padding:8px 16px 6px;font-size:14px;line-height:1.45;color:var(--mu)}
+.scout-app-wrapper .fl-svn[hidden]{display:none}
+.scout-app-wrapper .fl-svn b{color:var(--ink)}
+.scout-app-wrapper .fl-svn a{color:var(--ac);font-weight:700}
+.scout-app-wrapper .fl-kept{margin:2px 0 0;font-size:13px;font-weight:700;color:var(--go)}
 /* v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
      shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
      under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing.
@@ -2628,6 +2634,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <button type="button" class="gh" id="otp-flockShuf">Shuffle</button>
     </div>
     <p class="flock-sub k2-hide">A look across your hunts: a find or two from each.</p>
+    <p class="fl-svn" id="otp-flSvn" hidden></p>
     <div id="otp-flockRow" role="feed" aria-label="Finds across your hunts" tabindex="0"></div>
     <div class="fl-likesP" id="otp-denLikes" role="region" aria-label="Your likes" hidden></div>
   </section>
@@ -3685,7 +3692,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.91';
+var PROWL_VERSION='v7.93';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -4138,6 +4145,7 @@ function huntUndo(){
 function findUndo(){
   var U=FIND_UNDO,a;FIND_UNDO=null;toastOff();
   if(!U||findIdx(U.f.url)>-1)return;
+  sgoneDrop(U.f.url);if(mailPro())U.f.at=Date.now();   /* v7.93: newer than a removal the account may already have */
   a=findsGet();a.splice(Math.min(U.i,a.length),0,U.f);findsPut(a);
   svPaint(U.f.url);flSavedChanged();rDenStats();
 }
@@ -7249,7 +7257,7 @@ function mailStatus(fresh,cb){
       else if(j&&j.on===false){mSet('alertTok','');mSet('alertSig','');}
       /* v6.00: this device may push its list only after a real pull merged the
          member's list in; a bad or missing answer leaves sync off until the next status */
-      if(j&&j.on){MAIL.ready=true;rMail();mailSync(true);likesSync(true);}else rMail();   /* v6.48: likes too */
+      if(j&&j.on){MAIL.ready=true;rMail();mailSync(true);likesSync(true);savedSync(true);}else rMail();   /* v6.48: likes too; v7.93: saves (Pro) */
       if(cb)cb(j);
     },function(){rMail();if(cb)cb(null)});
 }
@@ -8103,10 +8111,16 @@ function flAfterDiscard(card){
   return k;
 }
 function flSavedHtml(dm){
-  var a=findsGet(),w=watchGet(),h='',i,f;   /* v7.91: everything saved shows, swiped away in the feed or not */
+  var a=findsGet(),w=watchGet(),h='',i,f,c,kd;   /* v7.91: everything saved shows, swiped away in the feed or not */
   a.sort(function(x,y){return (y.at||0)-(x.at||0)});
+  /* v7.93: what Prowl does with them, one line: Pro keeps them a year on the account; free keeps them on this device */
+  var pro=mailPro()&&SV.pro!==false,nb=$('#otp-flSvn');
+  if(nb)nb.innerHTML=pro?'<b>Kept for a year</b> with their photos, on every device you sign in on. Prowl Pro.'
+    :'Saved finds stay on this device. <a href="'+PRO_URL+'">Prowl Pro</a> keeps them a year, photos and all, on every device, even after the listing is gone.';   /* a line under the tabs (in the feed it would take a whole page) */
   if(!a.length&&!w.length)return flNote('fl-empty','<p>Nothing saved yet. Tap the star on any find to keep it here.</p>');
-  for(i=0;i<a.length;i++){f=a[i];h+=flockCardHtml({t:f.hunt,it:{title:f.title,price:f.price,url:f.url,image:f.image,src:f.src}})}
+  for(i=0;i<a.length;i++){f=a[i];c=flockCardHtml({t:f.hunt,it:{title:f.title,price:f.price,url:f.url,image:f.ph||f.image,src:f.src}});
+    kd=pro?keptDay(f.until):'';if(kd)c=c.indexOf('<div class="fl-for">')>-1?c.replace('<div class="fl-for">','<div class="fl-kept">Kept until '+kd+'</div><div class="fl-for">'):c.replace('</a>','<div class="fl-kept">Kept until '+kd+'</div></a>');
+    h+=c}
   if(w.length){   /* v6.39: price-drop watches sit under their own heading */
     h+='<div class="fl-group" role="heading" aria-level="3">Watching</div>';
     for(i=0;i<w.length;i++){f=w[i];h+=flockCardHtml({t:f.h,it:{title:f.t,price:f.p,url:f.u,image:f.i,src:f.s}})}
@@ -8242,6 +8256,7 @@ function flSeg(){
   sec.classList.toggle('fl-saved',FLOCK.view!=='feed');   /* v7.91: Saved and Likes both quiet the feed's head */
   sec.classList.toggle('fl-likesv',FLOCK.view==='likes');
   var lp=$('#otp-denLikes');if(lp)lp.hidden=FLOCK.view!=='likes';
+  var sn=$('#otp-flSvn');if(sn)sn.hidden=FLOCK.view!=='saved';   /* v7.93 */
   if(FLOCK.view==='likes')rDenLikes();
   $$('#otp-flock .fl-seg [data-fv]').forEach(function(b){b.setAttribute('aria-selected',String(b.getAttribute('data-fv')===FLOCK.view))});
 }
@@ -8307,7 +8322,7 @@ function flShuffle(){FLOCK.view='feed';flSeg();flockStart()}
 function flDiscard(card){
   var u=card&&card.getAttribute('data-u');if(!u)return;
   var sv=FLOCK.view==='saved',i=sv?findIdx(u):-1,was=null,a;
-  if(i>-1){a=findsGet();was=a[i];a.splice(i,1);findsPut(a);svPaint(u)}
+  if(i>-1){a=findsGet();was=a[i];a.splice(i,1);sgoneAdd(u);findsPut(a);svPaint(u)}
   disAdd(u);disTAdd(u,card.getAttribute('data-t')||card.getAttribute('aria-label')||'');   /* v6.47: swipe-aways teach Flock too */
   var nk=flAfterDiscard(card);   /* v6.61 */
   FLOCK.last={u:u,f:was,w:sv?watchDrop(u):null,l:likeDrop(u),nk:nk};
@@ -8321,7 +8336,7 @@ function flUndo(){
   FLOCK.last=null;disDrop(L.u);disTDrop(L.u);
   if(L.nk&&FLOCK.nearDis[L.nk]){FLOCK.nearDis[L.nk]--;if(FLOCK.nearDis[L.nk]<2&&FLOCK.nearNo[L.nk]){delete FLOCK.nearNo[L.nk];FLOCK.near=null}}   /* v6.61 */
   if(L.l&&!likeHas(L.u)){var la=likesGet();var lc=likeClean(L.l);if(lc){lc.at=Date.now();la.unshift(lc);likesPut(la)} }   /* v6.48: newer than the unlike */
-  if(L.f&&findIdx(L.u)<0){a=findsGet();a.unshift(L.f);findsPut(a)}
+  if(L.f&&findIdx(L.u)<0){sgoneDrop(L.u);if(mailPro())L.f.at=Date.now();a=findsGet();a.unshift(L.f);findsPut(a)}
   if(L.w&&watchIdx(L.u)<0)watchAdd(L.w);
   svPaint(L.u);
   var e=$('#otp-toast');if(e){e.classList.remove('on');e.classList.remove('act')}
@@ -10097,7 +10112,8 @@ function findClean(f){
   if(!f||typeof f!=='object'||typeof f.url!=='string'||!/^https:\/\//i.test(f.url)||!f.title)return null;
   return {title:String(f.title).replace(/\s+/g,' ').slice(0,140).trim(),price:f.price?String(f.price).slice(0,24):'',url:f.url.slice(0,800),
     image:(typeof f.image==='string'&&/^https:\/\//i.test(f.image))?f.image.slice(0,800):'',
-    src:typeof f.src==='string'?f.src.slice(0,24):'',hunt:f.hunt?String(f.hunt).replace(/\s+/g,' ').slice(0,80):'',at:Number(f.at)||0};
+    src:typeof f.src==='string'?f.src.slice(0,24):'',hunt:f.hunt?String(f.hunt).replace(/\s+/g,' ').slice(0,80):'',at:Number(f.at)||0,
+    ph:(typeof f.ph==='string'&&f.ph.indexOf(SGW_API+'saved/')===0)?f.ph.slice(0,400):'',until:/^\d{4}-\d{2}-\d{2}$/.test(String(f.until||''))?String(f.until):''};   /* v7.93: Saved forever */
 }
 function findsGet(){
   if(FC)return FC.slice();
@@ -10105,7 +10121,44 @@ function findsGet(){
   if(Array.isArray(a))for(i=0;i<a.length&&out.length<FINDS_MAX;i++){f=findClean(a[i]);if(f&&!seen[f.url]){seen[f.url]=1;out.push(f)} }
   FC=out;return out.slice();
 }
-function findsPut(a){FC=a.slice(0,FINDS_MAX);xSet(FINDS_KEY,FC)}
+function findsPut(a,quiet){FC=a.slice(0,FINDS_MAX);xSet(FINDS_KEY,FC);if(!quiet)savedSync()}   /* v7.93: a Pro member's saves follow the account */
+/* v7.93 Saved forever, a Prowl Pro perk (Matt: "Let's build the forever save but a prowl perk and let's trim it to a
+   year"; worker v168, POST /alerts/saved). A Pro member's saved finds sync like likes: each device sends its list and
+   what it removed (prowl.findsGone, new key), the worker keeps them a year from saving with a copy of the photo and
+   hands back the list with a signed photo link (ph) and the day each leaves (until). Free members save on the device,
+   as before; SV.pro says what the worker last answered. */
+var SGONE_KEY='prowl.findsGone',SV={timer:0,busy:false,again:false,ver:0,pro:null};
+function sgoneGet(){var a=xGet(SGONE_KEY,[]),out=[],i;if(Array.isArray(a))for(i=0;i<a.length&&out.length<300;i++)if(a[i]&&typeof a[i].u==='string'&&/^https:\/\//i.test(a[i].u))out.push({u:a[i].u.slice(0,800),at:Number(a[i].at)||0});return out}
+function sgoneAdd(u){var a=sgoneGet().filter(function(x){return x.u!==u});a.unshift({u:u,at:Date.now()});xSet(SGONE_KEY,a.slice(0,300))}
+function sgoneDrop(u){xSet(SGONE_KEY,sgoneGet().filter(function(x){return x.u!==u}))}
+function savedSync(now){
+  var tok=mGet('alertTok'),em=mGet('alertEmail');
+  SV.ver++;
+  if(!tok||!em||!mailPro()||typeof fetch!=='function')return;
+  clearTimeout(SV.timer);
+  SV.timer=setTimeout(function(){
+    if(SV.busy){SV.again=true;return}
+    var v=SV.ver;SV.busy=true;
+    fetch(SGW_API+'alerts/saved',{method:'POST',headers:window.prowlAuth({'Content-Type':'application/json'}),body:JSON.stringify({email:em,tok:tok,saved:findsGet(),gone:sgoneGet()})})
+      .then(function(r){return r.json().then(function(j){return {st:r.status,j:j}})}).then(function(x){
+        SV.busy=false;
+        if(x.st===402||(x.j&&x.j.pro===false)){if(SV.pro!==false){SV.pro=false;flSavedChanged()}}
+        else if(x.j&&x.j.ok&&v===SV.ver)savedApply(x.j);
+        if(SV.again){SV.again=false;savedSync(true)}
+      },function(){SV.busy=false;SV.again=false});
+  },now?0:2500);
+}
+function savedApply(j){
+  var L=[],i,f,was=JSON.stringify(findsGet());
+  for(i=0;i<(Array.isArray(j.saved)?j.saved.length:0)&&L.length<FINDS_MAX;i++){f=j.saved[i];if(f&&typeof f.ph==='string'&&f.ph.charAt(0)==='/')f=Object.assign({},f,{ph:SGW_API+f.ph.slice(1)});f=findClean(f);if(f)L.push(f)}
+  xSet(SGONE_KEY,Array.isArray(j.gone)?j.gone:[]);xSet(SGONE_KEY,sgoneGet());
+  SV.pro=true;
+  findsPut(L,true);
+  if(JSON.stringify(findsGet())===was){flSavedChanged();return}
+  $$('.sgw-sv').forEach(function(b){svPaint(b.getAttribute('data-sv'))});
+  flSavedChanged();rDenStats();
+}
+function keptDay(d){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d||''));return m?DG_MON[+m[2]-1]+' '+(+m[3])+', '+m[1]:''}
 function findIdx(u){var a=findsGet();for(var i=0;i<a.length;i++)if(a[i].url===u)return i;return -1}
 /* v6.54: the like heart for result cards. Before the likes store is set up (first paint) it draws as not liked. */
 function lkBtn(it){
@@ -10140,10 +10193,11 @@ function svFromCell(u,b){
 }
 function svToggle(u,b){
   var a=findsGet(),i=findIdx(u),it,f;
-  if(i>-1){FIND_UNDO={f:a[i],i:i};a.splice(i,1);findsPut(a);toast('Removed from saved finds. <button type="button" class="gh" id="otp-unfind">Undo</button>',5000)}   /* v7.12 */
+  if(i>-1){FIND_UNDO={f:a[i],i:i};a.splice(i,1);sgoneAdd(u);findsPut(a);toast('Removed from saved finds. <button type="button" class="gh" id="otp-unfind">Undo</button>',5000)}   /* v7.12 */
   else{
     it=SVI[u]||svFromCell(u,b);if(!it||!it.title){toast('Could not save this one. Open it and try again.',2600);return}
     f=findClean({title:it.title,price:it.price,url:it.url,image:it.image,src:it.src,hunt:it.hunt,at:Date.now()});if(!f)return;
+    sgoneDrop(u);   /* v7.93 */
     a.unshift(f);
     if(a.length>FINDS_MAX)toast('Saved. Your oldest saved find made room for it.',3200);
     else toast('★ Saved. It is in <b>Flock › Saved</b>.',2600);
