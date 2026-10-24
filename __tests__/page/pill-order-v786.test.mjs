@@ -44,7 +44,7 @@ test('press and hold a pill, drag it before another, let go: the order changes a
   assert.deepEqual(s.hunts, ['mccoy planter', 'rookwood vase', 'old crock', 'catalin bracelet', 'pyrex butterprint'], 'the unlocked hunt keeps its place');
   assert.deepEqual(s.lock.sort(), [0, 1, 3, 4], 'the locked places are the same');
   assert.deepEqual(s.sel, [4], 'the selection follows pyrex');
-  assert.match(p.$('#otp-toast').textContent, /Order saved\. Daily and Prowl Alerts go through your hunts in this order\./);
+  assert.equal(p.$('#otp-toast').textContent, 'Moved mccoy planter to spot 1 of 4. Saved.');   /* v7.89 wording */
   assert.equal(p.$('.sgw-drag'), null);
   assert.deepEqual(p.errors, []);
   await p.close();

@@ -17,7 +17,10 @@ Recently shipped, newest first:
   after), Done. While reordering every pill shows (no "+ more"), the ×'s hide, pills are dashed and a tap never opens a
   hunt; "Not this one" puts the picked one down, Escape leaves. The long press stays, now with `selectstart` refused on
   pills, `user-select:none` on their insides too, and any selection dropped when a pill lifts.
-  Test: `__tests__/page/pill-reorder-v789.test.mjs`.
+  Then (Matt: "It does highlight now and move to new spot but nothing says what it is doing"): one dark bar fixed over
+  the dock says what is happening ("Moving t: tap where it goes", "Tap the hunt you want to move") and what just
+  happened ("Moved t to spot 1. Saved."); outside Reorder a move says "Moved t to spot 1 of 4. Saved." and the pill
+  glows green where it landed (`sgwMoved`). Test: `__tests__/page/pill-reorder-v789.test.mjs`.
 - **v7.88: tap to place a held pill** (Matt, on v7.87: "Some worked some didn't. It still blinks and vibrates").
   Some phones take a touch back after a long press (their own menu), so the hold buzzed and the drag never came. A
   held pill let go or taken back without a landing place now stays picked up (orange ring, "Tap where … goes. Cancel"

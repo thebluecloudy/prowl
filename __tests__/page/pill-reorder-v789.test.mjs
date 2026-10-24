@@ -24,15 +24,16 @@ test('Reorder: tap the hunt, tap where it goes, Done; it is kept', async () => {
   ro(p).click(); await tick(20);
   assert.equal(ro(p).textContent, 'Done');
   assert.equal(ro(p).getAttribute('aria-pressed'), 'true');
-  assert.equal(bar(p), 'Tap the hunt you want to move. Done');
+  assert.equal(bar(p), 'Tap the hunt you want to move.Done');
   assert.ok(p.$('#otp-sgw').classList.contains('sgw-reordering'));
   pills(p)[3].click(); await tick(20);
-  assert.equal(bar(p), 'Tap where mccoy planter goes. Not this one');
+  assert.equal(bar(p), 'Moving mccoy planter: tap where it goes.Not this one');
   assert.ok(pills(p)[3].classList.contains('sgw-pickd'));
   assert.equal(p.$('#otp-sgw .sgw-chip.on').textContent, cur, 'a tap while reordering does not open a hunt');
   pills(p)[0].click(); await tick(20);
   assert.deepEqual(names(p), ['mccoy planter', 'rookwood vase', 'catalin bracelet', 'pyrex butterprint']);
-  assert.equal(bar(p), 'Tap the hunt you want to move. Done', 'still reordering, for the next one');
+  assert.equal(bar(p), 'Moved mccoy planter to spot 1. Saved. Tap another to move, or Done.Done', 'it says what happened, and is ready for the next one');
+  assert.ok(pills(p)[0].classList.contains('sgw-moved'), 'and the pill glows where it landed');
   pills(p)[1].click(); await tick(20);
   pills(p)[3].click(); await tick(20);
   assert.deepEqual(names(p), ['mccoy planter', 'catalin bracelet', 'rookwood vase', 'pyrex butterprint']);
@@ -52,7 +53,7 @@ test('Not this one puts it down; Escape leaves reordering', async () => {
   ro(p).click(); await tick(20);
   pills(p)[1].click(); await tick(20);
   p.$('#otp-sgw .sgw-pickbar [data-sgw="pickx"]').click(); await tick(20);
-  assert.equal(bar(p), 'Tap the hunt you want to move. Done');
+  assert.equal(bar(p), 'Tap the hunt you want to move.Done');
   p.doc.dispatchEvent(new p.win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await tick(20);
   assert.equal(bar(p), null);
   assert.deepEqual(names(p), ['rookwood vase', 'catalin bracelet', 'pyrex butterprint', 'mccoy planter']);
@@ -89,4 +90,8 @@ test('a phone that starts selecting a pill\'s words is told no', async () => {
   assert.equal(f.defaultPrevented, false, 'the rest of the card still selects');
   assert.ok(PAGE.includes('.scout-app-wrapper .sgw-chip[data-sgw="pick"] *{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}'));
   await p.close();
+});
+
+test('the bar sits over the dock, on screen however far the pills are scrolled', () => {
+  assert.match(PAGE, /\.scout-app-wrapper \.sgw-pickbar\{position:fixed;[^}]*bottom:calc\(84px \+ env\(safe-area-inset-bottom\)\)/);
 });
