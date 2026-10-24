@@ -1,5 +1,5 @@
-// Page v7.77: the Hunt screen from the owner's design brief ("Prowl design system and UX brief"), the parts still open
-// at v7.76. Hunt is the full-width button under the box on a phone; a desktop collapses the hunt pills too (12 and
+// Page v7.78: the Hunt screen from the owner's design brief ("Prowl design system and UX brief"), the parts still open
+// at v7.77. Hunt is the full-width button under the box on a phone; a desktop collapses the hunt pills too (12 and
 // +N more); the pills are 44px with 15px words; the sold-price row and Best picks name the hunt they follow; and one
 // accent outline shows keyboard focus (the reset takes every button's outline off).
 import { test } from 'node:test';

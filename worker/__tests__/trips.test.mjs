@@ -69,12 +69,13 @@ const SHOPS = [
   gPlace("Hillbilly Flea Market", "Ashland", "KY", 38.4795, -82.6410, { userRatingCount: 970, rating: 3.9, primaryTypeDisplayName: { text: "Flea Market" } }),   /* v138: out unless Flea markets is on */
 ];
 const BLENKO = gPlace("Blenko Glass Company", "Milton", "WV", 38.4345, -82.1322, { regularOpeningHours: { periods: [1, 2, 3, 4, 5].map((d) => ({ open: { day: d, hour: 9, minute: 0 }, close: { day: d, hour: 15, minute: 30 } })), weekdayDescriptions: ["Monday: 9:00 AM – 3:30 PM", "Tuesday: 9:00 AM – 3:30 PM", "Wednesday: 9:00 AM – 3:30 PM", "Thursday: 9:00 AM – 3:30 PM", "Friday: 9:00 AM – 3:30 PM", "Saturday: Closed", "Sunday: Closed"] } });
-const CALLS = [], DIST = [], SUG = [], ROUTE_BODIES = [];
+const CALLS = [], DIST = [], SUG = [], ROUTE_BODIES = [], PIN_FAIL = {};
 let DROP_HERE = false;   /* v153: Google's relevance answer leaves out the shop at the very spot asked about */
 function fakeGoogle(u, init) {
   u = String(u); CALLS.push(u);
   const ok = (j) => Promise.resolve({ ok: true, status: 200, json: async () => j, headers: new Headers({ "Content-Type": "application/json" }) });
   if (/places:autocomplete/.test(u)) { const b = JSON.parse(init.body); SUG.push(b); return ok({ suggestions: [{ placePrediction: { placeId: "ChIJblenko", text: { text: "Blenko Glass Company, Milton, WV, USA" }, structuredFormat: { mainText: { text: "Blenko Glass Company" }, secondaryText: { text: "Milton, WV, USA" } } } }, { queryPrediction: { text: { text: "blenko glass for sale" } } }, { placePrediction: { placeId: "ChIJmilton", text: { text: "Milton, WV, USA" }, structuredFormat: { mainText: { text: "Milton" }, secondaryText: { text: "WV, USA" } } } }] }); }   /* v161 */
+  if (/places:searchText/.test(u)) { const q = JSON.parse(init.body).textQuery; if (PIN_FAIL[q] > 0) { PIN_FAIL[q]--; return Promise.resolve({ ok: false, status: 429, json: async () => ({ error: { message: "quota" } }) }); } }   /* v165: Google says no, once */
   if (/places:searchText/.test(u)) {
     const b = JSON.parse(init.body);
     if (/paged test/.test(b.textQuery)) {   /* v139: 45 shops over three pages */
@@ -116,9 +117,9 @@ function fakeGoogle(u, init) {
 const SECRET = "s".repeat(40);
 const PRO = {};   /* cid -> paid Pro, the fake shop */
 const names = ["gKey", "gFetch", "gPlacesText", "gPlacesAll", "gPlacesPage", "gPlacesNearby", "kindSearches", "gPlaceHours", "gRoutes", "gTown", "nearNum", "tripCell", "nearAnswer", "nearRoute", "tripBuild", "tripRoute", "tripKey", "ppRoute",
-  "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "inviteSig", "inviteOk", "reviewsRoute", "suggestRoute", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep", "tripPurge", "tripIndexRemove",
+  "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "pinLookup", "inviteSig", "inviteOk", "reviewsRoute", "suggestRoute", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep", "tripPurge", "tripIndexRemove",
   "b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessVerify", "sessMember", "pxHmac", "alSame", "alEmail", "sha16", "kvGet", "kvPut", "readJson", "vClean", "scrubPII", "ipKey", "ip6Parts", "cors", "json"];
-const pre = ["const BAD_TYPES = new Set();", constLine("REVIEWS_PER_IP"), constLine("NEAR_HERE_M"), constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
+const pre = ["const BAD_TYPES = new Set();", constLine("PIN_RETRY_MS").replace(/= \d+/, "= 1"), constLine("REVIEWS_PER_IP"), constLine("NEAR_HERE_M"), constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
 const W = fromIndex(names, Object.assign({ fetch: fakeGoogle, PCACHE, vCount: async () => true, isOwner: (r) => r.headers.get("x-prowl-owner") === "owner-key-0123456789", alProShop: async (env, email, c, cid) => ({ pro: !!PRO[cid] }), console: { error() {} } }, TRIP), pre);
 
 function envWith(o) { return Object.assign({ PROWL_ALERTS: new FakeKV(), PROWL_SESSION_SECRET: SECRET, GOOGLE_MAPS_KEY: "k".repeat(30) }, o || {}); }
@@ -536,7 +537,8 @@ test("v163: stops on the way: each named stop is a place in the list, in drive o
   assert.ok(r.body.stops.some((s) => !s.pin), "the shops between them are still found");
   assert.match(decodeURIComponent(r.body.maps), /Maumee Antique Mall, Maumee, OH\|.*Central City Antiques, Huntington, WV/, "in the Maps link, in order");
   const rb = ROUTE_BODIES[ROUTE_BODIES.length - 1];
-  assert.deepEqual(rb.intermediates.map((x) => x.address), ["Central City Antiques, Huntington, WV", "Maumee Antique Mall, Maumee, OH"], "the drive goes through them");
+  const at = (n) => SHOPS.find((p) => p.displayName.text === n).location.latitude;
+  assert.deepEqual(rb.intermediates.map((x) => x.location.latLng.latitude), [at("Central City Antiques"), at("Maumee Antique Mall")], "the drive goes through them, in the order given, by their spots (v165)");
   const again = await call(env, "GET", "/trip?to=" + encodeURIComponent("Blenko Glass Company, Milton, WV") + "&" + NOVI + "&day=2026-10-27");
   assert.equal(again.res.headers.get("X-Prowl-Cache"), null, "another set of stops is another trip");
   assert.equal(again.body.pins, 0);
@@ -561,4 +563,24 @@ test("v163: every trip.js helper the worker calls is imported (the tests hand th
   const local = new Set([...INDEX.matchAll(/^(?:async )?function (\w+)/gm)].map((m) => m[1]));
   const missing = exported.filter((n) => !imp.includes(n) && !local.has(n) && new RegExp("[^.\\w]" + n + "\\(").test(INDEX));
   assert.deepEqual(missing, []);
+});
+
+test("v165: stops are looked up first and once more if Google says no; the drive goes through their own spots; a stop never found is said", async () => {
+  const env = envWith(); PCACHE.m.clear(); ROUTE_BODIES.length = 0;
+  const A = "Maumee Antique Mall, Maumee, OH", B = "Central City Antiques, Huntington, WV";
+  PIN_FAIL[A] = 1;   /* refused the first time */
+  const r = await call(env, "GET", "/trip?to=" + encodeURIComponent("Blenko Glass Company, Milton, WV") + "&via=" + encodeURIComponent(A + "|" + B) + "&" + NOVI + "&day=2026-10-28");
+  assert.equal(r.status, 200);
+  assert.equal(r.body.pins, 2, "both found, the first on the second ask");
+  assert.deepEqual(r.body.missing, []);
+  const rb = ROUTE_BODIES[ROUTE_BODIES.length - 1];
+  assert.ok(rb.intermediates.every((x) => x.location && x.location.latLng && x.via === true), "by their own spots: " + JSON.stringify(rb.intermediates));
+  const mall = SHOPS.find((p) => p.displayName.text === "Maumee Antique Mall");
+  assert.equal(rb.intermediates[0].location.latLng.latitude, mall.location.latitude);
+  PCACHE.m.clear(); ROUTE_BODIES.length = 0;
+  const C = "Nowhere Junk Barn, Atlantis, OH";
+  const m = await call(env, "GET", "/trip?to=" + encodeURIComponent("Blenko Glass Company, Milton, WV") + "&via=" + encodeURIComponent(A + "|" + C) + "&" + NOVI + "&day=2026-10-28");
+  assert.equal(m.body.pins, 1);
+  assert.deepEqual(m.body.missing, [C], "said, not dropped quietly");
+  assert.deepEqual(ROUTE_BODIES[ROUTE_BODIES.length - 1].intermediates[1], { address: C, via: true }, "still driven through by its words");
 });

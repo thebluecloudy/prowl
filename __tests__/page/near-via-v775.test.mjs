@@ -60,3 +60,32 @@ test('add up to three stops on the way, with suggestions; the drive is built thr
   assert.deepEqual(p.errors, []);
   await p.close();
 });
+
+test('v7.77: Build trip comes after the stops; your stops are always in the one Maps link; a stop not found is said', async () => {
+  const calls = [];
+  const many = Array.from({ length: 11 }, (_, i) => card('S' + i, 'Shop ' + i, 'Town ' + i + ', OH', { n: 1000 + i, tier: 2 }));
+  const pins = [card('P1', 'Rookwood Pottery', 'Cincinnati, OH', { pin: true, n: 5, tier: 0 }), card('P2', 'Mosser Glass Warehouse', 'Cambridge, OH', { pin: true, n: 3, tier: 0 })];
+  const T = Object.assign({}, TRIP, { stops: [pins[0]].concat(many.slice(0, 6), [pins[1]], many.slice(6)), via: ['Rookwood Pottery, Cincinnati, OH', 'Mosser Glass Warehouse, Cambridge, OH', 'Nowhere Barn, Atlantis, OH'], pins: 2, missing: ['Nowhere Barn, Atlantis, OH'] });
+  const base = fx(calls);
+  const p = loadPage({ storage: DEN, fetchImpl: (u, o) => (/\/trip\?/.test(String(u)) ? (calls.push({ url: String(u) }), J(T)) : base(u, o)), beforeLoad: phone });
+  await tick(30);
+  p.$('#otp-localBtn').click(); await tick(60);
+  p.$('#otp-nrT2').click(); await tick(20);
+  const go = p.$('#otp-nrGo');
+  assert.equal(go.textContent, 'Build trip');
+  assert.equal(p.$('#otp-nrForm button'), null, 'not beside the box any more');
+  assert.ok(p.$('#otp-nrVias').compareDocumentPosition(go) & 4, 'after the stops');
+  assert.ok(p.$('#otp-nrFromP').compareDocumentPosition(go) & 4, 'and after From');
+  p.$('#otp-nrTo').value = 'Novi, MI';
+  go.click(); await tick(150);
+  assert.ok(calls.find((x) => /\/trip\?to=Novi%2C%20MI/.test(x.url)), 'the button builds it');
+  const wp = new URL(p.$('#otp-nrStart').href).searchParams.get('waypoints').split('|');
+  assert.equal(wp.length, 9, 'one link, nine stops');
+  assert.ok(wp.includes('Rookwood Pottery, Cincinnati, OH') && wp.includes('Mosser Glass Warehouse, Cambridge, OH'), 'your stops always, small as they are');
+  assert.ok(wp.indexOf('Rookwood Pottery, Cincinnati, OH') < wp.indexOf('Mosser Glass Warehouse, Cambridge, OH'), 'in drive order');
+  assert.equal(p.$$('#otp-nrOut .nr-pinrow .nr-nm').length, 0, 'never Listed only');
+  assert.equal(p.$$('#otp-nrOut .nr-nm').length, 4, 'four shops left out, said on their cards');
+  assert.match(p.$('#otp-nrOut').textContent, /Not found on the map: Nowhere Barn\. The drive still goes there/);
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});

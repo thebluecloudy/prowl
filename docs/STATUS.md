@@ -1,17 +1,17 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.77 / v164).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.78 / v165).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.77** | 393,790 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v164** | |
+| Page | **v7.78** | 393,771 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v165** | |
 
 Recently shipped, newest first:
 
-- **v7.77: the Hunt screen, from the owner's design brief** ("Prowl design system and UX brief", written against
+- **v7.78: the Hunt screen, from the owner's design brief** ("Prowl design system and UX brief", written against
   v7.60; Matt: "take any of the ideas and see if it is useful"). Most of its Hunt-screen list had already shipped
   (search in the first screen, no "Just Facebook" button, filter chips under the box, pills collapsing on a phone, the
   install pill at the bottom); these were still open:
@@ -24,7 +24,25 @@ Recently shipped, newest first:
     of them; `:focus-visible` on links, buttons, `[role=button]`, `summary` and `[tabindex]` draws the accent
     outline. Taps show nothing.
   - Left out on purpose: the brief's navy and gold palette (the default is the cream Owl & Twig look; Dark is close to
-    it already) and a desktop top tab bar. Test: `__tests__/page/hunt-brief-v777.test.mjs`.
+    it already) and a desktop top tab bar. Test: `__tests__/page/hunt-brief-v778.test.mjs`.
+- **v7.77 / v165: your stops always land, Build trip after them, one Maps link** (the owner, trying v7.75 with Rookwood
+  Pottery and Mosser Glass on the way: "the build trip button is up at the top, and when i built the trip, it missed my
+  two stops ... they should be a destination. also it split it into two, it should just build the entire trip").
+  - Worker: v163 looked the stops up after the corridor's searches (up to a hundred on a long trip with every kind on),
+    and Google refused those late asks: the drive went through Cincinnati and Cambridge but neither stop was listed
+    (live: each stop alone, or two with antiques only, worked; the owner's pair with all three kinds did not). Now they
+    are looked up first, beside the destination (`pinLookup`, asked once more after 400 ms), and the drive goes through
+    each one's own spot (Routes intermediates by latLng). A stop still not found is `missing` in the answer and said on
+    the page; the drive still goes there by its words. Trip cache key v=11, so no v163 answer is served.
+  - Page: **Build trip** is a full-width button after the stops, From and the options (`#otp-nrGo`, moved out of the
+    To form; Enter in To still builds). **One Maps link** for the whole drive, Google and Apple (`nrMapsPick` in
+    `nrLegsGen`; no more "Google Maps 1 / 2"): every stop you named, then the biggest shops up to the app's limit (9 in
+    Google Maps, 13 in Apple Maps), in drive order; the rest say "Listed only, not in the Maps route" and a line says
+    how many, with Skip to bring another in. This replaces v7.62's Apple legs ("must carry every stop") at the owner's
+    newer word.
+  - Tests: `worker/__tests__/trips.test.mjs` (Google says no once; by their spots; a stop never found),
+    `__tests__/page/near-via-v775.test.mjs`; the legs tests in `near-section-v736`, `near-road-v772` and
+    `road-upgrades-v762` now expect one link.
 - **v7.76 / v164: the photo check waits for Check it, takes up to 3 photos, and checks again with a fixed maker**
   (the owner: "the tool searches immediately, but i want to add a picture and then add words, or even another picture,
   and then hit search. or, the ai got it wrong, and i want to go back and add a search term or maker, and rerun").
@@ -1190,7 +1208,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.78, worker v165**. Claim one here when you start.
+Next free numbers: **page v7.79, worker v166**. Claim one here when you start.
 
 ## What's next
 

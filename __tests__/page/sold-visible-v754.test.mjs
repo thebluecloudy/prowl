@@ -28,7 +28,7 @@ test('eBay Sold and Terapeak sit under the title, before the live results, outsi
   const rc = p.$('#otp-res .rc');
   const box = rc.querySelector('.comps-top');
   assert.ok(box, 'the sold-price row');
-  assert.equal(box.querySelector('.comps-h').textContent, 'What has Pyrex butterprint sold for?', 'v7.77: names the search');
+  assert.equal(box.querySelector('.comps-h').textContent, 'What has Pyrex butterprint sold for?', 'v7.78: names the search');
   for (const sel of ['.rf', '.hits', '.oabar']) assert.equal(box.closest(sel), null, 'not inside ' + sel);
   assert.equal(box.previousElementSibling, rc.querySelector('.rh'), 'right under the title');
   assert.ok(box.compareDocumentPosition(rc.querySelector('.run-live')) & p.win.Node.DOCUMENT_POSITION_FOLLOWING, 'before the live results');
@@ -62,7 +62,7 @@ test('tapping a favorite-hunt pill shows the sold-price row over its live listin
   assert.equal(p.$('#otp-res .rc'), null, 'no search run; the home panel');
   const box = p.$('.sgw-body .comps-top');
   assert.ok(box, 'the sold-price row in the pill\'s panel');
-  assert.equal(box.querySelector('.comps-h').textContent, 'What has rookwood vase sold for?', 'v7.77: names the pill tapped');
+  assert.equal(box.querySelector('.comps-h').textContent, 'What has rookwood vase sold for?', 'v7.78: names the pill tapped');
   assert.deepEqual([...box.querySelectorAll('[data-comps]')].map((b) => b.getAttribute('data-t')), ['rookwood vase', 'rookwood vase']);
   box.querySelector('[data-comps="90"]').click();
   box.querySelector('[data-comps="3y"]').click();
