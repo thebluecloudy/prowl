@@ -2242,6 +2242,15 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-triprow .nr-tripb{flex:1 1 auto;min-width:0}
 .scout-app-wrapper .nr-tripdel{min-height:44px;padding:0 12px}
 .scout-app-wrapper .nr-tripdel.arm{border-color:#b3261e;color:#b3261e;background:transparent}
+.scout-app-wrapper .nr-vias{display:flex;flex-direction:column;gap:8px;margin:2px 0 10px}
+.scout-app-wrapper .nr-vias .nr-optt{margin:0}
+.scout-app-wrapper .nr-viarow{display:flex;align-items:center;gap:8px;margin:0}
+.scout-app-wrapper .nr-vian{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--ac);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.scout-app-wrapper .nr-viarow input{flex:1 1 auto;min-width:0}
+.scout-app-wrapper .nr-viax{flex:0 0 auto;width:44px;min-height:44px;border:1px solid var(--l2);border-radius:10px;background:transparent;color:var(--mu);font-size:20px;line-height:1;cursor:pointer}
+.scout-app-wrapper .nr-viaadd{align-self:flex-start;font-weight:700}
+.scout-app-wrapper .nr-yours{align-self:flex-start;margin-bottom:3px;padding:2px 8px;border-radius:99px;background:var(--ac);color:#fff;font-size:12.5px;font-weight:800;letter-spacing:.03em}
+.scout-app-wrapper .nr-pinrow .nr-card{border-color:var(--ac);border-width:1.5px}
 .scout-app-wrapper .nr-joincard{margin:0 0 14px;padding:12px;border:1.5px solid var(--ac);border-radius:12px;display:flex;flex-direction:column;gap:6px}
 .scout-app-wrapper .nr-joincard .nearp,.scout-app-wrapper .nr-joincard .nr-route{margin:0}
 .scout-app-wrapper .nr-joint{margin:0;font-size:12.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ac)}
@@ -3377,6 +3386,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       </form>
       <div class="nr-sug" id="otp-nrSug" role="listbox" aria-label="Suggested places" hidden></div>
       <div class="hubbar nr-recent" id="otp-nrRecent" role="group" aria-label="Recent destinations" hidden></div>
+      <div class="nr-vias" id="otp-nrVias"></div>
       <div class="nr-where nr-fromp" id="otp-nrFromP"></div>
       <div class="nr-wbox" id="otp-nrFromBox" hidden>
       <div class="addrow nr-fromrow">
@@ -3518,7 +3528,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.74';
+var PROWL_VERSION='v7.75';
 var E=encodeURIComponent;
 var $=function(s){return document.querySelector(s)};
 var $$=function(s){return [].slice.call(document.querySelectorAll(s))};
@@ -10334,7 +10344,7 @@ function nrClock(ts){var d=new Date(Math.round(ts/300000)*300000);return nrTime(
 function nrCard(p,day,cls,num,o){
   o=o||{};var s=nrState(p.hours,day,o.eta),ph=(num?'<span class="nr-num" aria-hidden="true">'+num+'</span>':'')+(p.photo?'<img class="nr-ph" src="'+esc(NR_API+p.photo)+'" alt="" loading="lazy">':'<span class="nr-ph nr-nop" aria-hidden="true">🛒</span>');
   return '<a class="nr-card'+(cls?' '+cls:'')+'" href="'+esc(p.url||('https://www.google.com/maps/search/?api=1&query='+E(p.name+' '+(p.town||''))))+'" target="_blank" rel="noopener noreferrer">'+ph+
-    '<span class="nr-body"><b class="nr-n">'+esc(p.name||'')+'</b><span class="nr-h'+(s.cls?' '+s.cls:'')+'">'+esc(s.text)+'</span>'+nrRate(p)+'<span class="nr-t">'+esc(p.town||'')+(p.why?' · '+esc(p.why):'')+'</span>'+(p.about?'<span class="nr-about">'+esc(p.about)+'</span>':'')+nrPlanLine(p)+'</span>'+
+    '<span class="nr-body">'+(p.pin?'<span class="nr-yours">Your stop</span>':'')+'<b class="nr-n">'+esc(p.name||'')+'</b><span class="nr-h'+(s.cls?' '+s.cls:'')+'">'+esc(s.text)+'</span>'+nrRate(p)+'<span class="nr-t">'+esc(p.town||'')+(p.why?' · '+esc(p.why):'')+'</span>'+(p.about?'<span class="nr-about">'+esc(p.about)+'</span>':'')+nrPlanLine(p)+'</span>'+
     (s.tag||o.mi!=null||typeof o.det==='number'?'<span class="nr-side">'+(s.tag?'<span class="nr-st '+s.cls+'">'+s.tag+'</span>':'')+(o.mi!=null?'<span class="nr-mi">'+nrMiTxt(o.mi)+'</span>':'')+(typeof o.det==='number'?'<span class="nr-det" title="Adds about '+Math.max(1,Math.round(o.det))+' min to the drive">+'+Math.max(1,Math.round(o.det))+' min</span>':'')+'</span>':'')+'</a>';   /* v7.72: +12 min, what the stop adds */
 }
 /* v7.51 (the owner, from Gemini's Findlay to Milton run: time to allow, worth the detour, walkable): the worker's
@@ -10483,6 +10493,20 @@ function nrNoFix(err){
    kinds that are on, never a fixed "antique, vintage and thrift"; a usual kind that is off is said, with one tap to
    turn it back on; and a listed shop within a few hundred feet is where you are. */
 var NR_NOUN={antiques:'antique',vintage:'vintage',thrift:'thrift',records:'record',books:'book',toys:'toy'};
+/* v7.75 (the owner: "i would like to make a specific stop on the way from one city to the other ... maybe one or two or
+   three, we can go from pin to pin, and find things in between"): up to three stops on the way, each with places as you
+   type. The drive goes through them in order (worker via=A|B|C), the shops of each leg are found between them, and each
+   one is in the list, marked Your stop, and in the Maps link. */
+function nrViasGet(){return (NR.vias||[]).map(function(v){return String(v||'').replace(/\s+/g,' ').replace(/\|/g,' ').trim()}).filter(function(v){return v.length>=2}).slice(0,3)}
+function rNrVias(){
+  var el=$('#otp-nrVias'),V=NR.vias=NR.vias||[],h='',i;if(!el)return;
+  if(V.length)h+='<p class="nr-optt">Stops on the way, in order</p>';
+  for(i=0;i<V.length;i++)h+='<div class="addrow nr-viarow"><span class="nr-vian" aria-hidden="true">'+(i+1)+'</span><input type="text" id="otp-nrVia'+i+'" value="'+esc(V[i])+'" placeholder="A shop or a town" aria-label="Stop '+(i+1)+' on the way" autocomplete="off" enterkeyhint="next"><button type="button" class="nr-viax" data-viax="'+i+'" aria-label="Remove stop '+(i+1)+'">×</button></div><div class="nr-sug" id="otp-nrSugV'+i+'" role="listbox" aria-label="Suggested places" hidden></div>';
+  if(V.length<3)h+='<button type="button" class="sgw-ml nr-viaadd" id="otp-nrViaAdd">+ Add a stop on the way</button>';
+  el.innerHTML=h;
+  for(i=0;i<V.length;i++)(function(k){var inp=$('#otp-nrVia'+k);if(!inp)return;inp.addEventListener('input',function(){NR.vias[k]=inp.value});nrSugWire(inp,$('#otp-nrSugV'+k),function(v){NR.vias[k]=v})})(i);
+}
+function nrViaAdd(){NR.vias=NR.vias||[];if(NR.vias.length>=3)return;NR.vias.push('');rNrVias();var inp=$('#otp-nrVia'+(NR.vias.length-1));if(inp)try{inp.focus()}catch(e){}}
 function nrAnd(a){return a.length<2?(a[0]||''):a.slice(0,-1).join(', ')+' and '+a[a.length-1]}
 function nrKinds(on){var w=[],i,s;for(i=0;i<on.length;i++)if(NR_NOUN[on[i]])w.push(NR_NOUN[on[i]]);s=w.length?nrAnd(w)+' shops':'';if(on.indexOf('flea')!==-1)s=s?s+' and flea markets':'flea markets';return s}
 function nrCap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
@@ -10530,10 +10554,11 @@ function nrNoStart(err,msg){
 }
 function nrBuild(to){
   var out=$('#otp-nrOut'),fi=$('#otp-nrFrom'),from=fi?atClean(fi.value):'';if(!out||NR.busy)return;if(!to){nrLoop(from);return}   /* v7.62: no end, a loop */NR.busy=true;NR.view=null;NR.built=null;NR.lastTo=to;NR.optDirty=false;
-  out.innerHTML=nrFlock('otp-nrFlockT',[from?'Finding '+from+'…':'Finding where you are…','Mapping the drive to '+to+'…','Searching the shops along the way…','Picking the stops worth the time…','Almost there: a long drive takes a little longer…']);nrFoot(null);   /* v7.61 */
+  var vv=nrViasGet();   /* v7.75: the stops on the way */
+  out.innerHTML=nrFlock('otp-nrFlockT',[from?'Finding '+from+'…':'Finding where you are…','Mapping the drive to '+to+(vv.length?' by way of '+nrAnd(vv):'')+'…','Searching the shops along the way…','Picking the stops worth the time…','Almost there: a long drive takes a little longer…']);nrFoot(null);   /* v7.61 */
   nrStart(from,function(pos,err,pl,msg){
     if(!pos){NR.busy=false;out.innerHTML=nrNoStart(err,msg);return}
-    nrFetch('/trip?to='+E(to)+'&lat='+pos.lat.toFixed(4)+'&lng='+pos.lng.toFixed(4)+'&day='+E(NR.day)+'&cats='+E(nrCatsQ())+'&detour='+nrDetourGet()).then(function(r){
+    nrFetch('/trip?to='+E(to)+'&lat='+pos.lat.toFixed(4)+'&lng='+pos.lng.toFixed(4)+'&day='+E(NR.day)+'&cats='+E(nrCatsQ())+'&detour='+nrDetourGet()+(vv.length?'&via='+E(vv.join('|')):'')).then(function(r){
       NR.busy=false;
       if(r.status===503){out.innerHTML='<p class="nearp">Road trips are not switched on yet. For now, search the map there: <a class="b" href="'+esc('https://www.google.com/maps/search/?api=1&query='+E('antique stores near '+to))+'" target="_blank" rel="noopener noreferrer">Antique stores near '+esc(to)+'</a></p>';return}
       if(r.status===404){out.innerHTML='<p class="nearp">No driving route to <b>'+esc(to)+'</b> could be found. Try the town’s name, or a street address.</p>';return}
@@ -10692,8 +10717,9 @@ function nrDrawTrip(t,o){
   var ET=nrEtas(t,stops),live=!!ET,lateN=[];
   function eta(p){if(!ET)return 0;if(p===dest)return ET.at._dest||0;var i,j,a;for(i=0;i<stops.length;i++){a=stops[i];if(a.id===p.id)return ET.at[a._k||a.id]||0;for(j=0;j<(a.nested||[]).length;j++)if(a.nested[j].id===p.id)return ET.at[a._k||a.id]||0}return 0}
   if(ET)stops.forEach(function(a){[a].concat(a.nested||[]).forEach(function(p){if(nrLateAt(p,eta(p),day))lateN.push(p.name)})});
-  function row(p,cls,num,det){return '<div class="nr-row">'+nrCard(p,day,cls,num,{eta:eta(p),det:det})+'<span class="nr-acts">'+nrGo(p)+nrRvBtn(p)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'"><span aria-hidden="true">−</span> Skip</button></span></div>'}
+  function row(p,cls,num,det){return '<div class="nr-row'+(p.pin?' nr-pinrow':'')+'">'+nrCard(p,day,cls,num,{eta:eta(p),det:det})+'<span class="nr-acts">'+nrGo(p)+nrRvBtn(p)+(p.pin?'':'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'"><span aria-hidden="true">−</span> Skip</button>')+'</span></div>'}   /* v7.75: a stop you named is not skipped; take it out above */
   h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+(t.loop?'the shops around it and back':esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):''))+(t.loop?'</b>':'')+'</p>'+
+     (t.via&&t.via.length?'<p class="nearp nr-viah">By way of '+esc(nrAnd(t.via.map(function(v){return String(v).split(',')[0]})))+'</p>':'')+   /* v7.75 */
      '<p class="nearp">'+(t.route&&(t.route.mi||t.route.km)?nrMiles(t.route)+' mi · '+nrDur(t.route.min||0)+' of driving · ':'')+'Trip day '+NR_DAYS[wd]+'<span id="otp-nrMembers">'+(o.members?' · '+o.members+' on this trip':'')+'</span></p>'+
      nrPlanSum(t,stops)+   /* v7.51 */
      (live?'<p class="nearp nr-etan">Open or closed is for when you would get there, leaving '+(($('#otp-nrLeave')||{}).value?'at '+nrClock(ET.leave):'now')+' and allowing about '+NR_STAY+' min at a stop'+(ET.routed&&ET.src==='osrm'?'.':' (drive times estimated).')+'</p>':'')+
@@ -10855,7 +10881,7 @@ function nrKeep(){
   var o=NR.builtFrom||NR.pos;   /* v7.62: where the trip was built from, the phone or the From box */
   if(!o){toast('Prowl needs your location to keep the trip. Tap More › Rebuild from here, then try again.',3600);return}
   NR.busy=true;toast('Keeping the trip for your group…',2400);
-  nrFetch('/trips',{method:'POST',body:{to:b.to,lat:o.lat,lng:o.lng,day:NR.day,cats:nrCatsQ()}}).then(function(r){
+  nrFetch('/trips',{method:'POST',body:{to:b.to,lat:o.lat,lng:o.lng,day:NR.day,cats:nrCatsQ(),via:b.via||[],detour:b.detour||nrDetourGet()}}).then(function(r){
     NR.busy=false;
     if(r.status===401){toast('Sign in to your Owl & Twig account to share a trip.',3600);nrSignin();return}
     if(r.status===403){toast('Group trips come with Prowl Pro. <a href="/products/prowl-pro">Try it free for a month</a>',5200);return}
@@ -10957,7 +10983,7 @@ function nrMode(m){
   for(k in T){tb=$(T[k][0]);pn=$(T[k][1]);if(tb){tb.classList.toggle('on',k===m);tb.setAttribute('aria-selected',String(k===m))}if(pn)pn.hidden=k!==m}
   if(a){nrFoot(null);nrAroundLoad()}
   else if(m==='trips'){nrFoot(null);nrTripsLoad();nrJoinDraw()}
-  else{rNrDays();rNrDetour();nrTripsLoad();nrFoot(NR.view||NR.built);var fi=$('#otp-nrFrom'),pl=atLive();if(fi&&!fi.value&&pl)fi.value=pl.town;rNrFrom();rNrTripL();rNrOpts();rNrRecent()}   /* v7.62 */   /* v7.57: no keyboard until the box is tapped (the owner) */
+  else{rNrDays();rNrDetour();rNrVias();nrTripsLoad();nrFoot(NR.view||NR.built);var fi=$('#otp-nrFrom'),pl=atLive();if(fi&&!fi.value&&pl)fi.value=pl.town;rNrFrom();rNrTripL();rNrOpts();rNrRecent()}   /* v7.62 */   /* v7.57: no keyboard until the box is tapped (the owner) */
 }
 function openNear(){
   if(!near||near.classList.contains('on'))return;
@@ -11020,6 +11046,8 @@ if(near){
     if(e.target.closest&&e.target.closest('#otp-nrInvite')){nrInvite();return}
     if(e.target.closest&&e.target.closest('#otp-nrJoinGo')){nrJoin();return}
     if(e.target.closest&&e.target.closest('#otp-nrJoinIn,#otp-nrTripsIn')){nrSignin();return}
+    if(e.target.closest&&e.target.closest('#otp-nrViaAdd')){nrViaAdd();return}   /* v7.75 */
+    var vx=e.target.closest&&e.target.closest('[data-viax]');if(vx){NR.vias.splice(+vx.getAttribute('data-viax'),1);rNrVias();return}
     if(e.target.closest&&e.target.closest('#otp-nrJoinX')){nrInvSet('');nrJoinDraw();return}
     var ad=e.target.closest&&e.target.closest('#otp-nrAdd');
     if(ad&&NR.view){

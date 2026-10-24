@@ -1,16 +1,28 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-23 (v7.74 / v162).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.75 / v163).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.74** | 395,918 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v162** | |
+| Page | **v7.75** | 395,868 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v163** | |
 
 Recently shipped, newest first:
 
+- **v7.75 / v163: stops on the way** (the owner: "i would like to make a specific stop on the way from one city to the
+  other ... maybe one or two or three, we can go from pin to pin, and find things in between"). Under Where are you
+  headed, **+ Add a stop on the way** opens up to three numbered boxes, each with places as you type and a × (`rNrVias`,
+  `NR.vias`, kept for the visit, no new key). The page sends them on their own (`via=A|B|C`), so a name with "and" in it
+  stays one stop. The worker (`viaParse`) routes through them in order, as before, finds the shops of each leg, looks
+  each stop up as a place and puts it in the list in drive order (`pinStops`: by segment and how far into it), marked
+  `pin` ("Your stop", outlined, no Skip; take it out above), once, never also nested, and in the Maps link. The trip
+  head says "By way of Maumee Antique Mall and Central City Antiques". Keeping a trip for the group sends its stops and
+  its detour (it used to drop the detour); kept trips keep `pin`. Trip cache keys add the stops. A new worker test
+  checks every `trip.js` helper the worker calls is imported (the tests hand them all in, so a missing import, as
+  `sizeTier` and `stayMinutes` were in this change, only broke live). Tests: `worker/__tests__/trips.test.mjs`,
+  `__tests__/page/near-via-v775.test.mjs`.
 - **v7.74: iPhone install** (Matt: adding Prowl on an iPhone took three tries; the first icon kept the shop's bar and
   every icon asked him to sign in again). iOS gives each home-screen icon its own empty storage but copies Safari's
   cookies into it once, when it is added. On /pages/prowl-app in Safari or Chrome on an iPhone or iPad, the page keeps
@@ -1147,7 +1159,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.75, worker v163**. Claim one here when you start.
+Next free numbers: **page v7.76, worker v164**. Claim one here when you start.
 
 ## What's next
 
