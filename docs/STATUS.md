@@ -1,16 +1,32 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.82 / v165).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.83 / v166).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.82** | 392,511 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v165** | |
+| Page | **v7.83** | 392,511 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v166** | |
 
 Recently shipped, newest first:
 
+- **v166: Around You keeps the closest shops, however small.** Bluegrass Collectors, 0.1 mi away in Ashland, KY with
+  11 reviews, was in the list with Antiques alone but cut with the default Antiques, Vintage and Thrift: the answer was
+  the 24 biggest, so not even Closest first could show it. Now it is the 24 biggest plus the 8 closest not among them,
+  in rank order (`nearKeep`, `NEAR_CLOSE_KEEP` in `worker/trip.js`). Near cache key v=12. Worker only. Tests:
+  `worker/__tests__/trip.test.mjs`.
+- **v7.83: ✓ Been there and Next stop, for the day of the trip** (the owner, on the road: "i stopped at one, now i want
+  to find the next one"). Before, Start in Maps always started from the trip's starting town and went through every
+  stop, even the ones behind you. Now, on the trip's day, every stop has **✓ Been**: the stop stays in the list, dimmed
+  and marked Been there (Undo puts it back); it leaves the Maps link, which then starts from the phone (no origin, so
+  Maps uses where you are; your position never goes into a link) and reads **Carry on in Maps**; and **Next stop** at
+  the top names the first stop still ahead, with Directions (a shop in a stop's town counts as being in that town).
+  All done says "Every stop done. On to …". Kept per trip in a **new key `prowl.nearBeen`** (a kept trip by its id, a
+  built one by where to, from and the day; the last 10 trips; a broken value is ignored). No ✓ Been on a trip planned
+  for another day. Also `__tests__/page/fn-names-v783.test.mjs`: no top-level page function is declared twice (the
+  first Next stop was silently replaced by the hours helper `nrNext`). Page only. Tests:
+  `__tests__/page/near-been-v783.test.mjs`. Checked in Chromium at 390px. v7.79, v7.81 and v7.82 went to the design-brief PRs (#232, #235, #236).
 - **v7.82: Matt's next 10** ("all are good, daily does similar to 10 already, should do that in hunt as well. i just
   wanted each marketplace organized a bit"). No worker change.
   - **A hunt's marketplaces in order** (`sgwBody0`, the way Daily lays out each hunt): a row of the marketplaces with
@@ -1258,9 +1274,8 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `claude/new-session-pffeiw` | Claude | **v7.80 / v166**: Been there and Next stop on the trip day; Around You keeps the closest shops | PR #234 open. |
 
-Next free numbers: **page v7.83, worker v167**. Claim one here when you start.
+Next free numbers: **page v7.84, worker v167**. Claim one here when you start.
 
 ## What's next
 

@@ -6,7 +6,7 @@ import {
   haversineMi, decodePolyline, nearestOnRoute, detourMinutes, corridorCenters, sizeTier, differentiator, ratingScore, rankPlaces,
   townOf, townFromAddress, normalizePlace, placeCard, hoursForDay, openAt, alongRoute, clusterStops, mapsDirUrl, hasStreet,
   tripDay, weekdayOf, tripCloses, tripExpires, tripExpired, tripRecord, tripMember, tripView, findRecord,
-  DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS, CATS, CATS_DEFAULT, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, ANCHOR_REVIEWS, kindAllowed, kindPlan, ANCHOR_REVIEWS_ANTIQUES, splitVia,
+  nearKeep, NEAR_MAX, NEAR_CLOSE_KEEP, DETOUR_MIN, MAPS_WAYPOINTS, FINDS_GRACE_DAYS, CATS, CATS_DEFAULT, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, ANCHOR_REVIEWS, kindAllowed, kindPlan, ANCHOR_REVIEWS_ANTIQUES, splitVia,
 } from "../trip.js";
 
 test("v142: 'via' in the destination steers the road", () => {
@@ -351,4 +351,21 @@ test("v154: a town's shops a short walk from its stop say so, and a kept trip ke
   assert.equal(rec.stops[0].stay, 60); assert.equal(rec.stops[0].worth, true);
   assert.equal(rec.stops[0].nested.find((n) => n.id === "b").walk, true);
   assert.equal(rec.stops[0].nested.find((n) => n.id === "c").walk, undefined);
+});
+
+test("v166: Around You keeps the biggest, plus the closest few however small (Bluegrass Collectors, 0.1 mi, 11 reviews)", () => {
+  const big = [];
+  for (let i = 0; i < 30; i++) big.push(place({ id: "b" + i, name: "Big Antique Mall " + i, town: "X", lat: 0, lng: 0, rating: 4.6, n: 900 - i, near: 5 + i / 10, summary: "100 dealers" }));
+  const blue = place({ id: "blue", name: "Bluegrass Collectors", town: "Ashland, KY", lat: 0, lng: 0, rating: 4.4, n: 11, near: 0.1 });
+  const far = place({ id: "far", name: "Far Tiny Shop", town: "X", lat: 0, lng: 0, rating: 4.0, n: 3, near: 20 });
+  const out = nearKeep(big.concat([far, blue]), NEAR_MAX, NEAR_CLOSE_KEEP);
+  assert.equal(NEAR_MAX, 24); assert.equal(NEAR_CLOSE_KEEP, 8);
+  assert.ok(out.find((p) => p.id === "blue"), "the shop next door stays");
+  assert.ok(!out.find((p) => p.id === "far"), "a far small one does not");
+  assert.equal(out[out.length - 1].id, "blue", "in rank order: the small one after the big ones");
+  assert.deepEqual(out.slice(0, 24).map((p) => p.id), big.slice(0, 24).map((p) => p.id), "the biggest 24 as before");
+  assert.equal(out.length, 25, "the closest 8 were all among the 24 but Bluegrass");
+  const few = big.slice(0, 3).concat([blue]);
+  assert.deepEqual(nearKeep(few, NEAR_MAX, NEAR_CLOSE_KEEP).map((p) => p.id), ["b0", "b1", "b2", "blue"], "a short list is all of it");
+  assert.deepEqual(nearKeep([], NEAR_MAX, NEAR_CLOSE_KEEP), []);
 });

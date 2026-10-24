@@ -2253,8 +2253,15 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-cats .hubc{min-height:32px;padding:7px 11px;font-size:12.5px}
 .scout-app-wrapper .nr-row{display:flex;align-items:stretch;gap:6px}
 .scout-app-wrapper .nr-row .nr-card{flex:1 1 auto;min-width:0}
-.scout-app-wrapper .nr-skip,.scout-app-wrapper .nr-rvb,.scout-app-wrapper .nr-addv{flex:0 0 auto;border:1px solid var(--l2);background:transparent;color:var(--mu);border-radius:10px;padding:0 9px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
+.scout-app-wrapper .nr-skip,.scout-app-wrapper .nr-rvb,.scout-app-wrapper .nr-addv,.scout-app-wrapper .nr-beenb{flex:0 0 auto;border:1px solid var(--l2);background:transparent;color:var(--mu);border-radius:10px;padding:0 9px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer}
 .scout-app-wrapper .nr-acts>.nr-addv{color:var(--ac);border-color:var(--ac);min-height:36px}
+.scout-app-wrapper .nr-acts>.nr-beenb{min-height:36px}
+.scout-app-wrapper .nr-acts>.nr-beenb.on{background:var(--cd2);color:var(--ink)}
+.scout-app-wrapper .nr-been{opacity:.55}
+.scout-app-wrapper .nr-beent{align-self:flex-start;margin-bottom:3px;padding:2px 8px;border-radius:99px;background:var(--ink);color:var(--cd);font-size:12.5px;font-weight:800}
+.scout-app-wrapper .nr-next{margin:4px 0 12px;padding:10px 12px;border:2px solid var(--ac);border-radius:14px}
+.scout-app-wrapper p.nr-next{font-size:15px}
+.scout-app-wrapper .nr-nexth{margin:0 0 6px;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ac)}
 .scout-app-wrapper .nr-skipped{margin:0 0 10px;font-size:13px;color:var(--mu)}
 .scout-app-wrapper .nr-sendbox{margin:0 0 12px;padding:10px;border:1px solid var(--ac);border-radius:12px}
 .scout-app-wrapper .nr-sendrow{display:flex;gap:8px;flex-wrap:wrap}
@@ -2396,7 +2403,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   .scout-app-wrapper #otp-near .nr-num{width:22px;height:22px;font-size:13.5px}
   .scout-app-wrapper #otp-near .nr-ph{width:64px;height:64px}
   .scout-app-wrapper #otp-near .nr-sub .nr-ph{width:46px;height:46px}
-  .scout-app-wrapper #otp-near .nr-skip,.scout-app-wrapper #otp-near .nr-rvb,.scout-app-wrapper #otp-near .nr-addv,.scout-app-wrapper #otp-near .nr-row>.nr-go,.scout-app-wrapper #otp-near .nr-acts>.nr-go{font-size:15px}
+  .scout-app-wrapper #otp-near .nr-skip,.scout-app-wrapper #otp-near .nr-rvb,.scout-app-wrapper #otp-near .nr-addv,.scout-app-wrapper #otp-near .nr-beenb,.scout-app-wrapper #otp-near .nr-row>.nr-go,.scout-app-wrapper #otp-near .nr-acts>.nr-go{font-size:15px}
   .scout-app-wrapper #otp-near .nr-nesth{font-size:13.5px}
   .scout-app-wrapper #otp-near .nr-skipped,.scout-app-wrapper #otp-near .nr-etan,.scout-app-wrapper #otp-near .nr-more summary,.scout-app-wrapper #otp-near .nr-steps{font-size:15px}
   .scout-app-wrapper #otp-near .nr-flockt{font-size:16px}
@@ -2420,16 +2427,16 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   .scout-app-wrapper #otp-near .nr-row>.nr-go{flex:1 1 100%;min-height:44px}
   .scout-app-wrapper #otp-near .nr-acts{flex:1 1 100%;flex-direction:row}
   .scout-app-wrapper #otp-near .nr-acts>.nr-go{flex:1 1 auto;min-height:44px}
-  .scout-app-wrapper #otp-near .nr-acts>.nr-skip,.scout-app-wrapper #otp-near .nr-acts>.nr-rvb,.scout-app-wrapper #otp-near .nr-acts>.nr-addv{flex:0 0 auto;min-height:44px;padding:0 16px}
+  .scout-app-wrapper #otp-near .nr-acts>.nr-skip,.scout-app-wrapper #otp-near .nr-acts>.nr-rvb,.scout-app-wrapper #otp-near .nr-acts>.nr-addv,.scout-app-wrapper #otp-near .nr-acts>.nr-beenb{flex:0 0 auto;min-height:44px;padding:0 16px}
   .scout-app-wrapper #otp-near .nr-acts4{flex-wrap:wrap}   /* v7.78: Directions on its own line, Reviews, + Stop and Skip under it */
   .scout-app-wrapper #otp-near .nr-acts4>.nr-go{flex:1 1 100%}
-  .scout-app-wrapper #otp-near .nr-acts4>.nr-skip,.scout-app-wrapper #otp-near .nr-acts4>.nr-rvb,.scout-app-wrapper #otp-near .nr-acts4>.nr-addv{flex:1 1 0;padding:0 8px}
+  .scout-app-wrapper #otp-near .nr-acts4>.nr-skip,.scout-app-wrapper #otp-near .nr-acts4>.nr-rvb,.scout-app-wrapper #otp-near .nr-acts4>.nr-addv,.scout-app-wrapper #otp-near .nr-acts4>.nr-beenb{flex:1 1 0;padding:0 6px}
 }
 .scout-app-wrapper #otp-near .nr-footm .nr-start{font-size:17px}   /* v7.72: after the phone rules, which make the bar's buttons 14px */
 @media (max-width:600px){   /* v7.73 glance check for the car (NHTSA: a glance, not a read): every main button 48px tall, its words 17px */
   .scout-app-wrapper #otp-near .tab{font-size:17px;letter-spacing:0;min-height:48px}
   .scout-app-wrapper #otp-near .nr-row>.nr-go,.scout-app-wrapper #otp-near .nr-acts>.nr-go{font-size:17px;min-height:48px}
-  .scout-app-wrapper #otp-near .nr-acts>.nr-skip,.scout-app-wrapper #otp-near .nr-acts>.nr-rvb,.scout-app-wrapper #otp-near .nr-acts>.nr-addv{min-height:48px}
+  .scout-app-wrapper #otp-near .nr-acts>.nr-skip,.scout-app-wrapper #otp-near .nr-acts>.nr-rvb,.scout-app-wrapper #otp-near .nr-acts>.nr-addv,.scout-app-wrapper #otp-near .nr-acts>.nr-beenb{min-height:48px}
   .scout-app-wrapper #otp-near .addrow button,.scout-app-wrapper #otp-near .nr-wc,.scout-app-wrapper #otp-near .b.nr-mebig,.scout-app-wrapper #otp-near .nr-optdone{font-size:17px;min-height:48px}
   .scout-app-wrapper #otp-near .nr-foot .b{font-size:17px;min-height:48px}
 }
@@ -3654,7 +3661,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.82';
+var PROWL_VERSION='v7.83';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -10405,6 +10412,26 @@ function rNrCats(){var on=nrCatsGet(),a=$('#otp-nrCats'),b=$('#otp-nrCatsA'),h=N
 function nrCatToggle(k){var on=nrCatsGet(),i=on.indexOf(k);if(i===-1)on.push(k);else if(on.length>1)on.splice(i,1);else{toast('Keep at least one kind.',2000);return}nrCatsSet(on);rNrCats();if(NR.mode==='around'){NR.around=null;nrAroundLoad(true)}else nrOptsChanged()}   /* v7.72: Road trip rebuilds once, on Done */
 function nrSkipGet(){var v=null;try{v=JSON.parse(localStorage.getItem(SKIP_KEY)||'null')}catch(e){}return v&&typeof v==='object'&&!v.length?v:{}}
 function nrSkipSet(o){try{localStorage.setItem(SKIP_KEY,JSON.stringify(o))}catch(e){}}
+/* v7.83 (the owner: "i stopped at one, now i want to find the next one"): on the trip's day, ✓ Been here marks a stop
+   done. It stays in the list, dimmed; it leaves the Maps link, which then starts from the phone (no origin, so Maps uses
+   where you are; your position never goes into a link), and Next stop names the first one still ahead. Kept per trip
+   (a kept trip by its id, a built one by where to, from and the day), the last 10 trips. */
+var BEEN_KEY='prowl.nearBeen';   /* new key */
+function nrBeenAll(){var v=null;try{v=JSON.parse(localStorage.getItem(BEEN_KEY)||'null')}catch(e){}return v&&typeof v==='object'&&!v.length&&v.o&&v.o.length!==undefined&&v.s&&typeof v.s==='object'?v:{o:[],s:{}}}
+function nrBeenSig(t){if(!t)return '';if(t.id)return 'v:'+t.id;var from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||'');return 'b:'+String(t.to||'').toLowerCase()+'|'+String(from).toLowerCase()+'|'+(t.day||'')}
+function nrBeenGet(t){var A=nrBeenAll(),g=A.s[nrBeenSig(t)];return g&&typeof g==='object'?g:{}}
+function nrBeenToggle(t,id){
+  if(!t||!id)return;var A=nrBeenAll(),k=nrBeenSig(t),g=A.s[k]||{},i=A.o.indexOf(k);
+  if(g[id])delete g[id];else g[id]=1;
+  if(i!==-1)A.o.splice(i,1);A.o.push(k);A.s[k]=g;while(A.o.length>10)delete A.s[A.o.shift()];
+  try{localStorage.setItem(BEEN_KEY,JSON.stringify(A))}catch(e){}
+}
+function nrBeenAny(t){var g=nrBeenGet(t),k;for(k in g)if(g[k])return true;return false}
+function nrToday(t){return !t.day||t.day===nrLocalDay(new Date())}
+/* the stops still to drive to, for the Maps link: not skipped, not been */
+function nrAhead(t){var g=nrBeenGet(t);return nrVisible(t).stops.filter(function(a){return !g[a.id]})}
+/* the first stop still ahead: after the last one you have been to (a shop in a stop's town counts as being there) */
+function nrNextStop(stops,g){var st=0,i,j;for(i=0;i<stops.length;i++){if(g[stops[i].id])st=i+1;else for(j=0;j<(stops[i].nested||[]).length;j++)if(g[stops[i].nested[j].id])st=Math.max(st,i)}for(i=st;i<stops.length;i++)if(!g[stops[i].id])return {p:stops[i],i:i};return null}
 function nrSkip(id){var o=nrSkipGet(),k=Object.keys(o);if(!id)return;if(k.length>=300)delete o[k[0]];o[id]=1;nrSkipSet(o);nrRedraw()}
 function nrUnskipAll(){nrSkipSet({});nrRedraw()}
 function nrRedraw(){if(NR.view)nrOpenTrip(NR.view,false);else if(NR.built)nrDrawTrip(NR.built,{})}
@@ -10421,7 +10448,7 @@ function nrVisible(t){
   if(t.order&&t.order.length){var ix=function(o){var k=t.order.indexOf(o._k);return k===-1?1e3+out.indexOf(o):k};out=out.slice().sort(function(x,y){return ix(x)-ix(y)})}   /* v7.62: Optimize route */
   return {stops:out,hidden:hid};
 }
-function nrMapsUrl(from,anchors,dest){var wp=anchors.slice(0,9).map(function(a){return a.name+(a.town?', '+a.town:'')}).join('|');return 'https://www.google.com/maps/dir/?api=1&travelmode=driving&origin='+E(from||'')+'&destination='+E(dest||'')+(wp?'&waypoints='+E(wp):'')}
+function nrMapsUrl(from,anchors,dest){var wp=anchors.slice(0,9).map(function(a){return a.name+(a.town?', '+a.town:'')}).join('|');return 'https://www.google.com/maps/dir/?api=1&travelmode=driving'+(from?'&origin='+E(from):'')+'&destination='+E(dest||'')+(wp?'&waypoints='+E(wp):'')}
 /* v7.39 (Meta's two legs): Google Maps takes about nine waypoints, so more anchors than that become legs, each leg
    ending at the next leg's first stop */
 function nrMapsLegs(t){
@@ -10440,7 +10467,7 @@ function nrMapsPick(an,cap){
   return an.filter(function(a){return keep[a.id]});
 }
 function nrLegsGen(t,cap,mk,one,lab0){
-  var d=t.dest||{},from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),an=nrVisible(t).stops,destL=d.name+(d.town?', '+d.town:'');
+  var d=t.dest||{},from=nrBeenAny(t)?'':t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),an=nrAhead(t),destL=d.name+(d.town?', '+d.town:'');   /* v7.83: from the phone once you have been somewhere */
   return [{label:one,url:mk(from,nrMapsPick(an,cap),destL)}];   /* v7.77: one link */
 }
 /* v7.62 (the owner: the Apple Maps export must carry every stop): Apple's unified Maps URL (iOS 18.4+, macOS 15.4+):
@@ -10449,7 +10476,7 @@ function nrLegsGen(t,cap,mk,one,lab0){
 var APPLE_WP=13;
 function nrAppleUrl(from,anchors,dest){var w=anchors.slice(0,APPLE_WP).map(function(a){return '&waypoint='+E(a.name+(a.town?', '+a.town:''))}).join('');return 'https://maps.apple.com/directions?'+(from?'source='+E(from)+'&':'')+'destination='+E(dest||'')+w+'&mode=driving'}
 function nrAppleLegs(t){if(!t||!t.dest||!t.dest.name)return [];return nrLegsGen(t,APPLE_WP,nrAppleUrl,'Apple Maps','Apple Maps ')}
-function nrMapsFor(t){if(!t)return '';var d=t.dest||{};if(!d.name)return t.maps||'';var from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||'');return nrMapsUrl(from,nrMapsPick(nrVisible(t).stops,9),d.name+(d.town?', '+d.town:''))}
+function nrMapsFor(t){if(!t)return '';var d=t.dest||{};if(!d.name)return t.maps||'';var from=nrBeenAny(t)?'':t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||'');return nrMapsUrl(from,nrMapsPick(nrAhead(t),9),d.name+(d.town?', '+d.town:''))}   /* v7.83 */
 function nrH(){var h={},k=fbOwnerKey(),em=mGet('alertEmail'),tk=mGet('alertTok');if(k)h['X-Prowl-Owner']=k;if(em&&tk){h['X-Prowl-Email']=em;h['X-Prowl-Tok']=tk}return window.prowlAuth?window.prowlAuth(h):h}   /* v7.38: the alerts member too */
 /* v7.38 (the owner: "it took me to the den and tried to make me sign in, but i am pro"): a Prowl Alerts sign-in is a sign-in */
 function nrSigned(){return !!((window.prowlSess&&window.prowlSess())||(mGet('alertTok')&&mGet('alertEmail')))}
@@ -10534,7 +10561,7 @@ function nrClock(ts){var d=new Date(Math.round(ts/300000)*300000);return nrTime(
 function nrCard(p,day,cls,num,o){
   o=o||{};var s=nrState(p.hours,day,o.eta),ph=(num?'<span class="nr-num" aria-hidden="true">'+num+'</span>':'')+(p.photo?'<img class="nr-ph" src="'+esc(NR_API+p.photo)+'" alt="" loading="lazy">':'<span class="nr-ph nr-nop" aria-hidden="true">🛒</span>');
   return '<a class="nr-card'+(cls?' '+cls:'')+'" href="'+esc(p.url||('https://www.google.com/maps/search/?api=1&query='+E(p.name+' '+(p.town||''))))+'" target="_blank" rel="noopener noreferrer">'+ph+
-    '<span class="nr-body">'+(p.pin?'<span class="nr-yours">Your stop</span>':'')+'<b class="nr-n">'+esc(p.name||'')+'</b><span class="nr-h'+(s.cls?' '+s.cls:'')+'">'+esc(s.text)+'</span>'+nrRate(p)+'<span class="nr-t">'+esc(p.town||'')+(p.why?' · '+esc(p.why):'')+'</span>'+(p.about?'<span class="nr-about">'+esc(p.about)+'</span>':'')+nrPlanLine(p)+(o.off?'<span class="nr-nm">Listed only, not in the Maps route</span>':'')+'</span>'+
+    '<span class="nr-body">'+(o.been?'<span class="nr-beent">✓ Been there</span>':'')+(p.pin?'<span class="nr-yours">Your stop</span>':'')+'<b class="nr-n">'+esc(p.name||'')+'</b><span class="nr-h'+(s.cls?' '+s.cls:'')+'">'+esc(s.text)+'</span>'+nrRate(p)+'<span class="nr-t">'+esc(p.town||'')+(p.why?' · '+esc(p.why):'')+'</span>'+(p.about?'<span class="nr-about">'+esc(p.about)+'</span>':'')+nrPlanLine(p)+(o.off?'<span class="nr-nm">Listed only, not in the Maps route</span>':'')+'</span>'+
     (s.tag||o.mi!=null||typeof o.det==='number'?'<span class="nr-side">'+(s.tag?'<span class="nr-st '+s.cls+'">'+s.tag+'</span>':'')+(o.mi!=null?'<span class="nr-mi">'+nrMiTxt(o.mi)+'</span>':'')+(typeof o.det==='number'?'<span class="nr-det" title="Adds about '+Math.max(1,Math.round(o.det))+' min to the drive">+'+Math.max(1,Math.round(o.det))+' min</span>':'')+'</span>':'')+'</a>';   /* v7.72: +12 min, what the stop adds */
 }
 /* v7.51 (the owner, from Gemini's Findlay to Milton run: time to allow, worth the detour, walkable): the worker's
@@ -10823,7 +10850,7 @@ function nrFootMore(open){var p=$('#otp-nrFootP'),b=$('#otp-nrFootMore');if(p)p.
 /* Start in Maps: the app picked (Apple Maps needs a named end), its first leg when the trip is split */
 function nrStartLeg(t){
   var ap=mapsPref()==='apple'?nrAppleLegs(t):[],L=ap.length?ap:nrMapsLegs(t),n=L.length;
-  return {url:n?L[0].url:(nrMapsFor(t)||t.maps||''),app:ap.length?'Apple Maps':'Google Maps',label:'Start in Maps'+(n>1?' (1 of '+n+')':'')};
+  return {url:n?L[0].url:(nrMapsFor(t)||t.maps||''),app:ap.length?'Apple Maps':'Google Maps',label:(nrBeenAny(t)?'Carry on in Maps':'Start in Maps')+(n>1?' (1 of '+n+')':'')};   /* v7.83 */
 }
 /* a loop: the shops around the start, then back. The worker's Around you list, ordered by /order loop=1 */
 function nrLoop(from){
@@ -10930,12 +10957,15 @@ function nrDrawTrip(t,o){
   var ET=nrEtas(t,stops),live=!!ET,lateN=[];
   function eta(p){if(!ET)return 0;if(p===dest)return ET.at._dest||0;var i,j,a;for(i=0;i<stops.length;i++){a=stops[i];if(a.id===p.id)return ET.at[a._k||a.id]||0;for(j=0;j<(a.nested||[]).length;j++)if(a.nested[j].id===p.id)return ET.at[a._k||a.id]||0}return 0}
   if(ET)stops.forEach(function(a){[a].concat(a.nested||[]).forEach(function(p){if(nrLateAt(p,eta(p),day))lateN.push(p.name)})});
-  var inMaps={},mp=nrMapsPick(stops,mapsPref()==='apple'?APPLE_WP:9),off=stops.length-mp.length;mp.forEach(function(a){inMaps[a.id]=1});   /* v7.77 */
-  function row(p,cls,num,det){return '<div class="nr-row'+(p.pin?' nr-pinrow':'')+'">'+nrCard(p,day,cls,num,{eta:eta(p),det:det,off:cls==='nr-anchor'&&off>0&&!inMaps[p.id]})+'<span class="nr-acts'+(p.pin?'':' nr-acts4')+'">'+nrGo(p)+nrRvBtn(p)+(p.pin?'':nrStopBtn(p)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'"><span aria-hidden="true">−</span> Skip</button>')+'</span></div>'}   /* v7.78: + Stop; v7.75: a stop you named is not skipped; take it out above */
+  var BN=nrBeenGet(t),ahead=stops.filter(function(a){return !BN[a.id]}),today=nrToday(t),nx=nrBeenAny(t)?nrNextStop(stops,BN):null;   /* v7.83 */
+  var inMaps={},mp=nrMapsPick(ahead,mapsPref()==='apple'?APPLE_WP:9),off=ahead.length-mp.length;mp.forEach(function(a){inMaps[a.id]=1});   /* v7.77 */
+  function beenB(p){return today||BN[p.id]?'<button type="button" class="nr-beenb'+(BN[p.id]?' on':'')+'" data-nrbeen="'+esc(p.id||'')+'" aria-pressed="'+!!BN[p.id]+'" aria-label="'+(BN[p.id]?'Not been to ':'Been to ')+esc(p.name||'')+'">'+(BN[p.id]?'Undo':'✓ Been')+'</button>':''}   /* v7.83 */
+  function row(p,cls,num,det){var bn=!!BN[p.id];return '<div class="nr-row'+(p.pin?' nr-pinrow':'')+(bn?' nr-beenrow':'')+'">'+nrCard(p,day,cls+(bn?' nr-been':''),num,{eta:eta(p),det:det,been:bn,off:cls==='nr-anchor'&&!bn&&off>0&&!inMaps[p.id]})+'<span class="nr-acts'+(p.pin?'':' nr-acts4')+'">'+nrGo(p)+nrRvBtn(p)+beenB(p)+(p.pin?'':nrStopBtn(p)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'"><span aria-hidden="true">−</span> Skip</button>')+'</span></div>'}   /* v7.78: + Stop; v7.75: a stop you named is not skipped; take it out above */
   h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+(t.loop?'the shops around it and back':esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):''))+(t.loop?'</b>':'')+'</p>'+
      (t.via&&t.via.length?'<p class="nearp nr-viah">By way of '+esc(nrAnd(t.via.map(function(v){return String(v).split(',')[0]})))+'</p>':'')+   /* v7.75 */
      (t.missing&&t.missing.length?'<p class="nearp nr-late">Not found on the map: '+esc(nrAnd(t.missing.map(function(v){return String(v).split(',')[0]})))+'. The drive still goes there, but it is not in the list or in Maps; check the name.</p>':'')+   /* v7.77 */
-     (off>0?'<p class="nearp nr-mapsn">Maps takes '+(stops.length-off)+' stops in one route: your stops and the biggest shops. The other '+off+' are marked Listed only; Skip one to bring another in.</p>':'')+
+     (nx?'<div class="nr-next"><p class="nr-nexth">Next stop</p><div class="nr-row">'+nrCard(nx.p,day,'nr-anchor',nrLetter(nx.i),{eta:eta(nx.p)})+'<span class="nr-acts">'+nrGo(nx.p)+'</span></div></div>':nrBeenAny(t)&&dest.name&&!t.loop?'<p class="nearp nr-next">Every stop done. On to <b>'+esc(dest.name)+'</b>.</p>':'')+   /* v7.83 */
+     (off>0?'<p class="nearp nr-mapsn">Maps takes '+(ahead.length-off)+' stops in one route: your stops and the biggest shops. The other '+off+' are marked Listed only; Skip one to bring another in.</p>':'')+
      '<p class="nearp">'+(t.route&&(t.route.mi||t.route.km)?nrMiles(t.route)+' mi · '+nrDur(t.route.min||0)+' of driving · ':'')+'Trip day '+NR_DAYS[wd]+'<span id="otp-nrMembers">'+(o.members?' · '+o.members+' on this trip':'')+'</span></p>'+
      nrPlanSum(t,stops)+   /* v7.51 */
      (live?'<p class="nearp nr-etan">Open or closed is for when you would get there, leaving '+(($('#otp-nrLeave')||{}).value?'at '+nrClock(ET.leave):'now')+' and allowing about '+NR_STAY+' min at a stop'+(ET.routed&&ET.src==='osrm'?'.':' (drive times estimated).')+'</p>':'')+
@@ -11264,6 +11294,7 @@ if(near){
     if(e.target.closest&&e.target.closest('#otp-nrJoinGo')){nrJoin();return}
     if(e.target.closest&&e.target.closest('#otp-nrJoinIn,#otp-nrTripsIn')){nrSignin();return}
     if(e.target.closest&&e.target.closest('#otp-nrViaAdd')){nrViaAdd();return}   /* v7.75 */
+    var bv=e.target.closest&&e.target.closest('[data-nrbeen]');if(bv){e.preventDefault();var bt=NR.view||NR.built;if(bt){nrBeenToggle(bt,bv.getAttribute('data-nrbeen'));nrRedraw()}return}   /* v7.83 */
     var av=e.target.closest&&e.target.closest('[data-nradd]');if(av){e.preventDefault();nrStopAdd(av.getAttribute('data-nradd'),av.getAttribute('data-nraddid'));return}   /* v7.78 */
     var vx=e.target.closest&&e.target.closest('[data-viax]');if(vx){NR.vias.splice(+vx.getAttribute('data-viax'),1);rNrVias();return}
     if(e.target.closest&&e.target.closest('#otp-nrJoinX')){nrInvSet('');nrJoinDraw();return}

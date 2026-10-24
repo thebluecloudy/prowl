@@ -46,6 +46,7 @@ export function catsQueries(cats, n) {
 }
 export const NEAR_RADIUS_M = Math.round(9 * MI_M), NEAR_KEEP_MI = 25, CORRIDOR_CENTERS_MAX = 24;   /* Around You: Google answers beyond the circle; keep only what is really near */
 export const TRIP_STOPS_MAX = 40, TRIP_NESTED_MAX = 6, NEAR_MAX = 24, TRIP_MORE_MAX = 20;
+export const NEAR_CLOSE_KEEP = 8;   /* v166: Around You always keeps the closest few, however small */
 export const ANCHOR_REVIEWS = 150;       /* v136: a place of our kinds with this many reviews is worth planning around ... */
 export const ANCHOR_REVIEWS_ANTIQUES = 75;   /* ... and an antiques shop with this many (v140: Bluegrass Collectors, 90) */
 /* v140: Google's own place types for the kinds that have one; Nearby Search answers "antique stores only, most popular
@@ -215,6 +216,14 @@ export function rankPlaces(list) {
     if (Math.abs(ra - rb) >= 0.1) return rb - ra;
     return (a.near == null ? 1e9 : a.near) - (b.near == null ? 1e9 : b.near);
   });
+}
+/* v166 (Bluegrass Collectors in Ashland, KY, 0.1 mi away with 11 reviews: in the list with Antiques alone, cut once
+   Vintage and Thrift filled the 24): Around You's answer is the biggest max, plus the closest few not among them, in
+   rank order. Closest first can then show the shop next door. Each place carries near (miles). */
+export function nearKeep(list, max, close) {
+  const ranked = rankPlaces(list), keep = new Set(ranked.slice(0, max).map((p) => p.id));
+  ranked.filter((p) => typeof p.near === "number").sort((a, b) => a.near - b.near).slice(0, close).forEach((p) => keep.add(p.id));
+  return ranked.filter((p) => keep.has(p.id));
 }
 /* the town and state out of Google address components (Places New: { longText, shortText, types }; Geocoding:
    { long_name, short_name, types }). Never a street. */
