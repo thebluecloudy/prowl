@@ -6,7 +6,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.93 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.93** | 392,401 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.93** | 390,215 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v168** | |
 
 Recently shipped, newest first:
@@ -21,6 +21,13 @@ Recently shipped, newest first:
   Saved says, on one line under the tabs, what Pro does. Each Pro card says "Kept until Oct 24, 2027". The page uses
   the kept photo, which outlives the listing's. Not built yet: a sold/ended check per marketplace.
   Tests: `worker/__tests__/saved-v168.test.mjs`, `__tests__/page/saved-forever-v793.test.mjs`.
+- **v7.92: How Prowl works catches up** (Matt: "Update how prowl works section with all the new features of near me,
+  moving pills, etc"). Nine steps (were six): search with the marketplaces in order and recent searches; favorite
+  hunts as pills; **Put your hunts in order** (Reorder, press and hold); **Near me** (Around you, a town or ZIP, Open
+  now, + Stop, Road trip, ↑, Share, Trips); **On the road** (✓ Been for the group, Next stop's distance and arrival,
+  Hide the … closed by then, Carry on in Maps, Delete or Leave); Daily (its badge counts new finds); Alerts; Photo
+  (Hunt it on Prowl, share on a trip); Make it yours. Prowl's words adds Pill and Been; Den and Flock follow #244 (likes and saved finds in Flock's Saved and Likes tabs). Help text only, no new key.
+  Test: `__tests__/page/help-update-v791.test.mjs`.
 - **v7.91: Likes is in Flock; a swipe no longer deletes a saved find** (Matt: "move likes into flock feed saved likes.
   They are different. The likes are feeding the algorithm ... Some things I was saving don't seem to be there
   anymore"). Flock's switch is **Flock · Saved · Likes**, each with its count (the feed's tab says Flock: "it should be flock or some bird gathering term"); Likes is the old Den pane (What Prowl
@@ -1343,7 +1350,6 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| (another session) | Claude | **v7.92**: How Prowl works covers Near me, the road, reordering pills and Flock's Saved/Likes | PR #243 open. |
 
 Next free numbers: **page v7.94, worker v169**. Claim one here when you start.
 
