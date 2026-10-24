@@ -2497,7 +2497,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .sgw-dragging .sgw-chip:not(.sgw-drag){transition:box-shadow .12s}
 .scout-app-wrapper .sgw-chip.sgw-dropb{box-shadow:-6px 0 0 var(--ac)}
 .scout-app-wrapper .sgw-chip.sgw-dropa{box-shadow:6px 0 0 var(--ac)}
-/* v7.91: Likes is Flock's third view, a scrolling pane beside the feed */
+/* v7.91: Likes is Flock's third view, a scrolling pane beside the feed. The feed's tab says Flock, not Feed (Matt: "it should be flock or some bird gathering term") */
 .scout-app-wrapper #otp-flock.fl-likesv #otp-flockRow{display:none!important}
 .scout-app-wrapper #otp-flock #otp-denLikes{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:12px 16px 28px}
 .scout-app-wrapper #otp-flock #otp-denLikes[hidden]{display:none}
@@ -2623,7 +2623,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <span class="fl-birds" aria-hidden="true"><svg class="fl-ico fl-b1" viewbox="0 0 24 24"><use href="#otp-swallow"></use></svg><svg class="fl-ico fl-b2" viewbox="0 0 24 24"><use href="#otp-swallow"></use></svg><svg class="fl-ico fl-b3" viewbox="0 0 24 24"><use href="#otp-swallow"></use></svg></span>
       <b>Flock</b>
       <div class="fl-seg" role="tablist" aria-label="Flock view">
-<button type="button" role="tab" data-fv="feed" aria-selected="true">Feed</button><button type="button" role="tab" data-fv="saved" aria-selected="false">Saved</button><button type="button" role="tab" data-fv="likes" aria-selected="false">Likes</button>
+<button type="button" role="tab" data-fv="feed" aria-selected="true">Flock</button><button type="button" role="tab" data-fv="saved" aria-selected="false">Saved</button><button type="button" role="tab" data-fv="likes" aria-selected="false">Likes</button>
 </div>
       <button type="button" class="gh" id="otp-flockShuf">Shuffle</button>
     </div>

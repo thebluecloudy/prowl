@@ -1,6 +1,6 @@
 // Page v7.91 (Matt: "Yes move likes into flock feed saved likes. They are different. The likes are feeding the
 // algorithm ... You could like 100 but only save 5. Some things I was saving don't seem to be there anymore").
-// Likes is Flock's third view (Feed · Saved · Likes) and leaves the Den. A swipe-away in the feed used to take a saved
+// Likes is Flock's third view (Flock · Saved · Likes; the feed's tab says Flock, not Feed) and leaves the Den. A swipe-away in the feed used to take a saved
 // find out of Saved (and a price watch with it), so kept finds quietly vanished; now only the ✕ in Saved (or the ★)
 // removes them, and Saved shows everything saved.
 import { test } from 'node:test';
@@ -19,9 +19,9 @@ async function flock(extra) {
 }
 const view = (p, v) => { p.$('#otp-flock [data-fv="' + v + '"]').click(); };
 
-test('Flock has Feed · Saved · Likes, each counted; Likes shows what Prowl learned and the likes, the feed hides', async () => {
+test('Flock has Flock · Saved · Likes, each counted; Likes shows what Prowl learned and the likes, the feed hides', async () => {
   const p = await flock();
-  assert.deepEqual(p.$$('#otp-flock .fl-seg [data-fv]').map((b) => b.textContent), ['Feed', 'Saved 1', 'Likes 3']);
+  assert.deepEqual(p.$$('#otp-flock .fl-seg [data-fv]').map((b) => b.textContent), ['Flock', 'Saved 1', 'Likes 3']);
   view(p, 'likes'); await tick(20);
   const pane = p.$('#otp-denLikes');
   assert.ok(p.$('#otp-flock').contains(pane), 'in Flock');

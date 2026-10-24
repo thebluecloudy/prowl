@@ -13,7 +13,7 @@ Recently shipped, newest first:
 
 - **v7.91: Likes is in Flock; a swipe no longer deletes a saved find** (Matt: "move likes into flock feed saved likes.
   They are different. The likes are feeding the algorithm ... Some things I was saving don't seem to be there
-  anymore"). Flock's switch is **Feed · Saved · Likes**, each with its count; Likes is the old Den pane (What Prowl
+  anymore"). Flock's switch is **Flock · Saved · Likes**, each with its count (the feed's tab says Flock: "it should be flock or some bird gathering term"); Likes is the old Den pane (What Prowl
   learned, mute, unlike, Forget all) moved into Flock as `#otp-denLikes` (same id, same handlers). The Den has four
   tabs (two by two on a phone); a remembered Likes tab opens All hunts. The cause of the vanishing saves: `flDiscard`
   (✕ or a swipe in the Flock feed) also deleted the find from Saved and dropped its price watch. In the feed it keeps
