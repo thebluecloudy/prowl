@@ -2105,7 +2105,10 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .den-safe{margin:0 0 12px;padding:10px 12px;border-radius:10px;background:var(--ac-soft);font-size:14px;line-height:1.45;color:var(--i2)}
 .scout-app-wrapper .den-safe .lnk{-webkit-appearance:none;appearance:none;border:0;background:none;padding:0;color:var(--ac);font:inherit;font-weight:800;text-decoration:underline;cursor:pointer}
 /* v7.31: the popup's Save this find */
-.scout-app-wrapper .pp-sv{margin:10px 0 0}
+.scout-app-wrapper .pp-sv{margin:10px 0 0;display:flex;gap:8px}
+.scout-app-wrapper .pp-sv .sgw-sv{flex:1 1 0}
+.scout-app-wrapper .pp-lk{flex:1 1 0;display:flex;align-items:center;justify-content:center;min-height:48px;border:1.5px solid var(--l2);border-radius:999px;background:var(--cd2);color:var(--ink);font:800 16px/1 var(--sans);cursor:pointer}
+.scout-app-wrapper .pp-lk.on{color:#e0245e;border-color:#e0245e}
 .scout-app-wrapper .pp-sv .sgw-sv{position:static;inset:auto;transform:none;box-shadow:none;height:auto;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;border:1.5px solid var(--l2);border-radius:999px;background:var(--cd2);color:var(--ink);font:800 16px/1 var(--sans)}
 .scout-app-wrapper .pp-sv .sgw-sv:after{content:'Save this find'}
 .scout-app-wrapper .pp-sv .sgw-sv.on:after{content:'Saved'}
@@ -2894,6 +2897,11 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     }).catch(function(){delete POSHC[q].items;var w=POSHC[q].w;delete POSHC[q];for(var i=0;i<w.length;i++){try{w[i]([])}catch(e){} } });
   }
   function poshDate(d){var M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],p=String(d||'').split('-');if(p.length!==3)return '';return M[parseInt(p[1],10)-1]?M[parseInt(p[1],10)-1]+' '+parseInt(p[2],10)+', '+p[0]:'';}
+  /* v7.95 (Matt: "when I click it goes straight to eBay. Can we have the pop-up come up and let me save and like as
+     well"): each look-alike and Poshmark sale carries what the listing popup reads (data-u, -t, -p, -s, -h for the
+     hunt, -m for the line under the price), so a tap opens it there; a long-press or a new-tab click still links out */
+  function aprCell(a,u,t,p,s,h,m){a.setAttribute('data-u',u);a.setAttribute('data-t',String(t||'').slice(0,140));a.setAttribute('data-p',String(p||'').slice(0,30));a.setAttribute('data-s',s);
+    if(h)a.setAttribute('data-h',String(h).slice(0,80));if(m)a.setAttribute('data-m',m);}
   function poshBox(q){
     var pw=document.createElement('div');pw.id='otp-aprPosh';pw.className='apr-looks apr-posh';
     var ph=document.createElement('p');ph.className='apr-lkh';ph.textContent='Sold on Poshmark';pw.appendChild(ph);
@@ -2905,6 +2913,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       if(!list.length){var no=document.createElement('p');no.className='apr-wait';no.textContent='No Poshmark sales found for this name.';pw.insertBefore(no,al);return;}
       var g=document.createElement('div');g.className='apr-lkg';
       for(var i=0;i<list.length;i++){var a=document.createElement('a');a.className='apr-lk';a.href=list[i].url;a.target='_blank';a.rel='noopener noreferrer';
+        aprCell(a,list[i].url,list[i].title,list[i].price,'poshmark',q,'Sold on Poshmark'+(poshDate(list[i].date)?' '+poshDate(list[i].date):''));
         if(list[i].image){var im=document.createElement('img');im.src=list[i].image;im.alt='';im.loading='lazy';a.appendChild(im);}
         var t=document.createElement('span');t.className='apr-lkt';t.textContent=list[i].title.slice(0,80);a.appendChild(t);
         var p=document.createElement('span');p.className='apr-lkp';p.textContent=list[i].price+' sold';a.appendChild(p);
@@ -2926,17 +2935,18 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     card.appendChild(dl);O.appendChild(card);
     /* v5.59 eBay photo search: the closest-looking live listings, so the ID
        can be checked by eye. DOM only; eBay https links only. */
+    var q=String(r.item||'').replace(/\([^)]*\)/g,' ').replace(/\blikely\b/ig,' ').replace(/\s+/g,' ').replace(/^[\s,]+|[\s,]+$/g,'').slice(0,90);
+    var pq=r.search?String(r.search).slice(0,60):shortQ(q);   /* v6.11 */
     var LK=[];if(r.looks&&r.looks.length)for(var li=0;li<r.looks.length&&LK.length<3;li++){var x=r.looks[li];if(x&&typeof x.url==='string'&&/^https:\/\/(www\.)?ebay\.com\//.test(x.url)&&x.title)LK.push(x);}
     if(LK.length){var lw=document.createElement('div');lw.className='apr-looks';var lh=document.createElement('p');lh.className='apr-lkh';lh.textContent='Looks like these on eBay';lw.appendChild(lh);
       var lg=document.createElement('div');lg.className='apr-lkg';
       for(var lj=0;lj<LK.length;lj++){var a1=document.createElement('a');a1.className='apr-lk';a1.href=window.prowlAff(LK[lj].url,'prowl-photo');a1.target='_blank';a1.rel='noopener noreferrer';
+        aprCell(a1,LK[lj].url,LK[lj].title,LK[lj].price,'ebay',pq,'');
         if(typeof LK[lj].image==='string'&&/^https:\/\//.test(LK[lj].image)){var i1=document.createElement('img');i1.src=LK[lj].image;i1.alt='';i1.loading='lazy';a1.appendChild(i1);}
         var t1=document.createElement('span');t1.className='apr-lkt';t1.textContent=String(LK[lj].title).slice(0,80);a1.appendChild(t1);
         if(LK[lj].price){var p1=document.createElement('span');p1.className='apr-lkp';p1.textContent=String(LK[lj].price).slice(0,20)+' listed';a1.appendChild(p1);}
         lg.appendChild(a1);}
       lw.appendChild(lg);var ln=document.createElement('p');ln.className='apr-note';ln.textContent='For sale now, not sold prices. Seller titles can be wrong.';lw.appendChild(ln);O.appendChild(lw);}
-    var q=String(r.item||'').replace(/\([^)]*\)/g,' ').replace(/\blikely\b/ig,' ').replace(/\s+/g,' ').replace(/^[\s,]+|[\s,]+$/g,'').slice(0,90);
-    var pq=r.search?String(r.search).slice(0,60):shortQ(q);   /* v6.11 */
     if(pq&&String(r.basis)!=='pending')O.appendChild(poshBox(pq));
     var L=document.createElement('div');L.className='apr-links';
     function lk(t,u){var a=document.createElement('a');a.className='b';a.href=u;a.target='_blank';a.rel='noopener';a.textContent=t;L.appendChild(a);}
@@ -3716,7 +3726,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.94';
+var PROWL_VERSION='v7.95';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -6163,6 +6173,8 @@ document.addEventListener('click',function(e){
   /* v7.18 (Matt: "fix the best picks popup it should have same behaviour"): a Best picks card opens the same popup;
      a site the popup cannot show (Craigslist, Poshmark...) still links out */
   if(!c&&t&&t.closest&&(c=t.closest('.pk-card'))){if(popOpen(c))e.preventDefault();return}
+  /* v7.95: Photo check's look-alikes on eBay and sales on Poshmark open the popup too, so they can be saved and liked */
+  if(!c&&t&&t.closest&&(c=t.closest('.apr-lk[data-u]'))){if(popOpen(c,true))e.preventDefault();return}
   if(!c)return;
   cell=c.closest('.sgw-cell');if(!cell||cell.closest('.fl-card'))return;
   if(popOpen(cell,!cell.closest('#otp-den,#otp-denLikes')))e.preventDefault();   /* v7.31: lite for the sites the popup cannot read, on results (the Den's likes link out as before) */
@@ -8442,7 +8454,7 @@ function popOpen(card,lite){
   if(!src)return false;
   var img=card.querySelector('.sgw-card img')||card.querySelector('img');   /* v7.18: a Best picks card's photo */
   POP={u:u,src:src,t:card.getAttribute('data-t')||card.getAttribute('aria-label')||'',p:card.getAttribute('data-p')||'',
-    s:card.getAttribute('data-s')||src,h:card.getAttribute('data-h')||'',img:img?img.getAttribute('src')||'':'',auc:((card.querySelector('.fl-auc')||{}).textContent)||popAuc(card),repro:!!card.querySelector('.sgw-repro')};   /* v7.29 */
+    s:card.getAttribute('data-s')||src,h:card.getAttribute('data-h')||'',img:img?img.getAttribute('src')||'':'',auc:((card.querySelector('.fl-auc')||{}).textContent)||popAuc(card)||card.getAttribute('data-m')||'',repro:!!card.querySelector('.sgw-repro')};   /* v7.29 */
   POP.lite=lt;
   openSheet(POP_NAME[src]||LIVE_NAME[src],'');
   if(sh)sh.classList.add('pop');
@@ -8577,7 +8589,7 @@ function popPaint(d){
   if(pc)h+=popSec('price','Price check',pc,'price' in was?was.price:true);   /* v7.31: open, now that Fair price? is only here */
   var go=window.prowlAff(d.url||P.u,'prowl-popup',d.affUrl);
   if(go!=='#')h+=(d.gone?'<div>':'<div class="pp-dock">')+'<a class="b'+(d.gone?'':' p')+' pp-go" href="'+esc(go)+'" target="_blank" rel="noopener noreferrer">View on '+esc(POP_NAME[P.src]||LIVE_NAME[P.src])+' ↗</a></div>';   /* v7.19: an ended listing's link is not pinned; Watch for the next one leads */   /* v7.12: pinned to the sheet's foot */
-  if(!d.gone)h+='<div class="pp-sv">'+svBtn({url:P.u,title:title,price:price,image:imgs[0]||P.img||'',src:P.s==='shopgoodwill'?'':P.s},P.h||'')+'</div>';   /* v7.31: Save moved here from the card */
+  if(!d.gone)h+='<div class="pp-sv">'+svBtn({url:P.u,title:title,price:price,image:imgs[0]||P.img||'',src:P.s==='shopgoodwill'?'':P.s},P.h||'')+popLkBtn(likeHas(P.u))+'</div>';   /* v7.31: Save moved here from the card */   /* v7.95: Like beside it */
   P.share={u:d.url||P.u,t:title,p:price,img:imgs[0]||''};h+='<button type="button" class="b pp-share" data-ppshare="1">Share this find</button>';   /* v6.98 */
   h+='<button type="button" class="b pp-close" data-ppclose="1">Close</button>';   /* v6.99: a way out at the bottom too */
   b.innerHTML=h;b.setAttribute('data-ppu',P.u);
@@ -8661,13 +8673,22 @@ try{
   }
   awayMark(document);photoMark(document);
 }catch(e){}
+/* v7.95 (Matt: "let me save and like as well"): a Like button beside Save in the popup, so liking does not hang on
+   knowing the double-tap; it un-likes too */
+function popLkBtn(on){return '<button type="button" class="pp-lk'+(on?' on':'')+'" data-pplike="1" aria-pressed="'+on+'">'+(on?'\u2665 Liked':'\u2661 Like')+'</button>'}
+function popLkPaint(){var b=$('#otp-sheetB [data-pplike]'),on;if(!b||!POP)return;on=likeHas(POP.u);b.outerHTML=popLkBtn(on)}
+function popLikeTap(){
+  var P=POP;if(!P)return;
+  if(likeHas(P.u)){likeDrop(P.u);likePaint(P.u);rDenLikes();popLkPaint();toast('Unliked.',1800);return}
+  popLike();
+}
 /* v6.99: double-tap the photo to like the listing. It only adds a like; un-liking stays on the heart button. */
 function popLike(){
   var P=POP;if(!P)return;
   var hr=$('#otp-sheetB .pp-heart');if(hr&&!flReduced()){hr.classList.remove('on');void hr.offsetWidth;hr.classList.add('on')}
   if(likeHas(P.u)){toast('Already liked. It is in Flock, under Likes.',2200);return}
   var S=P.share||{},l=likeClean({u:P.u,t:S.t||P.t,p:S.p||P.p,s:P.s||P.src,i:S.img||P.img,h:'',at:Date.now()});if(!l)return;
-  var a=likesGet();a.unshift(l);likesPut(a);likePaint(P.u);rDenLikes();
+  var a=likesGet();a.unshift(l);likesPut(a);likePaint(P.u);rDenLikes();popLkPaint();
   toast('\u2665 Liked. Flock will show you more like this.',2400);
 }
 /* v7.19: Watch for the next one: the cleaned title becomes a favorite hunt (Daily, the home page's new finds and, for a
@@ -9996,6 +10017,7 @@ function flyStep(){
     var b=e.target.closest&&e.target.closest('[data-watch]');if(b){flWatchTap(b);return}
     if(e.target.closest&&e.target.closest('[data-ppshare]')){if(POP&&POP.share)shareFind(POP.share);return}   /* v6.98 */
     if(e.target.closest&&e.target.closest('[data-ppclose]')){closeSheet();return}   /* v6.99 */
+    if(e.target.closest&&e.target.closest('[data-pplike]')){popLikeTap();return}   /* v7.95 */
     if(e.target.closest&&e.target.closest('[data-pphunt]')){popHunt();return}
     if(e.target.closest&&e.target.closest('[data-ppwatch]')){popWatch();return}   /* v7.19 */
     if(e.target.closest&&e.target.closest('[data-ppnot]')){pncPopNot();return}   /* v7.19 */
