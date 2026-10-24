@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v168: 2026-10-24. Saved forever, a Prowl Pro perk: POST /alerts/saved merges a Pro member's saved finds into
+ *         saved:<email> (newest of saved or removed wins, kept 365 days from saving) and copies each one's photo to R2
+ *         saved/<sha16 email>/<sha16 url>.jpg, served signed at GET /saved/...; a daily sweep drops finds past the year
+ *         with their photos; Delete removes them all. Free members get 402 and keep saving on their device. (saved.js)
  *   v167: 2026-10-24. Group trips share ✓ Been: POST /trips/<id>/been { stop, on } by any member marks a stop or a
  *         shop in its town; the trip view carries been (place ids only). (tripBeen, tripBeenSet)
  *   v166: 2026-10-24. Around You keeps the 8 closest shops besides the 24 biggest (nearKeep): Bluegrass Collectors,
@@ -564,13 +568,14 @@ import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb6
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
-import { huntCombine, huntPriceN, craigslistNormalize, huntNeeds, huntRelevant } from "./hunt.js";   /* v117; v152: huntNeeds, huntRelevant */
+import { huntCombine, huntPriceN, craigslistNormalize, huntNeeds, huntRelevant } from "./hunt.js";
+import { SAVED_BODY_MAX, SAVED_SYNCS_PER_DAY, SAVED_PHOTOS_PER_SYNC, SAVED_PHOTO_MAX, SAVED_SIG_SECONDS, savedMerge, savedToCopy, savedUntil, photoKey } from "./saved.js";   /* v168 */   /* v117; v152: huntNeeds, huntRelevant */
 import { wkAdd, wkFresh, wkCur, letterShorters, letterBuild, letterText, letterQuiet } from "./letter.js";   /* v152: the weekly letter */
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v167";
+const WORKER_VERSION = "v168";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -5771,7 +5776,8 @@ async function alPurge(env, email, sub) {
     const mv = await kvGet(env, "moved:" + old, null);
     if (mv && mine.indexOf(String(mv.to)) !== -1) { await kv.delete("moved:" + old); gone.push("moved:"); }
   }
-  for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "code:", "pj:", "gm:", "pq:", "pp:", "wk:", "lt:"]) { await kv.delete(p + email); gone.push(p); }   /* v152: wk: lt: */   /* v85: likes:, v86: conf:, v108: code:, v112: pj: gm: pq: pp: (Pounce) */
+  for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "saved:", "code:", "pj:", "gm:", "pq:", "pp:", "wk:", "lt:"]) { await kv.delete(p + email); gone.push(p); }   /* v152: wk: lt: */   /* v85: likes:, v86: conf:, v108: code:, v112: pj: gm: pq: pp: (Pounce) */
+  await savedPurge(env, email); gone.push("saved/");   /* v168: the saved finds' photos */
   if (await pushPurge(env, email)) gone.push("push:");   /* v114 */
   const cid = sub && sub.cid ? String(sub.cid) : "";
   if (cid) {
@@ -5839,6 +5845,99 @@ async function alLikes(request, env, origin) {
   const m = likesMerge(had, b, Date.now());
   if (JSON.stringify(m) !== JSON.stringify(had)) await kvPut(env, key, m);   /* no write when nothing changed */
   return json(Object.assign({ ok: true }, m), 200, origin);
+}
+
+/* v168 Saved forever (saved.js): a Pro member's saved finds, kept a year with their photos. Sign-in as for likes; a member
+   without Pro gets 402 and the page keeps the finds on the device. Each sync copies up to SAVED_PHOTOS_PER_SYNC photos
+   and deletes the photos of finds that left (removed, past the year, or past the cap). */
+async function alSaved(request, env, origin) {
+  if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
+  const b = await readJson(request, SAVED_BODY_MAX);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  let email = alEmail(b.email);
+  let sub = email ? await kvGet(env, "sub:" + email, null) : null;
+  if (!sub || !alSame(String(b.tok || ""), sub.tok)) {
+    const ss = await sessMember(request, env);
+    if (!ss || (email && ss.email !== email)) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
+    sub = ss; email = ss.email;
+  }
+  if (!sub.pro) return json({ error: "Keeping saved finds for a year is part of Prowl Pro.", pro: false }, 402, origin);
+  if (!(await vCount("svsync:" + email, SAVED_SYNCS_PER_DAY))) return json({ error: "That is a lot of saving for one day. Your finds will sync tomorrow." }, 429, origin);
+  const key = "saved:" + email, had = await kvGet(env, key, null), now = Date.now();
+  const m = savedMerge(had, b, now), h = await sha16(email);
+  if (env.PROWL_FINDS) {
+    for (const f of savedToCopy(m.saved, SAVED_PHOTOS_PER_SYNC)) if (await savedPhotoCopy(env, h, f)) f.ph = 1;
+    for (const u of m.dropped.slice(0, 50)) { try { await env.PROWL_FINDS.delete(photoKey(h, await sha16(u))); } catch (e) {} }
+  }
+  const keep = { saved: m.saved, gone: m.gone };
+  if (JSON.stringify(keep) !== JSON.stringify(had)) await kvPut(env, key, keep);   /* no write when nothing changed */
+  if (m.saved.length) await savedIndex(env, email, true);
+  const out = [];
+  for (const f of m.saved) out.push(Object.assign({}, f, { until: savedUntil(f.at), ph: f.ph ? await savedPhotoUrl(env, h, await sha16(f.url)) : "" }));
+  return json({ ok: true, pro: true, saved: out, gone: m.gone }, 200, origin);
+}
+/* the photo of one find, into R2: an image the marketplace serves over https, at most SAVED_PHOTO_MAX, 8 seconds */
+async function savedPhotoCopy(env, h, f) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const r = await fetch(f.image, { signal: ctl.signal, redirect: "follow", headers: { Accept: "image/*" } });
+    const ct = String(r.headers.get("Content-Type") || "").toLowerCase();
+    if (!r.ok || !/^image\/(jpeg|png|webp|gif|avif)/.test(ct)) return false;
+    const buf = await r.arrayBuffer();
+    if (!buf.byteLength || buf.byteLength > SAVED_PHOTO_MAX) return false;
+    await env.PROWL_FINDS.put(photoKey(h, await sha16(f.url)), buf, { httpMetadata: { contentType: ct.split(";")[0] } });
+    return true;
+  } catch (e) { return false; } finally { clearTimeout(t); }
+}
+async function savedSig(env, h, k, exp) { return (await pxHmac(sessKey(env) || String(env.ADMIN_KEY || "prowl"), "prowl-saved-v1:" + h + "." + k + "." + exp)).slice(0, 32); }
+async function savedPhotoUrl(env, h, k) { const exp = Math.floor(Date.now() / 1000) + SAVED_SIG_SECONDS; return "/saved/" + h + "/" + k + ".jpg?e=" + exp + "&s=" + await savedSig(env, h, k, exp); }
+async function savedPhotoRoute(request, env, url) {
+  const txt = (s, st) => new Response(s, { status: st, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+  const m = /^\/saved\/([0-9a-f]{16})\/([0-9a-f]{16})\.jpg$/.exec(url.pathname);
+  if (!m || !env.PROWL_FINDS) return txt("not found", 404);
+  const exp = Number(url.searchParams.get("e") || 0), sig = String(url.searchParams.get("s") || "");
+  if (!exp || exp * 1000 <= Date.now() || !alSame(sig, await savedSig(env, m[1], m[2], exp))) return txt("not found", 404);
+  const obj = await env.PROWL_FINDS.get(photoKey(m[1], m[2]));
+  if (!obj) return txt("not found", 404);
+  const ct = (obj.httpMetadata && obj.httpMetadata.contentType) || "image/jpeg";
+  return new Response(obj.body, { status: 200, headers: { "Content-Type": ct, "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff", "Cross-Origin-Resource-Policy": "cross-origin" } });
+}
+/* the members with saved finds, for the daily sweep (emails stay in KV, never in a log) */
+async function savedIndex(env, email, on) {
+  const all = await kvGet(env, "saved:all", []), has = all.indexOf(email) !== -1;
+  if (on && !has) { all.push(email); await kvPut(env, "saved:all", all); }
+  if (!on && has) await kvPut(env, "saved:all", all.filter((e) => e !== email));
+}
+/* once a day from the alert clock: finds past their year leave, with their photos; an empty list leaves the index */
+async function savedSweep(env, now) {
+  if (!env || !env.PROWL_ALERTS) return { swept: 0 };
+  const all = await kvGet(env, "saved:all", []);
+  let swept = 0;
+  for (const email of all.slice(0, 500)) {
+    const key = "saved:" + email, had = await kvGet(env, key, null);
+    const m = savedMerge(had, null, now || Date.now()), h = await sha16(email);
+    if (env.PROWL_FINDS) for (const u of m.dropped.slice(0, 50)) { try { await env.PROWL_FINDS.delete(photoKey(h, await sha16(u))); } catch (e) {} }
+    swept += m.dropped.length;
+    const keep = { saved: m.saved, gone: m.gone };
+    if (!m.saved.length) { await env.PROWL_ALERTS.delete(key); await savedIndex(env, email, false); }
+    else if (JSON.stringify(keep) !== JSON.stringify(had)) await kvPut(env, key, keep);
+  }
+  return { swept };
+}
+/* Delete in Prowl and the admin's delete: every saved photo of this member, and the index entry */
+async function savedPurge(env, email) {
+  try {
+    if (env.PROWL_FINDS) {
+      const h = await sha16(email);
+      let cur;
+      do {
+        const l = await env.PROWL_FINDS.list({ prefix: "saved/" + h + "/", cursor: cur });
+        for (const o of l.objects || []) await env.PROWL_FINDS.delete(o.key);
+        cur = l.truncated ? l.cursor : undefined;
+      } while (cur);
+    }
+    await savedIndex(env, email, false);
+  } catch (e) { console.error("saved purge", String(e && e.message || e)); }
 }
 
 async function alUnsub(request, env, url, origin) {
@@ -6401,6 +6500,7 @@ async function cronRun(env) {
   let r = null, err = "";
   try { r = await alTick(env); } catch (e) { err = String(e && e.message || e); console.error("alTick", err); }   /* v51: never silent */
   if (new Date().getUTCMinutes() < 5) { try { await tripSweep(env); } catch (e) { console.error("trip sweep", String(e && e.message || e)); } }   /* v132: once an hour */
+  if (new Date().getUTCHours() === 7 && new Date().getUTCMinutes() < 5) { try { await savedSweep(env); } catch (e) { console.error("saved sweep", String(e && e.message || e)); } }   /* v168: once a day */
   try {
     await capsCall("metrics", "mrec", { c: { t: t0, ms: Date.now() - t0, members: (r && r.members) || 0, checked: (r && r.checked) || 0,
       sent: (r && r.sent) || 0, failed: ((r && r.failed) || 0) + (err ? 1 : 0), errors: err ? [scrubPII("alert clock crashed: " + err).slice(0, 160)] : ((r && r.errors) || []), skipped: (r && r.skipped) || "",
@@ -7246,6 +7346,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/alerts/mail" && request.method === "POST") return alMailSet(request, env, origin);   /* v55 */
     if (url.pathname === "/alerts/delete" && request.method === "POST") return alDelete(request, env, origin);   /* v55 */
     if (url.pathname === "/alerts/likes" && request.method === "POST") return alLikes(request, env, origin);   /* v85 */
+    if (url.pathname === "/alerts/saved" && request.method === "POST") return alSaved(request, env, origin);   /* v168 */
     if (url.pathname.startsWith("/push/") && request.method === "POST") return pushRoute(request, env, url, origin);   /* v114: Prowl's own notifications */
     if (url.pathname === "/alerts/quarry" && request.method === "POST") return pounceSave(request, env, origin);   /* v112: Pounce */
     if (url.pathname === "/alerts/quarry-test" && request.method === "POST") return pounceTest(request, env, origin);   /* v112 */
@@ -7324,6 +7425,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/reviews" && request.method === "GET") return reviewsRoute(request, env, url, origin);   /* v161: stars and reviews on a tap */
     if (url.pathname === "/suggest" && request.method === "GET") return suggestRoute(request, env, url, origin);   /* v161: places as you type */
     if (url.pathname === "/trips" || url.pathname.startsWith("/trips/")) return tripsRoute(request, env, url, origin);   /* v132: group trips and finds */
+    if (url.pathname.startsWith("/saved/") && request.method === "GET") return savedPhotoRoute(request, env, url);   /* v168 */
     if (url.pathname.startsWith("/finds/") && request.method === "GET") return findPhotoRoute(request, env, url);   /* v132: a find's photo, signed */
     if (url.pathname === "/sales" && request.method === "GET") return esSales(request, env, url, origin);   /* v103 */
     if (url.pathname === "/shop-picks") {
