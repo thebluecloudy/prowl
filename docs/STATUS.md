@@ -1,16 +1,24 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.85 / v166).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.86 / v166).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.85** | 392,511 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.86** | 392,511 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v166** | |
 
 Recently shipped, newest first:
 
+- **v7.86: reorder the hunt pills** (Matt: "for the pills for the hunt, i want to reorder them ... on phone press and
+  hold and move?"). Press and hold a pill (450 ms), then drag it; the place it lands is marked, the pill rides above
+  the finger and the page does not scroll while it moves. A mouse drags it without the hold; the keyboard moves it with
+  Alt and an arrow. A tap still picks a hunt, a swipe still scrolls. The order is the hunt list's own (`sgwMove`, no new
+  key): locked hunts swap among the locked places (the lock set is unchanged, a selection follows its hunt),
+  Goodwill-only terms move only among themselves (`owlTwigSgwTerms`). Daily and Prowl Alerts go through the hunts in
+  this order, so the first ones are what they reach first; the toast after a move says so. `rSGW` waits while a pill is
+  being dragged.
 - **v7.85: Delete or Leave from the open trip.** A group trip you open under Trips has, at its foot, Delete (your own:
   "Delete takes it away for everyone, with its Finds") or Leave (a friend's), the same two taps as the Trips list
   (`nrTripDel`). Page only, no new key. Test: `__tests__/page/near-tripend-v785.test.mjs`.
@@ -1282,7 +1290,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.86, worker v167**. Claim one here when you start.
+Next free numbers: **page v7.87, worker v167**. Claim one here when you start.
 
 ## What's next
 

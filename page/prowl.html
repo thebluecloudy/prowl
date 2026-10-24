@@ -2480,6 +2480,12 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .lv-j b{font-weight:800;color:var(--ac)}
 .scout-app-wrapper .lv-rest{margin:16px 15px 8px;padding-top:14px;border-top:1px solid var(--ln);font-size:14px;line-height:1.5;color:var(--mu)}
 .scout-app-wrapper .lv-rest p{margin:0 0 6px}
+/* v7.86: a hunt pill held, then dragged, to change the order (sgwDragWire) */
+.scout-app-wrapper .sgw-chip[data-sgw="pick"]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.scout-app-wrapper .sgw-chip.sgw-drag{position:relative;z-index:5;pointer-events:none;box-shadow:0 8px 22px var(--shadow);transform-origin:center;opacity:1;background-color:var(--bg);transition:none}
+.scout-app-wrapper .sgw-dragging .sgw-chip:not(.sgw-drag){transition:box-shadow .12s}
+.scout-app-wrapper .sgw-chip.sgw-dropb{box-shadow:-6px 0 0 var(--ac)}
+.scout-app-wrapper .sgw-chip.sgw-dropa{box-shadow:6px 0 0 var(--ac)}
 /* v6.69 Prowl magic (Hark's idea): a little motion on top of the page. Opacity and transform only (an animated
      shadow stalls phones), apart from the hunt-chip sheen on hover, which moves a background image; scoped to .scout-app-wrapper, or to body for what flies across the screen, and none of it
      under prefers-reduced-motion. Nothing here touches saved data, search URLs or popup timing.
@@ -3663,7 +3669,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.85';
+var PROWL_VERSION='v7.86';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -7623,7 +7629,7 @@ var DOCK_NEW=0;
 function dockNew(){var b=$('#otp-ds');if(!b)return;b.textContent=(DOCK_NEW>99?'99+':DOCK_NEW)+' new';b.hidden=!DOCK_NEW;b.setAttribute('aria-label',DOCK_NEW+' new in your hunts')}
 function rSGW(){
   var mount=$('#otp-sgw');
-  if(!mount)return;
+  if(!mount||sgw.dragging)return;   /* v7.86: the drop redraws */
   if(!mount.querySelector('#otp-sgwIn'))sgwShell(mount);
   var t=sgwCurTerm(),k=t.toLowerCase(),c=t?sgw.cache[k]:null,i,x,on,html='';
   var up=mount.querySelector('.sgw-upd'),tot=liveCount(c);
@@ -9208,6 +9214,7 @@ function sgwWire(mount){
     var el=actOf(e.target);if(!el)return;
     var act=el.getAttribute('data-sgw'),i=parseInt(el.getAttribute('data-i'),10);
     if(act==='del'){e.stopPropagation();sgwDel(i);return}
+    if(act==='pick'&&sgw.dragAt&&Date.now()-sgw.dragAt<600)return;   /* v7.86: the end of a drag is not a tap */
     if(act==='pick'){sgwSugHide();sgwPick(i);sgwToBody();return}   /* v7.02: a tapped hunt brings its finds into view */
     if(act==='go'){sgwSubmit();return}
     if(act==='sug'){sgwUseSug(i);return}
@@ -9227,11 +9234,108 @@ function sgwWire(mount){
       else if(e.key==='Escape'){el.value='';el.blur()}
       return;
     }
+    /* v7.86: Alt and an arrow moves a hunt pill */
+    if(e.altKey&&(e.key==='ArrowLeft'||e.key==='ArrowRight')&&el&&el.getAttribute&&el.getAttribute('data-sgw')==='pick'){
+      e.preventDefault();var ki=+el.getAttribute('data-i'),kn=sgwNear(ki,e.key==='ArrowRight'?1:-1),kw;
+      if(kn>-1&&(kw=sgwMove(ki,kn,e.key==='ArrowRight'))>-1){var kc=mount.querySelector('.sgw-chip[data-sgw="pick"][data-i="'+kw+'"]');if(kc)kc.focus()}
+      return;
+    }
     /* chips and their x are spans, so give them the keys a button gets */
     if((e.key==='Enter'||e.key===' ')&&el&&el.tagName==='SPAN'&&el.getAttribute('data-sgw')){
       e.preventDefault();el.click();
     }
   });
+  sgwDragWire(mount);   /* v7.86 */
+}
+
+/* v7.86 (Matt: "for the pills for the hunt, i want to reorder them ... on phone press and hold and move?"): press and
+   hold a hunt pill, then drag it; with a mouse, drag it; from the keyboard, Alt and an arrow. Locked hunts move among
+   the locked places in the hunt list (the lock set keeps its places, a selection follows its hunt), Goodwill-only terms
+   among themselves. It is the order Daily and Prowl Alerts go through, so the first hunts are the ones they reach first.
+   No new key: the order is the hunt list's own. */
+var SGW_HOLD=450;
+function sgwGroup(T,i){return T[i].hunt>-1}
+/* the pill next to i in its own group (dir 1 or -1), or -1 */
+function sgwNear(i,dir){var T=sgw.terms,j;for(j=i+dir;j>=0&&j<T.length;j+=dir)if(sgwGroup(T,j)===sgwGroup(T,i))return j;return -1}
+/* move pill `from` before (or after) pill `at`; returns where it landed in sgw.terms, or -1 */
+function sgwMove(from,at,after){
+  var T=sgw.terms,g,idx=[],i,k,pf,pt,ord,slots,nh,map,ex,ne,t;
+  if(!T[from]||!T[at]||from===at)return -1;
+  g=sgwGroup(T,from);if(sgwGroup(T,at)!==g)return -1;
+  for(i=0;i<T.length;i++)if(sgwGroup(T,i)===g)idx.push(i);
+  pf=idx.indexOf(from);pt=idx.indexOf(at)+(after?1:0);if(pt>pf)pt--;
+  if(pt===pf)return -1;
+  ord=idx.slice();ord.splice(pt,0,ord.splice(pf,1)[0]);
+  if(g){
+    slots=idx.map(function(i){return T[i].hunt}).sort(function(a,b){return a-b});
+    nh=st.hunts.slice();map=Object.create(null);
+    for(k=0;k<ord.length;k++){nh[slots[k]]=st.hunts[T[ord[k]].hunt];map[T[ord[k]].hunt]=slots[k]}
+    st.hunts=nh;
+    st.sel=new Set(Array.from(st.sel).map(function(j){return j in map?map[j]:j}));
+    save();
+  }else{
+    ex=sgw.extra;slots=idx.map(function(i){return ex.indexOf(T[i].t)}).sort(function(a,b){return a-b});
+    if(slots[0]<0)return -1;
+    ne=ex.slice();for(k=0;k<ord.length;k++)ne[slots[k]]=T[ord[k]].t;
+    sgw.extra=ne;sgwSaveExtra();
+  }
+  t=T[from].t.toLowerCase();
+  sgwSync();rSGW();try{if(typeof rDenHunts==='function')rDenHunts()}catch(e){}
+  for(i=0;i<sgw.terms.length;i++)if(sgw.terms[i].t.toLowerCase()===t)return i;
+  return -1;
+}
+function sgwDragWire(mount){
+  var D=null,timer=0;
+  function pt(e){var t=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])||e;return {x:t.clientX,y:t.clientY}}
+  function chipOf(el){if(el&&el.closest&&el.closest('.sgw-x'))return null;while(el&&el!==mount){if(el.classList&&el.classList.contains('sgw-chip')&&el.getAttribute('data-sgw')==='pick')return el;el=el.parentNode}return null}
+  function stop(){if(timer){clearTimeout(timer);timer=0}}
+  function unmark(){var m=mount.querySelectorAll('.sgw-dropb,.sgw-dropa'),i;for(i=0;i<m.length;i++){m[i].classList.remove('sgw-dropb');m[i].classList.remove('sgw-dropa')}}
+  function begin(){D.on=true;sgw.dragging=true;D.el.classList.add('sgw-drag');mount.classList.add('sgw-dragging');try{if(navigator.vibrate)navigator.vibrate(12)}catch(x){}}
+  /* the pill under the finger, or the nearest one within 60px */
+  function hit(p){
+    var L=mount.querySelectorAll('.sgw-chip[data-sgw="pick"]'),i,r,cx,cy,d,best=null,bd=3600;
+    for(i=0;i<L.length;i++){if(L[i]===D.el)continue;r=L[i].getBoundingClientRect();if(!r.width)continue;
+      cx=Math.max(r.left,Math.min(p.x,r.right));cy=Math.max(r.top,Math.min(p.y,r.bottom));d=(cx-p.x)*(cx-p.x)+(cy-p.y)*(cy-p.y);
+      if(d<=bd){bd=d;best={el:L[i],r:r}}}
+    return best;
+  }
+  function drag(p){
+    var h,from=+D.el.getAttribute('data-i'),at,after;
+    D.el.style.transform='translate('+(p.x-D.x)+'px,'+(p.y-D.y-(D.m?0:30))+'px) scale(1.06)';   /* above the finger, so the place it lands shows */
+    unmark();D.at=-1;h=hit(p);if(!h)return;
+    at=+h.el.getAttribute('data-i');if(!sgw.terms[at]||sgwGroup(sgw.terms,at)!==sgwGroup(sgw.terms,from))return;
+    after=p.x>h.r.left+h.r.width/2;D.at=at;D.after=after;
+    h.el.classList.add(after?'sgw-dropa':'sgw-dropb');
+  }
+  function end(){
+    var from,at,after,moved=-1;stop();if(!D)return;
+    if(!D.on){D=null;return}
+    from=+D.el.getAttribute('data-i');at=D.at;after=D.after;
+    unmark();D.el.classList.remove('sgw-drag');D.el.style.transform='';mount.classList.remove('sgw-dragging');
+    D=null;sgw.dragging=false;sgw.dragAt=Date.now();
+    if(at>-1)moved=sgwMove(from,at,after);
+    if(moved>-1)toast('Order saved. Daily and Prowl Alerts go through your hunts in this order.',2600);else rSGW();
+  }
+  mount.addEventListener('touchstart',function(e){
+    var c=chipOf(e.target),p;if(!c||(e.touches&&e.touches.length>1)){stop();D=null;return}
+    p=pt(e);stop();D={el:c,x:p.x,y:p.y,on:false,at:-1};
+    timer=setTimeout(function(){timer=0;if(D&&!D.on)begin()},SGW_HOLD);
+  },{passive:true});
+  mount.addEventListener('touchmove',function(e){
+    if(!D)return;var p=pt(e);
+    if(!D.on){if(Math.abs(p.x-D.x)>10||Math.abs(p.y-D.y)>10){stop();D=null}return}   /* a scroll, not a hold */
+    if(e.cancelable)e.preventDefault();drag(p);
+  },{passive:false});
+  mount.addEventListener('touchend',end);
+  mount.addEventListener('touchcancel',function(){if(D)D.at=-1;end()});
+  mount.addEventListener('contextmenu',function(e){if(D||sgw.dragging)e.preventDefault()});   /* Android's long-press menu */
+  mount.addEventListener('mousedown',function(e){var c;if(e.button||D)return;c=chipOf(e.target);if(c)D={el:c,x:e.clientX,y:e.clientY,on:false,at:-1,m:1}});
+  document.addEventListener('mousemove',function(e){
+    if(!D||!D.m)return;var p={x:e.clientX,y:e.clientY};
+    if(!D.on){if(Math.abs(p.x-D.x)+Math.abs(p.y-D.y)<6)return;begin()}
+    e.preventDefault();drag(p);
+  });
+  document.addEventListener('mouseup',function(){if(D&&D.m)end()});
 }
 
 function loadSGW(){
