@@ -135,7 +135,8 @@ test("Pro: the finds are kept, each photo copied once and handed back as a signe
   const ok = await W.savedPhotoRoute({}, env, new URL("https://w.dev" + r.body.saved[0].ph));
   assert.equal(ok.status, 200);
   assert.equal(ok.headers.get("Content-Type"), "image/jpeg");
-  const bad = await W.savedPhotoRoute({}, env, new URL("https://w.dev" + r.body.saved[0].ph.replace(/s=./, "s=0")));
+  const flip = r.body.saved[0].ph.replace(/s=(.)/, (m, c) => "s=" + (c === "0" ? "1" : "0"));   /* always a different first character */
+  const bad = await W.savedPhotoRoute({}, env, new URL("https://w.dev" + flip));
   assert.equal(bad.status, 404);
   const old = await W.savedPhotoRoute({}, env, new URL("https://w.dev/saved/" + h + "/" + k + ".jpg?e=1&s=" + (await W.savedSig(env, h, k, 1))));
   assert.equal(old.status, 404);

@@ -98,6 +98,6 @@ test('a photo link that is not the worker\'s is never kept', async () => {
   const p = loadPage({ fetchImpl: f.impl, storage: { ...MEMBER(true), 'prowl.finds': [find(1, 100)] } });
   await waitFor(() => f.sent.length);
   await tick(40);
-  assert.equal(ls(p, 'prowl.finds')[0].ph, '');
+  assert.equal(ls(p, 'prowl.finds')[0].ph, undefined, 'not stored at all');
   await p.close();
 });

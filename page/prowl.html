@@ -10112,13 +10112,19 @@ function findClean(f){
   if(!f||typeof f!=='object'||typeof f.url!=='string'||!/^https:\/\//i.test(f.url)||!f.title)return null;
   return {title:String(f.title).replace(/\s+/g,' ').slice(0,140).trim(),price:f.price?String(f.price).slice(0,24):'',url:f.url.slice(0,800),
     image:(typeof f.image==='string'&&/^https:\/\//i.test(f.image))?f.image.slice(0,800):'',
-    src:typeof f.src==='string'?f.src.slice(0,24):'',hunt:f.hunt?String(f.hunt).replace(/\s+/g,' ').slice(0,80):'',at:Number(f.at)||0,
-    ph:(typeof f.ph==='string'&&f.ph.indexOf(SGW_API+'saved/')===0)?f.ph.slice(0,400):'',until:/^\d{4}-\d{2}-\d{2}$/.test(String(f.until||''))?String(f.until):''};   /* v7.93: Saved forever */
+    src:typeof f.src==='string'?f.src.slice(0,24):'',hunt:f.hunt?String(f.hunt).replace(/\s+/g,' ').slice(0,80):'',at:Number(f.at)||0};
+}
+/* v7.93 Saved forever: a Pro member's find also carries the kept photo (the worker's link only) and the day it leaves */
+function findCleanPro(f){
+  var c=findClean(f);if(!c)return null;
+  if(typeof f.ph==='string'&&f.ph.indexOf(SGW_API+'saved/')===0)c.ph=f.ph.slice(0,400);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(String(f.until||'')))c.until=String(f.until);
+  return c;
 }
 function findsGet(){
   if(FC)return FC.slice();
   var a=xGet(FINDS_KEY,[]),out=[],seen=Object.create(null),i,f;
-  if(Array.isArray(a))for(i=0;i<a.length&&out.length<FINDS_MAX;i++){f=findClean(a[i]);if(f&&!seen[f.url]){seen[f.url]=1;out.push(f)} }
+  if(Array.isArray(a))for(i=0;i<a.length&&out.length<FINDS_MAX;i++){f=findCleanPro(a[i]);if(f&&!seen[f.url]){seen[f.url]=1;out.push(f)} }   /* v7.93: keeps a kept photo */
   FC=out;return out.slice();
 }
 function findsPut(a,quiet){FC=a.slice(0,FINDS_MAX);xSet(FINDS_KEY,FC);if(!quiet)savedSync()}   /* v7.93: a Pro member's saves follow the account */
@@ -10150,7 +10156,7 @@ function savedSync(now){
 }
 function savedApply(j){
   var L=[],i,f,was=JSON.stringify(findsGet());
-  for(i=0;i<(Array.isArray(j.saved)?j.saved.length:0)&&L.length<FINDS_MAX;i++){f=j.saved[i];if(f&&typeof f.ph==='string'&&f.ph.charAt(0)==='/')f=Object.assign({},f,{ph:SGW_API+f.ph.slice(1)});f=findClean(f);if(f)L.push(f)}
+  for(i=0;i<(Array.isArray(j.saved)?j.saved.length:0)&&L.length<FINDS_MAX;i++){f=j.saved[i];if(f&&typeof f.ph==='string'&&f.ph.charAt(0)==='/')f=Object.assign({},f,{ph:SGW_API+f.ph.slice(1)});f=findCleanPro(f);if(f)L.push(f)}
   xSet(SGONE_KEY,Array.isArray(j.gone)?j.gone:[]);xSet(SGONE_KEY,sgoneGet());
   SV.pro=true;
   findsPut(L,true);
