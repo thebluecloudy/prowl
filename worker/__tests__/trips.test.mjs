@@ -584,3 +584,26 @@ test("v165: stops are looked up first and once more if Google says no; the drive
   assert.deepEqual(m.body.missing, [C], "said, not dropped quietly");
   assert.deepEqual(ROUTE_BODIES[ROUTE_BODIES.length - 1].intermediates[1], { address: C, via: true }, "still driven through by its words");
 });
+
+test("v167: a member marks a stop ✓ Been for the whole group; only the trip's own stops, members only, place ids only", async () => {
+  const env = envWith({ PRO_CIDS: "9009" }); PCACHE.m.clear();
+  const made = await call(env, "POST", "/trips", { to: "Blenko Glass Company, Milton, WV", lat: 42.4806, lng: -83.4755, day: "2026-10-26" }, "9009");
+  const id = made.body.id, code = (await call(env, "POST", "/trips/" + id + "/invite", {}, "9009")).body.code;
+  assert.equal((await call(env, "POST", "/trips/" + id + "/join", { c: code }, "1111")).status, 200);
+  const view = (await call(env, "GET", "/trips/" + id, null, "9009")).body;
+  assert.deepEqual(view.been, [], "nothing marked yet");
+  const a = view.stops[0], n = view.stops.find((s) => (s.nested || []).length);
+  const marked = await call(env, "POST", "/trips/" + id + "/been", { stop: a.id, on: true }, "1111");
+  assert.equal(marked.status, 200); assert.deepEqual(marked.body.been, [a.id]);
+  assert.deepEqual((await call(env, "GET", "/trips/" + id, null, "9009")).body.been, [a.id], "the organizer sees the friend's mark");
+  if (n) { assert.deepEqual((await call(env, "POST", "/trips/" + id + "/been", { stop: n.nested[0].id, on: true }, "9009")).body.been.length, 2, "a shop in a stop's town too"); }
+  assert.equal((await call(env, "POST", "/trips/" + id + "/been", { stop: "p_not_on_this_trip", on: true }, "1111")).status, 400);
+  assert.equal((await call(env, "POST", "/trips/" + id + "/been", { stop: a.id, on: true }, "5555")).status, 404, "not a member");
+  assert.equal((await call(env, "GET", "/trips/" + id + "/been", null, "1111")).status, 405);
+  const off = await call(env, "POST", "/trips/" + id + "/been", { stop: a.id, on: false }, "9009");
+  assert.ok(off.body.been.indexOf(a.id) === -1, "anyone on the trip can take a mark off");
+  const rec = JSON.parse(env.PROWL_ALERTS.m.get("trip:" + id));
+  const ids = []; rec.stops.forEach((x) => { ids.push(x.id); (x.nested || []).forEach((y) => ids.push(y.id)); });
+  assert.ok(Object.keys(rec.been).every((k) => ids.indexOf(k) !== -1 && rec.been[k] === 1), "kept as the trip's place ids, nothing about who");
+  assert.doesNotMatch(JSON.stringify(rec.been), /1111|9009/, "no member id in the marks");
+});

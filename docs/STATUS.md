@@ -1,16 +1,28 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.89 / v166).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.90 / v167).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.89** | 392,511 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v166** | |
+| Page | **v7.90** | 392,511 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v167** | |
 
 Recently shipped, newest first:
 
+- **v7.90 / v167: on the road, three more** (the owner: "do all 3").
+  - **✓ Been is the group's on a group trip.** Worker v167: `POST /trips/<id>/been { stop, on }` by any member marks
+    a stop (or a shop in its town) or takes a mark off, for everyone; kept on the trip as place ids only, nothing about
+    who (`tripBeen`, `tripBeenSet`); `GET /trips/<id>` carries `been`. The page shows the group's marks with your own,
+    sends each tap, and keeps the mark on the phone with a note if the group could not be told.
+  - **Next stop says how far and when:** "About 12 mi from you · about 15 min · there by 2:40 PM", from the phone
+    (asked for when you mark a stop), else from your last stop; a quarter more than the straight line for the road, at
+    the trip's own average speed (`nrNextLine`).
+  - **Hide the ones closed by then:** on today's trip, "Hide the N closed by then" takes the stops that will be closed
+    when you get there off the list and out of the Maps link; a town's open shop takes its stop's place
+    (`nrOpenOnly`); "Show the N closed by then" brings them back. For the visit only, no new key.
+  - Tests: `__tests__/page/near-onroad-v790.test.mjs`, `worker/__tests__/trips.test.mjs`. Checked in Chromium at 390px.
 - **v7.89: Reorder with taps** (Matt, on v7.88: "It is trying to copy the text"). His phone selects a held pill's
   words despite `user-select:none`, so the long press became a copy. A **Reorder** button beside "All your hunts →"
   (`data-sgw="reorder"`, `sgw.reorder`) moves pills with taps alone: tap the hunt, tap where it goes (its right half:
@@ -1312,9 +1324,8 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `claude/new-session-pffeiw` | Claude | NEAR ME: ✓ Been shared on group trips, Next stop distance and arrival, Open when you get there | Page v7.90, worker v167, PR open. |
 
-Next free numbers: **page v7.91, worker v168** (v7.90 / v167 are claimed in flight). Claim one here when you start.
+Next free numbers: **page v7.91, worker v168**. Claim one here when you start.
 
 ## What's next
 
