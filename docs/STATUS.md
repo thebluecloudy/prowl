@@ -27,6 +27,22 @@ Recently shipped, newest first:
   for another day. Also `__tests__/page/fn-names-v780.test.mjs`: no top-level page function is declared twice (the
   first Next stop was silently replaced by the hours helper `nrNext`). Page only. Tests:
   `__tests__/page/near-been-v780.test.mjs`. Checked in Chromium at 390px. v7.79 was left for #232.
+- **v7.79: the Hunt screen, from the owner's design brief** ("Prowl design system and UX brief", written against
+  v7.60; Matt: "take any of the ideas and see if it is useful"). Most of its Hunt-screen list had already shipped
+  (search in the first screen, no "Just Facebook" button, filter chips under the box, pills collapsing on a phone, the
+  install pill at the bottom); these were still open:
+  - On a phone **Hunt** is the full-width 52px button under the box, not a small one alone on a row.
+  - A **desktop collapses the hunt pills too**: 12 and "+N more" / "Show fewer" (`chipFew`, `CHIP_FEW_WIDE`); a hunt
+    with new finds always shows; your order is kept (the brief's re-sort was left out).
+  - Pills are **44px with 15px words** in `--i2` (were 13px grey on a desktop, 40px on a phone).
+  - The sold-price row says **What has rookwood vase sold for?** and Best picks **Best picks for rookwood vase**.
+  - **One focus outline**: the base reset takes every button's outline off, so a keyboard user saw no focus on most
+    of them; `:focus-visible` on links, buttons, `[role=button]`, `summary` and `[tabindex]` draws the accent
+    outline. Taps show nothing.
+  - Left out on purpose: the brief's navy and gold palette (the default is the cream Owl & Twig look; Dark is close to
+    it already) and a desktop top tab bar. Test: `__tests__/page/hunt-brief-v779.test.mjs`.
+  - Fixed on the way: Near me's "Find the shops around you" card cut **📍 Use my location** short on a 390px phone
+    since v7.73's 17px buttons; the two buttons now take a row each on a phone.
 - **v7.78: + Stop makes any shop one of your stops on the way** (the owner, on Roadtrippers: "i may want to go to a
   store ... and then you click on that place"). Every shop in Around you, in a trip's list (anchors and Also in town)
   and among the smaller shops has **+ Stop** (`nrStopBtn`, `nrStopAdd`). From Around you the shop waits under Road trip
@@ -1216,10 +1232,10 @@ Recently shipped, newest first:
 | Branch | Owner | What | State |
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
-| `ccr-0de21c46-yzs839` | Claude | Hunt screen from the design brief (#232, draft) | Page v7.79. |
+| `ccr-0de21c46-yzs839` | Claude | The design brief's next 10 ideas (#235) | Page v7.81. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.81, worker v167** (v7.79 is #232's). Claim one here when you start.
+Next free numbers: **page v7.82, worker v167** (v7.81 is #235's). Claim one here when you start.
 
 ## What's next
 

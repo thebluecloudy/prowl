@@ -278,6 +278,10 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper button,.scout-app-wrapper input,.scout-app-wrapper textarea,.scout-app-wrapper select{-webkit-appearance:none;appearance:none;outline:none;
   font-family:inherit;font-size:inherit;line-height:inherit}
 .scout-app-wrapper button{cursor:pointer}
+/* v7.79 (the design brief: "Focused: the same for keyboard focus everywhere"): the reset above takes the outline off
+   every button, so a keyboard user saw no focus on most of them. One accent outline for whatever takes focus by
+   keyboard; rules further down that draw their own focus still win. Mouse and touch taps show nothing. */
+.scout-app-wrapper a:focus-visible,.scout-app-wrapper button:focus-visible,.scout-app-wrapper [role=button]:focus-visible,.scout-app-wrapper summary:focus-visible,.scout-app-wrapper [tabindex]:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
 .scout-app-wrapper img,.scout-app-wrapper svg{border:0;max-width:none}
 .scout-app-wrapper table{border-collapse:collapse}
 /* ---------------------------------------------------------------------- */
@@ -701,7 +705,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-m{font-size:12.5px;color:var(--mu);padding:0 8px 8px;letter-spacing:.01em}
 @media(max-width:420px){.scout-app-wrapper .sgw-grid{grid-template-columns:repeat(2,1fr);gap:8px} }
 .scout-app-wrapper .sgw-chips{display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding:0 15px 12px}
-.scout-app-wrapper .sgw-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 8px 6px 13px;border:1px solid var(--l2);border-radius:999px;background:var(--cd);font-size:13px;font-weight:700;color:var(--mu);cursor:pointer;font-family:inherit;line-height:1.4;transition:background .15s,border-color .15s,color .15s}
+.scout-app-wrapper .sgw-chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:6px 8px 6px 13px;border:1px solid var(--l2);border-radius:999px;background:var(--cd);font-size:15px;font-weight:700;color:var(--i2);cursor:pointer;font-family:inherit;line-height:1.4;transition:background .15s,border-color .15s,color .15s}
 .scout-app-wrapper .sgw-chip:hover{color:var(--ink);border-color:var(--ac)}
 .scout-app-wrapper .sgw-chip.on{background:var(--ac);border-color:var(--ac);color:var(--onink)}
 .scout-app-wrapper .sgw-chip .sgw-x{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:999px;font-size:14px;line-height:1;opacity:.55}
@@ -948,6 +952,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .bar-menu .gh[data-l]::after{content:attr(data-l);font-weight:700}
 .scout-app-wrapper .bar-menu .gh[hidden]{display:none!important}
 .scout-app-wrapper .near-chip{height:40px;padding:0 14px;border-radius:99px;font-size:14px;flex:0 0 auto}
+@media (max-width:600px){.scout-app-wrapper #otp-sf>button[type=submit]{flex:1 1 100%;min-height:52px;font-size:17px}}   /* v7.79: on a phone Hunt is the full-width button under the box, not a small one alone on a row (the design brief) */
 .scout-app-wrapper .sgw-morep{width:100%}
 .scout-app-wrapper .sgw-morep>summary{cursor:pointer;list-style:none;display:inline-flex;align-items:center;gap:6px;min-height:40px;font-size:15px;font-weight:700;color:var(--ac)}
 .scout-app-wrapper .sgw-morep>summary::-webkit-details-marker{display:none}
@@ -1028,7 +1033,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-form input:focus{border-style:solid;border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-ring)}
 .scout-app-wrapper .sgw-go{height:40px;padding:0 16px;border-radius:999px;border:1px solid var(--ac);background:var(--ac);color:var(--onink);font-size:15px;font-weight:800}
 .scout-app-wrapper .sgw-go:hover{filter:brightness(.94)}
-.scout-app-wrapper .sgw-chip{min-height:40px;font-size:15px}
+.scout-app-wrapper .sgw-chip{min-height:44px;font-size:15px}   /* v7.79: 44px, as everywhere (the design brief) */
 .scout-app-wrapper .sgw-lock{color:var(--go);font-size:12.5px;line-height:1}
 .scout-app-wrapper .sgw-chip.on .sgw-lock{color:inherit}
 .scout-app-wrapper .sgw-chip .sgw-x{width:22px;height:22px;font-size:16px}
@@ -2165,7 +2170,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-atbar .nr-recl{align-self:center;font-size:13px;color:var(--mu);margin-right:4px}
 .scout-app-wrapper .nr-ask{margin:4px 0 12px;padding:14px;border:1.5px solid var(--l2);border-radius:14px;background:var(--cd)}
 .scout-app-wrapper .nr-askb{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
-.scout-app-wrapper .nr-askb .b{flex:1 1 160px;min-height:48px;justify-content:center}
+.scout-app-wrapper .nr-askb .b{flex:1 1 220px;min-height:48px;justify-content:center}   /* v7.79: at v7.73's 17px a phone has no room for two side by side ("Use my locatio"), so each takes its own row there */
 .scout-app-wrapper .nr-tools{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;margin:0 0 8px}
 .scout-app-wrapper .nr-tools .nr-sort{margin:0}
 .scout-app-wrapper .nr-tools .nr-openb{min-height:32px;padding:7px 12px;font-size:12.5px}
@@ -5026,7 +5031,7 @@ function huntInner(t){
   if(d.fail||!d.picks||!d.picks.length)return '';
   var picks=fltOnly(d.picks);   /* v7.40: the filters shape the picks too */
   if(!picks.length)h+='<p class="pk-hid">Best picks: all '+d.picks.length+' hidden by your <button type="button" class="lnk" data-flt="open">filters</button>.</p>';
-  else h+='<h3 class="pk-h">Best picks'+(d.median?' <small>typical price '+esc(d.median)+'</small>':'')+'</h3><div class="pk-row">';
+  else h+='<h3 class="pk-h">Best picks for '+esc(t)+(d.median?' <small>typical price '+esc(d.median)+'</small>':'')+'</h3><div class="pk-row">';
   for(i=0;i<picks.length;i++){it=picks[i];
     h+='<a class="pk-card" href="'+esc(huntLink(it))+'" target="_blank" rel="noopener noreferrer" data-u="'+esc(it.url||'')+'" data-t="'+esc(it.title||'')+'" data-p="'+esc(it.price||'')+'" data-s="'+esc(it.src||'')+'">'+   /* v7.18: data for the popup */
       (it.image?'<img loading="lazy" src="'+esc(it.image)+'" alt="">':'<span class="pk-noimg"></span>')+
@@ -5059,7 +5064,7 @@ function viewSw(){var d=detailGet();return '<div class="view-sw" role="group" ar
   '<button type="button" data-view="simple" aria-pressed="'+(d==='simple')+'">Swipe</button>'+
   '<button type="button" data-view="all" aria-pressed="'+(d==='all')+'">Show everything</button></div>'}
 function compsRow(t){
-  return '<div class="comps comps-top" role=group aria-label="What has it sold for?"><p class=comps-h>What has it sold for?</p>'+
+  return '<div class="comps comps-top" role=group aria-label="What has '+esc(t)+' sold for?"><p class=comps-h>What has <b>'+esc(t)+'</b> sold for?</p>'+   /* v7.79: names the hunt it follows (the design brief) */
     '<button class=gh type=button data-comps=90 data-t="'+esc(t)+'">eBay Sold · 90 days</button>'+
     '<button class=gh type=button data-comps=3y data-t="'+esc(t)+'">Terapeak · 3 years</button>'+
     '<span class=comps-note>Both need you signed in to eBay — Terapeak also needs Seller Hub (free).</span></div>';
@@ -6135,8 +6140,9 @@ function sgwSync(){
 }
 /* v5.69 seen-listings memory for the "new" counts. Its own key, capped, and
    rebuilt from nothing if it is ever missing or broken. */
-var CHIP_FEW=8,SEEN_KEY='prowl.seenUrls',SEEN=null;
+var CHIP_FEW=8,CHIP_FEW_WIDE=12,SEEN_KEY='prowl.seenUrls',SEEN=null;
 function isNarrow(){try{return window.innerWidth<=640}catch(e){return false}}
+function chipFew(){return isNarrow()?CHIP_FEW:CHIP_FEW_WIDE}   /* v7.79 (the design brief): 31 pills were a wall on a desktop too */
 function seenLoad(){if(SEEN)return SEEN;try{SEEN=JSON.parse(localStorage.getItem(SEEN_KEY)||'{}')||{}}catch(e){SEEN={}}if(typeof SEEN!=='object'||Object.prototype.toString.call(SEEN)==='[object Array]')SEEN={};return SEEN}
 function seenSave(){try{var ks=Object.keys(SEEN);if(ks.length>60)ks.slice(0,ks.length-60).forEach(function(k){delete SEEN[k]});localStorage.setItem(SEEN_KEY,JSON.stringify(SEEN))}catch(e){}}
 function seenUrls(k){
@@ -7502,11 +7508,11 @@ function rSGW(){
      hunt with results in hand gets a count of listings not seen before.
      v6.69: the ones new since the last look are noted first (FRESH), so their cards can say so (data-fresh) */
   if(sgw.cur){seenFresh(sgw.cur);seenMark(sgw.cur)}
-  var NEWN=[],few=isNarrow()&&!sgw.more&&sgw.terms.length>CHIP_FEW+1,shown=0,hid=0;
+  var lim=chipFew(),NEWN=[],few=!sgw.more&&sgw.terms.length>lim+1,shown=0,hid=0;
   for(i=0;i<sgw.terms.length;i++){x=sgw.terms[i];NEWN.push(x.t.toLowerCase()===sgw.cur?0:seenNew(x.t.toLowerCase()));}
   for(i=0;i<sgw.terms.length;i++){
     x=sgw.terms[i];on=x.t.toLowerCase()===sgw.cur;
-    if(few&&shown>=CHIP_FEW&&!on&&!NEWN[i]){hid++;continue}
+    if(few&&shown>=lim&&!on&&!NEWN[i]){hid++;continue}
     shown++;
     html+='<span class="sgw-chip'+(on?' on':'')+'" role="button" tabindex="0" aria-pressed="'+on+'" data-sgw="pick" data-i="'+i+'">'+
       (x.hunt>-1?'<s class="sgw-lock" aria-hidden="true">◉</s>':'')   /* v6.58: own class; .sgw-lk is the result-card heart since v6.54 */+esc(x.t)+
@@ -7514,7 +7520,7 @@ function rSGW(){
       '<span class="sgw-x" data-sgw="del" data-i="'+i+'" role="button" tabindex="0" aria-label="'+(x.hunt>-1?'Unlock ':'Remove ')+esc(x.t)+'">×</span></span>';
   }
   if(hid)html+='<span class="sgw-chip sgw-more" role="button" tabindex="0" data-sgw="more">+'+hid+' more</span>';
-  else if(sgw.more&&isNarrow()&&sgw.terms.length>CHIP_FEW+1)html+='<span class="sgw-chip sgw-more" role="button" tabindex="0" data-sgw="less">Show fewer</span>';
+  else if(sgw.more&&sgw.terms.length>lim+1)html+='<span class="sgw-chip sgw-more" role="button" tabindex="0" data-sgw="less">Show fewer</span>';
   form.insertAdjacentHTML('beforebegin',html);
   mount.querySelector('.sgw-body').innerHTML=(sgw.cur?homeNewLine(NEWN):homeNew(NEWN))+sgwBody();   /* v7.09; v7.32 */
   freshPaint(mount);   /* v6.69 */
