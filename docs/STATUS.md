@@ -1,16 +1,24 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v7.97 / v170).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v7.98 / v170).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.97** | 385,405 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.98** | 385,440 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v170** | |
 
 Recently shipped, newest first:
 
+- **v7.98: Save trip and Share where you see them** (Matt: "Trips used to be for groups we need a save trip button
+  and a share inside trips area"). Keeping a trip for the group and inviting were under ⋯ More › Share. Now the top of
+  a built trip has **★ Save trip** (`nrKeep`, unchanged: sign-in, Pro on the worker) and **↗ Share** (the route by
+  text, `nrSend`); a kept trip says **✓ Saved in Trips** with **Invite friends** for its organizer (`nrInvite`, now
+  by id) and **↗ Share the route**; each of your own trips in the Trips list has **Share** (the invite link; a
+  friend's trip has none, only the organizer invites). The Share box under More still works; its keep button is now
+  Save trip, and the Trips words point to the new buttons (`nrTripActs`). No worker change, no new key.
+  Test: `__tests__/page/near-save-v798.test.mjs`.
 - **v7.97 / v170: Near me costs far less** (Matt, on $101 of Google Places in a week: "it was only me and i ran it about 20
   times"). The bill was all Places Text Search, Enterprise + Atmosphere ($40 per 1,000; the first 1,000 a month free):
   a Road trip build asks up to `TRIP_SEARCHES_MAX` (150) place searches, a circle every 15 miles on up to three roads,
@@ -1401,7 +1409,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.98, worker v171**. Claim one here when you start.
+Next free numbers: **page v7.99, worker v171**. Claim one here when you start.
 
 ## What's next
 

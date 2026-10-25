@@ -35,7 +35,7 @@ test('SHARE offers Send the route; it goes through the share sheet with the stop
   p.$('#otp-nrShare').click();
   const box = p.$('#otp-nrSendBox');
   assert.ok(box, 'the choice opens on the trip');
-  assert.deepEqual([...box.querySelectorAll('button')].map((b) => b.textContent), ['Send the route', 'Keep it for my group']);
+  assert.deepEqual([...box.querySelectorAll('button')].map((b) => b.textContent), ['Send the route', 'Save trip']   /* v7.98 */);
   p.$('#otp-nrSend').click(); await tick(20);
   assert.equal(shared.length, 1, 'no sign-in asked: the share sheet opened');
   assert.equal(shared[0].title, 'Road trip to Blenko Glass Company');
