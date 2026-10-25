@@ -69,7 +69,7 @@ const SHOPS = [
   gPlace("Hillbilly Flea Market", "Ashland", "KY", 38.4795, -82.6410, { userRatingCount: 970, rating: 3.9, primaryTypeDisplayName: { text: "Flea Market" } }),   /* v138: out unless Flea markets is on */
 ];
 const BLENKO = gPlace("Blenko Glass Company", "Milton", "WV", 38.4345, -82.1322, { regularOpeningHours: { periods: [1, 2, 3, 4, 5].map((d) => ({ open: { day: d, hour: 9, minute: 0 }, close: { day: d, hour: 15, minute: 30 } })), weekdayDescriptions: ["Monday: 9:00 AM – 3:30 PM", "Tuesday: 9:00 AM – 3:30 PM", "Wednesday: 9:00 AM – 3:30 PM", "Thursday: 9:00 AM – 3:30 PM", "Friday: 9:00 AM – 3:30 PM", "Saturday: Closed", "Sunday: Closed"] } });
-const CALLS = [], DIST = [], SUG = [], ROUTE_BODIES = [], PIN_FAIL = {};
+const CALLS = [], DIST = [], SUG = [], ROUTE_BODIES = [], PIN_FAIL = {}, ALONG = [], REFUSE_ALONG = { on: false };
 let DROP_HERE = false;   /* v153: Google's relevance answer leaves out the shop at the very spot asked about */
 function fakeGoogle(u, init) {
   u = String(u); CALLS.push(u);
@@ -81,6 +81,14 @@ function fakeGoogle(u, init) {
     if (/paged test/.test(b.textQuery)) {   /* v139: 45 shops over three pages */
       const page = b.pageToken === "p2" ? 1 : b.pageToken === "p3" ? 2 : 0, all = Array.from({ length: 45 }, (_, i) => gPlace("Paged Shop " + i, "Paged", "OH", 40 + i / 1000, -83, {}));
       return ok({ places: all.slice(page * 20, page * 20 + 20), nextPageToken: page < 2 ? "p" + (page + 2) : undefined });
+    }
+    if (b.searchAlongRouteParameters) {   /* v170: Search Along Route: the shops near the road, most reviewed first, 20 a page */
+      ALONG.push(b);
+      if (REFUSE_ALONG.on) return Promise.resolve({ ok: false, status: 400, json: async () => ({ error: { message: "refused" } }), headers: new Headers() });
+      const pts = TRIP.decodePolyline(b.searchAlongRouteParameters.polyline.encodedPolyline);
+      const near = SHOPS.filter((p) => pts.some((q) => TRIP.haversineMi(q, { lat: p.location.latitude, lng: p.location.longitude }) <= 12)).sort((x, y) => (y.userRatingCount || 0) - (x.userRatingCount || 0));
+      const page = Number(String(b.pageToken || "sar0").slice(3)) || 0;
+      return ok({ places: near.slice(page * 20, page * 20 + 20), nextPageToken: near.length > page * 20 + 20 ? "sar" + (page + 1) : undefined });
     }
     if (/blenko/i.test(b.textQuery)) return ok({ places: [BLENKO] });
     if (/nowhere/i.test(b.textQuery)) return ok({ places: [] });
@@ -118,8 +126,8 @@ const SECRET = "s".repeat(40);
 const PRO = {};   /* cid -> paid Pro, the fake shop */
 const names = ["gKey", "gFetch", "gPlacesText", "gPlacesAll", "gPlacesPage", "gPlacesNearby", "kindSearches", "gPlaceHours", "gRoutes", "gTown", "nearNum", "tripCell", "nearAnswer", "nearRoute", "tripBuild", "tripRoute", "tripKey", "ppRoute",
   "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "pinLookup", "inviteSig", "inviteOk", "reviewsRoute", "suggestRoute", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep", "tripPurge", "tripIndexRemove",
-  "b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessVerify", "sessMember", "pxHmac", "alSame", "alEmail", "sha16", "kvGet", "kvPut", "readJson", "vClean", "scrubPII", "ipKey", "ip6Parts", "cors", "json", "gSearch", "gCounted", "gUsedToday", "gTally"];   /* v170 */
-const pre = [constLine("G_SEARCHES_PER_DAY"), "const BAD_TYPES = new Set();", constLine("PIN_RETRY_MS").replace(/= \d+/, "= 1"), constLine("REVIEWS_PER_IP"), constLine("NEAR_HERE_M"), constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
+  "b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessVerify", "sessMember", "pxHmac", "alSame", "alEmail", "sha16", "kvGet", "kvPut", "readJson", "vClean", "scrubPII", "ipKey", "ip6Parts", "cors", "json", "gSearch", "gCounted", "gUsedToday", "gTally", "gAlong"];   /* v170 */
+const pre = [constLine("G_SEARCHES_PER_DAY"), constLine("TRIP_ALONG"), "const BAD_TYPES = new Set();", constLine("PIN_RETRY_MS").replace(/= \d+/, "= 1"), constLine("REVIEWS_PER_IP"), constLine("NEAR_HERE_M"), constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
 /* v170: the day's count of Google place searches, in a fake Caps */
 const GQ = { n: 0 };
 const capsCall = async (name, op, q) => { if (op === "peek") return { values: { "gq:all": GQ.n } }; if (op === "add") { GQ.n += q.n; return { n: GQ.n }; } return null; };
@@ -197,7 +205,7 @@ test("/trip: the reference route from Novi to Blenko, in drive order, the Centra
   assert.ok(!/42\.48|83\.4755/.test(JSON.stringify(b.origin)), "the origin point is not echoed");
   assert.equal(b.route.mi, 397.7); assert.equal(b.route.min, 390); assert.equal(b.empty, false);
   assert.equal(b.route.slower, 42, "v136: the route with the most to see, 42 minutes longer than Google's fastest");
-  assert.equal(b.how.routes.length, 2, "v141: how it was looked for"); assert.ok(b.how.boxes.length >= 20 && b.how.nearby === 0 && b.how.text >= 20, JSON.stringify(b.how));
+  assert.equal(b.how.routes.length, 2, "v141: how it was looked for"); assert.ok(b.how.boxes.length === 0 && b.how.nearby === 0 && b.how.text === 4, "v170: each road asked along its route, antiques and the rest: " + JSON.stringify(b.how));
   assert.deepEqual(b.how.badTypes, [], "v143: nothing typed, nothing refused");
   assert.ok(b.how.routes[0].score > b.how.routes[1].score, "the chosen route scored higher");
   assert.equal(b.route.routes, 2);
@@ -206,7 +214,8 @@ test("/trip: the reference route from Novi to Blenko, in drive order, the Centra
   assert.ok(!JSON.stringify(b).includes("Hillbilly"), "v138: a flea market is out while its chip is off");
   assert.equal(b.stops[5].name, "Bluegrass Collectors", "so Ashland's anchor is the collectors' shop");
   const searches = CALLS.filter((u) => /searchText|searchNearby/.test(u)).length;
-  assert.ok(searches >= 40 && searches <= 150, "two routes, two text searches a circle, shared circles asked once: " + searches);
+  assert.equal(searches, 5, "v170: two roads, two questions along each, and the destination (was 40-150 with circles)");
+  assert.equal(ALONG.length >= 4, true); assert.ok(ALONG.every((x) => x.searchAlongRouteParameters.polyline.encodedPolyline.length > 10), "each along the road's own polyline");
   const again = await call(env, "GET", "/trip?" + NOVI + "&to=" + encodeURIComponent("blenko glass company, milton, wv") + "&day=2026-10-26");
   assert.equal(again.res.headers.get("X-Prowl-Cache"), "hit");
 });
@@ -619,7 +628,7 @@ test("v170: a rebuild with another day or detour asks Google no place searches; 
   const first = await call(env, "GET", "/trip?" + NOVI + "&to=" + to + "&day=2026-10-26");
   assert.equal(first.status, 200);
   const asked = CALLS.filter((u) => /searchText|searchNearby/.test(u)).length;
-  assert.ok(asked >= 40, "the first build asks: " + asked);
+  assert.equal(asked, 5, "v170: the first build asks along each road: " + asked);
   assert.equal(GQ.n, asked, "every place search that went out is counted, and only those");
   CALLS.length = 0;
   const other = await call(env, "GET", "/trip?" + NOVI + "&to=" + to + "&day=2026-10-27&detour=30");
@@ -653,4 +662,15 @@ test("v170 wiring: Caps adds several at once, the admin's usage card shows the d
   assert.match(constLine("NEAR_PER_IP"), /TRIP_PER_IP = 10,/);
   for (const fn of ["gPlacesPage", "gPlacesNearby"]) assert.match(indexFn(fn), /await gSearch\(/, fn + " goes through gSearch");
   assert.match(INDEX, /const WORKER_VERSION = "v170";/);
+});
+
+test("v170: if Google refuses the along-the-route search, the road is searched in circles as before", async () => {
+  const env = envWith(); CALLS.length = 0; PCACHE.m.clear(); GQ.n = 0;
+  REFUSE_ALONG.on = true;
+  try {
+    const r = await call(env, "GET", "/trip?" + NOVI + "&to=" + encodeURIComponent("Blenko Glass Company, Milton, WV") + "&day=2026-10-26");
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.body.stops.map((s) => s.name), ["Maumee Antique Mall", "Jeffrey's Antique Gallery", "Delaware Antique Mall", "Chillicothe Antique Emporium", "Unique Antiques Warehouse", "Bluegrass Collectors", "Central City Antiques"], "the same trip");
+    assert.ok(r.body.how.boxes.length >= 20, "circles: " + r.body.how.boxes.length);
+  } finally { REFUSE_ALONG.on = false; }
 });

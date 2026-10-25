@@ -23,7 +23,9 @@
  *         week). Each place search's answer is kept an hour by what was asked (gSearch), so a Road trip rebuilt with
  *         another day, detour or kind asks Google only what is new; every search that goes out is counted (gq:all,
  *         the admin's usage card); past G_SEARCHES_PER_DAY in a UTC day /near and /trip answer 429 "daily limit";
- *         TRIP_PER_IP 30 -> 10. Caps learns "add".
+ *         TRIP_PER_IP 30 -> 10. Caps learns "add". Then (Matt: "2 per search is insane") each road is asked along its
+ *         route (gAlong, Search Along Route: one Text Search per question, up to SAR_PAGES pages) instead of a circle
+ *         every 15 miles: about 5 searches a build instead of 60-150; the circles stay as the fallback (TRIP_ALONG).
  *   v169: 2026-10-24. Saved forever says when a listing is over: each alert-clock run looks at one Pro member's list
  *         (once a day, up to 15 finds) with the popup's readers and marks end = { st: "sold"|"ended", at, p }. ShopGoodwill
  *         and Salvation Army: ended with bids is sold at the last bid; Etsy: sold_out is sold (itemEtsy now passes its
@@ -6783,6 +6785,25 @@ async function kindSearches(env, cats, center, radius, restrict, pages, stat) {
   for (const q of plan.texts) { st.text = (st.text || 0) + 1; jobs.push(pages ? gPlacesAll(env, q, center, radius, restrict, pages) : gPlacesText(env, q, center, radius, 20, restrict)); }   /* v145: antiques alone, then the rest */
   return [].concat(...(await Promise.all(jobs)));
 }
+/* v170 (Matt: "2 per search is insane"): Google's Search Along Route asks a whole road in one Text Search (the
+   route's polyline), up to SAR_PAGES pages of 20 while the page is full: about 2-6 searches a road instead of a circle
+   every 15 miles (60-150 a build). null when Google refused, so the caller can fall back to the circles. */
+const TRIP_ALONG = true, SAR_PAGES = 3;
+async function gAlong(env, query, enc, stat) {
+  let out = [], token = "";
+  for (let i = 0; i < SAR_PAGES; i++) {
+    const body = { textQuery: query, searchAlongRouteParameters: { polyline: { encodedPolyline: enc } }, maxResultCount: 20, languageCode: "en", regionCode: "US" };
+    if (token) body.pageToken = token;
+    if (stat) stat.text = (stat.text || 0) + 1;
+    const j = await gSearch("https://places.googleapis.com/v1/places:searchText", body, G_PLACE_FIELDS.split(",").map((f) => "places." + f).join(",") + ",nextPageToken", env);
+    if (!j) return i ? out : null;
+    const got = (j.places || []).map(normalizePlace).filter(Boolean);
+    out = out.concat(got);
+    if (got.length < 20 || typeof j.nextPageToken !== "string" || !j.nextPageToken) break;
+    token = j.nextPageToken;
+  }
+  return out;
+}
 /* v139: a full box (20 answers) is read on to its next pages, so a dense town is read to the end */
 async function gPlacesAll(env, query, center, radius, restrict, pages) {
   let out = [], token = "";
@@ -6827,7 +6848,7 @@ async function gRoutes(env, from, to, via) {
   for (const r of (j && Array.isArray(j.routes) ? j.routes : []).slice(0, ROUTES_MAX)) {
     if (!r || !r.polyline || !r.polyline.encodedPolyline) continue;
     const pts = decodePolyline(r.polyline.encodedPolyline);
-    if (pts.length >= 2) out.push({ pts: pts, mi: Math.round(Number(r.distanceMeters || 0) / MI_M * 10) / 10, min: Math.round(Number(String(r.duration || "0s").replace(/s$/, "")) / 60) });
+    if (pts.length >= 2) out.push({ pts: pts, enc: r.polyline.encodedPolyline, mi: Math.round(Number(r.distanceMeters || 0) / MI_M * 10) / 10, min: Math.round(Number(String(r.duration || "0s").replace(/s$/, "")) / 60) });   /* v170: enc, for Search Along Route */
   }
   out.sort((a, b) => a.min - b.min);
   return out;
@@ -6989,8 +7010,10 @@ async function tripBuild(env, from, toText, day, cats, via, detour) {
   const asked = new Map(), stat = { nearby: 0, text: 0, refused: 0 };   /* v141: how it was looked for */
   const ask = (c) => { const k = c.lat.toFixed(2) + "," + c.lng.toFixed(2); if (!asked.has(k)) asked.set(k, asked.size * 3 < TRIP_SEARCHES_MAX ? kindSearches(env, cats, c, CORRIDOR_RADIUS_M, false, 0, stat) : Promise.resolve([])); return asked.get(k); };   /* v143: bias circles, one page */
   const built = await Promise.all(routes.map(async (route) => {
-    const centers = corridorCenters(route.pts).slice(0, CORRIDOR_CENTERS_MAX);
-    const lists = await Promise.all(centers.map((c) => ask(c)));
+    /* v170: the whole road at once (gAlong); the circles only if Google refused that */
+    const along = TRIP_ALONG && route.enc ? await Promise.all(tripQueries(cats).map((q) => gAlong(env, q, route.enc, stat))) : null;
+    const centers = along && along.every((l) => l !== null) ? [] : corridorCenters(route.pts).slice(0, CORRIDOR_CENTERS_MAX);
+    const lists = centers.length ? await Promise.all(centers.map((c) => ask(c))) : along;
     const seen = Object.create(null), all = [];
     for (const p of [].concat(...lists)) { if (seen[p.id] || (dest && p.id === dest.id) || !kindAllowed(p, cats)) continue; seen[p.id] = 1; all.push(p); }
     const split = splitAnchors(clusterStops(alongRoute(all, route.pts, detour || DETOUR_MIN)));   /* v157: the page's detour */

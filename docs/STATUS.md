@@ -11,7 +11,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v7.97 /
 
 Recently shipped, newest first:
 
-- **v7.97 / v170: Near me costs less** (Matt, on $101 of Google Places in a week: "it was only me and i ran it about 20
+- **v7.97 / v170: Near me costs far less** (Matt, on $101 of Google Places in a week: "it was only me and i ran it about 20
   times"). The bill was all Places Text Search, Enterprise + Atmosphere ($40 per 1,000; the first 1,000 a month free):
   a Road trip build asks up to `TRIP_SEARCHES_MAX` (150) place searches, a circle every 15 miles on up to three roads,
   two questions a circle (about $4-6 a long build), and a rebuild with another day, detour or kind asked them all again.
@@ -22,9 +22,14 @@ Recently shipped, newest first:
   - **A daily ceiling**: past `G_SEARCHES_PER_DAY` (300, about $12) `/near` and `/trip` answer 429 "daily limit" until
     the UTC day turns (kept answers are still served); the page says so with the Maps search (`nrDayLimit`).
     `TRIP_PER_IP` 30 -> 10, and the page says that too.
-  - Not changed: the circles, the alternatives (the reference trip still picks the road with more to see), the
-    one-line description (`editorialSummary`, on the cards since v161; it is what puts the searches in the Atmosphere
-    tier, $5 per 1,000 more). Next if needed: Google's Search Along Route (a few searches a road instead of ~60-150).
+  - **Each road is asked along its route** (Matt: "2 per search is insane"): `gAlong` sends the route's polyline as
+    Google's Search Along Route, one Text Search per question (antiques, then the rest; `tripQueries`), up to
+    `SAR_PAGES` (3) pages while a page is full. The reference trip (Novi to Blenko) finds the same seven stops in 5
+    searches instead of 40-150: about 20 cents a build instead of $2-6. If Google refuses it, that road is searched in
+    circles as before (`TRIP_ALONG` turns it off).
+  - Not changed: the alternatives (the reference trip still picks the road with more to see) and the one-line
+    description (`editorialSummary`, on the cards since v161; it puts the searches in the Atmosphere tier, $5 per
+    1,000 more).
   Tests: `worker/__tests__/trips.test.mjs` (v170), `__tests__/page/near-limit-v797.test.mjs`.
 - **v7.96: Photo check keeps your last checks, and Research's sales open the popup** (Matt: "Yes do 4 5").
   - **Your last photo checks:** each answer is kept in `prowl.photoChecks` (new key; newest 5; this device only, not in
