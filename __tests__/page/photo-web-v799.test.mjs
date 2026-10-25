@@ -66,3 +66,27 @@ test('no web answer (no key, the cap, nothing found): no row', async () => {
   assert.deepEqual(p.errors, []);
   await p.close();
 });
+
+// v8.00 (Matt's orange Haeger cat: no pages, best guess "carving"): what the web sees and look-alike pictures; a guess alone shows nothing
+test('no pages: Seen as and pictures that look like it, no one-word guess', async () => {
+  const { p } = setup({ guess: 'carving', pages: [], seen: ['Haeger Potteries', 'Cat', 'Ceramic'], alike: ['https://i.etsystatic.com/a.jpg', 'http://bad.example.com/b.jpg', 'https://img.example.org/c.jpg'] });
+  await check(p);
+  const box = p.$('#otp-aprOut .apr-web');
+  assert.ok(box);
+  assert.equal(box.querySelector('.apr-wguess').textContent, 'Seen as: Haeger Potteries · Cat · Ceramic');
+  assert.ok(!/carving/.test(box.textContent), 'the one-word guess is left out without pages');
+  assert.equal(box.querySelector('.apr-wsub').textContent, 'Pictures that look like it');
+  assert.deepEqual([...box.querySelectorAll('.apr-alike a')].map((a) => a.getAttribute('href')), ['https://i.etsystatic.com/a.jpg', 'https://img.example.org/c.jpg']);
+  assert.equal(box.querySelector('.apr-note').textContent, 'Machine labels and look-alike pictures from the web: a hint, not an answer.');
+  const kept = JSON.parse(p.win.localStorage.getItem('prowl.photoChecks'));
+  assert.deepEqual(kept[0].r.web.seen, ['Haeger Potteries', 'Cat', 'Ceramic']);
+  assert.equal(kept[0].r.web.alike.length, 2);
+  await p.close();
+});
+
+test('a one-word guess alone: no row', async () => {
+  const { p } = setup({ guess: 'carving', pages: [], seen: [], alike: [] });
+  await check(p);
+  assert.equal(p.$('#otp-aprOut .apr-web'), null);
+  await p.close();
+});

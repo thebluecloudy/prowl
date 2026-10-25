@@ -48,7 +48,7 @@ const ebayPrices = (p) => p.$$('.rlive[data-lv="ebay"] .sgw-cell').map((c) => c.
 const click = (p, el) => el.dispatchEvent(new p.win.MouseEvent('click', { bubbles: true, cancelable: true }));
 
 test('the search bar has the filter button before Hunt, the chips sit under it, and the page is v7.42', () => {
-  assert.ok(Number(/var PROWL_VERSION='v7\.(\d+)';/.exec(html)[1]) >= 42, 'v7.42 or later');
+  { const m = /var PROWL_VERSION='v(\d+)\.(\d+)';/.exec(html); assert.ok(Number(m[1]) * 100 + Number(m[2]) >= 742, 'v7.42 or later'); }   /* v8.00: the major turned over */
   const form = html.slice(html.indexOf('<form id="otp-sf"'), html.indexOf('</form>'));
   assert.ok(form.indexOf('id="otp-flt"') > -1 && form.indexOf('id="otp-flt"') < form.indexOf('type="submit"'), 'the filter button comes before Hunt');
   assert.match(form, /class="flt-n" id="otp-fltN" hidden/);

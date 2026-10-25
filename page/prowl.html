@@ -1343,6 +1343,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .apr-lkp{font-size:13px;font-weight:800;color:var(--ac)}
 .scout-app-wrapper .apr-sold a.apr-lk{justify-content:space-between;min-height:96px}
 .scout-app-wrapper .apr-wguess{margin:0 0 8px;font-size:15px;font-weight:700;color:var(--ink)}   /* v7.99 */
+.scout-app-wrapper .apr-wsub{margin:10px 0 6px;font-size:14px;font-weight:700;color:var(--mu)}   /* v8.00 */
+.scout-app-wrapper .apr-alike a.apr-lk{padding:4px}
 /* v7.96 Your last photo checks */
 .scout-app-wrapper .apr-recent{margin:18px 0 0;padding:14px 0 0;border-top:1px solid var(--ln)}
 .scout-app-wrapper button.apr-rc{display:flex;flex-direction:column;gap:4px;padding:6px;border:1px solid var(--ln);border-radius:10px;background:var(--cd);color:var(--ink);text-align:left;font:inherit;cursor:pointer}
@@ -2949,7 +2951,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       if(!th)return;
       var lk=[],i,x;for(i=0;r.looks&&i<r.looks.length&&lk.length<3;i++){x=r.looks[i];if(x&&typeof x.url==='string'&&/^https:\/\//.test(x.url))lk.push({url:x.url.slice(0,500),title:pckS(x.title,140),price:pckS(x.price,24),image:typeof x.image==='string'&&/^https:\/\//.test(x.image)?x.image.slice(0,500):''});}
       var k={item:pckS(r.item,160),sure:pckS(r.sure,20),condition:pckS(r.condition,160),flaws:pckS(r.flaws,200),fair:pckS(r.fair,40),verdict:pckS(r.verdict,40),why:pckS(r.why,300),basis:pckS(r.basis,20),search:pckS(r.search,80),looks:lk};
-      if(r.web&&typeof r.web==='object'){var wk=[];for(i=0;r.web.pages&&i<r.web.pages.length&&wk.length<6;i++){x=r.web.pages[i];if(x&&typeof x.url==='string'&&/^https:\/\//.test(x.url))wk.push({url:x.url.slice(0,500),title:pckS(x.title,140),image:typeof x.image==='string'&&/^https:\/\//.test(x.image)?x.image.slice(0,500):'',host:pckS(x.host,60)});}k.web={guess:pckS(r.web.guess,80),pages:wk};}   /* v7.99 */
+      if(r.web&&typeof r.web==='object'){var wk=[];for(i=0;r.web.pages&&i<r.web.pages.length&&wk.length<6;i++){x=r.web.pages[i];if(x&&typeof x.url==='string'&&/^https:\/\//.test(x.url))wk.push({url:x.url.slice(0,500),title:pckS(x.title,140),image:typeof x.image==='string'&&/^https:\/\//.test(x.image)?x.image.slice(0,500):'',host:pckS(x.host,60)});}var ks=[],ka=[];for(i=0;r.web.seen&&i<r.web.seen.length&&ks.length<5;i++)if(typeof r.web.seen[i]==='string')ks.push(r.web.seen[i].slice(0,40));for(i=0;r.web.alike&&i<r.web.alike.length&&ka.length<6;i++)if(typeof r.web.alike[i]==='string'&&/^https:\/\//.test(r.web.alike[i]))ka.push(r.web.alike[i].slice(0,500));k.web={guess:pckS(r.web.guess,80),pages:wk,seen:ks,alike:ka};}   /* v7.99 */
       var a=pckGet();a.unshift({at:Date.now(),r:k,th:th});pckPut(a.slice(0,PCK_MAX));pckDraw();
     });
   }
@@ -3007,8 +3009,13 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
        opens itself. */
     var WB=r.web&&typeof r.web==='object'?r.web:null,WP=[];
     if(WB&&WB.pages&&WB.pages.length)for(var wi=0;wi<WB.pages.length&&WP.length<6;wi++){var wx=WB.pages[wi];if(wx&&typeof wx.url==='string'&&/^https:\/\//.test(wx.url))WP.push(wx);}
-    if(WP.length||(WB&&WB.guess)){var ww=document.createElement('div');ww.className='apr-looks apr-web';var wh=document.createElement('p');wh.className='apr-lkh';wh.textContent='Seen on the web';ww.appendChild(wh);
-      if(WB.guess){var wgs=document.createElement('p');wgs.className='apr-wguess';wgs.textContent='Best guess on the web: '+String(WB.guess).slice(0,80);ww.appendChild(wgs);}
+    /* v8.00 (Matt's orange Haeger cat: no pages, "carving"): a fresh photo has no copies online. What the web sees in it
+       and pictures that look like it show; the one-word guess only beside pages with the same picture; no row for a guess alone */
+    var WS=[],WA=[];if(WB&&WB.seen&&WB.seen.length)for(wi=0;wi<WB.seen.length&&WS.length<5;wi++)if(typeof WB.seen[wi]==='string'&&WB.seen[wi])WS.push(WB.seen[wi].slice(0,40));
+    if(WB&&WB.alike&&WB.alike.length)for(wi=0;wi<WB.alike.length&&WA.length<6;wi++)if(typeof WB.alike[wi]==='string'&&/^https:\/\//.test(WB.alike[wi]))WA.push(WB.alike[wi]);
+    if(WP.length||WS.length||WA.length){var ww=document.createElement('div');ww.className='apr-looks apr-web';var wh=document.createElement('p');wh.className='apr-lkh';wh.textContent='Seen on the web';ww.appendChild(wh);
+      if(WS.length){var wsn=document.createElement('p');wsn.className='apr-wguess';wsn.textContent='Seen as: '+WS.join(' \u00b7 ');ww.appendChild(wsn);}
+      else if(WB.guess&&WP.length){var wgs=document.createElement('p');wgs.className='apr-wguess';wgs.textContent='Best guess on the web: '+String(WB.guess).slice(0,80);ww.appendChild(wgs);}
       if(WP.length){var wg=document.createElement('div');wg.className='apr-lkg';
         for(var wj=0;wj<WP.length;wj++){var wa=document.createElement('a');wa.className='apr-lk';var wu=WP[wj].url,ws=/^https:\/\/([a-z0-9-]+\.)*ebay\.com\//i.test(wu)?'ebay':/^https:\/\/([a-z0-9-]+\.)*etsy\.com\//i.test(wu)?'etsy':/^https:\/\/([a-z0-9-]+\.)*poshmark\.com\//i.test(wu)?'poshmark':'';
           wa.href=ws==='ebay'?window.prowlAff(wu,'prowl-web'):wu;wa.target='_blank';wa.rel='noopener noreferrer';
@@ -3018,7 +3025,10 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
           var wd=document.createElement('span');wd.className='apr-lkd';wd.textContent=String(WP[wj].host||'').slice(0,40);wa.appendChild(wd);
           wg.appendChild(wa);}
         ww.appendChild(wg);}
-      var wn=document.createElement('p');wn.className='apr-note';wn.textContent='Pages on the web with the same picture. Open each one to check it is the same piece.';ww.appendChild(wn);O.appendChild(ww);}
+      if(WA.length){var wah=document.createElement('p');wah.className='apr-wsub';wah.textContent='Pictures that look like it';ww.appendChild(wah);var wag=document.createElement('div');wag.className='apr-lkg apr-alike';
+        for(var wk=0;wk<WA.length;wk++){var wl=document.createElement('a');wl.className='apr-lk';wl.href=WA[wk];wl.target='_blank';wl.rel='noopener noreferrer';wl.setAttribute('aria-label','Picture '+(wk+1)+' that looks like it');var wi2=document.createElement('img');wi2.src=WA[wk];wi2.alt='';wi2.loading='lazy';wi2.referrerPolicy='no-referrer';wi2.onerror=function(){var a=this.parentNode;if(a&&a.parentNode)a.parentNode.removeChild(a)};wl.appendChild(wi2);wag.appendChild(wl);}
+        ww.appendChild(wag);}
+      var wn=document.createElement('p');wn.className='apr-note';wn.textContent=WP.length?'Pages on the web with the same picture. Open each one to check it is the same piece.':'Machine labels and look-alike pictures from the web: a hint, not an answer.';ww.appendChild(wn);O.appendChild(ww);}
     if(pq&&String(r.basis)!=='pending')O.appendChild(poshBox(pq));
     var L=document.createElement('div');L.className='apr-links';
     function lk(t,u){var a=document.createElement('a');a.className='b';a.href=u;a.target='_blank';a.rel='noopener';a.textContent=t;L.appendChild(a);}
@@ -3802,7 +3812,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.99';
+var PROWL_VERSION='v8.00';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */

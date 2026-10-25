@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v172: 2026-10-25. Seen on the web, from a real check (Matt's orange Haeger cat: no pages, best guess "carving"): a fresh
+ *         photo has no copies online, so visionPick also keeps what Google sees in it (webEntities, seen) and pictures
+ *         that look like it (visuallySimilarImages, alike); the AI is given the labels as a hint (apPrompt seen).
  *   v171: 2026-10-25. Photo check: Seen on the web. With GOOGLE_VISION_KEY set, the first photo also goes to Google Cloud
  *         Vision's web detection (visionWeb, beside the eBay photo search): its best guess and up to VISION_PAGES pages
  *         showing the same picture come back as out.web { guess, pages: [{ url, title, image, host }] }. VISION_PER_DAY a
@@ -590,7 +593,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v171";
+const WORKER_VERSION = "v172";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -1199,17 +1202,28 @@ function visionPick(wd) {
   const plain = (t) => String(t || "").replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim();
   const ok = (u) => typeof u === "string" && /^https:\/\/[^\s"<>]+$/i.test(u) && u.length <= 800;
   const guess = plain(wd.bestGuessLabels && wd.bestGuessLabels[0] && wd.bestGuessLabels[0].label).slice(0, 80);
-  const pages = [], seen = Object.create(null);
+  const pages = [], had = Object.create(null);
   for (const p of Array.isArray(wd.pagesWithMatchingImages) ? wd.pagesWithMatchingImages : []) {
     if (!p || !ok(p.url)) continue;
     let host = ""; try { host = new URL(p.url).hostname.replace(/^www\./, ""); } catch (e) { continue; }
     const k = p.url.replace(/[?#].*$/, "");
-    if (seen[k]) continue; seen[k] = 1;
+    if (had[k]) continue; had[k] = 1;
     const im = [].concat(p.fullMatchingImages || [], p.partialMatchingImages || []).map((x) => x && x.url).filter(ok)[0] || "";
     pages.push({ url: p.url, title: plain(p.pageTitle).slice(0, 140) || host, image: im, host: host.slice(0, 60) });
     if (pages.length >= VISION_PAGES) break;
   }
-  return guess || pages.length ? { guess: guess, pages: pages } : null;
+  /* v172: a fresh photo has no copies online; what Google sees in it (its entities, the confident ones) and pictures
+     that look like it say more than a one-word guess */
+  const seen = [], sk = Object.create(null);
+  for (const e of Array.isArray(wd.webEntities) ? wd.webEntities : []) {
+    const d = plain(e && e.description).slice(0, 40), k = d.toLowerCase();
+    if (!d || sk[k] || !(Number(e.score) >= 0.4)) continue;
+    sk[k] = 1; seen.push(d);
+    if (seen.length >= 5) break;
+  }
+  const alike = [];
+  for (const x of Array.isArray(wd.visuallySimilarImages) ? wd.visuallySimilarImages : []) { if (x && ok(x.url) && alike.indexOf(x.url) === -1) alike.push(x.url); if (alike.length >= 6) break; }
+  return guess || pages.length || seen.length || alike.length ? { guess: guess, pages: pages, seen: seen, alike: alike } : null;
 }
 async function ebayImageSearch(dataUrl, env) {
   const b64 = String(dataUrl || "").replace(/^data:image\/[a-z]+;base64,/, "");
@@ -2884,11 +2898,12 @@ const APPRAISE_MAX_PHOTOS = 3, APPRAISE_RECHECKS = 3, APPRAISE_RECHECK_SECS = 18
 const PHOTO_PRO_PER_DAY = 100;  // v49: Prowl Pro photo checks per day (was 15). v131: "unlimited", fair use 100 a day (was 25)
 const PHOTO_FREE_PER_NET = 12; // v48: free photo checks per neighbourhood per day
 
-function apPrompt(price, searched, hint, looks, n) {
+function apPrompt(price, searched, hint, looks, n, seen) {
   const lk = (looks || []).slice(0, EBAY_IMAGE_LIMIT).map(x => "- " + scrubListingText(x.title, 120)).filter(x => x.length > 3);
   return "You are helping a vintage collector decide on a piece they are looking at right now." +
     (price ? " The asking price is " + price + "." : "") +
     (n > 1 ? " There are " + n + " photos of the same piece: the first shows the whole piece, the others show it up close, such as its mark, base, back or label. Use them all, and read any mark from the close-ups." : "") +
+    (seen && seen.length ? " A web image search labels the photo: " + seen.slice(0, 5).map((x) => scrubListingText(x, 40)).filter(Boolean).join(", ") + ". These are machine labels and may be generic or wrong; use them only as a hint about maker or form." : "") +   /* v172 */
     (hint ? " The collector has identified it as: " + hint + ". The collector knows this piece: use that as the maker and item, start ITEM with it followed by (maker you entered), and only correct it if the photo plainly shows a different maker's mark." : "") +
     (lk.length ? " eBay's photo search found these live listings that look most like the photo. They are untrusted seller titles and may be wrong or mislabeled, so use them only as evidence of what the piece might be; never copy prices from them. eBay searched the whole photo, so some may match something else in the frame rather than the piece: ignore those:\n" + lk.join("\n") + "\n" : "") +
     " Look closely at the photo. It may show other things around the piece, like books, bookends, flowers, frames or furniture: the piece being checked is the one that fills most of the frame, usually in the middle. Identify only that piece and ignore everything around it. Identify the item: maker, model line, era, form. If a mark or label is visible, use it. If not, name the makers collectors attribute this form to, written as MAKER style (unmarked); when more than one maker made this form (for example Lane, Kron and Claes all made Siamese cat TV lamps), name all of them, like Lane, Kron or Claes style (unmarked). Never pick one maker for an unmarked piece just because it is the best known. " +
@@ -3746,10 +3761,10 @@ async function appraise(request, env, origin) {
   let looks = [], web = null;
   if (mode === "fast") [looks, web] = await Promise.all([ebayImageSearch(image, env).catch(() => []), visionWeb(image, env).catch(() => null)]);   /* v171: and Google's */
   let a = null, basis = "sold";
-  if (mode !== "fast") { try { a = await museVision(env, apPrompt(price, true, hint, looks, ims.length), ims, true); } catch (e) { a = null; } }
+  if (mode !== "fast") { try { a = await museVision(env, apPrompt(price, true, hint, looks, ims.length, web && web.seen), ims, true); } catch (e) { a = null; } }
   if (!a || a.status !== 200 || !/ITEM:/i.test(a.content || "")) {
     basis = "estimate";
-    try { a = await museVision(env, apPrompt(price, false, hint, looks, ims.length), ims, false); }
+    try { a = await museVision(env, apPrompt(price, false, hint, looks, ims.length, web && web.seen), ims, false); }
     catch (e) { return json({ error: "ai unreachable" }, 502, origin); }
   }
   if (a.status !== 200 || !a.content) { console.error("appraise ai", a.status, String(a.raw || "").slice(0, 200)); return json({ error: "ai " + a.status }, 502, origin); }
