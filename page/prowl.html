@@ -1343,6 +1343,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .apr-lkp{font-size:13px;font-weight:800;color:var(--ac)}
 .scout-app-wrapper .apr-sold a.apr-lk{justify-content:space-between;min-height:96px}
 .scout-app-wrapper .apr-wguess{margin:0 0 8px;font-size:15px;font-weight:700;color:var(--ink)}   /* v7.99 */
+.scout-app-wrapper .apr-lensn{margin:8px 0 0;font-size:14px;color:var(--mu)}   /* v8.01 */
 .scout-app-wrapper .apr-wsub{margin:10px 0 6px;font-size:14px;font-weight:700;color:var(--mu)}   /* v8.00 */
 .scout-app-wrapper .apr-alike a.apr-lk{padding:4px}
 /* v7.96 Your last photo checks */
@@ -2951,6 +2952,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       if(!th)return;
       var lk=[],i,x;for(i=0;r.looks&&i<r.looks.length&&lk.length<3;i++){x=r.looks[i];if(x&&typeof x.url==='string'&&/^https:\/\//.test(x.url))lk.push({url:x.url.slice(0,500),title:pckS(x.title,140),price:pckS(x.price,24),image:typeof x.image==='string'&&/^https:\/\//.test(x.image)?x.image.slice(0,500):''});}
       var k={item:pckS(r.item,160),sure:pckS(r.sure,20),condition:pckS(r.condition,160),flaws:pckS(r.flaws,200),fair:pckS(r.fair,40),verdict:pckS(r.verdict,40),why:pckS(r.why,300),basis:pckS(r.basis,20),search:pckS(r.search,80),looks:lk};
+      if(r.lens&&r.lens.length){var lnk=[];for(i=0;i<r.lens.length&&lnk.length<6;i++){x=r.lens[i];if(x&&typeof x.url==='string'&&/^https:\/\//.test(x.url))lnk.push({url:x.url.slice(0,500),title:pckS(x.title,140),image:typeof x.image==='string'&&/^https:\/\//.test(x.image)?x.image.slice(0,500):'',source:pckS(x.source,40),price:pckS(x.price,20)});}k.lens=lnk;}   /* v8.01 */
       if(r.web&&typeof r.web==='object'){var wk=[];for(i=0;r.web.pages&&i<r.web.pages.length&&wk.length<6;i++){x=r.web.pages[i];if(x&&typeof x.url==='string'&&/^https:\/\//.test(x.url))wk.push({url:x.url.slice(0,500),title:pckS(x.title,140),image:typeof x.image==='string'&&/^https:\/\//.test(x.image)?x.image.slice(0,500):'',host:pckS(x.host,60)});}var ks=[],ka=[];for(i=0;r.web.seen&&i<r.web.seen.length&&ks.length<5;i++)if(typeof r.web.seen[i]==='string')ks.push(r.web.seen[i].slice(0,40));for(i=0;r.web.alike&&i<r.web.alike.length&&ka.length<6;i++)if(typeof r.web.alike[i]==='string'&&/^https:\/\//.test(r.web.alike[i]))ka.push(r.web.alike[i].slice(0,500));k.web={guess:pckS(r.web.guess,80),pages:wk,seen:ks,alike:ka};}   /* v7.99 */
       var a=pckGet();a.unshift({at:Date.now(),r:k,th:th});pckPut(a.slice(0,PCK_MAX));pckDraw();
     });
@@ -2994,6 +2996,19 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
        can be checked by eye. DOM only; eBay https links only. */
     var q=String(r.item||'').replace(/\([^)]*\)/g,' ').replace(/\blikely\b/ig,' ').replace(/\s+/g,' ').replace(/^[\s,]+|[\s,]+$/g,'').slice(0,90);
     var pq=r.search?String(r.search).slice(0,60):shortQ(q);   /* v6.11 */
+    /* v8.01 (worker v173): Google Lens's matches (through SerpApi's free plan), found by the picture itself: first,
+       because Lens named Matt's orange cat (Royal Haeger 616) where the other searches could not */
+    var LN=[];if(r.lens&&r.lens.length)for(var ni=0;ni<r.lens.length&&LN.length<6;ni++){var nx=r.lens[ni];if(nx&&typeof nx.url==='string'&&/^https:\/\//.test(nx.url)&&nx.title)LN.push(nx);}
+    if(LN.length){var nw=document.createElement('div');nw.className='apr-looks apr-lens';var nh=document.createElement('p');nh.className='apr-lkh';nh.textContent='Google Lens found';nw.appendChild(nh);var ng=document.createElement('div');ng.className='apr-lkg';
+      for(var nj=0;nj<LN.length;nj++){var na=document.createElement('a');na.className='apr-lk';var nu=LN[nj].url,ns=/^https:\/\/([a-z0-9-]+\.)*ebay\.com\//i.test(nu)?'ebay':/^https:\/\/([a-z0-9-]+\.)*etsy\.com\//i.test(nu)?'etsy':/^https:\/\/([a-z0-9-]+\.)*poshmark\.com\//i.test(nu)?'poshmark':'';
+        na.href=ns==='ebay'?window.prowlAff(nu,'prowl-lens'):nu;na.target='_blank';na.rel='noopener noreferrer';
+        if(ns)aprCell(na,nu,LN[nj].title,LN[nj].price||'',ns,pq,'Found by Google Lens');
+        if(typeof LN[nj].image==='string'&&/^https:\/\//.test(LN[nj].image)){var nim=document.createElement('img');nim.src=LN[nj].image;nim.alt='';nim.loading='lazy';nim.referrerPolicy='no-referrer';nim.onerror=function(){this.parentNode&&this.parentNode.removeChild(this)};na.appendChild(nim);}
+        var nt=document.createElement('span');nt.className='apr-lkt';nt.textContent=String(LN[nj].title).slice(0,80);na.appendChild(nt);
+        if(LN[nj].price){var np=document.createElement('span');np.className='apr-lkp';np.textContent=String(LN[nj].price).slice(0,20);na.appendChild(np);}
+        if(LN[nj].source){var nd=document.createElement('span');nd.className='apr-lkd';nd.textContent=String(LN[nj].source).slice(0,40);na.appendChild(nd);}
+        ng.appendChild(na);}
+      nw.appendChild(ng);var nn=document.createElement('p');nn.className='apr-note';nn.textContent='Matched by the picture itself. Open each one to check it is the same piece; prices are asking, not sold.';nw.appendChild(nn);O.appendChild(nw);}
     var LK=[];if(r.looks&&r.looks.length)for(var li=0;li<r.looks.length&&LK.length<3;li++){var x=r.looks[li];if(x&&typeof x.url==='string'&&/^https:\/\/(www\.)?ebay\.com\//.test(x.url)&&x.title)LK.push(x);}
     if(LK.length){var lw=document.createElement('div');lw.className='apr-looks';var lh=document.createElement('p');lh.className='apr-lkh';lh.textContent='Looks like these on eBay';lw.appendChild(lh);
       var lg=document.createElement('div');lg.className='apr-lkg';
@@ -3037,8 +3052,20 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     if(hq&&QI&&QI.form){var hb=document.createElement('button');hb.type='button';hb.className='b p';hb.textContent='Hunt it on Prowl';hb.addEventListener('click',function(){var ph=document.getElementById('otp-photo'),pc=document.getElementById('otp-photoClose');if(ph&&pc&&ph.classList.contains('on'))pc.click();QI.value=hq;var sub=QI.form.querySelector('[type=submit]');if(sub)sub.click();setTimeout(function(){try{QI.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){} },350);});L.appendChild(hb);
       /* v5.95: save the identified piece as a locked hunt without leaving the photo screen */
       if(typeof window.prowlAddHunt==='function'){var fb=document.createElement('button');fb.type='button';fb.className='b';fb.textContent='\u2605 Add to favorites';fb.addEventListener('click',function(){if(window.prowlAddHunt(hq)){fb.textContent='\u2605 In your favorites';fb.disabled=true;}});L.appendChild(fb);}}
-    try{var bs=atob(src.split(',')[1]),ar=new Uint8Array(bs.length);for(var k=0;k<bs.length;k++)ar[k]=bs.charCodeAt(k);var fl=new File([ar],'prowl-photo.jpg',{type:'image/jpeg'});
-      if(navigator.canShare&&navigator.canShare({files:[fl]})){var sb=document.createElement('button');sb.type='button';sb.className='b';sb.textContent='Search this photo on Google Lens';sb.addEventListener('click',function(){navigator.share({files:[fl]}).catch(function(){});});L.appendChild(sb);}}catch(e){}
+    /* v8.01 (Matt: Google Lens named his orange cat at once): Check with Google Lens is a main button beside Hunt it on Prowl, not under More;
+       the phone's share sheet hands Lens the photo, else Lens opens to take one */
+    /* v8.01 (Matt: open the image search in a separate screen, as a marketplace opens): a new tab opens on the tap, the photo goes to the worker (/lens/up keeps it 15 minutes behind a signed
+       link) and the tab goes to Google Lens with the photo in it. If that fails, Lens opens to take a photo. */
+    var lb=document.createElement('a');lb.className='b p apr-lensb';lb.href='https://lens.google.com/';lb.target='_blank';lb.rel='noopener noreferrer';lb.textContent='Check with Google Lens';
+    lb.addEventListener('click',function(ev){
+      if(ev.metaKey||ev.ctrlKey||ev.shiftKey||!window.fetch||!/^data:image\/jpeg;base64,/.test(src))return;   /* plain Lens */
+      ev.preventDefault();var w=null;try{w=window.open('about:blank','_blank');}catch(e){w=null;}
+      function go(u){if(w&&!w.closed){try{w.opener=null;w.location.href=u;return;}catch(e){} }location.href=u;}
+      fetch('https://prowl.thebluecloud.workers.dev/lens/up',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:src})}).then(function(r){return r.ok?r.json():null;}).then(function(j){
+        go(j&&typeof j.lens==='string'&&/^https:\/\/lens\.google\.com\/uploadbyurl\?url=/.test(j.lens)?j.lens:'https://lens.google.com/');
+      },function(){go('https://lens.google.com/');});
+    });
+    L.insertBefore(lb,L.children[1]||null);
     if(hq){lk('Google Images','https://www.google.com/search?tbm=isch&q='+encodeURIComponent(hq));lk('eBay sold prices \u2197',window.prowlAff('https://www.ebay.com/sch/i.html?_nkw='+encodeURIComponent(hq)+'&LH_Sold=1&LH_Complete=1','prowl-photo'));}
     if(r.basis!=='pending'&&r.fair){var shb=document.createElement('button');shb.type='button';shb.className='b';shb.textContent='Share this find';shb.addEventListener('click',function(){shareCard(r,src);});L.insertBefore(shb,L.children[1]||null);var svb=document.createElement('button');svb.type='button';svb.className='b';svb.textContent='Save picture';svb.addEventListener('click',function(){shareCard(r,src,true);});L.insertBefore(svb,shb.nextSibling);
       var emb=document.createElement('button');emb.type='button';emb.className='b';emb.textContent='Email this';emb.addEventListener('click',function(){var it=String(r.item||'').replace(/\([^)]*\)/g,' ').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'');emailRow(O,it||hq||'A find',(it||'A find')+' \u2014 fair price '+(r.fair||'')+(r.why?'. '+r.why:'')+'\nChecked with Prowl: https://www.owlandtwigvintage.com/pages/prowl?utm_source=share&utm_medium=photo_email',r,src);});L.insertBefore(emb,svb.nextSibling);}   /* v6.74 */
@@ -3050,6 +3077,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     if(mvL.length>1&&mvL.length<L.children.length){var mvD=document.createElement('details');mvD.className='apr-more';var mvS=document.createElement('summary');mvS.textContent='More';mvD.appendChild(mvS);
       var mvB=document.createElement('div');mvB.className='apr-moreb';for(mvI=0;mvI<mvL.length;mvI++)mvB.appendChild(mvL[mvI]);mvD.appendChild(mvB);L.appendChild(mvD);}
     if(L.firstChild)O.appendChild(L);
+    if(L.querySelector('.apr-lensb')){var lh2=document.createElement('p');lh2.className='apr-lensn';lh2.textContent='Lens names it? Type that in Maker or words and tap Check again: the same photos are checked again free for 30 minutes.';O.appendChild(lh2);}   /* v8.01 */
     if(r.basis!=='pending'&&hq)guideLink(hq);
     var n=document.createElement('p');n.className='apr-note';n.textContent=r.basis==='pending'?'Found it. Now checking recent sold prices\u2026':r.basis==='sold'?'A gut check from the photo, not an appraisal.':r.basis==='listed'?'No recent sales found, so this range comes from asking prices, which usually run higher than what pieces sell for.':r.basis==='limit'?'You have used today\u2019s price lookups. They reset tomorrow.':r.basis==='busy'?'Prowl is busy right now. Try again in a little while.':r.fair?'Estimate only: sold prices could not be checked just now.':'Sold prices could not be checked just now.';   /* v6.64: limit, busy */O.appendChild(n);
   }
@@ -3812,7 +3840,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.00';
+var PROWL_VERSION='v8.01';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */

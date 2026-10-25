@@ -19,6 +19,15 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v173: 2026-10-25. Google Lens matches through SerpApi's free plan (Matt: "I need something free"; Lens named his
+ *         orange cat Royal Haeger 616 where Cloud Vision said "Sculpture"). With SERPAPI_KEY, the quick photo check
+ *         puts the first photo in R2 for a moment (finds/lens/, a signed GET /lens/<k>.jpg for 2 minutes), asks
+ *         SerpApi's google_lens engine, deletes it, and hands back lens: [{ title, url, image, source, price }]; the
+ *         titles go to the AI as evidence. LENS_PER_DAY (8, inside the free 250 a month), gl:all on the usage card.
+ *         visionPick drops generic labels (sculpture, figurine, ceramic...). And (Matt: "just getting them to Google
+ *         images in a separate screen similar to when we open marketplace would work"): POST /lens/up keeps the photo
+ *         15 minutes behind a signed link (lensUp) so the page opens lens.google.com/uploadbyurl in a new tab, free;
+ *         an hourly sweep deletes them (lensSweep).
  *   v172: 2026-10-25. Seen on the web, from a real check (Matt's orange Haeger cat: no pages, best guess "carving"): a fresh
  *         photo has no copies online, so visionPick also keeps what Google sees in it (webEntities, seen) and pictures
  *         that look like it (visuallySimilarImages, alike); the AI is given the labels as a hint (apPrompt seen).
@@ -593,7 +602,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v172";
+const WORKER_VERSION = "v173";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -1197,6 +1206,8 @@ async function visionWeb(dataUrl, env) {
   } catch (e) { return null; }
   finally { clearTimeout(timer); }
 }
+/* v173: labels that say nothing about the piece ("Seen as: Sculpture") are dropped, from the page and from the AI */
+const VISION_GENERIC = /^(sculpture|figurine|statue|ceramic|ceramics|porcelain|pottery|art|arts|artifact|figure|carving|antique|antiques|vintage|collectable|collectible|glass|craft|decor|home decor|interior design|product|object|still life|visual arts|orange|yellow|red|blue|green|black|white|brown|toy)$/;
 function visionPick(wd) {
   if (!wd || typeof wd !== "object") return null;
   const plain = (t) => String(t || "").replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim();
@@ -1217,13 +1228,85 @@ function visionPick(wd) {
   const seen = [], sk = Object.create(null);
   for (const e of Array.isArray(wd.webEntities) ? wd.webEntities : []) {
     const d = plain(e && e.description).slice(0, 40), k = d.toLowerCase();
-    if (!d || sk[k] || !(Number(e.score) >= 0.4)) continue;
+    if (!d || sk[k] || !(Number(e.score) >= 0.4) || VISION_GENERIC.test(k)) continue;   /* v173 */
     sk[k] = 1; seen.push(d);
     if (seen.length >= 5) break;
   }
   const alike = [];
   for (const x of Array.isArray(wd.visuallySimilarImages) ? wd.visuallySimilarImages : []) { if (x && ok(x.url) && alike.indexOf(x.url) === -1) alike.push(x.url); if (alike.length >= 6) break; }
   return guess || pages.length || seen.length || alike.length ? { guess: guess, pages: pages, seen: seen, alike: alike } : null;
+}
+/* v173 (Matt: "I need something free"): Google Lens's visual matches through SerpApi (its free plan: 250 searches a
+   month; LENS_PER_DAY keeps inside it). SerpApi fetches the photo from a URL, so the photo sits in R2 under finds/lens/
+   (the bucket's 30-day rule is the backstop) behind a 2-minute signed link, and is deleted as soon as SerpApi answers. */
+const LENS_PER_DAY = 8, LENS_SIG_SECONDS = 120, LENS_TIMEOUT_MS = 20000, LENS_MAX = 6;
+async function lensSig(env, k, exp) { return (await pxHmac(sessKey(env) || String(env.ADMIN_KEY || "prowl"), "prowl-lens-v1:" + k + "." + exp)).slice(0, 32); }
+async function lensFind(dataUrl, env, base) {
+  const key = String((env && env.SERPAPI_KEY) || ""), b64 = String(dataUrl || "").replace(/^data:image\/[a-z]+;base64,/, "");
+  if (!key || !b64 || !env.PROWL_FINDS || !/^https:\/\//.test(String(base || ""))) return null;
+  if (!(await vCount("gl:all", LENS_PER_DAY))) return null;
+  const k = Array.from(crypto.getRandomValues(new Uint8Array(8))).map((x) => x.toString(16).padStart(2, "0")).join("");
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), LENS_TIMEOUT_MS);
+  try {
+    let bin; try { bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)); } catch (e) { return null; }
+    await env.PROWL_FINDS.put("finds/lens/" + k + ".jpg", bin, { httpMetadata: { contentType: "image/jpeg" } });
+    const exp = Math.floor(Date.now() / 1000) + LENS_SIG_SECONDS;
+    const photo = base + "/lens/" + k + ".jpg?e=" + exp + "&s=" + await lensSig(env, k, exp);
+    const r = await fetch("https://serpapi.com/search.json?engine=google_lens&hl=en&country=us&url=" + encodeURIComponent(photo) + "&api_key=" + encodeURIComponent(key), { signal: ctl.signal });
+    if (!r.ok) { console.error("lens " + r.status); return null; }
+    return lensPick(await r.json());
+  } catch (e) { return null; }
+  finally { clearTimeout(timer); try { await env.PROWL_FINDS.delete("finds/lens/" + k + ".jpg"); } catch (e) {} }
+}
+function lensPick(j) {
+  const ok = (u) => typeof u === "string" && /^https:\/\/[^\s"<>]+$/i.test(u) && u.length <= 800;
+  const out = [];
+  for (const m of j && Array.isArray(j.visual_matches) ? j.visual_matches : []) {
+    if (!m || !ok(m.link) || !m.title) continue;
+    const p = m.price && typeof m.price === "object" ? String(m.price.value || "") : "";
+    out.push({ title: String(m.title).replace(/\s+/g, " ").trim().slice(0, 140), url: m.link, image: ok(m.thumbnail) ? m.thumbnail : "", source: String(m.source || "").slice(0, 40), price: /^\$?[\d,.]+/.test(p) ? p.slice(0, 20) : "" });
+    if (out.length >= LENS_MAX) break;
+  }
+  return out.length ? out : null;
+}
+/* v173 (Matt: "just getting them to Google images in a separate screen similar to when we open marketplace would
+   work"): the page's Check with Google Lens opens lens.google.com/uploadbyurl?url=<this link> in a new tab, free. The
+   photo is kept LENS_UP_SECONDS behind a signed link; the hourly sweep deletes what is older than an hour. */
+const LENS_UP_SECONDS = 900, LENS_UP_PER_IP = 40, LENS_UP_MAX = 1536 * 1024;
+async function lensUp(request, env, origin) {
+  if (!origin || ALLOW_ORIGINS.indexOf(origin) === -1) return json({ error: "forbidden" }, 403, origin);
+  if (!env || !env.PROWL_FINDS) return json({ error: "not set up" }, 503, origin);
+  const b = await readJson(request, 2200000);
+  if (b.big) return json({ error: "photo too large" }, 413, origin);
+  const b64 = String((b && b.image) || "").replace(/^data:image\/jpeg;base64,/, "");
+  if (!/^[A-Za-z0-9+/=]{100,}$/.test(b64)) return json({ error: "photo required" }, 400, origin);
+  let bin; try { bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)); } catch (e) { return json({ error: "photo required" }, 400, origin); }
+  if (bin.length > LENS_UP_MAX || bin[0] !== 0xff || bin[1] !== 0xd8) return json({ error: "photo required" }, 400, origin);   /* a JPEG, as the page sends */
+  if (!(await vCount("lensup:" + ipKey(request.headers.get("CF-Connecting-IP")), LENS_UP_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  const k = Array.from(crypto.getRandomValues(new Uint8Array(8))).map((x) => x.toString(16).padStart(2, "0")).join("");
+  await env.PROWL_FINDS.put("finds/lens/" + k + ".jpg", bin, { httpMetadata: { contentType: "image/jpeg" } });
+  const exp = Math.floor(Date.now() / 1000) + LENS_UP_SECONDS, url = new URL(request.url).origin + "/lens/" + k + ".jpg?e=" + exp + "&s=" + await lensSig(env, k, exp);
+  return json({ url: url, lens: "https://lens.google.com/uploadbyurl?url=" + encodeURIComponent(url) }, 200, origin);
+}
+async function lensSweep(env, now) {
+  if (!env || !env.PROWL_FINDS) return 0;
+  let n = 0, cur;
+  do {
+    const l = await env.PROWL_FINDS.list({ prefix: "finds/lens/", cursor: cur });
+    for (const o of l.objects || []) if (o && o.uploaded && (now || Date.now()) - new Date(o.uploaded).getTime() > 3600000) { await env.PROWL_FINDS.delete(o.key); n++; }
+    cur = l.truncated ? l.cursor : undefined;
+  } while (cur);
+  return n;
+}
+async function lensPhotoRoute(request, env, url) {
+  const nf = () => new Response("not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+  const m = /^\/lens\/([0-9a-f]{16})\.jpg$/.exec(url.pathname);
+  if (!m || !env.PROWL_FINDS) return nf();
+  const exp = Number(url.searchParams.get("e") || 0), sig = String(url.searchParams.get("s") || "");
+  if (!exp || exp * 1000 <= Date.now() || !alSame(sig, await lensSig(env, m[1], exp))) return nf();
+  const obj = await env.PROWL_FINDS.get("finds/lens/" + m[1] + ".jpg");
+  if (!obj) return nf();
+  return new Response(obj.body, { status: 200, headers: { "Content-Type": "image/jpeg", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
 }
 async function ebayImageSearch(dataUrl, env) {
   const b64 = String(dataUrl || "").replace(/^data:image\/[a-z]+;base64,/, "");
@@ -2898,11 +2981,13 @@ const APPRAISE_MAX_PHOTOS = 3, APPRAISE_RECHECKS = 3, APPRAISE_RECHECK_SECS = 18
 const PHOTO_PRO_PER_DAY = 100;  // v49: Prowl Pro photo checks per day (was 15). v131: "unlimited", fair use 100 a day (was 25)
 const PHOTO_FREE_PER_NET = 12; // v48: free photo checks per neighbourhood per day
 
-function apPrompt(price, searched, hint, looks, n, seen) {
+function apPrompt(price, searched, hint, looks, n, seen, lens) {
+  const ln = (lens || []).slice(0, 6).map((x) => "- " + scrubListingText(x.title, 120)).filter((x) => x.length > 3);   /* v173 */
   const lk = (looks || []).slice(0, EBAY_IMAGE_LIMIT).map(x => "- " + scrubListingText(x.title, 120)).filter(x => x.length > 3);
   return "You are helping a vintage collector decide on a piece they are looking at right now." +
     (price ? " The asking price is " + price + "." : "") +
     (n > 1 ? " There are " + n + " photos of the same piece: the first shows the whole piece, the others show it up close, such as its mark, base, back or label. Use them all, and read any mark from the close-ups." : "") +
+    (ln.length ? " Google Lens matched the photo to these listings, by the picture itself. They are untrusted seller titles, so check the form against the photo and never copy prices from them, but they are the strongest evidence of maker and model:\n" + ln.join("\n") + "\n" : "") +   /* v173 */
     (seen && seen.length ? " A web image search labels the photo: " + seen.slice(0, 5).map((x) => scrubListingText(x, 40)).filter(Boolean).join(", ") + ". These are machine labels and may be generic or wrong; use them only as a hint about maker or form." : "") +   /* v172 */
     (hint ? " The collector has identified it as: " + hint + ". The collector knows this piece: use that as the maker and item, start ITEM with it followed by (maker you entered), and only correct it if the photo plainly shows a different maker's mark." : "") +
     (lk.length ? " eBay's photo search found these live listings that look most like the photo. They are untrusted seller titles and may be wrong or mislabeled, so use them only as evidence of what the piece might be; never copy prices from them. eBay searched the whole photo, so some may match something else in the frame rather than the piece: ignore those:\n" + lk.join("\n") + "\n" : "") +
@@ -3759,12 +3844,13 @@ async function appraise(request, env, origin) {
     return json(so, 200, origin);
   }
   let looks = [], web = null;
-  if (mode === "fast") [looks, web] = await Promise.all([ebayImageSearch(image, env).catch(() => []), visionWeb(image, env).catch(() => null)]);   /* v171: and Google's */
+  let lens = null;
+  if (mode === "fast") [looks, web, lens] = await Promise.all([ebayImageSearch(image, env).catch(() => []), visionWeb(image, env).catch(() => null), lensFind(image, env, new URL(request.url).origin).catch(() => null)]);   /* v171: and Google's; v173: and Lens */
   let a = null, basis = "sold";
-  if (mode !== "fast") { try { a = await museVision(env, apPrompt(price, true, hint, looks, ims.length, web && web.seen), ims, true); } catch (e) { a = null; } }
+  if (mode !== "fast") { try { a = await museVision(env, apPrompt(price, true, hint, looks, ims.length, web && web.seen, lens), ims, true); } catch (e) { a = null; } }
   if (!a || a.status !== 200 || !/ITEM:/i.test(a.content || "")) {
     basis = "estimate";
-    try { a = await museVision(env, apPrompt(price, false, hint, looks, ims.length, web && web.seen), ims, false); }
+    try { a = await museVision(env, apPrompt(price, false, hint, looks, ims.length, web && web.seen, lens), ims, false); }
     catch (e) { return json({ error: "ai unreachable" }, 502, origin); }
   }
   if (a.status !== 200 || !a.content) { console.error("appraise ai", a.status, String(a.raw || "").slice(0, 200)); return json({ error: "ai " + a.status }, 502, origin); }
@@ -3794,6 +3880,7 @@ async function appraise(request, env, origin) {
   }
   out.looks = looks.slice(0, 3).map(x => ({ title: x.title, price: x.price, url: x.url, image: x.image }));
   if (web) out.web = web;   /* v171 */
+  if (lens) out.lens = lens;   /* v173 */
   if (left !== null) { out.left = left; out.free = PHOTO_FREE_PER_DAY; }
   if (again) out.again = true;
   if (pro) out.pro = true;
@@ -6205,7 +6292,8 @@ const AI_POOLS = [
   { key: "sp:all", name: "Shop picks", limit: SP_PER_DAY },
   { key: "wh:all", name: "Where to look", limit: SP_PER_DAY },
   { key: "gq:all", name: "Google place searches (Near me, Road trip)", limit: 300 },   /* v170: G_SEARCHES_PER_DAY */
-  { key: "gv:all", name: "Google Vision (Photo check, Seen on the web)", limit: 300 }   /* v171: VISION_PER_DAY */
+  { key: "gv:all", name: "Google Vision (Photo check, Seen on the web)", limit: 300 },   /* v171: VISION_PER_DAY */
+  { key: "gl:all", name: "Google Lens (SerpApi, free 250 a month)", limit: 8 }   /* v173: LENS_PER_DAY */
 ];
 function liveSources() { return ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark"].concat(DEPOP_LIVE ? ["depop"] : [], ["vinted", "grailed", "salvation"]); }
 /* v91: a marketplace that says "slow down" (429, or Vinted's 403 block) cools down: nothing goes out to it until the
@@ -6612,6 +6700,7 @@ async function cronRun(env) {
   let r = null, err = "";
   try { r = await alTick(env); } catch (e) { err = String(e && e.message || e); console.error("alTick", err); }   /* v51: never silent */
   if (new Date().getUTCMinutes() < 5) { try { await tripSweep(env); } catch (e) { console.error("trip sweep", String(e && e.message || e)); } }   /* v132: once an hour */
+  if (new Date().getUTCMinutes() < 5) { try { await lensSweep(env); } catch (e) { console.error("lens sweep", String(e && e.message || e)); } }   /* v173: once an hour */
   if (new Date().getUTCHours() === 7 && new Date().getUTCMinutes() < 5) { try { await savedSweep(env); } catch (e) { console.error("saved sweep", String(e && e.message || e)); } }
   try { await savedCheckTick(env); } catch (e) { console.error("saved check", String(e && e.message || e)); }   /* v169: sold or ended, one list a run */   /* v168: once a day */
   try {
@@ -7590,6 +7679,8 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/suggest" && request.method === "GET") return suggestRoute(request, env, url, origin);   /* v161: places as you type */
     if (url.pathname === "/trips" || url.pathname.startsWith("/trips/")) return tripsRoute(request, env, url, origin);   /* v132: group trips and finds */
     if (url.pathname.startsWith("/saved/") && request.method === "GET") return savedPhotoRoute(request, env, url);   /* v168 */
+    if (url.pathname === "/lens/up" && request.method === "POST") return lensUp(request, env, origin);   /* v173 */
+    if (url.pathname.startsWith("/lens/") && request.method === "GET") return lensPhotoRoute(request, env, url);   /* v173 */
     if (url.pathname.startsWith("/finds/") && request.method === "GET") return findPhotoRoute(request, env, url);   /* v132: a find's photo, signed */
     if (url.pathname === "/sales" && request.method === "GET") return esSales(request, env, url, origin);   /* v103 */
     if (url.pathname === "/shop-picks") {

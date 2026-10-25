@@ -22,6 +22,9 @@ about a minute. No dashboard paste needed.
   (the public page keeps OWNER_KEY in the browser). The Start Prowl and stop links in Gift Pro
   emails are signed with a random key the worker makes once and keeps in KV (`giftkey:v1`);
   deleting that key retires every gift link already emailed.
+- `SERPAPI_KEY` (v173) is a SerpApi key (free plan, 250 searches a month): Photo check's Google Lens matches
+  (`LENS_PER_DAY` a day). The photo waits in R2 under `finds/lens/` only while SerpApi fetches it. Without it Photo
+  check works as before.
 - `GOOGLE_VISION_KEY` (v171) is a Google Cloud API key restricted to Cloud Vision API: Photo check's Seen on the web
   (web detection on the first photo, `VISION_PER_DAY` a day). Without it Photo check works as before.
 - `GOOGLE_MAPS_KEY` (v132) is the Google Cloud API key behind NEAR ME: Around You and Road Trip (`/near`, `/trip`,
