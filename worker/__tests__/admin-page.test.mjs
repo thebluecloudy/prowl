@@ -365,3 +365,10 @@ test("Affiliates (v90): each program has labelled ID fields and Save IDs; Turn o
   assert.match(SCRIPT, /st\("warning", "Off: needs its IDs"\)/);
   assert.match(SCRIPT, /"aff-ids": "Saved affiliate IDs"/);
 });
+
+test("v176: Searches tab has a Road trips card filled from the searches call", () => {
+  assert.match(page, /<h2>Road trips<\/h2>/);
+  assert.match(page, /id="rbox"/);
+  assert.match(SCRIPT, /j\.trips/);
+  assert.match(SCRIPT, /"Going to"/);
+});

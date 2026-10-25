@@ -950,6 +950,7 @@ function topRows(T) {
   });
 }
 const TOP_COLS = [{ t: "#", num: 1 }, { t: "Search" }, { t: "Visitors", num: 1 }, { t: "Searches", num: 1 }];
+const TRIP_COLS = [{ t: "#", num: 1 }, { t: "Going to" }, { t: "Visitors", num: 1 }, { t: "Trips", num: 1 }];
 function topCard(ov) {
   const s = ov.searches;
   const seg = h("div", { class: "seg", role: "group", "aria-label": "Period" }, [["today", "Today"], ["week", "This week"]].map(o =>
@@ -1594,6 +1595,9 @@ async function loadSearches() {
     const T = Array.isArray(j.top) ? j.top : [];
     fill(box, [T.length ? tableOf(TOP_COLS, topRows(T), "Top searches") : h("p", { class: "empty", text: "No searches recorded for this period yet." }),
       S.sDays === 1 ? h("p", { class: "hint", text: todayHint() }) : null]);
+    const R = Array.isArray(j.trips) ? j.trips : null, rb = $("#rbox");
+    if (rb) fill(rb, !R ? note("warn", "Road trips could not be loaded right now.") : R.length ? tableOf(TRIP_COLS, topRows(R), "Road trips")
+      : h("p", { class: "empty", text: "No road trips recorded for this period yet." }));
     stamp();
   } catch (e) { if (e.status !== 401 && seq === S.sSeq) fill(box, note("bad", "Could not load searches. " + e.message, loadSearches)); }
   finally { if (seq === S.sSeq) box.classList.remove("busy"); }
@@ -1660,7 +1664,8 @@ function appBody() {
     panel("searches",
       '<section class="card"><div class="ch"><h2>Visitors</h2></div><p class="sub">People who searched Prowl, each counted once a day (no names or addresses), and the sites that sent visitors to the Prowl page.</p><div id="ubox"></div></section>' +
       '<section class="card"><div class="ch"><h2>Top searches</h2><div class="seg" role="group" aria-label="Period">' + day(1, "Today") + day(7, "7 days") + day(30, "30 days") + "</div></div>" +
-      '<p class="sub">What people search for on Prowl. Visitors count each person once a day. Searches that look personal are never recorded.</p><div id="sbox"></div></section>') +
+      '<p class="sub">What people search for on Prowl. Visitors count each person once a day. Searches that look personal are never recorded.</p><div id="sbox"></div></section>' +
+      '<section class="card"><div class="ch"><h2>Road trips</h2></div><p class="sub">Where people plan road trips to under Near me, for the same period as Top searches. Street addresses are never recorded.</p><div id="rbox"></div></section>') +
     panel("affiliates",
       '<section class="card"><div class="ch"><h2>Affiliates</h2></div>' +
       '<p class="sub">Each affiliate program has its IDs and an on/off switch. Paste the IDs from the network, press Save IDs, then Turn on. Off means links to that site go out plain and no disclosure names it. The Prowl page follows within about 5 minutes, and the alert emails too for the programs marked so (the others keep plain links in email). IDs are public (they are in every affiliate link), so nothing secret goes here.</p>' +

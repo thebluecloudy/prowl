@@ -2022,3 +2022,26 @@ test("gift remove: someone who joined after the member list was cached is still 
   assert.match(j.message, /^Gift turned off\. M-[0-9a-f]{8} is on the free plan now unless they pay\./);
   assert.equal(rec(env, N).pro, false);
 });
+
+test("v176: road trip destinations are counted as kind r, street addresses never", async () => {
+  const ticks = [];
+  const X = fromIndex(["statTerm", "statTripTo", "statTick"], { looksPersonal, ipKey: x => x, sha16: async () => "h", capsCall: async (n, op, q) => { ticks.push(q.kind + ":" + q.term); } });
+  const req = { headers: { get: () => "203.0.113.5" } };
+  for (const t of ["Rookwood Pottery", "123 Main St, Novi", "Mosser Glass, Cambridge OH", "jane@example.com"]) await X.statTick(req, {}, "r", t);
+  assert.deepEqual(ticks, ["r:rookwood pottery", "r:mosser glass cambridge oh"]);
+  assert.match(INDEX, /if \(!\/\^\[tgur\]\$\/\.test\(kind\) \|\| !\/\^\\d\{4\}-\\d\{2\}-\\d\{2\}\$\/\.test\(day\)/);
+  assert.match(INDEX, /ctx\.waitUntil\(statTick\(request, env, "r", to\)\)/);
+});
+
+test("v176: searches endpoint adds the road trips list; its failure leaves searches standing", async () => {
+  const H = makeH(), env = makeEnv();
+  metricsData(H, Date.now());
+  let j = await (await call(env, H, "GET", "/admin/api/searches?days=7")).json();
+  assert.ok(H.calls.caps.some(x => x.op === "top" && x.body.kind === "r"));
+  assert.ok(Array.isArray(j.trips));
+  const orig = H.capsCall;
+  H.capsCall = async (n, op, b) => { if (op === "top" && b.kind === "r") throw new Error("x"); return orig(n, op, b); };
+  j = await (await call(env, H, "GET", "/admin/api/searches?days=7")).json();
+  assert.equal(j.trips, null);
+  assert.deepEqual(j.top, [{ term: "roseville", visitors: 12, requests: 20 }]);
+});
