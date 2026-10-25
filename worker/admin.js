@@ -1023,7 +1023,9 @@ async function apiSearches(c) {
   let j;
   try { j = await capsJson(c, "stats", "top", { kind: "t", from: utcDay(c.nowMs - (days - 1) * 86400000), to: utcDay(c.nowMs), limit: 50 }); }
   catch (e) { return jerr(503, "Search counts are not available right now."); }
-  return jres({ top: topView(c, j), days: days });
+  let trips = null;   /* v176: road trip destinations; a failure here leaves the searches list standing */
+  try { trips = topView(c, await capsJson(c, "stats", "top", { kind: "r", from: utcDay(c.nowMs - (days - 1) * 86400000), to: utcDay(c.nowMs), limit: 50 })); } catch (e) {}
+  return jres({ top: topView(c, j), trips: trips, days: days });
 }
 /* v127: Visitors (moved here from the page's Den › Stats, which showed it to the owner key: admin only now). 14 UTC days of
    people searching (distinct daily-salted address hashes, never stored raw) and searches, and where the page's visitors

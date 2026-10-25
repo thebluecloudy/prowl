@@ -19,5 +19,5 @@ test("no POST route is dispatched after the GET-only guard", () => {
 test("the Lens photo upload is routed before the guard", () => {
   const at = INDEX.search(/url\.pathname === "\/lens\/up" && request\.method === "POST"\) return lensUp\(request, env, origin\)/);
   assert.ok(at > 0 && at < INDEX.indexOf(GUARD));
-  assert.match(INDEX, /^const WORKER_VERSION = "v175";$/m);
+  assert.ok(Number(/^const WORKER_VERSION = "v(\d+)";$/m.exec(INDEX)[1]) >= 175);
 });

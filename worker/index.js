@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v176: 2026-10-25. Road trip searches in the admin (Matt): each /trip counts its destination as stat kind "r" (place
+ *        names only; anything starting with a house number is skipped); admin Searches tab shows a Road trips list.
  *   v175: 2026-10-25. Check with Google Lens sends the photo again (Matt got Lens's intro page): POST /lens/up was
  *         routed below the "GET only" guard, as group trips were before v156, so every upload was 405. It is routed
  *         above it now; a test fails if any POST route sits below the guard. Seen on the web lists only pages with
@@ -610,7 +612,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v175";
+const WORKER_VERSION = "v176";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -2593,7 +2595,7 @@ export class Caps {
        m:<kind>:<day> counts the day's distinct terms so a flood cannot grow storage without bound. */
     if (op === "tick") {
       const kind = String(q.kind || "t"), day = String(q.day || ""), term = String(q.term || ""), h = String(q.h || "");
-      if (!/^[tgu]$/.test(kind) || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !term || term.length > 60) return J({ error: "bad tick" }, 400);
+      if (!/^[tgur]$/.test(kind) || !/^\d{4}-\d{2}-\d{2}$/.test(day) || !term || term.length > 60) return J({ error: "bad tick" }, 400);
       const nk = "n:" + kind + ":" + day + ":" + term;
       let cur = await this.s.get(nk);
       if (!cur) {
@@ -2611,7 +2613,7 @@ export class Caps {
     /* v125: per-day totals for one kind (the owner's Den › Stats): distinct visitors, calls and terms per UTC day */
     if (op === "days") {
       const kind = String(q.kind || "t"), from = String(q.from || ""), to = String(q.to || "");
-      if (!/^[tgu]$/.test(kind) || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return J({ error: "bad days" }, 400);
+      if (!/^[tgur]$/.test(kind) || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return J({ error: "bad days" }, 400);
       const rows = await this.s.list({ prefix: "n:" + kind + ":", start: "n:" + kind + ":" + from, end: "n:" + kind + ":" + to + "~" });
       const by = {};
       for (const [k, v] of rows) {
@@ -2710,9 +2712,12 @@ export async function cfReferrers(env, from, to) {
   } catch (e) { return { error: "Cloudflare analytics could not be reached." }; }
   finally { clearTimeout(timer); }
 }
+/* v176: a road trip's destination for the admin's Road trips list. A place name only: anything starting with a house
+   number (a street address) is skipped, so nobody's home ends up in the counts. */
+function statTripTo(raw) { const s = String(raw == null ? "" : raw).trim(); return /^\d/.test(s) ? "" : statTerm(s); }
 async function statTick(request, env, kind, rawTerm) {
   try {
-    const term = statTerm(rawTerm);
+    const term = kind === "r" ? statTripTo(rawTerm) : statTerm(rawTerm);
     if (!term || looksPersonal(term)) return;   /* v78: a phone number split by dashes or dots passes statTerm; never store it */
     const day = new Date().toISOString().slice(0, 10);
     const ip = ipKey(request.headers.get("CF-Connecting-IP"));
@@ -7196,7 +7201,7 @@ async function pinLookup(env, text) {
   }
   return null;
 }
-async function tripRoute(request, env, url, origin) {
+async function tripRoute(request, env, url, origin, ctx) {
   const lat = nearNum(url.searchParams.get("lat"), -90, 90), lng = nearNum(url.searchParams.get("lng"), -180, 180);
   const to = vClean(url.searchParams.get("to"), 160);
   if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
@@ -7204,6 +7209,7 @@ async function tripRoute(request, env, url, origin) {
   if (!gKey(env)) return json({ error: "not set up", empty: true, stops: [] }, 503, origin);
   const day = tripDay(url.searchParams.get("day")), cats = catsParse(url.searchParams.get("cats")), detour = detourParse(url.searchParams.get("detour")), via = viaParse(url.searchParams.get("via"));
   const key = tripKey(url.origin, lat, lng, to, day, cats, via) + (detour !== DETOUR_MIN ? "&d=" + detour : "");   /* v157; v163: the stops on the way */
+  if (ctx && ctx.waitUntil) ctx.waitUntil(statTick(request, env, "r", to));   /* v176: Road trips in the admin */
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("trip:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIP_PER_IP))) return json({ error: "slow down" }, 429, origin);
@@ -7684,7 +7690,7 @@ async function handleFetch(request, env, ctx) {
     }
     if (url.pathname === "/fb-finds") return fbFinds(request, env, url, origin);   /* v94 */
     if (url.pathname === "/near" && request.method === "GET") return nearRoute(request, env, url, origin);   /* v132: Around You */
-    if (url.pathname === "/trip" && request.method === "GET") return tripRoute(request, env, url, origin);   /* v132: Road Trip */
+    if (url.pathname === "/trip" && request.method === "GET") return tripRoute(request, env, url, origin, ctx);   /* v132: Road Trip */
     if (url.pathname === "/geo" && request.method === "GET") return geoRoute(request, env, url, origin);   /* v157: In a location */
     if (url.pathname === "/order" && request.method === "GET") return orderRoute(request, env, url, origin);   /* v157: Optimize route */
     if (url.pathname === "/pp" && request.method === "GET") return ppRoute(request, env, url);   /* v132: a place's photo */

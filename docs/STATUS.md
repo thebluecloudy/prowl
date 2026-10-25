@@ -1,16 +1,20 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v8.03 / v175).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v8.03 / v176).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.03** | 378,066 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v175** | |
+| Worker | **v176** | |
 
 Recently shipped, newest first:
 
+- **Worker v176: Road trips in the admin** (Matt, 2026-10-25). Every `/trip` build (cache hits too) counts its
+  destination in the stats object as kind `r` (`statTripTo`: place names only, anything starting with a house number
+  skipped, then the usual personal-term rules). `/admin/api/searches` adds `trips`; the Searches tab has a Road trips card
+  (Going to, Visitors, Trips) on the same Today / 7 / 30 day switch. Starts empty: only trips from now on are counted.
 - **v175: Check with Google Lens sends the photo** (Matt's screenshot: Lens's intro page, not his photo). `POST
   /lens/up` was dispatched below the worker's "GET only" guard, the same slip as group trips before v156, so every
   upload since v173 was 405 and the page fell back to plain Lens. It is routed above the guard now, and
@@ -1469,7 +1473,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.04, worker v176**. Claim one here when you start.
+Next free numbers: **page v8.04, worker v177**. Claim one here when you start.
 
 ## What's next
 
