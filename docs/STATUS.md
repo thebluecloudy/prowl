@@ -1,16 +1,25 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-24 (v7.95 / v169).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v7.96 / v169).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.95** | 389,445 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v7.96** | 385,405 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v169** | |
 
 Recently shipped, newest first:
 
+- **v7.96: Photo check keeps your last checks, and Research's sales open the popup** (Matt: "Yes do 4 5").
+  - **Your last photo checks:** each answer is kept in `prowl.photoChecks` (new key; newest 5; this device only, not in
+    the backup) with a 480px copy of the first photo (`pckKeep`, Research's `resThumb`). A reload at a sale no longer
+    loses the answer or the check it used. "Your last photo checks" under the answer opens one again with no new check
+    (`r._kept`); "Clear these" empties it. A full storage keeps fewer.
+  - **Sold before** (Research this piece): an eBay, Etsy or Poshmark sale carries the popup's data plus `data-sold`, so
+    the popup shows Save and Like even though the listing has ended (`POP.sold`). An ended listing opened anywhere else
+    still has no Save. A sale on another site (WorthPoint...) still opens that site.
+  Test: `__tests__/page/photo-kept-v796.test.mjs`.
 - **v7.95: Photo check's cards open the listing popup, and the popup has a Like button** (Matt: "When I search for an
   image and these 6 come up and I click it goes straight to eBay. Can we have the pop-up come up and let me save and
   like as well"). The "Looks like these on eBay" and "Sold on Poshmark" cards carry what the popup reads (`aprCell`:
@@ -1372,7 +1381,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.96, worker v170**. Claim one here when you start.
+Next free numbers: **page v7.97, worker v170**. Claim one here when you start.
 
 ## What's next
 
