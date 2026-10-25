@@ -68,7 +68,7 @@ test("appraise: a re-check skips the free count but not the shared pool; the AI 
   assert.match(a, /if \(left !== null \|\| again\) \{ const pool = await poolOk/);
   assert.match(a, /giveBack\(again \? \[\] : \["apf:" \+ ip/, "a re-check has no count to give back");
   assert.match(a, /if \(left !== null\) await apRcMark\(ip, ims\);/, "only a counted free check marks its photos");
-  assert.match(a, /apPrompt\(price, false, hint, looks, ims\.length, web && web\.seen\), ims, false\)/);   /* v172: and the web's labels */
+  assert.match(a, /apPrompt\(price, false, hint, looks, ims\.length, web && web\.seen, lens\), ims, false\)/);   /* v173: and Lens */   /* v172: and the web's labels */
   assert.match(a, /ebayImageSearch\(image, env\)/);
   assert.match(a, /const ims = pi\.ims, image = ims\[0\];/);
   assert.match(a, /if \(again\) out\.again = true;/);

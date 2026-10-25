@@ -13,7 +13,7 @@ function indexFn(name) {
 const constLine = (name) => new RegExp("^const " + name + " = [^\\n]+", "m").exec(INDEX)[0];
 function load(deps) {
   const keys = Object.keys(deps);
-  return new Function(...keys, constLine("VISION_URL") + "\n" + indexFn("visionPick") + indexFn("visionWeb") + "\nreturn { visionPick, visionWeb };")(...keys.map((k) => deps[k]));
+  return new Function(...keys, constLine("VISION_URL") + "\n" + constLine("VISION_GENERIC") + "\n" + indexFn("visionPick") + indexFn("visionWeb") + "\nreturn { visionPick, visionWeb };")(...keys.map((k) => deps[k]));
 }
 const WD = {
   bestGuessLabels: [{ label: "royal haeger panther" }],
@@ -59,7 +59,7 @@ test("visionWeb: nothing without the key or past the day's cap; with them, one c
 
 test("wiring: the quick photo check asks Google beside eBay and hands back web; the admin card counts it; v171", () => {
   const ap = indexFn("appraise");
-  assert.match(ap, /\[looks, web\] = await Promise\.all\(\[ebayImageSearch\(image, env\)\.catch\(\(\) => \[\]\), visionWeb\(image, env\)\.catch\(\(\) => null\)\]\)/);
+  assert.match(ap, /\[looks, web, lens\] = await Promise\.all\(\[ebayImageSearch\(image, env\)\.catch\(\(\) => \[\]\), visionWeb\(image, env\)\.catch\(\(\) => null\), lensFind\(/);   /* v173: and Lens */
   assert.match(ap, /if \(web\) out\.web = web;/);
   assert.match(INDEX, /\{ key: "gv:all", name: "Google Vision \(Photo check, Seen on the web\)", limit: 300 \}/);
   assert.match(constLine("VISION_URL"), /VISION_PER_DAY = 300\b/);
@@ -75,7 +75,7 @@ test("v172 visionPick: confident entities (plain, once each, five at most) and l
     visuallySimilarImages: [{ url: "https://i.etsystatic.com/a.jpg" }, { url: "http://x.example.com/b.jpg" }, { url: "https://i.etsystatic.com/a.jpg" }].concat(Array.from({ length: 8 }, (_, i) => ({ url: "https://img" + i + ".example.org/p.jpg" }))) });
   assert.equal(r.guess, "carving");
   assert.deepEqual(r.pages, []);
-  assert.deepEqual(r.seen, ["Haeger Potteries", "Cat", "Ceramic", "Figurine", "Orange"]);
+  assert.deepEqual(r.seen, ["Haeger Potteries", "Cat", "Sixth"], "v173: generic labels (Ceramic, Figurine, Orange) are dropped");
   assert.equal(r.alike.length, 6); assert.equal(r.alike[0], "https://i.etsystatic.com/a.jpg"); assert.ok(r.alike.every((u) => /^https:/.test(u)));
 });
 
@@ -85,5 +85,5 @@ test("v172: the AI is given the labels as a hint, cleaned, and nothing when ther
   assert.match(apPrompt("", false, "", [], 1, ["Haeger Potteries", "Cat"]), /A web image search labels the photo: Haeger Potteries, Cat\. These are machine labels and may be generic or wrong; use them only as a hint about maker or form\./);
   assert.doesNotMatch(apPrompt("", false, "", [], 1, []), /web image search/);
   assert.doesNotMatch(apPrompt("", false, "", [], 1), /web image search/);
-  assert.match(indexFn("appraise"), /apPrompt\(price, true, hint, looks, ims\.length, web && web\.seen\)/);
+  assert.match(indexFn("appraise"), /apPrompt\(price, true, hint, looks, ims\.length, web && web\.seen, lens\)/);   /* v173: and Lens */
 });

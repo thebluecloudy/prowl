@@ -1,16 +1,30 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v8.00 / v172).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v8.01 / v173).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.00** | 381,311 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v172** | |
+| Page | **v8.01** | 378,378 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v173** | |
 
 Recently shipped, newest first:
 
+- **v8.01 / v173: Google Lens, free** (Matt, after Lens named his orange cat "Royal Haeger Orange Winking Egyptian Cat,
+  model 616" where Cloud Vision said "Sculpture": "Do 1 and 2, and trial 3 ... I need something free").
+  1. **Check with Google Lens** is a main button beside Hunt it on Prowl (was under More as "Search this photo on
+     Google Lens"); without the share sheet it opens lens.google.com. A line says to type what Lens says in Maker or
+     words and Check again (free for 30 minutes).
+  2. **Generic labels dropped** (`VISION_GENERIC`: sculpture, figurine, ceramic, statue, colours...) from Seen as and
+     from the AI.
+  3. **Lens's own matches through SerpApi's free plan** (250 searches a month): with the worker secret **SERPAPI_KEY**
+     (not set yet: Matt makes a free account at serpapi.com), the quick check puts the first photo in R2 under
+     `finds/lens/` behind a 2-minute signed `GET /lens/<k>.jpg`, asks SerpApi's `google_lens` engine, deletes the photo,
+     and hands back `lens` (up to 6: title, url, image, source, price). `LENS_PER_DAY` 8 (gl:all on the usage card).
+     The titles go to the AI as the strongest evidence of maker and model (`apPrompt` 7th argument). The page shows
+     **Google Lens found** first; eBay, Etsy and Poshmark ones open the popup; kept with the check. Without the key
+     nothing changes. Tests: `worker/__tests__/lens-v173.test.mjs`, `__tests__/page/photo-lens-v801.test.mjs`.
 - **v8.00 / v172: Seen on the web says more** (Matt's first live check, an orange Haeger cat in a shop: no pages and a
   best guess of "carving"). A fresh photo has no copies online, so Cloud Vision's pages and guess are thin; Google Lens's
   "visual matches" (its shopping index) has no public API. Now `visionPick` also keeps the confident web entities
@@ -1428,7 +1442,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.01, worker v173**. Claim one here when you start.
+Next free numbers: **page v8.02, worker v174**. Claim one here when you start.
 
 ## What's next
 
