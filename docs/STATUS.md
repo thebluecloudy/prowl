@@ -1,16 +1,26 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v7.98 / v170).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v7.99 / v171).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.98** | 385,440 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v170** | |
+| Page | **v7.99** | 382,982 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v171** | |
 
 Recently shipped, newest first:
 
+- **v7.99 / v171: Photo check, Seen on the web** (Matt: "When Google does an image search it isn't using text it uses
+  similar images can we tap into that"). Google Lens has no public API; Google Cloud Vision's web detection is the
+  closest. With the worker secret **GOOGLE_VISION_KEY** (an API key restricted to Cloud Vision API, set 2026-10-25),
+  the quick photo check sends its first photo there beside eBay's photo search (`visionWeb`, `visionPick`): the best
+  guess and up to 6 https pages with the same picture come back as `web`. `VISION_PER_DAY` (300) in all, counted as
+  `gv:all` on the admin's AI usage card; $3.50 per 1,000 after the first 1,000 a month. Without the key, past the cap,
+  or with nothing found, nothing changes. The page shows **Seen on the web**: "Best guess on the web: ..." and the
+  pages; eBay, Etsy and Poshmark ones open the listing popup (Save, Like), others open themselves; kept with the photo
+  check. The best guess is not given to the AI yet. Tests: `worker/__tests__/vision-v171.test.mjs`,
+  `__tests__/page/photo-web-v799.test.mjs`.
 - **v7.98: Save trip and Share where you see them** (Matt: "Trips used to be for groups we need a save trip button
   and a share inside trips area"). Keeping a trip for the group and inviting were under ⋯ More › Share. Now the top of
   a built trip has **★ Save trip** (`nrKeep`, unchanged: sign-in, Pro on the worker) and **↗ Share** (the route by
@@ -1409,7 +1419,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v7.99, worker v171**. Claim one here when you start.
+Next free numbers: **page v8.00, worker v172**. Claim one here when you start.
 
 ## What's next
 

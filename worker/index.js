@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v171: 2026-10-25. Photo check: Seen on the web. With GOOGLE_VISION_KEY set, the first photo also goes to Google Cloud
+ *         Vision's web detection (visionWeb, beside the eBay photo search): its best guess and up to VISION_PAGES pages
+ *         showing the same picture come back as out.web { guess, pages: [{ url, title, image, host }] }. VISION_PER_DAY a
+ *         day in all (gv:all, the admin's usage card); without the key, or past the cap, nothing changes.
  *   v170: 2026-10-25. Near me costs less (Matt: "it was only me and i ran it about 20 times"; $101 of Places Text Search in a
  *         week). Each place search's answer is kept an hour by what was asked (gSearch), so a Road trip rebuilt with
  *         another day, detour or kind asks Google only what is new; every search that goes out is counted (gq:all,
@@ -586,7 +590,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v170";
+const WORKER_VERSION = "v171";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -1172,6 +1176,41 @@ function busyNow(origin, pool) {
 const EBAY_IMAGE_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search_by_image";
 const EBAY_IMAGE_LIMIT = 8;
 const EBAY_IMAGE_TIMEOUT_MS = 9000;
+/* v171 (Matt: "When Google does an image search it isn't using text it uses similar images can we tap into that"):
+   Google Cloud Vision's web detection (Google Lens has no public API). $3.50 a 1,000 after the first 1,000 a month.
+   The photo itself goes to Google; nothing of the visitor's. visionPick keeps https pages only, titles as plain text. */
+const VISION_URL = "https://vision.googleapis.com/v1/images:annotate", VISION_PER_DAY = 300, VISION_PAGES = 6, VISION_TIMEOUT_MS = 8000;
+async function visionWeb(dataUrl, env) {
+  const key = String((env && env.GOOGLE_VISION_KEY) || ""), b64 = String(dataUrl || "").replace(/^data:image\/[a-z]+;base64,/, "");
+  if (!key || !b64) return null;
+  if (!(await vCount("gv:all", VISION_PER_DAY))) return null;
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), VISION_TIMEOUT_MS);
+  try {
+    const r = await fetch(VISION_URL + "?key=" + encodeURIComponent(key), { method: "POST", signal: ctl.signal, headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requests: [{ image: { content: b64 }, features: [{ type: "WEB_DETECTION", maxResults: 12 }] }] }) });
+    if (!r.ok) { console.error("vision " + r.status); return null; }
+    const j = await r.json();
+    return visionPick(j && j.responses && j.responses[0] && j.responses[0].webDetection);
+  } catch (e) { return null; }
+  finally { clearTimeout(timer); }
+}
+function visionPick(wd) {
+  if (!wd || typeof wd !== "object") return null;
+  const plain = (t) => String(t || "").replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim();
+  const ok = (u) => typeof u === "string" && /^https:\/\/[^\s"<>]+$/i.test(u) && u.length <= 800;
+  const guess = plain(wd.bestGuessLabels && wd.bestGuessLabels[0] && wd.bestGuessLabels[0].label).slice(0, 80);
+  const pages = [], seen = Object.create(null);
+  for (const p of Array.isArray(wd.pagesWithMatchingImages) ? wd.pagesWithMatchingImages : []) {
+    if (!p || !ok(p.url)) continue;
+    let host = ""; try { host = new URL(p.url).hostname.replace(/^www\./, ""); } catch (e) { continue; }
+    const k = p.url.replace(/[?#].*$/, "");
+    if (seen[k]) continue; seen[k] = 1;
+    const im = [].concat(p.fullMatchingImages || [], p.partialMatchingImages || []).map((x) => x && x.url).filter(ok)[0] || "";
+    pages.push({ url: p.url, title: plain(p.pageTitle).slice(0, 140) || host, image: im, host: host.slice(0, 60) });
+    if (pages.length >= VISION_PAGES) break;
+  }
+  return guess || pages.length ? { guess: guess, pages: pages } : null;
+}
 async function ebayImageSearch(dataUrl, env) {
   const b64 = String(dataUrl || "").replace(/^data:image\/[a-z]+;base64,/, "");
   if (!b64 || !env || !env.EBAY_CLIENT_ID) return [];
@@ -3704,8 +3743,8 @@ async function appraise(request, env, origin) {
     if (pro) so.pro = true;
     return json(so, 200, origin);
   }
-  let looks = [];
-  if (mode === "fast") { try { looks = await ebayImageSearch(image, env); } catch (e) { looks = []; } }
+  let looks = [], web = null;
+  if (mode === "fast") [looks, web] = await Promise.all([ebayImageSearch(image, env).catch(() => []), visionWeb(image, env).catch(() => null)]);   /* v171: and Google's */
   let a = null, basis = "sold";
   if (mode !== "fast") { try { a = await museVision(env, apPrompt(price, true, hint, looks, ims.length), ims, true); } catch (e) { a = null; } }
   if (!a || a.status !== 200 || !/ITEM:/i.test(a.content || "")) {
@@ -3739,6 +3778,7 @@ async function appraise(request, env, origin) {
     if (jevMode === "on") looks = allLooks.filter((x, i) => jev[i] && jev[i].match === "same" && jev[i].p >= JEV_MIN_P);
   }
   out.looks = looks.slice(0, 3).map(x => ({ title: x.title, price: x.price, url: x.url, image: x.image }));
+  if (web) out.web = web;   /* v171 */
   if (left !== null) { out.left = left; out.free = PHOTO_FREE_PER_DAY; }
   if (again) out.again = true;
   if (pro) out.pro = true;
@@ -6149,7 +6189,8 @@ const AI_POOLS = [
   { key: "hc:all", name: "Hunt name checks", limit: HC_PER_DAY },
   { key: "sp:all", name: "Shop picks", limit: SP_PER_DAY },
   { key: "wh:all", name: "Where to look", limit: SP_PER_DAY },
-  { key: "gq:all", name: "Google place searches (Near me, Road trip)", limit: 300 }   /* v170: G_SEARCHES_PER_DAY */
+  { key: "gq:all", name: "Google place searches (Near me, Road trip)", limit: 300 },   /* v170: G_SEARCHES_PER_DAY */
+  { key: "gv:all", name: "Google Vision (Photo check, Seen on the web)", limit: 300 }   /* v171: VISION_PER_DAY */
 ];
 function liveSources() { return ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark"].concat(DEPOP_LIVE ? ["depop"] : [], ["vinted", "grailed", "salvation"]); }
 /* v91: a marketplace that says "slow down" (429, or Vinted's 403 block) cools down: nothing goes out to it until the

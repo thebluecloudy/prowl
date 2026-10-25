@@ -19,5 +19,6 @@ test("shelfParse returns nothing for a NONE answer, and the prompt caps the pick
 });
 test("appraise routes mode shelf before the single-piece path", () => {
   assert.ok(INDEX.indexOf('if (mode === "shelf")') > -1);
-  assert.ok(INDEX.indexOf('if (mode === "shelf")') < INDEX.indexOf('if (mode === "fast") { try { looks'));
+  assert.ok(INDEX.indexOf('if (mode === "shelf")') < INDEX.indexOf('if (mode === "fast") [looks, web]'));   /* v171: eBay and Google together */
+  assert.ok(INDEX.indexOf('if (mode === "fast") [looks, web]') > -1);
 });

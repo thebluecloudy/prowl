@@ -1342,6 +1342,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .apr-lkt{font-size:13px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .scout-app-wrapper .apr-lkp{font-size:13px;font-weight:800;color:var(--ac)}
 .scout-app-wrapper .apr-sold a.apr-lk{justify-content:space-between;min-height:96px}
+.scout-app-wrapper .apr-wguess{margin:0 0 8px;font-size:15px;font-weight:700;color:var(--ink)}   /* v7.99 */
 /* v7.96 Your last photo checks */
 .scout-app-wrapper .apr-recent{margin:18px 0 0;padding:14px 0 0;border-top:1px solid var(--ln)}
 .scout-app-wrapper button.apr-rc{display:flex;flex-direction:column;gap:4px;padding:6px;border:1px solid var(--ln);border-radius:10px;background:var(--cd);color:var(--ink);text-align:left;font:inherit;cursor:pointer}
@@ -2948,6 +2949,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       if(!th)return;
       var lk=[],i,x;for(i=0;r.looks&&i<r.looks.length&&lk.length<3;i++){x=r.looks[i];if(x&&typeof x.url==='string'&&/^https:\/\//.test(x.url))lk.push({url:x.url.slice(0,500),title:pckS(x.title,140),price:pckS(x.price,24),image:typeof x.image==='string'&&/^https:\/\//.test(x.image)?x.image.slice(0,500):''});}
       var k={item:pckS(r.item,160),sure:pckS(r.sure,20),condition:pckS(r.condition,160),flaws:pckS(r.flaws,200),fair:pckS(r.fair,40),verdict:pckS(r.verdict,40),why:pckS(r.why,300),basis:pckS(r.basis,20),search:pckS(r.search,80),looks:lk};
+      if(r.web&&typeof r.web==='object'){var wk=[];for(i=0;r.web.pages&&i<r.web.pages.length&&wk.length<6;i++){x=r.web.pages[i];if(x&&typeof x.url==='string'&&/^https:\/\//.test(x.url))wk.push({url:x.url.slice(0,500),title:pckS(x.title,140),image:typeof x.image==='string'&&/^https:\/\//.test(x.image)?x.image.slice(0,500):'',host:pckS(x.host,60)});}k.web={guess:pckS(r.web.guess,80),pages:wk};}   /* v7.99 */
       var a=pckGet();a.unshift({at:Date.now(),r:k,th:th});pckPut(a.slice(0,PCK_MAX));pckDraw();
     });
   }
@@ -3000,6 +3002,23 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
         if(LK[lj].price){var p1=document.createElement('span');p1.className='apr-lkp';p1.textContent=String(LK[lj].price).slice(0,20)+' listed';a1.appendChild(p1);}
         lg.appendChild(a1);}
       lw.appendChild(lg);var ln=document.createElement('p');ln.className='apr-note';ln.textContent='For sale now, not sold prices. Seller titles can be wrong.';lw.appendChild(ln);O.appendChild(lw);}
+    /* v7.99 (worker v171, Matt asked for an image search that matches pictures, not words): Cloud Vision's pages showing
+       the same picture, and its best guess. An eBay, Etsy or Poshmark page opens the popup (Save, Like); any other site
+       opens itself. */
+    var WB=r.web&&typeof r.web==='object'?r.web:null,WP=[];
+    if(WB&&WB.pages&&WB.pages.length)for(var wi=0;wi<WB.pages.length&&WP.length<6;wi++){var wx=WB.pages[wi];if(wx&&typeof wx.url==='string'&&/^https:\/\//.test(wx.url))WP.push(wx);}
+    if(WP.length||(WB&&WB.guess)){var ww=document.createElement('div');ww.className='apr-looks apr-web';var wh=document.createElement('p');wh.className='apr-lkh';wh.textContent='Seen on the web';ww.appendChild(wh);
+      if(WB.guess){var wgs=document.createElement('p');wgs.className='apr-wguess';wgs.textContent='Best guess on the web: '+String(WB.guess).slice(0,80);ww.appendChild(wgs);}
+      if(WP.length){var wg=document.createElement('div');wg.className='apr-lkg';
+        for(var wj=0;wj<WP.length;wj++){var wa=document.createElement('a');wa.className='apr-lk';var wu=WP[wj].url,ws=/^https:\/\/([a-z0-9-]+\.)*ebay\.com\//i.test(wu)?'ebay':/^https:\/\/([a-z0-9-]+\.)*etsy\.com\//i.test(wu)?'etsy':/^https:\/\/([a-z0-9-]+\.)*poshmark\.com\//i.test(wu)?'poshmark':'';
+          wa.href=ws==='ebay'?window.prowlAff(wu,'prowl-web'):wu;wa.target='_blank';wa.rel='noopener noreferrer';
+          if(ws)aprCell(wa,wu,WP[wj].title,'',ws,pq,'Seen on the web');
+          if(typeof WP[wj].image==='string'&&/^https:\/\//.test(WP[wj].image)){var wim=document.createElement('img');wim.src=WP[wj].image;wim.alt='';wim.loading='lazy';wim.referrerPolicy='no-referrer';wim.onerror=function(){this.parentNode&&this.parentNode.removeChild(this)};wa.appendChild(wim);}
+          var wt=document.createElement('span');wt.className='apr-lkt';wt.textContent=String(WP[wj].title||WP[wj].host||'').slice(0,80);wa.appendChild(wt);
+          var wd=document.createElement('span');wd.className='apr-lkd';wd.textContent=String(WP[wj].host||'').slice(0,40);wa.appendChild(wd);
+          wg.appendChild(wa);}
+        ww.appendChild(wg);}
+      var wn=document.createElement('p');wn.className='apr-note';wn.textContent='Pages on the web with the same picture. Open each one to check it is the same piece.';ww.appendChild(wn);O.appendChild(ww);}
     if(pq&&String(r.basis)!=='pending')O.appendChild(poshBox(pq));
     var L=document.createElement('div');L.className='apr-links';
     function lk(t,u){var a=document.createElement('a');a.className='b';a.href=u;a.target='_blank';a.rel='noopener';a.textContent=t;L.appendChild(a);}
@@ -3783,7 +3802,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.98';
+var PROWL_VERSION='v7.99';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
