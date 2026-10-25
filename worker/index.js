@@ -19,6 +19,11 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v170: 2026-10-25. Near me costs less (Matt: "it was only me and i ran it about 20 times"; $101 of Places Text Search in a
+ *         week). Each place search's answer is kept an hour by what was asked (gSearch), so a Road trip rebuilt with
+ *         another day, detour or kind asks Google only what is new; every search that goes out is counted (gq:all,
+ *         the admin's usage card); past G_SEARCHES_PER_DAY in a UTC day /near and /trip answer 429 "daily limit";
+ *         TRIP_PER_IP 30 -> 10. Caps learns "add".
  *   v169: 2026-10-24. Saved forever says when a listing is over: each alert-clock run looks at one Pro member's list
  *         (once a day, up to 15 finds) with the popup's readers and marks end = { st: "sold"|"ended", at, p }. ShopGoodwill
  *         and Salvation Army: ended with bids is sold at the last bid; Etsy: sold_out is sold (itemEtsy now passes its
@@ -579,7 +584,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v169";
+const WORKER_VERSION = "v170";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -2413,6 +2418,12 @@ export class Caps {
       await this.s.put(k, n + 1);
       await this.arm(2 * 86400000);
       return J({ left: lim - n - 1, n: n + 1 });
+    }
+    if (op === "add") {   /* v170: count several at once (Google place searches), no limit */
+      const k = "c:" + String(q.k || ""), n = (await this.s.get(k)) || 0, by = Math.max(0, Math.min(10000, Math.floor(Number(q.n) || 0)));
+      await this.s.put(k, n + by);
+      await this.arm(2 * 86400000);
+      return J({ n: n + by });
     }
     if (op === "give") {   /* v93: undo a take, never below 0 */
       const k = "c:" + String(q.k || ""), n = (await this.s.get(k)) || 0;
@@ -6135,7 +6146,8 @@ const AI_POOLS = [
   { key: "jr:all", name: "AI sorting of results", limit: JEV_RESULTS_PER_DAY },
   { key: "hc:all", name: "Hunt name checks", limit: HC_PER_DAY },
   { key: "sp:all", name: "Shop picks", limit: SP_PER_DAY },
-  { key: "wh:all", name: "Where to look", limit: SP_PER_DAY }
+  { key: "wh:all", name: "Where to look", limit: SP_PER_DAY },
+  { key: "gq:all", name: "Google place searches (Near me, Road trip)", limit: 300 }   /* v170: G_SEARCHES_PER_DAY */
 ];
 function liveSources() { return ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark"].concat(DEPOP_LIVE ? ["depop"] : [], ["vinted", "grailed", "salvation"]); }
 /* v91: a marketplace that says "slow down" (429, or Vinted's 403 block) cools down: nothing goes out to it until the
@@ -6704,7 +6716,7 @@ async function fbFinds(request, env, url, origin) {
 const NEAR_HERE_M = Math.round(3 * MI_M);   /* v153: the distance-ranked ask looks this far */
 const PIN_RETRY_MS = 400;   /* v165: the wait before a stop is looked up again */
 const REVIEWS_PER_IP = 300, SUGGEST_PER_IP = 1500;   /* v161: suggestions asked a day per address */   /* v161: reviews asked a day per address */
-const NEAR_PER_IP = 120, TRIP_PER_IP = 30, PP_PER_IP = 1500, TRIPS_PER_IP = 400, NEAR_CACHE_SECONDS = 600, TRIP_CACHE_SECONDS = 3600, HOURS_CACHE_SECONDS = 600;
+const NEAR_PER_IP = 120, TRIP_PER_IP = 10, PP_PER_IP = 1500, TRIPS_PER_IP = 400, NEAR_CACHE_SECONDS = 600, TRIP_CACHE_SECONDS = 3600, HOURS_CACHE_SECONDS = 600;
 const G_PLACE_FIELDS = "id,displayName,formattedAddress,addressComponents,location,rating,userRatingCount,regularOpeningHours,utcOffsetMinutes,photos,editorialSummary,primaryType,primaryTypeDisplayName,googleMapsUri";
 const G_TIMEOUT_MS = 9000, FIND_SIG_SECONDS = 3600, FIND_BODY_MAX = 1024 * 1024, TRIPINV_TTL = 30 * 86400;
 function gKey(env) { return String((env && env.GOOGLE_MAPS_KEY) || ""); }
@@ -6719,6 +6731,30 @@ async function gFetch(url, init, mask, env) {
   } catch (e) { console.error("google", String(e && e.message || e)); return null; }
   finally { clearTimeout(timer); }
 }
+/* v170 (Matt: "it was only me and i ran it about 20 times"): $101 of Places Text Search (Enterprise + Atmosphere, $40 a
+   1,000) in a week. A Road trip build asks up to TRIP_SEARCHES_MAX place searches (a circle every 15 miles on up to three
+   roads, two questions a circle), and a rebuild with another day, detour or kind asked them all again. Each answer is
+   now kept G_SEARCH_CACHE_SECONDS by what was asked, so only new questions go out. Each one that does is counted on the
+   request's env (gCounted) and added to the day's gq:all (gTally); past G_SEARCHES_PER_DAY /near and /trip say
+   "daily limit" until the UTC day turns. A Caps error counts as room (Near me stays up). */
+const G_SEARCHES_PER_DAY = 300, G_SEARCH_CACHE_SECONDS = 3600;
+async function gSearch(url, body, mask, env) {
+  const key = "https://prowl-gsearch.invalid/" + (await sha16(url + "|" + mask + "|" + JSON.stringify(body))) + "?v=1";
+  const hit = await PCACHE.match(key);
+  if (hit) { try { return await hit.json(); } catch (e) {} }
+  if (env && env.__gq) env.__gq.n++;
+  const j = await gFetch(url, { method: "POST", body: JSON.stringify(body) }, mask, env);
+  if (j) { try { await PCACHE.put(key, new Response(JSON.stringify(j), { headers: { "Content-Type": "application/json", "Cache-Control": "max-age=" + G_SEARCH_CACHE_SECONDS } })); } catch (e) {} }
+  return j;
+}
+function gCounted(env) { const e = Object.create(env || null); e.__gq = { n: 0 }; return e; }
+async function gUsedToday() {
+  try { const j = await capsCall(capsDay(), "peek", { keys: ["gq:all"] }); return Number(j && j.values && j.values["gq:all"]) || 0; } catch (e) { return 0; }
+}
+async function gTally(env) {
+  const n = env && env.__gq ? env.__gq.n : 0;
+  if (n > 0) { try { await capsCall(capsDay(), "add", { k: "gq:all", n: n }); } catch (e) { console.error("caps", String(e && e.message || e)); } }
+}
 /* Text Search (New), biased to a circle when one is given, or (v138, restrict) held inside a box that far to a side */
 async function gPlacesText(env, query, center, radius, max, restrict, rank) { return (await gPlacesPage(env, query, center, radius, max, restrict, "", rank)).places; }
 /* v140: Nearby Search (New) by place type inside a circle, the most popular first; null when Google refuses (an unknown
@@ -6729,7 +6765,7 @@ async function gPlacesNearby(env, types, center, radius, stat) {
   if (!types.length) return null;
   const body = { includedTypes: types, maxResultCount: 20, rankPreference: "POPULARITY", languageCode: "en", regionCode: "US",
     locationRestriction: { circle: { center: { latitude: center.lat, longitude: center.lng }, radius: Math.min(50000, radius || NEAR_RADIUS_M) } } };
-  const j = await gFetch("https://places.googleapis.com/v1/places:searchNearby", { method: "POST", body: JSON.stringify(body) }, G_PLACE_FIELDS.split(",").map((f) => "places." + f).join(","), env);
+  const j = await gSearch("https://places.googleapis.com/v1/places:searchNearby", body, G_PLACE_FIELDS.split(",").map((f) => "places." + f).join(","), env);   /* v170 */
   if (j) return ((j && j.places) || []).map(normalizePlace).filter(Boolean);
   if (stat) stat.refused = (stat.refused || 0) + 1;
   if (types.length === 1) { BAD_TYPES.add(types[0]); if (stat) stat.badTypes = Array.from(BAD_TYPES); return null; }
@@ -6766,7 +6802,7 @@ async function gPlacesPage(env, query, center, radius, max, restrict, pageToken,
     const dLat = (radius || NEAR_RADIUS_M) / 111000, dLng = (radius || NEAR_RADIUS_M) / (111000 * Math.max(0.2, Math.cos(center.lat * Math.PI / 180)));
     body.locationRestriction = { rectangle: { low: { latitude: center.lat - dLat, longitude: center.lng - dLng }, high: { latitude: center.lat + dLat, longitude: center.lng + dLng } } };
   } else if (center) body.locationBias = { circle: { center: { latitude: center.lat, longitude: center.lng }, radius: Math.min(50000, radius || NEAR_RADIUS_M) } };
-  const j = await gFetch("https://places.googleapis.com/v1/places:searchText", { method: "POST", body: JSON.stringify(body) }, G_PLACE_FIELDS.split(",").map((f) => "places." + f).join(",") + ",nextPageToken", env);
+  const j = await gSearch("https://places.googleapis.com/v1/places:searchText", body, G_PLACE_FIELDS.split(",").map((f) => "places." + f).join(",") + ",nextPageToken", env);   /* v170 */
   return { places: ((j && j.places) || []).map(normalizePlace).filter(Boolean), next: j && typeof j.nextPageToken === "string" ? j.nextPageToken : "" };
 }
 /* one place's hours now, 10 minutes in the cache (hours are never kept as copy beyond that) */
@@ -6815,6 +6851,8 @@ async function nearRoute(request, env, url, origin) {
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("near:" + ipKey(request.headers.get("CF-Connecting-IP")), NEAR_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  if ((await gUsedToday()) >= G_SEARCHES_PER_DAY) return json({ error: "daily limit", empty: true, places: [] }, 429, origin);   /* v170 */
+  env = gCounted(env);
   const here = { lat: lat, lng: lng };
   const plan = kindPlan(cats);
   /* v153: and the closest of those kinds, by distance: Google's relevance answer, asked at Maumee Antique Mall's own spot,
@@ -6825,6 +6863,7 @@ async function nearRoute(request, env, url, origin) {
   const seen = Object.create(null), all = [];
   for (const p of [].concat(...lists)) { if (seen[p.id] || !kindAllowed(p, cats)) continue; seen[p.id] = 1; p.near = Math.round(haversineMi(here, p) * 10) / 10; if (p.near <= NEAR_KEEP_MI) all.push(p); }   /* v133: Google answers past the circle; v138: off kinds out */
   const places = nearKeep(all, NEAR_MAX, NEAR_CLOSE_KEEP).map((p) => placeCard(p));   /* v166: and the closest few */
+  await gTally(env);   /* v170 */
   const res = json({ at: new Date().toISOString(), town: town || "", places: places, empty: !places.length }, 200, origin, { "Cache-Control": "private, max-age=" + NEAR_CACHE_SECONDS });
   try { await PCACHE.put(key, res.clone()); } catch (e) {}
   return res;
@@ -6989,7 +7028,10 @@ async function tripRoute(request, env, url, origin) {
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("trip:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIP_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  if ((await gUsedToday()) >= G_SEARCHES_PER_DAY) return json({ error: "daily limit", empty: true, stops: [] }, 429, origin);   /* v170 */
+  env = gCounted(env);
   const built = await tripBuild(env, { lat: lat, lng: lng }, to, day, cats, via.length ? via : null, detour);
+  await gTally(env);   /* v170 */
   if (!built) return json({ error: "no route", empty: true, stops: [] }, 404, origin);
   const res = json(built, 200, origin, { "Cache-Control": "private, max-age=" + TRIP_CACHE_SECONDS });
   try { await PCACHE.put(key, res.clone()); } catch (e) {}

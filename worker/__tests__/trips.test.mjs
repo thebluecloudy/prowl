@@ -118,9 +118,12 @@ const SECRET = "s".repeat(40);
 const PRO = {};   /* cid -> paid Pro, the fake shop */
 const names = ["gKey", "gFetch", "gPlacesText", "gPlacesAll", "gPlacesPage", "gPlacesNearby", "kindSearches", "gPlaceHours", "gRoutes", "gTown", "nearNum", "tripCell", "nearAnswer", "nearRoute", "tripBuild", "tripRoute", "tripKey", "ppRoute",
   "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "pinLookup", "inviteSig", "inviteOk", "reviewsRoute", "suggestRoute", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep", "tripPurge", "tripIndexRemove",
-  "b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessVerify", "sessMember", "pxHmac", "alSame", "alEmail", "sha16", "kvGet", "kvPut", "readJson", "vClean", "scrubPII", "ipKey", "ip6Parts", "cors", "json"];
-const pre = ["const BAD_TYPES = new Set();", constLine("PIN_RETRY_MS").replace(/= \d+/, "= 1"), constLine("REVIEWS_PER_IP"), constLine("NEAR_HERE_M"), constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
-const W = fromIndex(names, Object.assign({ fetch: fakeGoogle, PCACHE, vCount: async () => true, isOwner: (r) => r.headers.get("x-prowl-owner") === "owner-key-0123456789", alProShop: async (env, email, c, cid) => ({ pro: !!PRO[cid] }), console: { error() {} } }, TRIP), pre);
+  "b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessVerify", "sessMember", "pxHmac", "alSame", "alEmail", "sha16", "kvGet", "kvPut", "readJson", "vClean", "scrubPII", "ipKey", "ip6Parts", "cors", "json", "gSearch", "gCounted", "gUsedToday", "gTally"];   /* v170 */
+const pre = [constLine("G_SEARCHES_PER_DAY"), "const BAD_TYPES = new Set();", constLine("PIN_RETRY_MS").replace(/= \d+/, "= 1"), constLine("REVIEWS_PER_IP"), constLine("NEAR_HERE_M"), constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
+/* v170: the day's count of Google place searches, in a fake Caps */
+const GQ = { n: 0 };
+const capsCall = async (name, op, q) => { if (op === "peek") return { values: { "gq:all": GQ.n } }; if (op === "add") { GQ.n += q.n; return { n: GQ.n }; } return null; };
+const W = fromIndex(names, Object.assign({ fetch: fakeGoogle, PCACHE, capsCall, capsDay: () => "caps:test", vCount: async () => true, isOwner: (r) => r.headers.get("x-prowl-owner") === "owner-key-0123456789", alProShop: async (env, email, c, cid) => ({ pro: !!PRO[cid] }), console: { error() {} } }, TRIP), pre);
 
 function envWith(o) { return Object.assign({ PROWL_ALERTS: new FakeKV(), PROWL_SESSION_SECRET: SECRET, GOOGLE_MAPS_KEY: "k".repeat(30) }, o || {}); }
 const ORIGIN = "https://www.owlandtwigvintage.com";
@@ -250,7 +253,7 @@ test("v140: Nearby by type, most popular first; a refused type falls back to the
   assert.deepEqual(near.map((p) => p.name).slice(0, 2).sort(), ["Bluegrass Collectors", "Central City Antiques"], "the two most reviewed first (a tie in the fixture), Ashland inside the circle");
   assert.ok(near.findIndex((p) => p.name === "Olde Central City Vintage") > 1, "the 40-review shop after them");
   assert.equal(await W.gPlacesNearby(env, ["bogus_type"], { lat: 38.4192, lng: -82.4452 }, 25000), null, "Google refused: null, not an empty list");
-  CALLS.length = 0;
+  CALLS.length = 0; PCACHE.m.clear();   /* v170: the same Nearby question again would be the kept answer */
   const all = await W.kindSearches(env, ["antiques", "books"], { lat: 38.4192, lng: -82.4452 }, 22000, true, 1);
   assert.ok(all.find((p) => p.name === "Central City Antiques"));
   assert.equal(CALLS.filter((u) => /searchNearby/.test(u)).length, 1, "books by type"); assert.equal(CALLS.filter((u) => /searchText/.test(u)).length, 1, "antiques by text, alone");
@@ -606,4 +609,48 @@ test("v167: a member marks a stop ✓ Been for the whole group; only the trip's 
   const ids = []; rec.stops.forEach((x) => { ids.push(x.id); (x.nested || []).forEach((y) => ids.push(y.id)); });
   assert.ok(Object.keys(rec.been).every((k) => ids.indexOf(k) !== -1 && rec.been[k] === 1), "kept as the trip's place ids, nothing about who");
   assert.doesNotMatch(JSON.stringify(rec.been), /1111|9009/, "no member id in the marks");
+});
+
+/* v170 (Matt: "near me cost. it was only me and i ran it about 20 times"): each place search's answer is kept an hour by
+   what was asked, every search that goes out is counted for the day, and past the day's ceiling Near me says so */
+test("v170: a rebuild with another day or detour asks Google no place searches; each one that went out is counted", async () => {
+  const env = envWith(); CALLS.length = 0; PCACHE.m.clear(); GQ.n = 0;
+  const to = encodeURIComponent("Blenko Glass Company, Milton, WV");
+  const first = await call(env, "GET", "/trip?" + NOVI + "&to=" + to + "&day=2026-10-26");
+  assert.equal(first.status, 200);
+  const asked = CALLS.filter((u) => /searchText|searchNearby/.test(u)).length;
+  assert.ok(asked >= 40, "the first build asks: " + asked);
+  assert.equal(GQ.n, asked, "every place search that went out is counted, and only those");
+  CALLS.length = 0;
+  const other = await call(env, "GET", "/trip?" + NOVI + "&to=" + to + "&day=2026-10-27&detour=30");
+  assert.equal(other.status, 200);
+  assert.equal(other.res.headers.get("X-Prowl-Cache"), null, "another day and detour is another build");
+  assert.equal(CALLS.filter((u) => /searchText|searchNearby/.test(u)).length, 0, "but every question it asks was asked within the hour");
+  assert.equal(GQ.n, asked, "nothing more counted");
+  assert.deepEqual(other.body.stops.map((s) => s.name), first.body.stops.map((s) => s.name), "the same shops: the day only changes the hours shown");
+  assert.equal(other.body.weekday, 2, "a Tuesday");
+});
+
+test("v170: past the day's ceiling, /near and a new /trip say 'daily limit' and ask Google nothing; a kept answer is still served", async () => {
+  const env = envWith(); CALLS.length = 0; PCACHE.m.clear(); GQ.n = 0;
+  const kept = await call(env, "GET", "/near?lat=38.4192&lng=-82.4452");
+  assert.equal(kept.status, 200);
+  GQ.n = 300; CALLS.length = 0;
+  const n = await call(env, "GET", "/near?" + NOVI);
+  assert.equal(n.status, 429); assert.equal(n.body.error, "daily limit"); assert.deepEqual(n.body.places, []);
+  const t = await call(env, "GET", "/trip?" + NOVI + "&to=" + encodeURIComponent("Blenko Glass Company, Milton, WV") + "&day=2026-10-26");
+  assert.equal(t.status, 429); assert.equal(t.body.error, "daily limit");
+  assert.equal(CALLS.length, 0, "nothing went to Google");
+  const again = await call(env, "GET", "/near?lat=38.4192&lng=-82.4452");
+  assert.equal(again.status, 200); assert.equal(again.res.headers.get("X-Prowl-Cache"), "hit", "what is kept costs nothing and still shows");
+  GQ.n = 0;
+});
+
+test("v170 wiring: Caps adds several at once, the admin's usage card shows the day's searches, 10 Road trips a day each", () => {
+  assert.match(INDEX, /if \(op === "add"\) \{/);
+  assert.match(INDEX, /\{ key: "gq:all", name: "Google place searches \(Near me, Road trip\)", limit: 300 \}/);
+  assert.match(constLine("G_SEARCHES_PER_DAY"), /G_SEARCHES_PER_DAY = 300\b/, "the meter's limit is the ceiling");
+  assert.match(constLine("NEAR_PER_IP"), /TRIP_PER_IP = 10,/);
+  for (const fn of ["gPlacesPage", "gPlacesNearby"]) assert.match(indexFn(fn), /await gSearch\(/, fn + " goes through gSearch");
+  assert.match(INDEX, /const WORKER_VERSION = "v170";/);
 });

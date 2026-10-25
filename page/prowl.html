@@ -3778,7 +3778,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.96';
+var PROWL_VERSION='v7.97';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -10843,6 +10843,9 @@ function nrMapsFor(t){if(!t)return '';var d=t.dest||{};if(!d.name)return t.maps|
 function nrH(){var h={},k=fbOwnerKey(),em=mGet('alertEmail'),tk=mGet('alertTok');if(k)h['X-Prowl-Owner']=k;if(em&&tk){h['X-Prowl-Email']=em;h['X-Prowl-Tok']=tk}return window.prowlAuth?window.prowlAuth(h):h}   /* v7.38: the alerts member too */
 /* v7.38 (the owner: "it took me to the den and tried to make me sign in, but i am pro"): a Prowl Alerts sign-in is a sign-in */
 function nrSigned(){return !!((window.prowlSess&&window.prowlSess())||(mGet('alertTok')&&mGet('alertEmail')))}
+/* v7.97 (worker v170): the worker's shop lookups have a daily ceiling for all of Prowl; past it Near me says so plainly */
+function nrDayLimit(r){return r&&r.status===429&&r.j&&r.j.error==='daily limit'}
+var NR_LIMIT='Near me has looked up all the shops it can for today. It is back tomorrow.';
 function nrFetch(path,opt){
   opt=opt||{};var h=nrH(),init={method:opt.method||'GET',headers:h,cache:'no-store'};
   if(opt.body){h['Content-Type']='application/json';init.body=JSON.stringify(opt.body)}
@@ -11076,6 +11079,7 @@ function nrAroundGo(el,a,fr,force){
   function go(pos){
     nrFetch('/near?lat='+pos.lat.toFixed(4)+'&lng='+pos.lng.toFixed(4)+'&cats='+E(nrCatsQ())).then(function(r){
       if(r.status===503){el.innerHTML='<p class="nearp">Prowl cannot list the shops here yet. '+nrMapsBack()+'</p>';return}   /* v7.71: no longer a blank */
+      if(nrDayLimit(r)){el.innerHTML='<p class="nearp">'+NR_LIMIT+' '+nrMapsBack()+'</p>';return}   /* v7.97 */
       if(!r.ok){el.innerHTML='<p class="nearp">The shops '+(a?'around '+esc(a.town):'around you')+' could not be listed just now. '+nrRefreshBtn()+' '+nrMapsBack()+'</p>';return}
       NR.aroundAt=Date.now();NR.aroundFor=fr;NR.around=r.j.places||[];NR.aroundTown=a?a.town:(r.j.town||'');nrAroundDraw();   /* v7.45: the town too */
     });
@@ -11167,6 +11171,8 @@ function nrBuild(to){
       NR.busy=false;
       if(r.status===503){out.innerHTML='<p class="nearp">Road trips are not switched on yet. For now, search the map there: <a class="b" href="'+esc('https://www.google.com/maps/search/?api=1&query='+E('antique stores near '+to))+'" target="_blank" rel="noopener noreferrer">Antique stores near '+esc(to)+'</a></p>';return}
       if(r.status===404){out.innerHTML='<p class="nearp">No driving route to <b>'+esc(to)+'</b> could be found. Try the town’s name, or a street address.</p>';return}
+      if(nrDayLimit(r)){out.innerHTML='<p class="nearp">Road trips have looked up all the shops they can for today. They are back tomorrow. For now, search the map there: <a class="b" href="'+esc('https://www.google.com/maps/search/?api=1&query='+E('antique stores near '+to))+'" target="_blank" rel="noopener noreferrer">Antique stores near '+esc(to)+'</a></p>';return}   /* v7.97 */
+      if(r.status===429){out.innerHTML='<p class="nearp">That is a lot of road trips for one day. Try again tomorrow.</p>';return}   /* v7.97: 10 a day each (worker v170) */
       if(!r.ok){out.innerHTML='<p class="nearp">The trip could not be built just now. Try again in a moment.</p>';return}
       nrToAdd(to);NR.built=r.j;NR.built.to=to;NR.built.fromAt=pl&&!pl.me?pl.town:'';NR.builtFrom={lat:pos.lat,lng:pos.lng};nrDrawTrip(r.j,{});   /* v7.62: where it started, for Keep */
     });
@@ -11225,6 +11231,7 @@ function nrLoop(from){
     if(!pos){NR.busy=false;out.innerHTML=nrNoStart(err,msg);return}
     nrFetch('/near?lat='+pos.lat.toFixed(4)+'&lng='+pos.lng.toFixed(4)+'&cats='+E(nrCatsQ())).then(function(r){
       NR.busy=false;
+      if(nrDayLimit(r)){out.innerHTML='<p class="nearp">'+NR_LIMIT+'</p>';return}   /* v7.97 */
       if(!r.ok){out.innerHTML='<p class="nearp">The shops for a loop could not be found just now. Type a place in To for a trip there.</p>';return}
       var sk=nrSkipGet(),town=pl?pl.town:(r.j.town||''),L=(r.j.places||[]).filter(function(p){return !sk[p.id]&&typeof p.lat==='number'}).slice(0,8).map(function(p){var o=nrCopy(p);o.nested=[];return o});
       var t={loop:true,origin:{town:town},dest:{name:town||'Back to the start',town:'',lat:pos.lat,lng:pos.lng,id:''},route:null,day:NR.day,stops:L,more:[],maps:'loop',to:''};
