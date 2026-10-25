@@ -113,5 +113,5 @@ test("wired: the clock runs it, Etsy passes its state, the page gets the end but
   assert.match(INDEX, /try \{ await savedCheckTick\(env\); \}/);
   assert.match(INDEX, /out\.gone = true; out\.state = String\(j\.state\)/);
   assert.match(INDEX, /delete o\.ck; out\.push\(o\);/);
-  assert.match(INDEX, /const WORKER_VERSION = "v169";/);
+  assert.ok(Number(/const WORKER_VERSION = "v(\d+)";/.exec(INDEX)[1]) >= 169, "v169 or later");
 });
