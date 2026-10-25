@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v175: 2026-10-25. Check with Google Lens sends the photo again (Matt got Lens's intro page): POST /lens/up was
+ *         routed below the "GET only" guard, as group trips were before v156, so every upload was 405. It is routed
+ *         above it now; a test fails if any POST route sits below the guard.
  *   v174: 2026-10-25. eBay's look-alike titles weigh less in the photo check (Matt's ceramic cat came back as
  *         "Moselland Happy Cat Riesling glass cat bottle", copied from a look-alike's title): the prompt says they
  *         are often a different piece of a similar shape or colour, and to name the piece from the photo, using a
@@ -606,7 +609,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v174";
+const WORKER_VERSION = "v175";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -7664,6 +7667,8 @@ async function handleFetch(request, env, ctx) {
     }
     /* v156: group trips take POSTs (keep, share, close, rebuild, finds); they must be routed before the GET-only guard */
     if ((url.pathname === "/trips" || url.pathname.startsWith("/trips/")) && request.method === "POST") return tripsRoute(request, env, url, origin);
+    /* v175: the Lens photo POST was below the guard below, so it was 405 and Check with Google Lens fell back to Lens's intro page */
+    if (url.pathname === "/lens/up" && request.method === "POST") return lensUp(request, env, origin);
     if (request.method !== "GET") {
       return json({ error: "GET only" }, 405, origin);
     }
@@ -7683,7 +7688,6 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/suggest" && request.method === "GET") return suggestRoute(request, env, url, origin);   /* v161: places as you type */
     if (url.pathname === "/trips" || url.pathname.startsWith("/trips/")) return tripsRoute(request, env, url, origin);   /* v132: group trips and finds */
     if (url.pathname.startsWith("/saved/") && request.method === "GET") return savedPhotoRoute(request, env, url);   /* v168 */
-    if (url.pathname === "/lens/up" && request.method === "POST") return lensUp(request, env, origin);   /* v173 */
     if (url.pathname.startsWith("/lens/") && request.method === "GET") return lensPhotoRoute(request, env, url);   /* v173 */
     if (url.pathname.startsWith("/finds/") && request.method === "GET") return findPhotoRoute(request, env, url);   /* v132: a find's photo, signed */
     if (url.pathname === "/sales" && request.method === "GET") return esSales(request, env, url, origin);   /* v103 */
