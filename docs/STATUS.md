@@ -1,15 +1,25 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v8.02 / v174).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v8.03 / v175).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.02** | 378,066 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v174** | |
+| Page | **v8.03** | 378,066 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v175** | |
 
 Recently shipped, newest first:
+
+- **v175: Check with Google Lens sends the photo** (Matt's screenshot: Lens's intro page, not his photo). `POST
+  /lens/up` was dispatched below the worker's "GET only" guard, the same slip as group trips before v156, so every
+  upload since v173 was 405 and the page fell back to plain Lens. It is routed above the guard now, and
+  `worker/__tests__/post-routes-v175.test.mjs` fails if any POST route sits below it.
+- **v8.03 (+ v175): Seen on the web stops showing junk** (Matt's Royal Haeger 616, named for sure, then "Seen as: Cat ·
+  Animal figurine · Reptiles · Safari · Birds", Amazon "Animal Figures" pages and orange toys). The worker lists only
+  pages with the same picture (`fullMatchingImages`), not part-matches; the page leaves out the loose labels and
+  look-alike pictures when the answer is sure (HIGH). Tests: `__tests__/page/photo-web-v803.test.mjs`,
+  `worker/__tests__/vision-v171.test.mjs`.
 
 - **v8.02 / v174: Photo check buttons up top, Check again keeps its colour** (Matt: "What is the black button after I
   run a search. I don't see check with Google Lens").
@@ -1459,7 +1469,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.03, worker v175**. Claim one here when you start.
+Next free numbers: **page v8.04, worker v176**. Claim one here when you start.
 
 ## What's next
 

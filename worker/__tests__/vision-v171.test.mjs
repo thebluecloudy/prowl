@@ -23,7 +23,7 @@ const WD = {
     { url: "http://insecure.example.com/x", pageTitle: "not https" },
     { url: "https://www.worthpoint.com/worthopedia/haeger-panther-1", pageTitle: "Haeger panther | WorthPoint", partialMatchingImages: [{ url: "https://images.worthpoint.com/p.jpg" }] },
     { url: "javascript:alert(1)", pageTitle: "never" },
-    ...Array.from({ length: 8 }, (_, i) => ({ url: "https://shop" + i + ".example.org/item", pageTitle: "Shop " + i })),
+    ...Array.from({ length: 8 }, (_, i) => ({ url: "https://shop" + i + ".example.org/item", pageTitle: "Shop " + i, fullMatchingImages: [{ url: "https://shop" + i + ".example.org/a.jpg" }] })),
   ],
 };
 
@@ -33,7 +33,9 @@ test("visionPick: the best guess, https pages only, titles as plain text, one pe
   assert.equal(r.guess, "royal haeger panther");
   assert.equal(r.pages.length, 6);
   assert.deepEqual(r.pages[0], { url: "https://www.ebay.com/itm/226512345678", title: "Rare ROYAL HAEGER Panther & Base", image: "https://i.ebayimg.com/a.jpg", host: "ebay.com" });
-  assert.equal(r.pages[1].host, "worthpoint.com"); assert.equal(r.pages[1].image, "https://images.worthpoint.com/p.jpg", "a partial match's picture when there is no full one");
+  assert.equal(r.pages[1].host, "shop0.example.org");
+  assert.ok(!r.pages.some((p) => /worthpoint/.test(p.url)), "v175: a part-match only (a corner of a similar photo) is not the same picture");
+  assert.equal(visionPick({ pagesWithMatchingImages: [{ url: "https://www.amazon.com/animal-figures", pageTitle: "Animal Figures - Amazon.com", partialMatchingImages: [{ url: "https://m.media-amazon.com/x.jpg" }] }] }), null, "Matt's Haeger cat: no Amazon animal figures");
   assert.ok(!r.pages.some((p) => /^http:|javascript/.test(p.url)));
   assert.equal(visionPick(null), null); assert.equal(visionPick({}), null, "nothing found: nothing shown");
   assert.deepEqual(r.seen, [], "v172: no entities in this answer"); assert.deepEqual(r.alike, []);

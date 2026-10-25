@@ -10,11 +10,11 @@ const DEN = { 'prowl.v36': { seen: true, hunts: [] }, 'prowl.alertTok': 'T'.repe
 const EB = 'https://www.ebay.com/itm/226512345678', WP = 'https://www.worthpoint.com/worthopedia/haeger-panther-1';
 const J = (j) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(JSON.parse(JSON.stringify(j))), text: () => Promise.resolve(JSON.stringify(j)) });
 const WEB = { guess: 'royal haeger panther', pages: [{ url: EB, title: 'Rare ROYAL HAEGER Panther', image: 'https://i.ebayimg.com/a.jpg', host: 'ebay.com' }, { url: WP, title: 'Haeger panther | WorthPoint', image: '', host: 'worthpoint.com' }, { url: 'javascript:alert(1)', title: 'never', host: 'x' }] };
-function setup(web) {
+function setup(web, sure) {
   const items = [];
   const fetchImpl = (u) => {
     const url = String(u);
-    if (/\/appraise$/.test(url)) return J(Object.assign({ item: 'Royal Haeger sitting panther', fair: '$55-115', basis: 'sold', sure: 'HIGH', search: 'Royal Haeger panther', looks: [] }, web === undefined ? { web: WEB } : web ? { web } : {}));
+    if (/\/appraise$/.test(url)) return J(Object.assign({ item: 'Royal Haeger sitting panther', fair: '$55-115', basis: 'sold', sure: sure || 'HIGH', search: 'Royal Haeger panther', looks: [] }, web === undefined ? { web: WEB } : web ? { web } : {}));
     if (/\/item\?url=/.test(url)) { items.push(url); return J({ title: 'Rare ROYAL HAEGER Panther', price: '$139.99', images: ['https://i.ebayimg.com/a.jpg'], url: EB }); }
     return J({ items: [] });
   };
@@ -69,7 +69,7 @@ test('no web answer (no key, the cap, nothing found): no row', async () => {
 
 // v8.00 (Matt's orange Haeger cat: no pages, best guess "carving"): what the web sees and look-alike pictures; a guess alone shows nothing
 test('no pages: Seen as and pictures that look like it, no one-word guess', async () => {
-  const { p } = setup({ guess: 'carving', pages: [], seen: ['Haeger Potteries', 'Cat', 'Ceramic'], alike: ['https://i.etsystatic.com/a.jpg', 'http://bad.example.com/b.jpg', 'https://img.example.org/c.jpg'] });
+  const { p } = setup({ guess: 'carving', pages: [], seen: ['Haeger Potteries', 'Cat', 'Ceramic'], alike: ['https://i.etsystatic.com/a.jpg', 'http://bad.example.com/b.jpg', 'https://img.example.org/c.jpg']  }, 'MEDIUM');   /* v8.03: a sure answer leaves these out */
   await check(p);
   const box = p.$('#otp-aprOut .apr-web');
   assert.ok(box);

@@ -23,6 +23,6 @@ test("without look-alikes, none of that is said", () => {
 });
 
 test("the worker says v174", () => {
-  assert.match(INDEX, /^const WORKER_VERSION = "v174";$/m);
+  assert.ok(Number(/^const WORKER_VERSION = "v(\d+)";$/m.exec(INDEX)[1]) >= 174);
   assert.match(INDEX, /^ \*   v174: 2026-10-25\. eBay's look-alike titles weigh less/m);
 });
