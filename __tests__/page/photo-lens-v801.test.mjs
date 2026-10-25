@@ -68,3 +68,31 @@ test('Check with Google Lens is a main button next to Hunt it on Prowl, with how
   assert.equal(p.$('#otp-aprOut .apr-lensn').textContent, 'Lens names it? Type that in Maker or words and tap Check again: the same photos are checked again free for 30 minutes.');
   await p.close();
 });
+
+// Matt: "just getting them to Google images in a separate screen similar to when we open marketplace would work"
+test('the Lens button opens a new tab at once, sends the photo, and the tab goes to Google Lens with it', async () => {
+  const sent = [], tab = { closed: false, location: { href: 'about:blank' } };
+  const fetchImpl = (u, o) => {
+    const url = String(u);
+    if (/\/lens\/up$/.test(url)) { sent.push(JSON.parse(o.body)); return J({ url: 'https://prowl.thebluecloud.workers.dev/lens/0123456789abcdef.jpg?e=1&s=x', lens: 'https://lens.google.com/uploadbyurl?url=https%3A%2F%2Fprowl.thebluecloud.workers.dev%2Flens%2F0123456789abcdef.jpg' }); }
+    if (/\/appraise$/.test(url)) return J({ item: 'Royal Haeger cat', fair: '$90-140', basis: 'sold', sure: 'HIGH', search: 'Royal Haeger cat', looks: [] });
+    return J({ items: [] });
+  };
+  const p = loadPage({ storage: DEN, fetchImpl, beforeLoad: (win) => {
+    win.HTMLCanvasElement.prototype.getContext = () => ({ drawImage() {} });
+    win.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
+    win.Image = class { constructor() { this.width = 1000; this.height = 800; } set src(v) { this._src = v; setTimeout(() => this.onload && this.onload(), 0); } get src() { return this._src; } };
+    win.open = () => tab;
+  } });
+  await check(p);
+  const lb = p.$('#otp-aprOut .apr-lensb');
+  assert.equal(lb.getAttribute('href'), 'https://lens.google.com/', 'a plain Lens link underneath');
+  const ev = new p.win.MouseEvent('click', { bubbles: true, cancelable: true });
+  lb.dispatchEvent(ev);
+  assert.equal(ev.defaultPrevented, true);
+  await tick(60);
+  assert.equal(sent.length, 1); assert.equal(sent[0].image, 'data:image/jpeg;base64,/9j/4AAQSkZJRg==', 'the photo');
+  assert.equal(tab.location.href, 'https://lens.google.com/uploadbyurl?url=https%3A%2F%2Fprowl.thebluecloud.workers.dev%2Flens%2F0123456789abcdef.jpg');
+  assert.equal(tab.opener, null);
+  await p.close();
+});

@@ -77,3 +77,29 @@ test("wiring: the quick check asks Lens beside eBay and Vision, hands back lens,
   assert.match(INDEX, /url\.pathname\.startsWith\("\/lens\/"\) && request\.method === "GET"\) return lensPhotoRoute/);
   assert.ok(Number(/const WORKER_VERSION = "v(\d+)";/.exec(INDEX)[1]) >= 173);
 });
+
+/* Matt: "just getting them to Google images in a separate screen similar to when we open marketplace would work" */
+test("POST /lens/up keeps a JPEG behind a 15-minute signed link and hands back Lens's upload-by-URL; the sweep deletes old ones", async () => {
+  const r2 = new FakeR2();
+  r2.list = async () => ({ objects: [{ key: "finds/lens/old.jpg", uploaded: new Date(Date.now() - 2 * 3600000) }, { key: "finds/lens/new.jpg", uploaded: new Date() }], truncated: false });
+  const deps = { crypto: webcrypto, atob, console: { error() {} }, pxHmac: async (k, s) => "h" + s.length + "x".repeat(40), sessKey: () => "k", alSame: (a, b) => a === b,
+    ALLOW_ORIGINS: ["https://www.owlandtwigvintage.com"], ipKey: (x) => x, vCount: async () => true,
+    readJson: async (req) => JSON.parse(await req.text()), json: (o, st) => ({ status: st || 200, body: o }) };
+  const keys = Object.keys(deps);
+  const W = new Function(...keys, constLine("LENS_UP_SECONDS") + "\n" + ["lensSig", "lensUp", "lensSweep"].map(indexFn).join("\n") + "\nreturn { lensUp, lensSweep };")(...keys.map((k) => deps[k]));
+  const jpg = "data:image/jpeg;base64," + Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(200, 7)]).toString("base64");
+  const req = (body) => ({ url: "https://prowl.thebluecloud.workers.dev/lens/up", headers: { get: () => "1.2.3.4" }, text: async () => JSON.stringify(body) });
+  const env = { PROWL_FINDS: r2 };
+  assert.equal((await W.lensUp(req({ image: jpg }), env, "https://evil.example.com")).status, 403, "only from the page");
+  assert.equal((await W.lensUp(req({ image: "data:image/jpeg;base64," + Buffer.alloc(200, 1).toString("base64") }), env, "https://www.owlandtwigvintage.com")).status, 400, "not a JPEG");
+  const ok = await W.lensUp(req({ image: jpg }), env, "https://www.owlandtwigvintage.com");
+  assert.equal(ok.status, 200);
+  assert.match(ok.body.url, /^https:\/\/prowl\.thebluecloud\.workers\.dev\/lens\/[0-9a-f]{16}\.jpg\?e=\d+&s=/);
+  const e = Number(/e=(\d+)/.exec(ok.body.url)[1]); assert.ok(Math.abs(e - (Date.now() / 1000 + 900)) < 5, "15 minutes");
+  assert.equal(ok.body.lens, "https://lens.google.com/uploadbyurl?url=" + encodeURIComponent(ok.body.url));
+  assert.equal(r2.m.size, 1);
+  assert.equal(await W.lensSweep({ PROWL_FINDS: r2 }), 1);
+  assert.deepEqual(r2.log.filter((x) => /^delete/.test(x)), ["delete finds/lens/old.jpg"], "only what is older than an hour");
+  assert.match(INDEX, /url\.pathname === "\/lens\/up" && request\.method === "POST"\) return lensUp/);
+  assert.match(INDEX, /await lensSweep\(env\);/);
+});

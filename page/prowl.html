@@ -3054,10 +3054,18 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       if(typeof window.prowlAddHunt==='function'){var fb=document.createElement('button');fb.type='button';fb.className='b';fb.textContent='\u2605 Add to favorites';fb.addEventListener('click',function(){if(window.prowlAddHunt(hq)){fb.textContent='\u2605 In your favorites';fb.disabled=true;}});L.appendChild(fb);}}
     /* v8.01 (Matt: Google Lens named his orange cat at once): Check with Google Lens is a main button beside Hunt it on Prowl, not under More;
        the phone's share sheet hands Lens the photo, else Lens opens to take one */
-    var fl=null;try{var bs=atob(src.split(',')[1]),ar=new Uint8Array(bs.length);for(var k=0;k<bs.length;k++)ar[k]=bs.charCodeAt(k);fl=new File([ar],'prowl-photo.jpg',{type:'image/jpeg'});}catch(e){fl=null;}
-    var lshare=false;try{lshare=!!(fl&&navigator.canShare&&navigator.canShare({files:[fl]}));}catch(e){}
-    if(lshare){var sb=document.createElement('button');sb.type='button';sb.className='b p apr-lensb';sb.textContent='Check with Google Lens';sb.addEventListener('click',function(){navigator.share({files:[fl]}).catch(function(){});});L.insertBefore(sb,L.children[1]||null);}
-    else{var sl=document.createElement('a');sl.className='b p apr-lensb';sl.href='https://lens.google.com/';sl.target='_blank';sl.rel='noopener noreferrer';sl.textContent='Check with Google Lens';L.insertBefore(sl,L.children[1]||null);}
+    /* v8.01 (Matt: open the image search in a separate screen, as a marketplace opens): a new tab opens on the tap, the photo goes to the worker (/lens/up keeps it 15 minutes behind a signed
+       link) and the tab goes to Google Lens with the photo in it. If that fails, Lens opens to take a photo. */
+    var lb=document.createElement('a');lb.className='b p apr-lensb';lb.href='https://lens.google.com/';lb.target='_blank';lb.rel='noopener noreferrer';lb.textContent='Check with Google Lens';
+    lb.addEventListener('click',function(ev){
+      if(ev.metaKey||ev.ctrlKey||ev.shiftKey||!window.fetch||!/^data:image\/jpeg;base64,/.test(src))return;   /* plain Lens */
+      ev.preventDefault();var w=null;try{w=window.open('about:blank','_blank');}catch(e){w=null;}
+      function go(u){if(w&&!w.closed){try{w.opener=null;w.location.href=u;return;}catch(e){} }location.href=u;}
+      fetch('https://prowl.thebluecloud.workers.dev/lens/up',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:src})}).then(function(r){return r.ok?r.json():null;}).then(function(j){
+        go(j&&typeof j.lens==='string'&&/^https:\/\/lens\.google\.com\/uploadbyurl\?url=/.test(j.lens)?j.lens:'https://lens.google.com/');
+      },function(){go('https://lens.google.com/');});
+    });
+    L.insertBefore(lb,L.children[1]||null);
     if(hq){lk('Google Images','https://www.google.com/search?tbm=isch&q='+encodeURIComponent(hq));lk('eBay sold prices \u2197',window.prowlAff('https://www.ebay.com/sch/i.html?_nkw='+encodeURIComponent(hq)+'&LH_Sold=1&LH_Complete=1','prowl-photo'));}
     if(r.basis!=='pending'&&r.fair){var shb=document.createElement('button');shb.type='button';shb.className='b';shb.textContent='Share this find';shb.addEventListener('click',function(){shareCard(r,src);});L.insertBefore(shb,L.children[1]||null);var svb=document.createElement('button');svb.type='button';svb.className='b';svb.textContent='Save picture';svb.addEventListener('click',function(){shareCard(r,src,true);});L.insertBefore(svb,shb.nextSibling);
       var emb=document.createElement('button');emb.type='button';emb.className='b';emb.textContent='Email this';emb.addEventListener('click',function(){var it=String(r.item||'').replace(/\([^)]*\)/g,' ').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'');emailRow(O,it||hq||'A find',(it||'A find')+' \u2014 fair price '+(r.fair||'')+(r.why?'. '+r.why:'')+'\nChecked with Prowl: https://www.owlandtwigvintage.com/pages/prowl?utm_source=share&utm_medium=photo_email',r,src);});L.insertBefore(emb,svb.nextSibling);}   /* v6.74 */

@@ -14,8 +14,12 @@ Recently shipped, newest first:
 - **v8.01 / v173: Google Lens, free** (Matt, after Lens named his orange cat "Royal Haeger Orange Winking Egyptian Cat,
   model 616" where Cloud Vision said "Sculpture": "Do 1 and 2, and trial 3 ... I need something free").
   1. **Check with Google Lens** is a main button beside Hunt it on Prowl (was under More as "Search this photo on
-     Google Lens"); without the share sheet it opens lens.google.com. A line says to type what Lens says in Maker or
-     words and Check again (free for 30 minutes).
+     Google Lens"). Matt: "just getting them to Google images in a separate screen similar to when we open marketplace
+     would work": the tap opens a new tab, the photo goes to `POST /lens/up` (kept in R2 `finds/lens/` behind a
+     15-minute signed link; `lensSweep` deletes what is over an hour old, hourly; 40 a day per visitor), and the tab
+     goes to `lens.google.com/uploadbyurl?url=...`: Lens with the photo in it, free. If that fails, Lens opens to take
+     one. A line says to type what Lens says in Maker or words and Check again (free for 30 minutes). Meta Muse (the
+     photo check's AI) searches the web by words, not by picture.
   2. **Generic labels dropped** (`VISION_GENERIC`: sculpture, figurine, ceramic, statue, colours...) from Seen as and
      from the AI.
   3. **Lens's own matches through SerpApi's free plan** (250 searches a month): with the worker secret **SERPAPI_KEY**
