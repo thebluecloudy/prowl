@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v174: 2026-10-25. eBay's look-alike titles weigh less in the photo check (Matt's ceramic cat came back as
+ *         "Moselland Happy Cat Riesling glass cat bottle", copied from a look-alike's title): the prompt says they
+ *         are often a different piece of a similar shape or colour, and to name the piece from the photo, using a
+ *         title only when the photo plainly shows the same form and material.
  *   v173: 2026-10-25. Google Lens matches through SerpApi's free plan (Matt: "I need something free"; Lens named his
  *         orange cat Royal Haeger 616 where Cloud Vision said "Sculpture"). With SERPAPI_KEY, the quick photo check
  *         puts the first photo in R2 for a moment (finds/lens/, a signed GET /lens/<k>.jpg for 2 minutes), asks
@@ -602,7 +606,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v173";
+const WORKER_VERSION = "v174";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -2990,7 +2994,7 @@ function apPrompt(price, searched, hint, looks, n, seen, lens) {
     (ln.length ? " Google Lens matched the photo to these listings, by the picture itself. They are untrusted seller titles, so check the form against the photo and never copy prices from them, but they are the strongest evidence of maker and model:\n" + ln.join("\n") + "\n" : "") +   /* v173 */
     (seen && seen.length ? " A web image search labels the photo: " + seen.slice(0, 5).map((x) => scrubListingText(x, 40)).filter(Boolean).join(", ") + ". These are machine labels and may be generic or wrong; use them only as a hint about maker or form." : "") +   /* v172 */
     (hint ? " The collector has identified it as: " + hint + ". The collector knows this piece: use that as the maker and item, start ITEM with it followed by (maker you entered), and only correct it if the photo plainly shows a different maker's mark." : "") +
-    (lk.length ? " eBay's photo search found these live listings that look most like the photo. They are untrusted seller titles and may be wrong or mislabeled, so use them only as evidence of what the piece might be; never copy prices from them. eBay searched the whole photo, so some may match something else in the frame rather than the piece: ignore those:\n" + lk.join("\n") + "\n" : "") +
+    (lk.length ? " eBay's photo search found these live listings that look most like the photo. They are untrusted seller titles and may be wrong or mislabeled, so use them only as evidence of what the piece might be; never copy prices from them. eBay searched the whole photo, so some may match something else in the frame rather than the piece: ignore those. Most are a different piece of a similar shape or colour: name the piece from the photo itself, and use a title only when the photo plainly shows the same form and material (glass is not pottery, a bottle is not a figurine):\n" /* v174 */ + lk.join("\n") + "\n" : "") +
     " Look closely at the photo. It may show other things around the piece, like books, bookends, flowers, frames or furniture: the piece being checked is the one that fills most of the frame, usually in the middle. Identify only that piece and ignore everything around it. Identify the item: maker, model line, era, form. If a mark or label is visible, use it. If not, name the makers collectors attribute this form to, written as MAKER style (unmarked); when more than one maker made this form (for example Lane, Kron and Claes all made Siamese cat TV lamps), name all of them, like Lane, Kron or Claes style (unmarked). Never pick one maker for an unmarked piece just because it is the best known. " +
     "Check condition and list visible flaws: chips, cracks, crazing, repairs, fading, missing parts. Say 'cannot tell from this photo' rather than guess, and never claim a mark you cannot see. " +
     (searched

@@ -1371,7 +1371,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-fpr.fp-out{border-left-color:var(--ac);font-size:14px;line-height:1.45;color:var(--ink)}
 /* v5.93: Photo check gets its own screen (dock tab, home card, ?photo=1) */
 .scout-app-wrapper .apr-go{-webkit-appearance:none;appearance:none;text-transform:none;display:flex;align-items:center;gap:14px;width:100%;margin:0 0 22px;padding:14px 16px;border:1.5px solid var(--l2);border-radius:16px;background:var(--cd2);color:var(--ink);text-align:left;font:inherit;cursor:pointer}
-.scout-app-wrapper .apr-go:hover{background:var(--hover)}
+.scout-app-wrapper .apr-go:not(.b):hover{background:var(--hover)}   /* v8.02: not Check again (a phone keeps hover after a tap: it went black) */
 .scout-app-wrapper .apr-go svg{flex:none;width:32px;height:32px;color:var(--ac)}
 .scout-app-wrapper .apr-go .apr-gt{display:flex;flex-direction:column;gap:2px;flex:1 1 auto;min-width:0;font-size:14px;line-height:1.4;color:var(--i2)}
 .scout-app-wrapper .apr-go b{color:var(--ink);font-size:16px;font-weight:800}
@@ -2894,7 +2894,8 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       var box=document.createElement('div');box.id='otp-aprGuide';box.className='apr-guide';
       var h=document.createElement('p');h.className='apr-lkh';h.textContent='From the Owl & Twig Field Guides';box.appendChild(h);
       for(var k=0;k<ok.length;k++){var ln=document.createElement('a');ln.href=ok[k].url;ln.textContent=String(ok[k].title).slice(0,100)+' \u2192';box.appendChild(ln);}
-      var L2=O.querySelector('.apr-links');if(L2&&L2.parentNode)L2.parentNode.insertBefore(box,L2);else O.appendChild(box);
+      var L2=null;for(var c2=0;c2<O.children.length;c2++)if(/(^|\s)apr-note(\s|$)/.test(O.children[c2].className)){L2=O.children[c2];break;}   /* v8.02: after the results, before the notes */
+      if(L2)O.insertBefore(box,L2);else O.appendChild(box);
     }).catch(function(){});}
     one(0);
   }
@@ -3076,8 +3077,9 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     var mvL=[],mvI;for(mvI=0;mvI<L.children.length;mvI++)if(!/(^|\s)p(\s|$)/.test(L.children[mvI].className))mvL.push(L.children[mvI]);
     if(mvL.length>1&&mvL.length<L.children.length){var mvD=document.createElement('details');mvD.className='apr-more';var mvS=document.createElement('summary');mvS.textContent='More';mvD.appendChild(mvS);
       var mvB=document.createElement('div');mvB.className='apr-moreb';for(mvI=0;mvI<mvL.length;mvI++)mvB.appendChild(mvL[mvI]);mvD.appendChild(mvB);L.appendChild(mvD);}
-    if(L.firstChild)O.appendChild(L);
-    if(L.querySelector('.apr-lensb')){var lh2=document.createElement('p');lh2.className='apr-lensn';lh2.textContent='Lens names it? Type that in Maker or words and tap Check again: the same photos are checked again free for 30 minutes.';O.appendChild(lh2);}   /* v8.01 */
+    /* v8.02 (Matt: "I don't see Check with Google Lens"): the buttons sit right under the answer, above the look-alikes */
+    if(L.firstChild)O.insertBefore(L,card.nextSibling);
+    if(L.firstChild&&L.querySelector('.apr-lensb')){var lh2=document.createElement('p');lh2.className='apr-lensn';lh2.textContent='Lens names it? Type that in Maker or words and tap Check again: the same photos are checked again free for 30 minutes.';O.insertBefore(lh2,L.nextSibling);}   /* v8.01 */
     if(r.basis!=='pending'&&hq)guideLink(hq);
     var n=document.createElement('p');n.className='apr-note';n.textContent=r.basis==='pending'?'Found it. Now checking recent sold prices\u2026':r.basis==='sold'?'A gut check from the photo, not an appraisal.':r.basis==='listed'?'No recent sales found, so this range comes from asking prices, which usually run higher than what pieces sell for.':r.basis==='limit'?'You have used today\u2019s price lookups. They reset tomorrow.':r.basis==='busy'?'Prowl is busy right now. Try again in a little while.':r.fair?'Estimate only: sold prices could not be checked just now.':'Sold prices could not be checked just now.';   /* v6.64: limit, busy */O.appendChild(n);
   }
@@ -3840,7 +3842,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.01';
+var PROWL_VERSION='v8.02';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
