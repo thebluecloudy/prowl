@@ -22,7 +22,7 @@ function setup(answers) {
   let n = 0;
   const beforeLoad = (win) => {
     win.HTMLCanvasElement.prototype.getContext = () => ({ drawImage() {} });
-    win.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/jpeg;base64,/9j/' + (++n);   /* each photo its own */
+    win.HTMLCanvasElement.prototype.toDataURL = function () { return this.width <= 480 ? 'data:image/jpeg;base64,/9j/kept' : 'data:image/jpeg;base64,/9j/' + (++n); };   /* each photo its own; v7.96's kept copy (480px) does not take a number */
     win.Image = class { constructor() { this.width = 1000; this.height = 800; } set src(v) { this._src = v; setTimeout(() => this.onload && this.onload(), 0); } get src() { return this._src; } };
   };
   const p = loadPage({ storage: DEN, fetchImpl, beforeLoad });
