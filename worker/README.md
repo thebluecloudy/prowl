@@ -22,6 +22,8 @@ about a minute. No dashboard paste needed.
   (the public page keeps OWNER_KEY in the browser). The Start Prowl and stop links in Gift Pro
   emails are signed with a random key the worker makes once and keeps in KV (`giftkey:v1`);
   deleting that key retires every gift link already emailed.
+- `GOOGLE_VISION_KEY` (v171) is a Google Cloud API key restricted to Cloud Vision API: Photo check's Seen on the web
+  (web detection on the first photo, `VISION_PER_DAY` a day). Without it Photo check works as before.
 - `GOOGLE_MAPS_KEY` (v132) is the Google Cloud API key behind NEAR ME: Around You and Road Trip (`/near`, `/trip`,
   `/pp`, and the live hours in `/trips/<id>`). Enable Places API (New), Routes API and Geocoding API on it, restrict
   it to those three, and set it with `wrangler secret put GOOGLE_MAPS_KEY` (or the dashboard). Without it those routes

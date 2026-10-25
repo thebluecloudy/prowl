@@ -661,7 +661,7 @@ test("v170 wiring: Caps adds several at once, the admin's usage card shows the d
   assert.match(constLine("G_SEARCHES_PER_DAY"), /G_SEARCHES_PER_DAY = 300\b/, "the meter's limit is the ceiling");
   assert.match(constLine("NEAR_PER_IP"), /TRIP_PER_IP = 10,/);
   for (const fn of ["gPlacesPage", "gPlacesNearby"]) assert.match(indexFn(fn), /await gSearch\(/, fn + " goes through gSearch");
-  assert.match(INDEX, /const WORKER_VERSION = "v170";/);
+  assert.ok(Number(/const WORKER_VERSION = "v(\d+)";/.exec(INDEX)[1]) >= 170, "v170 or later");
 });
 
 test("v170: if Google refuses the along-the-route search, the road is searched in circles as before", async () => {
