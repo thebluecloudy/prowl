@@ -10,7 +10,7 @@ import { waitFor } from '../helpers/flockFixture.mjs';
 
 const DEN = { 'prowl.v36': { seen: true, hunts: [] }, 'prowl.alertTok': 'T'.repeat(24), 'prowl.alertEmail': 'a@b.co' };
 const J = (j) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(JSON.parse(JSON.stringify(j))), text: () => Promise.resolve(JSON.stringify(j)) });
-const ANSWER = { item: 'Royal Haeger 616 orange winking Egyptian cat', fair: '$90-140', basis: 'sold', sure: 'HIGH', search: 'Royal Haeger 616 cat',
+const ANSWER = { item: 'Royal Haeger 616 orange winking Egyptian cat', fair: '$90-140', basis: 'sold', sure: 'MEDIUM',   /* v8.03: a sure answer has no loose web row */ search: 'Royal Haeger 616 cat',
   looks: [{ url: 'https://www.ebay.com/itm/999', title: 'TWO MOSELLAND REISLING HAPPY CATS BOTTLES', price: '$14', image: 'https://i.ebayimg.com/x.jpg' }],
   web: { seen: ['Royal Haeger'], alike: ['https://example.org/a.jpg'] } };
 function setup() {

@@ -21,7 +21,8 @@
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
  *   v175: 2026-10-25. Check with Google Lens sends the photo again (Matt got Lens's intro page): POST /lens/up was
  *         routed below the "GET only" guard, as group trips were before v156, so every upload was 405. It is routed
- *         above it now; a test fails if any POST route sits below the guard.
+ *         above it now; a test fails if any POST route sits below the guard. Seen on the web lists only pages with
+ *         the same picture (fullMatchingImages): part-matches brought Amazon's "Animal Figures" for his Haeger cat.
  *   v174: 2026-10-25. eBay's look-alike titles weigh less in the photo check (Matt's ceramic cat came back as
  *         "Moselland Happy Cat Riesling glass cat bottle", copied from a look-alike's title): the prompt says they
  *         are often a different piece of a similar shape or colour, and to name the piece from the photo, using a
@@ -1223,10 +1224,13 @@ function visionPick(wd) {
   const pages = [], had = Object.create(null);
   for (const p of Array.isArray(wd.pagesWithMatchingImages) ? wd.pagesWithMatchingImages : []) {
     if (!p || !ok(p.url)) continue;
+    /* v175: only pages with the same picture; a part-match (one corner of a similar photo) brought in Amazon's
+       "Animal Figures" for Matt's Haeger cat */
+    if (!(Array.isArray(p.fullMatchingImages) && p.fullMatchingImages.some((x) => x && ok(x.url)))) continue;
     let host = ""; try { host = new URL(p.url).hostname.replace(/^www\./, ""); } catch (e) { continue; }
     const k = p.url.replace(/[?#].*$/, "");
     if (had[k]) continue; had[k] = 1;
-    const im = [].concat(p.fullMatchingImages || [], p.partialMatchingImages || []).map((x) => x && x.url).filter(ok)[0] || "";
+    const im = p.fullMatchingImages.map((x) => x && x.url).filter(ok)[0] || "";
     pages.push({ url: p.url, title: plain(p.pageTitle).slice(0, 140) || host, image: im, host: host.slice(0, 60) });
     if (pages.length >= VISION_PAGES) break;
   }

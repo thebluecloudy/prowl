@@ -3029,6 +3029,9 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
        and pictures that look like it show; the one-word guess only beside pages with the same picture; no row for a guess alone */
     var WS=[],WA=[];if(WB&&WB.seen&&WB.seen.length)for(wi=0;wi<WB.seen.length&&WS.length<5;wi++)if(typeof WB.seen[wi]==='string'&&WB.seen[wi])WS.push(WB.seen[wi].slice(0,40));
     if(WB&&WB.alike&&WB.alike.length)for(wi=0;wi<WB.alike.length&&WA.length<6;wi++)if(typeof WB.alike[wi]==='string'&&/^https:\/\//.test(WB.alike[wi]))WA.push(WB.alike[wi]);
+    /* v8.03 (Matt's Haeger 616, named for sure: "Reptiles \u00b7 Safari \u00b7 Birds" and orange toys): an answer sure of itself
+       does not need the web search's loose labels and look-alike colours; pages with the very same picture still show */
+    if(String(r.sure||'').toUpperCase()==='HIGH'){WS=[];WA=[];}
     if(WP.length||WS.length||WA.length){var ww=document.createElement('div');ww.className='apr-looks apr-web';var wh=document.createElement('p');wh.className='apr-lkh';wh.textContent='Seen on the web';ww.appendChild(wh);
       if(WS.length){var wsn=document.createElement('p');wsn.className='apr-wguess';wsn.textContent='Seen as: '+WS.join(' \u00b7 ');ww.appendChild(wsn);}
       else if(WB.guess&&WP.length){var wgs=document.createElement('p');wgs.className='apr-wguess';wgs.textContent='Best guess on the web: '+String(WB.guess).slice(0,80);ww.appendChild(wgs);}
@@ -3842,7 +3845,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.02';
+var PROWL_VERSION='v8.03';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
