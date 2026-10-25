@@ -2235,6 +2235,11 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-optt{margin:10px 0 4px;font-size:13px;font-weight:800;color:var(--mu)}
 .scout-app-wrapper .nr-optdone{width:100%;min-height:48px;margin-top:6px}
 .scout-app-wrapper .nr-det{font-size:13px;font-weight:800;color:var(--ink);white-space:nowrap;padding:3px 7px;border-radius:999px;background:var(--l2)}
+/* v7.98 Save trip and Share at the top of a trip */
+.scout-app-wrapper .nr-tacts{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0 6px}
+.scout-app-wrapper .nr-tacts .b{min-height:46px;font-size:16px}
+.scout-app-wrapper .nr-saved{flex-basis:100%;font-weight:800;font-size:15px;color:var(--ok,#2f7d32)}
+.scout-app-wrapper .nr-rvb.nr-tripsh{color:var(--ac);border-color:var(--ac);font-weight:800}
 .scout-app-wrapper .nr-foot{flex-direction:column}
 .scout-app-wrapper .nr-footm{display:flex;gap:8px}
 .scout-app-wrapper .nr-footm .nr-start{flex:2 1 0;min-height:52px}
@@ -3642,7 +3647,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     </div>
     <div class="denPane" id="otp-nrTripsPane" hidden>
       <h3 class="nearh">Trips</h3>
-      <p class="nearp">Road trips kept for a group: yours, and the ones friends invite you to. Open one for its stops, live hours and the group's Finds. To start one, build it under Road trip, then More › Share › Keep it for my group, and send your friends the invite link.</p>
+      <p class="nearp">Road trips kept for a group: yours, and the ones friends invite you to. Open one for its stops, live hours and the group's Finds. To start one, build it under Road trip, tap <b>Save trip</b>, then <b>Invite friends</b>.</p>
       <div id="otp-nrJoin"></div>
       <div id="otp-nrTrips"></div>
     </div>
@@ -3778,7 +3783,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.97';
+var PROWL_VERSION='v7.98';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -11334,7 +11339,7 @@ function nrDrawTrip(t,o){
   var inMaps={},mp=nrMapsPick(ahead,mapsPref()==='apple'?APPLE_WP:9),off=ahead.length-mp.length;mp.forEach(function(a){inMaps[a.id]=1});   /* v7.77 */
   function beenB(p){return today||BN[p.id]?'<button type="button" class="nr-beenb'+(BN[p.id]?' on':'')+'" data-nrbeen="'+esc(p.id||'')+'" aria-pressed="'+!!BN[p.id]+'" aria-label="'+(BN[p.id]?'Not been to ':'Been to ')+esc(p.name||'')+'">'+(BN[p.id]?'Undo':'✓ Been')+'</button>':''}   /* v7.83 */
   function row(p,cls,num,det){var bn=!!BN[p.id];return '<div class="nr-row'+(p.pin?' nr-pinrow':'')+(bn?' nr-beenrow':'')+'">'+nrCard(p,day,cls+(bn?' nr-been':''),num,{eta:eta(p),det:det,been:bn,off:cls==='nr-anchor'&&!bn&&off>0&&!inMaps[p.id]})+'<span class="nr-acts'+(p.pin?'':' nr-acts4')+'">'+nrGo(p)+nrRvBtn(p)+beenB(p)+(p.pin?'':nrStopBtn(p)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'"><span aria-hidden="true">−</span> Skip</button>')+'</span></div>'}   /* v7.78: + Stop; v7.75: a stop you named is not skipped; take it out above */
-  h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+(t.loop?'the shops around it and back':esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):''))+(t.loop?'</b>':'')+'</p>'+
+  h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+(t.loop?'the shops around it and back':esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):''))+(t.loop?'</b>':'')+'</p>'+nrTripActs(t)+   /* v7.98 */
      (t.via&&t.via.length?'<p class="nearp nr-viah">By way of '+esc(nrAnd(t.via.map(function(v){return String(v).split(',')[0]})))+'</p>':'')+   /* v7.75 */
      (t.missing&&t.missing.length?'<p class="nearp nr-late">Not found on the map: '+esc(nrAnd(t.missing.map(function(v){return String(v).split(',')[0]})))+'. The drive still goes there, but it is not in the list or in Maps; check the name.</p>':'')+   /* v7.77 */
      (nx?'<div class="nr-next"><p class="nr-nexth">Next stop</p><div class="nr-row">'+nrCard(nx.p,day,'nr-anchor',nrLetter(nx.i),{eta:eta(nx.p)})+'<span class="nr-acts">'+nrGo(nx.p)+'</span></div>'+nrNextLine(t,nx.p,stops,BN)+'</div>':nrBeenAny(t)&&dest.name&&!t.loop?'<p class="nearp nr-next">Every stop done. On to <b>'+esc(dest.name)+'</b>.</p>':'')+   /* v7.83 */
@@ -11361,6 +11366,14 @@ function nrDrawTrip(t,o){
   nrFoot(t);
   nrMap('trip');   /* v7.45 */
   nrLegsFetch(t,stops);if(t.sales)nrSalesDraw(t);else nrSales(t);   /* v7.62 */
+}
+/* v7.98 (Matt: "Trips used to be for groups we need a save trip button and a share inside trips area"): what a trip is
+   for sits at its top, not under More › Share. A built trip: Save trip (kept for the group, nrKeep) and Share (the route
+   by text, nrSend). A kept trip: Invite friends for its organizer (nrInvite) and Share the route. Your own trips in the
+   Trips list have Share too (the invite link). */
+function nrTripActs(t){
+  if(NR.view)return '<div class="nr-tacts"><span class="nr-saved">\u2713 Saved in Trips</span>'+(NR.view.org?'<button type="button" class="b p" data-nrinv="'+esc(NR.view.id||'')+'">Invite friends</button>':'')+'<button type="button" class="b'+(NR.view.org?'':' p')+'" data-nrsendr="1">\u2197 Share the route</button></div>';
+  return '<div class="nr-tacts">'+(t.loop?'':'<button type="button" class="b p" data-nrkeepb="1">\u2605 Save trip</button>')+'<button type="button" class="b" data-nrsendr="1">\u2197 Share</button></div>';
 }
 function nrFoot(t){
   var f=$('#otp-nrFoot'),m=$('#otp-nrMaps'),s=$('#otp-nrShare'),hb=$('#otp-nrHere'),st=$('#otp-nrStart');if(!f||!m||!s)return;
@@ -11404,8 +11417,8 @@ function nrSignin(){var e2;try{e2=new Event('prowl-signin')}catch(x){e2=document
 function nrShare(){
   var t=NR.view||NR.built,out=$('#otp-nrOut'),box=$('#otp-nrSendBox');if(!t||!out)return;
   if(box){box.parentNode.removeChild(box);return}
-  var org=NR.view&&NR.view.org,keep=t.loop?'':NR.view?(org?'<button type="button" class="b" id="otp-nrInvite">Invite link</button><button type="button" class="b" id="otp-nrKeep">Add by email</button>':''):'<button type="button" class="b" id="otp-nrKeep">Keep it for my group</button>';   /* v7.69: the invite link */
-  out.insertAdjacentHTML('afterbegin','<div class="nr-sendbox" id="otp-nrSendBox"><div class="nr-sendrow"><button type="button" class="b p" id="otp-nrSend">Send the route</button>'+keep+'</div><p class="nearp nr-shnote"><b>Send the route</b>: the stops and the Google Maps link, by text or any app. '+(NR.view?(org?'<b>Invite link</b>: text it to friends; they tap it, sign in to Prowl, and they are on the trip under Trips.':''):'<b>Keep it for my group</b>: a trip your friends join with an invite link, with live hours and Finds (Prowl Pro).')+'</p></div>');
+  var org=NR.view&&NR.view.org,keep=t.loop?'':NR.view?(org?'<button type="button" class="b" id="otp-nrInvite">Invite link</button><button type="button" class="b" id="otp-nrKeep">Add by email</button>':''):'<button type="button" class="b" id="otp-nrKeep">Save trip</button>';   /* v7.69: the invite link */
+  out.insertAdjacentHTML('afterbegin','<div class="nr-sendbox" id="otp-nrSendBox"><div class="nr-sendrow"><button type="button" class="b p" id="otp-nrSend">Send the route</button>'+keep+'</div><p class="nearp nr-shnote"><b>Send the route</b>: the stops and the Google Maps link, by text or any app. '+(NR.view?(org?'<b>Invite link</b>: text it to friends; they tap it, sign in to Prowl, and they are on the trip under Trips.':''):'<b>Save trip</b>: a trip your friends join with an invite link, with live hours and Finds (Prowl Pro).')+'</p></div>');
   try{out.scrollIntoView({block:'start'})}catch(e){}
 }
 /* the route as words: the drive, the stops in order (skipped ones left out), the final stop, the Maps link(s). The
@@ -11423,8 +11436,10 @@ function nrRouteText(t){
   return L.join('\n');
 }
 /* v7.69: the organizer's invite link: one tap for a friend, no account email (worker /trips/<id>/invite) */
-function nrInvite(){
-  var v=NR.view;if(!v||!v.org||NR.busy)return;NR.busy=true;
+function nrInvite(id){
+  var v=NR.view&&(!id||NR.view.id===id)?NR.view:null,L=NR.trips||[],i;
+  if(!v&&id)for(i=0;i<L.length;i++)if(L[i].id===id)v=L[i];   /* v7.98: Share in the Trips list */
+  if(!v||!v.org||NR.busy)return;NR.busy=true;
   nrFetch('/trips/'+E(v.id)+'/invite',{method:'POST',body:{}}).then(function(r){
     NR.busy=false;
     if(!r.ok||!r.j.code){toast(esc((r.j&&r.j.error)||'The invite link could not be made just now.'),3600);return}
@@ -11507,7 +11522,7 @@ function nrKeep(){
     if(r.status===403){toast('Group trips come with Prowl Pro. <a href="/products/prowl-pro">Try it free for a month</a>',5200);return}
     if(!r.ok){toast((r.status===0?'Prowl could not be reached. Check your signal and try again.':esc((r.j&&r.j.error)||'The trip could not be kept just now.')+' ('+r.status+')')+' Send the route still works.',5200);return}   /* v7.53: say why */
     NR.trips=null;nrOpenTrip(r.j,true);nrTripsLoad();
-    toast('Trip kept for your group. More › Share › Invite link sends it to your friends.',3600);
+    toast('Trip saved for your group. Tap <b>Invite friends</b> to send it to them.',3600);   /* v7.98 */
   });
 }
 function nrStopsSlim(stops){var out=[],i,j,a;for(i=0;i<(stops||[]).length&&out.length<60;i++){a=stops[i];out.push({name:a.name,town:a.town,lat:a.lat,lng:a.lng,url:a.url});for(j=0;j<(a.nested||[]).length&&out.length<60;j++)out.push({name:a.nested[j].name,town:a.nested[j].town,lat:a.nested[j].lat,lng:a.nested[j].lng,url:a.nested[j].url})}return out}
@@ -11531,8 +11546,8 @@ function nrTripsLoad(){
 }
 function nrTripsDraw(){
   var el=$('#otp-nrTrips'),L=NR.trips||[],act=nrTripGet();if(!el)return;
-  if(!L.length){el.innerHTML='<p class="nearp nr-empty">No group trips yet. Build one under Road trip, then More › Share › Keep it for my group; a friend\u2019s invite link lands here too.</p>';return}   /* v7.69 */
-  el.innerHTML='<h3 class="nearh">Your trips</h3><div class="nr-triplist">'+L.map(function(t){var d=t.dest||{};return '<div class="nr-triprow"><button type="button" class="tb nr-tripb'+(act&&act.id===t.id?' on':'')+'" data-nrtrip="'+esc(t.id)+'"><span class="tt">'+esc(t.origin||'Here')+' → '+esc(d.name||'')+'</span><span class="nr-tripm">'+esc(nrDayLabel(t.day))+' · '+t.members+(t.members===1?' member':' members')+(t.org?' · yours':'')+'</span></button><button type="button" class="nr-rvb nr-tripdel" data-nrdel="'+esc(t.id)+'" data-org="'+(t.org?1:0)+'" aria-label="'+(t.org?'Delete':'Leave')+' the trip to '+esc(d.name||'')+'">'+(t.org?'Delete':'Leave')+'</button></div>'}).join('')+'</div>';   /* v7.70: Delete (yours) or Leave (a friend's) */
+  if(!L.length){el.innerHTML='<p class="nearp nr-empty">No group trips yet. Build one under Road trip and tap Save trip; a friend\u2019s invite link lands here too.</p>';return}   /* v7.69 */
+  el.innerHTML='<h3 class="nearh">Your trips</h3><div class="nr-triplist">'+L.map(function(t){var d=t.dest||{};return '<div class="nr-triprow"><button type="button" class="tb nr-tripb'+(act&&act.id===t.id?' on':'')+'" data-nrtrip="'+esc(t.id)+'"><span class="tt">'+esc(t.origin||'Here')+' → '+esc(d.name||'')+'</span><span class="nr-tripm">'+esc(nrDayLabel(t.day))+' · '+t.members+(t.members===1?' member':' members')+(t.org?' · yours':'')+'</span></button>'+(t.org?'<button type="button" class="nr-rvb nr-tripsh" data-nrinv="'+esc(t.id)+'" aria-label="Share the trip to '+esc(d.name||'')+'">Share</button>':'')+'<button type="button" class="nr-rvb nr-tripdel" data-nrdel="'+esc(t.id)+'" data-org="'+(t.org?1:0)+'" aria-label="'+(t.org?'Delete':'Leave')+' the trip to '+esc(d.name||'')+'">'+(t.org?'Delete':'Leave')+'</button></div>'}).join('')+'</div>';   /* v7.70: Delete (yours) or Leave (a friend's) */
 }
 /* v7.70 (the owner: "i need a way to delete the shared trips"): Delete takes your own trip away for everyone, its
    Finds and their photos with it; Leave takes a friend's trip off your list. The first tap asks, the second does it. */
@@ -11666,6 +11681,9 @@ if(near){
     var rv=e.target.closest&&e.target.closest('[data-nrrv]');if(rv){e.preventDefault();nrRvToggle(rv);return}   /* v7.69 */
     var dl=e.target.closest&&e.target.closest('[data-nrdel]');if(dl){nrTripDel(dl);return}   /* v7.70 */
     if(e.target.closest&&e.target.closest('#otp-nrInvite')){nrInvite();return}
+    if(e.target.closest&&e.target.closest('[data-nrkeepb]')){nrKeep();return}   /* v7.98 */
+    if(e.target.closest&&e.target.closest('[data-nrsendr]')){nrSend();return}
+    var iv=e.target.closest&&e.target.closest('[data-nrinv]');if(iv){nrInvite(iv.getAttribute('data-nrinv'));return}
     if(e.target.closest&&e.target.closest('#otp-nrJoinGo')){nrJoin();return}
     if(e.target.closest&&e.target.closest('#otp-nrJoinIn,#otp-nrTripsIn')){nrSignin();return}
     if(e.target.closest&&e.target.closest('#otp-nrViaAdd')){nrViaAdd();return}   /* v7.75 */

@@ -94,7 +94,7 @@ test('sentence case: Near me\'s tabs and the trip\'s buttons', async () => {
   assert.deepEqual([p.$('#otp-nrStart'), p.$('#otp-nrFootMore'), p.$('#otp-nrMaps'), p.$('#otp-nrApple a'), p.$('#otp-nrHere'), p.$('#otp-nrShare')].map((e) => e.textContent),
     ['Start in Maps', '⋯ More', 'Google Maps', 'Apple Maps', 'Rebuild from here', 'Share']);
   await p.close();
-  for (const s of ['Tap More › Rebuild from here, then try again.', 'More › Share › Invite link sends it', 'then More › Share › Keep it for my group']) assert.ok(PAGE.includes(s), s);
+  for (const s of ['Tap More › Rebuild from here, then try again.', 'Tap <b>Invite friends</b> to send it', 'tap <b>Save trip</b>, then <b>Invite friends</b>'])   /* v7.98: the buttons at the top of a trip */ assert.ok(PAGE.includes(s), s);
 });
 
 test('the glance check: on a phone every main Near me button is 48px tall with its words at 17px', () => {

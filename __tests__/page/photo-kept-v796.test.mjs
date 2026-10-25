@@ -5,6 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
+import { waitFor } from '../helpers/flockFixture.mjs';
 
 const BASE = { 'prowl.v36': { seen: true, hunts: [] }, 'prowl.alertTok': 'T'.repeat(24), 'prowl.alertEmail': 'a@b.co' };
 const EBS = 'https://www.ebay.com/itm/335511223344';
@@ -32,9 +33,11 @@ function setup(storage, answer) {
 async function check(p) {
   await tick(30);
   p.win.prowlPhotoFile(new p.win.File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1])], 'piece.jpg', { type: 'image/jpeg' }));
-  await tick(40);
+  await waitFor(() => p.$('#otp-aprTray .apr-th'));
   p.$('#otp-aprRun').click();
-  await tick(150);
+  /* the answer drawn, the check done and Poshmark's sales looked up: a slow CI machine takes longer than a fixed wait */
+  await waitFor(() => p.$('#otp-aprOut .apr-card') && !p.$('#otp-aprRun').disabled && !/Checking Poshmark/.test(p.$('#otp-aprOut').textContent), { timeout: 10000 });
+  await tick(60);
 }
 const kept = (at, item) => ({ at, r: { ...ANSWER, item, looks: [] }, th: 'data:image/jpeg;base64,/9j/' + at });
 
