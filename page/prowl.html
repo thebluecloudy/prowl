@@ -1342,6 +1342,11 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .apr-lkt{font-size:13px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .scout-app-wrapper .apr-lkp{font-size:13px;font-weight:800;color:var(--ac)}
 .scout-app-wrapper .apr-sold a.apr-lk{justify-content:space-between;min-height:96px}
+/* v7.96 Your last photo checks */
+.scout-app-wrapper .apr-recent{margin:18px 0 0;padding:14px 0 0;border-top:1px solid var(--ln)}
+.scout-app-wrapper button.apr-rc{display:flex;flex-direction:column;gap:4px;padding:6px;border:1px solid var(--ln);border-radius:10px;background:var(--cd);color:var(--ink);text-align:left;font:inherit;cursor:pointer}
+.scout-app-wrapper .apr-rc img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:7px;background:var(--cd3);display:block}
+.scout-app-wrapper .apr-rcx{background:none;border:0;padding:0;color:var(--mu);font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .scout-app-wrapper .apr-lkd{font-size:12.5px;color:var(--mu);line-height:1.3;overflow-wrap:anywhere}
 .scout-app-wrapper a.apr-solda{display:inline-block;margin:8px 0 0;color:var(--ac);font-weight:700;font-size:15px;text-decoration:underline;text-underline-offset:3px}
 .scout-app-wrapper .apr-res .apr-sold{margin:4px 0 12px}
@@ -2726,6 +2731,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <p class="apr-left" id="otp-aprLeft">Free: 1 photo check a day. Prowl Pro: unlimited.</p>
       <p class="apr-fine">Your photo is sent to an AI model to identify and price the piece.</p>
       <div id="otp-aprOut" aria-live="polite"></div>
+      <div class="apr-recent" id="otp-aprRecent" hidden></div>
     </section>
   </div>
 </aside>
@@ -2925,7 +2931,47 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     pw.appendChild(al);
     return pw;
   }
+  /* v7.96 (Matt: yes to keeping the last few photo checks on the phone): a page reload at a sale lost the answer and
+     the check it used. Each answer is kept in prowl.photoChecks (new key, newest PCK_MAX, this device only, not in the
+     backup) with a small copy of the first photo; Your last photo checks, under the answer, opens one again. */
+  var PCK_KEY='prowl.photoChecks',PCK_MAX=5,RCX=document.getElementById('otp-aprRecent');
+  function pckGet(){try{var a=JSON.parse(localStorage.getItem(PCK_KEY)||'[]');return Array.isArray(a)?a.filter(function(c){return c&&typeof c==='object'&&c.r&&typeof c.r==='object'&&typeof c.r.item==='string'&&typeof c.th==='string'&&/^data:image\/jpeg;base64,/.test(c.th);}).slice(0,PCK_MAX):[];}catch(e){return [];} }
+  function pckPut(a){for(var n=a.length;n>0;n--){try{localStorage.setItem(PCK_KEY,JSON.stringify(a.slice(0,n)));return true;}catch(e){} }return false;}   /* storage full: fewer kept */
+  function pckS(v,n){return typeof v==='string'?v.slice(0,n):'';}
+  function pckKeep(r,src){
+    resThumb(src,function(th){
+      if(!th)return;
+      var lk=[],i,x;for(i=0;r.looks&&i<r.looks.length&&lk.length<3;i++){x=r.looks[i];if(x&&typeof x.url==='string'&&/^https:\/\//.test(x.url))lk.push({url:x.url.slice(0,500),title:pckS(x.title,140),price:pckS(x.price,24),image:typeof x.image==='string'&&/^https:\/\//.test(x.image)?x.image.slice(0,500):''});}
+      var k={item:pckS(r.item,160),sure:pckS(r.sure,20),condition:pckS(r.condition,160),flaws:pckS(r.flaws,200),fair:pckS(r.fair,40),verdict:pckS(r.verdict,40),why:pckS(r.why,300),basis:pckS(r.basis,20),search:pckS(r.search,80),looks:lk};
+      var a=pckGet();a.unshift({at:Date.now(),r:k,th:th});pckPut(a.slice(0,PCK_MAX));pckDraw();
+    });
+  }
+  function pckWhen(t){var d=new Date(t),n=new Date(),M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],h=d.getHours(),m=d.getMinutes();
+    var tm=(h%12||12)+':'+(m<10?'0':'')+m+(h<12?' AM':' PM');
+    return d.toDateString()===n.toDateString()?'Today '+tm:M[d.getMonth()]+' '+d.getDate()+', '+tm;}
+  function pckDraw(){
+    if(!RCX)return;var a=pckGet(),i;while(RCX.firstChild)RCX.removeChild(RCX.firstChild);RCX.hidden=!a.length;if(!a.length)return;
+    var h=document.createElement('p');h.className='apr-lkh';h.textContent='Your last photo checks';RCX.appendChild(h);
+    var g=document.createElement('div');g.className='apr-lkg';
+    for(i=0;i<a.length;i++){var b=document.createElement('button');b.type='button';b.className='apr-rc';b.setAttribute('data-pk',String(i));
+      var im=document.createElement('img');im.src=a[i].th;im.alt='';b.appendChild(im);
+      var t=document.createElement('span');t.className='apr-lkt';t.textContent=a[i].r.item.replace(/\s*\((maker you entered|your ID)\)/g,'').slice(0,80);b.appendChild(t);
+      if(a[i].r.fair){var p=document.createElement('span');p.className='apr-lkp';p.textContent=a[i].r.fair;b.appendChild(p);}
+      var w=document.createElement('span');w.className='apr-lkd';w.textContent=pckWhen(a[i].at);b.appendChild(w);
+      g.appendChild(b);}
+    RCX.appendChild(g);
+    var n=document.createElement('p');n.className='apr-note';n.textContent='Kept on this phone. Tap one to see it again. ';
+    var cx=document.createElement('button');cx.type='button';cx.className='apr-rcx';cx.textContent='Clear these';n.appendChild(cx);RCX.appendChild(n);
+  }
+  if(RCX)RCX.addEventListener('click',function(e){
+    if(e.target.closest('.apr-rcx')){try{localStorage.removeItem(PCK_KEY);}catch(x){}pckDraw();return;}
+    var b=e.target.closest('.apr-rc');if(!b||busy)return;var c=pckGet()[+b.getAttribute('data-pk')];if(!c)return;
+    var r=JSON.parse(JSON.stringify(c.r));r._kept=1;show(r,c.th);
+    try{O.scrollIntoView({behavior:'smooth',block:'start'});}catch(x){}
+  });
+  pckDraw();
   function show(r,src){
+    if(r&&!r._kept&&r.basis!=='pending'&&r.item&&src){r._kept=1;pckKeep(r,src);}   /* v7.96 */
     while(O.firstChild)O.removeChild(O.firstChild);
     var card=document.createElement('div');card.className='apr-card';
     var im=document.createElement('img');im.src=src;im.alt='';card.appendChild(im);
@@ -3014,6 +3060,10 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       if(SD.length){var sg=document.createElement('div');sg.className='apr-lkg';
         for(var sj=0;sj<SD.length;sj++){var a2=document.createElement('a');a2.className='apr-lk';
           a2.href=/^https:\/\/(www\.)?ebay\.com\//i.test(SD[sj].url)?window.prowlAff(SD[sj].url,'prowl-sold'):SD[sj].url;a2.target='_blank';a2.rel='noopener noreferrer';
+          /* v7.96 (Matt: yes to the Sold before cards opening the popup too): an eBay, Etsy or Poshmark sale opens there, with
+             Save and Like even though the listing has ended (data-sold); a sale on any other site still opens that site */
+          var sdW=[SD[sj].date,SD[sj].where].filter(function(v){return !!v}).join(' \u00b7 '),sdS=/^https:\/\/([a-z0-9-]+\.)*ebay\.com\//i.test(SD[sj].url)?'ebay':/^https:\/\/([a-z0-9-]+\.)*poshmark\.com\//i.test(SD[sj].url)?'poshmark':/^https:\/\/([a-z0-9-]+\.)*etsy\.com\//i.test(SD[sj].url)?'etsy':'';
+          if(sdS){aprCell(a2,SD[sj].url,SD[sj].title,String(SD[sj].price).replace(/\s*sold$/i,''),sdS,name,'Sold'+(sdW?' \u00b7 '+sdW:''));a2.setAttribute('data-sold','1');}
           var t2=document.createElement('span');t2.className='apr-lkt';t2.textContent=String(SD[sj].title).slice(0,80);a2.appendChild(t2);
           var p2=document.createElement('span');p2.className='apr-lkp';p2.textContent=String(SD[sj].price).slice(0,20)+' sold';a2.appendChild(p2);
           var dw=[SD[sj].date,SD[sj].where].filter(function(v){return !!v}).join(' \u00b7 ');
@@ -3728,7 +3778,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v7.95';
+var PROWL_VERSION='v7.96';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -8457,7 +8507,7 @@ function popOpen(card,lite){
   var img=card.querySelector('.sgw-card img')||card.querySelector('img');   /* v7.18: a Best picks card's photo */
   POP={u:u,src:src,t:card.getAttribute('data-t')||card.getAttribute('aria-label')||'',p:card.getAttribute('data-p')||'',
     s:card.getAttribute('data-s')||src,h:card.getAttribute('data-h')||'',img:img?img.getAttribute('src')||'':'',auc:((card.querySelector('.fl-auc')||{}).textContent)||popAuc(card)||card.getAttribute('data-m')||'',repro:!!card.querySelector('.sgw-repro')};   /* v7.29 */
-  POP.lite=lt;
+  POP.lite=lt;POP.sold=!!card.getAttribute('data-sold');   /* v7.96 */
   openSheet(POP_NAME[src]||LIVE_NAME[src],'');
   if(sh)sh.classList.add('pop');
   popPaint(ITEMC[u]||null);
@@ -8591,7 +8641,7 @@ function popPaint(d){
   if(pc)h+=popSec('price','Price check',pc,'price' in was?was.price:true);   /* v7.31: open, now that Fair price? is only here */
   var go=window.prowlAff(d.url||P.u,'prowl-popup',d.affUrl);
   if(go!=='#')h+=(d.gone?'<div>':'<div class="pp-dock">')+'<a class="b'+(d.gone?'':' p')+' pp-go" href="'+esc(go)+'" target="_blank" rel="noopener noreferrer">View on '+esc(POP_NAME[P.src]||LIVE_NAME[P.src])+' ↗</a></div>';   /* v7.19: an ended listing's link is not pinned; Watch for the next one leads */   /* v7.12: pinned to the sheet's foot */
-  if(!d.gone)h+='<div class="pp-sv">'+svBtn({url:P.u,title:title,price:price,image:imgs[0]||P.img||'',src:P.s==='shopgoodwill'?'':P.s},P.h||'')+popLkBtn(likeHas(P.u))+'</div>';   /* v7.31: Save moved here from the card */   /* v7.95: Like beside it */
+  if(!d.gone||P.sold)h+='<div class="pp-sv">'+svBtn({url:P.u,title:title,price:price,image:imgs[0]||P.img||'',src:P.s==='shopgoodwill'?'':P.s},P.h||'')+popLkBtn(likeHas(P.u))+'</div>';   /* v7.31: Save moved here from the card */   /* v7.95: Like beside it */
   P.share={u:d.url||P.u,t:title,p:price,img:imgs[0]||''};h+='<button type="button" class="b pp-share" data-ppshare="1">Share this find</button>';   /* v6.98 */
   h+='<button type="button" class="b pp-close" data-ppclose="1">Close</button>';   /* v6.99: a way out at the bottom too */
   b.innerHTML=h;b.setAttribute('data-ppu',P.u);
