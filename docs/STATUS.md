@@ -1,15 +1,28 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v8.01 / v173).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v8.02 / v174).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.01** | 378,378 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v173** | |
+| Page | **v8.02** | 378,066 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v174** | |
 
 Recently shipped, newest first:
+
+- **v8.02 / v174: Photo check buttons up top, Check again keeps its colour** (Matt: "What is the black button after I
+  run a search. I don't see check with Google Lens").
+  - Hunt it on Prowl, Check with Google Lens and More now sit right under the answer card, with the Lens hint below
+    them; the look-alikes, Seen on the web and Poshmark follow. The Field Guides link goes after the results, before
+    the notes.
+  - The black button was Check again: a phone keeps the hover state after a tap, and the hover meant for the old
+    card-style `.apr-go` beat `.b.p` in the Classic look (near black in dark mode, white on white in light). That
+    hover is now `.apr-go:not(.b):hover`.
+  - Worker v174: the prompt says eBay look-alike titles are mostly a different piece of a similar shape or colour,
+    to name the piece from the photo, and to use a title only when the form and material match (his ceramic cat came
+    back as a Moselland glass cat bottle from a look-alike's title).
+  - Tests: `__tests__/page/photo-top-v802.test.mjs`, `worker/__tests__/apprompt-v174.test.mjs`.
 
 - **v8.01 / v173: Google Lens, free** (Matt, after Lens named his orange cat "Royal Haeger Orange Winking Egyptian Cat,
   model 616" where Cloud Vision said "Sculpture": "Do 1 and 2, and trial 3 ... I need something free").
@@ -1446,7 +1459,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.02, worker v174**. Claim one here when you start.
+Next free numbers: **page v8.03, worker v175**. Claim one here when you start.
 
 ## What's next
 
