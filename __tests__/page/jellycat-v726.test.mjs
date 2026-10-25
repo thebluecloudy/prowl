@@ -127,5 +127,5 @@ test('the look: calm card titles, outlined tags, Best pick and the sections are 
   assert.match(css, /\.fl-newb,[^{]*\.sale-off\{background:transparent;border:1\.5px solid var\(--ac\)/);
   assert.match(css, /\.is-pick:not\(\.fl-card\):not\(\.lk-cell\):not\(\.pp-fp\)::before\{content:'Best pick'/);
   assert.match(css, /\.pp-sec\[open\]>summary::after\{content:'\\2212'\}/);
-  assert.ok(Number(/var PROWL_VERSION='v7\.(\d+)';/.exec(HTML)[1]) >= 26, 'v7.26 or later');
+  { const m = /var PROWL_VERSION='v(\d+)\.(\d+)';/.exec(HTML); assert.ok(Number(m[1]) * 100 + Number(m[2]) >= 726, 'v7.26 or later'); }   /* v8.00: the major turned over */
 });

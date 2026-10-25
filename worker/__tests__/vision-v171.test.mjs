@@ -36,6 +36,7 @@ test("visionPick: the best guess, https pages only, titles as plain text, one pe
   assert.equal(r.pages[1].host, "worthpoint.com"); assert.equal(r.pages[1].image, "https://images.worthpoint.com/p.jpg", "a partial match's picture when there is no full one");
   assert.ok(!r.pages.some((p) => /^http:|javascript/.test(p.url)));
   assert.equal(visionPick(null), null); assert.equal(visionPick({}), null, "nothing found: nothing shown");
+  assert.deepEqual(r.seen, [], "v172: no entities in this answer"); assert.deepEqual(r.alike, []);
 });
 
 test("visionWeb: nothing without the key or past the day's cap; with them, one call with the photo and the key", async () => {
@@ -62,5 +63,27 @@ test("wiring: the quick photo check asks Google beside eBay and hands back web; 
   assert.match(ap, /if \(web\) out\.web = web;/);
   assert.match(INDEX, /\{ key: "gv:all", name: "Google Vision \(Photo check, Seen on the web\)", limit: 300 \}/);
   assert.match(constLine("VISION_URL"), /VISION_PER_DAY = 300\b/);
-  assert.match(INDEX, /const WORKER_VERSION = "v171";/);
+  assert.ok(Number(/const WORKER_VERSION = "v(\d+)";/.exec(INDEX)[1]) >= 171, "v171 or later");
+});
+
+/* v172 (Matt's orange Haeger cat: no pages and "carving"): what Google sees and pictures that look like it */
+test("v172 visionPick: confident entities (plain, once each, five at most) and look-alike pictures (https, six at most)", () => {
+  const { visionPick } = load({ fetch: null, vCount: null, console });
+  const r = visionPick({ bestGuessLabels: [{ label: "carving" }],
+    webEntities: [{ description: "Haeger Potteries", score: 0.9 }, { description: "haeger potteries", score: 0.8 }, { description: "Cat", score: 0.7 }, { description: "Faint", score: 0.2 }, { description: "", score: 0.9 },
+      { description: "Ceramic", score: 0.6 }, { description: "Figurine", score: 0.5 }, { description: "Orange", score: 0.45 }, { description: "Sixth", score: 0.44 }],
+    visuallySimilarImages: [{ url: "https://i.etsystatic.com/a.jpg" }, { url: "http://x.example.com/b.jpg" }, { url: "https://i.etsystatic.com/a.jpg" }].concat(Array.from({ length: 8 }, (_, i) => ({ url: "https://img" + i + ".example.org/p.jpg" }))) });
+  assert.equal(r.guess, "carving");
+  assert.deepEqual(r.pages, []);
+  assert.deepEqual(r.seen, ["Haeger Potteries", "Cat", "Ceramic", "Figurine", "Orange"]);
+  assert.equal(r.alike.length, 6); assert.equal(r.alike[0], "https://i.etsystatic.com/a.jpg"); assert.ok(r.alike.every((u) => /^https:/.test(u)));
+});
+
+test("v172: the AI is given the labels as a hint, cleaned, and nothing when there are none", () => {
+  const scrub = new Function(indexFn("scrubListingText") + "return scrubListingText;")();
+  const apPrompt = new Function("scrubListingText", "EBAY_IMAGE_LIMIT", indexFn("apPrompt") + "return apPrompt;")(scrub, 8);
+  assert.match(apPrompt("", false, "", [], 1, ["Haeger Potteries", "Cat"]), /A web image search labels the photo: Haeger Potteries, Cat\. These are machine labels and may be generic or wrong; use them only as a hint about maker or form\./);
+  assert.doesNotMatch(apPrompt("", false, "", [], 1, []), /web image search/);
+  assert.doesNotMatch(apPrompt("", false, "", [], 1), /web image search/);
+  assert.match(indexFn("appraise"), /apPrompt\(price, true, hint, looks, ims\.length, web && web\.seen\)/);
 });

@@ -1,16 +1,25 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v7.99 / v171).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v8.00 / v172).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v7.99** | 382,982 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v171** | |
+| Page | **v8.00** | 381,311 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v172** | |
 
 Recently shipped, newest first:
 
+- **v8.00 / v172: Seen on the web says more** (Matt's first live check, an orange Haeger cat in a shop: no pages and a
+  best guess of "carving"). A fresh photo has no copies online, so Cloud Vision's pages and guess are thin; Google Lens's
+  "visual matches" (its shopping index) has no public API. Now `visionPick` also keeps the confident web entities
+  (`seen`, score >= 0.4, five at most) and up to 6 look-alike pictures (`alike`); the AI gets the labels as a hint
+  (`apPrompt` 6th argument, `seen`). The page shows "Seen as: Haeger Potteries · Cat · Ceramic" and "Pictures that look
+  like it" (each opens the picture); the one-word guess only beside pages with the same picture, and no row for a guess
+  alone. Kept with the photo check. A paid Lens wrapper (e.g. SerpApi, about $75 a month for 5,000) is Matt's call.
+  The page version's major turned over: three tests now compare the full version. Tests:
+  `worker/__tests__/vision-v171.test.mjs` (v172), `__tests__/page/photo-web-v799.test.mjs` (v8.00).
 - **v7.99 / v171: Photo check, Seen on the web** (Matt: "When Google does an image search it isn't using text it uses
   similar images can we tap into that"). Google Lens has no public API; Google Cloud Vision's web detection is the
   closest. With the worker secret **GOOGLE_VISION_KEY** (an API key restricted to Cloud Vision API, set 2026-10-25),
@@ -1419,7 +1428,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.00, worker v172**. Claim one here when you start.
+Next free numbers: **page v8.01, worker v173**. Claim one here when you start.
 
 ## What's next
 
