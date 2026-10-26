@@ -6,10 +6,21 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v8.03 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.03** | 378,066 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.04** | 377,548 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v176** | |
 
 Recently shipped, newest first:
+
+- **v8.04: Cockpit theme** (Matt: "a red version like a fighter cockpit theme"). A fifth mode after Uranium in the theme
+  cycle (✈ on Uranium's button): Uranium's layout in red night lighting on black, with faint HUD scan lines, amber for
+  Open and caution. It is `data-theme=uranium` plus `data-hud=cockpit` (the way Midnight is Dark plus `data-dark`), saved
+  as `prowl.theme` = `cockpit` (a new value of the same key; an older page falls back to Light). Uranium's hard-coded
+  greens in the stylesheets became variables (`--u-rgb`, `--u-hi`, `--u-card`, ... defaulting to the old green on
+  `:root`), so any new Uranium rule should use them too, or Cockpit shows it green. Tests read them through
+  `__tests__/helpers/uranium.mjs`. Tests: `__tests__/page/cockpit-v804.test.mjs`; `motion.test.mjs` checks the curtain
+  in Cockpit.
+  Also: `near-section-v736`'s "Road trip on a Monday" failed on a real Monday (the trip was then today, timed from the
+  clock); its page clock is now a fixed Wednesday.
 
 - **Worker v176: Road trips in the admin** (Matt, 2026-10-25). Every `/trip` build (cache hits too) counts its
   destination in the stats object as kind `r` (`statTripTo`: place names only, anything starting with a house number

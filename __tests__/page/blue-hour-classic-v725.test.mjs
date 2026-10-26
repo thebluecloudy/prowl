@@ -16,8 +16,8 @@ test('Classic Blue hour is navy, and Midnight is left alone', () => {
   assert.match(CSS, /\[data-theme=dark\]\{color-scheme:dark;\s*--bg:#070706/, 'Midnight keeps the near-black');
 });
 
-test('the theme copy names all four modes', () => {
-  assert.match(PAGE, /Light, Blue hour, Midnight, or Uranium[^<]*Cycles through all four\./);
-  assert.match(PAGE, /cycles Light, Blue hour, Midnight and <b[^>]*>Uranium<\/b>/);
+test('the theme copy names all the modes (five since v8.04 Cockpit)', () => {
+  assert.match(PAGE, /Light, Blue hour, Midnight, Uranium \(a retro blacklight mode\) or Cockpit \(red night lighting\)\. Cycles through all five\./);
+  assert.match(PAGE, /cycles Light, Blue hour, Midnight, <b[^>]*>Uranium<\/b>, a retro blacklight mode, and <b[^>]*>Cockpit<\/b>, red night lighting\./);
   assert.doesNotMatch(PAGE, /Cycles through all three/);
 });

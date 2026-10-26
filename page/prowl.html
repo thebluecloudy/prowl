@@ -15,7 +15,7 @@
 /* v6.00: set the saved theme before the page paints, so dark and uranium do not
    flash light on load. applyTheme in the main script does the rest. */
 (function(){
-  try{var t=localStorage.getItem('prowl.theme');if(t==='midnight'){document.documentElement.setAttribute('data-theme','dark');document.documentElement.setAttribute('data-dark','midnight');}else if(t==='dark'||t==='uranium')document.documentElement.setAttribute('data-theme',t);}catch(e){ }   /* v6.37: midnight */
+  try{var t=localStorage.getItem('prowl.theme');if(t==='cockpit'){document.documentElement.setAttribute('data-theme','uranium');document.documentElement.setAttribute('data-hud','cockpit');}else if(t==='midnight'){document.documentElement.setAttribute('data-theme','dark');document.documentElement.setAttribute('data-dark','midnight');}else if(t==='dark'||t==='uranium')document.documentElement.setAttribute('data-theme',t);}catch(e){ }   /* v6.37: midnight */
 })();
 /* v5.79 eBay Partner Network. Adds Owl & Twig's EPN campaign to eBay search and
    item links (ebay.com/sch and /itm only), so a purchase after a Prowl click can
@@ -173,12 +173,13 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     th=localStorage.getItem('prowl.theme')||'';
     k2=!(/[?&]look=1(&|$)/.test(location.search)||(localStorage.getItem('prowl.look')==='1'&&!/[?&]look=2(&|$)/.test(location.search)));
   }catch(e){k2=true}   /* storage blocked: the app stays in the New look (even its ?look=1 needs storage) and the device's theme */
-  if(!/^(light|dark|midnight|uranium)$/.test(th))th=mm('(prefers-color-scheme: dark)')?'dark':'light';
+  if(!/^(light|dark|midnight|uranium|cockpit)$/.test(th))th=mm('(prefers-color-scheme: dark)')?'dark':'light';
   PAL={   /* --bg, --ink, --ln, --ac, --ac-ring */
     light:['#FAF6EE','#1C1815','#E7DED1',k2?'#C2491F':'#B0522B',k2?'rgba(194,73,31,.18)':'rgba(176,82,43,.14)'],
     dark:k2?['#0B1430','#F1F4FB','#2C4478','#F2A743','rgba(242,167,67,.3)']:['#070706','#f5f3ee','#2a2a26','#ffb200','rgba(255,178,0,.24)'],
     midnight:['#070706','#f5f3ee','#2a2a26',k2?'#F2A743':'#ffb200',k2?'rgba(242,167,67,.3)':'rgba(255,178,0,.24)'],
-    uranium:['#0a0e2e','#8affb8','rgba(57,255,20,.20)','#39ff14','rgba(57,255,20,.35)']   /* the top of its page gradient */
+    uranium:['#0a0e2e','#8affb8','rgba(57,255,20,.20)','#39ff14','rgba(57,255,20,.35)'],   /* the top of its page gradient */
+    cockpit:['#1f0606','#ff7a6b','rgba(255,42,26,.22)','#ff2a1a','rgba(255,42,26,.35)']   /* v8.04 */
   }[th];
   L.setAttribute('data-pc',th+(k2?'':' classic'));
   L.style.cssText='--bg:'+PAL[0]+';--ink:'+PAL[1]+';--ln:'+PAL[2]+';--ac:'+PAL[3]+';--ac-ring:'+PAL[4];
@@ -326,25 +327,50 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     radial-gradient(900px 500px at 50% -10%,rgba(255,178,0,.05),transparent 60%),
     radial-gradient(700px 400px at 100% 100%,rgba(18,184,134,.04),transparent 60%);}
 [data-theme=uranium]{color-scheme:dark;
-  --bg:#040414;--cd:#0a0a1e;--cd2:#0c0c22;--cd3:#101030;
+  --bg:#040414;--cd:var(--u-card);--cd2:#0c0c22;--cd3:#101030;
   --ink:#8affb8;--i2:#6ee89b;--i3:#4fb377;--mu:#3E8B5F;--mu2:#51876D;
   --onink:#040414;--ink-h:#c8ffdd;
-  --ln:rgba(57,255,20,.20);--l2:rgba(57,255,20,.38);
-  --ac:#39ff14;--ac-soft:rgba(57,255,20,.08);--ac-tint:rgba(57,255,20,.18);--ac-ring:rgba(57,255,20,.35);
+  --ln:rgba(var(--u-rgb),.20);--l2:rgba(var(--u-rgb),.38);
+  --ac:var(--u-hi);--ac-soft:rgba(var(--u-rgb),.08);--ac-tint:rgba(var(--u-rgb),.18);--ac-ring:rgba(var(--u-rgb),.35);
   --go:#7dffc0;--go-soft:rgba(125,255,192,.15);
-  --suc:#39ff14;--suc-soft:rgba(57,255,20,.12);--suc-bg:rgba(57,255,20,.22);--suc-ink:#c8ffdd;
+  --suc:var(--u-hi);--suc-soft:rgba(var(--u-rgb),.12);--suc-bg:rgba(var(--u-rgb),.22);--suc-ink:#c8ffdd;
   --warn:#ff5c8a;--warn-soft:rgba(255,92,138,.12);
-  --chip:transparent;--chip-glow:0 0 26px rgba(57,255,20,.55),0 0 60px rgba(57,255,20,.25);
-  --hover:rgba(57,255,20,.08);
-  --tag-bg:rgba(57,255,20,.15);--tag-fg:#7dffc0;
+  --chip:transparent;--chip-glow:0 0 26px rgba(var(--u-rgb),.55),0 0 60px rgba(var(--u-rgb),.25);
+  --hover:rgba(var(--u-rgb),.08);
+  --tag-bg:rgba(var(--u-rgb),.15);--tag-fg:#7dffc0;
   --tagb-bg:rgba(125,255,192,.12);--tagb-fg:#8affb8;
-  --shadow:rgba(57,255,20,.15);--shadow-lg:rgba(57,255,20,.40);
-  --toast-bg:#39ff14;--toast-fg:#040414;--toast-b:#0a3a00;
+  --shadow:rgba(var(--u-rgb),.15);--shadow-lg:rgba(var(--u-rgb),.40);
+  --toast-bg:var(--u-hi);--toast-fg:#040414;--toast-b:#0a3a00;
   --bar-bg:rgba(4,4,20,.85);--dock-bg:rgba(4,4,20,.92);
-  --scrim:rgba(0,0,0,.85);--modal-bg:#0a0a1e;
+  --scrim:rgba(0,0,0,.85);--modal-bg:var(--u-card);
   --body-glow:none;}
+/* v8.04 (Matt: "a red version like a fighter cockpit"): Cockpit is Uranium's layout (data-theme=uranium plus
+   data-hud=cockpit, the way Midnight sits on Dark) in red night lighting. Uranium's own colours are these variables. */
+:root{--u-rgb:57,255,20;--u-rgb2:60,255,73;--u-hi:#39ff14;--u-hi2:#3cff49;--u-card:#0a0a1e;--u-top:#0a0e2e;--u-mid:#050518;
+  --u-band1:#1e7f24;--u-band2:#0c330e;--u-pale:#ebffec;--u-ff:#d8ff6b}
+[data-theme=uranium][data-hud=cockpit]{
+  --u-rgb:255,42,26;--u-rgb2:255,70,50;--u-hi:#ff2a1a;--u-hi2:#ff4a3c;--u-card:#150505;--u-top:#1f0606;--u-mid:#0d0303;
+  --u-band1:#8a1c14;--u-band2:#3a0b08;--u-pale:#ffeceb;--u-ff:#ffb08a;
+  --bg:#0a0202;--cd:#150505;--cd2:#1a0606;--cd3:#220808;
+  --ink:#ff7a6b;--i2:#f2665a;--i3:#e8503f;--mu:#e24c41;--mu2:#da5046;
+  --onink:#0a0202;--ink-h:#ffd2cb;
+  --ln:rgba(255,42,26,.22);--l2:rgba(255,42,26,.42);
+  --ac:#ff2a1a;--ac-soft:rgba(255,42,26,.09);--ac-tint:rgba(255,42,26,.2);--ac-ring:rgba(255,42,26,.4);
+  --go:#ffb547;--go-soft:rgba(255,181,71,.15);
+  --suc:#ff5a3c;--suc-soft:rgba(255,90,60,.12);--suc-bg:rgba(255,90,60,.22);--suc-ink:#ffd2cb;
+  --warn:#ffd23c;--warn-soft:rgba(255,210,60,.12);
+  --chip-glow:0 0 26px rgba(255,42,26,.55),0 0 60px rgba(255,42,26,.25);
+  --hover:rgba(255,42,26,.09);
+  --tag-bg:rgba(255,42,26,.16);--tag-fg:#ffb547;
+  --tagb-bg:rgba(255,181,71,.12);--tagb-fg:#ff7a6b;
+  --shadow:rgba(255,42,26,.15);--shadow-lg:rgba(255,42,26,.4);
+  --toast-bg:#ff2a1a;--toast-fg:#0a0202;--toast-b:#3a0a00;
+  --bar-bg:rgba(10,2,2,.88);--dock-bg:rgba(10,2,2,.94)}
 .scout-app-wrapper{margin:0;font:15px/1.5 var(--sans);color:var(--ink);background:var(--bg);background-image:var(--body-glow);padding-bottom:94px;-webkit-font-smoothing:antialiased;transition:background-color .3s,color .3s}
-[data-theme=uranium] .scout-app-wrapper{background:linear-gradient(180deg,#0a0e2e 0,#050518 700px,#000000 1500px) no-repeat;background-color:#000}   /* v6.33: no background-attachment:fixed; on iOS Safari it freezes a long page */
+[data-theme=uranium] .scout-app-wrapper{background:linear-gradient(180deg,var(--u-top) 0,var(--u-mid) 700px,#000000 1500px) no-repeat;background-color:#000}
+[data-hud=cockpit] .scout-app-wrapper{background:repeating-linear-gradient(0deg,rgba(255,42,26,.035) 0 1px,transparent 1px 4px),linear-gradient(180deg,var(--u-top) 0,var(--u-mid) 700px,#000 1500px) no-repeat;background-color:#000}   /* v8.04: faint HUD scan lines */
+[data-theme=uranium][data-hud=cockpit] .scout-app-wrapper .heromark img,[data-theme=uranium][data-hud=cockpit] .scout-app-wrapper .heromark picture{filter:hue-rotate(240deg) saturate(1.2)}   /* the green night scene turned red */
+[data-theme=uranium][data-hud=cockpit] .scout-app-wrapper .heromark{background:radial-gradient(70% 70% at 50% 70%,#3a0d08 0,#1c0505 50%,#0a0202 100%)}   /* v6.33: no background-attachment:fixed; on iOS Safari it freezes a long page */
 .scout-app-wrapper button{font:inherit;cursor:pointer;color:inherit}
 .scout-app-wrapper a{color:inherit}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -377,7 +403,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 @media(max-width:479px){.scout-app-wrapper.tz .bar{gap:6px;padding-left:10px;padding-right:10px}.scout-app-wrapper.tz .bar-actions{gap:4px}.scout-app-wrapper.tz .bar-actions .gh{min-width:0;padding-left:8px;padding-right:8px}.scout-app-wrapper.tz .bar .homedots{display:none}}
 .scout-app-wrapper .gh{background:none;border:1px solid var(--l2);border-radius:9px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--i2);transition:background .15s,color .15s,border-color .15s,box-shadow .15s}
 .scout-app-wrapper .gh:hover{background:var(--hover);color:var(--ink)}
-[data-theme=uranium] .scout-app-wrapper .gh:hover{box-shadow:0 0 14px rgba(57,255,20,.35)}
+[data-theme=uranium] .scout-app-wrapper .gh:hover{box-shadow:0 0 14px rgba(var(--u-rgb),.35)}
 .scout-app-wrapper main{max-width:760px;margin:0 auto;padding:0 18px}
 .scout-app-wrapper .eb{font-family:var(--sans);font-size:12.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mu);margin:34px 0 10px}
 .scout-app-wrapper .heromark{display:none;align-items:center;justify-content:center;border-radius:22px;margin:0 0 18px}
@@ -385,11 +411,11 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
    allowed, a wide night box holds it and the fireflies scene (worker /art/fireflies.svg, loaded by heroScene only in
    Uranium; its first frame on phones) fades in over it, so nothing moves the page when it arrives. Reduced motion: the mark alone. */
 [data-theme=uranium] .scout-app-wrapper .heromark{display:inline-flex}
-.scout-app-wrapper .heromark .hm-mark{display:block;width:96px;height:96px;max-width:none;filter:drop-shadow(0 0 14px rgba(57,255,20,.35))}
+.scout-app-wrapper .heromark .hm-mark{display:block;width:96px;height:96px;max-width:none;filter:drop-shadow(0 0 14px rgba(var(--u-rgb),.35))}
 .scout-app-wrapper .heromark .hm-scene{display:none}
 @media (prefers-reduced-motion:no-preference){
 [data-theme=uranium] .scout-app-wrapper .heromark{display:flex;position:relative;width:100%;max-width:560px;margin:0 auto 18px;aspect-ratio:5/2;overflow:hidden;border-radius:16px;
-  background:radial-gradient(70% 70% at 50% 70%,#123a2a 0,#0b1a2e 50%,#050816 100%);box-shadow:0 0 22px rgba(57,255,20,.22)}
+  background:radial-gradient(70% 70% at 50% 70%,#123a2a 0,#0b1a2e 50%,#050816 100%);box-shadow:0 0 22px rgba(var(--u-rgb),.22)}
 [data-theme=uranium] .scout-app-wrapper .heromark .hm-mark{height:min(96px,82%);width:auto;aspect-ratio:1/1}   /* a narrow box at Extra large text */
 [data-theme=uranium] .scout-app-wrapper .heromark .hm-scene{display:block;position:absolute;inset:0;width:100%;height:100%;max-width:none;opacity:0;transition:opacity .6s ease}
 [data-theme=uranium] .scout-app-wrapper .heromark.has-scene .hm-scene{opacity:1}
@@ -397,8 +423,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 }
 .scout-app-wrapper h1{font-family:var(--display);font-weight:700;font-size:clamp(30px,6vw,44px);line-height:1.05;letter-spacing:-.028em;margin:0 0 12px}
 .scout-app-wrapper h1 em{color:var(--ac);font-style:italic;font-weight:600}
-[data-theme=uranium] .scout-app-wrapper h1{text-shadow:0 0 22px rgba(57,255,20,.4)}
-[data-theme=uranium] .scout-app-wrapper h1 em{text-shadow:0 0 14px rgba(57,255,20,.9)}
+[data-theme=uranium] .scout-app-wrapper h1{text-shadow:0 0 22px rgba(var(--u-rgb),.4)}
+[data-theme=uranium] .scout-app-wrapper h1 em{text-shadow:0 0 14px rgba(var(--u-rgb),.9)}
 .scout-app-wrapper .lede{margin:0;color:var(--i3);max-width:54ch;font-size:16px;text-wrap:balance}   /* v7.81: no word left alone on a line */
 .scout-app-wrapper form{display:flex;gap:8px;margin:22px 0 10px;flex-wrap:wrap}
 .scout-app-wrapper input[type=search],.scout-app-wrapper input[type=text]{flex:1 1 220px;min-width:0;height:50px;padding:0 16px;border:1px solid var(--l2);border-radius:12px;background:var(--cd2);font:inherit;font-size:16px;font-weight:500;color:var(--ink);transition:border-color .15s,box-shadow .15s,background .15s}
@@ -414,30 +440,30 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 @media(prefers-reduced-motion:no-preference){.scout-app-wrapper input.wantterm{animation:otpWant .5s ease-in-out 2} }
 @keyframes otpWant{0%,100%{box-shadow:0 0 0 3px var(--ac-ring)}50%{box-shadow:0 0 0 7px var(--ac-ring)} }
 .scout-app-wrapper input:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-ring);background:var(--cd)}
-[data-theme=uranium] .scout-app-wrapper input:focus{box-shadow:0 0 0 3px var(--ac-ring),0 0 22px rgba(57,255,20,.35)}
+[data-theme=uranium] .scout-app-wrapper input:focus{box-shadow:0 0 0 3px var(--ac-ring),0 0 22px rgba(var(--u-rgb),.35)}
 .scout-app-wrapper .b{height:50px;padding:0 20px;border:1px solid var(--l2);border-radius:12px;background:var(--cd2);font-size:15px;font-weight:700;white-space:nowrap;color:var(--ink);transition:background .15s,border-color .15s,box-shadow .2s}
 .scout-app-wrapper .b:hover{background:var(--hover)}
 .scout-app-wrapper .b.p{background:var(--ac);color:var(--onink);border-color:var(--ac)}
 .scout-app-wrapper .b.p:hover{filter:brightness(.94)}
-[data-theme=uranium] .scout-app-wrapper .b.p{box-shadow:0 0 20px rgba(57,255,20,.55),0 0 45px rgba(57,255,20,.28),inset 0 0 10px rgba(255,255,255,.15)}
-[data-theme=uranium] .scout-app-wrapper .b.p:hover{box-shadow:0 0 28px rgba(57,255,20,.75),0 0 60px rgba(57,255,20,.4),inset 0 0 10px rgba(255,255,255,.2)}
+[data-theme=uranium] .scout-app-wrapper .b.p{box-shadow:0 0 20px rgba(var(--u-rgb),.55),0 0 45px rgba(var(--u-rgb),.28),inset 0 0 10px rgba(255,255,255,.15)}
+[data-theme=uranium] .scout-app-wrapper .b.p:hover{box-shadow:0 0 28px rgba(var(--u-rgb),.75),0 0 60px rgba(var(--u-rgb),.4),inset 0 0 10px rgba(255,255,255,.2)}
 .scout-app-wrapper .hint{font-size:13px;color:var(--mu);margin:0 0 24px;line-height:1.55}
 .scout-app-wrapper .hint b{color:var(--i2);font-weight:700}
 .scout-app-wrapper .sh{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;flex-wrap:wrap}
 .scout-app-wrapper h2{font-family:var(--display);font-weight:700;font-size:19px;margin:0;letter-spacing:-.02em}
-[data-theme=uranium] .scout-app-wrapper h2{text-shadow:0 0 12px rgba(57,255,20,.3)}
+[data-theme=uranium] .scout-app-wrapper h2{text-shadow:0 0 12px rgba(var(--u-rgb),.3)}
 .scout-app-wrapper h3{font-family:var(--display);font-weight:700;font-size:16px;margin:0;letter-spacing:-.015em}
 .scout-app-wrapper .quick{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 30px;min-height:40px}
 .scout-app-wrapper .qc{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border:1px solid var(--l2);border-radius:999px;background:var(--cd2);font-size:14px;font-weight:700;color:var(--ink);transition:background .15s,border-color .15s,color .15s,box-shadow .2s}
 .scout-app-wrapper .qc:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-soft)}
-[data-theme=uranium] .scout-app-wrapper .qc:hover{box-shadow:0 0 16px rgba(57,255,20,.45)}
+[data-theme=uranium] .scout-app-wrapper .qc:hover{box-shadow:0 0 16px rgba(var(--u-rgb),.45)}
 .scout-app-wrapper .qc s{text-decoration:none;color:var(--go);font-size:13px;line-height:1}
 [data-theme=uranium] .scout-app-wrapper .qc s{text-shadow:0 0 8px currentColor}
 .scout-app-wrapper .empty{font-size:13px;color:var(--mu);padding:14px 16px;border:1px dashed var(--l2);border-radius:12px;width:100%;line-height:1.55}
 .scout-app-wrapper .empty b{color:var(--ac)}
 .scout-app-wrapper #otp-res{margin:0 0 30px;animation:rise .26s ease-out}
 .scout-app-wrapper .rc{background:var(--cd2);border:1px solid var(--ln);border-radius:18px;overflow:hidden;box-shadow:0 18px 40px -22px var(--shadow-lg)}
-[data-theme=uranium] .scout-app-wrapper .rc{box-shadow:0 0 40px rgba(57,255,20,.15),0 18px 40px -22px rgba(0,0,0,.7)}
+[data-theme=uranium] .scout-app-wrapper .rc{box-shadow:0 0 40px rgba(var(--u-rgb),.15),0 18px 40px -22px rgba(0,0,0,.7)}
 .scout-app-wrapper .rh{display:flex;justify-content:space-between;gap:14px;padding:18px 18px 14px;border-bottom:1px solid var(--ln);align-items:flex-start}
 .scout-app-wrapper .rh-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;flex:0 0 auto}
 .scout-app-wrapper .rh-acts .gh.kept{opacity:.75}
@@ -448,15 +474,15 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .rs strong{color:var(--i2);font-weight:700}
 .scout-app-wrapper .running{padding:26px 18px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center}
 .scout-app-wrapper .spinner{width:46px;height:46px;border:3px solid var(--ln);border-top-color:var(--ac);border-radius:50%;animation:spin 1s linear infinite}
-[data-theme=uranium] .scout-app-wrapper .spinner{box-shadow:0 0 22px rgba(57,255,20,.55),inset 0 0 12px rgba(57,255,20,.25)}
+[data-theme=uranium] .scout-app-wrapper .spinner{box-shadow:0 0 22px rgba(var(--u-rgb),.55),inset 0 0 12px rgba(var(--u-rgb),.25)}
 .scout-app-wrapper .running-count{font-family:var(--display);font-size:34px;font-weight:800;color:var(--ac);letter-spacing:-.03em;line-height:1}
-[data-theme=uranium] .scout-app-wrapper .running-count{text-shadow:0 0 22px rgba(57,255,20,.85),0 0 45px rgba(57,255,20,.5)}
+[data-theme=uranium] .scout-app-wrapper .running-count{text-shadow:0 0 22px rgba(var(--u-rgb),.85),0 0 45px rgba(var(--u-rgb),.5)}
 .scout-app-wrapper .running-lbl{font-size:13px;color:var(--mu);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .scout-app-wrapper .progress{width:100%;max-width:280px;height:6px;border-radius:3px;background:var(--ln);overflow:hidden;margin-top:4px}
 .scout-app-wrapper .running .stopb{margin-top:10px;width:100%;max-width:280px;border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
 .scout-app-wrapper .running .stopb:hover{filter:brightness(1.05)}
 .scout-app-wrapper .progress i{display:block;height:100%;background:var(--ac);border-radius:3px;transition:width .3s ease-out}
-[data-theme=uranium] .scout-app-wrapper .progress i{box-shadow:0 0 14px rgba(57,255,20,.9)}
+[data-theme=uranium] .scout-app-wrapper .progress i{box-shadow:0 0 14px rgba(var(--u-rgb),.9)}
 .scout-app-wrapper .sourcestrip{display:flex;flex-wrap:wrap;gap:6px;padding:12px 18px;border-bottom:1px solid var(--ln);background:var(--cd3)}
 .scout-app-wrapper .srcchip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;padding:5px 10px;border-radius:99px;background:var(--cd2);color:var(--mu);border:1px solid var(--ln)}
 .scout-app-wrapper .srcchip.hit{background:var(--suc-soft);color:var(--suc-ink);border-color:transparent}
@@ -469,7 +495,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .hit{display:flex;gap:11px;padding:9px 18px;border-bottom:1px solid var(--ln);align-items:center;text-decoration:none;transition:background .15s,box-shadow .2s}
 .scout-app-wrapper .hit:last-child{border-bottom:0}
 .scout-app-wrapper .hit:hover{background:var(--ac-soft)}
-[data-theme=uranium] .scout-app-wrapper .hit:hover{box-shadow:inset 0 0 22px rgba(57,255,20,.12)}
+[data-theme=uranium] .scout-app-wrapper .hit:hover{box-shadow:inset 0 0 22px rgba(var(--u-rgb),.12)}
 .scout-app-wrapper .hit-icon{width:30px;height:30px;flex:0 0 30px;border-radius:9px;background:var(--cd3);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--i3);overflow:hidden;position:relative}
 .scout-app-wrapper .hit-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .scout-app-wrapper .hit-title{font-size:14px;font-weight:700;color:var(--ink);line-height:1.3;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -480,7 +506,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .hit-src{color:var(--mu);font-weight:800}
 .scout-app-wrapper .hit-arrow{font-size:13px;color:var(--ac);font-weight:800;flex-shrink:0;opacity:.55;transition:opacity .15s}
 .scout-app-wrapper .hit:hover .hit-arrow{opacity:1}
-[data-theme=uranium] .scout-app-wrapper .hit-arrow{text-shadow:0 0 10px rgba(57,255,20,.7)}
+[data-theme=uranium] .scout-app-wrapper .hit-arrow{text-shadow:0 0 10px rgba(var(--u-rgb),.7)}
 .scout-app-wrapper .rf{padding:14px 18px;border-top:1px solid var(--ln);background:var(--cd3)}
 .scout-app-wrapper .rf .b{width:100%;height:48px;margin-bottom:10px}
 .scout-app-wrapper .rf p{margin:0;font-size:12.5px;color:var(--mu);line-height:1.55}
@@ -507,7 +533,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sb b{font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:800}
 .scout-app-wrapper .sb.on{background:var(--go-soft);color:var(--go)}
 .scout-app-wrapper .sb.on i{color:var(--go)}
-[data-theme=uranium] .scout-app-wrapper .sb.on{box-shadow:inset 0 0 14px rgba(57,255,20,.3)}
+[data-theme=uranium] .scout-app-wrapper .sb.on{box-shadow:inset 0 0 14px rgba(var(--u-rgb),.3)}
 [data-theme=uranium] .scout-app-wrapper .sb.on i{text-shadow:0 0 10px currentColor}
 .scout-app-wrapper .rm{width:38px;flex:0 0 38px;border:0;border-left:1px solid var(--ln);background:transparent;color:var(--mu);font-size:16px;padding:0}
 .scout-app-wrapper .rm:hover{background:var(--hover);color:var(--warn)}
@@ -519,7 +545,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .db.on{color:var(--ink)}
 .scout-app-wrapper .db.on span:last-child{color:var(--ac)}
 .scout-app-wrapper .db.on::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:26px;height:2px;border-radius:0 0 3px 3px;background:var(--ac)}
-[data-theme=uranium] .scout-app-wrapper .db.on::before{box-shadow:0 0 14px rgba(57,255,20,.9),0 0 30px rgba(57,255,20,.5)}
+[data-theme=uranium] .scout-app-wrapper .db.on::before{box-shadow:0 0 14px rgba(var(--u-rgb),.9),0 0 30px rgba(var(--u-rgb),.5)}
 .scout-app-wrapper .db.dim{color:var(--mu);opacity:.5}
 .scout-app-wrapper #otp-toast{position:fixed;left:50%;bottom:104px;z-index:60;transform:translate(-50%,14px);background:var(--toast-bg);color:var(--toast-fg);padding:13px 20px;border-radius:99px;font-size:14px;max-width:min(92vw,470px);text-align:center;opacity:0;pointer-events:none;transition:.25s;box-shadow:0 14px 38px -12px var(--shadow-lg);font-weight:600;line-height:1.4}
 .scout-app-wrapper #otp-toast.on{opacity:1;transform:translate(-50%,0)}
@@ -527,20 +553,20 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sc{position:fixed;inset:0;z-index:70;background:var(--scrim);opacity:0;pointer-events:none;transition:.22s}
 .scout-app-wrapper .sc.on{opacity:1;pointer-events:auto}
 .scout-app-wrapper .drawer{position:fixed;top:0;right:0;bottom:0;z-index:75;width:min(432px,100%);background:var(--bg);border-left:1px solid var(--ln);display:flex;flex-direction:column;transform:translateX(101%);transition:transform .3s cubic-bezier(.3,.85,.4,1),background-color .3s}
-[data-theme=uranium] .scout-app-wrapper .drawer{background:#0a0a1e}
+[data-theme=uranium] .scout-app-wrapper .drawer{background:var(--u-card)}
 .scout-app-wrapper .drawer.on{transform:none}
 .scout-app-wrapper .dh{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--ln)}
 .scout-app-wrapper .dh h2{font-size:19px}
 .scout-app-wrapper .ic{width:36px;height:36px;border:1px solid var(--l2);border-radius:10px;background:var(--cd2);color:var(--i2);font-size:15px;transition:box-shadow .2s}
 .scout-app-wrapper .ic:hover{background:var(--hover);color:var(--ink)}
-[data-theme=uranium] .scout-app-wrapper .ic:hover{box-shadow:0 0 14px rgba(57,255,20,.4)}
+[data-theme=uranium] .scout-app-wrapper .ic:hover{box-shadow:0 0 14px rgba(var(--u-rgb),.4)}
 .scout-app-wrapper .tabs{display:flex;padding:0 18px;border-bottom:1px solid var(--ln)}
 .scout-app-wrapper .tab{flex:1;background:none;border:0;border-bottom:2px solid transparent;padding:14px 6px 12px;color:var(--mu);font-size:12.5px;font-weight:800;letter-spacing:.14em;display:flex;align-items:center;justify-content:center;gap:7px}
 .scout-app-wrapper .tab u{font-size:12.5px;padding:2px 7px;border-radius:99px;background:var(--cd3);color:var(--i3);font-weight:800;text-decoration:none}
 .scout-app-wrapper .tab.on{color:var(--ink);border-bottom-color:var(--ac)}
 .scout-app-wrapper .tab.on u{background:var(--ac);color:var(--onink)}
-[data-theme=uranium] .scout-app-wrapper .tab.on{text-shadow:0 0 10px rgba(57,255,20,.6)}
-[data-theme=uranium] .scout-app-wrapper .tab.on u{box-shadow:0 0 12px rgba(57,255,20,.6)}
+[data-theme=uranium] .scout-app-wrapper .tab.on{text-shadow:0 0 10px rgba(var(--u-rgb),.6)}
+[data-theme=uranium] .scout-app-wrapper .tab.on u{box-shadow:0 0 12px rgba(var(--u-rgb),.6)}
 .scout-app-wrapper .acts{display:flex;gap:8px;padding:12px 18px 6px}
 .scout-app-wrapper .mn{border:1px solid var(--l2);background:var(--cd2);border-radius:9px;padding:7px 12px;font-size:12.5px;font-weight:800;color:var(--i2)}
 .scout-app-wrapper .mn:hover{background:var(--hover);color:var(--ink)}
@@ -568,7 +594,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .addrow input{flex:1;height:46px}
 .scout-app-wrapper .addrow button{height:46px;padding:0 18px;border-radius:11px;border:1px solid var(--ac);background:var(--ac);color:var(--onink);font-weight:800;font-size:14px}
 .scout-app-wrapper .addrow button:hover{filter:brightness(.94)}
-[data-theme=uranium] .scout-app-wrapper .addrow button{box-shadow:0 0 18px rgba(57,255,20,.5)}
+[data-theme=uranium] .scout-app-wrapper .addrow button{box-shadow:0 0 18px rgba(var(--u-rgb),.5)}
 .scout-app-wrapper .setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 0;border-bottom:1px solid var(--ln)}
 .scout-app-wrapper .setrow:last-child{border-bottom:0}
 .scout-app-wrapper .setrow h3{margin:0 0 3px;font-size:15px;font-weight:700}
@@ -584,14 +610,14 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .md{background:var(--modal-bg);border-radius:20px;width:100%;max-width:540px;max-height:88vh;max-height:calc(88vh / var(--tz,1));overflow:auto;padding:28px;box-shadow:0 30px 70px -28px var(--shadow-lg);transform:translateY(14px);transition:.28s;border:1px solid var(--ln)}
 .scout-app-wrapper .hfilm{position:relative;margin:14px 0 6px;border-radius:14px;overflow:hidden;aspect-ratio:16/9;background:#040414}   /* v7.14: the launch film */
 .scout-app-wrapper .hfilm video{display:block;width:100%;height:100%;background:#040414}
-.scout-app-wrapper .hfilm-go{all:unset;box-sizing:border-box;cursor:pointer;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:14px;padding:16px;color:#8affb8;font:inherit;background:radial-gradient(70% 90% at 50% 45%,rgba(57,255,20,.22),rgba(57,255,20,0) 70%),linear-gradient(#0a0e2e,#040414)}
-.scout-app-wrapper .hfilm-go i{flex:none;position:relative;width:52px;height:52px;border-radius:50%;border:2px solid #39ff14;box-shadow:0 0 18px rgba(57,255,20,.55)}
+.scout-app-wrapper .hfilm-go{all:unset;box-sizing:border-box;cursor:pointer;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:14px;padding:16px;color:#8affb8;font:inherit;background:radial-gradient(70% 90% at 50% 45%,rgba(var(--u-rgb),.22),rgba(var(--u-rgb),0) 70%),linear-gradient(var(--u-top),#040414)}
+.scout-app-wrapper .hfilm-go i{flex:none;position:relative;width:52px;height:52px;border-radius:50%;border:2px solid var(--u-hi);box-shadow:0 0 18px rgba(var(--u-rgb),.55)}
 .scout-app-wrapper .hfilm-go i:after{content:'';position:absolute;left:19px;top:14px;border-left:16px solid #8affb8;border-top:10px solid transparent;border-bottom:10px solid transparent}
 .scout-app-wrapper .hfilm-go span{display:flex;flex-direction:column;text-align:left;gap:2px}
 .scout-app-wrapper .hfilm-go b{font-family:var(--display);font-size:20px;line-height:1.15;color:#d8ffe6}
 .scout-app-wrapper .hfilm-go em{font-style:normal;font-size:14px;opacity:.85}
-.scout-app-wrapper .hfilm-go:focus-visible{outline:3px solid #39ff14;outline-offset:-3px}
-[data-theme=uranium] .scout-app-wrapper .md{box-shadow:0 0 60px rgba(57,255,20,.2),0 30px 70px -28px rgba(0,0,0,.9)}
+.scout-app-wrapper .hfilm-go:focus-visible{outline:3px solid var(--u-hi);outline-offset:-3px}
+[data-theme=uranium] .scout-app-wrapper .md{box-shadow:0 0 60px rgba(var(--u-rgb),.2),0 30px 70px -28px rgba(0,0,0,.9)}
 .scout-app-wrapper .mo.on .md{transform:none}
 .scout-app-wrapper .md h2{font-family:var(--display);font-size:26px;font-weight:800;margin:0 0 8px;letter-spacing:-.025em}
 .scout-app-wrapper .md>p{margin:0 0 22px;font-size:15px;color:var(--i3);line-height:1.55}
@@ -610,7 +636,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 [data-theme=uranium]{--bar-bg:rgba(4,4,20,.96)}
 .scout-app-wrapper .pmark{display:flex;align-items:center;justify-content:center;margin:24px 0 0;will-change:transform,opacity}
 .scout-app-wrapper .pmark img{max-height:210px;max-width:min(520px,90vw);height:auto;width:auto;display:block;object-fit:contain}
-[data-theme=uranium] .scout-app-wrapper .pmark img{filter:drop-shadow(0 0 18px rgba(57,255,20,.45))}
+[data-theme=uranium] .scout-app-wrapper .pmark img{filter:drop-shadow(0 0 18px rgba(var(--u-rgb),.45))}
 .scout-app-wrapper .pmark+.eb{margin-top:10px}
 @media(max-width:480px){.scout-app-wrapper .pmark img{max-height:150px;max-width:92vw}}
 /* v6.77: the panther is a button that shows the QR code, so showing someone Prowl is one tap from the top of the app.
@@ -620,7 +646,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .pm-qr{position:absolute;right:2px;bottom:2px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:var(--cd);border:1px solid var(--l2);color:var(--ink);box-shadow:0 2px 8px -3px var(--shadow-lg,rgba(0,0,0,.35))}
 .scout-app-wrapper .pm-qr svg{width:18px;height:18px;display:block}
 .scout-app-wrapper .pm-btn:hover .pm-qr{border-color:var(--ac);color:var(--ac)}
-[data-theme=uranium] .scout-app-wrapper .pm-qr{color:#39ff14;border-color:rgba(57,255,20,.6)}
+[data-theme=uranium] .scout-app-wrapper .pm-qr{color:var(--u-hi);border-color:rgba(var(--u-rgb),.6)}
 /* in the sheet the code is bigger: easier for a phone camera held across a table */
 .scout-app-wrapper .qr-panel.qr-big{margin:4px auto 0}
 .scout-app-wrapper .qr-panel.qr-big svg{width:240px;height:240px;max-width:70vw;max-height:70vw}
@@ -645,7 +671,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .nearg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .scout-app-wrapper .nearc{display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;min-height:46px;padding:9px 11px;border:1px solid var(--l2);border-radius:11px;background:var(--cd2);font-size:13px;font-weight:700;color:var(--ink);line-height:1.25;transition:background .15s,border-color .15s,color .15s,box-shadow .2s}
 .scout-app-wrapper .nearc:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-soft)}
-[data-theme=uranium] .scout-app-wrapper .nearc:hover{box-shadow:0 0 16px rgba(57,255,20,.45)}
+[data-theme=uranium] .scout-app-wrapper .nearc:hover{box-shadow:0 0 16px rgba(var(--u-rgb),.45)}
 @media(min-width:380px){.scout-app-wrapper .nearg{grid-template-columns:repeat(3,minmax(0,1fr))}}
 /* ---- Facebook region hubs (Den > Local) ---- */
 .scout-app-wrapper .hubbar{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0}
@@ -653,7 +679,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .hubc{border:1px solid var(--l2);background:var(--cd2);color:var(--ink);border-radius:999px;padding:9px 13px;font-size:13px;font-weight:700;line-height:1;min-height:36px;font-family:inherit;cursor:pointer}
 .scout-app-wrapper .hubc:hover{border-color:var(--ac);color:var(--ac);background:var(--ac-soft)}
 .scout-app-wrapper .hubc.on{background:var(--ac);border-color:var(--ac);color:var(--onink)}
-[data-theme=uranium] .scout-app-wrapper .hubc.on{box-shadow:0 0 16px rgba(57,255,20,.45)}
+[data-theme=uranium] .scout-app-wrapper .hubc.on{box-shadow:0 0 16px rgba(var(--u-rgb),.45)}
 /* ---- backup / restore (Den > Settings) ---- */
 .scout-app-wrapper .setcol{display:flex;flex-direction:column;gap:8px;padding:15px 0;border-bottom:1px solid var(--ln)}
 .scout-app-wrapper .setlab{font-size:13px;font-weight:700;color:var(--i2)}
@@ -683,7 +709,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 @keyframes foundScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .scout-app-wrapper .found-card{width:140px;flex-shrink:0;background:var(--cd);border:1px solid var(--ln);border-radius:10px;overflow:hidden;text-decoration:none;color:inherit;text-align:left;transition:border-color .15s,box-shadow .2s}
 .scout-app-wrapper .found-card:hover{border-color:var(--ac)}
-[data-theme=uranium] .scout-app-wrapper .found-card:hover{box-shadow:0 0 16px rgba(57,255,20,.4)}
+[data-theme=uranium] .scout-app-wrapper .found-card:hover{box-shadow:0 0 16px rgba(var(--u-rgb),.4)}
 .scout-app-wrapper .found-card img{width:140px;height:140px;object-fit:cover;display:block;background:var(--cd3);max-width:140px}
 .scout-app-wrapper .found-card .fc-title{font-size:12.5px;font-weight:600;line-height:1.25;padding:6px 8px 2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:32px;color:var(--ink)}
 .scout-app-wrapper .found-card .fc-price{font-size:13px;font-weight:800;color:var(--ac);padding:0 8px 8px}
@@ -698,7 +724,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-close{grid-column:1/-1;margin:6px 0 0;padding-top:8px;border-top:1px dashed var(--ln);font-size:13px;font-weight:700;color:var(--mu)}
 .scout-app-wrapper .sgw-card{background:var(--cd);border:1px solid var(--ln);border-radius:10px;overflow:hidden;text-decoration:none;color:inherit;text-align:left;display:flex;flex-direction:column;transition:border-color .15s,box-shadow .2s}
 .scout-app-wrapper .sgw-card:hover{border-color:var(--ac)}
-[data-theme=uranium] .scout-app-wrapper .sgw-card:hover{box-shadow:0 0 16px rgba(57,255,20,.4)}
+[data-theme=uranium] .scout-app-wrapper .sgw-card:hover{box-shadow:0 0 16px rgba(var(--u-rgb),.4)}
 .scout-app-wrapper .sgw-card img{width:100%;max-width:100% ;aspect-ratio:1/1;object-fit:cover;display:block;background:var(--cd3)}
 .scout-app-wrapper .sgw-t{font-size:12.5px;font-weight:600;line-height:1.3;padding:7px 8px 2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:34px;color:var(--ink)}
 .scout-app-wrapper .sgw-p{font-size:14px;font-weight:800;color:var(--ac);padding:0 8px 1px}
@@ -843,7 +869,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .copyr{font-size:12.5px;line-height:1.5;color:var(--mu2);text-align:center;margin:4px 0 0}
 .scout-app-wrapper .appbtn{display:inline-flex;align-items:center;gap:9px;min-height:46px;padding:0 18px;border:1px solid var(--l2);border-radius:99px;background:var(--cd3);color:var(--i2);font-family:var(--sans);font-size:15px;font-weight:700;letter-spacing:.01em;transition:background .15s,border-color .15s,color .15s}
 .scout-app-wrapper .appbtn:hover{background:var(--ac-soft);border-color:var(--ac);color:var(--ink)}
-[data-theme=uranium] .scout-app-wrapper .appbtn:hover{box-shadow:0 0 16px rgba(57,255,20,.3)}
+[data-theme=uranium] .scout-app-wrapper .appbtn:hover{box-shadow:0 0 16px rgba(var(--u-rgb),.3)}
 .scout-app-wrapper .appbtn .appico{font-size:16px;line-height:1;color:var(--ac)}
 .scout-app-wrapper .appshop{display:inline-flex;align-items:center;min-height:46px;padding:0 4px;color:var(--mu);font-size:15px;font-weight:700;text-decoration:underline;text-underline-offset:3px}
 .scout-app-wrapper .appshop:hover{color:var(--ink)}
@@ -860,12 +886,12 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .rf .oa-warn{display:flex;gap:10px;align-items:flex-start;text-align:left;margin:0 0 12px;padding:12px 14px;border:1px solid var(--ac);border-left-width:4px;border-radius:11px;background:var(--ac-soft);font-size:16px;font-weight:600;color:var(--ink);line-height:1.45}
 .scout-app-wrapper .rf .oa-warn b{color:var(--ink);font-weight:800}
 .scout-app-wrapper .rf .oa-warn i{flex:0 0 22px;height:22px;margin-top:1px;border-radius:50%;background:var(--ac);color:var(--onink);font-style:normal;font-weight:800;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center}
-[data-theme=uranium] .scout-app-wrapper .rf .oa-warn{box-shadow:0 0 18px rgba(57,255,20,.25)}
+[data-theme=uranium] .scout-app-wrapper .rf .oa-warn{box-shadow:0 0 18px rgba(var(--u-rgb),.25)}
 /* ---- v5.7 visual pass ---- */
 .scout-app-wrapper .hunts{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin:0 0 16px}
 .scout-app-wrapper .hc{position:relative;text-align:left;border:1px solid var(--l2);border-radius:16px;background:var(--cd);padding:14px 14px 13px;display:flex;flex-direction:column;gap:10px;min-height:96px;font-family:var(--sans);transition:border-color .15s,transform .15s,box-shadow .2s}
 .scout-app-wrapper .hc:hover{border-color:var(--ac);transform:translateY(-1px);box-shadow:0 10px 24px -16px var(--shadow-lg)}
-[data-theme=uranium] .scout-app-wrapper .hc:hover{box-shadow:0 0 22px rgba(57,255,20,.35)}
+[data-theme=uranium] .scout-app-wrapper .hc:hover{box-shadow:0 0 22px rgba(var(--u-rgb),.35)}
 .scout-app-wrapper .hc b{font-family:var(--display);font-size:17px;font-weight:700;line-height:1.15;letter-spacing:-.015em;color:var(--ink);padding-right:14px}
 .scout-app-wrapper .hc small{margin-top:auto;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--mu);font-weight:600}
 .scout-app-wrapper .hc small i{width:7px;height:7px;border-radius:50%;background:var(--l2);flex:0 0 7px}
@@ -899,7 +925,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .hit-icon.loc{background:var(--ac-tint);color:var(--ac)!important}
 .scout-app-wrapper .hit-meta>span+span{color:var(--i3)}
 .scout-app-wrapper .oabar{position:-webkit-sticky;position:sticky;bottom:calc(78px + env(safe-area-inset-bottom));z-index:5;display:flex;gap:10px;align-items:center;padding:10px 12px;margin:0 10px 10px;border:1px solid var(--l2);border-radius:14px;background:var(--cd);box-shadow:0 10px 30px -14px var(--shadow-lg)}
-[data-theme=uranium] .scout-app-wrapper .oabar{box-shadow:0 0 24px rgba(57,255,20,.2)}
+[data-theme=uranium] .scout-app-wrapper .oabar{box-shadow:0 0 24px rgba(var(--u-rgb),.2)}
 .scout-app-wrapper .oabar .b{flex:1;height:48px;margin:0}
 .scout-app-wrapper .oabar small{flex:0 1 130px;font-size:13px;line-height:1.35;color:var(--i3);font-weight:600}
 .scout-app-wrapper .hc .lk{top:4px;right:4px;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer}
@@ -1496,7 +1522,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
   .scout-app-wrapper #otp-denBody{overscroll-behavior:contain;-webkit-overflow-scrolling:touch }
   .scout-app-wrapper .denPane{padding:14px 14px calc(24px + env(safe-area-inset-bottom)) }
   .scout-app-wrapper #otp-denTerms .addrow{position:sticky;top:0;z-index:3;background:var(--bg);margin:-14px -14px 0;padding:12px 14px;border-bottom:1px solid var(--ln) }
-  [data-theme=uranium] .scout-app-wrapper #otp-denTerms .addrow{background:#0a0a1e }
+  [data-theme=uranium] .scout-app-wrapper #otp-denTerms .addrow{background:var(--u-card) }
   .scout-app-wrapper .addrow input,.scout-app-wrapper .addrow button{height:50px;font-size:16px }
   .scout-app-wrapper .ck{width:52px;flex-basis:52px }
   .scout-app-wrapper .tb{min-height:56px }
@@ -1602,7 +1628,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper.k2 .k2-hide{display:none!important}
 .scout-app-wrapper.k2{--k2-ln:#0B3D2E;--k2-band:#F9A825;--k2-bandink:#0B3D2E;--k2-card:#FFFFFF;--k2-dot:rgba(11,61,46,.10);--k2-lab:#B07A12}
 [data-theme=dark] .scout-app-wrapper.k2{--k2-ln:#3a3a34;--k2-band:#ffb200;--k2-bandink:#0d0d0c;--k2-card:#121210;--k2-dot:rgba(255,255,255,.05);--k2-lab:#ffb200}
-[data-theme=uranium] .scout-app-wrapper.k2{--k2-ln:rgba(57,255,20,.55);--k2-band:#39ff14;--k2-bandink:#040414;--k2-card:#0a0a1e;--k2-dot:rgba(57,255,20,.07);--k2-lab:#39ff14}
+[data-theme=uranium] .scout-app-wrapper.k2{--k2-ln:rgba(var(--u-rgb),.55);--k2-band:var(--u-hi);--k2-bandink:#040414;--k2-card:var(--u-card);--k2-dot:rgba(var(--u-rgb),.07);--k2-lab:var(--u-hi)}
 .scout-app-wrapper.k2{background-image:radial-gradient(var(--k2-dot) 1.2px,transparent 1.3px);background-size:20px 20px}
 .scout-app-wrapper.k2 h1{font-weight:800;font-style:italic;letter-spacing:-.02em;color:var(--k2-ln)}
 [data-theme=dark] .scout-app-wrapper.k2 h1,[data-theme=uranium] .scout-app-wrapper.k2 h1{color:var(--ink)}
@@ -1694,11 +1720,11 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v6.95: in Uranium, the green band at the top of the Den, the listing popup and the other pop-up screens is a deep
    green gradient (#1e7f24 to #0c330e, from Matt's shades of #3cff49) instead of the bright #39ff14, with a pale title
    (4.9:1 or better). The screens under it stay black. */
-[data-theme=uranium] .scout-app-wrapper.k2 .dh{background:linear-gradient(180deg,#1e7f24 0,#0c330e 100%)}
-[data-theme=uranium] .scout-app-wrapper.k2 .dh h2{color:#ebffec!important}
+[data-theme=uranium] .scout-app-wrapper.k2 .dh{background:linear-gradient(180deg,var(--u-band1) 0,var(--u-band2) 100%)}
+[data-theme=uranium] .scout-app-wrapper.k2 .dh h2{color:var(--u-pale)!important}
 /* v6.95: and the popup's View on <site> button matches the band, with a bright edge so it still reads as the button */
-[data-theme=uranium] .scout-app-wrapper.k2 .otp-sheet a.b.p.pp-go{background:linear-gradient(180deg,#1e7f24 0,#0c330e 100%);color:#ebffec;border-color:#3cff49;box-shadow:0 0 14px rgba(60,255,73,.35)}
-[data-theme=uranium] .scout-app-wrapper.k2 .otp-sheet a.b.p.pp-go:hover{box-shadow:0 0 20px rgba(60,255,73,.55)}
+[data-theme=uranium] .scout-app-wrapper.k2 .otp-sheet a.b.p.pp-go{background:linear-gradient(180deg,var(--u-band1) 0,var(--u-band2) 100%);color:var(--u-pale);border-color:var(--u-hi2);box-shadow:0 0 14px rgba(var(--u-rgb2),.35)}
+[data-theme=uranium] .scout-app-wrapper.k2 .otp-sheet a.b.p.pp-go:hover{box-shadow:0 0 20px rgba(var(--u-rgb2),.55)}
 .scout-app-wrapper.k2 .tabs{gap:6px;padding:12px;border-bottom:2.5px solid var(--k2-ln);background:var(--bg)}
 .scout-app-wrapper.k2 .tab{border:2px solid var(--k2-ln);border-radius:999px;background:var(--k2-card);color:var(--k2-ln);min-height:40px;padding:8px 4px;font-size:12.5px;letter-spacing:.05em;text-shadow:none}
 [data-theme=dark] .scout-app-wrapper.k2 .tab,[data-theme=uranium] .scout-app-wrapper.k2 .tab{color:var(--ink)}
@@ -1739,17 +1765,17 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper [role=button]:focus-visible,.scout-app-wrapper [tabindex]:focus-visible,
 .scout-app-wrapper input:focus-visible,.scout-app-wrapper select:focus-visible,.scout-app-wrapper textarea:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
 .scout-app-wrapper .sgw-card:focus-within,.scout-app-wrapper .nearc:focus-visible,.scout-app-wrapper .hc:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
-[data-theme=uranium] .scout-app-wrapper h1{text-shadow:0 0 12px rgba(57,255,20,.35)}
-[data-theme=uranium] .scout-app-wrapper .b.p{box-shadow:0 0 12px rgba(57,255,20,.45)}
-[data-theme=uranium] .scout-app-wrapper .b.p:hover{box-shadow:0 0 16px rgba(57,255,20,.55)}
-[data-theme=uranium] .scout-app-wrapper .running-count{text-shadow:0 0 12px rgba(57,255,20,.6)}
-[data-theme=uranium] .scout-app-wrapper .md{box-shadow:0 0 16px rgba(57,255,20,.2),0 30px 70px -28px rgba(0,0,0,.9)}
-[data-theme=uranium] .scout-app-wrapper .rc{box-shadow:0 0 16px rgba(57,255,20,.12),0 18px 40px -22px rgba(0,0,0,.7)}
+[data-theme=uranium] .scout-app-wrapper h1{text-shadow:0 0 12px rgba(var(--u-rgb),.35)}
+[data-theme=uranium] .scout-app-wrapper .b.p{box-shadow:0 0 12px rgba(var(--u-rgb),.45)}
+[data-theme=uranium] .scout-app-wrapper .b.p:hover{box-shadow:0 0 16px rgba(var(--u-rgb),.55)}
+[data-theme=uranium] .scout-app-wrapper .running-count{text-shadow:0 0 12px rgba(var(--u-rgb),.6)}
+[data-theme=uranium] .scout-app-wrapper .md{box-shadow:0 0 16px rgba(var(--u-rgb),.2),0 30px 70px -28px rgba(0,0,0,.9)}
+[data-theme=uranium] .scout-app-wrapper .rc{box-shadow:0 0 16px rgba(var(--u-rgb),.12),0 18px 40px -22px rgba(0,0,0,.7)}
 [data-theme=uranium] .scout-app-wrapper .lede,[data-theme=uranium] .scout-app-wrapper p,[data-theme=uranium] .scout-app-wrapper li,
 [data-theme=uranium] .scout-app-wrapper .rs,[data-theme=uranium] .scout-app-wrapper .sgw-note{text-shadow:none}
 /* v6.33: the bittersweet accent is for daylight only; dark keeps amber and uranium keeps green (contrast) */
 [data-theme=dark] .scout-app-wrapper.k2{--ac:#F2A743;--ac-ring:rgba(242,167,67,.3)}
-[data-theme=uranium] .scout-app-wrapper.k2{--ac:#39ff14;--ac-ring:rgba(57,255,20,.35)}
+[data-theme=uranium] .scout-app-wrapper.k2{--ac:var(--u-hi);--ac-ring:rgba(var(--u-rgb),.35)}
 /* ---- v6.38: Flock tab. A full-screen feed that stops on every card; Saved view; swipe right to discard ---- */
 .scout-app-wrapper.flock-mode #otp-sf,.scout-app-wrapper.flock-mode #otp-sgw,.scout-app-wrapper.flock-mode #otp-picks,.scout-app-wrapper.flock-mode #otp-quick,.scout-app-wrapper.flock-mode #otp-res,.scout-app-wrapper.flock-mode #otp-guide{display:none!important}
 .scout-app-wrapper .fl-seg,.scout-app-wrapper .fl-x,.scout-app-wrapper .fl-auc,.scout-app-wrapper .fl-tags,.scout-app-wrapper .fl-bar{display:none}
@@ -1882,7 +1908,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .flt-b:hover{border-color:var(--ac);color:var(--ink)}
 .scout-app-wrapper .flt-b.is-on{border-color:var(--ac);color:var(--ac)}
 .scout-app-wrapper .flt-n{position:absolute;top:-8px;right:-8px;min-width:21px;height:21px;padding:0 5px;border-radius:999px;background:var(--ac);color:var(--onink);font-size:12.5px;font-weight:800;line-height:21px;text-align:center;border:2px solid var(--bg)}
-[data-theme=uranium] .scout-app-wrapper .flt-b.is-on{box-shadow:0 0 14px rgba(57,255,20,.35)}
+[data-theme=uranium] .scout-app-wrapper .flt-b.is-on{box-shadow:0 0 14px rgba(var(--u-rgb),.35)}
 .scout-app-wrapper .flt-chips{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:-2px 0 10px}
 .scout-app-wrapper .flt-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 8px 6px 13px;border:1px solid var(--l2);border-radius:999px;background:var(--cd);font:inherit;font-size:13px;font-weight:700;color:var(--i2);line-height:1.4;cursor:pointer}
 .scout-app-wrapper .flt-chip b{font-weight:800;color:var(--ink)}
@@ -2068,7 +2094,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .sh-go{align-self:flex-start;margin-top:4px}
 /* v7.12: the popup's View on <site> stays at the foot of the sheet while the photos and details scroll */
 .scout-app-wrapper .pp-dock{position:-webkit-sticky;position:sticky;bottom:calc(-20px - env(safe-area-inset-bottom));z-index:2;margin:14px -18px 0;padding:10px 18px calc(10px + env(safe-area-inset-bottom));background:var(--bg);box-shadow:0 -8px 12px -10px rgba(0,0,0,.35)}
-[data-theme=uranium] .scout-app-wrapper .pp-dock{background:#0a0a1e}
+[data-theme=uranium] .scout-app-wrapper .pp-dock{background:var(--u-card)}
 .scout-app-wrapper .pp-dock .pp-go{margin-top:0}
 /* v7.12: small controls keep their look but take a tap 44px across */
 .scout-app-wrapper .sgw-chip .sgw-x,.scout-app-wrapper .lk-chip button,.scout-app-wrapper .sgw-cbar .sgw-sv,.scout-app-wrapper .sgw-cbar .sgw-lk,.scout-app-wrapper .sgw-cbar .sgw-fp,.scout-app-wrapper .fl-seg button,.scout-app-wrapper #otp-toast .gh{position:relative}
@@ -2218,6 +2244,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-h.nr-open{font-weight:700}
 .scout-app-wrapper .nr-h.nr-closed{color:#a3361b;font-weight:700}
 [data-theme=dark] .scout-app-wrapper .nr-h.nr-closed,[data-theme=uranium] .scout-app-wrapper .nr-h.nr-closed{color:#ff9a7a}
+[data-hud=cockpit] .scout-app-wrapper .nr-h.nr-closed{color:#ff7a6b}
 .scout-app-wrapper .nr-acts>.nr-rvb{border-color:transparent;text-decoration:underline;text-underline-offset:3px}
 .scout-app-wrapper .nr-moreway{margin:16px 0 0;border-top:1px solid var(--ln);padding-top:6px}
 .scout-app-wrapper .nr-moreway>summary{list-style:none;cursor:pointer;min-height:48px;display:flex;align-items:center;gap:8px;font-size:17px;font-weight:800;color:var(--ink)}
@@ -2371,6 +2398,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-open{color:#1f7a3f}
 .scout-app-wrapper .nr-closed{color:var(--mu)}
 [data-theme=dark] .scout-app-wrapper .nr-open,[data-theme=uranium] .scout-app-wrapper .nr-open{color:#5ad27a}
+[data-hud=cockpit] .scout-app-wrapper .nr-open{color:#ffb547}   /* v8.04: open in amber, closed in red */
 .scout-app-wrapper .nr-stops{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
 .scout-app-wrapper .nr-stop{position:relative}
 .scout-app-wrapper .nr-stop .nr-anchor>.nr-num{width:26px;height:26px;font-size:14.5px;font-weight:800}   /* v7.72: lettered A, B, C, the only mark (no counter as well) */
@@ -2552,7 +2580,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
    background, so nothing is clipped or moved. Played once per hover by the script, not on :hover, which would start it
    again each time the panel redraws under a resting pointer */
 .scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.4) 50%,transparent 70%);background-size:250% 100%;background-repeat:no-repeat;animation:pmSheen .8s ease-out}
-[data-theme=uranium] .scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(57,255,20,.35) 50%,transparent 70%)}
+[data-theme=uranium] .scout-app-wrapper .sgw-chip.pm-sheen{background-image:linear-gradient(100deg,transparent 30%,rgba(var(--u-rgb),.35) 50%,transparent 70%)}
 @keyframes pmSheen{0%{background-position:130% 0}100%{background-position:-30% 0}}
 /* v6.88: taps answer (dock icons, rows, buttons press in), and a sweep line names the sites as a hunt's rows rise */
 .scout-app-wrapper .db svg,.scout-app-wrapper .hit{transition:transform .14s ease-out,background .15s}
@@ -2562,7 +2590,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .pm-sw{margin:8px 0 0;font-size:13px;font-weight:600;color:var(--mu);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;animation:rise .3s ease-out}
 .scout-app-wrapper .pm-sw b{color:var(--ac)}
 /* v6.89: Uranium only, a swarm of fireflies crosses the screen when a hunt starts */
-.pm-ff{position:fixed;left:0;width:5px;height:5px;margin:-2px;border-radius:50%;background:#d8ff6b;box-shadow:0 0 6px 2px #39ff14,0 0 14px 4px rgba(57,255,20,.45);pointer-events:none;z-index:2147482990;opacity:0;animation:pmFF var(--t) cubic-bezier(.45,.1,.55,.9) var(--d) forwards}
+.pm-ff{position:fixed;left:0;width:5px;height:5px;margin:-2px;border-radius:50%;background:var(--u-ff);box-shadow:0 0 6px 2px var(--u-hi),0 0 14px 4px rgba(var(--u-rgb),.45);pointer-events:none;z-index:2147482990;opacity:0;animation:pmFF var(--t) cubic-bezier(.45,.1,.55,.9) var(--d) forwards}
 @keyframes pmFF{0%{opacity:0;transform:translate3d(-4vw,0,0)}10%{opacity:1}30%{opacity:.35;transform:translate3d(28vw,var(--y),0)}45%{opacity:1}60%{opacity:.5;transform:translate3d(60vw,calc(var(--y)*-1),0)}80%{opacity:1}100%{opacity:0;transform:translate3d(106vw,var(--y),0)}}
 /* v7.24: the firefly field (dark themes): lights on body under the bar, dock and drawers; the script moves them */
 .pm-fly{position:fixed;top:0;left:0;right:0;bottom:0;z-index:1;pointer-events:none;overflow:hidden;mix-blend-mode:screen}
@@ -3520,7 +3548,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <div class="setrow">
         <div>
 <h3>Appearance</h3>
-<p>Light, Blue hour, Midnight, or Uranium — a retro blacklight mode. Cycles through all four.</p>
+<p>Light, Blue hour, Midnight, Uranium (a retro blacklight mode) or Cockpit (red night lighting). Cycles through all five.</p>
 </div>
         <button class="gh" id="otp-themeBtn2" type="button">Light</button>
       </div>
@@ -3787,7 +3815,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <div class="mi">
 <u>9</u><div>
 <h3>Make it yours</h3>
-<p><b style="color:var(--ink)">Aa</b> makes the text bigger. The icon top-right cycles Light, Blue hour, Midnight and <b style="color:var(--ink)">Uranium</b>, a retro blacklight mode. <span class="aff-say">Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</span></p>
+<p><b style="color:var(--ink)">Aa</b> makes the text bigger. The icon top-right cycles Light, Blue hour, Midnight, <b style="color:var(--ink)">Uranium</b>, a retro blacklight mode, and <b style="color:var(--ink)">Cockpit</b>, red night lighting. <span class="aff-say">Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</span></p>
 </div>
 </div>
     <details class="gloss"><summary>Prowl's words</summary>
@@ -3845,7 +3873,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.03';
+var PROWL_VERSION='v8.04';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -3859,11 +3887,11 @@ function mk(id,n,t,b,s){return{id:id,n:n,t:t,u:function(q){var x=b+E(q)+(s||''),
 var TK='prowl.theme';
 /* v6.37: four modes. dark is Blue hour in the New look; midnight is the original near-black dark
    (data-theme=dark plus data-dark=midnight, so every dark rule still applies). */
-var THEMES=['light','dark','midnight','uranium'];
-var THEME_META_COLOR={light:'#FAF6EE',dark:'#0B1430',midnight:'#070706',uranium:'#0a0e2e'};
-var THEME_ICON={light:'☾',dark:'✦',midnight:'🍄',uranium:'☀'};
-var THEME_NEXT={light:'Blue hour mode',dark:'Midnight mode',midnight:'Uranium mode',uranium:'Light mode'};
-var THEME_LABEL={light:'Light',dark:'Blue hour',midnight:'Midnight',uranium:'Uranium'};
+var THEMES=['light','dark','midnight','uranium','cockpit'];   /* v8.04: cockpit is data-theme=uranium plus data-hud=cockpit */
+var THEME_META_COLOR={light:'#FAF6EE',dark:'#0B1430',midnight:'#070706',uranium:'#0a0e2e',cockpit:'#1f0606'};
+var THEME_ICON={light:'☾',dark:'✦',midnight:'🍄',uranium:'✈',cockpit:'☀'};
+var THEME_NEXT={light:'Blue hour mode',dark:'Midnight mode',midnight:'Uranium mode',uranium:'Cockpit mode',cockpit:'Light mode'};
+var THEME_LABEL={light:'Light',dark:'Blue hour',midnight:'Midnight',uranium:'Uranium',cockpit:'Cockpit'};
 
 /* v6.70: Uranium's fireflies scene comes from the worker (it would cost the Shopify page 23 KB of its 512), and only once
    Uranium is on: animated where there is a mouse, its first frame on phones (hover:none; the animation kept a phone's main
@@ -3880,9 +3908,10 @@ function heroScene(){
 }
 function applyTheme(t){
   if(THEMES.indexOf(t)===-1)t='light';
-  if(t==='uranium')heroScene();
-  document.documentElement.setAttribute('data-theme',t==='midnight'?'dark':t);
+  if(t==='uranium'||t==='cockpit')heroScene();
+  document.documentElement.setAttribute('data-theme',t==='midnight'?'dark':t==='cockpit'?'uranium':t);
   if(t==='midnight')document.documentElement.setAttribute('data-dark','midnight');else document.documentElement.removeAttribute('data-dark');
+  if(t==='cockpit')document.documentElement.setAttribute('data-hud','cockpit');else document.documentElement.removeAttribute('data-hud');
   try{localStorage.setItem(TK,t)}catch(e){}
   var m=document.querySelector('meta[name=theme-color]');
   if(m)m.setAttribute('content',THEME_META_COLOR[t]);
@@ -3891,7 +3920,7 @@ function applyTheme(t){
   if(b2){b2.textContent=THEME_LABEL[t];}
 }
 function cycleTheme(){
-  var h=document.documentElement,cur=h.getAttribute('data-dark')==='midnight'?'midnight':(h.getAttribute('data-theme')||'light');
+  var h=document.documentElement,cur=h.getAttribute('data-hud')==='cockpit'?'cockpit':h.getAttribute('data-dark')==='midnight'?'midnight':(h.getAttribute('data-theme')||'light');
   var i=THEMES.indexOf(cur);
   applyTheme(THEMES[(i+1)%THEMES.length]);
 }
@@ -11965,10 +11994,11 @@ try{promoPick();setTimeout(promoPick,1500);window.addEventListener('focus',promo
 (function(){
   if(!window.requestAnimationFrame||!document.body)return;
   var de=document.documentElement,box=null,glow=null,F=[],raf=0,last=0,W=0,H=0,mx=.5,my=.5,tx=.5,ty=.5,seen=0;
-  var COL={dark:['255,246,176','255,206,72'],midnight:['232,255,186','160,232,84'],uranium:['216,255,107','57,255,20']};
+  var COL={dark:['255,246,176','255,206,72'],midnight:['232,255,186','160,232,84'],uranium:['216,255,107','57,255,20'],cockpit:['255,176,138','255,42,26']};
   function kind(){
     var t=de.getAttribute('data-theme')||'';
     if(t==='dark'&&de.getAttribute('data-dark')==='midnight')t='midnight';
+    if(t==='uranium'&&de.getAttribute('data-hud')==='cockpit')t='cockpit';
     if(!COL[t])return '';
     try{if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return ''}catch(e){return ''}
     try{if(localStorage.getItem('prowl.fireflies')==='0')return ''}catch(e){}
@@ -12017,7 +12047,7 @@ try{promoPick();setTimeout(promoPick,1500);window.addEventListener('focus',promo
   document.addEventListener('mouseout',function(e){if(!e.relatedTarget)seen=0});
   window.addEventListener('resize',function(){if(box)size()});
   document.addEventListener('visibilitychange',sync);
-  if(window.MutationObserver)new MutationObserver(sync).observe(de,{attributes:true,attributeFilter:['data-theme','data-dark']});
+  if(window.MutationObserver)new MutationObserver(sync).observe(de,{attributes:true,attributeFilter:['data-theme','data-dark','data-hud']});
   sync();
 })();
 </script>

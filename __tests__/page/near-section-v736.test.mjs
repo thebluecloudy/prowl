@@ -178,7 +178,11 @@ test('Road trip: one box, the stops in drive order with the town\'s others neste
 
 test('Road trip on a Monday: Chillicothe renders CLOSED and Blenko shows its Monday hours; an empty corridor is plain copy with the route', async () => {
   const calls = [];
-  const p = loadPage({ storage: DEN, fetchImpl: nearFetch(calls), beforeLoad: (w) => phone(w) });
+  /* v8.04: the page's clock is a Wednesday morning, so Monday is a day ahead whatever day the tests run (on a real
+     Monday the trip was today, timed from the clock: "closed by then") */
+  const WED = new Date(2026, 9, 28, 10, 0, 0).getTime();
+  const wednesday = (w) => { const D = w.Date; w.Date = class extends D { constructor(...a) { if (a.length) super(...a); else super(WED); } static now() { return WED; } }; };
+  const p = loadPage({ storage: DEN, fetchImpl: nearFetch(calls), beforeLoad: (w) => { wednesday(w); phone(w); } });
   await tick(30);
   p.$('#otp-localBtn').click();
   await tick(60);
@@ -187,9 +191,10 @@ test('Road trip on a Monday: Chillicothe renders CLOSED and Blenko shows its Mon
   p.$('#otp-nrForm').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true }));
   await tick(120);
   const monday = p.$$('#otp-nrDays .hubc').find((b) => new Date(b.getAttribute('data-nrday') + 'T12:00:00Z').getUTCDay() === 1);
+  const before = calls.filter((x) => /\/trip\?/.test(x.url)).length;   /* v8.04: on a real Monday the first build is already for Monday */
   monday.click();
   await tick(60);
-  assert.ok(!calls.some((x) => new RegExp('&day=' + monday.getAttribute('data-nrday')).test(x.url)), 'v7.72: nothing rebuilt until Done');
+  assert.equal(calls.filter((x) => /\/trip\?/.test(x.url)).length, before, 'v7.72: nothing rebuilt until Done');
   p.$('#otp-nrOptsDone').click();
   await tick(120);
   assert.equal(p.$('#otp-nrDays .hubc.on').getAttribute('data-nrday'), monday.getAttribute('data-nrday'), 'the day pill sticks');
