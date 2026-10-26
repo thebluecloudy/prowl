@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { resolveU } from '../helpers/uranium.mjs';
 import { fileURLToPath } from 'node:url';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
 import { liveFetch, waitFor } from '../helpers/flockFixture.mjs';
@@ -102,12 +103,12 @@ test('the curtain keeps every tap until it is gone, so a second tap during the l
 
 /* the app's palettes, read from its own stylesheet (every rule for a selector, later ones winning, as the cascade does),
    so the curtain cannot drift from them */
-function vars(sel) {
+function vars(sel, src = resolveU(PAGE)) {   /* v8.04: Uranium's colours are variables; read them resolved */
   const o = {}, re = new RegExp('(?:^|\\n)' + sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{([^}]*)\\}', 'g');
-  for (const r of PAGE.matchAll(re)) for (const m of r[1].matchAll(/(--[a-z0-9-]+):([^;}]+)/g)) o[m[1]] = m[2].trim();
+  for (const r of src.matchAll(re)) for (const m of r[1].matchAll(/(--[a-z0-9-]+):([^;}]+)/g)) o[m[1]] = m[2].trim();
   return o;
 }
-const URANIUM_TOP = /\[data-theme=uranium\] \.scout-app-wrapper\{background:linear-gradient\(180deg,(#[0-9a-f]+) 0,/i.exec(PAGE)[1];
+const URANIUM_TOP = /\[data-theme=uranium\] \.scout-app-wrapper\{background:linear-gradient\(180deg,(#[0-9a-f]+) 0,/i.exec(resolveU(PAGE))[1];   /* v8.04: a variable now */
 const CSS = {
   root: vars(':root'),
   dark: vars('[data-theme=dark]'),
@@ -116,13 +117,17 @@ const CSS = {
   k2blue: vars('[data-theme=dark]:not([data-dark=midnight]) .scout-app-wrapper.k2'),
   k2darkAc: vars('[data-theme=dark] .scout-app-wrapper.k2'),
   k2uraAc: vars('[data-theme=uranium] .scout-app-wrapper.k2'),
+  cockpit: { ...vars('[data-theme=uranium]', resolveU(PAGE, 'cockpit')), ...vars('[data-theme=uranium][data-hud=cockpit]', resolveU(PAGE, 'cockpit')) },
+  k2cockAc: vars('[data-theme=uranium] .scout-app-wrapper.k2', resolveU(PAGE, 'cockpit')),
 };
+const COCKPIT_TOP = /\[data-theme=uranium\] \.scout-app-wrapper\{background:linear-gradient\(180deg,(#[0-9a-f]+) 0,/i.exec(resolveU(PAGE, 'cockpit'))[1];
 /* what the app paints in each theme: the base palette, then the New look's (.k2) accents, and Blue hour's own colours */
 function expected(theme, k2) {
-  const base = theme === 'light' ? CSS.root : theme === 'uranium' ? CSS.uranium : CSS.dark;   /* midnight is data-theme=dark */
+  const base = theme === 'light' ? CSS.root : theme === 'uranium' ? CSS.uranium : theme === 'cockpit' ? CSS.cockpit : CSS.dark;   /* midnight is data-theme=dark */
   let v = { ...base };
   if (theme === 'uranium') v['--bg'] = URANIUM_TOP;   /* it paints a gradient, not its --bg: the panels take its top */
-  if (k2) v = { ...v, ...(theme === 'light' ? CSS.k2 : theme === 'uranium' ? CSS.k2uraAc : CSS.k2darkAc) };
+  if (theme === 'cockpit') v['--bg'] = COCKPIT_TOP;   /* v8.04: Uranium's layout in red */
+  if (k2) v = { ...v, ...(theme === 'light' ? CSS.k2 : theme === 'uranium' ? CSS.k2uraAc : theme === 'cockpit' ? CSS.k2cockAc : CSS.k2darkAc) };
   if (k2 && theme === 'dark') v = { ...v, ...CSS.k2blue };   /* Blue hour: not midnight */
   return ['--bg', '--ink', '--ln', '--ac', '--ac-ring'].map((k) => v[k]);
 }
@@ -134,6 +139,7 @@ test('the curtain wears the theme and look the app opens in, from its first fram
     { name: 'Blue hour', saved: 'dark', theme: 'dark', k2: true },
     { name: 'Midnight', saved: 'midnight', theme: 'midnight', k2: true },
     { name: 'Uranium', saved: 'uranium', theme: 'uranium', k2: true },
+    { name: 'Cockpit', saved: 'cockpit', theme: 'cockpit', k2: true },
     { name: 'Classic look, light', saved: 'light', theme: 'light', k2: false },
     { name: 'Classic look, dark', saved: 'dark', theme: 'dark', k2: false },
     { name: 'Classic from the address (?look=1)', theme: 'light', k2: false, qs: '?look=1' },
@@ -155,7 +161,7 @@ test('the curtain wears the theme and look the app opens in, from its first fram
     assert.ok(got.every(Boolean), c.name + ': every colour found in the stylesheet');
     /* and what the app itself ends up in, once its own theme and look code has run */
     await tick(20);
-    const h = p.doc.documentElement, app = h.getAttribute('data-dark') === 'midnight' ? 'midnight' : (h.getAttribute('data-theme') || 'light');
+    const h = p.doc.documentElement, app = h.getAttribute('data-hud') === 'cockpit' ? 'cockpit' : h.getAttribute('data-dark') === 'midnight' ? 'midnight' : (h.getAttribute('data-theme') || 'light');
     assert.deepEqual([app, p.$('.scout-app-wrapper').classList.contains('k2')], [c.theme, c.k2], c.name + ': the app opens the same way');
     await p.close();
   }

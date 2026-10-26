@@ -5,8 +5,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
+import { resolveU } from '../helpers/uranium.mjs';
 
-const PAGE = readFileSync(new URL('../../page/prowl.html', import.meta.url), 'utf8');
+const RAW = readFileSync(new URL('../../page/prowl.html', import.meta.url), 'utf8');
+const PAGE = resolveU(RAW);   /* v8.04: Uranium's colours are variables now */
 function lum(h) {
   const c = [0, 2, 4].map((i) => parseInt(h.slice(1).slice(i, i + 2), 16) / 255).map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4));
   return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
