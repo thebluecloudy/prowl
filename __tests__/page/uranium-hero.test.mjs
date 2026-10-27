@@ -24,7 +24,7 @@ test("the scene's addresses are the worker's art, versioned: animated, and its f
     assert.ok(u.pathname.startsWith('/art/') && Object.hasOwn(ART, u.pathname.slice(5)), 'the worker has ' + u.pathname);
     assert.match(u.search, /^\?v=\d+$/, 'a new drawing is a new address (the worker caches a year)');
   }
-  assert.match(PAGE, /<picture><source media="\(hover:none\)" data-art="fireflies-still\.svg"><img class="hm-scene" alt="" decoding="async" loading="lazy" [^>]*data-art="fireflies\.svg"><\/picture>/,
+  assert.match(PAGE, /<picture><source media="\(hover:none\)" data-art="fireflies-still\.svg" data-art-ck="glowworms-still\.svg"><img class="hm-scene" alt="" decoding="async" loading="lazy" [^>]*data-art="fireflies\.svg" data-art-ck="glowworms\.svg"><\/picture>/,   /* v8.05: Cockpit's own */
     'phones get the still; lazy, so reduced motion (where it is hidden) never fetches it');
 });
 
@@ -44,8 +44,14 @@ test('the scene loads only in Uranium: at once when Uranium is saved, or when th
   btn.click();   /* Uranium */
   assert.equal(p.doc.documentElement.getAttribute('data-theme'), 'uranium');
   assert.equal(scene(p).getAttribute('src'), HERO);
-  btn.click(); btn.click(); btn.click(); btn.click();   /* round again */
-  assert.equal(scene(p).getAttribute('src'), HERO, 'asked for once');
+  btn.click();   /* v8.05: Cockpit has its own scene, the red glowworm cave */
+  assert.equal(scene(p).getAttribute('src'), BASE + 'glowworms.svg' + V);
+  assert.equal(p.$('.heromark source').getAttribute('srcset'), BASE + 'glowworms-still.svg' + V);
+  assert.equal(p.$('.heromark').classList.contains('has-scene'), false, 'the mark shows until the red scene arrives');
+  btn.click(); btn.click(); btn.click();   /* Light, Blue hour, Midnight */
+  assert.equal(scene(p).getAttribute('src'), BASE + 'glowworms.svg' + V, 'left as it was outside the two');
+  btn.click();   /* Uranium again */
+  assert.equal(scene(p).getAttribute('src'), HERO, 'back to the fireflies');
   await p.close();
 });
 
