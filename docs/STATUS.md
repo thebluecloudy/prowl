@@ -1,15 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-25 (v8.03 / v176).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-27 (v8.05 / v177).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.04** | 377,548 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v176** | |
+| Page | **v8.05** | 377,486 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v177** | |
 
 Recently shipped, newest first:
+
+- **v8.05 / v177: Cockpit's own hero, a red glowworm cave** (Matt: "a red mushroom animation or maybe something else
+  that glows red like a glowing worm"). Worker `GET /art/glowworms.svg` (and `glowworms-still.svg`, its first frame for
+  phones): a cave roof hung with glowworm threads whose beads pulse red, glowing red mushrooms on the floor, sparks
+  drifting up. The file is `worker/art/prowl-hero-glowworms.svg`, drawn in the fireflies' SMIL forms so `stillSvg`
+  makes the still. The page's `heroScene(t)` reads `data-art-ck` in Cockpit and swaps scenes when the theme moves
+  between Uranium and Cockpit; only the mark is hue-rotated now. Tests: `worker/__tests__/art.test.mjs`,
+  `__tests__/page/uranium-hero.test.mjs`, `__tests__/page/cockpit-v804.test.mjs`.
 
 - **v8.04: Cockpit theme** (Matt: "a red version like a fighter cockpit theme"). A fifth mode after Uranium in the theme
   cycle (✈ on Uranium's button): Uranium's layout in red night lighting on black, with faint HUD scan lines, amber for
@@ -1484,7 +1492,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.05, worker v177**. Claim one here when you start.
+Next free numbers: **page v8.06, worker v178**. Claim one here when you start.
 
 ## What's next
 

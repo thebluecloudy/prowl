@@ -369,8 +369,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper{margin:0;font:15px/1.5 var(--sans);color:var(--ink);background:var(--bg);background-image:var(--body-glow);padding-bottom:94px;-webkit-font-smoothing:antialiased;transition:background-color .3s,color .3s}
 [data-theme=uranium] .scout-app-wrapper{background:linear-gradient(180deg,var(--u-top) 0,var(--u-mid) 700px,#000000 1500px) no-repeat;background-color:#000}
 [data-hud=cockpit] .scout-app-wrapper{background:repeating-linear-gradient(0deg,rgba(255,42,26,.035) 0 1px,transparent 1px 4px),linear-gradient(180deg,var(--u-top) 0,var(--u-mid) 700px,#000 1500px) no-repeat;background-color:#000}   /* v8.04: faint HUD scan lines */
-[data-theme=uranium][data-hud=cockpit] .scout-app-wrapper .heromark img,[data-theme=uranium][data-hud=cockpit] .scout-app-wrapper .heromark picture{filter:hue-rotate(240deg) saturate(1.2)}   /* the green night scene turned red */
-[data-theme=uranium][data-hud=cockpit] .scout-app-wrapper .heromark{background:radial-gradient(70% 70% at 50% 70%,#3a0d08 0,#1c0505 50%,#0a0202 100%)}   /* v6.33: no background-attachment:fixed; on iOS Safari it freezes a long page */
+[data-theme=uranium][data-hud=cockpit] .scout-app-wrapper .heromark .hm-mark{filter:hue-rotate(240deg) saturate(1.2)}   /* the green mark turned red (v8.05: the scene is red already) */
+[data-theme=uranium][data-hud=cockpit] .scout-app-wrapper .heromark{background:radial-gradient(70% 70% at 50% 70%,#3a0d08 0,#1c0505 50%,#0a0202 100%)}
 .scout-app-wrapper button{font:inherit;cursor:pointer;color:inherit}
 .scout-app-wrapper a{color:inherit}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -2628,7 +2628,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 
   <div class="heromark">
     <img class="hm-mark" src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Cdefs%3E%3CradialGradient%20id='pmSky'%20cx='50%25'%20cy='62%25'%20r='75%25'%3E%3Cstop%20offset='0'%20stop-color='%23123a2a'/%3E%3Cstop%20offset='.45'%20stop-color='%230b1a2e'/%3E%3Cstop%20offset='1'%20stop-color='%23050816'/%3E%3C/radialGradient%3E%3CradialGradient%20id='pmBloom'%20cx='50%25'%20cy='50%25'%20r='50%25'%3E%3Cstop%20offset='0'%20stop-color='%23b8ff9a'%20stop-opacity='.95'/%3E%3Cstop%20offset='.18'%20stop-color='%2339ff14'%20stop-opacity='.6'/%3E%3Cstop%20offset='.45'%20stop-color='%2339ff14'%20stop-opacity='.32'/%3E%3Cstop%20offset='.75'%20stop-color='%231aff8c'%20stop-opacity='.12'/%3E%3Cstop%20offset='1'%20stop-color='%231aff8c'%20stop-opacity='0'/%3E%3C/radialGradient%3E%3CradialGradient%20id='pmPool'%20cx='50%25'%20cy='50%25'%20r='50%25'%3E%3Cstop%20offset='0'%20stop-color='%237dff4f'%20stop-opacity='.7'/%3E%3Cstop%20offset='.5'%20stop-color='%2339ff14'%20stop-opacity='.2'/%3E%3Cstop%20offset='1'%20stop-color='%2339ff14'%20stop-opacity='0'/%3E%3C/radialGradient%3E%3CradialGradient%20id='pmCap'%20cx='45%25'%20cy='30%25'%20r='75%25'%3E%3Cstop%20offset='0'%20stop-color='%23ffffff'/%3E%3Cstop%20offset='.22'%20stop-color='%23d4ffb8'/%3E%3Cstop%20offset='.55'%20stop-color='%235dff2e'/%3E%3Cstop%20offset='1'%20stop-color='%232bd60f'/%3E%3C/radialGradient%3E%3ClinearGradient%20id='pmStem'%20x1='0'%20x2='1'%3E%3Cstop%20offset='0'%20stop-color='%235df2b4'/%3E%3Cstop%20offset='.5'%20stop-color='%23f0fff8'/%3E%3Cstop%20offset='1'%20stop-color='%235df2b4'/%3E%3C/linearGradient%3E%3CradialGradient%20id='pmFly'%20cx='50%25'%20cy='50%25'%20r='50%25'%3E%3Cstop%20offset='0'%20stop-color='%23f4ffd0'/%3E%3Cstop%20offset='.35'%20stop-color='%23d4ff6a'%20stop-opacity='.7'/%3E%3Cstop%20offset='1'%20stop-color='%23d4ff6a'%20stop-opacity='0'/%3E%3C/radialGradient%3E%3CclipPath%20id='pmClip'%3E%3Crect%20width='100'%20height='100'%20rx='22'/%3E%3C/clipPath%3E%3C/defs%3E%3Cg%20clip-path='url(%23pmClip)'%3E%3Crect%20width='100'%20height='100'%20fill='url(%23pmSky)'/%3E%3Cg%20fill='%23cfe9ff'%20opacity='.7'%3E%3Ccircle%20cx='18'%20cy='9'%20r='.6'/%3E%3Ccircle%20cx='42'%20cy='6'%20r='.5'/%3E%3Ccircle%20cx='66'%20cy='10'%20r='.6'/%3E%3Ccircle%20cx='83'%20cy='5'%20r='.5'/%3E%3Ccircle%20cx='8'%20cy='20'%20r='.4'/%3E%3C/g%3E%3Ccircle%20cx='84'%20cy='15'%20r='5'%20fill='%23e8f3ff'%20opacity='.9'/%3E%3Ccircle%20cx='86.2'%20cy='13.6'%20r='4.4'%20fill='%23081226'/%3E%3Cg%20fill='%2315384a'%3E%3Cpath%20d='M-2%2078%20L6%2034%20L14%2078%20Z'/%3E%3Cpath%20d='M12%2080%20L22%2028%20L32%2080%20Z'/%3E%3Cpath%20d='M70%2080%20L79%2030%20L88%2080%20Z'/%3E%3Cpath%20d='M84%2078%20L93%2038%20L102%2078%20Z'/%3E%3C/g%3E%3Cg%20fill='%23081522'%3E%3Cpath%20d='M-6%20100%20L4%2022%20L16%20100%20Z'/%3E%3Cpath%20d='M84%20100%20L96%2018%20L108%20100%20Z'/%3E%3C/g%3E%3Ccircle%20cx='50'%20cy='50'%20r='62'%20fill='url(%23pmBloom)'/%3E%3Ccircle%20cx='50'%20cy='44'%20r='44'%20fill='url(%23pmBloom)'/%3E%3Cpath%20d='M0%2084%20Q50%2076%20100%2084%20L100%20100%20L0%20100%20Z'%20fill='%23071a14'/%3E%3Cellipse%20cx='50'%20cy='86'%20rx='44'%20ry='8'%20fill='url(%23pmPool)'/%3E%3Cg%20stroke='%232ee86a'%20stroke-width='1'%20stroke-linecap='round'%20fill='none'%20opacity='.8'%3E%3Cpath%20d='M28%2086%20l-2%20-5%20M30%2086%20l0%20-6%20M32%2086%20l2%20-4'/%3E%3Cpath%20d='M66%2086%20l-2%20-4%20M68%2086%20l0%20-6%20M70%2086%20l2%20-5'/%3E%3C/g%3E%3Cellipse%20cx='76'%20cy='80'%20rx='9'%20ry='6'%20fill='url(%23pmBloom)'/%3E%3Cpath%20d='M74.6%2077%20L74%2084%20L78%2084%20L77.4%2077%20Z'%20fill='url(%23pmStem)'/%3E%3Cpath%20d='M70%2078%20Q70%2071%2076%2071%20Q82%2071%2082%2078%20Z'%20fill='url(%23pmCap)'/%3E%3Cpath%20d='M42%2058%20Q40%2076%2038.5%2084%20Q38.5%2088%2050%2088%20Q61.5%2088%2061.5%2084%20Q60%2076%2058%2058%20Z'%20fill='url(%23pmStem)'/%3E%3Cpath%20d='M14%2056%20Q14%2022%2050%2020%20Q86%2022%2086%2056%20Q86%2061%2079%2061%20L21%2061%20Q14%2061%2014%2056%20Z'%20fill='url(%23pmCap)'/%3E%3Cpath%20d='M21%2061%20Q50%2069%2079%2061%20Z'%20fill='%2322b84a'/%3E%3Cpath%20d='M28%2062.5%20Q50%2068%2072%2062.5'%20fill='none'%20stroke='%23e6fff2'%20stroke-width='1.3'%20stroke-linecap='round'%20opacity='.85'/%3E%3Cpath%20d='M26%2038%20Q35%2026%2049%2025'%20fill='none'%20stroke='%23fff'%20stroke-width='2.6'%20stroke-linecap='round'%20opacity='.7'/%3E%3Cg%20fill='%230a1a3a'%20opacity='.78'%3E%3Ccircle%20cx='35'%20cy='45'%20r='5'/%3E%3Ccircle%20cx='61'%20cy='34'%20r='6'/%3E%3Ccircle%20cx='72'%20cy='50'%20r='3.6'/%3E%3Ccircle%20cx='50'%20cy='51'%20r='2.9'/%3E%3C/g%3E%3Cg%3E%3Ccircle%20cx='20'%20cy='66'%20r='3.2'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='20'%20cy='66'%20r='.8'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='82'%20cy='58'%20r='2.8'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='82'%20cy='58'%20r='.7'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='30'%20cy='16'%20r='2.4'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='30'%20cy='16'%20r='.6'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='66'%20cy='14'%20r='2'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='66'%20cy='14'%20r='.5'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='12'%20cy='44'%20r='1.8'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='90'%20cy='40'%20r='1.8'%20fill='url(%23pmFly)'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E" alt="" decoding="async">
-    <picture><source media="(hover:none)" data-art="fireflies-still.svg"><img class="hm-scene" alt="" decoding="async" loading="lazy" width="300" height="120" data-art="fireflies.svg"></picture>
+    <picture><source media="(hover:none)" data-art="fireflies-still.svg" data-art-ck="glowworms-still.svg"><img class="hm-scene" alt="" decoding="async" loading="lazy" width="300" height="120" data-art="fireflies.svg" data-art-ck="glowworms.svg"></picture>
   </div>
 
   <h1>Find the prey</h1>
@@ -3873,7 +3873,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.04';
+var PROWL_VERSION='v8.05';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -3898,17 +3898,20 @@ var THEME_LABEL={light:'Light',dark:'Blue hour',midnight:'Midnight',uranium:'Ura
    thread a third to a half busy). The mark shows meanwhile, under reduced motion (CSS; the lazy image is then never
    fetched), and if it cannot load. HERO_V changes with the drawing (the worker caches it a year). */
 var HERO_ART='https://prowl.thebluecloud.workers.dev/art/',HERO_V='?v=1';
-function heroScene(){
+/* v8.05 (worker v177): Cockpit has its own scene, a red glowworm cave (data-art-ck); switching between the two swaps it */
+function heroScene(t){
   var hm=document.querySelector('.scout-app-wrapper .heromark'),img=hm&&hm.querySelector('.hm-scene'),src=hm&&hm.querySelector('source');
-  if(!img||img.getAttribute('src'))return;
+  var k=t==='cockpit'?'data-art-ck':'data-art';
+  if(!img||!img.getAttribute(k)||img.getAttribute('src')===HERO_ART+img.getAttribute(k)+HERO_V)return;
+  hm.classList.remove('has-scene');
   img.onload=function(){hm.classList.add('has-scene')};
   img.onerror=function(){hm.classList.remove('has-scene')};
-  if(src)src.setAttribute('srcset',HERO_ART+src.getAttribute('data-art')+HERO_V);
-  img.setAttribute('src',HERO_ART+img.getAttribute('data-art')+HERO_V);
+  if(src&&src.getAttribute(k))src.setAttribute('srcset',HERO_ART+src.getAttribute(k)+HERO_V);
+  img.setAttribute('src',HERO_ART+img.getAttribute(k)+HERO_V);
 }
 function applyTheme(t){
   if(THEMES.indexOf(t)===-1)t='light';
-  if(t==='uranium'||t==='cockpit')heroScene();
+  if(t==='uranium'||t==='cockpit')heroScene(t);
   document.documentElement.setAttribute('data-theme',t==='midnight'?'dark':t==='cockpit'?'uranium':t);
   if(t==='midnight')document.documentElement.setAttribute('data-dark','midnight');else document.documentElement.removeAttribute('data-dark');
   if(t==='cockpit')document.documentElement.setAttribute('data-hud','cockpit');else document.documentElement.removeAttribute('data-hud');

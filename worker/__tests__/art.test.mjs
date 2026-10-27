@@ -30,6 +30,22 @@ test('the fireflies scene is the drawing exactly as given; the still is its firs
   for (const svg of [given, still]) assert.doesNotMatch(svg, /<script|on[a-z]+=|xlink:href|<foreignObject|<image/i, 'nothing that runs or fetches');
 });
 
+test('v177: the glowworm cave (Cockpit) is its file exactly; its still has nothing left to animate and every shape', () => {
+  const given = read('art/prowl-hero-glowworms.svg').replace(/\n$/, '');
+  assert.equal(ART['glowworms.svg'], given);
+  const still = ART['glowworms-still.svg'];
+  assert.equal(still, stillSvg(given));
+  assert.doesNotMatch(still, /<animate/, 'nothing moves on a phone');
+  const shapes = (x) => (x.match(/<(circle|path|rect|ellipse|line)\b/g) || []).length;
+  assert.equal(shapes(still), shapes(given));
+  assert.match(given, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 300 120">/, 'the same box as the fireflies');
+  assert.ok(!/#39ff14|57,255,20/i.test(given), 'red, not Uranium green');
+  for (const svg of [given, still]) assert.doesNotMatch(svg, /<script|on[a-z]+=|xlink:href|<foreignObject|<image/i, 'nothing that runs or fetches');
+  assert.ok(given.length < 40000, 'small: ' + given.length);
+  assert.equal(artResponse('glowworms.svg', 'GET').status, 200);
+  assert.equal(artResponse('glowworms-still.svg', 'GET').status, 200);
+});
+
 test('GET answers the drawing as an image with a year-long immutable cache; HEAD without a body; others 405; unknown 404', async () => {
   assert.equal(artResponse('fireflies-still.svg', 'GET').status, 200);
   const r = artResponse('fireflies.svg', 'GET');

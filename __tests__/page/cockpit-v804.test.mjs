@@ -72,3 +72,15 @@ test('Cockpit is red: every Uranium colour has a red value, and the text reads o
 test('the help text names all five modes', () => {
   assert.match(PAGE, /Cycles through all five\./);
 });
+
+test('v8.05 (worker v177): a saved Cockpit asks for the red glowworm cave at once, not the fireflies', async () => {
+  const p = loadPage({ storage: { ...DEN, 'prowl.theme': 'cockpit' } });
+  try {
+    await tick(20);
+    const A = 'https://prowl.thebluecloud.workers.dev/art/';
+    assert.match(p.$('.heromark .hm-scene').getAttribute('src'), new RegExp('^' + A + 'glowworms\\.svg\\?v=\\d+$'));
+    assert.match(p.$('.heromark source').getAttribute('srcset'), new RegExp('^' + A + 'glowworms-still\\.svg\\?v=\\d+$'), 'the still frame on a phone');
+    assert.match(PAGE, /\[data-theme=uranium\]\[data-hud=cockpit\] \.scout-app-wrapper \.heromark \.hm-mark\{filter:hue-rotate/, 'only the mark is turned red; the scene is red already');
+    assert.deepEqual(p.errors, []);
+  } finally { await p.close(); }
+});
