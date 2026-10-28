@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v181: 2026-10-28. Security and trust, part 5: a Delete takes the trips too (tripsForget: an organizer hands the trip
+ *         on, or it goes when nobody is left; their finds and photos go), and every earlier address's saved finds, acct:
+ *         and tripinv:. An email change carries saved finds (hp), keeps an email-only member's trip id (tid), lt:'s TTL.
  *   v180: 2026-10-28. Security and trust, part 4: site-wide daily pools for the Google lookups that had only per-address
  *         limits (place reviews 300, place photos 3000, place suggestions 2000, town lookups 1000; grv: gpp: gsg: ggeo:),
  *         counted only when Google is asked; past one the route says "daily limit". In the admin's AI pools.
@@ -618,13 +621,13 @@ import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
 import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize, huntNeeds, huntRelevant } from "./hunt.js";
-import { SAVED_BODY_MAX, SAVED_SYNCS_PER_DAY, SAVED_PHOTOS_PER_SYNC, SAVED_PHOTO_MAX, SAVED_SIG_SECONDS, SAVED_CHECKS_PER_LIST, savedMerge, savedToCopy, savedUntil, photoKey, savedDue, savedListDue, savedEndFrom, savedSrc } from "./saved.js";   /* v168 */   /* v117; v152: huntNeeds, huntRelevant */
+import { SAVED_BODY_MAX, SAVED_SYNCS_PER_DAY, SAVED_PHOTOS_PER_SYNC, SAVED_PHOTO_MAX, SAVED_SIG_SECONDS, SAVED_CHECKS_PER_LIST, savedMerge, savedToCopy, savedUntil, photoKey, savedDue, savedListDue, savedEndFrom, savedSrc, savedHp } from "./saved.js";   /* v168 */   /* v117; v152: huntNeeds, huntRelevant */
 import { wkAdd, wkFresh, wkCur, letterShorters, letterBuild, letterText, letterQuiet } from "./letter.js";   /* v152: the weekly letter */
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v180";
+const WORKER_VERSION = "v181";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -5741,7 +5744,7 @@ async function alVerify(request, env, origin) {
     if (again && again.tok) sub = again; else await kvPut(env, "sub:" + email, sub);
     await env.PROWL_ALERTS.delete("conf:" + email);
   }
-  try { await tripAcctLink(env, await tripMemberIdFor(sub, email), email); } catch (e) { console.error("acct link", String(e && e.message || e)); }   /* v135: trips shared to this address */
+  try { await tripAcctLink(env, await tripIdOf(env, sub, email), email); } catch (e) { console.error("acct link", String(e && e.message || e)); }   /* v135: trips shared to this address */
   return json({ ok: true, member: true, email: sub.email, tok: sub.tok, pro: !!sub.pro, free: alFree(env, sub), hunts: sub.hunts, active: alActive(env, sub).length, session: sub.cid ? await sessMint(env, sub.cid) : "" }, 200, origin);
 }
 /* v78: a one-time sign-in link by email (the member's own request, or the owner from the admin page) */
@@ -5930,13 +5933,35 @@ async function alMoveConfirm(request, env, url) {
   if (await kvGet(env, "sub:" + to, null)) return alPage("Already in use", "This address already has its own Prowl Alerts. Unsubscribe it first, then ask for a new link in Prowl.");
   if (request.method !== "POST") return alGate("Use " + to + " for Prowl Alerts?", "Your hunts, settings" + (sub.pro ? ", Prowl Pro" : "") + " and new listings move from " + alMask(from) + " to this address.", "Use this address", url);
   const moved = Object.assign({}, sub, { email: to, prev: [from].concat(Array.isArray(sub.prev) ? sub.prev : []).filter((x, i, a) => x && x !== to && a.indexOf(x) === i).slice(0, 3), movedAt: new Date().toISOString() });
+  /* v181 (the security and trust plan, 2026-10-28: "an email change loses saved finds and, for email-only members, all
+     trips"): a member without a customer id keeps the trip id of the old address (tid), marked so a newcomer there gets
+     their own; the share link (acct:) and waiting invitations (tripinv:) follow the address */
+  const oldTid = await tripMemberIdFor(sub, from);
+  if (!/^\d{1,20}$/.test(String(moved.cid || "")) && !/^e[0-9a-f]{16}$/.test(String(moved.tid || ""))) { moved.tid = oldTid; await kvPut(env, "tidkept:" + oldTid, { at: Date.now() }); }
   await alProSet(env, moved, true);
   await kvPut(env, "sub:" + to, moved);
-  for (const k of ["pend:", "seen:", "likes:", "pj:", "gm:", "pp:", "wk:", "lt:"]) { const v = await kvGet(env, k + from, null); if (v != null) await kvPut(env, k + to, v); }   /* v152: wk: lt: */   /* v85: likes:, v112: pj: gm: pp: (Pounce) */
+  for (const k of ["pend:", "seen:", "likes:", "pj:", "gm:", "pp:", "wk:", "lt:"]) { const v = await kvGet(env, k + from, null); if (v != null) await env.PROWL_ALERTS.put(k + to, JSON.stringify(v), k === "lt:" ? { expirationTtl: AL_LETTER_TTL } : undefined); }   /* v181: lt: keeps its 21 days */   /* v152: wk: lt: */   /* v85: likes:, v112: pj: gm: pp: (Pounce) */
+  const sv = await kvGet(env, "saved:" + from, null);   /* v181: saved finds move; their photos stay put, so each keeps hp */
+  if (sv && Array.isArray(sv.saved)) {
+    const hf = await sha16(from);
+    for (const f of sv.saved) if (f && f.ph && !/^[0-9a-f]{16}$/.test(String(f.hp || ""))) f.hp = hf;
+    await kvPut(env, "saved:" + to, sv);
+    await savedIndex(env, from, false); if (sv.saved.length) await savedIndex(env, to, true);
+  }
+  const hFrom = await acctHash(from), hTo = await acctHash(to), tripId = await tripMemberIdFor(moved, to);
+  await kvPut(env, "acct:" + hTo, { cid: tripId });
+  const acOld = await kvGet(env, "acct:" + hFrom, null);
+  if (acOld && (String(acOld.cid) === tripId || String(acOld.cid) === oldTid)) await env.PROWL_ALERTS.delete("acct:" + hFrom);
+  const inv = await kvGet(env, "tripinv:" + hFrom, null);
+  if (inv && Array.isArray(inv.ids)) {
+    const into = await kvGet(env, "tripinv:" + hTo, { ids: [] }), ids = (Array.isArray(into.ids) ? into.ids : []).concat(inv.ids.filter((x) => (into.ids || []).indexOf(x) === -1));
+    await env.PROWL_ALERTS.put("tripinv:" + hTo, JSON.stringify({ ids: ids.slice(-20) }), { expirationTtl: TRIPINV_TTL });
+    await env.PROWL_ALERTS.delete("tripinv:" + hFrom);
+  }
   await pushMove(env, from, to);   /* v114: the phones move with the address */
   if (moved.cid) await kvPut(env, "cid:" + moved.cid, { email: to });
   await env.PROWL_ALERTS.put("moved:" + from, JSON.stringify({ to: to, tok: sub.tok, at: Date.now() }), { expirationTtl: 90 * 86400 });
-  for (const k of ["sub:", "pend:", "seen:", "mvf:", "likes:", "conf:", "code:", "pj:", "gm:", "pq:", "pp:", "wk:", "lt:"]) await env.PROWL_ALERTS.delete(k + from);   /* v152: wk: lt: */   /* v86: conf: too, or a waiting confirm link makes a second, empty member on the old address */
+  for (const k of ["sub:", "pend:", "seen:", "mvf:", "in:", "last:", "likes:", "saved:", "conf:", "code:", "pj:", "gm:", "pq:", "pp:", "wk:", "lt:"]) await env.PROWL_ALERTS.delete(k + from);   /* v181: in: last: saved: */   /* v152: wk: lt: */   /* v86: conf: too, or a waiting confirm link makes a second, empty member on the old address */
   await env.PROWL_ALERTS.delete("pro:" + from);   /* v93: the old address's Pro cache; the next check rebuilds it while the address is in prev */
   await env.PROWL_ALERTS.delete("mv:" + to);
   /* one notice to the old address, so a change is never silent */
@@ -5974,8 +5999,15 @@ async function alDelete(request, env, origin) {
   return json({ ok: true, on: false, wasPro: !!sub.pro }, 200, origin);
 }
 /* v83: everything Prowl keeps about one member, removed: Delete in Prowl and the admin's delete. The cid: link goes only
-   while it still points at this member; the pro:cid: cache goes with it. Gifts (gift:, giftoff:, giftnomail:) stay:
-   they are granted by the owner, or are a do-not-email list. Logs key names only, never the email. */
+   while it still points at this member; the pro:cid: cache goes with it. Logs key names only, never the email.
+   v181 (the security and trust plan, 2026-10-28: "a delete misses everything tied to trips"): earlier addresses (prev)
+   lose their saved finds and photos too, and every trip id of the member (the customer id, tid, "e" + the hash of each
+   address) leaves its trips (tripsForget), with acct: and tripinv: for each address.
+   What stays, by design: gift:, giftoff: and giftnomail: (granted by the owner, or a do-not-email list) and sharenomail:
+   (a do-not-email list, a keyed code only); the anonymous counters and the hashed daily caps; trips:all (a trip id and
+   its expiry, nobody's); other people's finds on a shared trip; the admin audit (a member id, never an address); and
+   acct:<hash of a store sign-in address> that differs from every Alerts address, which cannot be found without it and
+   points only at a customer id whose cid: link is gone. */
 async function alPurge(env, email, sub) {
   const kv = env.PROWL_ALERTS, gone = [];
   /* v93: the records of an address change that still point at this member: a pending change (mv:<new address>, 24 h)
@@ -5989,6 +6021,7 @@ async function alPurge(env, email, sub) {
     const mv = await kvGet(env, "moved:" + old, null);
     if (mv && mine.indexOf(String(mv.to)) !== -1) { await kv.delete("moved:" + old); gone.push("moved:"); }
   }
+  await savedHpPurge(env, await kvGet(env, "saved:" + email, null));   /* v181: photos kept under an earlier address */
   for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "saved:", "code:", "pj:", "gm:", "pq:", "pp:", "wk:", "lt:"]) { await kv.delete(p + email); gone.push(p); }   /* v152: wk: lt: */   /* v85: likes:, v86: conf:, v108: code:, v112: pj: gm: pq: pp: (Pounce) */
   await savedPurge(env, email); gone.push("saved/");   /* v168: the saved finds' photos */
   if (await pushPurge(env, email)) gone.push("push:");   /* v114 */
@@ -5998,6 +6031,21 @@ async function alPurge(env, email, sub) {
     if (c && c.email === email) { await kv.delete("cid:" + cid); gone.push("cid:"); }
     await kv.delete("pro:cid:" + cid); gone.push("pro:cid:");
   }
+  /* v181: the trips, and every earlier address's saved finds. An earlier address someone else now uses is theirs. */
+  const tids = [];
+  if (/^\d{1,20}$/.test(cid)) tids.push(cid);
+  if (sub && /^e[0-9a-f]{16}$/.test(String(sub.tid || ""))) { tids.push(String(sub.tid)); await kv.delete("tidkept:" + sub.tid); }
+  const addrs = [];
+  for (const a of mine) if (a === email || !(await kvGet(env, "sub:" + a, null))) addrs.push(a);
+  for (const a of addrs) { const t = "e" + await acctHash(a); if (tids.indexOf(t) === -1) tids.push(t); }
+  for (const a of addrs) {
+    const h = await acctHash(a), ac = await kvGet(env, "acct:" + h, null);
+    if (ac && tids.indexOf(String(ac.cid)) !== -1) await kv.delete("acct:" + h);
+    await kv.delete("tripinv:" + h);
+    if (a !== email) { await kv.delete("saved:" + a); await savedPurge(env, a); }
+  }
+  await tripsForget(env, tids);
+  gone.push("acct:", "tripinv:", "trips:");
   console.log("purge " + gone.join(" "));
   return gone;
 }
@@ -6080,14 +6128,14 @@ async function alSaved(request, env, origin) {
   const m = savedMerge(had, b, now), h = await sha16(email);
   if (env.PROWL_FINDS) {
     for (const f of savedToCopy(m.saved, SAVED_PHOTOS_PER_SYNC)) if (await savedPhotoCopy(env, h, f)) f.ph = 1;
-    for (const u of m.dropped.slice(0, 50)) { try { await env.PROWL_FINDS.delete(photoKey(h, await sha16(u))); } catch (e) {} }
+    for (const u of m.dropped.slice(0, 50)) { try { await env.PROWL_FINDS.delete(photoKey(savedHp(had, u, h), await sha16(u))); } catch (e) {} }   /* v181: hp */
   }
   const keep = { saved: m.saved, gone: m.gone };
   if (m.ckd) keep.ckd = m.ckd;   /* v169 */
   if (JSON.stringify(keep) !== JSON.stringify(had)) await kvPut(env, key, keep);   /* no write when nothing changed */
   if (m.saved.length) await savedIndex(env, email, true);
   const out = [];
-  for (const f of m.saved) { const o = Object.assign({}, f, { until: savedUntil(f.at), ph: f.ph ? await savedPhotoUrl(env, h, await sha16(f.url)) : "" }); delete o.ck; out.push(o); }   /* v169: end goes, ck stays here */
+  for (const f of m.saved) { const o = Object.assign({}, f, { until: savedUntil(f.at), ph: f.ph ? await savedPhotoUrl(env, f.hp || h, await sha16(f.url)) : "" }); delete o.hp; delete o.ck; out.push(o); }   /* v181: hp, a photo kept before a change of address */   /* v169: end goes, ck stays here */
   return json({ ok: true, pro: true, saved: out, gone: m.gone }, 200, origin);
 }
 /* the photo of one find, into R2: an image the marketplace serves over https, at most SAVED_PHOTO_MAX, 8 seconds */
@@ -6130,7 +6178,7 @@ async function savedSweep(env, now) {
   for (const email of all.slice(0, 500)) {
     const key = "saved:" + email, had = await kvGet(env, key, null);
     const m = savedMerge(had, null, now || Date.now()), h = await sha16(email);
-    if (env.PROWL_FINDS) for (const u of m.dropped.slice(0, 50)) { try { await env.PROWL_FINDS.delete(photoKey(h, await sha16(u))); } catch (e) {} }
+    if (env.PROWL_FINDS) for (const u of m.dropped.slice(0, 50)) { try { await env.PROWL_FINDS.delete(photoKey(savedHp(had, u, h), await sha16(u))); } catch (e) {} }   /* v181: hp */
     swept += m.dropped.length;
     const keep = { saved: m.saved, gone: m.gone };
     if (m.ckd) keep.ckd = m.ckd;
@@ -6174,6 +6222,11 @@ async function savedCheckTick(env, now) {
     return { checked, ended };   /* one list a run */
   }
   return { checked: 0 };
+}
+/* v181: the photos of a saved list kept under an earlier address (hp), one by one */
+async function savedHpPurge(env, had) {
+  if (!env.PROWL_FINDS || !had || !Array.isArray(had.saved)) return;
+  for (const f of had.saved.slice(0, 1000)) if (f && f.ph && /^[0-9a-f]{16}$/.test(String(f.hp || ""))) { try { await env.PROWL_FINDS.delete(photoKey(f.hp, await sha16(f.url))); } catch (e) {} }
 }
 /* Delete in Prowl and the admin's delete: every saved photo of this member, and the index entry */
 async function savedPurge(env, email) {
@@ -7255,7 +7308,16 @@ function proCids(env) { return String((env && env.PRO_CIDS) || "").split(/[\s,]+
    token the page keeps, sent as X-Prowl-Email / X-Prowl-Tok) names their customer id when the account is linked, else
    "e" + a hash of the address, so a member who signed in by email code shares trips too. null = nobody. */
 function tripIdOk(id) { return /^\d{1,20}$/.test(String(id || "")) || /^e[0-9a-f]{16}$/.test(String(id || "")); }
-async function tripMemberIdFor(sub, email) { return sub && /^\d{1,20}$/.test(String(sub.cid || "")) ? String(sub.cid) : "e" + await acctHash(email); }
+async function tripMemberIdFor(sub, email) { return sub && /^\d{1,20}$/.test(String(sub.cid || "")) ? String(sub.cid) : sub && /^e[0-9a-f]{16}$/.test(String(sub.tid || "")) ? String(sub.tid) : "e" + await acctHash(email); }   /* v181: tid, the id kept across a change of address */
+/* v181: the trip id for a member, as tripMemberIdFor, except that an address another member moved away from (they keep
+   "e" + its hash as their tid, marked tidkept:) gets an id of its own, so a newcomer there never sees their trips */
+async function tripIdOf(env, sub, email) {
+  const id = await tripMemberIdFor(sub, email);
+  if (!sub || !env.PROWL_ALERTS || id !== "e" + await acctHash(email) || !(await kvGet(env, "tidkept:" + id, null))) return id;
+  const a = new Uint8Array(8); crypto.getRandomValues(a); sub.tid = "e" + Array.from(a, (x) => ("0" + x.toString(16)).slice(-2)).join("");
+  if (!(await alMerge(env, sub, ["tid"]))) await kvPut(env, "sub:" + email, sub);
+  return String(sub.tid);
+}
 async function tripWho(request, env) {
   const cid = await sessVerify(request, env);
   if (cid) return { id: cid, sub: null };
@@ -7263,7 +7325,7 @@ async function tripWho(request, env) {
   if (!email || !t || !env.PROWL_ALERTS) return null;
   const sub = await kvGet(env, "sub:" + email, null);
   if (!sub || !alSame(t, sub.tok)) return null;
-  const id = await tripMemberIdFor(sub, email);
+  const id = await tripIdOf(env, sub, email);
   try { await kvPut(env, "acct:" + await acctHash(email), { cid: id }); } catch (e) {}   /* so a share to this address finds them */
   return { id: id, sub: sub };
 }
@@ -7388,7 +7450,7 @@ async function tripsRoute(request, env, url, origin) {
     if (trip.members.length >= TRIP_MEMBERS_MAX) return json({ error: "This trip is full." }, 409, origin);
     const h = await acctHash(email), acct = await kvGet(env, "acct:" + h, null);
     let mid = acct && tripIdOk(acct.cid) ? String(acct.cid) : "";
-    if (!mid) { const ms = await kvGet(env, "sub:" + email, null); if (ms) mid = await tripMemberIdFor(ms, email); }   /* v135: an alerts member who never signed in to the store */
+    if (!mid) { const ms = await kvGet(env, "sub:" + email, null); if (ms) mid = await tripIdOf(env, ms, email); }   /* v135: an alerts member who never signed in to the store */
     if (mid) { await tripJoin(env, trip, mid); return nearAnswer({ ok: true, added: true, pending: false, members: trip.members.length }, 200, origin); }
     const inv = await kvGet(env, "tripinv:" + h, { ids: [] });
     if (inv.ids.indexOf(id) === -1) inv.ids.push(id);
@@ -7498,6 +7560,37 @@ async function tripPurge(env, id) {
 async function tripIndexRemove(env, cid, id) {
   const ids = await kvGet(env, "trips:" + cid, []);
   if (ids.indexOf(id) !== -1) await kvPut(env, "trips:" + cid, ids.filter((x) => x !== id));
+}
+/* v181: a deleted member's trips (the security and trust plan, 2026-10-28: "account deletion misses everything tied to
+   trips"). ids: every trip id the member had. A trip they organized goes to the next member, so the friends keep it and
+   its invite link; with nobody left it goes (tripPurge, and off trips:all). On anyone else's trip they leave members.
+   Either way their Finds and the photos go, and so does their trip list. */
+async function tripsForget(env, ids) {
+  ids = (ids || []).map(String).filter(tripIdOk);
+  const purged = [];
+  for (const id of ids) {
+    for (const tid of (await kvGet(env, "trips:" + id, [])).slice(0, 100)) {
+      try {
+        const trip = await tripGet(env, tid);
+        if (!trip || purged.indexOf(tid) !== -1) continue;
+        const rest = (Array.isArray(trip.members) ? trip.members : []).map(String).filter((m) => ids.indexOf(m) === -1);
+        if (ids.indexOf(String(trip.org)) !== -1) {
+          if (!rest.length) { await tripPurge(env, tid); purged.push(tid); continue; }
+          trip.org = rest[0];
+        }
+        trip.members = rest;
+        const finds = await kvGet(env, "tripfinds:" + tid, []), theirs = finds.filter((f) => f && ids.indexOf(String(f.by)) !== -1);
+        if (theirs.length) {
+          if (env.PROWL_FINDS) await env.PROWL_FINDS.delete(theirs.map((f) => "finds/" + tid + "/" + f.id + ".jpg"));
+          await kvPut(env, "tripfinds:" + tid, finds.filter((f) => theirs.indexOf(f) === -1));
+        }
+        await tripPut(env, trip);
+      } catch (e) { console.error("trips forget", String(e && e.message || e)); }
+    }
+    await env.PROWL_ALERTS.delete("trips:" + id);
+  }
+  if (purged.length) { const all = await kvGet(env, "trips:all", []); await kvPut(env, "trips:all", all.filter((e) => e && purged.indexOf(e.id) === -1)); }
+  return purged.length;
 }
 
 /* v111: GET /css/prowl.<hash>.css, the page's main stylesheet. The deployed page links to it instead of carrying

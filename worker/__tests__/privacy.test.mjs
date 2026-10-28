@@ -29,8 +29,10 @@ const kvPut = async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v));
 const logs = [];
 const quiet = { log: (...a) => logs.push(a.join(" ")), error() {} };
 const json = (body, status) => ({ status: status || 200, body });
-const P = fromIndex(["pushHash", "pushId", "pushList", "pushPurge", "savedIndex", "savedPurge", "alPurge", "alMerge", "alEmail", "alSame", "vClean", "alParams", "alUnsub", "alDelete"], {
-  kvGet, kvPut, console: quiet, json, ALLOW_ORIGINS: ["https://www.owlandtwigvintage.com"],
+const PURGE_FNS = ["savedHpPurge", "sha16", "acctHash", "tripIdOk", "tripGet", "tripPut", "tripPurge", "tripsForget"];   /* v181 */
+const photoKey = (h, k) => "saved/" + h + "/" + k + ".jpg";
+const P = fromIndex(["pushHash", "pushId", "pushList", "pushPurge", "savedIndex", "savedPurge", ...PURGE_FNS, "alPurge", "alMerge", "alEmail", "alSame", "vClean", "alParams", "alUnsub", "alDelete"], {
+  kvGet, kvPut, console: quiet, json, ALLOW_ORIGINS: ["https://www.owlandtwigvintage.com"], photoKey,
   alReady: (env) => !!env.PROWL_ALERTS,
   readJson: async (r) => r.body || {},
   alPage: (title, msg, status) => ({ page: title, msg, status: status || 200 }),
@@ -63,7 +65,7 @@ test("alPurge removes every key for the member, keeps gifts and other members, l
   assert.equal(kv.m.has("cid:" + CID), false);
   assert.equal(kv.m.has("pro:cid:" + CID), false);
   for (const k of ["gift:abc123", "giftoff:abc123", "giftnomail:abc123", "sub:other@example.com", "seen:other@example.com"]) assert.ok(kv.m.has(k), k);
-  assert.deepEqual(gone, ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "saved:", "code:", "pj:", "gm:", "pq:", "pp:", "wk:", "lt:", "saved/", "cid:", "pro:cid:"]);   /* v168: saved finds and their photos */   /* v152: the weekly letter's tally and letter go too */
+  assert.deepEqual(gone, ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "saved:", "code:", "pj:", "gm:", "pq:", "pp:", "wk:", "lt:", "saved/", "cid:", "pro:cid:", "acct:", "tripinv:", "trips:"]);   /* v181: the trips */   /* v168: saved finds and their photos */   /* v152: the weekly letter's tally and letter go too */
   assert.ok(logs.length && logs.every((l) => !l.includes(EMAIL) && !l.includes(CID)), "no email or id in the log");
 });
 
@@ -203,8 +205,8 @@ test("wired in: Delete in Prowl and the admin delete share alPurge", () => {
    purge, which follows mvf:, leaves nothing; and a confirm link that is not the member's current one is turned away. */
 test("v93: a newer change-of-address request retires the older link; a purge then leaves no pending change", async () => {
   let n = 0;
-  const M = fromIndex(["pushHash", "pushId", "pushList", "pushPurge", "pushMove", "alEmail", "alSame", "alMask", "alMove", "alMoveConfirm", "savedIndex", "savedPurge", "alPurge"], {
-    kvGet, kvPut, console: quiet, json, ALLOW_ORIGINS: ["o"], alReady: () => true, AL_MOVE_PER_EMAIL: 3,
+  const M = fromIndex(["pushHash", "pushId", "pushList", "pushPurge", "pushMove", "alEmail", "alSame", "alMask", "alMove", "alMoveConfirm", "savedIndex", "savedPurge", ...PURGE_FNS, "tripMemberIdFor", "alPurge"], {
+    kvGet, kvPut, console: quiet, json, photoKey, AL_LETTER_TTL: 21 * 86400, TRIPINV_TTL: 30 * 86400, ALLOW_ORIGINS: ["o"], alReady: () => true, AL_MOVE_PER_EMAIL: 3,
     readJson: async (r) => r.body, alAllowed: () => true, vCount: async () => true, alToken: () => "code" + (++n),
     WORKER_BASE: "https://w", alShell: () => "", alEsc: (x) => x, alSend: async () => ({ ok: true }), alFootText: () => "",
     alPage: (title) => ({ page: title }), alGate: (title) => ({ gate: title }), alProSet: async () => {}, PROWL_PAGE: "https://p",
