@@ -129,13 +129,15 @@ function fakeGoogle(u, init) {
 const SECRET = "s".repeat(40);
 const PRO = {};   /* cid -> paid Pro, the fake shop */
 const names = ["gKey", "gFetch", "gPlacesText", "gPlacesAll", "gPlacesPage", "gPlacesNearby", "kindSearches", "gPlaceHours", "gRoutes", "gTown", "nearNum", "tripCell", "nearAnswer", "nearRoute", "tripBuild", "tripRoute", "tripKey", "ppRoute",
-  "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "findSig", "pinLookup", "inviteSig", "inviteOk", "reviewsRoute", "suggestRoute", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep", "tripPurge", "tripIndexRemove", "tripIdOf", "tripsForget", "alMerge",
+  "proCids", "tripIdOk", "tripMemberIdFor", "tripWho", "tripPro", "tripId", "tripGet", "tripPut", "tripIndexAdd", "tripJoin", "tripSummary", "acctHash", "tripAcctLink", "tripOffers", "tripOffersPut", "findSig", "pinLookup", "inviteSig", "inviteOk", "reviewsRoute", "suggestRoute", "findUrl", "tripsRoute", "findPhotoRoute", "tripSweep", "tripPurge", "tripIndexRemove", "tripIdOf", "tripsForget", "alMerge",
   "b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessVerify", "sessMember", "pxHmac", "alSame", "alEmail", "sha16", "kvGet", "kvPut", "readJson", "vClean", "scrubPII", "ipKey", "ip6Parts", "cors", "json", "gSearch", "gCounted", "gUsedToday", "gTally", "gAlong"];   /* v170 */
-const pre = [constLine("G_SEARCHES_PER_DAY"), constLine("TRIP_ALONG"), "const BAD_TYPES = new Set();", constLine("PIN_RETRY_MS").replace(/= \d+/, "= 1"), constLine("REVIEWS_PER_IP"), constLine("G_REVIEWS_PER_DAY"), constLine("NEAR_HERE_M"), constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
+const pre = [constLine("TRIP_SHARES_PER_DAY"), constLine("G_SEARCHES_PER_DAY"), constLine("TRIP_ALONG"), "const BAD_TYPES = new Set();", constLine("PIN_RETRY_MS").replace(/= \d+/, "= 1"), constLine("REVIEWS_PER_IP"), constLine("G_REVIEWS_PER_DAY"), constLine("NEAR_HERE_M"), constLine("NEAR_PER_IP"), constLine("G_PLACE_FIELDS"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];'), "const SESS_DAYS = 30;"].join("\n");
 /* v170: the day's count of Google place searches, in a fake Caps */
 const GQ = { n: 0 };
 const capsCall = async (name, op, q) => { if (op === "peek") return { values: { "gq:all": GQ.n } }; if (op === "add") { GQ.n += q.n; return { n: GQ.n }; } return null; };
-const W = fromIndex(names, Object.assign({ fetch: fakeGoogle, PCACHE, capsCall, capsDay: () => "caps:test", vCount: async () => true, isOwner: (r) => r.headers.get("x-prowl-owner") === "owner-key-0123456789", alProShop: async (env, email, c, cid) => ({ pro: !!PRO[cid] }), console: { error() {} } }, TRIP), pre);
+/* v183: the counters, all open unless a test fills one (VC.full: a name prefix) */
+const VC = { full: "", asked: [] };
+const W = fromIndex(names, Object.assign({ fetch: fakeGoogle, PCACHE, capsCall, capsDay: () => "caps:test", vCount: async (k, lim) => { VC.asked.push([k, lim]); return !(VC.full && k.startsWith(VC.full)); }, isOwner: (r) => r.headers.get("x-prowl-owner") === "owner-key-0123456789", alProShop: async (env, email, c, cid) => ({ pro: !!PRO[cid] }), console: { error() {} } }, TRIP), pre);
 
 function envWith(o) { return Object.assign({ PROWL_ALERTS: new FakeKV(), PROWL_SESSION_SECRET: SECRET, GOOGLE_MAPS_KEY: "k".repeat(30) }, o || {}); }
 const ORIGIN = "https://www.owlandtwigvintage.com";
@@ -307,6 +309,14 @@ test("group trips: a sign-in is needed, Pro is decided on the worker, the organi
   assert.deepEqual(sharedUnknown.body, { ok: true, added: false, pending: true, members: 1 }, "never signed in: the invitation waits");
   assert.ok(!JSON.stringify([...env.PROWL_ALERTS.m.keys()]).toLowerCase().includes("friend@example.com"), "the address is not in any key");
   await W.tripAcctLink(env, "1002", "friend@example.com");   /* the friend signs in to the store */
+  /* v183: the sign-in offers the trip; it is theirs only once they Join */
+  assert.equal((await call(env, "GET", "/trips/" + t.id, null, "1002")).status, 404, "offered, not joined");
+  const offered = await call(env, "GET", "/trips", null, "1002");
+  assert.deepEqual(offered.body.trips, []); assert.deepEqual(offered.body.offers.map((o) => o.id), [t.id]);
+  assert.equal(offered.body.offers[0].org, false); assert.equal(offered.body.offers[0].dest.name, "Blenko Glass Company");
+  const accepted = await call(env, "POST", "/trips/" + t.id + "/accept", {}, "1002");
+  assert.equal(accepted.status, 200); assert.equal(accepted.body.member, true); assert.equal(accepted.body.members, 2);
+  assert.deepEqual((await call(env, "GET", "/trips", null, "1002")).body.offers, [], "joined: no longer an offer");
   const theirs = await call(env, "GET", "/trips/" + t.id, null, "1002");
   assert.equal(theirs.status, 200); assert.equal(theirs.body.org, false); assert.equal(theirs.body.members, 2);
   const orgView = await call(env, "GET", "/trips/" + t.id, null, "1001");
@@ -316,7 +326,8 @@ test("group trips: a sign-in is needed, Pro is decided on the worker, the organi
   assert.equal((await call(env, "GET", "/trips", null, "1002")).body.trips.length, 1);
   await W.tripAcctLink(env, "1005", "third@example.com");
   const sharedKnown = await call(env, "POST", "/trips/" + t.id + "/share", { email: "third@example.com" }, "1001");
-  assert.deepEqual(sharedKnown.body, { ok: true, added: true, pending: false, members: 3 });
+  assert.deepEqual(sharedKnown.body, { ok: true, added: false, pending: true, members: 2 }, "v183: an account's answer is the same, and nobody is added");
+  assert.equal((await call(env, "POST", "/trips/" + t.id + "/accept", {}, "1005")).status, 200);
   assert.equal((await call(env, "POST", "/trips/" + t.id + "/share", { email: "x@y.z" }, "1002")).status, 403, "only the organizer adds members");
   assert.equal((await call(env, "POST", "/trips/" + t.id + "/share", { email: "nope" }, "1001")).status, 400);
   /* v134: standing in Huntington, the organizer rebuilds: the stops behind drop, the origin is that town, members see it */
@@ -337,7 +348,7 @@ test("group trips: a sign-in is needed, Pro is decided on the worker, the organi
   assert.equal(Date.parse(closed.body.expires) - Date.parse(closed.body.closes), TRIP.FINDS_GRACE_DAYS * 86400000);
 });
 
-test("v135: a Prowl Alerts member (email and token) keeps and shares trips without a store sign-in; the owner key is Pro; a share to an alerts member lands at once", async () => {
+test("v135: a Prowl Alerts member (email and token) keeps and shares trips without a store sign-in; the owner key is Pro; a share to an alerts member is offered (v183)", async () => {
   const env = envWith({}); PCACHE.m.clear();
   env.PROWL_ALERTS.m.set("sub:matt@example.com", JSON.stringify({ email: "matt@example.com", tok: "tok-matt-0123456789", pro: true, hunts: [] }));
   env.PROWL_ALERTS.m.set("sub:hark@example.com", JSON.stringify({ email: "hark@example.com", tok: "tok-hark-0123456789", pro: false, hunts: [] }));
@@ -351,12 +362,120 @@ test("v135: a Prowl Alerts member (email and token) keeps and shares trips witho
   assert.ok(!JSON.stringify([...env.PROWL_ALERTS.m.keys()].filter((k) => !k.startsWith("sub:"))).includes("matt@example.com"), "no address in a trip key");
   assert.equal((await call(env, "GET", "/trips", null, "", MATT)).body.trips[0].org, true);
   const shared = await call(env, "POST", "/trips/" + made.body.id + "/share", { email: "hark@example.com" }, "", MATT);
-  assert.deepEqual(shared.body, { ok: true, added: true, pending: false, members: 2 }, "an alerts member who never signed in to the store joins at once");
+  assert.deepEqual(shared.body, { ok: true, added: false, pending: true, members: 1 }, "v183: an alerts member is offered the trip, not added");
+  assert.equal((await call(env, "GET", "/trips/" + made.body.id, null, "", HARK)).status, 404, "not theirs until they Join");
+  assert.deepEqual((await call(env, "GET", "/trips", null, "", HARK)).body.offers.map((o) => o.id), [made.body.id]);
+  assert.equal((await call(env, "POST", "/trips/" + made.body.id + "/accept", {}, "", HARK)).body.members, 2);
   const theirs = await call(env, "GET", "/trips/" + made.body.id, null, "", HARK);
   assert.equal(theirs.status, 200); assert.equal(theirs.body.org, false); assert.equal(theirs.body.stops.length, 7);
   assert.equal((await call(env, "POST", "/trips", { to: "Blenko Glass Company, Milton, WV", lat: 42.4806, lng: -83.4755 }, "", HARK)).status, 403, "no Pro, no trip of their own");
   const owner = await call(env, "POST", "/trips", { to: "Blenko Glass Company, Milton, WV", lat: 42.4806, lng: -83.4755 }, "3003", { "x-prowl-owner": "owner-key-0123456789" });
   assert.equal(owner.status, 200, "the owner key is Pro");
+});
+
+/* v183 (the security and trust plan, 2026-10-28): a share never joins anyone and never says who has an account */
+class CountingKV extends FakeKV {
+  constructor() { super(); this.ops = []; }
+  async get(k, t) { this.ops.push("get " + k.split(":")[0]); return super.get(k, t); }
+  async put(k, v, o) { this.ops.push("put " + k.split(":")[0] + (o && o.expirationTtl ? " ttl" + o.expirationTtl : "")); return super.put(k, v, o); }
+  async delete(k) { this.ops.push("delete " + k.split(":")[0]); return super.delete(k); }
+}
+async function sharedTrip(env, org) {
+  const made = await call(env, "POST", "/trips", { to: "Blenko Glass Company, Milton, WV", lat: 42.4806, lng: -83.4755, day: "2026-10-26" }, org);
+  assert.equal(made.status, 200); return made.body.id;
+}
+
+test("v183: a share answers the same, with the same reads and writes, for an address with an account and one without", async () => {
+  const env = envWith({ PRO_CIDS: "1001" }); env.PROWL_ALERTS = new CountingKV(); PCACHE.m.clear();
+  const id = await sharedTrip(env, "1001");
+  await W.tripAcctLink(env, "1002", "known@example.com");
+  const kv = env.PROWL_ALERTS;
+  kv.ops.length = 0;
+  const known = await call(env, "POST", "/trips/" + id + "/share", { email: "known@example.com" }, "1001");
+  const knownOps = kv.ops.slice(); kv.ops.length = 0;
+  const unknown = await call(env, "POST", "/trips/" + id + "/share", { email: "nobody@example.com" }, "1001");
+  const unknownOps = kv.ops.slice();
+  assert.equal(known.status, unknown.status); assert.equal(known.status, 200);
+  assert.deepEqual(known.body, unknown.body); assert.deepEqual(known.body, { ok: true, added: false, pending: true, members: 1 });
+  assert.equal(known.res.headers.get("Cache-Control"), unknown.res.headers.get("Cache-Control"));
+  assert.deepEqual(knownOps, unknownOps, "the same KV reads and writes either way");
+  assert.ok(knownOps.indexOf("put tripinv ttl" + 30 * 86400) !== -1 && knownOps.indexOf("put tripoffer ttl" + 30 * 86400) !== -1, "tripinv: always, the offer for 30 days");
+  assert.deepEqual(JSON.parse(kv.m.get("trip:" + id)).members, ["1001"], "nobody joined");
+  assert.deepEqual(JSON.parse(kv.m.get("tripoffer:1002")).ids, [id]);
+  assert.ok(!JSON.stringify([...kv.m.keys()]).includes("nobody@example.com"), "no address in a key");
+});
+
+test("v183: an offer is not a membership until Join; Decline drops it and a later sign-in does not bring it back; a share again offers it again", async () => {
+  const env = envWith({ PRO_CIDS: "1001" }); PCACHE.m.clear();
+  const id = await sharedTrip(env, "1001"), id2 = await sharedTrip(env, "1001");
+  await W.tripAcctLink(env, "2002", "pal@example.com");
+  for (const t of [id, id2]) await call(env, "POST", "/trips/" + t + "/share", { email: "pal@example.com" }, "1001");
+  for (const path of ["/trips/" + id, "/trips/" + id + "/finds"]) assert.equal((await call(env, "GET", path, null, "2002")).status, 404, path + ": not a member yet");
+  assert.equal((await call(env, "POST", "/trips/" + id + "/leave", {}, "2002")).status, 404);
+  assert.equal((await call(env, "GET", "/trips/" + id + "/accept", null, "2002")).status, 405, "POST only");
+  assert.equal((await call(env, "POST", "/trips/" + id + "/accept", {}, "3003")).status, 404, "not offered to them");
+  let list = await call(env, "GET", "/trips", null, "2002");
+  assert.deepEqual(list.body.offers.map((o) => o.id).sort(), [id, id2].sort()); assert.deepEqual(list.body.trips, []);
+  const no = await call(env, "POST", "/trips/" + id2 + "/decline", {}, "2002");
+  assert.equal(no.status, 200); assert.deepEqual(no.body, { ok: true, declined: id2 });
+  assert.equal((await call(env, "POST", "/trips/" + id2 + "/accept", {}, "2002")).status, 404, "declined: nothing to accept");
+  assert.deepEqual((await call(env, "GET", "/trips", null, "2002")).body.offers.map((o) => o.id), [id]);
+  /* the share also left tripinv: for the address; the next sign-in does not offer the declined trip again */
+  await W.tripAcctLink(env, "2002", "pal@example.com");
+  assert.deepEqual((await call(env, "GET", "/trips", null, "2002")).body.offers.map((o) => o.id), [id], "declined stays declined");
+  assert.equal(env.PROWL_ALERTS.m.has("tripinv:" + await W.acctHash("pal@example.com")), false, "tripinv: used up");
+  assert.equal((await call(env, "POST", "/trips/" + id + "/accept", {}, "2002")).status, 200);
+  assert.equal((await call(env, "GET", "/trips/" + id, null, "2002")).status, 200);
+  assert.deepEqual(JSON.parse(env.PROWL_ALERTS.m.get("trip:" + id)).members, ["1001", "2002"]);
+  assert.deepEqual(JSON.parse(env.PROWL_ALERTS.m.get("trip:" + id2)).members, ["1001"], "the declined trip never had them");
+  /* the organizer asks again: an offer again, still not a member */
+  await call(env, "POST", "/trips/" + id2 + "/share", { email: "pal@example.com" }, "1001");
+  assert.deepEqual((await call(env, "GET", "/trips", null, "2002")).body.offers.map((o) => o.id), [id2]);
+  assert.deepEqual(JSON.parse(env.PROWL_ALERTS.m.get("trip:" + id2)).members, ["1001"]);
+});
+
+test("v183: an expired offer is dropped and cannot be accepted; a member who left is never put back by a share or a sign-in", async () => {
+  const env = envWith({ PRO_CIDS: "1001" }); PCACHE.m.clear();
+  const id = await sharedTrip(env, "1001"), old = await sharedTrip(env, "1001");
+  await W.tripAcctLink(env, "4004", "gone@example.com");
+  for (const t of [id, old]) await call(env, "POST", "/trips/" + t + "/share", { email: "gone@example.com" }, "1001");
+  const t = JSON.parse(env.PROWL_ALERTS.m.get("trip:" + old));
+  t.closes = new Date(Date.now() - (TRIP.FINDS_GRACE_DAYS + 1) * 86400000).toISOString(); t.expires = TRIP.tripExpires(t.closes);
+  env.PROWL_ALERTS.m.set("trip:" + old, JSON.stringify(t));
+  assert.deepEqual((await call(env, "GET", "/trips", null, "4004")).body.offers.map((o) => o.id), [id], "the ended trip is not offered");
+  assert.deepEqual(JSON.parse(env.PROWL_ALERTS.m.get("tripoffer:4004")).ids, [id], "and is pruned");
+  const late = await call(env, "POST", "/trips/" + old + "/accept", {}, "4004");
+  assert.equal(late.status, 404);
+  assert.deepEqual(JSON.parse(env.PROWL_ALERTS.m.get("trip:" + old)).members, ["1001"]);
+  /* joins, leaves; the organizer shares again and they sign in again: still off the trip */
+  assert.equal((await call(env, "POST", "/trips/" + id + "/accept", {}, "4004")).status, 200);
+  assert.equal((await call(env, "POST", "/trips/" + id + "/leave", {}, "4004")).status, 200);
+  const again = await call(env, "POST", "/trips/" + id + "/share", { email: "gone@example.com" }, "1001");
+  assert.deepEqual(again.body, { ok: true, added: false, pending: true, members: 1 });
+  await W.tripAcctLink(env, "4004", "gone@example.com");
+  assert.deepEqual(JSON.parse(env.PROWL_ALERTS.m.get("trip:" + id)).members, ["1001"], "never forced back");
+  assert.equal((await call(env, "GET", "/trips/" + id, null, "4004")).status, 404);
+  assert.deepEqual((await call(env, "GET", "/trips", null, "4004")).body.trips, []);
+  assert.deepEqual((await call(env, "GET", "/trips", null, "4004")).body.offers.map((o) => o.id), [id], "only offered, to Join again if they choose");
+  /* an offer to a trip that filled up meanwhile stays an offer */
+  const full = JSON.parse(env.PROWL_ALERTS.m.get("trip:" + id));
+  full.members = ["1001"].concat(Array.from({ length: TRIP.TRIP_MEMBERS_MAX - 1 }, (_, i) => String(5000 + i))); env.PROWL_ALERTS.m.set("trip:" + id, JSON.stringify(full));
+  assert.equal((await call(env, "POST", "/trips/" + id + "/accept", {}, "4004")).status, 409);
+  assert.deepEqual(JSON.parse(env.PROWL_ALERTS.m.get("tripoffer:4004")).ids, [id]);
+});
+
+test("v183: an organizer has a daily cap on shares by email, counted per organizer", async () => {
+  const env = envWith({ PRO_CIDS: "1001" }); PCACHE.m.clear();
+  const id = await sharedTrip(env, "1001");
+  VC.asked.length = 0;
+  assert.equal((await call(env, "POST", "/trips/" + id + "/share", { email: "a@example.com" }, "1001")).status, 200);
+  assert.ok(VC.asked.some(([k, lim]) => k === "tshare:1001" && lim === 30), "tshare:<organizer>, 30 a day");
+  VC.full = "tshare:";
+  try {
+    const over = await call(env, "POST", "/trips/" + id + "/share", { email: "b@example.com" }, "1001");
+    assert.equal(over.status, 429); assert.match(over.body.error, /invite link/);
+    assert.equal(env.PROWL_ALERTS.m.has("tripinv:" + await W.acctHash("b@example.com")), false, "nothing written past the cap");
+  } finally { VC.full = ""; }
 });
 
 const JPEG = (() => { const a = new Uint8Array(1200); a[0] = 0xff; a[1] = 0xd8; a[2] = 0xff; a[3] = 0xe0; return "data:image/jpeg;base64," + Buffer.from(a).toString("base64"); })();
@@ -367,6 +486,7 @@ test("trip finds: a member posts a photo check's find, every member sees it with
   const id = made.body.id;
   await W.tripAcctLink(env, "1002", "friend@example.com");
   await call(env, "POST", "/trips/" + id + "/share", { email: "friend@example.com" }, "1001");
+  assert.equal((await call(env, "POST", "/trips/" + id + "/accept", {}, "1002")).status, 200);   /* v183: they Join */
   const noR2 = await call(envWith({ PRO_CIDS: "1001" }), "POST", "/trips/" + id + "/finds", { img: JPEG }, "1001");
   assert.equal(noR2.status, 404, "another store: the trip is not there");
   const env2 = envWith({ PRO_CIDS: "1001" }); env2.PROWL_ALERTS = env.PROWL_ALERTS;

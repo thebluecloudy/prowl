@@ -98,6 +98,9 @@ async function seedPurge(env, sub) {
   kv.set("acct:" + await W.acctHash(OLD), { cid: ehOld });
   kv.set("tripinv:" + await W.acctHash(EMAIL), { ids: ["tzzzzzzzzz"] });
   kv.set("tripinv:" + await W.acctHash(OLD), { ids: ["tzzzzzzzzz"] });
+  kv.set("tripoffer:" + id, { ids: ["tzzzzzzzzz"], done: [] }); kv.set("tripoffer:" + ehOld, { ids: ["tzzzzzzzzz"], done: [] });   /* v183: offers */
+  kv.set("tripoffer:n" + await W.acctHash(OLD), { ids: ["tzzzzzzzzz"], done: [] });
+  kv.set("tripoffer:1002", { ids: ["tzzzzzzzzz"], done: [] });
   kv.set("acct:" + await W.acctHash("hark@example.com"), { cid: "1002" });
   /* saved finds left at an earlier address before v181, with a photo; and the current list with a photo kept under it */
   const hOld = await W.sha16(OLD), hNow = await W.sha16(EMAIL), u = "https://www.ebay.com/itm/1", ku = await W.sha16(u);
@@ -128,7 +131,8 @@ test("a Delete covers earlier addresses and the trips: no address, hash or trip 
     logs.length = 0;
     const gone = await W.alPurge(env, EMAIL, sub);
     noTrace(env, [EMAIL, OLD, s.id, s.ehNow, s.ehOld, s.hOld, s.hNow, await W.acctHash(EMAIL), await W.acctHash(OLD)]);
-    assert.deepEqual(gone.slice(-3), ["acct:", "tripinv:", "trips:"], "new entries at the end");
+    assert.deepEqual(gone.slice(-4), ["acct:", "tripinv:", "trips:", "tripoffer:"], "new entries at the end");   /* v183: tripoffer: */
+    assert.ok(kv.m.has("tripoffer:1002"), "someone else's offers stay");
     assert.ok(logs.every((l) => !l.includes(EMAIL) && !l.includes(OLD) && !l.includes(s.id)), "the log names keys only");
     const t = kv.json("trip:taaaaaaaaa");
     assert.equal(t.org, "1002"); assert.deepEqual(t.members, ["1002"]);
@@ -245,7 +249,7 @@ test("wired: the photo URL, the sync's and the sweep's deletes use hp; the move 
   assert.match(indexFn("savedSweep"), /photoKey\(savedHp\(had, u, h\), /);
   assert.match(indexFn("alPurge"), /await tripsForget\(env, tids\);/);
   assert.match(indexFn("tripWho"), /await tripIdOf\(env, sub, email\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v182";/);
+  assert.ok(Number(/const WORKER_VERSION = "v(\d+)";/.exec(INDEX)[1]) >= 182);   /* v183: or later */
 });
 
 /* v182: the review of part 5 */

@@ -3887,7 +3887,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.08';
+var PROWL_VERSION='v8.09';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -11575,7 +11575,7 @@ function nrOpenTrip(v,fresh){
   nrTripSet({id:v.id,name:(v.dest&&v.dest.name)||'',day:v.day,stops:nrStopsSlim(v.stops)});
   nrDrawTrip(v,{members:v.members});
   var out=$('#otp-nrOut');if(!out)return;
-  if(v.org)out.insertAdjacentHTML('afterbegin','<div class="nr-sharebox"><div class="addrow" id="otp-nrShareRow"'+(fresh?'':' hidden')+'><input id="otp-nrEmail" type="email" placeholder="Their account email" aria-label="Add a member by account email" autocomplete="off"><button type="button" id="otp-nrAdd">Add</button></div><p class="nearp nr-shnote">Members see this same trip, stops and live hours, under NEAR ME › Trips. Someone who has not used Prowl yet joins the moment they sign in.</p></div>');
+  if(v.org)out.insertAdjacentHTML('afterbegin','<div class="nr-sharebox"><div class="addrow" id="otp-nrShareRow"'+(fresh?'':' hidden')+'><input id="otp-nrEmail" type="email" placeholder="Their account email" aria-label="Add a member by account email" autocomplete="off"><button type="button" id="otp-nrAdd">Add</button></div><p class="nearp nr-shnote">Members see this same trip, stops and live hours, under NEAR ME › Trips. Someone you add finds it there under Invited to and can join; someone new to Prowl, once they sign in.</p></div>');   /* v8.09: nobody joins without saying so */
   out.insertAdjacentHTML('beforeend','<div class="nr-finds" id="otp-nrFinds"><h3 class="nearh">Finds</h3><p class="nearp">What the group finds on the road: a photo check’s photo, what it is, the asking price and the call. Share one from any photo check with <b>SHARE THIS FIND</b>. Photos go away a week after the trip.</p><div class="nr-findlist" id="otp-nrFindList"><p class="nearp">Loading…</p></div></div>');
   nrFindsLoad(v.id);
   if(v.id)out.insertAdjacentHTML('beforeend','<p class="nearp nr-tripend">'+(v.org?'Done with this trip? Delete takes it away for everyone, with its Finds.':'Done with this trip?')+' <button type="button" class="nr-rvb nr-tripdel" data-nrdel="'+esc(v.id)+'" data-org="'+(v.org?1:0)+'" aria-label="'+(v.org?'Delete':'Leave')+' this trip">'+(v.org?'Delete':'Leave')+'</button></p>');   /* v7.85: Delete or Leave from the open trip too, not only from the list */
@@ -11585,12 +11585,14 @@ function nrTripsLoad(){
   var el=$('#otp-nrTrips');if(!el)return;
   if(!nrSigned()){el.innerHTML='<p class="nearp nr-empty">Sign in to Prowl to see your group trips and the ones friends invite you to.</p><button type="button" class="b p" id="otp-nrTripsIn">Sign in</button>';return}   /* v7.69 */
   if(NR.trips){nrTripsDraw();return}
-  nrFetch('/trips').then(function(r){if(!r.ok){el.innerHTML='';return}NR.trips=r.j.trips||[];nrTripsDraw()});
+  nrFetch('/trips').then(function(r){if(!r.ok){el.innerHTML='';return}NR.trips=r.j.trips||[];NR.offers=r.j.offers||[];nrTripsDraw()});   /* v8.09: offers */
 }
 function nrTripsDraw(){
-  var el=$('#otp-nrTrips'),L=NR.trips||[],act=nrTripGet();if(!el)return;
-  if(!L.length){el.innerHTML='<p class="nearp nr-empty">No group trips yet. Build one under Road trip and tap Save trip; a friend\u2019s invite link lands here too.</p>';return}   /* v7.69 */
-  el.innerHTML='<h3 class="nearh">Your trips</h3><div class="nr-triplist">'+L.map(function(t){var d=t.dest||{};return '<div class="nr-triprow"><button type="button" class="tb nr-tripb'+(act&&act.id===t.id?' on':'')+'" data-nrtrip="'+esc(t.id)+'"><span class="tt">'+esc(t.origin||'Here')+' → '+esc(d.name||'')+'</span><span class="nr-tripm">'+esc(nrDayLabel(t.day))+' · '+t.members+(t.members===1?' member':' members')+(t.org?' · yours':'')+'</span></button>'+(t.org?'<button type="button" class="nr-rvb nr-tripsh" data-nrinv="'+esc(t.id)+'" aria-label="Share the trip to '+esc(d.name||'')+'">Share</button>':'')+'<button type="button" class="nr-rvb nr-tripdel" data-nrdel="'+esc(t.id)+'" data-org="'+(t.org?1:0)+'" aria-label="'+(t.org?'Delete':'Leave')+' the trip to '+esc(d.name||'')+'">'+(t.org?'Delete':'Leave')+'</button></div>'}).join('')+'</div>';   /* v7.70: Delete (yours) or Leave (a friend's) */
+  var el=$('#otp-nrTrips'),L=NR.trips||[],O=NR.offers||[],act=nrTripGet();if(!el)return;
+  /* v8.09 (the security and trust plan, 2026-10-28): a trip shared to you by email waits here until you Join or Decline */
+  var inv=O.length?'<h3 class="nearh">Invited to</h3><div class="nr-triplist">'+O.map(function(t){var d=t.dest||{};return '<div class="nr-triprow nr-offer"><div class="tb nr-tripb"><span class="tt">'+esc(t.origin||'Here')+' → '+esc(d.name||'')+'</span><span class="nr-tripm">'+esc(nrDayLabel(t.day))+' · '+t.members+(t.members===1?' member':' members')+'</span></div><button type="button" class="nr-rvb nr-tripdel nr-tripsh" data-nroffer="'+esc(t.id)+'" aria-label="Join the trip to '+esc(d.name||'')+'">Join</button><button type="button" class="nr-rvb nr-tripdel" data-nrdecline="'+esc(t.id)+'" aria-label="Decline the trip to '+esc(d.name||'')+'">Decline</button></div>'}).join('')+'</div>':'';
+  if(!L.length){el.innerHTML=inv+'<p class="nearp nr-empty">No group trips yet. Build one under Road trip and tap Save trip; a friend\u2019s invite link lands here too.</p>';return}   /* v7.69 */
+  el.innerHTML=inv+'<h3 class="nearh">Your trips</h3><div class="nr-triplist">'+L.map(function(t){var d=t.dest||{};return '<div class="nr-triprow"><button type="button" class="tb nr-tripb'+(act&&act.id===t.id?' on':'')+'" data-nrtrip="'+esc(t.id)+'"><span class="tt">'+esc(t.origin||'Here')+' → '+esc(d.name||'')+'</span><span class="nr-tripm">'+esc(nrDayLabel(t.day))+' · '+t.members+(t.members===1?' member':' members')+(t.org?' · yours':'')+'</span></button>'+(t.org?'<button type="button" class="nr-rvb nr-tripsh" data-nrinv="'+esc(t.id)+'" aria-label="Share the trip to '+esc(d.name||'')+'">Share</button>':'')+'<button type="button" class="nr-rvb nr-tripdel" data-nrdel="'+esc(t.id)+'" data-org="'+(t.org?1:0)+'" aria-label="'+(t.org?'Delete':'Leave')+' the trip to '+esc(d.name||'')+'">'+(t.org?'Delete':'Leave')+'</button></div>'}).join('')+'</div>';   /* v7.70: Delete (yours) or Leave (a friend's) */
 }
 /* v7.70 (the owner: "i need a way to delete the shared trips"): Delete takes your own trip away for everyone, its
    Finds and their photos with it; Leave takes a friend's trip off your list. The first tap asks, the second does it. */
@@ -11605,6 +11607,18 @@ function nrTripDel(b){
     if(NR.view&&NR.view.id===id){NR.view=null;var o=$('#otp-nrOut');if(o)o.innerHTML='';nrFoot(null)}
     NR.trips=(NR.trips||[]).filter(function(t){return t.id!==id});nrTripsDraw();
     toast(org?'Trip deleted for everyone, with its Finds.':'You left the trip.',3200);
+  });
+}
+/* v8.09: Join an offered trip (then it opens, as an invite link's Join does), or Decline it */
+function nrOffer(b){
+  var yes=b.hasAttribute('data-nroffer'),id=b.getAttribute(yes?'data-nroffer':'data-nrdecline');if(!id||NR.busy)return;NR.busy=true;b.disabled=true;
+  var drop=function(){NR.offers=(NR.offers||[]).filter(function(t){return t.id!==id})};
+  nrFetch('/trips/'+E(id)+'/'+(yes?'accept':'decline'),{method:'POST',body:{}}).then(function(r){
+    if(!r.ok){NR.busy=false;b.disabled=false;if(r.status===404){drop();nrTripsDraw()}toast(esc((r.j&&r.j.error)||'That could not be done just now.')+(r.status?' ('+r.status+')':''),4200);return}
+    drop();
+    if(!yes){NR.busy=false;nrTripsDraw();toast('Invitation declined.',2600);return}
+    NR.trips=null;
+    nrFetch('/trips/'+E(id)).then(function(v){NR.busy=false;if(!v.ok){nrTripsLoad();return}nrMode('trip');nrOpenTrip(v.j,false);toast('You are on the trip: its stops, live hours and the group\u2019s Finds.',3600)});
   });
 }
 function nrStopUrl(name){var t=nrTripGet(),i;if(!t||!t.stops||!name)return '';for(i=0;i<t.stops.length;i++)if(t.stops[i].name===name)return t.stops[i].url||'';return ''}
@@ -11719,6 +11733,7 @@ if(near){
     var so=e.target.closest&&e.target.closest('[data-nrsort]');if(so){e.preventDefault();nrSortSet(so.getAttribute('data-nrsort'));return}   /* v7.49 */
     var mp=e.target.closest&&e.target.closest('[data-nrmap]');if(mp){nrMapToggle(mp.getAttribute('data-nrmap'));return}   /* v7.45 */
     if(e.target.closest&&e.target.closest('#otp-nrUnskip')){nrUnskipAll();return}
+    var of=e.target.closest&&e.target.closest('[data-nroffer],[data-nrdecline]');if(of){nrOffer(of);return}   /* v8.09 */
     var b=e.target.closest&&e.target.closest('[data-nrtrip]');
     if(b){var id=b.getAttribute('data-nrtrip');if(NR.busy)return;NR.busy=true;b.disabled=true;nrFetch('/trips/'+E(id)).then(function(r){NR.busy=false;b.disabled=false;if(!r.ok){toast('That trip could not be opened just now.',2800);return}if(NR.mode!=='trip')nrMode('trip');nrOpenTrip(r.j,false)});return}
     var rv=e.target.closest&&e.target.closest('[data-nrrv]');if(rv){e.preventDefault();nrRvToggle(rv);return}   /* v7.69 */
@@ -11743,8 +11758,8 @@ if(near){
       nrFetch('/trips/'+E(NR.view.id)+'/share',{method:'POST',body:{email:em}}).then(function(r){
         ad.disabled=false;
         if(!r.ok){toast(esc((r.j&&r.j.error)||'They could not be added just now.'),3200);return}
-        if(inp)inp.value='';if(typeof r.j.members==='number'){NR.view.members=r.j.members;var ms=$('#otp-nrMembers');if(ms)ms.textContent=' · '+r.j.members+' on this trip';NR.trips=null}
-        toast(r.j.added?'Added. They will see this trip under NEAR ME.':'They will join the moment they sign in to Prowl.',3600);
+        if(inp)inp.value='';
+        toast('Invite sent. If they use Prowl, they see it under NEAR ME › Trips and can join.',4200);   /* v8.09: one answer for every address; nobody joins until they say so */
       });
     }
   });
