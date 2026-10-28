@@ -43,6 +43,7 @@ const deps = {
   alReady: () => true, alPage: (title) => ({ page: title }), alGate: (title) => ({ gate: title }), alProSet: async () => {},
   alShell: () => "", alEsc: (x) => x, alSend: async () => ({ ok: true }), alFootText: () => "", PROWL_PAGE: "https://p",
   Response: { redirect: (u) => ({ redirect: u }) },
+  alGateGo: async (env, base, sub) => ({ redirect: base + "#e=" + encodeURIComponent(sub.email) + "&k=TICKET&g=1" }),   /* v184: a ticket, not the token */
 };
 const W = new Function(...Object.keys(deps), names.map(indexFn).join("\n") + "\nreturn { " + names.join(", ") + " };")(...Object.values(deps));
 

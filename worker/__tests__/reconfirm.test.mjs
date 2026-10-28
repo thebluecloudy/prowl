@@ -37,10 +37,14 @@ const deps = {
   alPage: (t, m) => { pages.push(["page", t, m]); return new Response(t + "|" + m); },
   alGate: (t, m, b) => { pages.push(["gate", t, m, b]); return new Response(t + "|" + m + "|" + b); },
 };
-const X = fromIndex(["alConfirm"], deps);
+/* v184: the redirect carries a real 10-minute sign-in ticket (alGateGo), checked here with alTicketOk */
+deps.AL_TICKET_TTL = { m: 3 * 86400, g: 600 };
+const X = fromIndex(["alConfirm", "alGateGo", "alTicket", "alTicketSig", "alTicketOk", "alTokTag", "alCodeKey", "pxHmac"], deps);
+const KEYED = { ADMIN_KEY: "an-admin-key-of-24-chars" };
+const ticketOf = (loc) => /&k=(\d{10}\.[0-9a-f]{64})&g=1$/.exec(loc)[1];
 const EMAIL = "jane@example.com";
 const link = (code) => new URL("https://prowl.example/alerts/confirm?e=" + encodeURIComponent(EMAIL) + "&c=" + code);
-const confirm = (env, method) => X.alConfirm(new Request(link("C1").href, { method }), env, link("C1"));
+const confirm = (env, method) => X.alConfirm(new Request(link("C1").href, { method }), Object.assign(env, KEYED), link("C1"));
 function member(over) {
   return Object.assign({
     email: EMAIL, tok: "TOK-OLD", utok: "UTOK-OLD", hunts: ["Pyrex"], day: "2026-10-07", done: ["pyrex"], sent: "2026-10-07", mailed: "2026-10-07",
@@ -57,7 +61,10 @@ test("re-confirming as a member keeps every field; only the hunts merge (prev, h
   assert.deepEqual(kv.json("sub:" + EMAIL), old, "a GET (a mail scanner) changes nothing");
   r = await confirm(env, "POST");
   assert.equal(r.status, 302);
-  assert.equal(r.headers.get("Location"), "https://shop.example/pages/prowl?alerts=on#e=" + encodeURIComponent(EMAIL) + "&t=TOK-OLD");
+  assert.match(r.headers.get("Location"), /^https:\/\/shop\.example\/pages\/prowl\?alerts=on#e=jane%40example\.com&k=\d{10}\.[0-9a-f]{64}&g=1$/);
+  assert.ok(!r.headers.get("Location").includes("TOK-OLD"), "v184: never the token");
+  assert.ok(await X.alTicketOk(env, old, ticketOf(r.headers.get("Location")), "g"), "a gate ticket for this member");
+  assert.equal(await X.alTicketOk(env, old, ticketOf(r.headers.get("Location")), "m"), "", "not an email ticket");
   const now = kv.json("sub:" + EMAIL);
   assert.deepEqual(now.hunts, ["Pyrex", "Fire King"], "hunts merge, no duplicates");
   const { hunts, proSetCalled, ...rest } = now;
@@ -83,7 +90,8 @@ test("a first confirm still makes a fresh member, as before", async () => {
   const kv = new FakeKV(), env = { PROWL_ALERTS: kv };
   kv.set("conf:" + EMAIL, { code: "C1", hunts: ["Pyrex"] });
   const r = await confirm(env, "POST");
-  assert.match(r.headers.get("Location"), /\?alerts=on#e=jane%40example\.com&t=NEW-TOKEN$/);
+  assert.match(r.headers.get("Location"), /\?alerts=on#e=jane%40example\.com&k=\d{10}\.[0-9a-f]{64}&g=1$/);
+  assert.ok(await X.alTicketOk(env, kv.json("sub:" + EMAIL), ticketOf(r.headers.get("Location")), "g"));
   const s = kv.json("sub:" + EMAIL);
   assert.deepEqual(Object.keys(s).sort(), ["created", "day", "done", "email", "hunts", "proSetCalled", "sent", "tok", "utok"]);
   assert.deepEqual([s.email, s.hunts, s.tok, s.utok, s.day, s.sent], [EMAIL, ["Pyrex"], "NEW-TOKEN", "NEW-TOKEN", "", ""]);

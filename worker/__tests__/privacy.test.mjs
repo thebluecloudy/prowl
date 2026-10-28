@@ -210,7 +210,7 @@ test("v93: a newer change-of-address request retires the older link; a purge the
     readJson: async (r) => r.body, alAllowed: () => true, vCount: async () => true, alToken: () => "code" + (++n),
     WORKER_BASE: "https://w", alShell: () => "", alEsc: (x) => x, alSend: async () => ({ ok: true }), alFootText: () => "",
     alPage: (title) => ({ page: title }), alGate: (title) => ({ gate: title }), alProSet: async () => {}, PROWL_PAGE: "https://p",
-    Response: { redirect: (u) => ({ redirect: u }) },
+    Response: { redirect: (u) => ({ redirect: u }) }, alGateGo: async (env, base, sub) => ({ redirect: base + "#e=" + encodeURIComponent(sub.email) + "&k=TICKET&g=1" }),   /* v184 */
   });
   const kv = new FakeKV(), env = { PROWL_ALERTS: kv }, T = "T".repeat(24);
   kv.set("sub:" + EMAIL, { email: EMAIL, tok: T, hunts: [] });

@@ -19,6 +19,13 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v185: 2026-10-28. Sign-in links after a change of address: /alerts/redeem follows moved:<old> (up to 3 changes), so an
+ *         old-address #e=&t= link or #e=&k= ticket signs in to the new address, as status did before v184; Sign out every
+ *         other device still ends both. The admin's signout-all text no longer claims the store login ends.
+ *   v184: 2026-10-28. Security and trust, sign-in links: email links and the confirm, gift, sign-in and move redirects
+ *         carry a signed ticket (alTicket: 3 days in emails, 10 minutes after a gate tap, works once, inu:<sig>) in
+ *         place of the permanent token; POST /alerts/redeem trades one (or an old #e=&t= pair) for the sign-in. POST
+ *         /alerts/signout-others gives a new token and ends every other device, store sessions too (sub.sessFrom).
  *   v183: 2026-10-28. Security and trust, share: a share never joins anyone and answers the same for every address
  *         ({ok, added:false, pending:true, members} unchanged; TRIP_SHARES_PER_DAY per organizer). The trip waits as an
  *         offer (tripoffer:<member id>, 30 days) until they Join (POST /trips/<id>/accept) or Decline (/decline); GET
@@ -634,7 +641,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v183";
+const WORKER_VERSION = "v185";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4346,19 +4353,44 @@ async function kvGet(env, k, dflt) {
 }
 async function kvPut(env, k, v) { await env.PROWL_ALERTS.put(k, JSON.stringify(v)); }
 function alReady(env) { return !!(env && env.PROWL_ALERTS && alMode(env) !== "off"); }
-/* v37: the member's own link back into Prowl. Same token as the unsubscribe link,
-   so it signs that browser in. Kept in the hash, so it never reaches a server log. */
-function alHomeUrl(sub) { return PROWL_APP + "?alerts=in#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok; }
+/* v37: the member's own link back into Prowl. Kept in the hash, so it never reaches a server log.
+   v184 (the security and trust plan, 2026-10-28: the permanent token rode in every email link, forwarded and logged):
+   the hash carries a sign-in ticket (sub.k, from alMailSub) in place of the token; a copy without one carries none. */
+function alLinkHash(sub) { return "#e=" + encodeURIComponent(sub.email) + (sub.k ? "&k=" + sub.k : ""); }
+function alHomeUrl(sub) { return PROWL_APP + "?alerts=in" + alLinkHash(sub); }
 /* v43: same sign-in link, but Prowl opens straight on the Daily screen. */
-function alDailyUrl(sub) { return PROWL_APP + "?alerts=in&daily=1#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok; }
+function alDailyUrl(sub) { return PROWL_APP + "?alerts=in&daily=1" + alLinkHash(sub); }
 /* v38: the upgrade link in emails signs in and goes straight to the Pro checkout
    (the product page alone cannot add a subscription-only item to the cart). */
-function alUpgradeUrl(sub) { return PROWL_APP + "?alerts=in&upgrade=1#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok; }
+function alUpgradeUrl(sub) { return PROWL_APP + "?alerts=in&upgrade=1" + alLinkHash(sub); }
 /* v51: the unsubscribe link carries its own token (utok), not the sign-in token.
-   Mail gateways fetch and log these URLs; a logged utok can only switch mail off. */
+   Mail gateways fetch and log these URLs; a logged utok can only switch mail off. v184: never the sign-in token (alMailSub
+   gives a member without a utok one before anything is sent). */
 function alUnsubUrl(sub, hunt) {
-  return WORKER_BASE + "/alerts/unsub?e=" + encodeURIComponent(sub.email) + "&t=" + (sub.utok || sub.tok) + (hunt ? "&h=" + encodeURIComponent(hunt) : "");
+  return WORKER_BASE + "/alerts/unsub?e=" + encodeURIComponent(sub.email) + "&t=" + (sub.utok || "") + (hunt ? "&h=" + encodeURIComponent(hunt) : "");
 }
+/* v184: a sign-in ticket, exp "." HMAC("prowl-in-v1:" email|exp|kind|tokTag). Nothing is stored to make one (KV writes are
+   scarce), tokTag is the start of sha256(tok), so a new token (Sign out every other device) kills every ticket out there,
+   and a redeemed one is marked inu:<sig> until it runs out. Kinds: "m" in emails (3 days), "g" after a worker gate tap
+   (10 minutes, the page redeems it without asking). */
+const AL_TICKET_TTL = { m: 3 * 86400, g: 600 }, AL_REDEEM_PER_IP = 30;
+async function alTokTag(tok) { const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(tok || ""))); return Array.from(new Uint8Array(d).slice(0, 6), x => ("0" + x.toString(16)).slice(-2)).join(""); }
+async function alTicketSig(env, email, exp, kind, tok) { const key = alCodeKey(env); return key && tok ? pxHmac(key, "prowl-in-v1:" + email + "|" + exp + "|" + kind + "|" + await alTokTag(tok)) : ""; }
+async function alTicket(env, sub, ttlSec, kind) { const exp = Math.floor(Date.now() / 1000) + ttlSec, sig = sub ? await alTicketSig(env, sub.email, exp, kind, sub.tok) : ""; return sig ? exp + "." + sig : ""; }
+/* the ticket's signature when it is good for this member and kind right now, else "" */
+async function alTicketOk(env, sub, k, kind, email) {   /* v185: email, the address it was minted for (an earlier one after a move) */
+  const m = /^(\d{9,11})\.([0-9a-f]{64})$/.exec(String(k || "")), now = Date.now() / 1000;
+  if (!m || !sub || !AL_TICKET_TTL[kind] || Number(m[1]) <= now || Number(m[1]) - now > AL_TICKET_TTL[kind] + 60) return "";
+  return alSame(m[2], await alTicketSig(env, email || sub.email, m[1], kind, sub.tok)) ? m[2] : "";
+}
+/* what an email to this member is built from: a copy with a fresh "m" ticket (k), never saved; a member from before
+   v51 gets a utok first, so no link falls back to the token */
+async function alMailSub(env, sub) {
+  if (!sub.utok) { sub.utok = alToken(); await alMerge(env, sub, ["utok"]); }
+  return Object.assign({}, sub, { k: await alTicket(env, sub, AL_TICKET_TTL.m, "m") });
+}
+/* after a worker gate tap (confirm, gift start, sign-in link, move): back to Prowl with a 10-minute "g" ticket */
+async function alGateGo(env, base, sub) { return Response.redirect(base + "#e=" + encodeURIComponent(sub.email) + "&k=" + await alTicket(env, sub, AL_TICKET_TTL.g, "g") + "&g=1", 302); }
 
 const AL_UNSUB_MAIL = "hello@owlandtwigvintage.com";
 /* v83: a reply or a mailto unsubscribe lands here. v89: the commission line is affNote(), built from the switches. */
@@ -5109,7 +5141,7 @@ function alShell(env, inner, why, links) {
 function alWhy(sub) { return 'You are getting this because you turned on Prowl Alerts at owlandtwigvintage.com/prowl. One email ' + (sub ? alFreqName(G_ENV, sub) : 'a day') + ' for every hunt, from ShopGoodwill, eBay, Etsy and Chairish. Change how often, what time, or which hunts, or turn emails off, in Prowl under Den, then Settings.'; }
 /* v41: copyright line in every footer, above the mailing address. */
 function alCopy() { return 'Copyright \u00a9 ' + new Date().getUTCFullYear() + ' Owl &amp; Twig Vintage. All rights reserved.'; }
-function alFootText(env, sub) { return ["", "--", "Prowl Alerts by Owl & Twig Vintage. You turned on Prowl Alerts at owlandtwigvintage.com/prowl.", sub ? "Open Prowl signed in: " + alHomeUrl(sub) : "", sub ? "Unsubscribe: " + alUnsubUrl(sub) : "", sub ? 'Or just reply "unsubscribe" to this email.' : "", sub ? affNote() : "", "Copyright \u00a9 " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(Boolean).join("\n"); }
+function alFootText(env, sub) { return ["", "--", "Prowl Alerts by Owl & Twig Vintage. You turned on Prowl Alerts at owlandtwigvintage.com/prowl.", sub ? "Open Prowl: " + alHomeUrl(sub) : "", sub ? "Unsubscribe: " + alUnsubUrl(sub) : "", sub ? 'Or just reply "unsubscribe" to this email.' : "", sub ? affNote() : "", "Copyright \u00a9 " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(Boolean).join("\n"); }
 
 /* The email. Tables and inline styles only: that is what Gmail and Outlook render. */
 function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
@@ -5160,7 +5192,7 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
     '<tr><td style="padding:0 12px;font:14px/1.5 Arial,sans-serif;color:#6b5b4a">' + sumLine + '</td></tr>' +
     (test ? '' : '<tr><td style="padding:14px 12px 2px"><a href="' + alEsc(alDailyUrl(sub)) + '" style="display:inline-block;background:#8a4b1f;color:#ffffff;padding:11px 18px;border-radius:6px;text-decoration:none;font:bold 14px Arial,sans-serif">See every hunt live on Prowl Daily</a></td></tr>') +
     body + shop;
-  const links = '<a href="' + alEsc(alHomeUrl(sub)) + '" style="color:#8a4b1f">Open Prowl signed in · change your hunts</a> · <a href="' + alEsc(alUnsubUrl(sub)) + '" style="color:#9a8b7a">Unsubscribe</a>';
+  const links = '<a href="' + alEsc(alHomeUrl(sub)) + '" style="color:#8a4b1f">Open Prowl · change your hunts</a> · <a href="' + alEsc(alUnsubUrl(sub)) + '" style="color:#9a8b7a">Unsubscribe</a>';
   const all = sub.allCount || sub.hunts.length, free = alFree(env, sub);
   const up = (!sub.pro && all > free) ? '<tr><td style="padding:22px 12px 0"><div style="border:2px solid #8a4b1f;border-radius:10px;padding:14px;font:14px/1.5 Arial,sans-serif;color:#2b2118">' +
     '<b>You are on the free plan:</b> alerts for your first ' + free + ' hunts. You have ' + all + '. ' +
@@ -5201,8 +5233,8 @@ function alLetterDue(sub, loc) {
     sub.mail !== "off" && !alPaused(sub, loc) && Array.isArray(sub.hunts) && sub.hunts.length > 0;
 }
 function alLetterUnsubUrl(sub) { return alUnsubUrl(sub) + "&w=letter"; }
-function alLetterOffUrl(sub) { return PROWL_APP + "?alerts=in&letter=1#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok; }
-function alTryUrl(sub, term) { return PROWL_APP + "?alerts=in&hunt=" + encodeURIComponent(term) + "#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok; }
+function alLetterOffUrl(sub) { return PROWL_APP + "?alerts=in&letter=1" + alLinkHash(sub); }   /* v184: a ticket, not the token */
+function alTryUrl(sub, term) { return PROWL_APP + "?alerts=in&hunt=" + encodeURIComponent(term) + alLinkHash(sub); }
 async function alLetterMake(env, sub, day, wk, verify) {
   let likes = [];
   try {
@@ -5248,7 +5280,8 @@ async function alLetterSend(env, sub, loc, send) {
   const L = await alLetterMake(env, sub, loc.day, wk, true);
   if (!send) return L;
   const subject = L.finds ? "Your week on the prowl: " + L.finds + " new find" + (L.finds === 1 ? "" : "s") : "Your week on the prowl";
-  const r = await alSend(env, sub.email, subject, alLetterHtml(env, sub, L), letterText(L) + "\n" + alFootText(env, sub) + "\nStop the weekly letter: " + alLetterUnsubUrl(sub), alLetterUnsubUrl(sub));
+  const ms = await alMailSub(env, sub);   /* v184: its links carry a ticket */
+  const r = await alSend(env, sub.email, subject, alLetterHtml(env, ms, L), letterText(L) + "\n" + alFootText(env, ms) + "\nStop the weekly letter: " + alLetterUnsubUrl(ms), alLetterUnsubUrl(ms));
   if (!r.ok) return "not sent: " + String(r.error || "unknown").slice(0, 120);
   /* the sent marker first: a failed write after it must never send the letter again on the next run */
   sub.letter = loc.day;
@@ -5281,9 +5314,10 @@ async function alDigest(env, sub, send) {
   let top = hunts[0];
   hunts.forEach(h => { if (pend[h].length > pend[top].length) top = h; });
   const picks = await alPicks(env, top, sub);
-  const html = alEmailHtml(Object.assign({}, sub, { allCount: sub.hunts.length }), pend, picks, top, env);
+  const ms = send ? await alMailSub(env, sub) : sub;   /* v184: a sent email's links carry a ticket; a preview's carry none */
+  const html = alEmailHtml(Object.assign({}, ms, { allCount: sub.hunts.length }), pend, picks, top, env);
   if (!send) return { sent: false, html: html, subject: alSubject(sub, pend) };
-  const r = await alSend(env, sub.email, alSubject(sub, pend), html, alEmailText(sub, pend, env), alUnsubUrl(sub));
+  const r = await alSend(env, sub.email, alSubject(sub, pend), html, alEmailText(ms, pend, env), alUnsubUrl(ms));
   if (r.ok) {
     await kvPut(env, "pend:" + sub.email, {});
     /* v78: what went out, for two days, so the owner's "Send today's email again" can really send it again */
@@ -5543,7 +5577,7 @@ async function alConfirm(request, env, url) {
   await alProSet(env, sub, true);
   await kvPut(env, "sub:" + email, sub);
   await env.PROWL_ALERTS.delete("conf:" + email);
-  return Response.redirect(PROWL_PAGE + "?alerts=on#e=" + encodeURIComponent(email) + "&t=" + sub.tok, 302);
+  return alGateGo(env, PROWL_PAGE + "?alerts=on", sub);   /* v184: a 10-minute ticket, not the token */
 }
 
 /* ---------- v39: store login through the Shopify app proxy ----------
@@ -5570,8 +5604,8 @@ async function sessMint(env, cid, now) {
   const body = cid + "." + (Math.floor((now || Date.now()) / 1000) + SESS_DAYS * 86400);
   return b64uStr(body + "." + await pxHmac(k, "prowl-session-v1:" + body));   /* b64uStr: the Mercari helper (v77) */
 }
-/* the customer id in a valid, unexpired Bearer token, else null */
-async function sessVerify(request, env) {
+/* a valid, unexpired Bearer token: { cid, iat } (iat, when it was made, in seconds), else null */
+async function sessRead(request, env) {
   const k = sessKey(env);
   if (!k || !request || !request.headers) return null;
   const m = /^Bearer\s+([A-Za-z0-9_-]{10,400})$/.exec(request.headers.get("Authorization") || "");
@@ -5580,15 +5614,19 @@ async function sessVerify(request, env) {
   const p = raw.split(".");
   if (p.length !== 3 || !/^\d{1,20}$/.test(p[0]) || !/^\d{9,11}$/.test(p[1])) return null;
   if (Number(p[1]) * 1000 <= Date.now()) return null;
-  return alSame(p[2], await pxHmac(k, "prowl-session-v1:" + p[0] + "." + p[1])) ? p[0] : null;
+  return alSame(p[2], await pxHmac(k, "prowl-session-v1:" + p[0] + "." + p[1])) ? { cid: p[0], iat: Number(p[1]) - SESS_DAYS * 86400 } : null;
 }
+/* the customer id in a valid, unexpired Bearer token, else null */
+async function sessVerify(request, env) { const s = await sessRead(request, env); return s ? s.cid : null; }
+/* v184: a session made before the member's last Sign out every other device (sub.sessFrom) no longer counts */
+function sessStale(sub, s) { return !!(sub && s && Number(sub.sessFrom) > 0 && s.iat * 1000 < Number(sub.sessFrom)); }
 /* the Prowl Alerts member linked to a valid session (the cid: link must point back), else null */
 async function sessMember(request, env) {
-  const cid = await sessVerify(request, env);
+  const s = await sessRead(request, env), cid = s ? s.cid : null;
   if (!cid || !env || !env.PROWL_ALERTS) return null;
   const link = await kvGet(env, "cid:" + cid, null);
   const sub = link && link.email ? await kvGet(env, "sub:" + link.email, null) : null;
-  return sub && String(sub.cid || "") === cid ? sub : null;
+  return sub && String(sub.cid || "") === cid && !sessStale(sub, s) ? sub : null;   /* v184: sessFrom */
 }
 async function pxHmac(key, msg) {
   const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -5754,6 +5792,81 @@ async function alVerify(request, env, origin) {
   try { await tripAcctLink(env, await tripIdOf(env, sub, email), email); } catch (e) { console.error("acct link", String(e && e.message || e)); }   /* v135: trips shared to this address */
   return json({ ok: true, member: true, email: sub.email, tok: sub.tok, pro: !!sub.pro, free: alFree(env, sub), hunts: sub.hunts, active: alActive(env, sub).length, session: sub.cid ? await sessMint(env, sub.cid) : "" }, 200, origin);
 }
+/* v184: POST /alerts/redeem {email, k[, g]} trades a sign-in ticket from an email link or a gate redirect (alTicket) for
+   the sign-in, once; {email, t} checks an old #e=&t= link before the page stores it (drop about 30 days after v184).
+   Answers as alVerify does, so the page signs in through pxTake. */
+async function alRedeem(request, env, origin) {
+  if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
+  const b = await readJson(request, 4096);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  const email = alEmail(b.email), k = String(b.k || ""), t = String(b.t || ""), kind = b.g ? "g" : "m";
+  if (!email || (!k && !t)) return json({ error: "That link is not complete.", expired: true }, 400, origin);
+  if (!(await vCount("alrd:" + ipKey(request.headers.get("CF-Connecting-IP")), AL_REDEEM_PER_IP))) return json({ error: "Too many tries today." }, 429, origin);
+  const old = json({ error: "That link has run out.", expired: true }, 400, origin);
+  let sub = await kvGet(env, "sub:" + email, null);
+  /* v185: a link mailed to an address the member has since moved away from follows moved:<old> (up to 3 changes), as
+     status did for the old #e=&t= links: a t link must match every forwarding record's token (Sign out every other
+     device gives those a token nobody has), a ticket the member's token now with the address it was minted for */
+  for (let a = email, i = 0; i < 3 && !(sub && typeof sub === "object" && !Array.isArray(sub)); i++) {
+    const mv = await kvGet(env, "moved:" + a, null), to = mv && typeof mv === "object" && typeof mv.to === "string" ? alEmail(mv.to) : "";
+    if (!to || (t && !alSame(t, mv.tok))) return old;
+    sub = await kvGet(env, "sub:" + to, null); a = to;
+  }
+  if (!sub || typeof sub !== "object" || Array.isArray(sub) || !sub.tok) return old;
+  if (k) {
+    const sig = await alTicketOk(env, sub, k, kind, email);
+    if (!sig) return old;
+    const used = json({ error: "That link was already used.", expired: true, used: true }, 400, origin);
+    if (await kvGet(env, "inu:" + sig, null)) return used;
+    /* KV is not atomic: as /proxy/login does, Caps takes it once too (the KV mark covers the days after) */
+    try { const nj = await capsCall(capsDay(), "take", { k: "inu:" + sig, lim: 1 }); if (nj && nj.left < 0) return used; } catch (e) { console.error("inu", String(e && e.message || e)); }
+    await env.PROWL_ALERTS.put("inu:" + sig, "1", { expirationTtl: Math.max(60, Number(k.split(".")[0]) - Math.floor(Date.now() / 1000) + 60) });
+  } else if (!alSame(t, sub.tok)) return old;
+  const at = alEmail(sub.email) || email;   /* v185: the address it moved to */
+  try { await tripAcctLink(env, await tripIdOf(env, sub, at), at); } catch (e) { console.error("acct link", String(e && e.message || e)); }
+  return json({ ok: true, member: true, email: sub.email, tok: sub.tok, pro: !!sub.pro, free: alFree(env, sub), hunts: sub.hunts, active: alActive(env, sub).length, session: sub.cid ? await sessMint(env, sub.cid) : "" }, 200, origin);
+}
+/* v184: Sign out every other device (the member's own, POST /alerts/signout-others {email, tok}, and the admin's
+   signout-all through H). A new token, so every other device's next status check signs it out and every ticket out
+   there stops working; sessFrom ends store sessions made before now; a waiting sign-in link, code or confirm link goes;
+   a waiting change of address is cancelled (alCancelMove). null when the member is gone. */
+async function alSignOutAll(env, sub, email) {
+  sub.tok = alToken(); sub.sessFrom = Date.now();
+  if (!(await alMerge(env, sub, ["tok", "sessFrom"]))) return null;
+  for (const k of ["in:", "code:", "conf:"]) await env.PROWL_ALERTS.delete(k + email);   /* each would let a lost device straight back in */
+  return { moved: await alCancelMove(env, sub, email) };
+}
+/* A waiting change of email address is cancelled: its confirm link (in the new inbox) moves the whole membership. An
+   earlier address's forwarding record (moved:<old>) keeps working for look-ups, but gets a token nobody has, so an old
+   token no longer reveals where they went. (Moved here from admin.js in v184.) */
+async function alCancelMove(env, sub, email) {
+  const kv = env.PROWL_ALERTS, now = Date.now();
+  const mf = await kvGet(env, "mvf:" + email, null), to = mf && typeof mf.to === "string" ? mf.to : "";
+  if (to) { const mv = await kvGet(env, "mv:" + to, null); if (mv && mv.from === email) await kv.delete("mv:" + to); }
+  if (mf) await kv.delete("mvf:" + email);
+  for (const old of (Array.isArray(sub.prev) ? sub.prev : []).map(String).filter(Boolean).slice(0, 3)) {
+    const k = "moved:" + old, mv = await kvGet(env, k, null);
+    if (!mv || typeof mv !== "object" || mv.to !== email || !mv.tok) continue;
+    /* alMoveConfirm keeps these 90 days from the move; KV still has it, so it has time left (KV's shortest is 60 s) */
+    const at = Number(mv.at) || 0, ttl = Math.min(90 * 86400, Math.max(60, at ? Math.floor((at + 90 * 86400000 - now) / 1000) : 90 * 86400));
+    await kv.put(k, JSON.stringify({ to: mv.to, tok: alToken(), at: mv.at }), { expirationTtl: ttl });
+  }
+  return !!mf;
+}
+const AL_SIGNOUT_PER_DAY = 5;
+async function alSignoutOthers(request, env, origin) {
+  if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
+  const b = await readJson(request, 4096);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  const email = alEmail(b.email);
+  const sub = email ? await kvGet(env, "sub:" + email, null) : null;
+  if (!sub || !alSame(String(b.tok || ""), sub.tok)) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
+  if (!(await vCount("also:" + email, AL_SIGNOUT_PER_DAY))) return json({ error: "That is enough for today. Try again tomorrow." }, 429, origin);
+  const r = await alSignOutAll(env, sub, email);
+  if (!r) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
+  /* this device stays in: the new token, and a store session made just after sessFrom */
+  return json({ ok: true, tok: sub.tok, moved: r.moved, session: sub.cid ? await sessMint(env, sub.cid, sub.sessFrom + 1000) : "" }, 200, origin);
+}
 /* v78: a one-time sign-in link by email (the member's own request, or the owner from the admin page) */
 async function alSendSignin(env, sub) {
   const email = sub.email;
@@ -5808,7 +5921,7 @@ async function alSendGift(env, email, until, sub, opts) {
   const paid = !!sub && (!!(opts && opts.paid) || !!(sub.plan && typeof sub.plan === "object" && sub.plan.shop));
   const day = alLongDay(until), ends = day ? "until " + day : "with no end date";
   const sites = alAndList(liveSources().map(s => AL_SRC_NAME[s] || s));
-  const link = sub ? alHomeUrl(sub) : links.start, btn = sub ? "Open Prowl" : "Start Prowl";
+  const link = sub ? alHomeUrl(await alMailSub(env, sub)) : links.start, btn = sub ? "Open Prowl" : "Start Prowl";
   const P = 'style="margin:0 0 12px"', small = 'style="margin:0 0 4px;font:13px/1.5 Arial,sans-serif;color:#6b5b4a"';
   const shopNote = "If you still pay for Prowl Pro in the Owl & Twig shop, that subscription is separate: this gift does not cancel it. To stop being charged, cancel it in your Owl & Twig account under Subscriptions:";
   const steps = sub ? '<p ' + P + '>It is already on for your account: up to ' + AL_MAX_HUNTS + ' hunts, emails as often as you like, and price and keyword filters. Your hunts and settings have not changed.</p>' +
@@ -5866,7 +5979,7 @@ async function alGiftStart(request, env, url) {
   const s = { email: email, tok: alToken(), utok: alToken(), hunts: [], day: "", done: [], sent: "", created: new Date().toISOString() };
   await alProSet(env, s, true);
   await kvPut(env, "sub:" + email, s);
-  return Response.redirect(PROWL_PAGE + "?alerts=in#e=" + encodeURIComponent(email) + "&t=" + s.tok, 302);
+  return alGateGo(env, PROWL_PAGE + "?alerts=in", s);   /* v184 */
 }
 /* The stop link in a gift email (and its one-click List-Unsubscribe): no more gift emails to that address. */
 async function alGiftStop(request, env, url) {
@@ -5885,7 +5998,7 @@ async function alIn(request, env, url) {
   if (!c || !sub || !alSame(url.searchParams.get("c"), c.code)) return alPage("Link expired", "Open Prowl, tap Prowl Alerts, then Sign in for a fresh link.");
   if (request.method !== "POST") return alGate("Sign in to Prowl", "This signs in the phone or computer you are holding, as " + email + ".", "Sign me in", url);   /* v51 */
   await env.PROWL_ALERTS.delete("in:" + email);
-  return Response.redirect(alHomeUrl(sub), 302);
+  return alGateGo(env, PROWL_APP + "?alerts=in", sub);   /* v184 */
 }
 
 /* ---------- v54: change the email address ----------
@@ -5979,7 +6092,7 @@ async function alMoveConfirm(request, env, url) {
     '<h2 style="font-size:22px;margin:0 0 8px">Your Prowl Alerts moved</h2><p style="margin:0 0 12px">From now on your Prowl Alerts go to ' + alEsc(alMask(to)) + '. This address will not get them any more.</p>' +
     '<p style="margin:0 0 4px;font:13px/1.5 Arial,sans-serif;color:#6b5b4a">Did not do this? Reply to this email and we will put it back.</p></td></tr>', 'You are getting this one email because the Prowl Alerts address for this account was changed.', '');
   try { await alSend(env, from, "Your Prowl Alerts now go to a new address", note, "From now on your Prowl Alerts go to " + alMask(to) + ". This address will not get them any more.\n\nDid not do this? Reply to this email and we will put it back." + alFootText(env, null), ""); } catch (e) { console.error("move notice", String(e && e.message || e)); }
-  return Response.redirect(PROWL_PAGE + "?alerts=moved#e=" + encodeURIComponent(to) + "&t=" + sub.tok, 302);
+  return alGateGo(env, PROWL_PAGE + "?alerts=moved", moved);   /* v184 */
 }
 
 /* v55: emails on or off for a signed-in member. Off keeps everything else. */
@@ -6328,7 +6441,7 @@ async function alTest(request, env, url, origin) {
   const got = await Promise.all(pick.map(h => alHunt(env, h, sub).then(a => alExact(a, h)).catch(() => [])));   /* v98 */
   const pend = {}, seen = {};
   pick.forEach((h, i) => { const l = got[i].filter(x => !seen[x.url] && (seen[x.url] = 1)); if (l.length) pend[h] = l; });
-  const tsub = Object.assign({}, sub, { hunts: pick });
+  const ms = await alMailSub(env, sub), tsub = Object.assign({}, ms, { hunts: pick });   /* v184: a ticket in its links */
   const hunts = pick.filter(h => pend[h]);
   if (!hunts.length) return json({ ok: true, sent: false, note: "Nothing listed right now for " + pick.join(", ") + "." }, 200, origin);
   let top = hunts[0]; hunts.forEach(h => { if (pend[h].length > pend[top].length) top = h; });
@@ -6336,7 +6449,7 @@ async function alTest(request, env, url, origin) {
   const tot = hunts.reduce((n, h) => n + pend[h].length, 0);
   const stamp = new Intl.DateTimeFormat("en-US", { timeZone: AL_TZ, hour: "numeric", minute: "2-digit" }).format(new Date());
   const r = await alSend(env, email, "Prowl test email " + stamp + " · " + tot + " listings for " + hunts.slice(0, 2).join(", ") + (hunts.length > 2 ? " +" + (hunts.length - 2) : ""),
-    alEmailHtml(Object.assign({}, sub, { hunts: hunts, allCount: sub.hunts.length }), pend, picks, top, env, true), "TEST EMAIL\n\n" + alEmailText(tsub, pend, env), alUnsubUrl(sub));
+    alEmailHtml(Object.assign({}, ms, { hunts: hunts, allCount: sub.hunts.length }), pend, picks, top, env, true), "TEST EMAIL\n\n" + alEmailText(tsub, pend, env), alUnsubUrl(ms));
   if (!r.ok) { console.error("test mail", scrubPII(String(r.error || "send failed")));   /* v179: no address in the logs */ return json({ error: "Could not send the test email." }, 502, origin); }
   return json({ ok: true, sent: true, hunts: hunts.length, listings: tot }, 200, origin);
 }
@@ -6805,7 +6918,7 @@ async function runProbes(env) {
 }
 const ADMIN_H = {
   kvGet, kvPut, alNow, alLocal, alPrefs, alActive, alSlotHour, alSendDay, alPaused, alFree, alFreeWeekly, alLegacyFree, alUrgency,
-  alProSet, alMerge, alSendSignin, alToken, liveSources, liveFetch, jevClean, jevWouldDrop, memberDropReason, alExact, alNear, runProbes, salesProbe, salesShape,
+  alProSet, alMerge, alSendSignin, alToken, alSignOutAll,   /* v184: alSignOutAll */ liveSources, liveFetch, jevClean, jevWouldDrop, memberDropReason, alExact, alNear, runProbes, salesProbe, salesShape,
   capsCall, capsDay, vCount, ipKey, ipNet, alSame, statTerm, scrubPII, summarize, uptimeFrom, pctFromHist,
   giftHash, alEmail, proListHas, proListCount, alSendGift, alPurge,   /* v83: alPurge */
   jevResultsMode, liveFetchLocal, alTitleKey,   /* v78: Diagnose follows what alerts really do */
@@ -7351,8 +7464,11 @@ async function tripIdOf(env, sub, email) {
   return String(sub.tid);
 }
 async function tripWho(request, env) {
-  const cid = await sessVerify(request, env);
-  if (cid) return { id: cid, sub: null };
+  const ses = await sessRead(request, env), cid = ses ? ses.cid : null;
+  if (cid) {   /* v184: a session from before the member's Sign out every other device is turned away */
+    const link = env.PROWL_ALERTS ? await kvGet(env, "cid:" + cid, null) : null, ls = link && link.email ? await kvGet(env, "sub:" + link.email, null) : null;
+    return ls && String(ls.cid || "") === cid && sessStale(ls, ses) ? null : { id: cid, sub: null };
+  }
   const email = alEmail(request.headers.get("X-Prowl-Email") || ""), t = String(request.headers.get("X-Prowl-Tok") || "");
   if (!email || !t || !env.PROWL_ALERTS) return null;
   const sub = await kvGet(env, "sub:" + email, null);
@@ -7737,6 +7853,8 @@ async function handleFetch(request, env, ctx) {
     }
     if (url.pathname === "/alerts/code" && request.method === "POST") return alCode(request, env, origin);   /* v108 */
     if (url.pathname === "/alerts/verify" && request.method === "POST") return alVerify(request, env, origin);   /* v108 */
+    if (url.pathname === "/alerts/redeem" && request.method === "POST") return alRedeem(request, env, origin);   /* v184 */
+    if (url.pathname === "/alerts/signout-others" && request.method === "POST") return alSignoutOthers(request, env, origin);   /* v184 */
     if (url.pathname === "/alerts/mail" && request.method === "POST") return alMailSet(request, env, origin);   /* v55 */
     if (url.pathname === "/alerts/delete" && request.method === "POST") return alDelete(request, env, origin);   /* v55 */
     if (url.pathname === "/alerts/likes" && request.method === "POST") return alLikes(request, env, origin);   /* v85 */

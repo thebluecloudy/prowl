@@ -101,7 +101,8 @@ test("the worker keeps the tally, sends with a letter-only one-click unsubscribe
   assert.match(INDEX, /await kvPut\(env, "wk:" \+ sub\.email, wkAdd\(await kvGet\(env, "wk:" \+ sub\.email, null\), found, now\.day\)\)/);
   assert.match(INDEX, /if \(lettersLeft > 0 && alLetterDue\(sub, loc\)\)/);
   assert.match(fn("alLetterMake"), /letterShorters\(qh\)\.slice\(0, 2\)/, "at most two eBay checks");
-  assert.match(fn("alLetterSend"), /alSend\(env, sub\.email, subject, alLetterHtml\(env, sub, L\), [^;]*alLetterUnsubUrl\(sub\)\);/);
+  /* v184: built from a copy with a sign-in ticket (alMailSub), never saved */
+  assert.match(fn("alLetterSend"), /const ms = await alMailSub\(env, sub\);[\s\S]*alSend\(env, sub\.email, subject, alLetterHtml\(env, ms, L\), [^;]*alLetterUnsubUrl\(ms\)\);/);
   assert.match(fn("alLetterUnsubUrl"), /alUnsubUrl\(sub\) \+ "&w=letter"/);
   assert.match(fn("alUnsub"), /if \(p\.w === "letter"\) \{[\s\S]*letter: "off"[\s\S]*alMerge\(env, sub, \["prefs"\]\)/);
   assert.match(INDEX, /url\.pathname === "\/alerts\/letter" && request\.method === "POST"\) return alLetterRoute/);

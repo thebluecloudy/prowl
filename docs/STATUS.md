@@ -1,16 +1,52 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.09 / v183).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.11 / v185).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.09** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v183** | |
+| Page | **v8.11** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v185** | |
 
 Recently shipped, newest first:
 
+- **v8.11 / v185: Sign out every other device, fixed after review** (the security and trust plan, 2026-10-28). Page: a
+  device whose status check says it is signed out (its token was replaced elsewhere) sets `alertNoAuto` and drops its
+  store session, as Sign out does, so it no longer signs itself straight back in through the Owl & Twig store on the
+  next load; the header's session top-up (hiCheck) takes a store session only when the store's answer has this
+  device's own token. A person holding a device still logged in to the shop can still tap Log in there: Prowl cannot
+  end a Shopify login, and the confirm and done text, the admin's signout-all message and the privacy policy's
+  "Signing out everywhere" bullet now say so (log out of the shop there, or change the store password). Worker:
+  POST /alerts/redeem follows `moved:<old>` (up to 3 changes) when a link was mailed to an address the member has
+  since moved away from: an old `#e=&t=` link must match every forwarding record's token, an old-address ticket is
+  checked against the address it was minted for (`alTicketOk`'s new email argument) and the member's token now; both
+  sign in to the new address, and both stop after Sign out every other device. Tests:
+  `worker/__tests__/signin-links-v184.test.mjs`, `__tests__/page/signin-links-v810.test.mjs`; updated
+  `admin.test.mjs`. Privacy policy section updated.
+- **v8.10 / v184: email links sign in with a one-time pass, never the permanent token; Sign out every other device**
+  (the security and trust plan, 2026-10-28: the member's token rode in every email link and every confirm, gift,
+  sign-in and move redirect, and the page stored a token from the URL without asking). Worker: the email links (Open
+  Prowl, Prowl Daily, upgrade, the letter's Try and Stop links) carry `#e=&k=<ticket>`: `alTicket` is exp + an HMAC
+  (alCodeKey) of the address, exp, kind and the start of sha256(token), so nothing is stored to make one and a new token
+  kills them all; 3 days in emails (one per email, on a copy of the record that is never saved), 10 minutes after a
+  worker button (confirm, gift start, sign-in link, move: `&g=1`). New POST /alerts/redeem {email, k[, g]} (behind the
+  cross-origin guard, 30 a day per IP) answers like /alerts/verify, once (`inu:<signature>` until it runs out, and a
+  Caps take); {email, t} checks an old `#e=&t=` link (drop about 30 days after this ships). The email footer says "Open
+  Prowl". A member without a utok gets one before any email goes, and the unsubscribe link no longer falls back to the
+  token. New POST /alerts/signout-others {email, tok}: a new token, `sub.sessFrom` (store sessions made before it stop
+  working in status, sync, likes, Pro and trips), `in:`/`code:`/`conf:` gone, a waiting change of address cancelled;
+  it answers {ok, tok, session} so this device stays in. The admin's signout-all is the same code (`alSignOutAll`, moved
+  from admin.js through H) and now ends store sessions too. Page: a link never stores a token from the URL. A gate
+  ticket on a signed-out device signs in at once; an email ticket or an old `t` shows "Sign in as … on this device?"
+  first; signed in as that address, the link is dropped and the token kept; another address is asked, as before; a
+  used or run-out link opens the code box with the address filled in. ?daily=1, ?upgrade=1, ?letter=1 and ?hunt= still
+  work. Den > Settings has "Sign out every other device". Not done: the extension (1.6.5, POST instead of a GET with the
+  token) and clearing push subscriptions on a sign-out. A store-signed-in device signs itself back in through the store
+  (Shopify's own sign-in), as before. Tests: `worker/__tests__/signin-links-v184.test.mjs`,
+  `__tests__/page/signin-links-v810.test.mjs`; updated `reconfirm.test.mjs`, `admin.test.mjs`, `letter.test.mjs`,
+  `metrics.test.mjs`, `privacy.test.mjs`, `purge-v181.test.mjs`, `session.test.mjs`, `trips.test.mjs`. Privacy policy
+  section updated.
 - **v8.09 / v183: a share by email never puts anyone on a trip** (the security and trust plan, 2026-10-28: a share
   pushed people onto trips without asking, put back someone who had left, and its answer told the organizer whether an
   address has a Prowl account). Worker: POST /trips/<id>/share adds nobody; it always answers `{ok:true, added:false,
@@ -1568,7 +1604,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.10, worker v184**. Claim one here when you start.
+Next free numbers: **page v8.12, worker v186**. Claim one here when you start.
 
 ## What's next
 

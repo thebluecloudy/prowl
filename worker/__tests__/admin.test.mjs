@@ -177,6 +177,8 @@ function makeH(kvOf, over = {}) {
     POOLS: [{ key: "all", name: "Fair price checks", limit: 400 }, { key: "jr:all", name: "AI sorting of results", limit: 3000 }],
     PAGE_URL: "https://shop.example/pages/prowl"
   };
+  /* v184: index.js alSignOutAll and alCancelMove, the real code, on these fakes (signout-all moved out of admin.js) */
+  H.alSignOutAll = (env, sub, email) => fromIndex(["alSignOutAll", "alCancelMove"], { kvGet: H.kvGet, alMerge: H.alMerge, alToken: () => H.alToken() }).alSignOutAll(env, sub, email);
   return Object.assign(H, over);
 }
 
@@ -657,6 +659,10 @@ test("action signout-all needs the id typed, then rotates the token and drops th
   const r = rec(env);
   assert.notEqual(r.tok, "TOKEN-SECRET-abc123def456"); assert.match(r.tok, /^fresh-token-/);
   assert.equal(r.utok, "UTOK-SECRET-987zyx", "unsubscribe token kept");
+  assert.ok(r.sessFrom > Date.now() - 60000 && r.sessFrom <= Date.now(), "v184: store sessions made before now end too (sessFrom)");
+  assert.match(j.message, /store sessions Prowl made end/);
+  assert.match(j.message, /cannot end their Owl & Twig shop login/, "v185: it says what it cannot do");
+  assert.doesNotMatch(j.message, /the store sign-in included/);
   assert.equal(env.PROWL_ALERTS.m.has("in:" + EMAIL), false);
   assert.equal(env.PROWL_ALERTS.m.has("conf:" + EMAIL), false, "a waiting confirm link signs in as the member too (v85)");
   noPII(JSON.stringify(j));
@@ -1846,7 +1852,8 @@ function giftIndexFns(over = {}) {
     WORKER_BASE: "https://prowl.example.workers.dev", PROWL_PAGE: "https://shop.example/pages/prowl", PRO_MANAGE_URL: "https://www.owlandtwigvintage.com/account",
     GIFT_LINK_DAYS: 14, AL_MAX_HUNTS: 25, AL_SRC_NAME: { shopgoodwill: "ShopGoodwill", ebay: "eBay", etsy: "Etsy", vinted: "Vinted" }, GIFT_KEY_RE: /^[0-9a-f]{64}$/,
     AL_MONTH_NAMES: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-    liveSources: () => ["shopgoodwill", "ebay", "etsy", "vinted"], alHomeUrl: sub => "https://shop.example/pages/prowl-app?alerts=in#e=" + encodeURIComponent(sub.email) + "&t=" + sub.tok,
+    liveSources: () => ["shopgoodwill", "ebay", "etsy", "vinted"], PROWL_APP: "https://shop.example/pages/prowl-app", AL_TICKET_TTL: { m: 3 * 86400, g: 600 },   /* v184: the real ticket links */
+    alMerge: async (e, sub, fields) => { const cur = JSON.parse(await e.PROWL_ALERTS.get("sub:" + sub.email) || "null"); if (!cur) return null; fields.forEach(f => { cur[f] = sub[f]; }); await e.PROWL_ALERTS.put("sub:" + sub.email, JSON.stringify(cur)); return cur; },
     scrubPII: v => String(v).replace(/[^\s@:]+@[^\s@]+/g, "[email]"), alEmail: IX.alEmail,
     alSend: async (e, to, subject, html, text, unsub) => { sent.push({ to, subject, html, text, unsub }); return over.sendResult || { ok: true }; },
     alFreePro: async () => free.v, alProSet: async (e, sub) => { sub.pro = !!free.v; sub.plan = free.v ? free.v.plan : null; return sub.pro; },
@@ -1854,7 +1861,7 @@ function giftIndexFns(over = {}) {
     affNote: () => "Some links earn a commission."   /* v84 footer line; v89 built from the switches */
   }, over.deps || {});
   const X = fromIndex(["alSendGift", "alGiftStart", "alGiftStop", "alBadLink", "alMovedTo", "giftKey", "giftSig", "giftLinks", "pxHmac", "giftHash", "alLongDay", "alAndList",
-    "alReady", "alMode", "alShell", "alCopy", "alAddr", "alEsc", "alSame"], deps);
+    "alReady", "alMode", "alShell", "alCopy", "alAddr", "alEsc", "alSame", "alHomeUrl", "alLinkHash", "alMailSub", "alTicket", "alTicketSig", "alTokTag", "alCodeKey", "alGateGo"], deps);
   return Object.assign(X, { sent, free });
 }
 const giftEnv = (kv, extra = {}) => Object.assign({ PROWL_ALERTS: kv, ALERTS: "public", RESEND_API_KEY: "re_test", ADMIN_KEY: "an-admin-key-of-24-chars" }, extra);
@@ -1894,7 +1901,8 @@ test("index.js alSendGift: signed start and stop links for someone new (only the
   X.sent.length = 0;
   assert.deepEqual(await X.alSendGift(env, EMAIL, "2026-12-31", { email: EMAIL, tok: "TOKEN-SECRET-abc123def456", pro: true, plan: { via: "gift", until: "2026-12-31" } }), { ok: true });
   m = X.sent[0];
-  assert.ok(m.html.includes(">Open Prowl</a>")); assert.ok(m.text.includes("Open Prowl: https://shop.example/pages/prowl-app?alerts=in#e="));
+  assert.ok(m.html.includes(">Open Prowl</a>")); assert.match(m.text, /Open Prowl: https:\/\/shop\.example\/pages\/prowl-app\?alerts=in#e=jane\.doe%40example\.com&k=\d{10}\.[0-9a-f]{64}\n/);
+  assert.ok(!(m.html + m.text).includes("TOKEN-SECRET"), "v184: a sign-in ticket, never the member's token");
   assert.equal(m.unsub, ""); assert.doesNotMatch(m.html + m.text, /giftstop|How to start|Start Prowl|works for 14 days|still pay/);
   assert.match(m.html, /free until December 31, 2026\./); assert.match(m.html, /already on for your account: up to 25 hunts/);
   for (const [sub, opts] of [[{ email: EMAIL, tok: "T", pro: true, plan: { via: "gift" } }, { paid: true }], [{ email: EMAIL, tok: "T", pro: true, plan: { via: "gift", shop: { trial: true, order: "#77" } } }, {}]]) {
@@ -1928,7 +1936,8 @@ test("index.js alGiftStart: one tap starts a member with Pro and signs in; never
   assert.match(t, /^GATE\|Start Prowl\|/, "a new ADMIN_KEY does not break links already emailed");
   ({ r } = await tap(start, "POST"));
   assert.equal(r.status, 302);
-  assert.equal(r.headers.get("Location"), "https://shop.example/pages/prowl?alerts=in#e=" + encodeURIComponent(FRIEND) + "&t=NEW-TOK");
+  assert.match(r.headers.get("Location"), new RegExp("^https://shop\\.example/pages/prowl\\?alerts=in#e=" + encodeURIComponent(FRIEND).replace(/\./g, "\\.") + "&k=\\d{10}\\.[0-9a-f]{64}&g=1$"), "v184: a 10-minute ticket");
+  assert.ok(!r.headers.get("Location").includes("NEW-TOK"), "never the token");
   const sub = kv.json("sub:" + FRIEND);
   assert.deepEqual([sub.email, sub.hunts, sub.pro, sub.tok, typeof sub.utok], [FRIEND, [], true, "NEW-TOK", "string"]);
   // a second tap (another device, the same email again): no token, no rebuilt record
