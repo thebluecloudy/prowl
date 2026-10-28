@@ -1,16 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.07 / v177).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.08 / v178).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.07** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v177** | |
+| Page | **v8.08** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v178** | |
 
 Recently shipped, newest first:
 
+- **v8.08 / v178: the Facebook sweep is retired** (Matt, 2026-10-28: "Retire it", after the security and trust audit
+  found it breaks the plan's own rule, "No session-cookie storage or replay of anyone's account, including Matthew's
+  own", and Meta's terms). Worker: POST /fb-ingest and GET /fb-finds answer 410, the sweep's code and the FB_FINDS
+  var are gone; old fb:<term> entries expire within 8 days. Page: the Facebook strip on the owner's devices is gone;
+  Facebook stays a link-out search under More places to look. Matt: stop the sweep on the agent and delete the
+  FB_INGEST_KEY secret (Waiting on Matt). Tests: `worker/__tests__/fb-retired.test.mjs`,
+  `__tests__/page/fb-retired-v808.test.mjs` (replace fb-sweep and fb-strip).
 - **v8.07: a person to reach, and the privacy policy, from inside Prowl** (Matt, 2026-10-28, the security and trust
   plan: "Privacy policy and contact/about page, linked from the Den ABOUT tab: who runs Prowl, where, and how to reach
   a human"). Den > About has a line under "Built by Matt at Owl & Twig Vintage, a family shop in Michigan": questions,
@@ -1512,7 +1519,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.08, worker v178**. Claim one here when you start.
+Next free numbers: **page v8.09, worker v179**. Claim one here when you start.
 
 ## What's next
 
@@ -1540,6 +1547,8 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
   4. Resend dashboard: download the **DPA** and file it.
   5. Google Cloud Console: a **daily quota and a budget alert** on GOOGLE_MAPS_KEY.
   6. PROWLMONTH one use per customer and the order app's keys: both below, still open.
+  7. The Facebook sweep is retired (v178): stop its morning run on Prowl-the-agent, then delete the **FB_INGEST_KEY**
+     secret in Cloudflare > Workers > prowl > Settings > Variables and secrets.
 
 - **The branch rule for `main` is set but not enforced** (2026-10-23). Matt added it (require **build**, require up
   to date), but GitHub enforces branch rules on private repositories only on a paid plan (GitHub Pro, about $4 a month);
