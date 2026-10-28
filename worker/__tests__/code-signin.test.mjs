@@ -125,7 +125,7 @@ test("codes are 6 digits and spread over the whole range", () => {
 
 test("the routes are wired behind the cross-origin POST guard", () => {
   const guard = INDEX.indexOf('if (request.method === "POST" && ALLOW_ORIGINS.indexOf(origin) === -1)');
-  for (const r of ['"/alerts/code"', '"/alerts/verify"']) assert.ok(INDEX.indexOf(r) > guard, r);
+  for (const r of ['"/alerts/code"', '"/alerts/verify"', '"/alerts/handoff"', '"/alerts/handoff/take"']) assert.ok(INDEX.indexOf(r) > guard, r);
 });
 
 test("wrong guesses are capped per address per day across its codes, and refused sends never use the site-wide cap", async () => {

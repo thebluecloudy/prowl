@@ -1,16 +1,34 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.11 / v185).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.12 / v186).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.11** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v185** | |
+| Page | **v8.12** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v186** | |
 
 Recently shipped, newest first:
 
+- **v8.12 / v186: the iPhone app carry no longer puts the sign-in in a cookie** (the security and trust plan,
+  2026-10-28: `prowl_c1` held the email, the permanent token and a 30-day session for 7 days, readable by any script on
+  the page and sent to the shop with every request). Worker: POST /alerts/handoff {email, tok} (or a store session)
+  mints a one-time code (`alToken`), kept only as `ho:<HMAC of the code>` with `{email, tk: sha16(token), at}` for 15
+  minutes (HO_TTL 900; 150 a day per address, 300 per network address); POST /alerts/handoff/take {code} trades it once
+  (a Caps take, then the record goes; 30 a day per network address), answers as /alerts/verify does with a fresh store
+  session, and refuses it once the token changes (Sign out every other device) or the account is gone ({error,
+  expired:true}). Both behind the cross-origin guard. Page: on /pages/prowl-app in Safari on an iPhone or iPad,
+  `carryOut` never writes the email, token or session, always clears `prowl_c1`, and when signed in keeps the code in
+  a new cookie `prowl_c3` for the code's life (less 30 s). A code is minted on load, on the Install tap and on coming
+  back to the page, and every 5 minutes while it shows once less than 5 minutes are left (memory only, no new
+  localStorage key); never on pagehide. The installed app reads and clears all three cookies; with no token on the
+  device it trades `prowl_c3` and signs in through `pxTake` (a sign-in that lands meanwhile is kept), else shows the
+  6-digit code message. `prowl_c2` (hunts) is unchanged, 7 days. The old `prowl_c1` pickup stays for this release only,
+  for icons added before the deploy: drop it in v8.13 or later. New regression: an icon first opened more than about 15
+  minutes after it was added arrives signed out (hunts still come over) and signs in with the emailed code. Tests:
+  `worker/__tests__/handoff-v186.test.mjs`, `__tests__/page/ios-carry-v812.test.mjs`; updated
+  `__tests__/page/ios-install-v774.test.mjs` and `worker/__tests__/code-signin.test.mjs`. Privacy policy section updated.
 - **v8.11 / v185: Sign out every other device, fixed after review** (the security and trust plan, 2026-10-28). Page: a
   device whose status check says it is signed out (its token was replaced elsewhere) sets `alertNoAuto` and drops its
   store session, as Sign out does, so it no longer signs itself straight back in through the Owl & Twig store on the
@@ -471,7 +489,8 @@ Recently shipped, newest first:
 - **v7.74: iPhone install** (Matt: adding Prowl on an iPhone took three tries; the first icon kept the shop's bar and
   every icon asked him to sign in again). iOS gives each home-screen icon its own empty storage but copies Safari's
   cookies into it once, when it is added. On /pages/prowl-app in Safari or Chrome on an iPhone or iPad, the page keeps
-  two cookies scoped to that path, 7 days: `prowl_c1` (email, token, session, Pro) and `prowl_c2` (the prowl.v36 save
+  two cookies scoped to that path, 7 days: `prowl_c1` (email, token, session, Pro; since v8.12 a one-time code in
+  `prowl_c3` instead) and `prowl_c2` (the prowl.v36 save
   when it is 3 KB or less). The installed app takes them on its first open, before load(), only into an empty store,
   then deletes them. No new localStorage keys. Install steps now say to add from the app page (from /pages/prowl the
   icon keeps the shop's bar), with Safari or Chrome wording and "leave Open as Web App on". Not tried on a real
@@ -1604,7 +1623,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.12, worker v186**. Claim one here when you start.
+Next free numbers: **page v8.13, worker v187**. Claim one here when you start.
 
 ## What's next
 
@@ -1622,8 +1641,7 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 - **Security and trust (2026-10-28 audit), the admin steps only Matt can take:**
   1. Paste the updated `docs/privacy-policy-prowl-section.html` over the Prowl part of Shopify > Settings > Policies >
      Privacy policy (the live one still says "we do not store your photo" and leaves out trips, push and Near me).
-     Wait for the rest of the security series (Facebook sweep out, Email this, account safety): each updates the
-     section, and Claude says when it is final, so it is pasted once.
+     The security series is complete (v186 / page v8.12): the section is final, paste it now.
   2. Shopify > Settings > Customer accounts: confirm **new customer accounts** (passwordless), classic off. With
      classic accounts anyone can register a store account under someone else's email, and /proxy/login would link it
      to that person's Prowl.
