@@ -1,16 +1,35 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.08 / v180).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.08 / v182).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.08** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v180** | |
+| Worker | **v182** | |
 
 Recently shipped, newest first:
 
+- **v182: fixes from the review of v181** (the security and trust plan, 2026-10-28). A member who moves away from an
+  address and later back to it keeps their trip id and their trips (`tripIdOf` no longer treats their own `tid` as a
+  newcomer's). A Delete by someone now at an address another member moved away from no longer takes that member's
+  trips (an id marked `tidkept:` that is not theirs is skipped) or their saved photos: `hpkept:<hash>` counts the
+  members whose photos stay under that address, and while it is set a Delete there removes only the photos of its own
+  list. A member who moves away from such an address takes their own trip id, not the earlier member's
+  (`alMoveConfirm` uses `tripIdOf`). Tests: `worker/__tests__/purge-v181.test.mjs` (three new). Privacy policy notes
+  updated.
+- **v181: a Delete takes the trips and every earlier address too; an email change keeps saved finds and trips** (the
+  security and trust plan, 2026-10-28). Delete (in Prowl or the admin's) now also clears each earlier address's saved
+  finds and photos, `acct:` and `tripinv:`, and takes the member off every trip (`tripsForget`): a trip they organized
+  passes to the next member, or is deleted (and leaves `trips:all`) when nobody else is on it; their trip finds and
+  photos go, and so does `trips:<id>`. Kept by design (comment above `alPurge`): gifts, `sharenomail:`, anonymous
+  counters, `trips:all`, other people's finds, admin audit ids. An email change now carries `saved:` to the new address
+  (the photos stay put; each find keeps `hp`, the hash they are under), fixes `saved:all`, gives `lt:` its 21-day TTL,
+  drops `in:` and `last:`, repoints `acct:` and moves `tripinv:`. An email-only member keeps their trip id (`sub.tid`),
+  and a newcomer at the old address gets an id of their own (`tidkept:`, `tripIdOf`). Members who moved before v181
+  have already lost those trips; this does not bring them back. Tests: `worker/__tests__/purge-v181.test.mjs`; lists
+  updated in `privacy.test.mjs`, `admin.test.mjs`, `trips.test.mjs`. Privacy policy section updated.
 - **v180: the Google lookups have a site-wide daily cap** (the security and trust audit, 2026-10-28: spread over many
   addresses, the per-address limits alone let anyone run up the Google bill). Place reviews 300, place photos 3000,
   place suggestions 2000 and town lookups (Geocoding, both ways) 1000 a day site-wide (`grv:all`, `gpp:all`,
@@ -1533,7 +1552,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.09, worker v181**. Claim one here when you start.
+Next free numbers: **page v8.09, worker v183**. Claim one here when you start.
 
 ## What's next
 

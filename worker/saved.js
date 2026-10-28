@@ -14,7 +14,11 @@
    says: ShopGoodwill and Salvation Army, ended with bids is sold at the last bid; Etsy, sold out is sold at its price,
    anything else gone is ended; eBay, gone is ended (eBay does not give an ended listing's price). A find is not looked
    at again once it is over. ck is when it was last looked at; ckd is when the member's list was. Like ph, only the
-   stored copy can say these. */
+   stored copy can say these.
+
+   v181 (the security and trust plan, 2026-10-28: an email change kept the saved finds behind): a change of address
+   carries saved:<old> over to the new one. The photos stay where they are, so a find copied before the change keeps
+   hp, the sha16 of the address its photo is kept under; a find without hp is under the member's own address. */
 
 export const SAVED_DAYS = 365;
 export const SAVED_MAX = 200;              /* the page keeps 200 (FINDS_MAX) */
@@ -55,12 +59,12 @@ export function savedUntil(at) { return new Date(at + SAVED_DAYS * DAY).toISOStr
    photo (dropped), so index.js can delete those from R2. Only the stored copy can say a photo is kept (ph). */
 export function savedMerge(had, b, now) {
   const lists = [had, b].map((o) => (o && typeof o === "object" && !Array.isArray(o) ? o : {}));
-  const keep = new Map(), gone = new Map(), ph = new Set(), meta = new Map();
+  const keep = new Map(), gone = new Map(), ph = new Set(), meta = new Map(), hp = new Map();
   lists.forEach((o, n) => {
     for (const x of Array.isArray(o.saved) ? o.saved.slice(0, 1000) : []) {
       const f = savedItem(x, now);
       if (!f) continue;
-      if (n === 0 && f.ph) ph.add(f.url);
+      if (n === 0 && f.ph) { ph.add(f.url); if (/^[0-9a-f]{16}$/.test(String(x.hp || ""))) hp.set(f.url, x.hp); }   /* v181 */
       if (n === 0) { const e = savedEnd(x.end), ck = savedAt(x.ck, now); if (e || ck) meta.set(f.url, { end: e, ck: ck }); }   /* v169 */
       f.ph = 0;
       if (!keep.has(f.url) || f.at > keep.get(f.url).at) keep.set(f.url, f);
@@ -73,7 +77,7 @@ export function savedMerge(had, b, now) {
   });
   const saved = [], left = [], dropped = [];
   for (const f of keep.values()) {
-    if (ph.has(f.url)) f.ph = 1;
+    if (ph.has(f.url)) { f.ph = 1; if (hp.has(f.url)) f.hp = hp.get(f.url); }
     const mt = meta.get(f.url);
     if (mt && mt.end) f.end = mt.end;
     if (mt && mt.ck) f.ck = mt.ck;
@@ -89,6 +93,8 @@ export function savedMerge(had, b, now) {
   if (ckd) out.ckd = ckd;
   return out;
 }
+/* v181: the hash a stored find's photo is kept under: its hp (copied before a change of address), else h */
+export function savedHp(had, u, h) { const f = (had && Array.isArray(had.saved) ? had.saved : []).find((x) => x && x.url === u); return f && /^[0-9a-f]{16}$/.test(String(f.hp || "")) ? f.hp : h; }
 /* v169: the marketplace of a find Prowl can look at, or "" */
 export function savedSrc(url) {
   let u;

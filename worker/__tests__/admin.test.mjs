@@ -26,7 +26,7 @@ function fromIndex(names, deps = {}) {
 }
 const IX = fromIndex(["giftHash", "proList", "proListHas", "proListCount", "alEmail"]);
 /* v83: the shared purge, as index.js has it */
-const PURGE = fromIndex(["pushHash", "pushId", "pushList", "pushPurge", "savedIndex", "savedPurge", "alPurge"], { kvGet: async (env, k, d) => { const v = await env.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; }, console: { log() {} } });
+const PURGE = fromIndex(["pushHash", "pushId", "pushList", "pushPurge", "savedIndex", "savedPurge", "savedHpPurge", "sha16", "acctHash", "tripIdOk", "tripGet", "tripPut", "tripPurge", "tripsForget", "alPurge"], { kvGet: async (env, k, d) => { const v = await env.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; }, kvPut: async (env, k, v) => env.PROWL_ALERTS.put(k, JSON.stringify(v)), photoKey: (h, k) => "saved/" + h + "/" + k + ".jpg", console: { log() {}, error() {} } });   /* v181: the trips and earlier addresses too */
 const giftHashOf = email => createHash("sha256").update("prowl-gift|" + email).digest("hex");
 
 /* ---------- fakes ---------- */

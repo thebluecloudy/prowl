@@ -179,7 +179,7 @@ test("Delete in Prowl takes every saved photo and the index entry", async () => 
   assert.equal(r2.m.size, 0);
   assert.deepEqual(kv.json("saved:all"), []);
   assert.match(INDEX, /"last:", "likes:", "saved:", "code:"/, "saved:<email> goes with the rest");
-  assert.match(INDEX, /await savedPurge\(env, email\); gone\.push\("saved\/"\);/);
+  assert.match(INDEX, /await savedPurge\(env, email, svNow\); gone\.push\("saved\/"\);/);   /* v182: with the member's own list (hpkept:) */
 });
 
 test("the routes are wired and the version is v168 or later", () => {
