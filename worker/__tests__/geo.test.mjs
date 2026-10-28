@@ -47,7 +47,7 @@ function fakeFetch(u, init) {
   return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
 }
 const names = ["gKey", "gFetch", "gGeocode", "clAreas", "geoRoute", "cors", "json", "ipKey", "ip6Parts", "scrubPII"];
-const pre = ["let CL_AREAS = null;", constLine("GEO_PER_IP"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];')].join("\n");
+const pre = ["let CL_AREAS = null;", constLine("GEO_PER_IP"), constLine("G_REVIEWS_PER_DAY"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];')].join("\n");
 let ALLOW = true;
 const W = fromIndex(names, Object.assign({ fetch: fakeFetch, PCACHE, vCount: async () => ALLOW, console: { error() {} } }, TRIP), pre);
 const ORIGIN = "https://www.owlandtwigvintage.com";
