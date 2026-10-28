@@ -6,7 +6,7 @@
      (that is, right after the "Relationship with Shopify" paragraph), replacing the older Prowl sections if they are there.
   3. Change the first line of the policy to:  <p>Last updated: October 28, 2026</p>
   4. Save.
-  Every statement below was checked against how Prowl actually works: checked against worker v181 / page v8.08 on
+  Every statement below was checked against how Prowl actually works: checked against worker v182 / page v8.08 on
   2026-10-28 (worker/index.js, worker/saved.js, worker/trip.js, worker/push.js, worker/metrics.js, page/prowl.html,
   extension/). Re-check it if Prowl's data handling changes.
   Notes for the next check:
@@ -24,6 +24,8 @@
     (DEPOP_LIVE); put Depop in the server-search list if that is ever turned on.
   - v181: saved finds move on an email change (alMoveConfirm copies saved:, the photos stay under the old address's
     sha16 and each find keeps it as hp); an email-only member keeps their trip id (tid); acct: and tripinv: follow.
+  - v182: a Delete at an address another member moved away from leaves that member's trips (tidkept:) and saved
+    photos (hpkept:, a count under the address's sha16) alone; it removes only its own photos there.
   - AI off is per device (localStorage); the account's prefs.noai follows the signed-in device that set it.
   - The daily visitor code is sha16(ip|day|DEBUG_KEY): it is only hard to reverse while DEBUG_KEY is set, so the text
     does not promise it cannot be reversed. acctHash and giftHash are unsalted SHA-256 of the address.

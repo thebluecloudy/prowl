@@ -1,4 +1,6 @@
-/* v181 (the security and trust plan, 2026-10-28): a Delete takes the member's trips (tripsForget) and every earlier
+/* v182: the review fixes: a member back at an earlier address keeps their trip id; a Delete by a newcomer at an address
+   someone moved away from leaves that member's trips and photos (tidkept:, hpkept:).
+   v181 (the security and trust plan, 2026-10-28): a Delete takes the member's trips (tripsForget) and every earlier
    address's saved finds, acct: and tripinv:; an email change carries the saved finds and keeps an email-only member's
    trip id. The functions are taken from index.js with fakes for KV and R2.
    Run: node --test worker/__tests__/purge-v181.test.mjs */
@@ -243,5 +245,87 @@ test("wired: the photo URL, the sync's and the sweep's deletes use hp; the move 
   assert.match(indexFn("savedSweep"), /photoKey\(savedHp\(had, u, h\), /);
   assert.match(indexFn("alPurge"), /await tripsForget\(env, tids\);/);
   assert.match(indexFn("tripWho"), /await tripIdOf\(env, sub, email\)/);
-  assert.match(INDEX, /const WORKER_VERSION = "v181";/);
+  assert.match(INDEX, /const WORKER_VERSION = "v182";/);
+});
+
+/* v182: the review of part 5 */
+const X = "x@example.com", XF = "x.new@example.com", XG = "x.third@example.com";
+async function seedX(env) {
+  const kv = env.PROWL_ALERTS, r2 = env.PROWL_FINDS, id = "e" + await W.acctHash(X), u = "https://www.ebay.com/itm/9";
+  const sub = { email: X, tok: TOK, hunts: [] };
+  kv.set("sub:" + X, sub);
+  kv.set("trip:taaaaaaaaa", trip("taaaaaaaaa", id, [id, "1002"])); kv.set("trips:" + id, ["taaaaaaaaa"]); kv.set("trips:1002", ["taaaaaaaaa"]);
+  kv.set("trips:all", [{ id: "taaaaaaaaa", expires: "x" }]);
+  kv.set("tripfinds:taaaaaaaaa", [find("faaaaaaaaa", id)]); r2.m.set("finds/taaaaaaaaa/faaaaaaaaa.jpg", 1);
+  kv.set("saved:" + X, { saved: [{ url: u, title: "Vase", at: 1, ph: 1 }], gone: [] }); kv.set("saved:all", [X]);
+  const photo = "saved/" + await W.sha16(X) + "/" + await W.sha16(u) + ".jpg";
+  r2.m.set(photo, 1);
+  return { sub, id, u, photo };
+}
+
+test("v182: a Delete by a newcomer at an address someone moved away from leaves that member's trips and photos", async () => {
+  for (const viaPrev of [false, true]) {
+    const env = envOf(), kv = env.PROWL_ALERTS, r2 = env.PROWL_FINDS, s = await seedX(env);
+    await moveTo(env, s.sub, XF);
+    assert.equal(kv.json("hpkept:" + await W.sha16(X)).n, 1);
+    /* Y joins at X's old address, gets a trip id of their own, saves a find with a photo there */
+    let y = { email: X, tok: "Y".repeat(24), hunts: [] };
+    kv.set("sub:" + X, y);
+    const yid = await W.tripIdOf(env, y, X); y = kv.json("sub:" + X);
+    kv.set("trip:tyyyyyyyyy", trip("tyyyyyyyyy", yid, [yid])); kv.set("trips:" + yid, ["tyyyyyyyyy"]);
+    const yu = "https://www.ebay.com/itm/10", yphoto = "saved/" + await W.sha16(X) + "/" + await W.sha16(yu) + ".jpg";
+    kv.set("saved:" + X, { saved: [{ url: yu, title: "Bowl", at: 1, ph: 1 }], gone: [] }); r2.m.set(yphoto, 1);
+    if (viaPrev) { await moveTo(env, y, "y.new@example.com"); y = kv.json("sub:y.new@example.com"); assert.equal(y.tid, yid, "Y takes their own id, not X's"); }
+    await W.alPurge(env, y.email, y);
+    assert.ok(kv.m.has("trip:taaaaaaaaa"), "X's trip stays");
+    assert.deepEqual(kv.json("trip:taaaaaaaaa").members, [s.id, "1002"]);
+    assert.deepEqual(kv.json("trips:" + s.id), ["taaaaaaaaa"]);
+    assert.ok(r2.m.has("finds/taaaaaaaaa/faaaaaaaaa.jpg"));
+    assert.ok(kv.m.has("tidkept:" + s.id), "X's mark stays");
+    assert.ok(r2.m.has(s.photo), "X's saved photo stays");
+    assert.equal(kv.json("saved:" + XF).saved[0].hp, await W.sha16(X));
+    assert.equal(r2.m.has(yphoto), false, "Y's own photo goes");
+    assert.equal(kv.m.has("trip:tyyyyyyyyy"), false, "Y's trip goes");
+    /* then X deletes: everything of X's goes, the marks too */
+    await W.alPurge(env, XF, kv.json("sub:" + XF));
+    noTrace(env, [s.id, await W.sha16(X), XF]);
+    assert.equal(kv.m.has("trip:taaaaaaaaa"), true, "handed to 1002");
+    assert.deepEqual(kv.json("trip:taaaaaaaaa").members, ["1002"]);
+  }
+});
+
+test("v182: a member who moves away and back keeps their trip id and their trips", async () => {
+  const env = envOf(), kv = env.PROWL_ALERTS, s = await seedX(env);
+  await moveTo(env, s.sub, XF);
+  await moveTo(env, kv.json("sub:" + XF), X);
+  const back = kv.json("sub:" + X);
+  assert.equal(back.tid, s.id);
+  assert.equal(await W.tripIdOf(env, back, X), s.id, "not a newcomer");
+  assert.equal(kv.json("sub:" + X).tid, s.id, "the tid is not replaced");
+  assert.deepEqual(kv.json("trips:" + s.id), ["taaaaaaaaa"]);
+  assert.deepEqual(kv.json("acct:" + await W.acctHash(X)), { cid: s.id });
+  /* away again: the same id; the photo counts once; a Delete clears every mark */
+  await moveTo(env, kv.json("sub:" + X), XG);
+  assert.equal(kv.json("sub:" + XG).tid, s.id);
+  assert.equal(kv.json("hpkept:" + await W.sha16(X)).n, 1);
+  await W.alPurge(env, XG, kv.json("sub:" + XG));
+  noTrace(env, [s.id, await W.sha16(X), X, XF, XG]);
+  assert.equal([...kv.m.keys()].some((k) => k.startsWith("tidkept:") || k.startsWith("hpkept:")), false);
+});
+
+test("v182: two members left photos under one address; one Delete keeps the other's", async () => {
+  const env = envOf(), kv = env.PROWL_ALERTS, r2 = env.PROWL_FINDS, s = await seedX(env), h = await W.sha16(X);
+  await moveTo(env, s.sub, XF);
+  const z = { email: X, tok: "Z".repeat(24), hunts: [] }, zu = "https://www.ebay.com/itm/11", zphoto = "saved/" + h + "/" + await W.sha16(zu) + ".jpg";
+  kv.set("sub:" + X, z); kv.set("saved:" + X, { saved: [{ url: zu, title: "Jug", at: 1, ph: 1 }], gone: [] }); r2.m.set(zphoto, 1);
+  await moveTo(env, z, "z.new@example.com");
+  assert.equal(kv.json("hpkept:" + h).n, 2);
+  assert.notEqual(kv.json("sub:z.new@example.com").tid, s.id, "Z's own trip id");
+  await W.alPurge(env, XF, kv.json("sub:" + XF));
+  assert.equal(r2.m.has(s.photo), false, "X's photo goes");
+  assert.ok(r2.m.has(zphoto), "Z's stays");
+  assert.equal(kv.json("hpkept:" + h).n, 1);
+  await W.alPurge(env, "z.new@example.com", kv.json("sub:z.new@example.com"));
+  assert.equal(r2.m.has(zphoto), false);
+  assert.equal(kv.m.has("hpkept:" + h), false);
 });
