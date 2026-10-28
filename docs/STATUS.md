@@ -1,16 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.08 / v179).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.08 / v180).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.08** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v179** | |
+| Worker | **v180** | |
 
 Recently shipped, newest first:
 
+- **v180: the Google lookups have a site-wide daily cap** (the security and trust audit, 2026-10-28: spread over many
+  addresses, the per-address limits alone let anyone run up the Google bill). Place reviews 300, place photos 3000,
+  place suggestions 2000 and town lookups (Geocoding, both ways) 1000 a day site-wide (`grv:all`, `gpp:all`,
+  `gsg:all`, `ggeo:all`), counted only when Google is asked (a cache hit is free); past one the route answers 429
+  "daily limit" until the UTC day turns. They show in the admin's AI pools. Place searches already had `gq:all`
+  (v170). Matt still sets a quota and budget alert on the key (Waiting on Matt). Test:
+  `worker/__tests__/google-pools-v180.test.mjs`.
 - **v179: Email this can be stopped, and AI off means off** (the security and trust audit, 2026-10-28). Email this
   carries the postal address and a "Stop emails from Prowl to this address" link, which is also its one-click
   List-Unsubscribe (`/alerts/sharestop`, signed with the gift key, GET shows a button, POST stops); a stopped address
@@ -1526,7 +1533,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.09, worker v180**. Claim one here when you start.
+Next free numbers: **page v8.09, worker v181**. Claim one here when you start.
 
 ## What's next
 

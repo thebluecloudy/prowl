@@ -54,7 +54,7 @@ function fakeFetch(u, init) {
 }
 const names = ["gKey", "gFetch", "gGeocode", "gReverse", "clAreas", "geoRoute", "geoBackRoute", "cors", "json", "ipKey", "ip6Parts", "scrubPII"];
 const LOGS = [];
-const pre = ["let CL_AREAS = null;", constLine("GEO_PER_IP"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];')].join("\n");
+const pre = ["let CL_AREAS = null;", constLine("GEO_PER_IP"), constLine("G_REVIEWS_PER_DAY"), constLine("G_TIMEOUT_MS"), constLine("ALLOW_ORIGINS").replace(/^const ALLOW_ORIGINS = \[.*$/m, 'const ALLOW_ORIGINS = ["https://www.owlandtwigvintage.com", "https://owlandtwigvintage.com"];')].join("\n");
 let ALLOW = true;
 const W = fromIndex(names, Object.assign({ fetch: fakeFetch, PCACHE, vCount: async () => ALLOW, console: { error: (...a) => LOGS.push(a.join(" ")), log: (...a) => LOGS.push(a.join(" ")) } }, TRIP), pre);
 const ORIGIN = "https://www.owlandtwigvintage.com";

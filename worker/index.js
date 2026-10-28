@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v180: 2026-10-28. Security and trust, part 4: site-wide daily pools for the Google lookups that had only per-address
+ *         limits (place reviews 300, place photos 3000, place suggestions 2000, town lookups 1000; grv: gpp: gsg: ggeo:),
+ *         counted only when Google is asked; past one the route says "daily limit". In the admin's AI pools.
  *   v179: 2026-10-28. Security and trust, part 3. Email this carries a stop link (also its one-click List-Unsubscribe,
  *         /alerts/sharestop, signed, nothing stored but a keyed code of the address) and the postal address; a stopped
  *         address is refused. AI off (prefs.noai) now also skips Pounce judging and TypeSafe's shop picks in the emails,
@@ -621,7 +624,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v179";
+const WORKER_VERSION = "v180";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6344,7 +6347,11 @@ const AI_POOLS = [
   { key: "wh:all", name: "Where to look", limit: SP_PER_DAY },
   { key: "gq:all", name: "Google place searches (Near me, Road trip)", limit: 300 },   /* v170: G_SEARCHES_PER_DAY */
   { key: "gv:all", name: "Google Vision (Photo check, Seen on the web)", limit: 300 },   /* v171: VISION_PER_DAY */
-  { key: "gl:all", name: "Google Lens (SerpApi, free 250 a month)", limit: 8 }   /* v173: LENS_PER_DAY */
+  { key: "gl:all", name: "Google Lens (SerpApi, free 250 a month)", limit: 8 },   /* v173: LENS_PER_DAY */
+  { key: "grv:all", name: "Google place reviews (Near me)", limit: 300 },   /* v180: G_REVIEWS_PER_DAY */
+  { key: "gpp:all", name: "Google place photos (Near me)", limit: 3000 },   /* v180: G_PHOTOS_PER_DAY */
+  { key: "gsg:all", name: "Google place suggestions (typing a place)", limit: 2000 },   /* v180: G_SUGGEST_PER_DAY */
+  { key: "ggeo:all", name: "Google town lookups (Geocoding)", limit: 1000 }   /* v180: G_GEO_PER_DAY */
 ];
 function liveSources() { return ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark"].concat(DEPOP_LIVE ? ["depop"] : [], ["vinted", "grailed", "salvation"]); }
 /* v91: a marketplace that says "slow down" (429, or Vinted's 403 block) cools down: nothing goes out to it until the
@@ -6827,6 +6834,11 @@ export default {
    the trip expires whatever R2 still holds. The bucket's own lifecycle rule (wrangler.toml) is the backstop. */
 const NEAR_HERE_M = Math.round(3 * MI_M);   /* v153: the distance-ranked ask looks this far */
 const PIN_RETRY_MS = 400;   /* v165: the wait before a stop is looked up again */
+/* v180 (the security and trust audit: spread over many addresses, the per-address limits alone let anyone run up the
+   Google bill): each kind of Google lookup also has a site-wide daily pool, counted only when Google is asked (a cache
+   hit is free). Past it the route says "daily limit" until the UTC day turns; the admin's AI pools show them. Matt also
+   sets a quota and a budget alert on GOOGLE_MAPS_KEY in Google Cloud. */
+const G_REVIEWS_PER_DAY = 300, G_PHOTOS_PER_DAY = 3000, G_SUGGEST_PER_DAY = 2000, G_GEO_PER_DAY = 1000;
 const REVIEWS_PER_IP = 300, SUGGEST_PER_IP = 1500;   /* v161: suggestions asked a day per address */   /* v161: reviews asked a day per address */
 const NEAR_PER_IP = 120, TRIP_PER_IP = 10, PP_PER_IP = 1500, TRIPS_PER_IP = 400, NEAR_CACHE_SECONDS = 600, TRIP_CACHE_SECONDS = 3600, HOURS_CACHE_SECONDS = 600;
 const G_PLACE_FIELDS = "id,displayName,formattedAddress,addressComponents,location,rating,userRatingCount,regularOpeningHours,utcOffsetMinutes,photos,editorialSummary,primaryType,primaryTypeDisplayName,googleMapsUri";
@@ -7038,6 +7050,7 @@ async function geoRoute(request, env, url, origin) {
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("geo:" + ipKey(request.headers.get("CF-Connecting-IP")), GEO_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  if (!(await vCount("ggeo:all", G_GEO_PER_DAY))) return json({ error: "daily limit" }, 429, origin);   /* v180 */
   const p = await gGeocode(env, q);
   if (!p) return json({ error: "not found" }, 404, origin);
   let cl = "";
@@ -7059,6 +7072,7 @@ async function geoBackRoute(request, env, url, origin) {
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("geo:" + ipKey(request.headers.get("CF-Connecting-IP")), GEO_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  if (!(await vCount("ggeo:all", G_GEO_PER_DAY))) return json({ error: "daily limit" }, 429, origin);   /* v180 */
   const p = await gReverse(env, pt);
   if (!p) return json({ error: "not found" }, 404, origin);
   let cl = "";
@@ -7184,6 +7198,7 @@ async function suggestRoute(request, env, url, origin) {
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("sg:" + ipKey(request.headers.get("CF-Connecting-IP")), SUGGEST_PER_IP))) return json({ error: "slow down", places: [] }, 429, origin);
+  if (!(await vCount("gsg:all", G_SUGGEST_PER_DAY))) return json({ error: "daily limit", places: [] }, 429, origin);   /* v180 */
   const body = { input: q, includedRegionCodes: ["us"], languageCode: "en" };
   if (near) body.locationBias = { circle: { center: { latitude: lat, longitude: lng }, radius: 50000 } };
   const j = await gFetch("https://places.googleapis.com/v1/places:autocomplete", { method: "POST", body: JSON.stringify(body) }, "", env);
@@ -7207,6 +7222,7 @@ async function reviewsRoute(request, env, url, origin) {
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("rv:" + ipKey(request.headers.get("CF-Connecting-IP")), REVIEWS_PER_IP))) return json({ error: "slow down" }, 429, origin);
+  if (!(await vCount("grv:all", G_REVIEWS_PER_DAY))) return json({ error: "daily limit" }, 429, origin);   /* v180 */
   const j = await gFetch("https://places.googleapis.com/v1/places/" + encodeURIComponent(id), { method: "GET" }, "id,rating,userRatingCount,editorialSummary,reviews,googleMapsUri", env);
   if (!j) return json({ error: "Reviews could not be read just now." }, 502, origin);
   const reviews = (Array.isArray(j.reviews) ? j.reviews : []).filter((r) => r && r.text && r.text.text).slice(0, 3).map((r) => ({
@@ -7226,6 +7242,7 @@ async function ppRoute(request, env, url) {
   if (!/^places\/[A-Za-z0-9_-]{5,300}\/photos\/[A-Za-z0-9_-]{5,1500}$/.test(n)) return new Response("not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8" } });
   if (!gKey(env)) return new Response("not set up", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });
   if (!(await vCount("pp:" + ipKey(request.headers.get("CF-Connecting-IP")), PP_PER_IP))) return new Response("slow down", { status: 429, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  if (!(await vCount("gpp:all", G_PHOTOS_PER_DAY))) return new Response("daily limit", { status: 429, headers: { "Content-Type": "text/plain; charset=utf-8" } });   /* v180 */
   let r;
   try { r = await fetch("https://places.googleapis.com/v1/" + n + "/media?maxWidthPx=480&key=" + encodeURIComponent(gKey(env)), { redirect: "follow", cf: { cacheTtl: 86400, cacheEverything: true } }); } catch (e) { return new Response("could not fetch", { status: 502, headers: { "Content-Type": "text/plain; charset=utf-8" } }); }
   const type = String(r.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
