@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v186: 2026-10-28. Security and trust, the iPhone app carry: POST /alerts/handoff {email, tok} (or a store session)
+ *         mints a one-time code (ho:<keyed hash>, 15 minutes); POST /alerts/handoff/take {code} trades it once for the
+ *         sign-in, refused once the token changes. The prowl_c1 cookie no longer carries the email, token or session.
  *   v185: 2026-10-28. Sign-in links after a change of address: /alerts/redeem follows moved:<old> (up to 3 changes), so an
  *         old-address #e=&t= link or #e=&k= ticket signs in to the new address, as status did before v184; Sign out every
  *         other device still ends both. The admin's signout-all text no longer claims the store login ends.
@@ -641,7 +644,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v185";
+const WORKER_VERSION = "v186";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -5826,6 +5829,47 @@ async function alRedeem(request, env, origin) {
   try { await tripAcctLink(env, await tripIdOf(env, sub, at), at); } catch (e) { console.error("acct link", String(e && e.message || e)); }
   return json({ ok: true, member: true, email: sub.email, tok: sub.tok, pro: !!sub.pro, free: alFree(env, sub), hunts: sub.hunts, active: alActive(env, sub).length, session: sub.cid ? await sessMint(env, sub.cid) : "" }, 200, origin);
 }
+/* v186: the sign-in reaches the iPhone home-screen app without the token (the security and trust plan, 2026-10-28: the
+   prowl_c1 cookie held the email, the permanent token and a 30-day session for 7 days, readable by any script on the
+   page and sent to Shopify with every request). POST /alerts/handoff {email, tok} (or a store session) mints a one-time
+   code, kept only as a keyed hash (ho:) with sha16 of the token for HO_TTL; POST /alerts/handoff/take {code} trades it
+   once for the sign-in, answering as alVerify does. A new token (Sign out every other device) kills a waiting one. */
+const HO_TTL = 900, HO_PER_EMAIL = 150, HO_PER_IP = 300, HO_TAKE_PER_IP = 30;
+async function hoKey(env, code) { return "ho:" + (await pxHmac(alCodeKey(env), "prowl-handoff-v1:" + code)); }
+async function alHandoff(request, env, origin) {
+  if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
+  const b = await readJson(request, 4096);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  if (!alCodeKey(env)) return json({ error: "Sign-in is not set up yet." }, 503, origin);
+  const email = alEmail(b.email);
+  let sub = email ? await kvGet(env, "sub:" + email, null) : null;
+  if (!sub || typeof sub !== "object" || Array.isArray(sub) || !sub.tok || !alSame(String(b.tok || ""), sub.tok)) sub = await sessMember(request, env);
+  const em = sub ? alEmail(sub.email) : "";
+  if (!em || !sub.tok) return json({ error: "Sign in to Prowl Alerts first." }, 404, origin);
+  if (!(await vCount("alhoi:" + ipKey(request.headers.get("CF-Connecting-IP")), HO_PER_IP))) return json({ error: "Too many tries today." }, 429, origin);
+  if (!(await vCount("alho:" + em, HO_PER_EMAIL))) return json({ error: "Too many tries today." }, 429, origin);
+  const code = alToken();
+  await env.PROWL_ALERTS.put(await hoKey(env, code), JSON.stringify({ email: em, tk: await sha16(sub.tok), at: Date.now() }), { expirationTtl: HO_TTL });
+  return json({ ok: true, code: code, ttl: HO_TTL }, 200, origin);
+}
+async function alHandoffTake(request, env, origin) {
+  if (!alReady(env)) return json({ error: "Prowl Alerts is not on yet." }, 503, origin);
+  const b = await readJson(request, 4096);
+  if (b.big) return json({ error: "too large" }, 413, origin);
+  if (!alCodeKey(env)) return json({ error: "Sign-in is not set up yet." }, 503, origin);
+  const code = String(b.code || ""), gone = json({ error: "That sign-in has run out. Sign in with a code from your email.", expired: true }, 400, origin);
+  if (!/^[0-9a-f]{36}$/.test(code)) return gone;
+  if (!(await vCount("alhot:" + ipKey(request.headers.get("CF-Connecting-IP")), HO_TAKE_PER_IP))) return json({ error: "Too many tries today." }, 429, origin);
+  const k = await hoKey(env, code), rec = await kvGet(env, k, null);
+  if (!rec || typeof rec !== "object" || !rec.email || !rec.tk || Date.now() - (Number(rec.at) || 0) > HO_TTL * 1000) return gone;
+  /* KV is not atomic: as /proxy/login does, Caps takes it once too, then the KV record goes */
+  try { const nj = await capsCall(capsDay(), "take", { k: "hot:" + k.slice(3, 35), lim: 1 }); if (nj && nj.left < 0) return gone; } catch (e) { console.error("hot", String(e && e.message || e)); }
+  await env.PROWL_ALERTS.delete(k);
+  const sub = await kvGet(env, "sub:" + rec.email, null);
+  if (!sub || typeof sub !== "object" || Array.isArray(sub) || !sub.tok || !alSame(await sha16(sub.tok), rec.tk)) return gone;
+  try { await tripAcctLink(env, await tripIdOf(env, sub, rec.email), rec.email); } catch (e) { console.error("acct link", String(e && e.message || e)); }
+  return json({ ok: true, member: true, email: sub.email, tok: sub.tok, pro: !!sub.pro, free: alFree(env, sub), hunts: sub.hunts, active: alActive(env, sub).length, session: sub.cid ? await sessMint(env, sub.cid) : "" }, 200, origin);
+}
 /* v184: Sign out every other device (the member's own, POST /alerts/signout-others {email, tok}, and the admin's
    signout-all through H). A new token, so every other device's next status check signs it out and every ticket out
    there stops working; sessFrom ends store sessions made before now; a waiting sign-in link, code or confirm link goes;
@@ -7855,6 +7899,8 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/alerts/verify" && request.method === "POST") return alVerify(request, env, origin);   /* v108 */
     if (url.pathname === "/alerts/redeem" && request.method === "POST") return alRedeem(request, env, origin);   /* v184 */
     if (url.pathname === "/alerts/signout-others" && request.method === "POST") return alSignoutOthers(request, env, origin);   /* v184 */
+    if (url.pathname === "/alerts/handoff" && request.method === "POST") return alHandoff(request, env, origin);   /* v186: the iPhone app carry */
+    if (url.pathname === "/alerts/handoff/take" && request.method === "POST") return alHandoffTake(request, env, origin);   /* v186 */
     if (url.pathname === "/alerts/mail" && request.method === "POST") return alMailSet(request, env, origin);   /* v55 */
     if (url.pathname === "/alerts/delete" && request.method === "POST") return alDelete(request, env, origin);   /* v55 */
     if (url.pathname === "/alerts/likes" && request.method === "POST") return alLikes(request, env, origin);   /* v85 */

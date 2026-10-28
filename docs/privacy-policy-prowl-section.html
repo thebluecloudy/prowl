@@ -6,7 +6,7 @@
      (that is, right after the "Relationship with Shopify" paragraph), replacing the older Prowl sections if they are there.
   3. Change the first line of the policy to:  <p>Last updated: October 28, 2026</p>
   4. Save.
-  Every statement below was checked against how Prowl actually works: checked against worker v185 / page v8.11 on
+  Every statement below was checked against how Prowl actually works: checked against worker v186 / page v8.12 on
   2026-10-28 (worker/index.js, worker/saved.js, worker/trip.js, worker/push.js, worker/metrics.js, page/prowl.html,
   extension/). Re-check it if Prowl's data handling changes.
   Notes for the next check:
@@ -24,6 +24,9 @@
     through the store (the page sets alertNoAuto when status says it is out), but a person holding it can still tap Log
     in there; the "Signing out everywhere" bullet says so. A link sent to an address the member has since moved away
     from still signs in to the new address (moved:<old>), until "Sign out every other device".
+  - v186 / v8.12: the iPhone cookies never hold the email, token or session. prowl_c3 holds a one-time code from POST
+    /alerts/handoff (ho:<keyed hash>, 15 minutes, works once, dead after a token change), traded by POST
+    /alerts/handoff/take; prowl_c1 is cleared on every visit and only read by an app added before v8.12.
   - v179: Pounce and the emails' shop picks honour AI off (prefs.noai, sent by a signed-in device); Email this has a stop
     link (sharenomail:<keyed code>) and the postal address.
   - Google Lens through SerpApi needs the SERPAPI_KEY secret and Cloud Vision needs GOOGLE_VISION_KEY; the text says
@@ -53,7 +56,7 @@
 <ul>
   <li><b>Your Prowl data.</b> Your hunts (saved searches), saved and liked finds, finds you watch for a price drop, saved research, Field Guides, your last five photo checks (with a small copy of the first photo), the place you set for Near me, the group trip you are on, and your display and email settings are kept in your own browser. We do not receive them unless you use a feature below that sends them. Clearing your browser data removes them.</li>
   <li><b>Sign-in.</b> If you sign in, your browser keeps your Prowl Alerts email address and a sign-in key, and a store sign-in key that lasts 30 days.</li>
-  <li><b>Cookies on iPhone and iPad.</b> When you open the Prowl app page in Safari on an iPhone or iPad, Prowl sets two cookies, prowl_c1 (your sign-in) and prowl_c2 (your hunts and Prowl settings, such as your chosen marketplaces and the city you set, if they fit), only for that page. They carry your sign-in and settings into the app when you add it to your home screen. Safari writes them again each time you visit or leave the page, and they expire 7 days after your last visit. The app copies them once and deletes its own copy. They never leave our shop's own website.</li>
+  <li><b>Cookies on iPhone and iPad.</b> When you open the Prowl app page in Safari on an iPhone or iPad, Prowl sets up to two cookies, only for that page: prowl_c2 (your hunts and Prowl settings, such as your chosen marketplaces and the city you set, if they fit) and, when you are signed in, prowl_c3, a one-time code that is not your email address or your sign-in itself. They carry your settings and your sign-in into the app when you add it to your home screen. The app copies them once and deletes its own copy, then trades the code with our service for your sign-in; the code works once, runs out after 15 minutes and stops working if you sign out every other device. Safari writes prowl_c2 again each time you visit or leave the page, and it expires 7 days after your last visit. Older versions of Prowl kept your sign-in itself in a cookie named prowl_c1; Prowl now deletes it the next time you open the page. Apart from that code, they never leave our shop's own website.</li>
   <li><b>Page visits.</b> The Prowl page uses Cloudflare Web Analytics to count visits, page speed and which website sent you. It sets no cookies, stores nothing on your device and does not identify you.</li>
   <li><b>The Chrome extension.</b> If you install the Prowl extension, it keeps your Prowl Alerts email and sign-in key in the extension, copied from the Prowl page so you do not sign in twice. It sends your searches to our Prowl service, or opens marketplaces in new tabs.</li>
 </ul>

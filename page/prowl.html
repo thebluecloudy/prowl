@@ -3887,7 +3887,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.11';
+var PROWL_VERSION='v8.12';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -9808,7 +9808,7 @@ function openApp(){
 /* v7.74 iPhone install (Matt: adding Prowl on an iPhone took three tries, the first icon kept the shop's bar, and each
    icon asked him to sign in again). iOS gives every home-screen icon its own storage, empty, but copies Safari's cookies
    into it once, when the icon is added. So on the app page in Safari on an iPhone or iPad, Prowl keeps two short-lived
-   cookies scoped to /pages/prowl-app: prowl_c1 (the sign-in: email, token, session, Pro) and prowl_c2 (this device's
+   cookies scoped to /pages/prowl-app: prowl_c3 (v8.12: a one-time sign-in code, see carryMint) and prowl_c2 (this device's
    hunts, when they fit). The installed app reads them on its first open, before load(), only into an empty store, then
    deletes its copies. Nothing new in localStorage; nothing leaves the shop's own domain. */
 function iosSteps(){
@@ -9817,29 +9817,65 @@ function iosSteps(){
       :'In Safari, tap <b>Share</b> (the box with the arrow; tap ••• first if you do not see it), scroll down, then <b>Add to Home Screen</b>.';
   return s+' If it shows <b>Open as Web App</b>, leave it on. Tap <b>Add</b>. Prowl then opens full screen'+(mGet('alertTok')?', still signed in':'')+'.';
 }
-var CARRY_PATH='/pages/prowl-app',CARRY_DAYS=7;
+/* v8.12 (the security and trust plan, 2026-10-28: prowl_c1 held the email, the permanent token and a 30-day session for
+   7 days, readable by any script on the page and sent to the shop with every request): the cookies never carry them
+   again. Signed in, the page asks the worker for a one-time code (POST /alerts/handoff, 15 minutes) and keeps only that
+   in prowl_c3, for the code's life; the installed app trades it once (POST /alerts/handoff/take) and signs in through
+   pxTake. A new code on load, on the Install tap, on coming back to the page and every few minutes while it shows, never
+   on pagehide (a request there seldom finishes). prowl_c1 is cleared every time; the app still reads an old one, for
+   icons added before v8.12 (drop it in a later version). prowl_c2 (hunts, no sign-in) is as before. */
+var CARRY_PATH='/pages/prowl-app',CARRY_DAYS=7,CARRY_HO={c:'',k:'',x:0,b:0},CARRY_T=0;
 function carryGet(n){var m=new RegExp('(?:^|; )'+n+'=([^;]*)').exec(document.cookie||'');if(!m)return '';try{return decodeURIComponent(m[1])}catch(e){return ''} }
-function carrySet(n,v,days){try{document.cookie=n+'='+(v?encodeURIComponent(v):'')+'; Path='+CARRY_PATH+'; Max-Age='+(v?days*86400:0)+'; SameSite=Strict; Secure'}catch(e){} }
-function carryOut(){
+function carrySet(n,v,days,secs){try{document.cookie=n+'='+(v?encodeURIComponent(v):'')+'; Path='+CARRY_PATH+'; Max-Age='+(v?(secs||days*86400):0)+'; SameSite=Strict; Secure'}catch(e){} }
+function carryOut(mint){
   if(!isApple()||!onAppPage()||inStandalone())return;
-  var t=mGet('alertTok'),e=mGet('alertEmail');
-  if(t&&e)carrySet('prowl_c1',JSON.stringify({e:e,t:t,s:mGet('session'),p:mGet('alertPro')==='1'?1:0}),CARRY_DAYS);else carrySet('prowl_c1','',0);
+  carrySet('prowl_c1','',0);   /* v8.12: never the email, token or session; drops an older page's copy */
   var raw='';try{raw=localStorage.getItem(LS)||''}catch(x){}
   if(raw&&encodeURIComponent(raw).length<=3000)carrySet('prowl_c2',raw,CARRY_DAYS);else carrySet('prowl_c2','',0);
+  if(mint)carryMint();
+}
+/* v8.12: a code that still has 5 minutes left is kept (memory only, no new localStorage key) */
+function carryMint(){
+  var t=mGet('alertTok'),e=mGet('alertEmail'),k=e+'|'+t;
+  if(!t||!e){CARRY_HO.c='';carrySet('prowl_c3','',0);return}
+  if((CARRY_HO.c&&CARRY_HO.k===k&&CARRY_HO.x-Date.now()>300000)||CARRY_HO.b||typeof fetch!=='function')return;
+  CARRY_HO.b=1;
+  fetch(SGW_API+'alerts/handoff',{method:'POST',headers:window.prowlAuth?window.prowlAuth({'Content-Type':'application/json'}):{'Content-Type':'application/json'},body:JSON.stringify({email:e,tok:t})})
+    .then(function(r){return r.json()['catch'](function(){return {}})})
+    .then(function(j){CARRY_HO.b=0;
+      if(!(j&&typeof j.code==='string'&&/^[0-9a-f]{36}$/.test(j.code))||mGet('alertTok')!==t)return;
+      var s=Math.max(30,Math.min(900,Math.floor(Number(j.ttl)||900))-30);   /* a little under the worker's life */
+      CARRY_HO.c=j.code;CARRY_HO.k=k;CARRY_HO.x=Date.now()+s*1000;carrySet('prowl_c3',j.code,0,s);
+    },function(){CARRY_HO.b=0});
 }
 function carryIn(){
   if(!inStandalone())return 0;
-  var n=0,a=carryGet('prowl_c1'),b=carryGet('prowl_c2'),j=null,h=null;
-  if(a){try{j=JSON.parse(a)}catch(e){}
+  var n=0,a=carryGet('prowl_c1'),b=carryGet('prowl_c2'),c=carryGet('prowl_c3'),j=null,h=null;
+  if(a){try{j=JSON.parse(a)}catch(e){}   /* the legacy cookie: icons added before v8.12 */
     if(j&&!mGet('alertTok')&&typeof j.e==='string'&&/^[^\s@]{1,80}@[^\s@]{1,120}$/.test(j.e)&&typeof j.t==='string'&&/^[A-Za-z0-9_.-]{8,200}$/.test(j.t)){
       mSet('alertEmail',j.e.toLowerCase());mSet('alertTok',j.t);mSet('alertPro',j.p?'1':'');mSet('alertNoAuto','');sessSet(j.s);n++}}
   if(b){var had='';try{had=localStorage.getItem(LS)||''}catch(e){}
     try{h=JSON.parse(b)}catch(e){}
     if(!had&&h&&Array.isArray(h.hunts)){try{localStorage.setItem(LS,b);n++}catch(e){} } }
-  carrySet('prowl_c1','',0);carrySet('prowl_c2','',0);
+  carrySet('prowl_c1','',0);carrySet('prowl_c2','',0);carrySet('prowl_c3','',0);
+  if(c&&!mGet('alertTok')&&/^[0-9a-f]{36}$/.test(c)){carryTake(c);n++}   /* v8.12 */
   return n;
 }
-try{carryOut();document.addEventListener('visibilitychange',function(){if(document.hidden)carryOut()});window.addEventListener('pagehide',carryOut)}catch(e){}
+/* v8.12: the code works once; signed in some other way meanwhile (the store, a link), that sign-in stays */
+function carryTake(c){
+  if(typeof fetch!=='function')return;
+  fetch(SGW_API+'alerts/handoff/take',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:c})})
+    .then(function(r){return r.json()['catch'](function(){return {}})})
+    .then(function(j){
+      if(mGet('alertTok'))return;
+      if(!(j&&j.tok&&j.email)){carryFail(j&&j.error);return}
+      if(mGet('alertEmail')!==String(j.email).toLowerCase()){mSet('alertSig','');mSet('alertPro','');MAIL.prefs=null;MAIL.plan=null}
+      pxTake(j,'Signed in as '+j.email+'. Your hunts and plan are on this device now.');
+    },function(){if(!mGet('alertTok'))carryFail('')});
+}
+function carryFail(err){MAIL.open=true;MAIL.msg=(err||'The sign-in did not come over to the app.')+' Tap Email me a code and type it in to sign in.';rMail();openMailSettings()}
+try{carryOut(1);document.addEventListener('visibilitychange',function(){carryOut(!document.hidden)});window.addEventListener('pagehide',function(){carryOut()});
+  if(isApple()&&onAppPage()&&!inStandalone())CARRY_T=setInterval(function(){if(!document.hidden)carryOut(1)},300000)}catch(e){}
 
 var installEvt=null;
 window.addEventListener('beforeinstallprompt',function(e){
@@ -9859,7 +9895,7 @@ function doInstall(){
       return;
     }catch(e){}
   }
-  if(isApple()){appNote(iosSteps());carryOut();
+  if(isApple()){appNote(iosSteps());carryOut(1);
   }else{
     appNote('In your browser menu, choose <b>Install app</b> or <b>Add to Home screen</b>. Prowl then opens in its own window with no browser bar.');
   }
