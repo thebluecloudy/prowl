@@ -1530,6 +1530,8 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 - **Security and trust (2026-10-28 audit), the admin steps only Matt can take:**
   1. Paste the updated `docs/privacy-policy-prowl-section.html` over the Prowl part of Shopify > Settings > Policies >
      Privacy policy (the live one still says "we do not store your photo" and leaves out trips, push and Near me).
+     Wait for the rest of the security series (Facebook sweep out, Email this, account safety): each updates the
+     section, and Claude says when it is final, so it is pasted once.
   2. Shopify > Settings > Customer accounts: confirm **new customer accounts** (passwordless), classic off. With
      classic accounts anyone can register a store account under someone else's email, and /proxy/login would link it
      to that person's Prowl.
