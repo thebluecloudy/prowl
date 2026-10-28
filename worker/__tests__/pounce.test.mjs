@@ -297,7 +297,7 @@ test("wired in: routes, the alert check, status, purge and email move", () => {
   assert.doesNotMatch(INDEX, /\/alerts\/push"|\/alerts\/quarry-no"|ntfy\.sh|NTFY_/, "v114: ntfy is gone");
   assert.match(indexFn("alCheck"), /pounceRun\(env, sub, h, all, !!only\)/);
   assert.match(indexFn("alTick"), /PJ_RUN = \{ left: POUNCE_PER_RUN, m: \{\}, down: !!\(await kvGet\(env, "pjdown", null\)\) \}/);
-  assert.match(indexFn("alTick"), /if \(pounceHasPhone\(sub\)\) await pounceRetry\(env, sub\); held = await pounceCarry\(env, sub, now, !!phoneOnly\);/);
+  assert.match(indexFn("alTick"), /if \(pounceHasPhone\(sub\)\) await pounceRetry\(env, sub\); held = alPrefs\(sub\)\.noai \? 0 : await pounceCarry\(env, sub, now, !!phoneOnly\);/);
   assert.match(indexFn("alTick"), /if \(held && !PJ_RUN\.down && loc\.hour < alSlotHour\(env, sub\) \+ 2\) continue;/, "the digest waits briefly for Pounce, never for an outage");
   assert.match(indexFn("alStatus"), /quarryMatches/);
   assert.match(indexFn("alPurge"), /"pj:", "gm:", "pq:", "pp:"/);

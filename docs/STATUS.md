@@ -1,16 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.08 / v178).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.08 / v179).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.08** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v178** | |
+| Worker | **v179** | |
 
 Recently shipped, newest first:
 
+- **v179: Email this can be stopped, and AI off means off** (the security and trust audit, 2026-10-28). Email this
+  carries the postal address and a "Stop emails from Prowl to this address" link, which is also its one-click
+  List-Unsubscribe (`/alerts/sharestop`, signed with the gift key, GET shows a button, POST stops); a stopped address
+  gets 403 "asked not to get emails from Prowl" and only a keyed code of it is kept (`sharenomail:`). A member's AI
+  off (prefs.noai) now also stops Pounce judging, carried Pounce judging and new quarries, and the emails' TypeSafe
+  shop picks (`alPicks(env, top, sub)`). Email send errors are scrubbed (scrubPII) before they are logged. The privacy
+  section says so. Tests: `worker/__tests__/share-exact.test.mjs`, `worker/__tests__/ai-off-v179.test.mjs`.
 - **v8.08 / v178: the Facebook sweep is retired** (Matt, 2026-10-28: "Retire it", after the security and trust audit
   found it breaks the plan's own rule, "No session-cookie storage or replay of anyone's account, including Matthew's
   own", and Meta's terms). Worker: POST /fb-ingest and GET /fb-finds answer 410, the sweep's code and the FB_FINDS
@@ -1519,7 +1526,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.09, worker v179**. Claim one here when you start.
+Next free numbers: **page v8.09, worker v180**. Claim one here when you start.
 
 ## What's next
 
