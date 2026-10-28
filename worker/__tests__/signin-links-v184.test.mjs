@@ -165,6 +165,35 @@ test("the confirm, gift start, sign-in and move redirects carry a 10-minute gate
   assert.doesNotMatch(INDEX, /"&t=" \+ (sub|s)\.tok/, "no link anywhere is built from the token");
 });
 
+test("v185: a link mailed to an address the member moved away from signs in to the new address, until Sign out every other device", async () => {
+  const A = "first@example.com", B = "second@example.com", C = "third@example.com";
+  const tA = await W.alTicket(envOf(), member({ email: A }), 3 * 86400, "m"), tB = await W.alTicket(envOf(), member({ email: B }), 3 * 86400, "m");
+  const sub = member({ email: B, prev: [A], cid: "1234567" }), env = envOf(sub), kv = env.PROWL_ALERTS;
+  kv.set("moved:" + A, { to: B, tok: TOK, at: Date.now() - 86400000 });
+  let r = await redeem(env, { email: A, t: TOK });
+  assert.equal(r.status, 200); assert.deepEqual([r.body.email, r.body.tok, r.body.member], [B, TOK, true], "the old #e=&t= link, as status's moved: did");
+  assert.ok(r.body.session, "the new address's store session");
+  r = await redeem(env, { email: A, k: tA });
+  assert.equal(r.status, 200); assert.equal(r.body.email, B, "a ticket minted for the old address before the move");
+  assert.equal((await redeem(env, { email: A, k: tA })).body.used, true, "still once");
+  assert.equal((await redeem(env, { email: A, t: "f".repeat(36) })).status, 400, "a wrong token");
+  assert.equal((await redeem(env, { email: A, k: tB })).status, 400, "a ticket for the new address is not one for the old");
+  assert.equal((await redeem(env, { email: "nobody@example.com", t: TOK })).status, 400, "no member, no forwarding record");
+  kv.set("moved:gone@example.com", { to: "left@example.com", tok: TOK });
+  assert.equal((await redeem(env, { email: "gone@example.com", t: TOK })).status, 400, "forwarded to a member who is gone");
+  // two changes: A to B, then B to C (moved:A still points at B)
+  kv.delete("sub:" + B); kv.set("moved:" + B, { to: C, tok: TOK, at: Date.now() }); kv.set("sub:" + C, member({ email: C, prev: [A, B] }));
+  const tA2 = await W.alTicket(envOf(), member({ email: A }), 3 * 86400 - 10, "m");   // another second: the same exp would be the same, used, ticket
+  assert.equal((await redeem(env, { email: A, t: TOK })).body.email, C);
+  assert.equal((await redeem(env, { email: A, k: tA2 })).body.email, C);
+  // Sign out every other device ends both: the forwarding record pointing at C gets a token nobody has, and C's token is new
+  const tA3 = await W.alTicket(envOf(), member({ email: A }), 3 * 86400 - 20, "m");
+  await W.alSignOutAll(env, kv.json("sub:" + C), C);
+  assert.equal((await redeem(env, { email: A, t: TOK })).status, 400, "the old t link");
+  assert.equal((await redeem(env, { email: B, t: TOK })).status, 400);
+  assert.equal((await redeem(env, { email: A, k: tA3 })).status, 400, "the old ticket");
+});
+
 test("POST /alerts/signout-others: a new token for this device, the old one and every other device's sessions end", async () => {
   const sub = member({ cid: "1234567", prev: ["old@example.com"] }), env = envOf(sub), kv = env.PROWL_ALERTS;
   kv.set("cid:1234567", { email: EMAIL });

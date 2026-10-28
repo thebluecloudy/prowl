@@ -1,16 +1,29 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.10 / v184).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.11 / v185).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.10** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v184** | |
+| Page | **v8.11** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v185** | |
 
 Recently shipped, newest first:
 
+- **v8.11 / v185: Sign out every other device, fixed after review** (the security and trust plan, 2026-10-28). Page: a
+  device whose status check says it is signed out (its token was replaced elsewhere) sets `alertNoAuto` and drops its
+  store session, as Sign out does, so it no longer signs itself straight back in through the Owl & Twig store on the
+  next load; the header's session top-up (hiCheck) takes a store session only when the store's answer has this
+  device's own token. A person holding a device still logged in to the shop can still tap Log in there: Prowl cannot
+  end a Shopify login, and the confirm and done text, the admin's signout-all message and the privacy policy's
+  "Signing out everywhere" bullet now say so (log out of the shop there, or change the store password). Worker:
+  POST /alerts/redeem follows `moved:<old>` (up to 3 changes) when a link was mailed to an address the member has
+  since moved away from: an old `#e=&t=` link must match every forwarding record's token, an old-address ticket is
+  checked against the address it was minted for (`alTicketOk`'s new email argument) and the member's token now; both
+  sign in to the new address, and both stop after Sign out every other device. Tests:
+  `worker/__tests__/signin-links-v184.test.mjs`, `__tests__/page/signin-links-v810.test.mjs`; updated
+  `admin.test.mjs`. Privacy policy section updated.
 - **v8.10 / v184: email links sign in with a one-time pass, never the permanent token; Sign out every other device**
   (the security and trust plan, 2026-10-28: the member's token rode in every email link and every confirm, gift,
   sign-in and move redirect, and the page stored a token from the URL without asking). Worker: the email links (Open
@@ -1591,7 +1604,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.11, worker v185**. Claim one here when you start.
+Next free numbers: **page v8.12, worker v186**. Claim one here when you start.
 
 ## What's next
 

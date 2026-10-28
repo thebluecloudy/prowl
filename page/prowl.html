@@ -3887,7 +3887,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.10';
+var PROWL_VERSION='v8.11';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -6810,13 +6810,13 @@ function mailLinkFail(em,err){MAIL.link=null;MAIL.linkEm=em;mSet('alertWait','')
 function mailSignoutOthers(){
   var em=mGet('alertEmail'),tok=mGet('alertTok');
   if(!em||!tok||typeof fetch!=='function'||MAIL.busy)return;
-  if(!confirm('Sign out of Prowl on every other phone and computer? This one stays signed in. Links in Prowl emails you already have stop signing anyone in.'))return;
+  if(!confirm('Sign out of Prowl on every other phone and computer? This one stays signed in. Links in Prowl emails you already have stop signing anyone in. Prowl cannot log a device out of the Owl & Twig shop: on a lost one, log out of the shop or change your store password too.'))return;   /* v8.11: say what it cannot do */
   MAIL.busy=true;MAIL.msg='';rMail();
   fetch(SGW_API+'alerts/signout-others',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,tok:tok})})
     .then(function(r){return r.json()['catch'](function(){return {}})})
     .then(function(j){
       MAIL.busy=false;
-      if(j&&j.ok&&j.tok){mSet('alertTok',j.tok);if(j.session)sessSet(j.session);MAIL.moving='';MAIL.msg='Signed out on every other phone and computer. This one stays signed in.'+(j.moved?' Your waiting change of email address was cancelled; ask again if you still want it.':'');rMail();return}
+      if(j&&j.ok&&j.tok){mSet('alertTok',j.tok);if(j.session)sessSet(j.session);MAIL.moving='';MAIL.msg='Signed out on every other phone and computer. This one stays signed in. A device still logged in to the Owl & Twig shop can sign back in there, so log out of the shop on it or change your store password.'+(j.moved?' Your waiting change of email address was cancelled; ask again if you still want it.':'');rMail();return}
       MAIL.msg=(j&&j.error)||'Could not reach Prowl. Try again in a minute.';rMail();
     },function(){MAIL.busy=false;MAIL.msg='Could not reach Prowl. Try again in a minute.';rMail()});
 }
@@ -7427,7 +7427,7 @@ function mailStatus(fresh,cb){
       if(j&&j.on===false&&j.moved&&!MAIL.movedHop){MAIL.movedHop=1;var mv=String(j.moved).toLowerCase();mSet('alertEmail',mv);mSet('alertSig','');MAIL.moving='';MAIL.msg='Your Prowl Alerts now go to '+mv+'. This device switched over.';setTimeout(function(){mailStatus(true,cb)},0);return}
       if(j&&j.on){MAIL.moving=j.moving||'';mailStoreLook();}
       if(j&&j.on){mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;if(typeof j.defHour==='number')MAIL.defHour=j.defHour;MAIL.mail=j.mail==='off'?'off':'on';MAIL.hadPro=!!j.hadPro;MAIL.freeWeekly=!!j.freeWeekly;MAIL.plan=j.plan||null;if(j.prefs&&!MAIL.pending&&!MAIL.saving){MAIL.prefs=j.prefs;setTimeout(prefsTzSync,0)}if(j.hunts&&j.hunts.length!==undefined)mailMerge(j.hunts);MAIL.quarries=j.quarries||{};MAIL.quarryMax=j.quarryMax||1;MAIL.wpush=j.wpush||null;MAIL.phone=j.phone||'';pncSeen(j.quarryMatches);}
-      else if(j&&j.on===false){mSet('alertTok','');mSet('alertSig','');}
+      else if(j&&j.on===false){mSet('alertTok','');mSet('alertSig','');mSet('alertNoAuto','1');sessSet('')}   /* v8.11: signed out elsewhere (Sign out every other device): no store auto sign-in straight back in, as Sign out */
       /* v6.00: this device may push its list only after a real pull merged the
          member's list in; a bad or missing answer leaves sync off until the next status */
       if(j&&j.on){MAIL.ready=true;rMail();mailSync(true);likesSync(true);savedSync(true);}else rMail();   /* v6.48: likes too; v7.93: saves (Pro) */
@@ -7620,7 +7620,7 @@ function hiMe(me){
 function hiCheck(){
   pxMe(function(me){
     hiMe(me);
-    if(me&&me.in&&!window.prowlSess())pxLogin(me,false,function(j){if(j&&j.member&&j.email===mGet('alertEmail'))sessSet(j.session)});
+    if(me&&me.in&&!window.prowlSess())pxLogin(me,false,function(j){if(j&&j.member&&j.email===mGet('alertEmail')&&j.tok===mGet('alertTok'))sessSet(j.session)});   /* v8.11: not for a token signed out elsewhere */
   });
 }
 function acctRender(){

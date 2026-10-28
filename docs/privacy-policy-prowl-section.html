@@ -6,7 +6,7 @@
      (that is, right after the "Relationship with Shopify" paragraph), replacing the older Prowl sections if they are there.
   3. Change the first line of the policy to:  <p>Last updated: October 28, 2026</p>
   4. Save.
-  Every statement below was checked against how Prowl actually works: checked against worker v184 / page v8.10 on
+  Every statement below was checked against how Prowl actually works: checked against worker v185 / page v8.11 on
   2026-10-28 (worker/index.js, worker/saved.js, worker/trip.js, worker/push.js, worker/metrics.js, page/prowl.html,
   extension/). Re-check it if Prowl's data handling changes.
   Notes for the next check:
@@ -20,6 +20,10 @@
     token (alTicket: 3 days in emails, 10 minutes after a worker button; nothing stored to make one; a used one is marked
     inu:<signature> until it runs out). "Sign out every other device" (Den > Settings, POST /alerts/signout-others) gives
     a new token and ends store sessions made before it (sub.sessFrom); the admin's signout-all is the same code.
+  - v185 / v8.11: Prowl cannot end a Shopify store login. A device signed out this way no longer signs itself back in
+    through the store (the page sets alertNoAuto when status says it is out), but a person holding it can still tap Log
+    in there; the "Signing out everywhere" bullet says so. A link sent to an address the member has since moved away
+    from still signs in to the new address (moved:<old>), until "Sign out every other device".
   - v179: Pounce and the emails' shop picks honour AI off (prefs.noai, sent by a signed-in device); Email this has a stop
     link (sharenomail:<keyed code>) and the postal address.
   - Google Lens through SerpApi needs the SERPAPI_KEY secret and Cloud Vision needs GOOGLE_VISION_KEY; the text says
@@ -68,7 +72,7 @@
 <ul>
   <li><b>Signing in with your Owl &amp; Twig account.</b> Prowl uses Shopify's own sign-in through our Shopify app. Shopify tells Prowl who you are: your customer number and email address go to our service. Your first name is shown in the greeting on your screen, and goes with any find you post to a group trip, where the trip's members see it. We may link your customer number to your Prowl Alerts record. Log out from the Prowl header, or Den, then Settings, then Account.</li>
   <li><b>Signing in by email.</b> You can also sign in with a 6-digit code or a link we email you. The code lasts 10 minutes and is stored only as a one-way code. A sign-in link lasts a day. The "Open Prowl" links in our emails carry a sign-in pass that works once and lasts 3 days, never your sign-in key; on a device that is not signed in, Prowl asks before it signs in. Once a pass is used we keep a note of it until it runs out, so it cannot be used again.</li>
-  <li><b>Signing out everywhere.</b> Den, then Settings, then "Sign out every other device" signs you out of Prowl on every other phone and computer, including a store sign-in kept by Prowl, and makes the links in emails you already have stop signing anyone in. The device you use stays signed in.</li>
+  <li><b>Signing out everywhere.</b> Den, then Settings, then "Sign out every other device" signs you out of Prowl on every other phone and computer, ends the store sign-ins Prowl kept, and makes the links in emails you already have stop signing anyone in. The device you use stays signed in. Prowl cannot log you out of your Owl &amp; Twig store account: a phone or computer that is still logged in to the store can sign back in through it, so log out of the store there, or change your store password, to stop that.</li>
   <li><b>Prowl Pro.</b> Prowl Pro is bought through our Shopify checkout, so Shopify handles your payment and we never see your card number. To unlock Pro we look up your Prowl Pro orders in Shopify by your email address, the Prowl email you typed on the order, or your store customer number. We keep a short note of the answer (whether you have Pro, and your last order's number, date, amount and receipt link) for up to 7 days. If we give you Pro as a gift, we keep a one-way code of your email address, or we add your address to a private list of free Pro members in our service's settings. We may email you about a gift, and during a free month we send a welcome and a reminder before it renews, through Resend. If you tap "Stop gift emails", we keep a one-way code of your address so we send no more.</li>
 </ul>
 

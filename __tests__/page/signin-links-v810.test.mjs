@@ -157,3 +157,64 @@ test('signed out, there is no Sign out every other device', async () => {
   assert.equal(p.$('#otp-denSettings .otp-mail [data-mail=others]'), null);
   await p.close();
 });
+
+// v8.11: Prowl cannot end a store login, so a device signed out by Sign out every other device must not sign itself
+// straight back in through the store (/apps/prowl/login hands back the new token): its status check sets alertNoAuto,
+// as Sign out does. The confirm and done text say what the button cannot do.
+function storeRig(status) {
+  const calls = [];
+  const fetchImpl = (u, o) => {
+    const url = String(u), path = new URL(url, 'https://www.owlandtwigvintage.com/').pathname;
+    calls.push({ url, body: o && o.body ? JSON.parse(o.body) : null });
+    const body = path === '/apps/prowl/me' ? { in: true, id: '123', e: 'a@b.co', first: 'Ann', ts: 1, sig: 'x' }
+      : path === '/apps/prowl/login' ? { ok: true, member: true, email: 'a@b.co', tok: 'tok-brand-new-0000000000', session: '' }
+      : path.endsWith('/alerts/status') ? (typeof status === 'function' ? status() : status) : { items: [] };
+    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body), text: () => Promise.resolve(JSON.stringify(body)) });
+  };
+  return { calls, fetchImpl };
+}
+const logins = (r) => r.calls.filter((c) => /apps\/prowl\/login$/.test(c.url)).length;
+
+test('v8.11: a device signed out elsewhere stays out: no store auto sign-in on the next load', async () => {
+  let r = storeRig({ on: false });
+  let p = await open(BASE + '?alerts=on', r, IN);
+  await tick(1600);   // the first status check waits 1.2 s after load
+  assert.ok(!ls(p, 'alertTok'), 'the old token goes');
+  assert.equal(ls(p, 'alertNoAuto'), '1', 'as Sign out does');
+  assert.ok(!ls(p, 'session'), 'no store session for a token signed out elsewhere (the shop answered with the new one)');
+  const kept = {};
+  for (let i = 0; i < p.win.localStorage.length; i++) { const k = p.win.localStorage.key(i); kept[k] = p.win.localStorage.getItem(k); }
+  await p.close();
+  // the next load, still logged in to the shop: no /apps/prowl/login, so no new token
+  r = storeRig({ on: false });
+  p = loadPage({ url: BASE + '?alerts=on', fetchImpl: r.fetchImpl, storage: kept });   // strings go in as they are
+  await tick(1600);
+  assert.ok(r.calls.some((c) => /apps\/prowl\/me$/.test(c.url)) || ls(p, 'alertNoAuto') === '1', 'the shop says still logged in');
+  assert.equal(logins(r), 0, 'not signed straight back in');
+  assert.ok(!ls(p, 'alertTok'));
+  await p.close();
+});
+
+test('v8.11: a membership that moved still follows the move, and leaves store sign-in alone', async () => {
+  let n = 0;
+  const r = storeRig(() => (n++ ? { on: true, email: 'new@b.co', hunts: ['pyrex'] } : { on: false, moved: 'new@b.co' }));
+  const p = await open(BASE + '?alerts=on', r, IN);
+  await tick(1600);
+  assert.equal(ls(p, 'alertEmail'), 'new@b.co');
+  assert.equal(ls(p, 'alertTok'), IN['prowl.alertTok'], 'the hop keeps the token');
+  assert.ok(n >= 2, 'and checks again at the new address');
+  assert.notEqual(ls(p, 'alertNoAuto'), '1', 'a move is not a sign-out');
+  await p.close();
+});
+
+test('v8.11: Sign out every other device says the shop login is not ended, before and after', async () => {
+  const r = rig({ 'alerts/status': () => ({ on: true, email: 'a@b.co', hunts: ['pyrex'] }), 'alerts/signout-others': () => ({ ok: true, tok: 'tok-brand-new-0000000000', moved: false, session: '' }) });
+  const p = await open(BASE, r, IN);
+  p.$('#otp-acct').click();
+  await tick(40);
+  p.$('#otp-denSettings .otp-mail [data-mail=others]').click();
+  await tick(40);
+  assert.match(p.asked[0], /cannot log a device out of the Owl & Twig shop/);
+  assert.match(p.$('#otp-denSettings .otp-mail').textContent, /still logged in to the Owl & Twig shop can sign back in there, so log out of the shop on it or change your store password/);
+  await p.close();
+});

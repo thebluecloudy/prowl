@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v185: 2026-10-28. Sign-in links after a change of address: /alerts/redeem follows moved:<old> (up to 3 changes), so an
+ *         old-address #e=&t= link or #e=&k= ticket signs in to the new address, as status did before v184; Sign out every
+ *         other device still ends both. The admin's signout-all text no longer claims the store login ends.
  *   v184: 2026-10-28. Security and trust, sign-in links: email links and the confirm, gift, sign-in and move redirects
  *         carry a signed ticket (alTicket: 3 days in emails, 10 minutes after a gate tap, works once, inu:<sig>) in
  *         place of the permanent token; POST /alerts/redeem trades one (or an old #e=&t= pair) for the sign-in. POST
@@ -638,7 +641,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v184";
+const WORKER_VERSION = "v185";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4375,10 +4378,10 @@ async function alTokTag(tok) { const d = await crypto.subtle.digest("SHA-256", n
 async function alTicketSig(env, email, exp, kind, tok) { const key = alCodeKey(env); return key && tok ? pxHmac(key, "prowl-in-v1:" + email + "|" + exp + "|" + kind + "|" + await alTokTag(tok)) : ""; }
 async function alTicket(env, sub, ttlSec, kind) { const exp = Math.floor(Date.now() / 1000) + ttlSec, sig = sub ? await alTicketSig(env, sub.email, exp, kind, sub.tok) : ""; return sig ? exp + "." + sig : ""; }
 /* the ticket's signature when it is good for this member and kind right now, else "" */
-async function alTicketOk(env, sub, k, kind) {
+async function alTicketOk(env, sub, k, kind, email) {   /* v185: email, the address it was minted for (an earlier one after a move) */
   const m = /^(\d{9,11})\.([0-9a-f]{64})$/.exec(String(k || "")), now = Date.now() / 1000;
   if (!m || !sub || !AL_TICKET_TTL[kind] || Number(m[1]) <= now || Number(m[1]) - now > AL_TICKET_TTL[kind] + 60) return "";
-  return alSame(m[2], await alTicketSig(env, sub.email, m[1], kind, sub.tok)) ? m[2] : "";
+  return alSame(m[2], await alTicketSig(env, email || sub.email, m[1], kind, sub.tok)) ? m[2] : "";
 }
 /* what an email to this member is built from: a copy with a fresh "m" ticket (k), never saved; a member from before
    v51 gets a utok first, so no link falls back to the token */
@@ -5799,10 +5802,19 @@ async function alRedeem(request, env, origin) {
   const email = alEmail(b.email), k = String(b.k || ""), t = String(b.t || ""), kind = b.g ? "g" : "m";
   if (!email || (!k && !t)) return json({ error: "That link is not complete.", expired: true }, 400, origin);
   if (!(await vCount("alrd:" + ipKey(request.headers.get("CF-Connecting-IP")), AL_REDEEM_PER_IP))) return json({ error: "Too many tries today." }, 429, origin);
-  const sub = await kvGet(env, "sub:" + email, null), old = json({ error: "That link has run out.", expired: true }, 400, origin);
+  const old = json({ error: "That link has run out.", expired: true }, 400, origin);
+  let sub = await kvGet(env, "sub:" + email, null);
+  /* v185: a link mailed to an address the member has since moved away from follows moved:<old> (up to 3 changes), as
+     status did for the old #e=&t= links: a t link must match every forwarding record's token (Sign out every other
+     device gives those a token nobody has), a ticket the member's token now with the address it was minted for */
+  for (let a = email, i = 0; i < 3 && !(sub && typeof sub === "object" && !Array.isArray(sub)); i++) {
+    const mv = await kvGet(env, "moved:" + a, null), to = mv && typeof mv === "object" && typeof mv.to === "string" ? alEmail(mv.to) : "";
+    if (!to || (t && !alSame(t, mv.tok))) return old;
+    sub = await kvGet(env, "sub:" + to, null); a = to;
+  }
   if (!sub || typeof sub !== "object" || Array.isArray(sub) || !sub.tok) return old;
   if (k) {
-    const sig = await alTicketOk(env, sub, k, kind);
+    const sig = await alTicketOk(env, sub, k, kind, email);
     if (!sig) return old;
     const used = json({ error: "That link was already used.", expired: true, used: true }, 400, origin);
     if (await kvGet(env, "inu:" + sig, null)) return used;
@@ -5810,7 +5822,8 @@ async function alRedeem(request, env, origin) {
     try { const nj = await capsCall(capsDay(), "take", { k: "inu:" + sig, lim: 1 }); if (nj && nj.left < 0) return used; } catch (e) { console.error("inu", String(e && e.message || e)); }
     await env.PROWL_ALERTS.put("inu:" + sig, "1", { expirationTtl: Math.max(60, Number(k.split(".")[0]) - Math.floor(Date.now() / 1000) + 60) });
   } else if (!alSame(t, sub.tok)) return old;
-  try { await tripAcctLink(env, await tripIdOf(env, sub, email), email); } catch (e) { console.error("acct link", String(e && e.message || e)); }
+  const at = alEmail(sub.email) || email;   /* v185: the address it moved to */
+  try { await tripAcctLink(env, await tripIdOf(env, sub, at), at); } catch (e) { console.error("acct link", String(e && e.message || e)); }
   return json({ ok: true, member: true, email: sub.email, tok: sub.tok, pro: !!sub.pro, free: alFree(env, sub), hunts: sub.hunts, active: alActive(env, sub).length, session: sub.cid ? await sessMint(env, sub.cid) : "" }, 200, origin);
 }
 /* v184: Sign out every other device (the member's own, POST /alerts/signout-others {email, tok}, and the admin's

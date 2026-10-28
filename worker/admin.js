@@ -812,7 +812,7 @@ async function apiAction(c) {
     if (!r) { ok = false; msg = "That member deleted their account a moment ago, so nothing changed."; }
     else {
       const moved = r.moved;
-      msg = "Signed out on every phone and computer, the store sign-in included. They can sign back in with a new sign-in link." +
+      msg = "Signed out of Prowl on every phone and computer, and the store sessions Prowl made end. Prowl cannot end their Owl & Twig shop login: a device still logged in to the shop can sign back in through it, so on a lost device they should log out of the shop or change their store password. They can sign back in with a new sign-in link." +   // v185: say what it cannot do
         (moved ? " A waiting change of email address was cancelled too; they can ask for it again once signed back in." : "");
       if (moved) note = "address change cancelled";
     }

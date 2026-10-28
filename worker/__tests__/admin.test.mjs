@@ -660,7 +660,9 @@ test("action signout-all needs the id typed, then rotates the token and drops th
   assert.notEqual(r.tok, "TOKEN-SECRET-abc123def456"); assert.match(r.tok, /^fresh-token-/);
   assert.equal(r.utok, "UTOK-SECRET-987zyx", "unsubscribe token kept");
   assert.ok(r.sessFrom > Date.now() - 60000 && r.sessFrom <= Date.now(), "v184: store sessions made before now end too (sessFrom)");
-  assert.match(j.message, /the store sign-in included/);
+  assert.match(j.message, /store sessions Prowl made end/);
+  assert.match(j.message, /cannot end their Owl & Twig shop login/, "v185: it says what it cannot do");
+  assert.doesNotMatch(j.message, /the store sign-in included/);
   assert.equal(env.PROWL_ALERTS.m.has("in:" + EMAIL), false);
   assert.equal(env.PROWL_ALERTS.m.has("conf:" + EMAIL), false, "a waiting confirm link signs in as the member too (v85)");
   noPII(JSON.stringify(j));
