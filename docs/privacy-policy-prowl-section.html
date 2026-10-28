@@ -6,22 +6,22 @@
      (that is, right after the "Relationship with Shopify" paragraph), replacing the older Prowl sections if they are there.
   3. Change the first line of the policy to:  <p>Last updated: October 28, 2026</p>
   4. Save.
-  Every statement below was checked against how Prowl actually works: checked against worker v177 / page v8.07 on
+  Every statement below was checked against how Prowl actually works: checked against worker v179 / page v8.08 on
   2026-10-28 (worker/index.js, worker/saved.js, worker/trip.js, worker/push.js, worker/metrics.js, page/prowl.html,
   extension/). Re-check it if Prowl's data handling changes.
   Notes for the next check:
   - Delete my Prowl Alerts account runs alPurge (worker/index.js). It does not touch gift:/giftoff:/giftnomail:, acct:
     (the trip-invite link of an address's one-way code to a customer number), group trips or trips:<id> lists; the text
     says so. If alPurge grows, update the "Deleting your data" bullet.
-  - Pounce does not honour AI off yet (pounceRun runs on sub.quarries whatever prefs.noai says). When it does, drop the
-    "Pounce is the exception" sentence in the AI section.
+  - v179: Pounce and the emails' shop picks honour AI off (prefs.noai, sent by a signed-in device); Email this has a stop
+    link (sharenomail:<keyed code>) and the postal address.
   - Google Lens through SerpApi needs the SERPAPI_KEY secret and Cloud Vision needs GOOGLE_VISION_KEY; the text says
     "when switched on" for both.
   - The Facebook sweep is being retired in this series and is deliberately not described. Depop live search is off
     (DEPOP_LIVE); put Depop in the server-search list if that is ever turned on.
   - Saved finds do not move on an email change (alMove copies no saved:, alPurge clears saved: and saved/<sha16> only
     for the current address). The delete bullets say so; when the code moves or purges them, drop that caveat.
-  - alPicks (shop picks in alert emails) ignores prefs.noai; the AI section says so. AI off is per device (localStorage).
+  - AI off is per device (localStorage); the account's prefs.noai follows the signed-in device that set it.
   - The daily visitor code is sha16(ip|day|DEBUG_KEY): it is only hard to reverse while DEBUG_KEY is set, so the text
     does not promise it cannot be reversed. acctHash and giftHash are unsalted SHA-256 of the address.
   - Estate sales (/sales, EstateSales.net) is off unless SALES_PUBLIC=on and is not described; add a line if it opens.
@@ -67,7 +67,7 @@
   <li><b>Pounce.</b> If you set up a Pounce quarry, we keep its description, skip words, size and price range, the photo link you chose, whether you want "maybe" matches, and up to 8 listings you told it were not it. Our service checks your hunt's new listings against it with Meta's Muse AI service, sending each listing's title, price and photo and your reference photo. It remembers which listings it has already checked, keeps listings it has not reached yet for the rest of the day, and keeps up to 20 recent matches for you.</li>
   <li><b>Phone alerts.</b> If you turn on "Alert this phone", we keep your phone's notification address and keys (up to 5 phones), with a label for the kind of device (such as iPhone or Android), under a one-way code of your email address. Notifications are sent through your browser maker's push service (for example Google or Apple), encrypted so that service cannot read them. They name the piece, its price and marketplace, your hunt, why it matched, and the listing's photo. Your name and email address are never readable in them.</li>
   <li><b>Changing your email address.</b> We keep up to three earlier addresses with your record, and a forwarding note for each for 90 days, so links in older emails still work. We send one notice to the old address.</li>
-  <li><b>Email this.</b> If you email a find to someone, the address you type, the note and the find's photo card go through our service to Resend, which sends that one email under its own policy. We do not keep the address; only a daily counter under a one-way code of it, so one address cannot be sent too many.</li>
+  <li><b>Email this.</b> If you email a find to someone, the address you type, the note and the find's photo card go through our service to Resend, which sends that one email under its own policy. We do not keep the address; only a daily counter under a one-way code of it, so one address cannot be sent too many. Every such email carries our postal address and a link that stops Prowl emailing that address again; if it is used, we keep only a keyed one-way code of the address, so we can refuse later sends.</li>
 </ul>
 
 <h3>Photo checks, Fair price, Research and Field Guides</h3>
@@ -128,6 +128,6 @@
   <li><b>In the background.</b> A few small helpers run by themselves: they match pieces from our shop to your hunts, suggest which marketplaces suit a hunt, check whether a new hunt looks like a collectible name, and, where we have it switched on, filter out search results and emailed finds that do not match your search or look like reproductions.</li>
   <li><b>What AI does not do.</b> It does not make decisions about you, build a profile of you, set the prices of our shop, or buy, sell or message anything for you. It never sees your name, email address or payment details. We send it only what a feature needs: the words you searched, listing details and photos, your description, or the photo you chose.</li>
   <li><b>It can be wrong.</b> AI answers are labeled as AI, show their sources where there are any, and are a starting point for your own checking, not an appraisal or a guarantee.</li>
-  <li><b>Your choice.</b> Prowl Pro members can turn AI off with one switch: Den, then Settings, then AI helpers, then Turn off. The switch is kept on the device you use, so turn it off on each device. On that device the Fair price, photo, Research and Field Guide features are then hidden and the background helpers stop, and if you are signed in, your emailed finds are no longer sorted by AI. Two exceptions for now: your alert emails can still show a few pieces from our shop that TypeSafe matched to one of your hunts, and a Pounce quarry you have set up is still checked by AI until you remove it. Searching, your hunts, your Den and Prowl Alerts keep working. Everyone, free or Pro, controls the tap-only features by not tapping them.</li>
+  <li><b>Your choice.</b> Prowl Pro members can turn AI off with one switch: Den, then Settings, then AI helpers, then Turn off. The switch is kept on the device you use, so turn it off on each device. On that device the Fair price, photo, Research and Field Guide features are then hidden and the background helpers stop, and if you are signed in, your emailed finds are no longer sorted by AI, your alert emails no longer show shop pieces matched by AI, and Pounce stops checking listings (and cannot be set up) until you turn AI back on. Searching, your hunts, your Den and Prowl Alerts keep working. Everyone, free or Pro, controls the tap-only features by not tapping them.</li>
   <li><b>Who provides the AI.</b> Meta's Muse service powers Fair price, Check a photo, Research, Field Guides and Pounce. TypeSafe powers the background helpers (shop matches, where to look, hunt-name checks and result filtering). They handle what we send under their own policies.</li>
 </ul>

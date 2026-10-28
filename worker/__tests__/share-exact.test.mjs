@@ -87,14 +87,19 @@ function load() {
     fetch: async (u, o) => { sent.push({ u, body: JSON.parse(o.body) }); return { status: 200, text: async () => "{}" }; },
     AbortController, setTimeout, clearTimeout,
     PROWL_PAGE: "https://www.owlandtwigvintage.com/pages/prowl", AL_UNSUB_MAIL: "hello@owlandtwigvintage.com", G_ENV: null,
+    WORKER_BASE: "https://prowl.thebluecloud.workers.dev", crypto, TextEncoder,
+    alGate: (title, msg) => ({ status: 200, gate: title, msg }), alPage: (title, msg) => ({ status: 200, page: title, msg }), alBadLink: () => ({ status: 400, bad: true }),
   };
-  const consts = INDEX.match(/^const SHARE_[A-Z_]+ = .*$/m)[0];
-  const names = ["ip6Parts", "ipKey", "ipNet", "isOwner", "capsDay", "ctrName", "vCount", "alEmail", "alEsc", "sha16", "alSend", "shareLinks", "shareEmail"];
+  const consts = INDEX.match(/^const SHARE_[A-Z_]+ = .*$/m)[0] + "\n" + INDEX.match(/^const GIFT_KEY_RE = .*$/m)[0];
+  /* v179: the stop link and the do-not-email mark */
+  const names = ["ip6Parts", "ipKey", "ipNet", "isOwner", "capsDay", "ctrName", "vCount", "alEmail", "alEsc", "sha16", "alSend", "shareLinks", "kvGet", "kvPut", "pxHmac", "giftKey", "giftSig", "alSame", "alAddr", "shareNoKey", "shareStopUrl", "shareStop", "shareEmail"];
   const keys = Object.keys(deps);
   const f = new Function(...keys, consts + "\n" + names.map(indexFn).join("\n") + "\nreturn { " + names.join(", ") + " };")(...keys.map((k) => deps[k]));
   return { ...f, sent };
 }
-const ENV = { RESEND_API_KEY: "re_test" };
+const kvMap = new Map();
+const ENV = { RESEND_API_KEY: "re_test", ALERT_ADDRESS: "Owl & Twig Vintage · 6311 Haggerty Rd, Unit #699 · West Bloomfield, MI 48322",
+  PROWL_ALERTS: { get: async (k, t) => (kvMap.has(k) ? (t === "json" ? JSON.parse(kvMap.get(k)) : kvMap.get(k)) : null), put: async (k, v) => { kvMap.set(k, v); }, delete: async (k) => { kvMap.delete(k); } } };
 const PNG = "data:image/png;base64," + Buffer.from("fake png bytes").toString("base64");
 const req = (body, ip = "203.0.113.7", hdr = {}) => ({ body, headers: { get: (h) => (h === "CF-Connecting-IP" ? ip : hdr[h] || null) } });
 let nTo = 0;
@@ -112,11 +117,14 @@ test("Email this sends the notes and the photo card through Resend", async () =>
   assert.deepEqual(b.attachments, [{ filename: "prowl-find.png", content: Buffer.from("fake png bytes").toString("base64") }]);
   assert.match(b.html, /Someone using Prowl sent you this find\./);
   assert.ok(!/me@example\.com/.test(b.html + b.text), "the address the visitor typed as theirs is never shown: nothing proves it");
-  assert.match(b.text, /Reply and we will stop Prowl emails to this address/);
+  assert.match(b.text, /Stop emails from Prowl to this address: https:\/\/prowl\.thebluecloud\.workers\.dev\/alerts\/sharestop\?e=friend%40example\.com&s=[0-9a-f]{64}/);
+  assert.match(b.html, /<a href="https:\/\/prowl\.thebluecloud\.workers\.dev\/alerts\/sharestop\?e=friend%40example\.com&amp;s=[0-9a-f]{64}"[^>]*>Stop emails from Prowl to this address<\/a>/);
+  for (const part of [b.html, b.text]) assert.match(part, /6311 Haggerty Rd, Unit #699 · West Bloomfield, MI 48322/, "the postal address (CAN-SPAM)");
   assert.match(b.html, /<a href="https:\/\/www\.owlandtwigvintage\.com\/pages\/prowl\?utm_source=share"/, "an Owl & Twig link is a link");
   assert.equal(b.reply_to, "hello@owlandtwigvintage.com", "the sender's address is never the Reply-To");
   assert.ok(!/me@example\.com/.test(b.from));
-  assert.equal(b.headers, undefined, "no unsubscribe headers on a one-off");
+  assert.match(b.headers["List-Unsubscribe"], /^<https:\/\/prowl\.thebluecloud\.workers\.dev\/alerts\/sharestop\?e=friend%40example\.com&s=[0-9a-f]{64}>, <mailto:hello@owlandtwigvintage\.com\?subject=unsubscribe>$/, "v179: one-click stop");
+  assert.equal(b.headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
 });
 
 test("Email this is text only: markup is escaped and every outside web address is taken out (mail apps link bare ones)", async () => {
@@ -217,4 +225,32 @@ test("salesShape reads other layouts too (a state block, schema.org events) and 
   const none = SHAPE("<html>nothing here</html>");
   assert.equal(none.best, null); assert.equal(none.blocks, 0);
   assert.equal(SHAPE(null).best, null);
+});
+
+test("v179: the stop link (or a mail app's one-click unsubscribe) stops every later Email this to that address, and keeps no address", async () => {
+  const L = load();
+  const to = "stopme@example.com";
+  await L.shareEmail(req(good({ to })), ENV, "o");
+  const link = new URL(/<(https:[^>]+)>/.exec(L.sent[0].body.headers["List-Unsubscribe"])[1]);
+  const get = await L.shareStop({ method: "GET" }, ENV, link);
+  assert.equal(get.gate, "Stop emails from Prowl", "a GET (a link scanner) only shows the button");
+  assert.equal((await L.shareEmail(req(good({ to })), ENV, "o")).status, 200, "nothing stopped yet");
+  const post = await L.shareStop({ method: "POST" }, ENV, link);
+  assert.equal(post.page, "Done");
+  const before = L.sent.length;
+  const r = await L.shareEmail(req(good({ to })), ENV, "o");
+  assert.equal(r.status, 403);
+  assert.match(r.body.error, /asked not to get emails from Prowl/);
+  assert.equal(L.sent.length, before, "nothing went out");
+  assert.equal((await L.shareEmail(req(good({ to: "someone-else@example.com" })), ENV, "o")).status, 200, "other addresses still work");
+  for (const [k, v] of kvMap) assert.ok(!/stopme/.test(k + v), "no address in KV: " + k);
+  const forged = new URL(link); forged.searchParams.set("e", "victim@example.com");
+  assert.equal((await L.shareStop({ method: "POST" }, ENV, forged)).bad, true, "the signature is tied to the address");
+});
+
+test("v179: the stop route is wired before the cross-site POST block, so a mail app's one-click POST reaches it", () => {
+  const route = INDEX.indexOf('if (url.pathname === "/alerts/sharestop") return shareStop(request, env, url);');
+  assert.ok(route > 0);
+  assert.ok(route < INDEX.indexOf('if (url.pathname === "/share/email"'), "before the POST routes");
+  assert.ok(Math.abs(route - INDEX.indexOf('if (url.pathname === "/alerts/giftstop")')) < 200, "next to the gift stop, which takes one-click POSTs");
 });

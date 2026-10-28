@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v179: 2026-10-28. Security and trust, part 3. Email this carries a stop link (also its one-click List-Unsubscribe,
+ *         /alerts/sharestop, signed, nothing stored but a keyed code of the address) and the postal address; a stopped
+ *         address is refused. AI off (prefs.noai) now also skips Pounce judging and TypeSafe's shop picks in the emails,
+ *         and Pounce refuses a new quarry with AI off. Email send errors are scrubbed before they are logged.
  *   v178: 2026-10-28. The Facebook Marketplace sweep is retired (Matt, the security and trust plan: "No session-cookie
  *         storage or replay of anyone's account, including Matthew's own"): /fb-ingest and /fb-finds answer 410, the
  *         sweep's code and FB_FINDS are gone. Facebook stays a link-out search on the page.
@@ -617,7 +621,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v178";
+const WORKER_VERSION = "v179";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4272,6 +4276,11 @@ async function shareEmail(request, env, origin) {
   const m = /^data:image\/png;base64,([A-Za-z0-9+\/=]+)$/.exec(String(b.card || ""));
   if (m && m[1].length * 3 / 4 <= SHARE_CARD_MAX) card = m[1];
   if (!env.RESEND_API_KEY) return json({ error: "Could not send right now." }, 503, origin);
+  /* v179: an address that tapped "Stop these" (or its mail app's unsubscribe) never gets another Email this */
+  const nomail = await shareNoKey(env, to);
+  if (!nomail) return json({ error: "Could not send right now." }, 503, origin);
+  if (await kvGet(env, nomail, null)) return json({ error: "That address asked not to get emails from Prowl." }, 403, origin);
+  const stop = await shareStopUrl(env, to);
   if (!isOwner(request, env)) {
     const ip = ipKey(request.headers.get("CF-Connecting-IP"));
     if (!(await vCount("she:" + ip, SHARE_PER_IP))) return json({ error: "limit" }, 429, origin);
@@ -4285,10 +4294,29 @@ async function shareEmail(request, env, origin) {
     '<p style="margin:0 0 14px;color:#6B6259;font-size:13px">Someone using Prowl sent you this find.</p>' +
     '<p style="margin:0 0 14px">' + body + "</p>" +
     (card ? '<p style="margin:0 0 14px;color:#6B6259;font-size:13px">The photo card is attached.</p>' : "") +
-    '<p style="margin:18px 0 0;color:#6B6259;font-size:12px">Prowl searches 29 vintage marketplaces at once. <a href="' + PROWL_PAGE + '?utm_source=share&amp;utm_medium=email" style="color:#C2491F">Try it free</a>. Did not expect this? Reply and we will stop Prowl emails to this address.</p></div>';
-  const plain = "Someone using Prowl sent you this find.\n\n" + text + "\n\nProwl searches 29 vintage marketplaces at once: " + PROWL_PAGE + "\nDid not expect this? Reply and we will stop Prowl emails to this address.";
-  const r = await alSend(env, to, "A find from Prowl: " + item, html, plain, "", card ? [{ filename: "prowl-find.png", content: card }] : null);
+    '<p style="margin:18px 0 0;color:#6B6259;font-size:12px">Prowl searches 29 vintage marketplaces at once. <a href="' + PROWL_PAGE + '?utm_source=share&amp;utm_medium=email" style="color:#C2491F">Try it free</a>.</p>' +
+    '<p style="margin:10px 0 0;color:#6B6259;font-size:12px">Did not expect this? <a href="' + alEsc(stop) + '" style="color:#6B6259">Stop emails from Prowl to this address</a>. One tap, and no one can send you another.<br>' + alEsc(alAddr(env)) + "</p></div>";   /* v179: the stop link and the postal address */
+  const plain = "Someone using Prowl sent you this find.\n\n" + text + "\n\nProwl searches 29 vintage marketplaces at once: " + PROWL_PAGE +
+    "\nDid not expect this? Stop emails from Prowl to this address: " + stop + "\n" + alAddr(env);
+  const r = await alSend(env, to, "A find from Prowl: " + item, html, plain, stop, card ? [{ filename: "prowl-find.png", content: card }] : null);
   return r.ok ? json({ ok: true }, 200, origin) : json({ error: "Could not send right now. Try again in a minute." }, 502, origin);
+}
+/* v179 (the security and trust audit: Email this mailed any address with no postal address and no working opt-out).
+   The stop link is signed with the gift key (no stored token) and is also the email's one-click List-Unsubscribe.
+   sharenomail:<HMAC of the address> marks an address that stopped them: only a keyed code is kept, never the address. */
+async function shareNoKey(env, email) { const k = await giftSig(env, "sharenomail|" + email, true); return k ? "sharenomail:" + k : ""; }
+async function shareStopUrl(env, email) {
+  const sg = await giftSig(env, "sharestop|" + email, true);
+  return WORKER_BASE + "/alerts/sharestop?e=" + encodeURIComponent(email) + "&s=" + sg;
+}
+async function shareStop(request, env, url) {
+  const email = alEmail(url.searchParams.get("e"));
+  const want = email ? await giftSig(env, "sharestop|" + email, false) : "";
+  if (!want || !alSame(String(url.searchParams.get("s") || ""), want)) return alBadLink("It may be cut short, or out of date.");
+  if (request.method !== "POST") return alGate("Stop emails from Prowl", "One tap and no one can use Prowl to email " + email + " again.", "Stop them", url);
+  const k = await shareNoKey(env, email);
+  if (k) await kvPut(env, k, { at: new Date().toISOString() });
+  return alPage("Done", "No more emails from Prowl's Email this will come to this address.");
 }
 function alEsc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[c]);
@@ -4909,6 +4937,7 @@ async function pounceSave(request, env, origin) {
   const k = vClean(b.hunt, 60).toLowerCase(), mine = sub.hunts.map(h => h.toLowerCase()), live = alActive(env, sub).map(h => h.toLowerCase());
   const removing = !b.notUrl && !String(b.spec || "").trim() && !b.any;
   if (!k || (!removing && mine.indexOf(k) === -1)) return json({ error: "Pounce works on one of your saved hunts." }, 400, origin);
+  if (!removing && !b.notUrl && alPrefs(sub).noai) return json({ error: "Pounce uses the AI helpers. Turn them on in Den > Settings first." }, 400, origin);   /* v179 */
   if (b.notUrl) {   /* Not it, from the page */
     const u = String(b.notUrl).slice(0, 600);
     if (/^https:\/\//.test(u)) await pounceMarkNot(env, sub, k, u);
@@ -5008,7 +5037,7 @@ async function alCheck(env, sub, limit, now, only) {
     /* v112: Pounce judges the quarry hunt's listings (seen or not: pj: remembers what it judged). A match goes to the
        member's phone; one that could not go rides at the top of the next digest with its reason. v112 review: what
        Pounce did not reach this run waits in pq:, and the hunt counts as searched, so it is not searched again. */
-    if (sub.quarries) {
+    if (sub.quarries && !alPrefs(sub).noai) {   /* v179: AI off means no Pounce judging either */
       try {
         const r = await pounceRun(env, sub, h, all, !!only);
         if (r.rest.length) carry[h.toLowerCase()] = { n: h, items: r.rest };
@@ -5040,7 +5069,8 @@ async function alCheck(env, sub, limit, now, only) {
   return todo.length;
 }
 
-async function alPicks(env, hunt) {
+async function alPicks(env, hunt, sub) {
+  if (sub && alPrefs(sub).noai) return [];   /* v179: TypeSafe picks the shop pieces, so AI off means none */
   try {
     const r = await shopPicks(env, new URL(WORKER_BASE + "/shop-picks?h=" + encodeURIComponent(hunt)), "");
     const j = await r.json();
@@ -5237,7 +5267,7 @@ async function alDigest(env, sub, send) {
   if (!hunts.length) return { sent: false, reason: "nothing new" };
   let top = hunts[0];
   hunts.forEach(h => { if (pend[h].length > pend[top].length) top = h; });
-  const picks = await alPicks(env, top);
+  const picks = await alPicks(env, top, sub);
   const html = alEmailHtml(Object.assign({}, sub, { allCount: sub.hunts.length }), pend, picks, top, env);
   if (!send) return { sent: false, html: html, subject: alSubject(sub, pend) };
   const r = await alSend(env, sub.email, alSubject(sub, pend), html, alEmailText(sub, pend, env), alUnsubUrl(sub));
@@ -5359,7 +5389,7 @@ async function alTick(env) {
     /* v112 review: first the phone taps that did not go through, then the listings Pounce did not reach on earlier runs */
     let held = 0;
     if (sub.quarries) {
-      try { if (pounceHasPhone(sub)) await pounceRetry(env, sub); held = await pounceCarry(env, sub, now, !!phoneOnly); }
+      try { if (pounceHasPhone(sub)) await pounceRetry(env, sub); held = alPrefs(sub).noai ? 0 : await pounceCarry(env, sub, now, !!phoneOnly); }   /* v179: AI off */
       catch (e) { console.error("pounce carry", String(e && e.message || e)); }
     }
     let n = 0;
@@ -5477,7 +5507,7 @@ async function alSubscribe(request, env, origin) {
     'Someone asked for Prowl Alerts for this address at owlandtwigvintage.com/pages/prowl. If that was not you, ignore this email and nothing else will be sent.', '');
   const r = await alSend(env, email, "Confirm your Prowl Alerts", html,
     "Turn on Prowl Alerts for: " + hunts.join(", ") + "\n\nYes, email me: " + link + "\n\nDid not ask for this? Ignore this email and nothing else will be sent." + alFootText(env, null), "");
-  if (!r.ok) { console.error("confirm mail", r.error); return json({ error: "Could not send the confirm email." }, 502, origin); }
+  if (!r.ok) { console.error("confirm mail", scrubPII(String(r.error || "send failed")));   /* v179: no address in the logs */ return json({ error: "Could not send the confirm email." }, 502, origin); }
   return json({ ok: true, on: false, confirm: true }, 200, origin);
 }
 
@@ -5635,7 +5665,7 @@ async function alSignin(request, env, origin) {
   if (!sub) return json({ ok: true, sent: true }, 200, origin);   /* v51: same answer either way; the inbox tells */
   if (!(await vCount("alin:" + email, AL_SIGNIN_PER_EMAIL))) return json({ error: "We already sent sign-in links today. Use the newest one in your inbox, or check spam." }, 429, origin);
   const r = await alSendSignin(env, sub);
-  if (!r.ok) { console.error("signin mail", r.error); return json({ error: "Could not send the sign-in email." }, 502, origin); }
+  if (!r.ok) { console.error("signin mail", scrubPII(String(r.error || "send failed")));   /* v179: no address in the logs */ return json({ error: "Could not send the sign-in email." }, 502, origin); }
   return json({ ok: true, sent: true }, 200, origin);
 }
 /* v108: one sign-in for Prowl, inside the app: type your email, we email a 6-digit code, type it in. It works for a new
@@ -5880,7 +5910,7 @@ async function alMove(request, env, origin) {
     'Someone signed in to Prowl asked to send their Prowl Alerts to this address. If that was not you, ignore this email and nothing changes.', '');
   const r = await alSend(env, to, "Confirm your new Prowl Alerts address", html,
     "Send Prowl Alerts to this address: " + link + "\n\nThe link works once, for 24 hours. Did not ask for this? Ignore this email and nothing changes." + alFootText(env, null), "");
-  if (!r.ok) { console.error("move mail", r.error); return json({ error: "Could not send the confirm email." }, 502, origin); }
+  if (!r.ok) { console.error("move mail", scrubPII(String(r.error || "send failed")));   /* v179: no address in the logs */ return json({ error: "Could not send the confirm email." }, 502, origin); }
   return json({ ok: true, sent: true, to: to }, 200, origin);
 }
 async function alMoveConfirm(request, env, url) {
@@ -6220,12 +6250,12 @@ async function alTest(request, env, url, origin) {
   const hunts = pick.filter(h => pend[h]);
   if (!hunts.length) return json({ ok: true, sent: false, note: "Nothing listed right now for " + pick.join(", ") + "." }, 200, origin);
   let top = hunts[0]; hunts.forEach(h => { if (pend[h].length > pend[top].length) top = h; });
-  const picks = await alPicks(env, top);
+  const picks = await alPicks(env, top, sub);
   const tot = hunts.reduce((n, h) => n + pend[h].length, 0);
   const stamp = new Intl.DateTimeFormat("en-US", { timeZone: AL_TZ, hour: "numeric", minute: "2-digit" }).format(new Date());
   const r = await alSend(env, email, "Prowl test email " + stamp + " · " + tot + " listings for " + hunts.slice(0, 2).join(", ") + (hunts.length > 2 ? " +" + (hunts.length - 2) : ""),
     alEmailHtml(Object.assign({}, sub, { hunts: hunts, allCount: sub.hunts.length }), pend, picks, top, env, true), "TEST EMAIL\n\n" + alEmailText(tsub, pend, env), alUnsubUrl(sub));
-  if (!r.ok) { console.error("test mail", r.error); return json({ error: "Could not send the test email." }, 502, origin); }
+  if (!r.ok) { console.error("test mail", scrubPII(String(r.error || "send failed")));   /* v179: no address in the logs */ return json({ error: "Could not send the test email." }, 502, origin); }
   return json({ ok: true, sent: true, hunts: hunts.length, listings: tot }, 200, origin);
 }
 
@@ -7513,6 +7543,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/aff" && request.method === "GET") return json({ on: AFF_ON, ids: AFF_IDS }, 200, origin, { "Cache-Control": "public, max-age=300" });   /* v89; v90: ids */
     if (url.pathname === "/alerts/gift") return alGiftStart(request, env, url);   /* v78c */
     if (url.pathname === "/alerts/giftstop") return alGiftStop(request, env, url);   /* v78c */
+    if (url.pathname === "/alerts/sharestop") return shareStop(request, env, url);   /* v179: Email this's stop link, one-click too */
     if (url.pathname === "/alerts/in") return alIn(request, env, url);
     if (url.pathname === "/alerts/move-confirm") return alMoveConfirm(request, env, url);   /* v54 */
     if (url.pathname === "/alerts/move" && request.method === "POST") return alMove(request, env, origin);   /* v54 */
