@@ -168,6 +168,8 @@ test('the curtain wears the theme and look the app opens in, from its first fram
 });
 
 test('the curtain never lifts before MIN_MS, lifts by MAX_MS, and the 9-second net removes it whatever happens', async () => {
+  const MIN = Number(/var MIN_MS=(\d+),/.exec(PAGE)[1]);   /* v8.06: 600 (was 1600), read from the page */
+  assert.ok(MIN >= 400 && MIN <= 1000, 'long enough to cover the load, short enough not to keep anyone waiting: ' + MIN);
   const frames = []; let net = null;
   const p = loadPage({ url: APP, storage: DEN, beforeLoad: (w) => {
     w.requestAnimationFrame = (f) => { frames.push(f); return frames.length; };
@@ -182,14 +184,14 @@ test('the curtain never lifts before MIN_MS, lifts by MAX_MS, and the 9-second n
   const bar = L.querySelector('.pc-rule > i');
   const shown = () => Number((/scaleX\(([\d.]+)\)/.exec(bar.style.transform) || [0, 0])[1]);
   let t0 = null;
-  while (now < 1000 + 1590) {   /* the bar never runs ahead of the time since it began, over MIN_MS */
+  while (now < 1000 + MIN - 10) {   /* the bar never runs ahead of the time since it began, over MIN_MS */
     now += 16; for (const f of frames.splice(0)) f(now);
     if (t0 === null && bar.style.transform) t0 = now;
-    if (t0 !== null) assert.ok(shown() <= (now - t0) / 1600 + 0.02, 'bar ' + shown() + ' at ' + (now - t0) + 'ms');
+    if (t0 !== null) assert.ok(shown() <= (now - t0) / MIN + 0.02, 'bar ' + shown() + ' at ' + (now - t0) + 'ms');
     assert.ok(!/is-out/.test(L.className), 'not before MIN_MS, however ready the app is');
   }
   run(1000 + 7000);
-  assert.ok(out !== null && out - 1000 >= 1600 && out - 1000 <= 6500, 'lifted at ' + (out - 1000) + 'ms');
+  assert.ok(out !== null && out - 1000 >= MIN && out - 1000 <= 6500, 'lifted at ' + (out - 1000) + 'ms');
   await p.close();
   /* the page never finishes loading: the bar holds short of full until MAX_MS, then fills and lifts */
   const frames3 = [];

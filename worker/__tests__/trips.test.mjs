@@ -5,6 +5,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import * as TRIP from "../trip.js";
 
+/* page v8.06: these tests name real days (Monday 2026-10-26 and the days after it); once those passed, the worker's
+   tripDay() moved each trip to today and the Monday hours stopped matching. The clock is held on the Sunday before. */
+const CLOCK = Date.parse("2026-10-25T15:00:00Z");
+Date.now = () => CLOCK;
 const INDEX = readFileSync(new URL("../index.js", import.meta.url), "utf8");
 function indexFn(name) {
   const m = new RegExp("^(async )?function " + name + "\\(", "m").exec(INDEX);

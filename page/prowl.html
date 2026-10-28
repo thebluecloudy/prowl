@@ -162,7 +162,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
     if(!(app||force)||mm('(prefers-reduced-motion: reduce)'))return;
     if(!force){var was='';try{was=sessionStorage.getItem('prowl.curtain')||'';sessionStorage.setItem('prowl.curtain','1')}catch(e){}if(was)return}
   }catch(e){return}
-  var MIN_MS=1600,MAX_MS=5000,EASE=4,FLIP_MS=1050,FLIP_DELAY=200,FLIP_EASE='cubic-bezier(.72,0,.16,1)',FINISH_AT=1290;
+  var MIN_MS=600,MAX_MS=5000,EASE=4,FLIP_MS=750,FLIP_DELAY=120,FLIP_EASE='cubic-bezier(.72,0,.16,1)',FINISH_AT=900;   /* v8.06 (Matt: get to the search quicker): was 1600 / 1050 / 200 / 1290 */
   var L=document.createElement('div'),h='<div class="pc-panels">',i,W='PROWL';
   L.className='pc-loader';L.setAttribute('aria-hidden','true');
   /* The app's colours come later (its stylesheet, applyTheme, the New look's palette on the wrapper), so the curtain
@@ -639,6 +639,18 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 [data-theme=uranium] .scout-app-wrapper .pmark img{filter:drop-shadow(0 0 18px rgba(var(--u-rgb),.45))}
 .scout-app-wrapper .pmark+.eb{margin-top:10px}
 @media(max-width:480px){.scout-app-wrapper .pmark img{max-height:150px;max-width:92vw}}
+/* v8.06 (Matt: "too many things at the top ... the panther, the cave, the description and then the search"): the search
+   comes sooner. A smaller panther on phones; in Uranium and Cockpit it sits in the night scene, one strip instead of a
+   panther above a box (the scene's small mushroom mark makes way for it); the description only on a first visit. */
+@media(max-width:480px){.scout-app-wrapper .pmark{margin-top:8px}.scout-app-wrapper .pmark img{max-height:96px}}
+[data-theme=uranium] .scout-app-wrapper .pmark{position:relative;z-index:2;height:120px;margin:8px 0 -120px;align-items:center}
+[data-theme=uranium] .scout-app-wrapper .pmark img{max-height:96px}
+.scout-app-wrapper.scout-app-wrapper p.lede{display:none}   /* beats .k2 .k2-only; shown below on a first visit only */
+.scout-app-wrapper.is-new.k2 p.lede.k2-only,.scout-app-wrapper.is-new:not(.k2) p.lede.k2-hide{display:block}
+[data-theme=uranium] .scout-app-wrapper .heromark{aspect-ratio:auto;height:120px;margin-top:0}
+[data-theme=uranium] .scout-app-wrapper .heromark .hm-mark{display:none}
+[data-theme=uranium] .scout-app-wrapper .heromark .hm-scene{object-fit:cover}
+.scout-app-wrapper .heromark+.eb{margin-top:0}
 /* v6.77: the panther is a button that shows the QR code, so showing someone Prowl is one tap from the top of the app.
    The little square on its corner says so. Theme resets, as for any button in the page body. */
 .scout-app-wrapper .pm-btn{position:relative;display:block;margin:0;padding:0;border:0;background:none;-webkit-appearance:none;appearance:none;text-transform:none;letter-spacing:normal;min-height:0;cursor:pointer;border-radius:14px;color:var(--ink);-webkit-tap-highlight-color:transparent}
@@ -2623,13 +2635,13 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 
 <main id="otp-main">
   <div class="pmark" id="otp-pan"><button class="pm-btn" id="otp-panQr" type="button" aria-label="Show the Prowl QR code" title="Show the QR code"><img id="otp-panImg" src="https://cdn.shopify.com/s/files/1/0807/8537/5486/files/panther_white_eyes_new_tail_clear.png?v=1785688388" alt="" decoding="async"><span class="pm-qr" aria-hidden="true"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2"></path></svg></span></button></div>
-  <p class="eb" id="otp-verEb"></p>
-  <div class="proban" id="otp-proBan" hidden></div>
 
   <div class="heromark">
     <img class="hm-mark" src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Cdefs%3E%3CradialGradient%20id='pmSky'%20cx='50%25'%20cy='62%25'%20r='75%25'%3E%3Cstop%20offset='0'%20stop-color='%23123a2a'/%3E%3Cstop%20offset='.45'%20stop-color='%230b1a2e'/%3E%3Cstop%20offset='1'%20stop-color='%23050816'/%3E%3C/radialGradient%3E%3CradialGradient%20id='pmBloom'%20cx='50%25'%20cy='50%25'%20r='50%25'%3E%3Cstop%20offset='0'%20stop-color='%23b8ff9a'%20stop-opacity='.95'/%3E%3Cstop%20offset='.18'%20stop-color='%2339ff14'%20stop-opacity='.6'/%3E%3Cstop%20offset='.45'%20stop-color='%2339ff14'%20stop-opacity='.32'/%3E%3Cstop%20offset='.75'%20stop-color='%231aff8c'%20stop-opacity='.12'/%3E%3Cstop%20offset='1'%20stop-color='%231aff8c'%20stop-opacity='0'/%3E%3C/radialGradient%3E%3CradialGradient%20id='pmPool'%20cx='50%25'%20cy='50%25'%20r='50%25'%3E%3Cstop%20offset='0'%20stop-color='%237dff4f'%20stop-opacity='.7'/%3E%3Cstop%20offset='.5'%20stop-color='%2339ff14'%20stop-opacity='.2'/%3E%3Cstop%20offset='1'%20stop-color='%2339ff14'%20stop-opacity='0'/%3E%3C/radialGradient%3E%3CradialGradient%20id='pmCap'%20cx='45%25'%20cy='30%25'%20r='75%25'%3E%3Cstop%20offset='0'%20stop-color='%23ffffff'/%3E%3Cstop%20offset='.22'%20stop-color='%23d4ffb8'/%3E%3Cstop%20offset='.55'%20stop-color='%235dff2e'/%3E%3Cstop%20offset='1'%20stop-color='%232bd60f'/%3E%3C/radialGradient%3E%3ClinearGradient%20id='pmStem'%20x1='0'%20x2='1'%3E%3Cstop%20offset='0'%20stop-color='%235df2b4'/%3E%3Cstop%20offset='.5'%20stop-color='%23f0fff8'/%3E%3Cstop%20offset='1'%20stop-color='%235df2b4'/%3E%3C/linearGradient%3E%3CradialGradient%20id='pmFly'%20cx='50%25'%20cy='50%25'%20r='50%25'%3E%3Cstop%20offset='0'%20stop-color='%23f4ffd0'/%3E%3Cstop%20offset='.35'%20stop-color='%23d4ff6a'%20stop-opacity='.7'/%3E%3Cstop%20offset='1'%20stop-color='%23d4ff6a'%20stop-opacity='0'/%3E%3C/radialGradient%3E%3CclipPath%20id='pmClip'%3E%3Crect%20width='100'%20height='100'%20rx='22'/%3E%3C/clipPath%3E%3C/defs%3E%3Cg%20clip-path='url(%23pmClip)'%3E%3Crect%20width='100'%20height='100'%20fill='url(%23pmSky)'/%3E%3Cg%20fill='%23cfe9ff'%20opacity='.7'%3E%3Ccircle%20cx='18'%20cy='9'%20r='.6'/%3E%3Ccircle%20cx='42'%20cy='6'%20r='.5'/%3E%3Ccircle%20cx='66'%20cy='10'%20r='.6'/%3E%3Ccircle%20cx='83'%20cy='5'%20r='.5'/%3E%3Ccircle%20cx='8'%20cy='20'%20r='.4'/%3E%3C/g%3E%3Ccircle%20cx='84'%20cy='15'%20r='5'%20fill='%23e8f3ff'%20opacity='.9'/%3E%3Ccircle%20cx='86.2'%20cy='13.6'%20r='4.4'%20fill='%23081226'/%3E%3Cg%20fill='%2315384a'%3E%3Cpath%20d='M-2%2078%20L6%2034%20L14%2078%20Z'/%3E%3Cpath%20d='M12%2080%20L22%2028%20L32%2080%20Z'/%3E%3Cpath%20d='M70%2080%20L79%2030%20L88%2080%20Z'/%3E%3Cpath%20d='M84%2078%20L93%2038%20L102%2078%20Z'/%3E%3C/g%3E%3Cg%20fill='%23081522'%3E%3Cpath%20d='M-6%20100%20L4%2022%20L16%20100%20Z'/%3E%3Cpath%20d='M84%20100%20L96%2018%20L108%20100%20Z'/%3E%3C/g%3E%3Ccircle%20cx='50'%20cy='50'%20r='62'%20fill='url(%23pmBloom)'/%3E%3Ccircle%20cx='50'%20cy='44'%20r='44'%20fill='url(%23pmBloom)'/%3E%3Cpath%20d='M0%2084%20Q50%2076%20100%2084%20L100%20100%20L0%20100%20Z'%20fill='%23071a14'/%3E%3Cellipse%20cx='50'%20cy='86'%20rx='44'%20ry='8'%20fill='url(%23pmPool)'/%3E%3Cg%20stroke='%232ee86a'%20stroke-width='1'%20stroke-linecap='round'%20fill='none'%20opacity='.8'%3E%3Cpath%20d='M28%2086%20l-2%20-5%20M30%2086%20l0%20-6%20M32%2086%20l2%20-4'/%3E%3Cpath%20d='M66%2086%20l-2%20-4%20M68%2086%20l0%20-6%20M70%2086%20l2%20-5'/%3E%3C/g%3E%3Cellipse%20cx='76'%20cy='80'%20rx='9'%20ry='6'%20fill='url(%23pmBloom)'/%3E%3Cpath%20d='M74.6%2077%20L74%2084%20L78%2084%20L77.4%2077%20Z'%20fill='url(%23pmStem)'/%3E%3Cpath%20d='M70%2078%20Q70%2071%2076%2071%20Q82%2071%2082%2078%20Z'%20fill='url(%23pmCap)'/%3E%3Cpath%20d='M42%2058%20Q40%2076%2038.5%2084%20Q38.5%2088%2050%2088%20Q61.5%2088%2061.5%2084%20Q60%2076%2058%2058%20Z'%20fill='url(%23pmStem)'/%3E%3Cpath%20d='M14%2056%20Q14%2022%2050%2020%20Q86%2022%2086%2056%20Q86%2061%2079%2061%20L21%2061%20Q14%2061%2014%2056%20Z'%20fill='url(%23pmCap)'/%3E%3Cpath%20d='M21%2061%20Q50%2069%2079%2061%20Z'%20fill='%2322b84a'/%3E%3Cpath%20d='M28%2062.5%20Q50%2068%2072%2062.5'%20fill='none'%20stroke='%23e6fff2'%20stroke-width='1.3'%20stroke-linecap='round'%20opacity='.85'/%3E%3Cpath%20d='M26%2038%20Q35%2026%2049%2025'%20fill='none'%20stroke='%23fff'%20stroke-width='2.6'%20stroke-linecap='round'%20opacity='.7'/%3E%3Cg%20fill='%230a1a3a'%20opacity='.78'%3E%3Ccircle%20cx='35'%20cy='45'%20r='5'/%3E%3Ccircle%20cx='61'%20cy='34'%20r='6'/%3E%3Ccircle%20cx='72'%20cy='50'%20r='3.6'/%3E%3Ccircle%20cx='50'%20cy='51'%20r='2.9'/%3E%3C/g%3E%3Cg%3E%3Ccircle%20cx='20'%20cy='66'%20r='3.2'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='20'%20cy='66'%20r='.8'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='82'%20cy='58'%20r='2.8'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='82'%20cy='58'%20r='.7'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='30'%20cy='16'%20r='2.4'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='30'%20cy='16'%20r='.6'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='66'%20cy='14'%20r='2'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='66'%20cy='14'%20r='.5'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='12'%20cy='44'%20r='1.8'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='90'%20cy='40'%20r='1.8'%20fill='url(%23pmFly)'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E" alt="" decoding="async">
     <picture><source media="(hover:none)" data-art="fireflies-still.svg" data-art-ck="glowworms-still.svg"><img class="hm-scene" alt="" decoding="async" loading="lazy" width="300" height="120" data-art="fireflies.svg" data-art-ck="glowworms.svg"></picture>
   </div>
+  <p class="eb" id="otp-verEb"></p>   <!-- v8.06: under the scene, so the panther can sit in it -->
+  <div class="proban" id="otp-proBan" hidden></div>
 
   <h1>Find the prey</h1>
   <p class="lede k2-only"><span data-t>29</span> vintage marketplaces, one search. Free.</p>
@@ -3873,7 +3885,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.05';
+var PROWL_VERSION='v8.06';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
