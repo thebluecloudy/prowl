@@ -1,16 +1,32 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.08 / v182).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.09 / v183).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.08** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v182** | |
+| Page | **v8.09** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v183** | |
 
 Recently shipped, newest first:
 
+- **v8.09 / v183: a share by email never puts anyone on a trip** (the security and trust plan, 2026-10-28: a share
+  pushed people onto trips without asking, put back someone who had left, and its answer told the organizer whether an
+  address has a Prowl account). Worker: POST /trips/<id>/share adds nobody; it always answers `{ok:true, added:false,
+  pending:true, members:<unchanged>}` with the same KV reads and writes for every address, always writes `tripinv:`,
+  and for an address with an account puts the trip in `tripoffer:<member id>` (30 days). An organizer can share by
+  email 30 times a day (`tshare:`, TRIP_SHARES_PER_DAY; past it 429, the invite link still works). A sign-in turns
+  waiting `tripinv:` ids into offers instead of joining. GET /trips also returns `offers` (ended trips and trips they
+  are on dropped). New POST /trips/<id>/accept (must be offered; then joins) and /decline; an answered offer is not
+  offered again by a later sign-in, only by a new share. A member who left is only ever offered the trip again. Delete
+  removes `tripoffer:` too. `acctHash` stays unsalted (member ids depend on it). Page: NEAR ME > Trips shows "Invited
+  to" above Your trips, each with Join (then the trip opens) and Decline; the share toast is one message for every
+  address ("Invite sent. If they use Prowl, they see it under NEAR ME › Trips and can join."), and the member count no
+  longer changes from the share answer. Tests: `worker/__tests__/trips.test.mjs` (share cases rewritten for offer then
+  accept; four new), `__tests__/page/trip-offers-v809.test.mjs`; updated `near-section-v736.test.mjs`,
+  `purge-v181.test.mjs`, `privacy.test.mjs`. Privacy policy section updated. An older open tab ignores `offers` until it
+  reloads; its toast still says they join when they sign in.
 - **v182: fixes from the review of v181** (the security and trust plan, 2026-10-28). A member who moves away from an
   address and later back to it keeps their trip id and their trips (`tripIdOf` no longer treats their own `tid` as a
   newcomer's). A Delete by someone now at an address another member moved away from no longer takes that member's
@@ -1552,7 +1568,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.09, worker v183**. Claim one here when you start.
+Next free numbers: **page v8.10, worker v184**. Claim one here when you start.
 
 ## What's next
 

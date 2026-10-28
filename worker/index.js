@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v183: 2026-10-28. Security and trust, share: a share never joins anyone and answers the same for every address
+ *         ({ok, added:false, pending:true, members} unchanged; TRIP_SHARES_PER_DAY per organizer). The trip waits as an
+ *         offer (tripoffer:<member id>, 30 days) until they Join (POST /trips/<id>/accept) or Decline (/decline); GET
+ *         /trips lists offers; a sign-in turns waiting tripinv: ids into offers, never a join.
  *   v182: 2026-10-28. Part 5 review fixes: a member back at an earlier address keeps their trip id (tripIdOf); a Delete
  *         at an address someone else moved away from leaves that member's trips (tidkept:) and photos (hpkept:) alone;
  *         a member who moves away from such an address takes their own trip id, not the earlier member's.
@@ -630,7 +634,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v182";
+const WORKER_VERSION = "v183";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -6053,11 +6057,12 @@ async function alPurge(env, email, sub) {
   for (const a of addrs) {
     const h = await acctHash(a), ac = await kvGet(env, "acct:" + h, null);
     if (ac && tids.indexOf(String(ac.cid)) !== -1) await kv.delete("acct:" + h);
-    await kv.delete("tripinv:" + h);
+    await kv.delete("tripinv:" + h); await kv.delete("tripoffer:n" + h);   /* v183 */
     if (a !== email) { const sa = await kvGet(env, "saved:" + a, null); await kv.delete("saved:" + a); await savedPurge(env, a, sa || { saved: [] }); }
   }
   await tripsForget(env, tids);
-  gone.push("acct:", "tripinv:", "trips:");
+  for (const t of tids) await kv.delete("tripoffer:" + t);   /* v183: the trips they were invited to */
+  gone.push("acct:", "tripinv:", "trips:", "tripoffer:");
   console.log("purge " + gone.join(" "));
   return gone;
 }
@@ -6888,9 +6893,13 @@ export default {
      POST /trips  { to, lat, lng, day } the organizer builds and keeps a trip:   trip:<id>, trips:<cid> (ids), trips:all
      GET  /trips                        the member's trips (summaries)
      GET  /trips/<id>                   the trip as every member sees it, stop hours fetched afresh (10-minute cache)
-     POST /trips/<id>/share { email }   the organizer adds a member by account. The address is hashed (acct:<hash>, written
-                                        at every store sign-in, holds the customer id); an address that never signed in
-                                        waits in tripinv:<hash> and joins at its next sign-in. The address is never kept.
+     POST /trips/<id>/share { email }   the organizer invites someone by address (v183: never joins them). The address is
+                                        hashed: the trip waits in tripinv:<hash> (30 days), and for an address with an
+                                        account (acct:<hash>, written at every sign-in) as an offer in tripoffer:<member
+                                        id>; a sign-in turns tripinv: into offers. The answer is the same for every
+                                        address. The address is never kept.
+     POST /trips/<id>/accept | decline  the invitee joins an offered trip, or turns it down (v183); GET /trips carries
+                                        offers
      POST /trips/<id>/close             the organizer closes it now (finds expire FINDS_GRACE_DAYS later)
      POST /trips/<id>/been { stop, on }  a member marks a stop (or a shop in its town) ✓ Been for everyone, or not (v167);
                                         kept on the trip as place ids; GET /trips/<id> carries been
@@ -6917,6 +6926,7 @@ const REVIEWS_PER_IP = 300, SUGGEST_PER_IP = 1500;   /* v161: suggestions asked 
 const NEAR_PER_IP = 120, TRIP_PER_IP = 10, PP_PER_IP = 1500, TRIPS_PER_IP = 400, NEAR_CACHE_SECONDS = 600, TRIP_CACHE_SECONDS = 3600, HOURS_CACHE_SECONDS = 600;
 const G_PLACE_FIELDS = "id,displayName,formattedAddress,addressComponents,location,rating,userRatingCount,regularOpeningHours,utcOffsetMinutes,photos,editorialSummary,primaryType,primaryTypeDisplayName,googleMapsUri";
 const G_TIMEOUT_MS = 9000, FIND_SIG_SECONDS = 3600, FIND_BODY_MAX = 1024 * 1024, TRIPINV_TTL = 30 * 86400;
+const TRIP_SHARES_PER_DAY = 30;   /* v183: invitations by email an organizer sends a day (tshare:<member id>) */
 function gKey(env) { return String((env && env.GOOGLE_MAPS_KEY) || ""); }
 async function gFetch(url, init, mask, env) {
   const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), G_TIMEOUT_MS);
@@ -7381,14 +7391,23 @@ async function tripJoin(env, trip, cid) {
 }
 function tripSummary(trip, cid) { return { id: trip.id, day: trip.day, origin: trip.origin, dest: trip.dest, members: trip.members.length, stops: trip.stops.length, org: trip.org === String(cid), closes: trip.closes }; }
 async function acctHash(email) { return sha16("acct:" + String(email || "").trim().toLowerCase()); }
-/* at every store sign-in: the account's hash points at its customer id, and any trip invitations waiting for it join */
+/* v183 (the security and trust plan, 2026-10-28: a share "pushes a stranger onto a trip without consent" and its answer
+   tells the organizer who has an account): an invitation is an offer, tripoffer:<member id> = { ids, done }, until the
+   member Joins or Declines; done keeps the ids they answered (or were offered again after), so an old tripinv: never
+   offers them a second time. An address with no account gets the same writes under "n" + its hash, read by nobody. */
+async function tripOffers(env, key) { const o = await kvGet(env, "tripoffer:" + key, null); return { ids: o && Array.isArray(o.ids) ? o.ids : [], done: o && Array.isArray(o.done) ? o.done : [] }; }
+async function tripOffersPut(env, key, o) { await env.PROWL_ALERTS.put("tripoffer:" + key, JSON.stringify({ ids: o.ids.slice(-20), done: o.done.slice(-50) }), { expirationTtl: TRIPINV_TTL }); }
+/* at every sign-in: the account's hash points at its member id, and trip invitations waiting for it become offers
+   (v183: never a join) */
 async function tripAcctLink(env, cid, email) {
   if (!env || !env.PROWL_ALERTS || !tripIdOk(cid) || !email) return;
   const h = await acctHash(email);
   await kvPut(env, "acct:" + h, { cid: String(cid) });
   const inv = await kvGet(env, "tripinv:" + h, null);
   if (!inv || !Array.isArray(inv.ids)) return;
-  for (const id of inv.ids.slice(0, 20)) { const t = await tripGet(env, id); if (t && !tripExpired(t)) await tripJoin(env, t, cid); }
+  const o = await tripOffers(env, cid);
+  for (const id of inv.ids.slice(-20)) if (o.ids.indexOf(id) === -1 && o.done.indexOf(id) === -1) o.ids.push(id);
+  await tripOffersPut(env, cid, o);
   await env.PROWL_ALERTS.delete("tripinv:" + h);
 }
 async function findSig(env, trip, find, exp) { return (await pxHmac(sessKey(env) || String(env.ADMIN_KEY || "prowl"), "prowl-find-v1:" + trip + "." + find + "." + exp)).slice(0, 32); }
@@ -7402,7 +7421,7 @@ async function tripsRoute(request, env, url, origin) {
   if (!who) return json({ error: "Sign in to Prowl to share trips.", signin: true }, 401, origin);
   const cid = who.id;
   if (!(await vCount("trips:" + ipKey(request.headers.get("CF-Connecting-IP")), TRIPS_PER_IP))) return json({ error: "slow down" }, 429, origin);
-  const m = /^\/trips(?:\/(t[a-z0-9]{9})(?:\/(share|close|finds|rebuild|invite|peek|join|delete|leave|been))?)?$/.exec(url.pathname);
+  const m = /^\/trips(?:\/(t[a-z0-9]{9})(?:\/(share|close|finds|rebuild|invite|peek|join|delete|leave|been|accept|decline))?)?$/.exec(url.pathname);   /* v183: accept, decline */
   if (!m) return json({ error: "not found" }, 404, origin);
   const id = m[1] || "", act = m[2] || "", post = request.method === "POST";
   if (!id) {
@@ -7411,7 +7430,11 @@ async function tripsRoute(request, env, url, origin) {
       const gone = [];
       for (const tid of ids.slice(0, 20)) { const t = await tripGet(env, tid); if (t && tripMember(t, cid) && !tripExpired(t)) out.push(tripSummary(t, cid)); else if (!t || !tripMember(t, cid)) gone.push(tid); }
       if (gone.length) { try { await kvPut(env, "trips:" + cid, ids.filter((x) => gone.indexOf(x) === -1)); } catch (e) {} }   /* v162: deleted or left, off the list */
-      return nearAnswer({ trips: out }, 200, origin);
+      /* v183: the trips they were invited to, still running and not already theirs */
+      const o = await tripOffers(env, cid), offers = [], keep = [];
+      for (const tid of o.ids.slice(-20)) { const t = await tripGet(env, tid); if (t && !tripExpired(t) && !tripMember(t, cid)) { offers.push(tripSummary(t, cid)); keep.push(tid); } }
+      if (keep.length !== o.ids.length) { try { o.ids = keep; await tripOffersPut(env, cid, o); } catch (e) {} }
+      return nearAnswer({ trips: out, offers: offers }, 200, origin);
     }
     if (!(await tripPro(env, request, who))) return json({ error: "Group trips come with Prowl Pro.", pro: false }, 403, origin);
     if (!gKey(env)) return json({ error: "not set up" }, 503, origin);
@@ -7451,6 +7474,19 @@ async function tripsRoute(request, env, url, origin) {
     try { await tripIndexAdd(env, cid, id); } catch (e) {}
     return nearAnswer(Object.assign(tripSummary(trip, cid), { member: true }), 200, origin);
   }
+  /* v183: an offered trip, joined or turned down by the one invited (a member who left is only ever offered it again) */
+  if (act === "accept" || act === "decline") {
+    if (!post) return json({ error: "POST only" }, 405, origin);
+    const o = await tripOffers(env, cid), had = o.ids.indexOf(id) !== -1;
+    if (act === "accept" && (!had || !trip || tripExpired(trip))) {
+      if (had) { o.ids = o.ids.filter((x) => x !== id); try { await tripOffersPut(env, cid, o); } catch (e) {} }
+      return json({ error: had ? "This trip has ended." : "not found" }, 404, origin);
+    }
+    if (act === "accept" && !(await tripJoin(env, trip, cid))) return json({ error: "This trip is full." }, 409, origin);
+    o.ids = o.ids.filter((x) => x !== id); if (o.done.indexOf(id) === -1) o.done.push(id);
+    try { await tripOffersPut(env, cid, o); } catch (e) { console.error("trips offer", String(e && e.message || e)); }
+    return act === "accept" ? nearAnswer(Object.assign(tripSummary(trip, cid), { member: true }), 200, origin) : nearAnswer({ ok: true, declined: id }, 200, origin);
+  }
   if (!trip || !tripMember(trip, cid) || tripExpired(trip)) return json({ error: "not found" }, 404, origin);
   const org = trip.org === String(cid);
   if (!act) {
@@ -7470,13 +7506,19 @@ async function tripsRoute(request, env, url, origin) {
     const b = await readJson(request, 2048), email = alEmail(b.email);
     if (!email) return json({ error: "That email does not look right." }, 400, origin);
     if (trip.members.length >= TRIP_MEMBERS_MAX) return json({ error: "This trip is full." }, 409, origin);
-    const h = await acctHash(email), acct = await kvGet(env, "acct:" + h, null);
+    /* v183 (the security and trust plan, 2026-10-28): nobody is added by a share, and every address gets the same
+       answer and the same reads and writes, so a share no longer says who has an account. Their offer waits for them. */
+    if (!(await vCount("tshare:" + cid, TRIP_SHARES_PER_DAY))) return json({ error: "That is enough invitations for today. Send the invite link instead." }, 429, origin);
+    const h = await acctHash(email), acct = await kvGet(env, "acct:" + h, null), ms = await kvGet(env, "sub:" + email, null);
     let mid = acct && tripIdOk(acct.cid) ? String(acct.cid) : "";
-    if (!mid) { const ms = await kvGet(env, "sub:" + email, null); if (ms) mid = await tripIdOf(env, ms, email); }   /* v135: an alerts member who never signed in to the store */
-    if (mid) { await tripJoin(env, trip, mid); return nearAnswer({ ok: true, added: true, pending: false, members: trip.members.length }, 200, origin); }
+    if (!mid && ms) mid = await tripIdOf(env, ms, email);   /* v135: an alerts member who never signed in to the store */
     const inv = await kvGet(env, "tripinv:" + h, { ids: [] });
     if (inv.ids.indexOf(id) === -1) inv.ids.push(id);
     await env.PROWL_ALERTS.put("tripinv:" + h, JSON.stringify({ ids: inv.ids.slice(-20) }), { expirationTtl: TRIPINV_TTL });
+    const okey = mid || "n" + h, o = await tripOffers(env, okey);
+    if (o.ids.indexOf(id) === -1) o.ids.push(id);
+    o.done = o.done.filter((x) => x !== id);   /* asked again: offered again, never added */
+    await tripOffersPut(env, okey, o);
     return nearAnswer({ ok: true, added: false, pending: true, members: trip.members.length }, 200, origin);
   }
   if (act === "delete") {   /* v162: the organizer deletes the trip for everyone, its Finds and their photos with it */

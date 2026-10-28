@@ -44,7 +44,7 @@ function nearFetch(calls, opt = {}) {
     if (/\/trips$/.test(url)) return J({ trips: [{ id: 'tabcdefghi', day: '2026-10-26', origin: 'Novi, MI', dest: DEST, members: 2, stops: 3, org: true }] });
     if (/\/trips\/t[a-z0-9]{9}\/finds$/.test(url) && o && o.method === 'POST') return J(Object.assign({}, FINDS[0], { by: 'me' }));
     if (/\/trips\/t[a-z0-9]{9}\/finds$/.test(url)) return J({ finds: FINDS });
-    if (/\/trips\/t[a-z0-9]{9}\/share$/.test(url)) return J({ ok: true, added: true, pending: false, members: 2 });
+    if (/\/trips\/t[a-z0-9]{9}\/share$/.test(url)) return J({ ok: true, added: false, pending: true, members: 7 });   /* v8.09: the one answer for every address */
     if (/\/trips\/t[a-z0-9]{9}$/.test(url)) return J(VIEW('2026-10-26'));
     if (/\/appraise$/.test(url)) return J({ item: 'Blenko 384 decanter (tangerine)', fair: '$40–$70', verdict: 'FAIR', basis: 'sold', condition: 'Good', sure: 'high', why: 'sold prices' });
     return J({ items: [] });
@@ -266,13 +266,16 @@ test('SHARE: signed out it asks for the store sign-in; signed in it keeps the tr
   const kept = JSON.parse(p.win.localStorage.getItem('prowl.trip'));
   assert.equal(kept.id, 'tabcdefghi'); assert.equal(kept.stops.length, 5, 'anchors and nested, for the photo check\'s nearest stop');
   assert.deepEqual(Object.keys(kept.stops[0]).sort(), ['lat', 'lng', 'name', 'town', 'url']);
+  const before = p.$('#otp-nrMembers').textContent;
   p.$('#otp-nrEmail').value = 'friend@example.com';
   p.$('#otp-nrAdd').click();
   await tick(100);
   const share = calls.find((x) => /\/share$/.test(x.url));
   assert.deepEqual(JSON.parse(share.o.body), { email: 'friend@example.com' });
-  assert.match(p.$('#otp-nrMembers').textContent, /2 on this trip/);
-  assert.match(p.$('#otp-toast').textContent, /Added/);
+  assert.equal(p.$('#otp-nrMembers').textContent, before, 'v8.09: the count is not taken from the share answer');
+  assert.ok(!/7 on this trip/.test(p.$('#otp-nrMembers').textContent));
+  assert.equal(p.$('#otp-toast').textContent, 'Invite sent. If they use Prowl, they see it under NEAR ME › Trips and can join.');
+  assert.equal(p.$('#otp-nrEmail').value, '', 'the box is cleared');
   assert.deepEqual(p.errors, []);
   await p.close();
 });
