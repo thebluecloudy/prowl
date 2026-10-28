@@ -1,15 +1,27 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-27 (v8.05 / v177).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.06 / v177).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.05** | 377,486 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.06** | 377,425 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v177** | |
 
 Recently shipped, newest first:
+
+- **v8.06: the search comes sooner** (Matt: "too many things at the top of the screen ... the panther, the cave, the
+  description and then the search area"). On a phone, a returning user's search box moved up from 523px to 279px in
+  Cockpit and from 370px to 237px in Blue hour.
+  - The opening curtain lifts sooner: `MIN_MS` 600 (was 1600), the lift 750 + 120 ms (was 1050 + 200), gone by 900 ms.
+  - A smaller panther on phones (96px, was 150). In Uranium and Cockpit it sits inside the night scene, which is a
+    120px strip; the scene's small mushroom mark makes way for it. The owner's version line and the Pro banner moved
+    under the scene.
+  - The description under "Find the prey" shows on a first visit only (`.is-new`).
+  - Tests: `__tests__/page/top-v806.test.mjs`; `motion.test.mjs` reads `MIN_MS` from the page.
+  - Also: `worker/__tests__/trips.test.mjs` failed once Monday 2026-10-26 had passed (`tripDay` moves a past day to
+    today); its clock is held on Sunday 2026-10-25.
 
 - **v8.05 / v177: Cockpit's own hero, a red glowworm cave** (Matt: "a red mushroom animation or maybe something else
   that glows red like a glowing worm"). Worker `GET /art/glowworms.svg` (and `glowworms-still.svg`, its first frame for
@@ -1492,7 +1504,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.06, worker v178**. Claim one here when you start.
+Next free numbers: **page v8.07, worker v178**. Claim one here when you start.
 
 ## What's next
 
