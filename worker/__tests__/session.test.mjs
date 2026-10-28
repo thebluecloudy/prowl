@@ -27,7 +27,7 @@ class FakeKV {
 }
 const kvGet = async (e, k, d) => { const v = await e.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; };
 const SECRET = "x".repeat(40);
-const S = fromIndex(["b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessVerify", "sessMember", "pxHmac", "alSame", "alEmail", "proMember"], { kvGet }, "const SESS_DAYS = 30;");
+const S = fromIndex(["b64u", "b64uStr", "unb64u", "sessKey", "sessMint", "sessRead", "sessVerify", "sessStale", "sessMember", "pxHmac", "alSame", "alEmail", "proMember"], { kvGet }, "const SESS_DAYS = 30;");
 const req = (tok) => ({ headers: { get: (h) => (h.toLowerCase() === "authorization" && tok ? "Bearer " + tok : null) } });
 
 test("a session names the store customer, expires in 30 days, and is signed", async () => {

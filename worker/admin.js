@@ -741,23 +741,8 @@ async function restoreLast(c, sub, email) {
   if (n) await H.kvPut(env, "pend:" + email, pend);
   return n;
 }
-/* "Sign out all devices" also cancels a waiting change of email address: its confirm link (in the new inbox) moves
-   the whole membership and hands over the new token. An earlier address's forwarding record (moved:<old>) keeps
-   working for the owner's look-ups, but gets a token nobody has, so an old token no longer reveals where they went. */
-async function cancelMove(c, sub, email) {
-  const H = c.H, env = c.env, kv = env.PROWL_ALERTS;
-  const mf = await H.kvGet(env, "mvf:" + email, null), to = mf && typeof mf.to === "string" ? mf.to : "";
-  if (to) { const mv = await H.kvGet(env, "mv:" + to, null); if (mv && mv.from === email) await kv.delete("mv:" + to); }
-  if (mf) await kv.delete("mvf:" + email);
-  for (const old of arr(sub.prev).map(String).filter(Boolean).slice(0, 3)) {
-    const k = "moved:" + old, mv = await H.kvGet(env, k, null);
-    if (!mv || typeof mv !== "object" || mv.to !== email || !mv.tok) continue;
-    /* index.js keeps these 90 days from the move; KV still has it, so it has time left (KV's shortest is 60 s) */
-    const ttl = Math.min(90 * 86400, Math.max(60, num(mv.at) ? Math.floor((num(mv.at) + 90 * 86400000 - c.nowMs) / 1000) : 90 * 86400));
-    await kv.put(k, JSON.stringify({ to: mv.to, tok: H.alToken(), at: mv.at }), { expirationTtl: ttl });
-  }
-  return !!mf;
-}
+/* "Sign out all devices" (and its cancelling of a waiting change of email address) is index.js alSignOutAll since v184,
+   shared with the member's own Sign out every other device. */
 async function apiAction(c) {
   const H = c.H, env = c.env, kv = env.PROWL_ALERTS;
   if (!(await H.vCount("admact", 300))) return jerr(429, "That is a lot of changes today. Try again tomorrow.");
@@ -823,13 +808,11 @@ async function apiAction(c) {
     sub.prefs = Object.assign({}, base, { pause: "" });
     if (await merge(["prefs"])) msg = "Unpaused. Their hunts are checked again from the next run.";
   } else if (action === "signout-all") {
-    sub.tok = H.alToken();
-    if (await merge(["tok"])) {
-      await kv.delete("in:" + email);   // a waiting sign-in link would let a lost device straight back in
-      await kv.delete("code:" + email);   // v108: and so would a waiting sign-in code
-      await kv.delete("conf:" + email);   // and so would a waiting confirm link (it signs in as the member too)
-      const moved = await cancelMove(c, sub, email);
-      msg = "Signed out on every phone and computer. They can sign back in with a new sign-in link." +
+    const r = await H.alSignOutAll(env, sub, email);   // v184: new token, sessFrom (store sessions end too), in:/code:/conf: go, a waiting move is cancelled
+    if (!r) { ok = false; msg = "That member deleted their account a moment ago, so nothing changed."; }
+    else {
+      const moved = r.moved;
+      msg = "Signed out on every phone and computer, the store sign-in included. They can sign back in with a new sign-in link." +
         (moved ? " A waiting change of email address was cancelled too; they can ask for it again once signed back in." : "");
       if (moved) note = "address change cancelled";
     }
