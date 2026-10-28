@@ -1,16 +1,24 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.06 / v177).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.07 / v177).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.06** | 377,425 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.07** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v177** | |
 
 Recently shipped, newest first:
 
+- **v8.07: a person to reach, and the privacy policy, from inside Prowl** (Matt, 2026-10-28, the security and trust
+  plan: "Privacy policy and contact/about page, linked from the Den ABOUT tab: who runs Prowl, where, and how to reach
+  a human"). Den > About has a line under "Built by Matt at Owl & Twig Vintage, a family shop in Michigan": questions,
+  a problem or a data deletion go to hello@owlandtwigvintage.com or /pages/contact, "and a person writes back", and it
+  links /policies/privacy-policy (`.ab-help`). The footer line under every screen adds Privacy and Contact after the
+  affiliate sentence. `docs/privacy-policy-prowl-section.html` is rewritten against worker v177 / page v8.07 (Lens
+  photos, saved-find photos, trips, Near me locations, push, the weekly letter, Pounce, the iPhone sign-in cookie);
+  Matt pastes it (Waiting on Matt). Test: `__tests__/page/trust-links-v807.test.mjs`.
 - **v8.06: the search comes sooner** (Matt: "too many things at the top of the screen ... the panther, the cave, the
   description and then the search area"). On a phone, a returning user's search box moved up from 523px to 279px in
   Cockpit and from 370px to 237px in Blue hour.
@@ -1504,7 +1512,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.07, worker v178**. Claim one here when you start.
+Next free numbers: **page v8.08, worker v178**. Claim one here when you start.
 
 ## What's next
 
@@ -1518,6 +1526,20 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 (the piece, then its mark or back), then community-lite.
 
 ## Waiting on Matt
+
+- **Security and trust (2026-10-28 audit), the admin steps only Matt can take:**
+  1. Paste the updated `docs/privacy-policy-prowl-section.html` over the Prowl part of Shopify > Settings > Policies >
+     Privacy policy (the live one still says "we do not store your photo" and leaves out trips, push and Near me).
+     Wait for the rest of the security series (Facebook sweep out, Email this, account safety): each updates the
+     section, and Claude says when it is final, so it is pasted once.
+  2. Shopify > Settings > Customer accounts: confirm **new customer accounts** (passwordless), classic off. With
+     classic accounts anyone can register a store account under someone else's email, and /proxy/login would link it
+     to that person's Prowl.
+  3. Shopify > Settings > Customer privacy: **cookie banner on**, then check it shows on /pages/prowl and
+     /pages/prowl-app.
+  4. Resend dashboard: download the **DPA** and file it.
+  5. Google Cloud Console: a **daily quota and a budget alert** on GOOGLE_MAPS_KEY.
+  6. PROWLMONTH one use per customer and the order app's keys: both below, still open.
 
 - **The branch rule for `main` is set but not enforced** (2026-10-23). Matt added it (require **build**, require up
   to date), but GitHub enforces branch rules on private repositories only on a paid plan (GitHub Pro, about $4 a month);

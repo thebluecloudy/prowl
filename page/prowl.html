@@ -998,6 +998,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-morep[open]>summary::after{transform:rotate(90deg)}
 .scout-app-wrapper .sgw-morepb{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 6px}
 .scout-app-wrapper .ab-lead{margin:14px 0 4px;font-size:16px;line-height:1.55;color:var(--i2)}
+.scout-app-wrapper .ab-help{margin:10px 0 4px;font-size:15px;line-height:1.55;color:var(--i2)}   /* v8.07: a person to reach, and the privacy policy */
+.scout-app-wrapper .ab-help a,.scout-app-wrapper .copyr a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 .scout-app-wrapper .ab-more,.scout-app-wrapper .set-more{margin:14px 0 0;border-top:1px solid var(--ln)}
 .scout-app-wrapper .ab-more>summary,.scout-app-wrapper .set-more>summary{cursor:pointer;padding:14px 0;font-weight:800;font-size:16px;color:var(--ink)}
 /* v7.03: one promo at a time on the home page (promoPick) */
@@ -2746,7 +2748,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <p class="appnote" id="otp-appnote" hidden></p>
   </div>
 
-  <p class="copyr">Prowl © 2026 Owl &amp; Twig Vintage. All rights reserved. <span class="aff-say">Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</span></p>
+  <p class="copyr">Prowl © 2026 Owl &amp; Twig Vintage. All rights reserved. <span class="aff-say">Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</span> <a href="/policies/privacy-policy">Privacy</a> · <a href="/pages/contact">Contact</a></p>
 
 </main>
 <aside class="drawer" id="otp-photo" role="dialog" aria-modal="true" aria-labelledby="otp-photoT" hidden>
@@ -3438,6 +3440,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     </div>
     <div class="denPane" id="otp-denAbout" hidden>
 <p class="ab-lead">Prowl searches <span data-t>29</span> vintage marketplaces at once, free, with no account. Built by Matt at Owl &amp; Twig Vintage, a family shop in Michigan.</p>
+<p class="ab-help">Questions, a problem, or want your data deleted? Email <a href="mailto:hello@owlandtwigvintage.com">hello@owlandtwigvintage.com</a> or use the <a href="/pages/contact">contact page</a>, and a person writes back. Read the <a href="/policies/privacy-policy">privacy policy</a> for what Prowl keeps and who else sees it.</p>
 <p class="otp-fbk" id="otp-fbk">Testing Prowl? <a id="otp-fbkA" href="/pages/contact">Tell me what is missing or broken</a>. Say what you searched and which phone or computer you used.</p>
 <div id="otp-foundStrip" class="found-strip">
 <div class="found-title">🐾 Found on the Prowl — now in <a href="/pages/vintage-vault">The Vintage Vault</a>
@@ -3885,7 +3888,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.06';
+var PROWL_VERSION='v8.07';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
