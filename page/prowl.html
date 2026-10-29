@@ -3887,7 +3887,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.12';
+var PROWL_VERSION='v8.13';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -6910,7 +6910,7 @@ function mailInit(mount){
   /* v5.98: back from the Pro checkout: a banner at the top, polling the worker */
   if(/[?&]pro=back(&|$)/.test(location.search)){try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])pro=back(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}}
   /* v6.85: the order card waits a day at most; an old flag (from before the time was kept) is let go */
-  if(mGet('alertProWait')==='1'&&!(Date.now()-(+mGet('alertProWaitAt')||0)<864e5)){mSet('alertProWait','');mSet('alertProWaitAt','')}
+  if(mGet('alertProWait')==='1'&&!(Date.now()-(+mGet('alertProWaitAt')||0)<72e5)){mSet('alertProWait','');mSet('alertProWaitAt','')}
   if(mGet('alertProWait')==='1'&&!mailPro())setTimeout(proActivate,400);
   if(!MAIL.asked&&mGet('alertTok')){MAIL.asked=1;setTimeout(function(){mailStatus(false)},1200)}
 }
@@ -6932,7 +6932,7 @@ function proActivate(){
   MAIL.act=1;MAIL.tries=0;clearTimeout(MAIL.atimer);
   if(!mGet('alertTok')){
     MAIL.act=3;
-    proBan('<h3>One more tap for Prowl Pro</h3><p>Thanks for upgrading. Pro switches on the moment this phone or computer is signed in with the email you paid with: <button type="button" class="sgw-ml" data-pro="settings">sign in here</button>.</p><span class="sgw-mf"><button type="button" class="b" data-pro="close">Close</button></span>');
+    proBan('<h3>Finish switching on Prowl Pro</h3><p>Paid for Pro? Sign in on this phone or computer with the email you used, and Pro turns on. Didn\u2019t finish checkout? Just close this.</p><span class="sgw-mf"><button type="button" class="b p" data-pro="settings">Sign in</button><button type="button" class="b" data-pro="close">Close</button></span>');   /* v8.13: a real Sign in button (the old link looked like plain text), and no "thanks" for a checkout that may not have finished */
     return;
   }
   proBan('<h3><span class="spin" aria-hidden="true"></span>Switching on Prowl Pro\u2026</h3><p>Thanks! Checking your order with the shop. This usually takes a few seconds.</p>');
