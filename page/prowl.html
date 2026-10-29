@@ -3302,7 +3302,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       /* v5.50: Google Lens identifies better than the AI photo guess, and it is free.
          The photo stays on the device; the old /appraise path is kept behind APR_AI. */
       if(!APR_AI){stopT();busy=false;DONE=true;trayDraw();lensStep(data);return;}
-      var pb={images:TRAY.slice(0,TRAY_MAX),price:P.value||'',hint:(H&&H.value)||'',mode:SHELF?'shelf':'fast'};if(lsG('alertTok')&&lsG('alertEmail')){pb.e=lsG('alertEmail');pb.t=lsG('alertTok');}   /* v7.76: every photo in the tray */
+      var pb={images:TRAY.slice(0,TRAY_MAX),price:P.value||'',hint:(H&&H.value)||'',mode:SHELF?'shelf':'fast'};if(SHELF){try{var sh=typeof window.prowlHunts==='function'?window.prowlHunts():[];if(sh&&sh.length)pb.hunts=sh.slice(0,30);}catch(e){}}   /* v8.14: the shelf scan checks every hunt (worker v188) */if(lsG('alertTok')&&lsG('alertEmail')){pb.e=lsG('alertEmail');pb.t=lsG('alertTok');}   /* v7.76: every photo in the tray */
       fetch(API,{method:'POST',headers:OH(),body:JSON.stringify(pb)}).then(function(res){
         return res.json().then(function(j){return {ok:res.ok,status:res.status,j:j} });
       }).then(function(x){
@@ -3887,7 +3887,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.13';
+var PROWL_VERSION='v8.14';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -6771,6 +6771,7 @@ var HUNTS_FREE=5,HUNTS_PRO=100;
 function huntCap(){return mailPro()||fbOwnerKey()?HUNTS_PRO:HUNTS_FREE}
 function huntSample(t){return DEF.concat(OLD_DEF).map(function(x){return x.toLowerCase()}).indexOf(String(t).toLowerCase())>-1}
 function huntsOwn(){return st.hunts.filter(function(h){return !huntSample(h)}).length}
+window.prowlHunts=function(){return st.hunts.filter(function(h){return !huntSample(h)}).slice(0,30)};   /* v8.14: the shelf scan (photo script) sends these to worker v188 */
 function huntRoom(t){
   if(huntIndex(t)>-1||huntSample(t)||huntsOwn()<huntCap())return true;
   toast(huntCap()===HUNTS_FREE?'<b>Your Den holds '+HUNTS_FREE+' hunts on Free.</b> Remove one to add <b>'+esc(t)+'</b>, or Prowl Pro holds up to '+HUNTS_PRO+' (first month free, in Den \u203a Settings).':'Your Den is full at '+HUNTS_PRO+' hunts. Remove one to add <b>'+esc(t)+'</b>.',7000);
