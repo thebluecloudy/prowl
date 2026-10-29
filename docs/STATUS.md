@@ -1,16 +1,20 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-29 (v8.15 / v191).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-29 (v8.16 / v191).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.15** | 376,245 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.16** | 376,245 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v191** | |
 
 Recently shipped, newest first:
 
+- **v8.16: Upgrade guards** (Matt's buy test, 2026-10-29). A signed-in Pro member's Upgrade no longer opens a second
+  checkout ("You already have Prowl Pro" in the email panel). A first-time buyer whose cart already has another discount
+  code gets a banner first (PROWLMONTH combines with nothing, so the free month would be dropped): Open my cart,
+  Continue anyway, Close. Returning members (hadPro) skip it. No new keys. Test `__tests__/page/pro-buy-guards-v816.test.mjs`.
 - **v8.15 / v191: shelf scan shows up to 8 picks and a "Buy the whole shelf" card** (Matt, 2026-10-29, on a shelf of
   L.E. Smith Bittersweet: "Can't we see more than one? You should buy this whole shelf"). Worker: the Muse prompt asks for
   every piece up to 8 (was 3), plus an ALL line (why | resale for everything | most to pay for the lot) when most of the

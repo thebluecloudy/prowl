@@ -3888,7 +3888,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.15';
+var PROWL_VERSION='v8.16';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -6746,21 +6746,39 @@ function mailUpgradeEmail(){
   for(i=0;i<ins.length;i++){v=String(ins[i].value||'').replace(/\s+/g,'').toLowerCase();if(/^[^@]+@[^@]+\.[a-z]{2,}$/.test(v))return v}
   return '';
 }
-function mailUpgrade(){
-  var em=mailUpgradeEmail();
+/* v8.16: a cart with another discount code (Shopify keeps one code per order, and
+   PROWLMONTH combines with nothing) loses the free month without a word. */
+function cartOtherCodes(c){
+  var i,it;if(!c)return false;
+  if(c.cart_level_discount_applications&&c.cart_level_discount_applications.length)return true;
+  for(i=0;c.items&&i<c.items.length;i++){it=c.items[i];if(it.variant_id!==PRO_VARIANT&&it.line_level_discount_allocations&&it.line_level_discount_allocations.length)return true}
+  return false;
+}
+function mailUpgrade(go){
+  var em=mailUpgradeEmail(),stop=false;
   if(MAIL.busy)return;
   if(!alertsLive()){toast('Prowl Pro is coming soon.',2400);return}
   if(!mGet('alertTok')){MAIL.after=mailUpgrade;MAIL.afterAt=Date.now();MAIL.msg='Sign in with your email first, so Pro knows whose it is.';MAIL.open=true;openMailSettings();rMail();return}   /* v6.86 */
+  if(mailPro()){MAIL.msg='You already have Prowl Pro on '+em+', so there is nothing to buy.';MAIL.open=true;openMailSettings();rMail();toast('You already have Prowl Pro.',2600);return}   /* v8.16: no second subscription */
   if(typeof fetch!=='function'){location.href=PRO_URL;return}
   MAIL.busy=true;MAIL.msg='Opening checkout\u2026';rMail();
   function fail(){MAIL.busy=false;location.href=PRO_URL}
   fetch('/cart.js',{credentials:'same-origin'}).then(function(r){return r.json()}).then(function(c){
-    var old=null,i;for(i=0;c&&c.items&&i<c.items.length;i++)if(c.items[i].variant_id===PRO_VARIANT)old=c.items[i].key;
+    var old=null,i;
+    if(go!==true&&!MAIL.hadPro&&cartOtherCodes(c)){stop=true;return null}   /* v8.16 */
+    for(i=0;c&&c.items&&i<c.items.length;i++)if(c.items[i].variant_id===PRO_VARIANT)old=c.items[i].key;
     return old?fetch('/cart/change.js',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:old,quantity:0})}):null;
   })['catch'](function(){return null}).then(function(){
+    if(stop)return 'codes';
     return fetch('/cart/add.js',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({items:[{id:PRO_VARIANT,quantity:1,selling_plan:PRO_PLAN,properties:{'Prowl Alerts email':em} } ]})});
   }).then(function(r){
+    if(r==='codes'){
+      MAIL.busy=false;MAIL.msg='';rMail();
+      proBan('<h3>Your free month needs its own checkout</h3><p>Your cart already has another discount code, and the shop takes only one code per order, so the free month would not apply. Check out the rest of your cart first (or take those items out), then start your free month.</p><span class="sgw-mf"><a class="b p" href="/cart">Open my cart</a><button type="button" class="b" data-pro="trialgo">Continue anyway</button><button type="button" class="b" data-pro="close">Close</button></span>');
+      var bn=$('#otp-proBan');if(bn&&bn.scrollIntoView)bn.scrollIntoView({block:'center'});
+      return;
+    }
     if(r&&r.status===200){mSet('alertProWait','1');mSet('alertProWaitAt',String(Date.now()));location.href=MAIL.hadPro?'/checkout':'/checkout?discount='+PRO_TRIAL_CODE;}   /* v6.05: first month free */
     else fail();
   },fail);
@@ -6967,6 +6985,7 @@ document.addEventListener('click',function(e){
   if(a==='close'){proBan('');if(MAIL.act!==2){mSet('alertProWait','');mSet('alertProWaitAt','')}MAIL.act=0;clearTimeout(MAIL.atimer);return}
   if(a==='settings'){MAIL.open=true;openMailSettings();if(MAIL.act===2)proBan('');return}
   if(a==='again'){MAIL.act=0;proActivate();return}
+  if(a==='trialgo'){proBan('');mailUpgrade(true);return}   /* v8.16 */
 });
 /* v5.98: the member's email settings (how often, which hunts, which sites, Pro
    filters). Kept on the worker (sub.prefs) and mirrored here in MAIL.prefs. */
