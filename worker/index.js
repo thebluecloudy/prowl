@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v191: 2026-10-29. Shelf scan: up to 8 picks (was 3), an ALL line (so.all {why, fair, payUpTo}) when most of the shelf is
+ *        worth buying, and pay-up-to keeps only the dollar amount (fixes "Pay up to $40 to pay").
  *   v190: 2026-10-29. The Jev photo and shelf passes reworked so they cannot hold up or break a photo check: 3 eBay pictures
  *        (was 8), each pass started early and given at most 1.5 s after the visitor's answer is ready ("late" otherwise),
  *        every error caught, shelf Box pinned to jev-1.14.0. Both back on in shadow.
@@ -654,7 +656,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v190";
+const WORKER_VERSION = "v191";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -3966,20 +3968,35 @@ async function fbTest(env, url) {
    prices every item, and says so when nothing stands out. Lines: PICK n: name | why | fair range | pay up to. */
 function shelfPrompt() {
   return "You are helping a vintage collector standing at a thrift store or estate sale shelf. The photo shows many items. " +
-    "Find at most 3 pieces that are most likely worth more than a thrift price to a vintage collector: known makers, marks, " +
-    "collectible glass, pottery, kitchenware, decor, toys or art. Skip ordinary modern items. For each, write exactly one line:\n" +
-    "PICK 1: what it is (maker if visible) | where it is in the photo (like top shelf left) | fair resale range in US dollars | most to pay to resell it at a profit\n" +
+    "Find every piece, up to 8, that is likely worth more than a thrift price to a vintage collector: known makers, marks, " +
+    "collectible glass, pottery, kitchenware, decor, toys or art. Skip ordinary modern items. Best first. For each, write exactly one line:\n" +
+    "PICK 1: what it is (maker if visible) | where it is in the photo (like top shelf left) | fair resale range in US dollars | most to pay for it, as a dollar amount only\n" +
+    "If most of the pieces on the shelf are worth buying, also write one line: ALL: why the whole shelf is worth buying, in a few words | fair resale for everything together | most to pay for the whole shelf, as a dollar amount only\n" +
     "Use plain dollar ranges like $20-$35. If nothing on the shelf stands out, write exactly: NONE: nothing here stands out. " +
     "Do not add anything else. Be honest about uncertainty: say likely before a guess.";
+}
+/* v191 (Matt: "Can't we see more than one? You should buy this whole shelf"): up to 8 picks, and an ALL line when most
+   of the shelf is worth buying. Pay-up-to keeps only the dollar amount (Muse wrote "$40 to pay" -> "Pay up to $40 to pay"). */
+const SHELF_MAX = 8;
+function shelfMoney(s) {
+  const m = /\$\s?\d[\d,]*(?:\.\d{1,2})?(?:\s*-\s*\$?\s?\d[\d,]*(?:\.\d{1,2})?)?/.exec(String(s || ""));
+  return m ? noCents(m[0].replace(/\s+/g, "")).slice(0, 40) : "";
+}
+function shelfAll(text) {
+  const m = /^\s*ALL\s*:\s*(.+)$/im.exec(String(text || ""));
+  if (!m) return null;
+  const p = m[1].split("|").map(x => x.trim());
+  const fair = noCents(shelfMoney(p[1])), payUpTo = shelfMoney(p[2]);
+  return fair || payUpTo ? { why: (p[0] || "").slice(0, 120), fair: fair, payUpTo: payUpTo } : null;
 }
 function shelfParse(text) {
   const out = [];
   String(text || "").split(/\n/).forEach(l => {
-    const m = /^\s*PICK\s*\d\s*:\s*(.+)$/i.exec(l);
-    if (!m || out.length >= 3) return;
+    const m = /^\s*PICK\s*\d+\s*:\s*(.+)$/i.exec(l);
+    if (!m || out.length >= SHELF_MAX) return;   /* v191: up to 8, was 3 */
     const p = m[1].split("|").map(x => x.replace(/\bebay\b/gi, "eBay").trim());
     if (!p[0]) return;
-    out.push({ item: p[0].slice(0, 120), where: (p[1] || "").slice(0, 80), fair: noCents((p[2] || "").slice(0, 40)), payUpTo: noCents((p[3] || "").slice(0, 40)) });
+    out.push({ item: p[0].slice(0, 120), where: (p[1] || "").slice(0, 80), fair: noCents((p[2] || "").slice(0, 40)), payUpTo: shelfMoney(p[3]) });
   });
   return out;
 }
@@ -4054,6 +4071,8 @@ async function appraise(request, env, origin) {
     if (jsP && sa && sa.status === 200) js = await graceRace(jsP, JEV_GRACE_MS);
     if (!sa || sa.status !== 200 || !sa.content) return json({ error: "ai unreachable" }, 502, origin);
     const so = { shelf: shelfParse(sa.content), none: /^\s*NONE:/im.test(sa.content) };
+    const all = so.shelf.length >= 2 ? shelfAll(sa.content) : null;   /* v191 */
+    if (all) so.all = all;
     if (!so.shelf.length && !so.none) return json({ error: "ai answer unreadable" }, 502, origin);
     if (left !== null) { so.left = left; so.free = PHOTO_FREE_PER_DAY; }
     if (pro) so.pro = true;

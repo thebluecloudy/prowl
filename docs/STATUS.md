@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-29 (v8.14 / v190).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-29 (v8.15 / v191).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.14** | 376,871 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v190** | |
+| Page | **v8.15** | 376,245 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v191** | |
 
 Recently shipped, newest first:
 
+- **v8.15 / v191: shelf scan shows up to 8 picks and a "Buy the whole shelf" card** (Matt, 2026-10-29, on a shelf of
+  L.E. Smith Bittersweet: "Can't we see more than one? You should buy this whole shelf"). Worker: the Muse prompt asks for
+  every piece up to 8 (was 3), plus an ALL line (why | resale for everything | most to pay for the lot) when most of the
+  shelf is worth buying; `so.all` only with 2+ picks. Pay-up-to keeps only the dollar amount (fixes "Pay up to $40 to
+  pay"). Page: the whole-shelf card sits first (gold border, `.sh-card.sh-all`), the heading counts the picks. Tests
+  `worker/__tests__/shelf.test.mjs`, `__tests__/page/shelf-all-v815.test.mjs`.
 - **v190: the Jev photo and shelf passes reworked, back on in shadow** (Matt: "ok rework", 2026-10-29). Turning them off
   in v189 fixed Matt's photo check, so v187's pass was the cause (exact error unseen; Cloudflare logs need a sign-in).
   Now: 3 eBay pictures (was 8); each pass starts early and gets at most 1.5 s (`JEV_GRACE_MS`) after the visitor's answer
@@ -1651,7 +1657,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.15, worker v191**. Claim one here when you start.
+Next free numbers: **page v8.16, worker v192**. Claim one here when you start.
 
 ## What's next
 
