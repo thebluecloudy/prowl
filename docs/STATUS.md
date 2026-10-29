@@ -1,16 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.12 / v186).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.13 / v186).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.12** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.13** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v186** | |
 
 Recently shipped, newest first:
 
+- **v8.13: the after-checkout Pro banner gets a real Sign in button** (Matt, 2026-10-28). Back from a Pro checkout on a
+  device that is not signed in, the banner's "sign in here" looked like plain text (`.sgw-ml` is only styled inside the
+  email panel) and said "Thanks for upgrading" even when checkout was never finished. Now: "Finish switching on Prowl
+  Pro", neutral wording, a primary Sign in button; the leftover wait (`prowl.alertProWait`) clears after 2 hours, not
+  24. No new keys. Same day, outside the repo: the Prowl Pro product page's Add to cart (dead: the product needs a
+  selling plan) now goes to `/pages/prowl?upgrade=1` via a script in the product description (keep it there).
+  Test `__tests__/page/pro-banner-v813.test.mjs`. Room 376,997 bytes.
 - **v8.12 / v186: the iPhone app carry no longer puts the sign-in in a cookie** (the security and trust plan,
   2026-10-28: `prowl_c1` held the email, the permanent token and a 30-day session for 7 days, readable by any script on
   the page and sent to the shop with every request). Worker: POST /alerts/handoff {email, tok} (or a store session)
