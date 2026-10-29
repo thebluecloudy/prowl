@@ -36,8 +36,10 @@ test("jevShelfRead keeps a box only when the Noul says yes, sorted by likelihood
   assert.equal(out[1].box, undefined);
   assert.equal(jevShelfRead(["a"], null), null);
 });
-test("shelf mode runs Muse and Jev together, shadow only, with the images header", () => {
-  assert.match(INDEX, /museVision\(env, shelfPrompt\(\), image, false\)\.catch\(\(\) => null\),\n\s+sHunts\.length \? jevShelf\(/);
-  assert.match(INDEX, /if \(js\) so\.jevShelf = js;/);
+test("shelf mode starts Jev early, waits for Muse, then gives Jev a short grace (v190)", () => {
+  assert.match(INDEX, /const jsP = sHunts\.length \? Promise\.resolve\(\)\.then\(\(\) => jevShelf\(env, image, sHunts\)\)\.catch\(\(\) => null\) : null;/);
+  assert.match(INDEX, /if \(jsP && sa && sa\.status === 200\) js = await graceRace\(jsP, JEV_GRACE_MS\);/);
+  assert.match(INDEX, /if \(js === "late" \|\| Array\.isArray\(js\)\) so\.jevShelf = js;/);
   assert.match(INDEX, /JEV_SHELF\) \|\| "off"\)\.toLowerCase\(\) === "shadow"/);
+  assert.match(INDEX, /model: "jev-1\.14\.0", state: \{ shelf: ref/, "Box needs Jev 1.14");
 });

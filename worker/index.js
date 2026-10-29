@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v190: 2026-10-29. The Jev photo and shelf passes reworked so they cannot hold up or break a photo check: 3 eBay pictures
+ *        (was 8), each pass started early and given at most 1.5 s after the visitor's answer is ready ("late" otherwise),
+ *        every error caught, shelf Box pinned to jev-1.14.0. Both back on in shadow.
  *   v189: 2026-10-29. JEV_SHELF and JEV_PHOTO_LOOKS set to "off": Matt's photo check failed the morning after v187/v188.
  *   v188: 2026-10-28. Shelf scan, Jev pass (shadow): the page sends up to 30 of the visitor's hunts with a shelf photo
  *        (b.hunts); Jev answers per hunt "on this shelf?" (Noul) and where (Box). Var JEV_SHELF=shadow returns
@@ -651,7 +654,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v189";
+const WORKER_VERSION = "v190";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -3456,6 +3459,13 @@ async function jevLooks(env, id, looks) {
    nothing the visitor sees changes. Worker var JEV_PHOTO_LOOKS: unset/off = skipped; shadow = run and return.
    Any failure (a rejected image, a timeout) returns null and the text check stands alone. */
 const JEV_IMG_MIN = 280, JEV_IMG_MAX = 1568, JEV_IMG_BYTES = 1500000, JEV_THUMB_MS = 3000;
+/* v190: the shadow passes never hold up or break a photo check. 3 pictures, not 8; a pass that is not back GRACE ms
+   after the visitor's answer is ready is left out ("late"), and every failure is caught. */
+const JEV_PHOTO_THUMBS = 3, JEV_GRACE_MS = 1500;
+function graceRace(p, ms) {
+  let t;
+  return Promise.race([Promise.resolve(p).catch(() => null), new Promise(r => { t = setTimeout(() => r("late"), ms); })]).finally(() => clearTimeout(t));
+}
 function ebayBig(u) {
   u = String(u || "");
   if (!/^https:\/\/i\.ebayimg\.com\//.test(u)) return "";
@@ -3480,7 +3490,7 @@ function imgFits(z) {
   return !!z && z.w >= JEV_IMG_MIN && z.h >= JEV_IMG_MIN && z.w <= JEV_IMG_MAX && z.h <= JEV_IMG_MAX;
 }
 async function jevThumbs(looks) {
-  return Promise.all((looks || []).slice(0, EBAY_IMAGE_LIMIT).map(async x => {
+  return Promise.all((looks || []).slice(0, JEV_PHOTO_THUMBS).map(async x => {
     const u = ebayBig(x && x.image);
     if (!u) return null;
     const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), JEV_THUMB_MS);
@@ -3538,7 +3548,7 @@ function jevShelfBody(hunts, ref) {
     questions["h" + i] = { type: "noul", instructions: "Is there a piece on the shelf in `shelf` that a vintage collector hunting for `hunts[" + i + "]` would want? A hunt names a maker, line, pattern, character or kind of vintage piece. Count it only if the piece itself is visible, not just a similar color or shape." };
     questions["b" + i] = { type: "box", instructions: "the piece in `shelf` that best matches the hunt `hunts[" + i + "]`" };
   });
-  return { model: "jev-latest", state: { shelf: ref, hunts: hunts }, assets: { [ref]: { type: "image", part: "shelf" } }, questions: questions };
+  return { model: "jev-1.14.0", state: { shelf: ref, hunts: hunts }, assets: { [ref]: { type: "image", part: "shelf" } }, questions: questions };
 }
 function jevShelfRead(hunts, ans) {
   if (!ans) return null;
@@ -3577,7 +3587,7 @@ async function jevPhotoLooks(env, id, photo, looks, thumbsP) {
   let you; try { you = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)); } catch (e) { return null; }
   const yz = imgSize(you);
   if (!imgFits(yz)) return null;
-  const list = looks.slice(0, EBAY_IMAGE_LIMIT);
+  const list = looks.slice(0, JEV_PHOTO_THUMBS);
   const thumbs = (await (thumbsP || jevThumbs(list))).slice(0, list.length);
   const ref = "img" + crypto.randomUUID().replace(/-/g, "");
   const fd = new FormData();
@@ -4039,23 +4049,22 @@ async function appraise(request, env, origin) {
   if (mode === "shelf") {   /* v118 */
     let sa = null, js = null;
     const sHunts = String((env && env.JEV_SHELF) || "off").toLowerCase() === "shadow" ? shelfHunts(b && b.hunts) : [];   /* v188 */
-    [sa, js] = await Promise.all([
-      museVision(env, shelfPrompt(), image, false).catch(() => null),
-      sHunts.length ? jevShelf(env, image, sHunts).catch(() => null) : null
-    ]);
+    const jsP = sHunts.length ? Promise.resolve().then(() => jevShelf(env, image, sHunts)).catch(() => null) : null;   /* v190: never blocks */
+    try { sa = await museVision(env, shelfPrompt(), image, false); } catch (e) { sa = null; }
+    if (jsP && sa && sa.status === 200) js = await graceRace(jsP, JEV_GRACE_MS);
     if (!sa || sa.status !== 200 || !sa.content) return json({ error: "ai unreachable" }, 502, origin);
     const so = { shelf: shelfParse(sa.content), none: /^\s*NONE:/im.test(sa.content) };
     if (!so.shelf.length && !so.none) return json({ error: "ai answer unreadable" }, 502, origin);
     if (left !== null) { so.left = left; so.free = PHOTO_FREE_PER_DAY; }
     if (pro) so.pro = true;
-    if (js) so.jevShelf = js;   /* v188 shadow */
+    if (js === "late" || Array.isArray(js)) so.jevShelf = js;   /* v188 shadow; v190: "late" when not back in time */
     return json(so, 200, origin);
   }
   let looks = [], web = null;
   let lens = null;
   if (mode === "fast") [looks, web, lens] = await Promise.all([ebayImageSearch(image, env).catch(() => []), visionWeb(image, env).catch(() => null), lensFind(image, env, new URL(request.url).origin).catch(() => null)]);   /* v171: and Google's; v173: and Lens */
   const photoMode = String((env && env.JEV_PHOTO_LOOKS) || "off").toLowerCase();   /* v187 */
-  const thumbsP = photoMode === "shadow" && looks.length ? jevThumbs(looks) : null;   /* v187: fetched while the AI reads the photo */
+  const thumbsP = photoMode === "shadow" && looks.length ? jevThumbs(looks).catch(() => []) : null;   /* v187: fetched while the AI reads the photo; v190: 3 */
   let a = null, basis = "sold";
   if (mode !== "fast") { try { a = await museVision(env, apPrompt(price, true, hint, looks, ims.length, web && web.seen, lens), ims, true); } catch (e) { a = null; } }
   if (!a || a.status !== 200 || !/ITEM:/i.test(a.content || "")) {
@@ -4076,11 +4085,15 @@ async function appraise(request, env, origin) {
   const jevMode = String((env && env.JEV_LOOKS) || "off").toLowerCase();
   let jev = null, jevPhoto = null;
   const jevId = (out.item + (out.search ? " (search: " + out.search + ")" : "")).slice(0, 240);
-  [jev, jevPhoto] = await Promise.all([
-    (jevMode === "on" || jevMode === "shadow") && looks.length ? jevLooks(env, jevId, looks) : null,
-    thumbsP ? jevPhotoLooks(env, jevId, image, looks, thumbsP).catch(() => null) : null   /* v187 */
-  ]);
-  if (jevPhoto) out.jevPhoto = looks.slice(0, jevPhoto.length).map((x, i) => ({ title: x.title, match: jevPhoto[i].match, p: jevPhoto[i].p, seen: jevPhoto[i].seen }));
+  const photoP = thumbsP ? Promise.resolve().then(() => jevPhotoLooks(env, jevId, image, looks, thumbsP)).catch(() => null) : null;   /* v187; v190: never blocks */
+  if ((jevMode === "on" || jevMode === "shadow") && looks.length) jev = await jevLooks(env, jevId, looks);
+  if (photoP) {
+    jevPhoto = await graceRace(photoP, JEV_GRACE_MS);
+    try {
+      if (jevPhoto === "late") out.jevPhoto = "late";
+      else if (Array.isArray(jevPhoto)) out.jevPhoto = looks.slice(0, jevPhoto.length).map((x, i) => ({ title: x.title, match: jevPhoto[i].match, p: jevPhoto[i].p, seen: jevPhoto[i].seen }));
+    } catch (e) {}
+  }
   const allLooks = looks;
   looks = looks.filter(x => {
     const seen = {};
