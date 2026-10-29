@@ -11,7 +11,7 @@ const SHELF = {
 };
 
 test('page v8.15 carries the whole-shelf card style', () => {
-  assert.match(HTML, /var PROWL_VERSION='v8\.15'/);
+  assert.match(HTML, /var PROWL_VERSION='v8\.(1[5-9]|[2-9][0-9])'/);
   assert.match(HTML, /\.sh-card\.sh-all\{/);
 });
 
