@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v188: 2026-10-28. Shelf scan, Jev pass (shadow): the page sends up to 30 of the visitor's hunts with a shelf photo
+ *        (b.hunts); Jev answers per hunt "on this shelf?" (Noul) and where (Box). Var JEV_SHELF=shadow returns
+ *        so.jevShelf [{hunt, p, box?}] next to Muse's 3 picks; nothing shown changes. Unset/off = skipped.
  *   v187: 2026-10-28. Jev sees the pictures (shadow): photo search sends the visitor's photo and each eBay lookalike's
  *        picture to Jev (TypeSafe images, header TypeSafe-Danger-Zone-Images). Var JEV_PHOTO_LOOKS=shadow returns
  *        out.jevPhoto [{title, match, p, seen}] next to the text check; nothing shown changes. Unset/off = skipped.
@@ -647,7 +650,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v187";
+const WORKER_VERSION = "v188";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -3513,6 +3516,59 @@ function jevPhotoBody(id, looks, thumbs, ref) {
   });
   return { model: "jev-latest", state: { identified_piece: id, visitor_photo: ref + "-you", listings: listings }, assets: assets, questions: questions };
 }
+/* v188: shelf scan, Jev pass (shadow). Muse names at most 3 standouts; Jev checks every hunt the visitor sent
+   (up to 30) against the same shelf photo: a Noul "is it on this shelf?" and a Box around it, asked together in one
+   request (the Box always answers, so it only counts when the Noul says yes). Var JEV_SHELF: unset/off = skipped;
+   shadow = returned as so.jevShelf next to Muse's picks, nothing shown changes. Any failure returns null. */
+const JEV_SHELF_HUNTS = 30, JEV_SHELF_MIN_P = 0.5, JEV_SHELF_MS = 9000;
+function shelfHunts(raw) {
+  const out = [], seen = {};
+  (Array.isArray(raw) ? raw : []).forEach(x => {
+    if (out.length >= JEV_SHELF_HUNTS) return;
+    const t = scrubListingText(vClean(x, 60), 60).trim();
+    const k = t.toLowerCase();
+    if (t.length >= 2 && !seen[k]) { seen[k] = 1; out.push(t); }
+  });
+  return out;
+}
+function jevShelfBody(hunts, ref) {
+  const questions = {};
+  hunts.forEach((h, i) => {
+    questions["h" + i] = { type: "noul", instructions: "Is there a piece on the shelf in `shelf` that a vintage collector hunting for `hunts[" + i + "]` would want? A hunt names a maker, line, pattern, character or kind of vintage piece. Count it only if the piece itself is visible, not just a similar color or shape." };
+    questions["b" + i] = { type: "box", instructions: "the piece in `shelf` that best matches the hunt `hunts[" + i + "]`" };
+  });
+  return { model: "jev-latest", state: { shelf: ref, hunts: hunts }, assets: { [ref]: { type: "image", part: "shelf" } }, questions: questions };
+}
+function jevShelfRead(hunts, ans) {
+  if (!ans) return null;
+  const out = hunts.map((h, i) => {
+    const n = ans["h" + i] || {}, b = ans["b" + i] || {};
+    const p = Math.round((Number(n.probability != null ? n.probability : n.p) || 0) * 100) / 100;
+    const r = { hunt: h, p: p };
+    if (p >= JEV_SHELF_MIN_P && b.box) r.box = { top: b.box.top, bottom: b.box.bottom, left: b.box.left, right: b.box.right, c: Math.round((Number(b.confidence) || 0) * 100) / 100 };
+    return r;
+  });
+  return out.sort((a, b) => b.p - a.p);
+}
+async function jevShelf(env, photo, hunts) {
+  if (!env || !env.TYPESAFE_API_KEY || !hunts || !hunts.length) return null;
+  const m = /^data:image\/(jpeg|jpg|png);base64,(.+)$/.exec(String(photo || ""));
+  if (!m) return null;
+  let bytes; try { bytes = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)); } catch (e) { return null; }
+  const z = imgSize(bytes);
+  if (!imgFits(z)) return null;
+  const ref = "img" + crypto.randomUUID().replace(/-/g, "");
+  const fd = new FormData();
+  fd.append("request", new Blob([JSON.stringify(jevShelfBody(hunts, ref))], { type: "application/json" }));
+  fd.append("shelf", new Blob([bytes], { type: z.fmt === "png" ? "image/png" : "image/jpeg" }), "shelf." + z.fmt);
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), JEV_SHELF_MS);
+  try {
+    const r = await fetch(JEV_URL, { method: "POST", signal: ctl.signal, headers: { "Authorization": "Bearer " + env.TYPESAFE_API_KEY, "TypeSafe-Danger-Zone-Images": "true" }, body: fd });
+    if (r.status !== 200) { console.error("jev shelf", r.status, String(await r.text()).slice(0, 200)); return null; }
+    return jevShelfRead(hunts, ((await r.json()) || {}).answers);
+  } catch (e) { return null; }
+  finally { clearTimeout(timer); }
+}
 async function jevPhotoLooks(env, id, photo, looks, thumbsP) {
   if (!env || !env.TYPESAFE_API_KEY || !id || !looks || !looks.length) return null;
   const m = /^data:image\/(jpeg|jpg|png);base64,(.+)$/.exec(String(photo || ""));
@@ -3980,13 +4036,18 @@ async function appraise(request, env, origin) {
   if (left !== null) await apRcMark(ip, ims);   /* v164 */
 
   if (mode === "shelf") {   /* v118 */
-    let sa = null;
-    try { sa = await museVision(env, shelfPrompt(), image, false); } catch (e) { sa = null; }
+    let sa = null, js = null;
+    const sHunts = String((env && env.JEV_SHELF) || "off").toLowerCase() === "shadow" ? shelfHunts(b && b.hunts) : [];   /* v188 */
+    [sa, js] = await Promise.all([
+      museVision(env, shelfPrompt(), image, false).catch(() => null),
+      sHunts.length ? jevShelf(env, image, sHunts).catch(() => null) : null
+    ]);
     if (!sa || sa.status !== 200 || !sa.content) return json({ error: "ai unreachable" }, 502, origin);
     const so = { shelf: shelfParse(sa.content), none: /^\s*NONE:/im.test(sa.content) };
     if (!so.shelf.length && !so.none) return json({ error: "ai answer unreadable" }, 502, origin);
     if (left !== null) { so.left = left; so.free = PHOTO_FREE_PER_DAY; }
     if (pro) so.pro = true;
+    if (js) so.jevShelf = js;   /* v188 shadow */
     return json(so, 200, origin);
   }
   let looks = [], web = null;
