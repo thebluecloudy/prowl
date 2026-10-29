@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v187: 2026-10-28. Jev sees the pictures (shadow): photo search sends the visitor's photo and each eBay lookalike's
+ *        picture to Jev (TypeSafe images, header TypeSafe-Danger-Zone-Images). Var JEV_PHOTO_LOOKS=shadow returns
+ *        out.jevPhoto [{title, match, p, seen}] next to the text check; nothing shown changes. Unset/off = skipped.
  *   v186: 2026-10-28. Security and trust, the iPhone app carry: POST /alerts/handoff {email, tok} (or a store session)
  *         mints a one-time code (ho:<keyed hash>, 15 minutes); POST /alerts/handoff/take {code} trades it once for the
  *         sign-in, refused once the token changes. The prowl_c1 cookie no longer carries the email, token or session.
@@ -644,7 +647,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v186";
+const WORKER_VERSION = "v187";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -3443,6 +3446,101 @@ async function jevLooks(env, id, looks) {
   finally { clearTimeout(timer); }
 }
 
+/* v187: Jev sees the pictures. The visitor's photo and each eBay lookalike's own picture go to Jev with the titles,
+   so a vague seller title ("vintage cat figurine") no longer decides the match. Images are TypeSafe's experimental
+   "danger zone" feature (header below), so this runs only in shadow: out.jevPhoto is returned for comparison and
+   nothing the visitor sees changes. Worker var JEV_PHOTO_LOOKS: unset/off = skipped; shadow = run and return.
+   Any failure (a rejected image, a timeout) returns null and the text check stands alone. */
+const JEV_IMG_MIN = 280, JEV_IMG_MAX = 1568, JEV_IMG_BYTES = 1500000, JEV_THUMB_MS = 3000;
+function ebayBig(u) {
+  u = String(u || "");
+  if (!/^https:\/\/i\.ebayimg\.com\//.test(u)) return "";
+  return /\/s-l\d+\.(jpg|jpeg|png|webp)(\?.*)?$/i.test(u) ? u.replace(/\/s-l\d+\.(jpg|jpeg|png|webp)(\?.*)?$/i, "/s-l960.jpg") : "";
+}
+function imgSize(b) {
+  if (!b || b.length < 24) return null;
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return { fmt: "png", w: (b[16] << 24 | b[17] << 16 | b[18] << 8 | b[19]) >>> 0, h: (b[20] << 24 | b[21] << 16 | b[22] << 8 | b[23]) >>> 0 };
+  if (b[0] !== 0xff || b[1] !== 0xd8) return null;
+  let i = 2;
+  while (i + 9 < b.length) {
+    if (b[i] !== 0xff) { i++; continue; }
+    const m = b[i + 1];
+    if (m === 0xc0 || m === 0xc1) return { fmt: "jpg", h: b[i + 5] << 8 | b[i + 6], w: b[i + 7] << 8 | b[i + 8] };
+    if (m === 0xc2) return null;   /* progressive: TypeSafe asks for baseline */
+    if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7)) { i += 2; continue; }
+    i += 2 + (b[i + 2] << 8 | b[i + 3]);
+  }
+  return null;
+}
+function imgFits(z) {
+  return !!z && z.w >= JEV_IMG_MIN && z.h >= JEV_IMG_MIN && z.w <= JEV_IMG_MAX && z.h <= JEV_IMG_MAX;
+}
+async function jevThumbs(looks) {
+  return Promise.all((looks || []).slice(0, EBAY_IMAGE_LIMIT).map(async x => {
+    const u = ebayBig(x && x.image);
+    if (!u) return null;
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), JEV_THUMB_MS);
+    try {
+      const r = await fetch(u, { signal: ctl.signal, headers: { "Accept": "image/jpeg,image/png" } });
+      if (!r.ok) return null;
+      const b = new Uint8Array(await r.arrayBuffer());
+      const z = b.length <= JEV_IMG_BYTES ? imgSize(b) : null;
+      return imgFits(z) ? { bytes: b, fmt: z.fmt } : null;
+    } catch (e) { return null; }
+    finally { clearTimeout(timer); }
+  }));
+}
+function jevPhotoBody(id, looks, thumbs, ref) {
+  const questions = {}, assets = { [ref + "-you"]: { type: "image", part: "you" } };
+  const listings = looks.map((x, i) => {
+    const t = thumbs[i];
+    if (t) assets[ref + "-l" + i] = { type: "image", part: "l" + i };
+    return t ? { title: scrubListingText(x.title, 140), photo: ref + "-l" + i } : { title: scrubListingText(x.title, 140) };
+  });
+  looks.forEach((x, i) => {
+    questions["l" + i] = {
+      type: "choice",
+      instructions: "Is `listings[" + i + "]` the same piece as the one in `visitor_photo`? `identified_piece` is a name for it. " +
+        (thumbs[i] ? "Compare the object in `listings[" + i + "].photo` with the object in `visitor_photo`. " : "This listing has no photo; judge its title. ") +
+        "Seller titles may be vague or keyword-stuffed, so trust what the pictures show over the words.",
+      criteria: {
+        same: "The same piece: same maker or attribution, same model, figure or form. Differences in color, lighting, angle or condition are fine.",
+        other_piece: "A different piece from the same maker, line or theme, e.g. a different character, animal, model or form.",
+        lot: "A lot, set, bundle or multi-pack that includes more than one item.",
+        unrelated: "A different kind of object, a reproduction or reissue sold as new, or a part or accessory rather than the piece."
+      }
+    };
+  });
+  return { model: "jev-latest", state: { identified_piece: id, visitor_photo: ref + "-you", listings: listings }, assets: assets, questions: questions };
+}
+async function jevPhotoLooks(env, id, photo, looks, thumbsP) {
+  if (!env || !env.TYPESAFE_API_KEY || !id || !looks || !looks.length) return null;
+  const m = /^data:image\/(jpeg|jpg|png);base64,(.+)$/.exec(String(photo || ""));
+  if (!m) return null;
+  let you; try { you = Uint8Array.from(atob(m[2]), c => c.charCodeAt(0)); } catch (e) { return null; }
+  const yz = imgSize(you);
+  if (!imgFits(yz)) return null;
+  const list = looks.slice(0, EBAY_IMAGE_LIMIT);
+  const thumbs = (await (thumbsP || jevThumbs(list))).slice(0, list.length);
+  const ref = "img" + crypto.randomUUID().replace(/-/g, "");
+  const fd = new FormData();
+  fd.append("request", new Blob([JSON.stringify(jevPhotoBody(id, list, thumbs, ref))], { type: "application/json" }));
+  fd.append("you", new Blob([you], { type: yz.fmt === "png" ? "image/png" : "image/jpeg" }), "you." + yz.fmt);
+  thumbs.forEach((t, i) => { if (t) fd.append("l" + i, new Blob([t.bytes], { type: t.fmt === "png" ? "image/png" : "image/jpeg" }), "l" + i + "." + t.fmt); });
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), JEV_TIMEOUT_MS);
+  try {
+    const r = await fetch(JEV_URL, { method: "POST", signal: ctl.signal, headers: { "Authorization": "Bearer " + env.TYPESAFE_API_KEY, "TypeSafe-Danger-Zone-Images": "true" }, body: fd });
+    if (r.status !== 200) { console.error("jev photo", r.status, String(await r.text()).slice(0, 200)); return null; }
+    const ans = ((await r.json()) || {}).answers;
+    if (!ans) return null;
+    return list.map((x, i) => {
+      const a = ans["l" + i] || {}, pr = a.probabilities || {};
+      return { match: String(a.choice || ""), p: Math.round((Number(pr.same) || 0) * 100) / 100, seen: !!thumbs[i] };
+    });
+  } catch (e) { return null; }
+  finally { clearTimeout(timer); }
+}
+
 /* ---------- v20: Jev result cleaner ----------
    One request per cache miss, one Choice question per listing title. */
 const JEV_RESULTS_MAX = 40;
@@ -3894,6 +3992,8 @@ async function appraise(request, env, origin) {
   let looks = [], web = null;
   let lens = null;
   if (mode === "fast") [looks, web, lens] = await Promise.all([ebayImageSearch(image, env).catch(() => []), visionWeb(image, env).catch(() => null), lensFind(image, env, new URL(request.url).origin).catch(() => null)]);   /* v171: and Google's; v173: and Lens */
+  const photoMode = String((env && env.JEV_PHOTO_LOOKS) || "off").toLowerCase();   /* v187 */
+  const thumbsP = photoMode === "shadow" && looks.length ? jevThumbs(looks) : null;   /* v187: fetched while the AI reads the photo */
   let a = null, basis = "sold";
   if (mode !== "fast") { try { a = await museVision(env, apPrompt(price, true, hint, looks, ims.length, web && web.seen, lens), ims, true); } catch (e) { a = null; } }
   if (!a || a.status !== 200 || !/ITEM:/i.test(a.content || "")) {
@@ -3912,10 +4012,13 @@ async function appraise(request, env, origin) {
   String(out.item + " " + out.search).toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).forEach(w => { if (w.length >= 4 && !STOP[w] && !/^\d+s?$/.test(w)) idWords[w] = 1; });
   const need = Object.keys(idWords).length >= 4 ? 2 : 1;
   const jevMode = String((env && env.JEV_LOOKS) || "off").toLowerCase();
-  let jev = null;
-  if ((jevMode === "on" || jevMode === "shadow") && looks.length) {
-    jev = await jevLooks(env, (out.item + (out.search ? " (search: " + out.search + ")" : "")).slice(0, 240), looks);
-  }
+  let jev = null, jevPhoto = null;
+  const jevId = (out.item + (out.search ? " (search: " + out.search + ")" : "")).slice(0, 240);
+  [jev, jevPhoto] = await Promise.all([
+    (jevMode === "on" || jevMode === "shadow") && looks.length ? jevLooks(env, jevId, looks) : null,
+    thumbsP ? jevPhotoLooks(env, jevId, image, looks, thumbsP).catch(() => null) : null   /* v187 */
+  ]);
+  if (jevPhoto) out.jevPhoto = looks.slice(0, jevPhoto.length).map((x, i) => ({ title: x.title, match: jevPhoto[i].match, p: jevPhoto[i].p, seen: jevPhoto[i].seen }));
   const allLooks = looks;
   looks = looks.filter(x => {
     const seen = {};

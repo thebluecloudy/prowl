@@ -1,16 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.13 / v186).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.13 / v187).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.13** | 376,997 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v186** | |
+| Worker | **v187** | |
 
 Recently shipped, newest first:
 
+- **v187: Jev sees the pictures, shadow only** (Matt, 2026-10-28, after TypeSafe opened images in Jev 1.13/1.14).
+  Photo search sends the visitor's photo and each eBay lookalike's own picture (eBay CDN s-l960) to Jev with the
+  `TypeSafe-Danger-Zone-Images: true` header; the answer comes back as `jevPhoto` [{title, match, p, seen}] next to
+  the text check `jev`. Nothing the visitor sees changes. Var `JEV_PHOTO_LOOKS` = "shadow" in wrangler.toml (off =
+  skipped). Thumbnails are fetched while the AI reads the photo; a rejected image or timeout returns nothing. Pictures
+  outside 280-1568 px or progressive JPEGs are sent as title only. Next: compare jevPhoto with jev on real searches
+  before letting it decide. Test `worker/__tests__/jev-photo-v187.test.mjs`. Page unchanged.
 - **v8.13: the after-checkout Pro banner gets a real Sign in button** (Matt, 2026-10-28). Back from a Pro checkout on a
   device that is not signed in, the banner's "sign in here" looked like plain text (`.sgw-ml` is only styled inside the
   email panel) and said "Thanks for upgrading" even when checkout was never finished. Now: "Finish switching on Prowl
@@ -1630,7 +1637,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.13, worker v187**. Claim one here when you start.
+Next free numbers: **page v8.14, worker v188**. Claim one here when you start.
 
 ## What's next
 

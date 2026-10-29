@@ -40,6 +40,7 @@ new_sqlite_classes = ["Caps"]
 crons = ["*/5 * * * *", "2 * * * *"]
 
 [vars]
+JEV_PHOTO_LOOKS = "shadow"   # v187: Jev compares the photo with each lookalike's picture; shadow only
 EPN_CAMPAIGN_ID = "5339216838"
 # Prowl Alerts sign-ups: "beta" = only ALERT_ALLOW emails (while Alerts/Pro are
 # being finished; page v5.85 shows "Coming soon"). Set "public" to launch.
