@@ -1,16 +1,19 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-28 (v8.14 / v188).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-29 (v8.14 / v189).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.14** | 376,871 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v188** | |
+| Worker | **v189** | |
 
 Recently shipped, newest first:
 
+- **v189: the Jev photo and shelf shadow passes are off** (2026-10-29). Matt's photo check showed "Could not check
+  this photo right now" the morning after v187/v188 went live; `JEV_SHELF` and `JEV_PHOTO_LOOKS` are "off" in
+  wrangler.toml while the cause is found. The code stays; set them back to "shadow" to turn them on again.
 - **v8.14 / v188: shelf scan checks every hunt with Jev, shadow only** (Matt, 2026-10-28: "Muse only does 3"). Page:
   a shelf scan sends up to 30 of the visitor's own hunts (`hunts`, sample chips left out) via `window.prowlHunts()`,
   exposed by prowl-js because the photo script sits outside its IIFE. Worker: alongside Muse's 3 picks, Jev gets the
@@ -1643,7 +1646,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.15, worker v189**. Claim one here when you start.
+Next free numbers: **page v8.15, worker v190**. Claim one here when you start.
 
 ## What's next
 
