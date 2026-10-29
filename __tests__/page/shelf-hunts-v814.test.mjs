@@ -11,7 +11,8 @@ const MARK = "if(SHELF){try{var sh=typeof window.prowlHunts==='function'?window.
 
 test('the shelf send adds the hunts once, capped at 30, samples left out', () => {
   assert.equal(HTML.split(MARK).length - 1, 1);
-  assert.match(HTML, /var PROWL_VERSION='v8\.14'/);
+  const v = /var PROWL_VERSION='v8\.(\d+)'/.exec(HTML);
+  assert.ok(v && Number(v[1]) >= 14, 'page v8.14 or later');
 });
 
 test('window.prowlHunts gives the photo script the visitor\'s own hunts', async () => {

@@ -2100,7 +2100,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .apr-mode button{flex:1;padding:11px 8px;border:0;background:var(--cd2);color:var(--i2);font-size:15px;font-weight:700}
 .scout-app-wrapper .apr-mode button.on{background:var(--ac);color:var(--onink)}
 .scout-app-wrapper .sh-h{margin:14px 0 8px;font-size:18px;font-weight:800;color:var(--ink)}
-.scout-app-wrapper .sh-card{display:flex;flex-direction:column;gap:4px;padding:12px;margin:0 0 10px;border:1px solid var(--l2);border-radius:12px;background:var(--cd)}
+.scout-app-wrapper .sh-card{display:flex;flex-direction:column;gap:4px;padding:12px;margin:0 0 10px;border:1px solid var(--l2);border-radius:12px;background:var(--cd)}.scout-app-wrapper .sh-card.sh-all{border-color:#f0a500;border-width:2px}
 .scout-app-wrapper .sh-card b{font-size:16px;color:var(--ink)}
 .scout-app-wrapper .sh-card small{font-size:13px;color:var(--mu)}
 .scout-app-wrapper .sh-card p{margin:0;font-size:15px;color:var(--ac);font-weight:700}
@@ -3283,7 +3283,8 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   if(GO)GO.addEventListener('click',function(){run();});
   var SHELF=false,AM=document.querySelector('#otp-apr .apr-mode');   /* v7.08: shelf scan */
   if(AM)AM.addEventListener('click',function(e){var b=e.target.closest('[data-am]');if(!b||busy)return;SHELF=b.getAttribute('data-am')==='shelf';var bs=AM.querySelectorAll('[data-am]');for(var i=0;i<bs.length;i++){var on=bs[i]===b;bs[i].classList.toggle('on',on);bs[i].setAttribute('aria-pressed',on?'true':'false')}});
-  function shelfShow(j){while(O.firstChild)O.removeChild(O.firstChild);var h=document.createElement('h3');h.className='sh-h';h.textContent=j.shelf&&j.shelf.length?'Worth a closer look':'Nothing stands out';O.appendChild(h);
+  function shelfShow(j){while(O.firstChild)O.removeChild(O.firstChild);var h=document.createElement('h3');h.className='sh-h';h.textContent=j.shelf&&j.shelf.length?(j.shelf.length>1?j.shelf.length+' worth a closer look':'Worth a closer look'):'Nothing stands out';O.appendChild(h);
+    if(j.all&&j.shelf&&j.shelf.length){var ac=document.createElement('div');ac.className='sh-card sh-all';var ab=document.createElement('b');ab.textContent='Buy the whole shelf';ac.appendChild(ab);if(j.all.why){var aw=document.createElement('small');aw.textContent=j.all.why;ac.appendChild(aw)}var al=document.createElement('p');al.textContent=(j.all.fair?'All of it sells for '+j.all.fair:'')+(j.all.fair&&j.all.payUpTo?' \u00b7 ':'')+(j.all.payUpTo?'Pay up to '+j.all.payUpTo+' for everything':'');if(al.textContent)ac.appendChild(al);O.appendChild(ac)}   /* v8.15 */
     if(!j.shelf||!j.shelf.length){var p0=document.createElement('p');p0.className='apr-note';p0.textContent='Nothing on this shelf looks worth more than a thrift price. Try a closer photo of one piece if something catches your eye.';O.appendChild(p0);return}
     for(var i=0;i<j.shelf.length;i++){var s=j.shelf[i],c=document.createElement('div');c.className='sh-card';var t=document.createElement('b');t.textContent=s.item;c.appendChild(t);
       if(s.where){var w=document.createElement('small');w.textContent=s.where;c.appendChild(w)}
@@ -3887,7 +3888,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.14';
+var PROWL_VERSION='v8.15';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
