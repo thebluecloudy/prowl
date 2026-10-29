@@ -1,16 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-29 (v8.14 / v189).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-29 (v8.14 / v190).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.14** | 376,871 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v189** | |
+| Worker | **v190** | |
 
 Recently shipped, newest first:
 
+- **v190: the Jev photo and shelf passes reworked, back on in shadow** (Matt: "ok rework", 2026-10-29). Turning them off
+  in v189 fixed Matt's photo check, so v187's pass was the cause (exact error unseen; Cloudflare logs need a sign-in).
+  Now: 3 eBay pictures (was 8); each pass starts early and gets at most 1.5 s (`JEV_GRACE_MS`) after the visitor's answer
+  is ready, else the field reads "late"; every error is caught; the shelf Box is pinned to jev-1.14.0. Test
+  `worker/__tests__/jev-grace-v190.test.mjs`. Watch the next few photo checks; set the vars to "off" again if one fails.
 - **v189: the Jev photo and shelf shadow passes are off** (2026-10-29). Matt's photo check showed "Could not check
   this photo right now" the morning after v187/v188 went live; `JEV_SHELF` and `JEV_PHOTO_LOOKS` are "off" in
   wrangler.toml while the cause is found. The code stays; set them back to "shadow" to turn them on again.
@@ -1646,7 +1651,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.15, worker v190**. Claim one here when you start.
+Next free numbers: **page v8.15, worker v191**. Claim one here when you start.
 
 ## What's next
 
