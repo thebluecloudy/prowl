@@ -1296,6 +1296,10 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .wk-so{font-style:italic}
 .scout-app-wrapper .wk-brief .wk-row{padding:8px 12px}
 .scout-app-wrapper .wk-plan{margin:12px 0 2px;width:100%}
+.scout-app-wrapper #otp-nrWkPane .wk-box{margin-top:0;padding-top:0;border-top:0}   /* v8.22: its own NEAR ME tab */
+.scout-app-wrapper #otp-nrWkPane .es-form{margin:8px 0 4px}
+.scout-app-wrapper .wk-back{margin:0 0 10px}
+@media (max-width:600px){.scout-app-wrapper #otp-near .tabs.nr-4{flex-wrap:wrap;row-gap:4px}.scout-app-wrapper #otp-near .tabs.nr-4 .tab{flex:1 1 40%}}   /* four NEAR ME tabs, two by two on a phone */
 .scout-app-wrapper .wp .wk-h:first-child{margin-top:0}
 .scout-app-wrapper .wp-day{margin:12px 0;padding:10px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--cd)}
 .scout-app-wrapper .wp-day .wk-h{margin-top:0}
@@ -3418,7 +3422,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 
 
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Prowl by Owl & Twig","url":"https://owlandtwigvintage.com/pages/prowl","applicationCategory":"ShoppingApplication","operatingSystem":"Any","description":"Free tool for vintage collectors - type a piece once and search 29 marketplaces at once, including ShopGoodwill, Facebook Marketplace and Craigslist.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"Matt"},"publisher":{"@type":"Organization","name":"Owl & Twig Vintage","url":"https://owlandtwigvintage.com"}}</script>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is Prowl?","acceptedAnswer":{"@type":"Answer","text":"Prowl by Owl & Twig is a free search tool for vintage collectors. Type a piece once and it builds that search for 29 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist. It is built by Matt at Owl & Twig Vintage, a family vintage shop in Michigan."} },{"@type":"Question","name":"Which marketplaces does Prowl search?","acceptedAnswer":{"@type":"Answer","text":"eBay, Etsy, Mercari, Mercari Japan, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, Salvation Army, EstateSales.net, HiBid, LiveAuctioneers, CTBids, Heritage Auctions, Invaluable, Craigslist and eBay Sold, for what pieces actually sold for: 29 in all. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed and Salvation Army results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search."} },{"@type":"Question","name":"How do I find antique shops and estate sales near me?","acceptedAnswer":{"@type":"Answer","text":"Open the Den and tap Local. Tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area."} },{"@type":"Question","name":"Is Prowl free?","acceptedAnswer":{"@type":"Answer","text":"Yes. Searching is free and needs no account, and your search list stays on your device. Your Den keeps 5 hunts of your own for free, or up to 100 with Prowl Pro. Email alerts are optional: free for 3 hunts, as often as you like, or up to 100 hunts with Prowl Pro."} },{"@type":"Question","name":"Does it work on my phone?","acceptedAnswer":{"@type":"Answer","text":"Yes. Built mobile-first. Add it to your home screen, and allow pop-ups if you use Open all. On a phone, Facebook opens in your browser so the search sticks, so log in to Facebook there once."} },{"@type":"Question","name":"How does Price Check work?","acceptedAnswer":{"@type":"Answer","text":"One tap opens eBay's sold listings for your term — actual sale prices from the last 90 days, the most accurate read on what a piece is worth right now. Asking prices lie; sold prices don't."} },{"@type":"Question","name":"What if nothing sold in 90 days?","acceptedAnswer":{"@type":"Answer","text":"That happens with genuinely rare pieces. Price Check has a second button for three years of deep comps via eBay's Terapeak research — free with any eBay account. Open it in your browser rather than the eBay app, or the date range gets dropped."} }]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is Prowl?","acceptedAnswer":{"@type":"Answer","text":"Prowl by Owl & Twig is a free search tool for vintage collectors. Type a piece once and it builds that search for 29 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist. It is built by Matt at Owl & Twig Vintage, a family vintage shop in Michigan."} },{"@type":"Question","name":"Which marketplaces does Prowl search?","acceptedAnswer":{"@type":"Answer","text":"eBay, Etsy, Mercari, Mercari Japan, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, Salvation Army, EstateSales.net, HiBid, LiveAuctioneers, CTBids, Heritage Auctions, Invaluable, Craigslist and eBay Sold, for what pieces actually sold for: 29 in all. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed and Salvation Army results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search."} },{"@type":"Question","name":"How do I find antique shops and estate sales near me?","acceptedAnswer":{"@type":"Answer","text":"Tap Near me at the foot of the page. Around you lists the shops near you, and under More ways to look you can tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area."} },{"@type":"Question","name":"Is Prowl free?","acceptedAnswer":{"@type":"Answer","text":"Yes. Searching is free and needs no account, and your search list stays on your device. Your Den keeps 5 hunts of your own for free, or up to 100 with Prowl Pro. Email alerts are optional: free for 3 hunts, as often as you like, or up to 100 hunts with Prowl Pro."} },{"@type":"Question","name":"Does it work on my phone?","acceptedAnswer":{"@type":"Answer","text":"Yes. Built mobile-first. Add it to your home screen, and allow pop-ups if you use Open all. On a phone, Facebook opens in your browser so the search sticks, so log in to Facebook there once."} },{"@type":"Question","name":"How does Price Check work?","acceptedAnswer":{"@type":"Answer","text":"One tap opens eBay's sold listings for your term — actual sale prices from the last 90 days, the most accurate read on what a piece is worth right now. Asking prices lie; sold prices don't."} },{"@type":"Question","name":"What if nothing sold in 90 days?","acceptedAnswer":{"@type":"Answer","text":"That happens with genuinely rare pieces. Price Check has a second button for three years of deep comps via eBay's Terapeak research — free with any eBay account. Open it in your browser rather than the eBay app, or the date range gets dropped."} }]}</script>
 
 
 <aside class="drawer otp-sheet" id="otp-sheet" role="dialog" aria-modal="true" aria-labelledby="otp-sheetT" hidden>
@@ -3570,7 +3574,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <h3>Which marketplaces does Prowl search?</h3>
 <p>eBay, Etsy, Mercari, Mercari Japan, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, Salvation Army, EstateSales.net, HiBid, LiveAuctioneers, CTBids, Heritage Auctions, Invaluable, Craigslist and eBay Sold, for what pieces actually sold for: <span data-t>29</span> in all. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed and Salvation Army results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search.</p>
 <h3>How do I find antique shops and estate sales near me?</h3>
-<p>Open the Den and tap Local. Tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area.</p>
+<p>Tap Near me at the foot of the page. Around you lists the shops near you, and under More ways to look you can tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area.</p>
 <h3>Is Prowl free?</h3>
 <p>Yes. Searching is free and needs no account, and your search list stays on your device. Your Den keeps 5 hunts of your own for free, or up to 100 with Prowl Pro. Email alerts are optional: free for 3 hunts, as often as you like, or up to 100 hunts with Prowl Pro.</p>
 <h3>Does it work on my phone?</h3>
@@ -3707,6 +3711,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <button class="tab on" id="otp-nrT1" role="tab" aria-selected="true">Around you</button>
     <button class="tab" id="otp-nrT2" role="tab" aria-selected="false">Road trip</button>
     <button class="tab" id="otp-nrT3" role="tab" aria-selected="false">Trips</button>
+    <button class="tab" id="otp-nrT4" role="tab" aria-selected="false" hidden>Estate sales</button>
   </div>
   <div id="otp-nearBody">
     <div class="denPane" id="otp-nrAround">
@@ -3800,6 +3805,10 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <p class="nearp">Road trips kept for a group: yours, and the ones friends invite you to. Open one for its stops, live hours and the group's Finds. To start one, build it under Road trip, tap <b>Save trip</b>, then <b>Invite friends</b>.</p>
       <div id="otp-nrJoin"></div>
       <div id="otp-nrTrips"></div>
+    </div>
+    <div class="denPane" id="otp-nrWkPane" hidden>
+      <div id="otp-wkHost"></div>
+      <div id="otp-wpHost" hidden></div>
     </div>
   </div>
   <div class="nr-foot" id="otp-nrFoot" hidden>
@@ -4649,12 +4658,12 @@ function esLoad(v){
     rEs();
   })['catch'](function(){ES.busy=false;ES.err='Could not reach Prowl. Try again in a minute.';rEs()});
 }
-/* v8.22 Weekend sweep (worker v193 /weekend): the estate sales open this Friday to Sunday within 25 miles, under
-   Estate sales near you (same gate: the owner's key until SALES_PUBLIC). The place is the one typed in the box above
-   (looked up with /geo, as In a location does), else where the phone is. The hunts in the Den go with it; a sale whose
+/* v8.22 Weekend sweep (worker v193 /weekend): the estate sales open this Friday to Sunday within 25 miles, in NEAR ME's
+   own Estate sales tab beside Trips (same gate: the owner's key until SALES_PUBLIC). The place is the one typed in the
+   tab's box (looked up with /geo, as In a location does), else where the phone is. The hunts in the Den go with it; a sale whose
    title, description or photo captions hold every word of a hunt is a Top pick, with the hunt and where it matched.
    Every sale opens its own page on EstateSales.net; hours come back in this device's time zone. Nothing is kept. */
-var WK={busy:false,data:null,err:'',town:'',pt:null,me:false};
+var WK={busy:false,data:null,err:'',town:'',pt:null,me:false,q:null,planOn:false,link:false};
 function wkHunts(){return st.hunts.filter(function(h){return !huntSample(h)}).slice(0,30)}
 function wkUrlOk(u){return /^https:\/\/www\.estatesales\.net\/[A-Za-z0-9\/._%-]+$/.test(String(u||''))}
 function wkRow(x,pick){
@@ -4663,9 +4672,10 @@ function wkRow(x,pick){
     (pick&&x.match?'<span class="wk-m">\uD83D\uDC3E '+esc(x.match.hunt)+' \u00b7 in '+esc(x.match.where)+'</span>':'')+
     '<b>'+esc(x.name)+'</b><span>'+esc(meta)+'</span><span class="wk-hr">'+esc(x.hours)+'</span>'+(x.standout?'<span class="wk-so">'+esc(x.standout)+'</span>':'')+'</a>';
 }
-function wkHtml(){
-  var d=WK.data,h='<div class="wk-box" id="otp-wk"><h4 class="es-h">This weekend <span class="es-own">Fri\u2013Sun \u00b7 25 mi</span></h4>'+
-    '<p class="nearp">Estate sales open this weekend near '+(WK.town?'<b>'+esc(WK.town)+'</b>':'the place above, or where you are')+'. Ones that mention your hunts come first. <button type="button" class="es-mapb" id="otp-wkGo">'+(WK.busy?'Looking\u2026':(d?'Sweep again':'Sweep this weekend'))+'</button></p>';
+function wkHtml(v){
+  var d=WK.data,h='<div class="wk-box" id="otp-wk"><h3 class="nearh">This weekend <span class="es-own">Fri\u2013Sun \u00b7 25 mi</span></h3>'+
+    '<p class="nearp">Estate sales open this weekend near '+(WK.town?'<b>'+esc(WK.town)+'</b>':'the place you type, or where you are')+'. Ones that mention your hunts come first.</p>'+
+    '<div class="addrow es-form"><input id="otp-wkIn" type="text" placeholder="City, ST, or empty for where you are" aria-label="City and state for this weekend\u2019s estate sales, or empty for where you are" autocomplete="off" enterkeyhint="go" value="'+esc(v||'')+'"><button type="button" id="otp-wkGo">'+(WK.busy?'Looking\u2026':(d?'Sweep again':'Sweep this weekend'))+'</button></div>';
   if(WK.err)h+='<p class="nearp es-err" role="status">'+esc(WK.err)+'</p>';
   if(d){
     var picks=(d.picks||[]).filter(function(x){return wkUrlOk(x.url)}),rest=(d.rest||[]).filter(function(x){return wkUrlOk(x.url)});
@@ -4680,8 +4690,8 @@ function wkHtml(){
 }
 function wkLoad(){
   if(WK.busy)return;
-  var inp=$('#otp-esIn'),v=inp?String(inp.value||'').replace(/\s+/g,' ').trim():'';
-  WK.busy=true;WK.err='';rEs();
+  var inp=$('#otp-wkIn'),v=inp?String(inp.value||'').replace(/\s+/g,' ').trim():'';
+  WK.q=v;WK.busy=true;WK.err='';rWk();
   function go(pt,town,city,stc){
     WK.town=town||'where you are';WK.pt={lat:pt.lat,lng:pt.lng};WK.me=!town;   /* Plan my weekend starts here */
     var u=SGW_API+'weekend?lat='+pt.lat.toFixed(2)+'&lng='+pt.lng.toFixed(2)+'&r=25&tz='+E(browserTz()||'')+(city&&stc?'&city='+E(city)+'&st='+E(stc):'')+'&h='+E(wkHunts().join('|'));
@@ -4689,16 +4699,46 @@ function wkLoad(){
       WK.busy=false;
       if(x.ok&&x.j&&Array.isArray(x.j.picks)){WK.data=x.j;WK.err=''}
       else WK.err=x.status===429?'Too many sweeps just now. Try again in a little while.':((x.j&&x.j.error)||'Could not get this weekend\u2019s sales right now.');
-      rEs();
-    })['catch'](function(){WK.busy=false;WK.err='Could not reach Prowl. Try again in a minute.';rEs()});
+      rWk();
+    })['catch'](function(){WK.busy=false;WK.err='Could not reach Prowl. Try again in a minute.';rWk()});
   }
-  function fail(m){WK.busy=false;WK.err=m;rEs()}
+  function fail(m){WK.busy=false;WK.err=m;rWk()}
   if(v){atLookup(v,function(a,msg){if(!a){fail(msg||'That place could not be looked up.');return}go({lat:a.lat,lng:a.lng},a.city&&a.st?a.city+', '+a.st:a.town,a.city,a.st)});return}
   var al=atLive();if(al){go({lat:al.lat,lng:al.lng},al.town,al.city,al.st);return}
   nrPos(function(p,e){if(!p){fail(e==='denied'?'Location is off for this site. Type a City, ST above instead.':'Could not tell where you are. Type a City, ST above instead.');return}go(p,'')});
 }
-/* v8.22 Plan my weekend (worker v193 /order and /weekend/plan): the Sweep's sales as a day-by-day route. Opened from
-   "Plan my weekend" under the Sweep results, or from the Thursday email's button (?wkplan=<ids>&wkp=<picks>&wkzip=ZIP,
+/* v8.22 (Matt, 2026-10-30: "it shouldn't be put into den, it needs to be in the new near me section beside trips"): the
+   Sweep and Plan my weekend live in NEAR ME's fourth tab, Estate sales (#otp-nrT4, pane #otp-nrWkPane), beside Trips,
+   no longer under Around you > More ways to look > Estate sales near you. The tab shows with the owner's key (the same
+   gate as /sales and /weekend until SALES_PUBLIC), or once the Thursday email's signed plan link has opened the planner
+   on this visit. The pane shows the Sweep (#otp-wkHost) or the planner (#otp-wpHost), one at a time. */
+function nrWkOk(){return !!(fbOwnerKey()||WK.link)}
+function nrWkTab(){var t=$('#otp-nrT4'),ok=nrWkOk();if(t){t.hidden=!ok;if(t.parentNode&&t.parentNode.classList)t.parentNode.classList.toggle('nr-4',ok)}return ok}
+function rWk(){
+  var host=$('#otp-wkHost'),ph=$('#otp-wpHost');if(!host||!ph)return;
+  if(WK.planOn){
+    host.hidden=true;host.innerHTML='';ph.hidden=false;
+    ph.innerHTML=(fbOwnerKey()?'<button type="button" class="es-mapb wk-back" id="otp-wkBack">\u2039 This weekend\u2019s sales</button>':'')+'<h3 class="nearh">Plan my weekend</h3>'+wpHtml();
+    var bk=$('#otp-wkBack');if(bk)bk.addEventListener('click',function(){WK.planOn=false;rWk()});
+    return;
+  }
+  ph.hidden=true;ph.innerHTML='';host.hidden=false;
+  if(!fbOwnerKey()){host.innerHTML='';return}
+  var old=$('#otp-wkIn'),al=atLive(),v=old?old.value:(WK.q!=null?WK.q:(al&&al.city&&al.st?al.city+', '+al.st:esPlaceGet()));
+  host.innerHTML=wkHtml(v);
+  var wg=$('#otp-wkGo');if(wg)wg.addEventListener('click',wkLoad);
+  var wi=$('#otp-wkIn');if(wi)wi.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();wkLoad()}});
+  var wpb=$('#otp-wkPlan');if(wpb)wpb.addEventListener('click',wpFromSweep);
+}
+/* opens NEAR ME on Estate sales (from Plan my weekend, or the email's plan link) */
+function nrWkShow(){
+  nrWkTab();
+  if(typeof nearOpen==='function'&&nearOpen()){nrMode('weekend');return}
+  NR.wkGo=1;openNear();
+}
+/* v8.22 Plan my weekend (worker v193 /order and /weekend/plan): the Sweep's sales as a day-by-day route, shown in NEAR ME >
+   Estate sales in place of the Sweep (a back button returns to it). Opened from "Plan my weekend" under the Sweep
+   results, or from the Thursday email's button (?wkplan=<ids>&wkp=<picks>&wkzip=ZIP,
    signed by the worker; no app or sign-in). The start is the place the sweep used (the typed town, the phone, or the
    email's ZIP); when there is none, the saved ZIP (Den > Settings > Only what fits); when there is no ZIP either, one ZIP
    box. Top picks start checked, the others are one tap. wpSplit puts each checked sale on a day it is open (Saturday,
@@ -4851,13 +4891,13 @@ function wpHtml(){
   if(WP.missing)h+='<p class="nearp">'+WP.missing+' sale'+(WP.missing===1?' from the email has':'s from the email have')+' ended or come down since.</p>';
   return h+'<p class="nearp wk-src">Sales from EstateSales.net. Hours and addresses can change; check the sale page before you go.</p></div>';
 }
-function wpDraw(){var b=$('#otp-sheetB');if(b&&$('#otp-wp'))b.innerHTML=wpHtml()}
+function wpDraw(){if(WK.planOn&&$('#otp-wp'))rWk()}
 /* o: { sales, start: {lat, lng, label, me} or null, missing } */
 function wpOpen(o){
   WP.sales=(o.sales||[]).filter(function(s){return s&&wkUrlOk(s.url)});WP.on={};WP.here=null;WP.ord={};WP.zipBox=false;WP.err=o.err||'';WP.busy=!!o.busy;WP.missing=o.missing||0;
   WP.sales.forEach(function(s){if(wpPick(s)&&s.addr)WP.on[s.id]=1});
   WP.start=o.start&&typeof o.start.lat==='number'?o.start:null;
-  openSheet('Plan my weekend',wpHtml());
+  WK.planOn=true;nrWkShow();rWk();
   if(WP.busy)return;
   if(WP.start){wpPlan();return}
   var z=prefs().zip;   /* no start from the sweep: the saved ZIP, else one ZIP box */
@@ -4887,6 +4927,7 @@ try{(function(){
   var q='ids='+E(m[1])+'&p='+E(g('wkp'))+'&zip='+E(g('wkzip'))+'&x='+E(g('wkx'))+'&s='+E(g('wks'))+'&tz='+E(browserTz()||'');
   var rest=location.search.replace(/^\?/,'').split('&').filter(function(x){return x&&!/^wk(plan|p|zip|x|s)=/.test(x)}).join('&');
   try{history.replaceState(null,'',location.pathname+(rest?'?'+rest:'')+location.hash)}catch(e){}
+  WK.link=true;   /* the signed link opens NEAR ME > Estate sales for this visit, owner key or not */
   setTimeout(function(){
     wpOpen({sales:[],busy:true});
     var h={};if(fbOwnerKey())h['X-Prowl-Owner']=fbOwnerKey();
@@ -4909,13 +4950,11 @@ function rEs(){
     '<div class="addrow es-form"><input id="otp-esIn" type="text" placeholder="City, ST (like Novi, MI)" aria-label="City and state for estate sales" value="'+esc(atLive()&&atLive().city&&atLive().st?atLive().city+', '+atLive().st:esPlaceGet())+'"><button type="button" id="otp-esGo">'+(ES.busy?'Looking…':'Show sales')+'</button></div>'+
     (ES.err?'<p class="nearp es-err" role="status">'+esc(ES.err)+'</p>':'')+
     (d&&all.length?'<p class="nearp">'+items.length+' sale'+(items.length===1?'':'s')+(ES.far||!all.some(function(x){return x.dist!=null})?' near ':' within 30 miles of ')+esc(d.city+', '+d.st)+' from EstateSales.net'+(d.stale?' (from earlier)':'')+'. Tap one to open it there.'+(far||ES.far?' <button type="button" class="es-mapb" id="otp-esFar">'+(ES.far?'Only within 30 miles':'Show '+far+' farther')+'</button>':'')+(mapped?' <button type="button" class="es-mapb" id="otp-esMapB">'+(ES.map?'Hide the map':'Show on a map')+'</button>':'')+'</p>'+
-      '<div id="otp-esMap" class="es-map"'+(ES.map?'':' hidden')+'></div><div class="es-list">'+esList(items)+'</div>':'')+wkHtml();   /* v8.22: Weekend sweep */
+      '<div id="otp-esMap" class="es-map"'+(ES.map?'':' hidden')+'></div><div class="es-list">'+esList(items)+'</div>':'');   /* v8.22: the Weekend sweep is NEAR ME > Estate sales now (rWk) */
   var go=$('#otp-esGo'),inp=$('#otp-esIn');
   if(go)go.addEventListener('click',function(){esLoad(inp.value)});
   if(inp)inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();esLoad(inp.value)}});
   var fb=$('#otp-esFar');if(fb)fb.addEventListener('click',function(){ES.far=!ES.far;ES.map=null;rEs()});
-  var wg=$('#otp-wkGo');if(wg)wg.addEventListener('click',wkLoad);   /* v8.22 */
-  var wpb=$('#otp-wkPlan');if(wpb)wpb.addEventListener('click',wpFromSweep);   /* v8.22 Plan my weekend */
   var mb=$('#otp-esMapB');if(mb)mb.addEventListener('click',function(){if(ES.map){ES.map=null;rEs();return}esMap(items)});
   if(ES.map)esMap(items);
 }
@@ -12211,17 +12250,19 @@ function nrShrink(src,max,q,cb){
 function nrNearestStop(t){var p=NR.pos&&Date.now()-NR.posAt<900000?NR.pos:null,best=null,bd=2,i,s,d;if(!p||!t||!t.stops)return null;for(i=0;i<t.stops.length;i++){s=t.stops[i];if(typeof s.lat!=='number'||typeof s.lng!=='number')continue;d=nrKm(p,s);if(d<bd){bd=d;best=s}}return best}
 /* ---- the screen ---- */
 function nrMode(m){
-  if(m!=='around'&&m!=='trips')m='trip';
-  NR.mode=m;var a=m==='around',T={around:['#otp-nrT1','#otp-nrAround'],trip:['#otp-nrT2','#otp-nrTrip'],trips:['#otp-nrT3','#otp-nrTripsPane']},k,tb,pn;   /* v7.69: a third tab, TRIPS */
+  if(m!=='around'&&m!=='trips'&&m!=='weekend')m='trip';
+  if(m==='weekend'&&!nrWkTab())m='around';   /* v8.22: Estate sales, beside Trips, only where the Sweep is allowed */
+  NR.mode=m;var a=m==='around',T={around:['#otp-nrT1','#otp-nrAround'],trip:['#otp-nrT2','#otp-nrTrip'],trips:['#otp-nrT3','#otp-nrTripsPane'],weekend:['#otp-nrT4','#otp-nrWkPane']},k,tb,pn;   /* v7.69: a third tab, TRIPS; v8.22: a fourth, Estate sales */
   for(k in T){tb=$(T[k][0]);pn=$(T[k][1]);if(tb){tb.classList.toggle('on',k===m);tb.setAttribute('aria-selected',String(k===m))}if(pn)pn.hidden=k!==m}
   if(a){nrFoot(null);nrAroundLoad()}
   else if(m==='trips'){nrFoot(null);nrTripsLoad();nrJoinDraw()}
+  else if(m==='weekend'){nrFoot(null);rWk()}
   else{rNrDays();rNrDetour();rNrVias();nrTripsLoad();nrFoot(NR.view||NR.built);var fi=$('#otp-nrFrom'),pl=atLive();if(fi&&!fi.value&&pl)fi.value=pl.town;rNrFrom();rNrTripL();rNrOpts();rNrRecent()}   /* v7.62 */   /* v7.57: no keyboard until the box is tapped (the owner) */
 }
 function openNear(){
   if(!near||near.classList.contains('on'))return;
   if(den.classList.contains('on'))closeDen();if(dw.classList.contains('on'))closeDw();if(pho&&pho.classList.contains('on'))closePhoto();
-  NR.lf=document.activeElement;near.hidden=false;NR.whereOpen=false;rDenLocal();rNrCats();rAtBar();rNrWhere();atErr('');if(nrInvGet())NR.mode='trips';nrMode(NR.mode);   /* v7.69: an invite waiting opens on TRIPS */
+  NR.lf=document.activeElement;near.hidden=false;NR.whereOpen=false;rDenLocal();rNrCats();rAtBar();rNrWhere();atErr('');nrWkTab();if(NR.wkGo){NR.wkGo=0;NR.mode='weekend'}else if(nrInvGet())NR.mode='trips';nrMode(NR.mode);   /* v8.22: Plan my weekend and the email's plan link open on Estate sales */   /* v7.69: an invite waiting opens on TRIPS */
   requestAnimationFrame(function(){sc.classList.add('on');near.classList.add('on')});
   var c=$('#otp-nearClose');if(c)c.focus();
 }
@@ -12232,6 +12273,7 @@ if(near){
   $('#otp-nrT1').addEventListener('click',function(){nrMode('around')});
   $('#otp-nrT2').addEventListener('click',function(){nrMode('trip')});
   $('#otp-nrT3').addEventListener('click',function(){nrMode('trips')});   /* v7.69 */
+  $('#otp-nrT4').addEventListener('click',function(){nrMode('weekend')});   /* v8.22: Estate sales (the Sweep, Plan my weekend) */
   (function(){   /* v7.69: arriving on an invite link (?trip=<id>.<code>): kept until used, the address tidied, NEAR ME open on TRIPS */
     var mm=/[?&]trip=(t[a-z0-9]{9}\.[0-9a-f]{24})(?:&|$)/.exec(location.search);if(!mm)return;
     nrInvSet(mm[1]);

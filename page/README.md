@@ -159,9 +159,12 @@ number of sales that came from that list: it should equal `count`. Lists are kep
 
 ## Weekend sweep (page v8.22, worker v193)
 
-Under Den › Local › Estate sales near you (same gate: the owner's key until `SALES_PUBLIC=on`), **This weekend** lists
-the estate sales open from the coming Friday to Sunday within 25 miles of the place typed above (or the phone's
-position). The page sends the point (2 decimals), its time zone and the Den's own hunts (`h=a|b|c`, sample hunts left
+In **NEAR ME › Estate sales**, NEAR ME's fourth tab, right after Trips (`#otp-nrT4`, pane `#otp-nrWkPane`, drawn by
+`rWk`; same gate: the owner's key until `SALES_PUBLIC=on`, so the tab is hidden without it), **This weekend** lists the
+estate sales open from the coming Friday to Sunday within 25 miles of the place typed in the tab's box (`#otp-wkIn`, or
+the phone's position). It moved there from Around you › More ways to look › Estate sales near you (the old Den › Local
+block) on Matt's word (2026-10-30: "it shouldn't be put into den, it needs to be in the new near me section beside
+trips"); that block keeps only its EstateSales.net city list. With four tabs a phone lays them two by two (`.tabs.nr-4`). The page sends the point (2 decimals), its time zone and the Den's own hunts (`h=a|b|c`, sample hunts left
 out) to worker `GET /weekend`; the worker reads EstateSales.net's list near the point and each nearby sale's page, and
 answers `picks` (a hunt's every word is in the sale's title, description or a photo caption: `match {hunt, where}`) and
 `rest`, at most 12, each with `url` (the sale's own page), `city`, `st`, `co`, `dist`, `hours` (already in the device's
@@ -173,7 +176,9 @@ the open questions about EstateSales.net's permission.
 
 **Plan my weekend** (same versions): "Plan my weekend" under the Sweep results, or the Thursday email's button
 (`?wkplan=<ids>&wkp=<picks>&wkzip=ZIP&wkx&wks`, signed by the worker, read at load and then taken out of the address bar;
-the page asks `GET /weekend/plan` for the sales) opens the planner in `#otp-sheet`. `wpSplit` splits the checked sales
+the page asks `GET /weekend/plan` for the sales) opens the planner in the same NEAR ME › Estate sales tab, in place of
+the Sweep (`#otp-wpHost`; "‹ This weekend's sales" returns to it, owner only). The email link opens NEAR ME on that tab
+(`nrWkShow`) and shows the tab for that visit even without the owner's key. `wpSplit` splits the checked sales
 into days (Saturday, Sunday, Friday; 5 a day; 45 min a stop; never before opening or within 30 min of closing), each day
 is ordered with Road Trip's `/order` (kept in the split's order when the optimizer's would break a sale's hours), and
 each day has one Google Maps and one Apple Maps link and Rebuild from here. Address-pending sales stay off the route.

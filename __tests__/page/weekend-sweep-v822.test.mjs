@@ -1,5 +1,6 @@
-// Page v8.22 Weekend sweep (worker v193 /weekend): under Den > Local's "Estate sales near you" (the owner's key until
-// SALES_PUBLIC), "Sweep this weekend" looks up the place typed above, sends its point (2 decimals), this device's time
+// Page v8.22 Weekend sweep (worker v193 /weekend): NEAR ME's own Estate sales tab, beside Trips (the owner's key until
+// SALES_PUBLIC; Matt: "it shouldn't be put into den, it needs to be in the new near me section beside trips"). "Sweep
+// this weekend" looks up the place typed in the tab's box, sends its point (2 decimals), this device's time
 // zone and the Den's own hunts, and lists Top picks (with the hunt and where it matched) above the rest, each opening the
 // sale's own page on EstateSales.net. Den > Settings gets a Thursday estate sales switch when the worker says it can go.
 import { test } from 'node:test';
@@ -23,26 +24,66 @@ function open(storage, calls, answer = WEEKEND) {
   return loadPage({ fetchImpl, storage: { 'prowl.v36': { seen: true, hunts: ['typewriter', 'pyrex bowl'], h21: 1, h36: 1, h42: 1, h68: 1 }, ...storage } });
 }
 
-test('without the owner key there is no weekend sweep (the estate box stays hidden)', async () => {
+async function nearWeekend(p) {
+  await tick(50);
+  p.$('#otp-dock .db[data-m="local"]').click();
+  await tick(50);
+  p.$('#otp-nrT4').click();
+  await tick(30);
+}
+
+test('without the owner key there is no weekend sweep: no Estate sales tab in NEAR ME, nothing asked', async () => {
   const calls = [], p = open({}, calls);
   await tick(50);
-  p.$('#otp-dock .db[data-m="den"]').click();
+  p.$('#otp-dock .db[data-m="local"]').click();
   await tick(50);
+  assert.equal(p.$('#otp-nrT4').hidden, true, 'the tab stays hidden');
+  assert.equal(p.$('#otp-nrT4').parentNode.classList.contains('nr-4'), false);
+  p.$('#otp-nrT4').click();
+  await tick(30);
+  assert.equal(p.$('#otp-nrWkPane').hidden, true, 'a hidden tab cannot be opened');
+  assert.equal(p.$('#otp-nrT1').getAttribute('aria-selected'), 'true');
   assert.equal(p.$('#otp-wk'), null);
-  assert.equal(calls.length, 0);
+  assert.ok(!calls.some((c) => /\/weekend\?/.test(c.u)));
+  await p.close();
+});
+
+test('the owner finds the Sweep in NEAR ME > Estate sales, beside Trips, and no longer under Estate sales near you', async () => {
+  const calls = [], p = open({ 'prowl.owner': OWNER }, calls);
+  await tick(50);
+  p.$('#otp-dock .db[data-m="local"]').click();
+  await tick(50);
+  const tabs = p.$$('#otp-near [role="tab"]').map((t) => t.textContent);
+  assert.deepEqual(tabs, ['Around you', 'Road trip', 'Trips', 'Estate sales'], 'Estate sales sits right after Trips');
+  assert.equal(p.$('#otp-nrT4').hidden, false);
+  assert.equal(p.$('#otp-nrT4').parentNode.classList.contains('nr-4'), true);
+  assert.equal(p.$('#otp-esBox').hidden, false, 'Estate sales near you is still under More ways to look');
+  assert.equal(p.$('#otp-esBox #otp-wk'), null, 'but without the Sweep');
+  assert.equal(p.$('#otp-denLocal #otp-wkGo'), null);
+  p.$('#otp-nrT4').click();
+  await tick(30);
+  assert.equal(p.$('#otp-nrT4').getAttribute('aria-selected'), 'true');
+  assert.equal(p.$('#otp-nrWkPane').hidden, false);
+  assert.equal(p.$('#otp-nrTripsPane').hidden, true);
+  assert.equal(p.$('#otp-nrAround').hidden, true);
+  assert.ok(p.$('#otp-nrWkPane #otp-wk'), 'the Sweep is in the Estate sales pane');
+  assert.equal(p.$$('#otp-wk').length, 1, 'one Sweep, no duplicate');
+  p.$('#otp-nrT3').click();
+  await tick(30);
+  assert.equal(p.$('#otp-nrTripsPane').hidden, false, 'Trips still opens from beside it');
+  assert.equal(p.$('#otp-nrWkPane').hidden, true);
+  assert.deepEqual(p.errors, []);
   await p.close();
 });
 
 test('the owner sweeps the weekend: the typed place, the hunts and the time zone go; picks first, links only to EstateSales.net', async () => {
   const calls = [], p = open({ 'prowl.owner': OWNER }, calls);
-  await tick(50);
-  p.$('#otp-dock .db[data-m="den"]').click();
-  await tick(50);
+  await nearWeekend(p);
   const box = p.$('#otp-wk');
-  assert.ok(box, 'the weekend box sits in Estate sales near you');
+  assert.ok(box, 'the weekend box sits in NEAR ME > Estate sales');
   assert.match(box.textContent, /This weekend\s*Fri–Sun · 25 mi/);
   assert.equal(p.$('#otp-wkGo').textContent, 'Sweep this weekend');
-  p.$('#otp-esIn').value = 'Novi, MI';
+  p.$('#otp-wkIn').value = 'Novi, MI';
   p.$('#otp-wkGo').click();
   await waitFor(() => p.$$('#otp-wk .wk-row').length === 2);
   const wk = calls.find((c) => /\/weekend\?/.test(c.u));
@@ -71,10 +112,8 @@ test('the owner sweeps the weekend: the typed place, the hunts and the time zone
 
 test('nothing that mentions a hunt: the rest are listed under "This weekend nearby" with a note', async () => {
   const calls = [], p = open({ 'prowl.owner': OWNER }, calls, { ...WEEKEND, picks: [], rest: [WEEKEND.rest[0]] });
-  await tick(50);
-  p.$('#otp-dock .db[data-m="den"]').click();
-  await tick(50);
-  p.$('#otp-esIn').value = 'Novi, MI';
+  await nearWeekend(p);
+  p.$('#otp-wkIn').value = 'Novi, MI';
   p.$('#otp-wkGo').click();
   await waitFor(() => p.$$('#otp-wk .wk-row').length === 1);
   assert.match(p.$('#otp-wk').textContent, /None of this weekend’s sales mention your hunts yet[\s\S]*This weekend nearby/);

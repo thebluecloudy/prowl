@@ -1,6 +1,6 @@
 // Page v8.22 Plan my weekend (worker v193 /order and /weekend/plan): the Sweep's sales as a day-by-day route. "Plan my
 // weekend" under the Sweep results (and the Thursday email's button, ?wkplan=<ids>&wkp=<picks>&wkzip=ZIP&wkx&wks) opens
-// the planner: Top picks checked, the rest one tap; each checked sale on a day it is open (Saturday, then Sunday, then
+// the planner in NEAR ME > Estate sales, beside Trips: Top picks checked, the rest one tap; each checked sale on a day it is open (Saturday, then Sunday, then
 // Friday), at most 5 a day, 45 min at each, never reached before it opens or within 30 min of closing; what does not fit
 // is named; address-pending sales stay off the route; Road Trip's /order orders each day; one Google and one Apple Maps
 // link a day; Rebuild from here starts a day again from the phone.
@@ -106,9 +106,11 @@ function rig(o = {}) {
 }
 async function sweep(p) {
   await tick(50);
-  p.$('#otp-dock .db[data-m="den"]').click();
+  p.$('#otp-dock .db[data-m="local"]').click();
   await tick(50);
-  p.$('#otp-esIn').value = 'Novi, MI';
+  p.$('#otp-nrT4').click();
+  await tick(30);
+  p.$('#otp-wkIn').value = 'Novi, MI';
   p.$('#otp-wkGo').click();
   await waitFor(() => p.$('#otp-wkPlan'));
 }
@@ -119,7 +121,11 @@ test('Plan my weekend under the Sweep: Top picks checked, the rest one tap; each
   assert.match(p.$('#otp-wkPlan').textContent, /Plan my weekend/);
   p.$('#otp-wkPlan').click();
   await waitFor(() => p.$('#otp-wp .wp-day'));
-  assert.equal(p.$('#otp-sheetT').textContent, 'Plan my weekend');
+  assert.ok(p.$('#otp-nrWkPane #otp-wpHost #otp-wp'), 'the planner opens in NEAR ME > Estate sales');
+  assert.equal(p.$('#otp-nrT4').getAttribute('aria-selected'), 'true');
+  assert.match(p.$('#otp-wpHost .nearh').textContent, /Plan my weekend/);
+  assert.equal(p.$('#otp-wkHost').hidden, true, 'in place of the Sweep');
+  assert.equal(p.$('#otp-sheet').classList.contains('on'), false, 'not a sheet any more');
   assert.match(p.$('#otp-wp .wp-from').textContent, /From Novi, MI/, 'the place the sweep used');
   const box = (id) => p.$('#otp-wp input[data-wpid="' + id + '"]');
   assert.equal(box('5200001').checked, true, 'a Top pick starts checked');
@@ -146,6 +152,11 @@ test('Plan my weekend under the Sweep: Top picks checked, the rest one tap; each
   assert.match(links[1].href, /^https:\/\/maps\.apple\.com\/directions\?/);
   assert.match(decodeURIComponent(links[1].href), /002 Grand River Ave/);
   assert.ok(day.querySelector('[data-wp="here"]'), 'Rebuild from here');
+  p.$('#otp-wkBack').click();
+  await tick(20);
+  assert.equal(p.$('#otp-wpHost').hidden, true, 'back to the Sweep');
+  assert.equal(p.$$('#otp-wk .wk-row').length, 4, 'with its results still there');
+  assert.ok(p.$('#otp-wkPlan'));
   assert.deepEqual(p.errors, []);
   await p.close();
 });
@@ -176,6 +187,11 @@ test('the Thursday email link opens the planner with no app or sign-in: the sale
   assert.ok(q.has('tz'));
   assert.equal(c.o.headers['X-Prowl-Owner'], undefined, 'no owner key needed');
   assert.equal(p.win.location.search, '', 'the plan link leaves the address bar');
+  assert.equal(p.$('#otp-near').hidden, false, 'NEAR ME opens');
+  assert.equal(p.$('#otp-nrT4').hidden, false, 'its Estate sales tab shows for the link, with no owner key');
+  assert.equal(p.$('#otp-nrT4').getAttribute('aria-selected'), 'true');
+  assert.ok(p.$('#otp-nrWkPane #otp-wp'), 'the planner is in NEAR ME > Estate sales');
+  assert.equal(p.$('#otp-wkBack'), null, 'no way back to a Sweep it cannot use');
   assert.match(p.$('#otp-wp .wp-from').textContent, /From 48375 \(Novi\)/, 'the ZIP the sweep used');
   assert.equal(p.$('#otp-wp input[data-wpid="5200001"]').checked, true);
   assert.match(p.$('#otp-wp').textContent, /1 sale from the email has ended/);

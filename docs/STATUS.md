@@ -6,15 +6,20 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.22 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.22** | 375,773 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.22** | 375,372 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v193** | |
 
 Recently shipped, newest first:
 
 - **v8.22 / v193: Weekend sweep** (Hark, for Matt, 2026-10-30; draft PR on `hark/estate-sweep`, live only once merged).
   Two parts on one worker sweep (`worker/weekend.js`, `wkSweep` in `worker/index.js`):
-  1. **In the app**, Den > Local > Estate sales near you > **This weekend**: "Sweep this weekend" sends the place typed
-     in the box above (looked up with `/geo`, as In a location does), else the phone's position, rounded to 2 decimals,
+  1. **In the app**, **NEAR ME > Estate sales** (a fourth NEAR ME tab, right after Trips: `#otp-nrT4`, pane
+     `#otp-nrWkPane`, `nrMode('weekend')`, drawn by `rWk`). Matt, 2026-10-30: "it shouldn't be put into den, it needs
+     to be in the new near me section beside trips", so it is no longer under Around you > More ways to look > Estate
+     sales near you (the old Den > Local block, `#otp-esBox`, which keeps only its EstateSales.net city list). The tab
+     shows only with the owner's key (the gate below), or after the email's signed plan link opened the planner on that
+     visit; with four tabs, a phone lays them two by two (`.tabs.nr-4`). "Sweep this weekend" sends the place typed in
+     the tab's own box (`#otp-wkIn`, looked up with `/geo`, as In a location does), else the phone's position, rounded to 2 decimals,
      with the Den's own hunts and the device's time zone to `GET /weekend?lat&lng&r=25&tz&h=a|b|c`. It lists the
      estate sales open from the coming Friday to Sunday (this weekend from Friday on) within 25 miles: **Top picks**
      first (a sale whose title, description or photo captions hold every word of a hunt, with the hunt and where it
@@ -36,7 +41,8 @@ Recently shipped, newest first:
   (`wkd1:`, dead links as `gone`), a ZIP's centre 90 days (`wkz:`). If the list fails, the city page (`esFetch`)
   stands in. Tests `worker/__tests__/weekend-v193.test.mjs`, `__tests__/page/weekend-sweep-v822.test.mjs`.
   3. **Plan my weekend** (same PR and versions, Matt approved the design 2026-10-30). A "Plan my weekend" button under
-     the Sweep results, and one in the Thursday email, open a planner (the page's `#otp-sheet`, `wpOpen`):
+     the Sweep results, and one in the Thursday email, open a planner (`wpOpen`) in that same NEAR ME > Estate sales tab, in place of the Sweep
+     (`#otp-wpHost`; "‹ This weekend's sales" goes back, owner only). The email link opens NEAR ME on that tab:
      - **Start:** the place the sweep used (typed town, or the phone); for the email link the ZIP the sweep used; else
        the saved ZIP (Only what fits); else just one ZIP box (looked up with `/geo`).
      - **Sales:** Top picks start checked, the rest one tap. A sale whose company has not posted the street address yet
@@ -69,6 +75,13 @@ Recently shipped, newest first:
        key, or `SALES_PUBLIC=on`; 410 once run out; same per-IP limit as `/weekend`), which answers the start (the
        ZIP's centre) and the sales from the same cached sweep. No new localStorage keys. Tests
        `__tests__/page/weekend-plan-v822.test.mjs` and the Plan my weekend part of `worker/__tests__/weekend-v193.test.mjs`.
+  4. **Where it lives** (same PR and versions; no version bump since v8.22 is not live yet): the move to NEAR ME >
+     Estate sales described in part 1. The FAQ answer "How do I find antique shops and estate sales near me?" (visible
+     and FAQPage JSON-LD, kept identical) said "Open the Den and tap Local"; Local has been in NEAR ME since v7.36, so it
+     now says to tap Near me (Around you, then More ways to look). It does not mention the owner-only Sweep. Tests:
+     `__tests__/page/weekend-sweep-v822.test.mjs` (tab after Trips, hidden without the key, no Sweep left in Estate
+     sales near you), `weekend-plan-v822.test.mjs` (planner and email link in NEAR ME > Estate sales, back button);
+     `near-section-v736` and `near-polish-v773` now count only the visible NEAR ME tabs.
 - **v8.21: the Store tab icon is written so Shopify keeps it byte for byte.** v8.20's deploy saved the page but failed
   the md5 check: its icon used self-closing `<path …/>`, which the rest of the page never does (Shopify rewrites them).
   Now `<path …></path>` like every other icon. Nothing visible changes. Test in `__tests__/page/store-tab-v820.test.mjs`.
@@ -1752,7 +1765,7 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `hark/estate-sweep` | Hark | Weekend sweep: this weekend's estate sales in Den > Local with Top picks for your hunts, a Thursday Pro email, and Plan my weekend (day-by-day route, also from the email) (page v8.22 / worker v193) | Draft PR, not reviewed. Needs Matt's call on the EstateSales.net questions under Waiting on Matt. |
+| `hark/estate-sweep` | Hark | Weekend sweep: this weekend's estate sales in NEAR ME > Estate sales (beside Trips) with Top picks for your hunts, a Thursday Pro email, and Plan my weekend (day-by-day route, also from the email) (page v8.22 / worker v193) | Draft PR, not reviewed. Needs Matt's call on the EstateSales.net questions under Waiting on Matt. |
 
 Next free numbers: **page v8.23, worker v194**. Claim one here when you start.
 
