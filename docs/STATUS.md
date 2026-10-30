@@ -1,16 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-29 (v8.16 / v191).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-29 (v8.17 / v191).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.16** | 376,245 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.17** | 376,245 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v191** | |
 
 Recently shipped, newest first:
 
+- **v8.17: every hunt on one marketplace** (Matt, 2026-10-29: "i want to look at all hunts in one store"). The one-site
+  screen (the Just <site> pill with an empty box; the pill is turned on in Den > Settings > One-site button) gets an
+  "All N hunts on <site>" button when there are 2+ hunts. It runs every hunt on that one site: one row per hunt (hunt
+  name as the title), unfolded even in Keep it simple, with the usual staggered Open all in batches of 25. No new keys.
+  Test `__tests__/page/one-site-all-hunts-v817.test.mjs`.
 - **v8.16: Upgrade guards** (Matt's buy test, 2026-10-29). A signed-in Pro member's Upgrade no longer opens a second
   checkout ("You already have Prowl Pro" in the email panel). A first-time buyer whose cart already has another discount
   code gets a banner first (PROWLMONTH combines with nothing, so the free month would be dropped): Open my cart,
@@ -1661,7 +1666,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.16, worker v192**. Claim one here when you start.
+Next free numbers: **page v8.18, worker v192**. Claim one here when you start.
 
 ## What's next
 
