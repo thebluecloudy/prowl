@@ -1705,7 +1705,7 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
      /pages/prowl-app.
   4. Resend dashboard: download the **DPA** and file it.
   5. Google Cloud Console: a **daily quota and a budget alert** on GOOGLE_MAPS_KEY.
-  6. PROWLMONTH one use per customer: below, still open. (The order app works since 2026-10-30.)
+  6. Done (Matt, 2026-10-30): PROWLMONTH is one use per customer, first payment only. The order app works too.
   7. Done (Matt, 2026-10-30): the **FB_INGEST_KEY** secret is deleted. If Prowl-the-agent still runs the old morning
      sweep, it now only gets 410 Gone from /fb-ingest; turn that run off when convenient.
 
@@ -1740,7 +1740,8 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 - **Done (Matt, 2026-10-30): the order app works.** The keys were in Cloudflare but Shopify refused them ("shopify
   token refused") until Matt installed the Prowl app on the store; then admin > Re-check Pro on a free member answered
   "Checked the shop: no current Prowl Pro order". Since v192 a refusal names Shopify's reason.
-- **In Shopify:** set the PROWLMONTH discount to one use per customer (the code is visible in the page source).
+- **Done (Matt, 2026-10-30): PROWLMONTH is one use per customer**, discount on the first payment only. A new email or Shop
+  Pay identity is a new customer to Shopify, so the free month can still be had again that way.
 - **Known gap:** if adding Pro to the cart fails, the page falls back to `/products/prowl-pro` without the code.
 - **Next:** check Den > Settings shows the free month and that the welcome email came.
 - **Facebook alerts cost test** (Apify, 5 real hunts in Detroit/Novi). Needs a go-ahead and the Apify token.
