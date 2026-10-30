@@ -1706,8 +1706,8 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
   4. Resend dashboard: download the **DPA** and file it.
   5. Google Cloud Console: a **daily quota and a budget alert** on GOOGLE_MAPS_KEY.
   6. PROWLMONTH one use per customer: below, still open. (The order app works since 2026-10-30.)
-  7. The Facebook sweep is retired (v178): stop its morning run on Prowl-the-agent, then delete the **FB_INGEST_KEY**
-     secret in Cloudflare > Workers > prowl > Settings > Variables and secrets.
+  7. Done (Matt, 2026-10-30): the **FB_INGEST_KEY** secret is deleted. If Prowl-the-agent still runs the old morning
+     sweep, it now only gets 410 Gone from /fb-ingest; turn that run off when convenient.
 
 - **The branch rule for `main` is set but not enforced** (2026-10-23). Matt added it (require **build**, require up
   to date), but GitHub enforces branch rules on private repositories only on a paid plan (GitHub Pro, about $4 a month);
