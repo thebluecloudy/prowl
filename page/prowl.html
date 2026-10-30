@@ -3403,7 +3403,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <nav id="otp-dock" aria-label="Prowl modes">
   <button class="db on" data-m="prowl" aria-label="Hunt: one search across every marketplace"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4.3-4.3"></path></svg><span>Hunt</span></button>
   <button class="db" data-m="daily" aria-label="Daily: what is new in your hunts"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg><span>Daily</span><em class="bd" id="otp-ds" hidden></em></button>
-  <button class="db" data-m="store" id="otp-storeBtn" aria-label="Store: all your hunts on one marketplace"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9l1.5-4h13L20 9"/><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9"/><path d="M5.5 11.5V20h13v-8.5"/><path d="M10 20v-5h4v5"/></svg><span>Store</span></button>
+  <button class="db" data-m="store" id="otp-storeBtn" aria-label="Store: all your hunts on one marketplace"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9l1.5-4h13L20 9"></path><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9"></path><path d="M5.5 11.5V20h13v-8.5"></path><path d="M10 20v-5h4v5"></path></svg><span>Store</span></button>
   <button class="db" data-m="flock" id="otp-flockBtn" aria-label="Flock: a look across your hunts"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#otp-swallow"></use></svg><span>Flock</span><em class="bd" id="otp-flbd" hidden></em></button>
   <button class="db" data-m="local" id="otp-localBtn" aria-label="Near me: the shops around you, and road trips"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.4"></circle></svg><span>Near me</span></button>
   <button class="db" data-m="den" id="otp-denBtn" aria-label="Den: hunts and settings"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"></path></svg><span>Den</span></button>
@@ -3903,7 +3903,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.20';
+var PROWL_VERSION='v8.21';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
