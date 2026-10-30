@@ -806,6 +806,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .fz-hunts{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
 .scout-app-wrapper .fz-hunts button{min-height:40px;border:1px solid var(--l2);border-radius:999px;padding:6px 14px;font-size:15px;background:var(--cd);color:var(--i1);text-transform:none}
 .scout-app-wrapper .fz-hunts button.lk{border-color:var(--i2);font-weight:700}
+.scout-app-wrapper .fz-all{width:100%;min-height:48px;margin:4px 0 14px;font-size:16px}
 .scout-app-wrapper .fz-note{font-size:14px;color:var(--i2);margin:12px 0 0}
 .scout-app-wrapper .rf .fbx{width:100%;height:auto;min-height:48px;padding:12px 16px;margin:0 0 12px;white-space:normal;line-height:1.35;text-align:center;border-color:var(--ac);color:var(--ink);background:var(--ac-soft)}
 .scout-app-wrapper .rf .fbx b{color:var(--ac);font-weight:800}
@@ -3888,7 +3889,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.16';
+var PROWL_VERSION='v8.17';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -4960,6 +4961,7 @@ function rFocus(){
     '<div class=fz>'+
     '<form class=fz-row id=otp-ff><input id=otp-fq type=search enterkeyhint=search autocomplete=off placeholder="Search '+esc(n)+' only" aria-label="Search '+esc(n)+' only"><button class="b p" type=submit>Search</button></form>'+
     '<div class=fz-row><select id=otp-fs aria-label="Marketplace">'+opts+'</select></div>'+
+    (hs.length>1?'<button class="b p fz-all" id=otp-fall type=button>All '+hs.length+' hunts on '+esc(n)+'</button>':'')+   /* v8.17 */
     (hs.length?'<p class=fz-lab>Or tap one of your hunts</p><ul class=fz-hunts>'+chipsH+'</ul>':'')+
     '<p class=fz-note>Only '+esc(n)+' opens. Nothing else launches.</p>'+
     '</div></div>';
@@ -4968,7 +4970,11 @@ function rFocus(){
   var fx=$('#otp-fx');if(fx)fx.addEventListener('click',clearRun);
   var ul=res.querySelector('.fz-hunts');
   if(ul)ul.addEventListener('click',function(e){var b=e.target.closest('button[data-ft]');if(b)focusGo(b.getAttribute('data-ft'))});
+  var fa=$('#otp-fall');if(fa)fa.addEventListener('click',function(){runProwl('one',hs.map(function(h){return h.t}),[oneId()],oneName())});
 }
+/* v8.17 (Matt: "i want to look at all hunts in one store"): the one-site screen's All N hunts button runs every hunt on
+   that one marketplace. Its screen lists one row per hunt, open from the start (no More places to look), with Open all. */
+function oneAll(r){return !!(r&&r.mode==='one'&&r.terms&&r.terms.length>1)}
 
 function runProwl(mode,c,scope,label){
   st.focus=false;
@@ -5402,7 +5408,7 @@ function rRes(){
 
   var head='<div class=rh><div>'+
     '<p class=eb>Prowling · '+esc(modeLabel(r))+'</p>'+
-    '<h2>\u201C'+esc(r.terms.join(' · '))+'\u201D</h2>';
+    (oneAll(r)?'<h2>All '+r.terms.length+' hunts on '+esc(oneName())+'</h2>':'<h2>\u201C'+esc(r.terms.join(' · '))+'\u201D</h2>');
 
   if(r.phase==='launching'){
     var pct=Math.round((r.opened/Math.max(1,total))*100);
@@ -5435,6 +5441,7 @@ function rRes(){
      marketplace" over a list of ten metros reads like a bug. */
   var spread=(r.mode==='facebook')
     ?('<strong>'+total+'</strong> metros ready')
+    :oneAll(r)?('<strong>'+total+'</strong> searches ready, one per hunt')
     :('<strong>'+r.scope.length+'</strong> marketplace'+(r.scope.length===1?'':'s')+' ready');
   head+='<p class=rs>'+
     (ready?(r.mode==='facebook'?'<strong>'+total+'</strong> metros ready':spread)
@@ -5445,8 +5452,9 @@ function rRes(){
   var LOCALS={shopgoodwill:1,salvation:1,facebook:1,craigslist:1,offerup:1,estatesales:1,estatesalesnet:1,hibid:1,liveauction:1,ctbids:1,invaluable:1};
   var BADGE={ebay:'EB',etsy:'ET',mercari:'ME',mercarijp:'MJ',salvation:'SA',poshmark:'PM',depop:'DP',grailed:'GR',rubylane:'RL',chairish:'CH','1stdibs':'1D',reverb:'RV',whatnot:'WN',vinted:'VI',bonanza:'BZ',ecrater:'EC',abebooks:'AB',aptdeco:'AD',offerup:'OU',facebook:'FB',ebaysold:'$',shopgoodwill:'GW',estatesales:'ES',estatesalesnet:'ES',hibid:'HB',liveauction:'LA',ctbids:'CT',invaluable:'IV',craigslist:'CL'};
   function badge(x){return BADGE[x.mkt]||String(x.name||'?').replace(/[^A-Za-z0-9]/g,'').slice(0,2).toUpperCase()}
-  var groups=r.mode==='facebook'?[{k:'',ids:L.map(function(_,j){return j})}]:[{k:'Local & auctions',ids:[]},{k:'Online shops',ids:[]},{k:'Sold prices',ids:[]}];
-  if(r.mode!=='facebook')for(var gj=0;gj<total;gj++){var gm=L[gj].mkt;groups[gm==='ebaysold'?2:(LOCALS[gm]?0:1)].ids.push(gj)}
+  var oa1=oneAll(r);
+  var groups=(r.mode==='facebook'||oa1)?[{k:'',ids:L.map(function(_,j){return j})}]:[{k:'Local & auctions',ids:[]},{k:'Online shops',ids:[]},{k:'Sold prices',ids:[]}];
+  if(r.mode!=='facebook'&&!oa1)for(var gj=0;gj<total;gj++){var gm=L[gj].mkt;groups[gm==='ebaysold'?2:(LOCALS[gm]?0:1)].ids.push(gj)}
   /* v7.08: simple mode folds the list. v7.31: and everything under it (Facebook in every city, Instagram, sold prices,
      the tab notes) behind one More places to look */
   var rows='<button type=button class="gh dt-more" id=otp-dtMore aria-label="More places to look: all '+total+' marketplaces, Facebook, Instagram and sold prices">More places to look<small>All '+total+' marketplaces, Facebook, Instagram, sold prices</small></button><ul class=hits>',vi=!VINV;
@@ -5457,8 +5465,8 @@ function rRes(){
     var j=G.ids[gk],x=L[j];
     rows+='<li><a class=hit data-li='+j+' href="'+esc(outUrl(x))+'" target=_blank rel="noopener noreferrer">'+
       '<div class="hit-icon'+(LOCALS[x.mkt]?' loc':'')+'">'+esc(badge(x))+'</div>'+
-      '<div class=hit-body><p class=hit-title>'+esc(x.name)+'</p>'+
-      '<div class=hit-meta><span class=hit-src>'+esc(x.term)+'</span><span>'+esc(hostOf(x.url))+'</span></div></div>'+
+      '<div class=hit-body><p class=hit-title>'+esc(oa1?x.term:x.name)+'</p>'+
+      '<div class=hit-meta><span class=hit-src>'+esc(oa1?x.name:x.term)+'</span><span>'+esc(hostOf(x.url))+'</span></div></div>'+
       '<div class=hit-arrow>↗</div></a></li>';
     if(x.mkt==='vinted'&&!vi){vi=1;rows+='<li class=vinv><a href="'+esc(VINV)+'" target=_blank rel=noopener>New to Vinted? <b>Join with Matt\u2019s invite</b>: you each get $20 when you list 3 items, then $30 each at your first sale. Terms apply.</a></li>'}
    }
@@ -5468,7 +5476,7 @@ function rRes(){
   /* v7.54 (the owner: "i had a hard time finding ebay sold and terapeak at the bottom"): sold prices sit under the
      title, in Keep it simple too, not in the footer that waits behind More places to look */
   var comps=r.terms.length===1?compsRow(r.terms[0]):'';
-  res.innerHTML='<div class=rc>'+head+comps+huntBlock(r)+viewSw()+runLive(r)+rows+
+  res.innerHTML='<div class="rc'+(oa1?' dt-open':'')+'">'+head+comps+huntBlock(r)+viewSw()+runLive(r)+rows+
     '<div class=oabar>'+
       (paused
         ?'<button class="b p" id=otp-next type=button>Open next '+nextN+'</button>'+
