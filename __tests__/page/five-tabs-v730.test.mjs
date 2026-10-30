@@ -9,10 +9,10 @@ import { liveFetch, waitFor } from '../helpers/flockFixture.mjs';
 const DEN = { 'prowl.v36': { seen: true, hunts: [] } };
 const hosts = (p) => p.$$('#otp-res a.hit').map((a) => new URL(a.href).hostname.replace(/^www\./, ''));
 
-test('five tabs with plain names; no GOODWILL tab', async () => {
+test('six tabs with plain names (Store since v8.20); no GOODWILL tab', async () => {
   const p = loadPage({ storage: DEN });
   await tick(30);
-  assert.deepEqual(p.$$('#otp-dock .db span').map((s) => s.textContent), ['Hunt', 'Daily', 'Flock', 'Near me', 'Den']);
+  assert.deepEqual(p.$$('#otp-dock .db span').map((s) => s.textContent), ['Hunt', 'Daily', 'Store', 'Flock', 'Near me', 'Den']);
   assert.equal(p.$('#otp-oneBtn'), null);
   assert.equal(p.$('#otp-dock .db[data-m="one"]'), null);
   assert.match(p.$('#otp-dock .db[data-m="prowl"]').getAttribute('aria-label'), /^Hunt/);

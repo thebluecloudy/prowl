@@ -537,7 +537,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 [data-theme=uranium] .scout-app-wrapper .sb.on i{text-shadow:0 0 10px currentColor}
 .scout-app-wrapper .rm{width:38px;flex:0 0 38px;border:0;border-left:1px solid var(--ln);background:transparent;color:var(--mu);font-size:16px;padding:0}
 .scout-app-wrapper .rm:hover{background:var(--hover);color:var(--warn)}
-.scout-app-wrapper #otp-dock{position:fixed;left:0;right:0;bottom:0;z-index:40;width:100%;max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);background:var(--dock-bg);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--ln);border-bottom:0;border-radius:14px 14px 0 0;box-shadow:0 -6px 24px -10px var(--shadow);padding-bottom:env(safe-area-inset-bottom);overflow:hidden}
+.scout-app-wrapper #otp-dock{position:fixed;left:0;right:0;bottom:0;z-index:40;width:100%;max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr);background:var(--dock-bg);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--ln);border-bottom:0;border-radius:14px 14px 0 0;box-shadow:0 -6px 24px -10px var(--shadow);padding-bottom:env(safe-area-inset-bottom);overflow:hidden}
 .scout-app-wrapper .db{position:relative;height:70px;border:0;background:none;color:var(--mu);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:0 3px}
 .scout-app-wrapper .db:hover{background:var(--ac-soft)}
 .scout-app-wrapper .db span:first-child{font-size:13px;font-weight:800;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100% }
@@ -811,6 +811,14 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .ol-rest ul{list-style:none;margin:0 18px 14px;padding:0;display:flex;flex-wrap:wrap;gap:8px}
 .scout-app-wrapper .ol-rest a{display:inline-block;padding:8px 14px;border:1px solid var(--l2);border-radius:999px;color:var(--i1);font-size:15px;text-decoration:none}
 .scout-app-wrapper .ol-rc .dg-hd a.dg-run{display:inline-flex;align-items:center;text-decoration:none;white-space:nowrap}
+.scout-app-wrapper .st-bar{display:flex;align-items:center;gap:10px;margin:0 18px 10px}
+.scout-app-wrapper .st-lab{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--i2)}
+.scout-app-wrapper .st-bar select{flex:1;min-width:0;min-height:48px;padding:0 12px;border:1.5px solid var(--ac);border-radius:12px;background:var(--cd);color:var(--i1);font-size:17px;font-weight:700;-webkit-appearance:menulist;appearance:auto;text-transform:none}
+.scout-app-wrapper .st-note{margin:-2px 18px 10px;font-size:14px;color:var(--i2)}
+.scout-app-wrapper .st-note b{color:var(--ac);letter-spacing:.04em}
+.scout-app-wrapper .st-q{display:flex;gap:8px;margin:0 18px 14px}
+.scout-app-wrapper .st-q input{flex:1;min-width:0;min-height:44px;padding:0 12px;border:1px solid var(--l2);border-radius:12px;background:var(--cd);color:var(--i1);font-size:16px;-webkit-appearance:none;appearance:none}
+.scout-app-wrapper .st-q .b{min-height:44px}
 .scout-app-wrapper .fz-all{width:100%;min-height:48px;margin:4px 0 14px;font-size:16px}
 .scout-app-wrapper .fz-note{font-size:14px;color:var(--i2);margin:12px 0 0}
 .scout-app-wrapper .rf .fbx{width:100%;height:auto;min-height:48px;padding:12px 16px;margin:0 0 12px;white-space:normal;line-height:1.35;text-align:center;border-color:var(--ac);color:var(--ink);background:var(--ac-soft)}
@@ -3395,6 +3403,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <nav id="otp-dock" aria-label="Prowl modes">
   <button class="db on" data-m="prowl" aria-label="Hunt: one search across every marketplace"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4.3-4.3"></path></svg><span>Hunt</span></button>
   <button class="db" data-m="daily" aria-label="Daily: what is new in your hunts"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg><span>Daily</span><em class="bd" id="otp-ds" hidden></em></button>
+  <button class="db" data-m="store" id="otp-storeBtn" aria-label="Store: all your hunts on one marketplace"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9l1.5-4h13L20 9"/><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9"/><path d="M5.5 11.5V20h13v-8.5"/><path d="M10 20v-5h4v5"/></svg><span>Store</span></button>
   <button class="db" data-m="flock" id="otp-flockBtn" aria-label="Flock: a look across your hunts"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#otp-swallow"></use></svg><span>Flock</span><em class="bd" id="otp-flbd" hidden></em></button>
   <button class="db" data-m="local" id="otp-localBtn" aria-label="Near me: the shops around you, and road trips"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11-6.5 11z"></path><circle cx="12" cy="10" r="2.4"></circle></svg><span>Near me</span></button>
   <button class="db" data-m="den" id="otp-denBtn" aria-label="Den: hunts and settings"><svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"></path></svg><span>Den</span></button>
@@ -3894,7 +3903,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.19';
+var PROWL_VERSION='v8.20';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -4173,7 +4182,7 @@ estatesales:'ESTATES',hibid:'HIBID',liveauction:'LIVEAUCT',ctbids:'CTBIDS',herit
 function oneId(){return (st&&st.one&&mb(st.one))?st.one:ONE_DEFAULT}
 function oneName(){var m=mb(oneId());return m?m.n:'Goodwill'}
 function oneShort(){return SHORT[oneId()]||oneName().toUpperCase()}
-function modeLabel(r){return r.mode==='one'?oneName():(ML[r.mode]||r.mode)}
+function modeLabel(r){return (r.mode==='one'||r.mode==='store')?runSiteName(r):(ML[r.mode]||r.mode)}
 
 /* ---------- STATE ---------- */
 var st={mode:'prowl',sel:new Set(),lock:new Set(),mkt:new Set(ALL),tab:'shop',exp:false,run:null,seen:false,hunts:DEF.slice(),city:'',fbHub:'local',one:ONE_DEFAULT,oneOn:false};
@@ -4265,6 +4274,7 @@ function load(){
   if(r.one&&mb(r.one))st.one=r.one;
   /* v7.52: the Just … pill is off unless asked for. A save from before has no oneOn: a site picked by hand keeps it on */
   st.oneOn=typeof r.oneOn==='boolean'?r.oneOn:st.one!==ONE_DEFAULT;
+  if(r.store&&mb(r.store))st.store=r.store;   /* v8.20: the Store tab's marketplace, apart from the Just … pill */
 }
 function fbHubKnown(k){for(var i=0;i<FBHUBS.length;i++)if(FBHUBS[i].key===k)return true;return false}
 function legacyFbHub(){
@@ -4272,7 +4282,7 @@ function legacyFbHub(){
   try{lh=JSON.parse(lh)}catch(e2){}
   return (typeof lh==='string'&&fbHubKnown(lh))?lh:'';
 }
-function save(){try{localStorage.setItem(LS,JSON.stringify({hunts:st.hunts,sel:Array.from(st.sel),lock:Array.from(st.lock),mkt:Array.from(st.mkt),city:st.city,seen:st.seen,fbHub:st.fbHub,one:st.one,oneOn:!!st.oneOn,h21:1,h36:1,h42:1,h68:1}))}catch(e){}if(typeof startSync==='function')startSync()}
+function save(){try{localStorage.setItem(LS,JSON.stringify({hunts:st.hunts,sel:Array.from(st.sel),lock:Array.from(st.lock),mkt:Array.from(st.mkt),city:st.city,seen:st.seen,fbHub:st.fbHub,one:st.one,oneOn:!!st.oneOn,store:st.store||'',h21:1,h36:1,h42:1,h68:1}))}catch(e){}if(typeof startSync==='function')startSync()}
 
 var tT=null;
 function toast(h,ms){var e=$('#otp-toast');e.innerHTML=h;e.classList.toggle('act',/<button/i.test(h));e.classList.add('on');clearTimeout(tT);tT=setTimeout(function(){e.classList.remove('on');e.classList.remove('act')},ms||3600)}
@@ -4979,7 +4989,46 @@ function rFocus(){
 }
 /* v8.17 (Matt: "i want to look at all hunts in one store"): the one-site screen's All N hunts button runs every hunt on
    that one marketplace. Its screen lists one row per hunt, open from the start (no More places to look), with Open all. */
-function oneAll(r){return !!(r&&r.mode==='one'&&r.terms&&r.terms.length>1)}
+function oneAll(r){return !!(r&&r.terms&&((r.mode==='one'&&r.terms.length>1)||(r.mode==='store'&&r.terms.length)))}
+/* v8.20 (Matt: "instead of a button and going into the den to change it ... a drop down right there", "a new button at
+   the bottom ... to search just one store, everything"): the STORE dock tab runs every hunt on one marketplace at once.
+   The marketplace is a drop-down at the top of that screen (st.store, kept apart from the Just … pill's st.one so
+   picking a store never turns the pill on), with a box to search that store for one thing. */
+function storeId(){return (st.store&&mb(st.store))?st.store:oneId()}
+function runSiteName(r){var m=mb(r&&r.scope&&r.scope[0]);return m?m.n:oneName()}
+function storeHunts(){var a=[],b=[];st.hunts.forEach(function(t,j){(st.lock.has(j)?a:b).push(t)});return a.concat(b)}
+var STORE_SKIP={ebaysold:1,owltwig:1,facebook:1};   /* sold prices, our own shop, Facebook's city-by-city search */
+function storeLive(id){return id==='shopgoodwill'||!!lv[id]}
+function storeGo(){
+  var T=storeHunts(),m=mb(storeId());
+  if(!T.length){clearTimers();st.run=null;st.focus=false;st.storeEmpty=true;st.mode='store';rRes();rDock();res.hidden=false;return}
+  st.storeEmpty=false;
+  runProwl('store',T,[storeId()],m?m.n:'');
+}
+function storeBar(id){
+  /* v8.20 (Matt: "we should mark the ones that are LIVE in the dropdown"): stores whose listings show right here first */
+  var live='',other='';
+  M.forEach(function(m){if(STORE_SKIP[m.id])return;var o='<option value="'+esc(m.id)+'"'+(m.id===id?' selected':'')+'>'+esc(m.n)+(storeLive(m.id)?' \u00b7 LIVE':'')+'</option>';if(storeLive(m.id))live+=o;else other+=o});
+  var opts='<optgroup label="LIVE: listings show here">'+live+'</optgroup><optgroup label="Opens on their site">'+other+'</optgroup>';
+  var n=(mb(id)||{}).n||'';
+  return '<div class="st-bar"><label class="st-lab" for="otp-stSel">Store</label><select id="otp-stSel">'+opts+'</select></div>'+
+    '<p class="st-note">'+(storeLive(id)?'<b>LIVE</b>: '+esc(n)+' listings show right here.':esc(n)+' opens on its own site, one tab per hunt. Stores marked LIVE show listings right here.')+'</p>'+
+    '<form class="st-q" id="otp-stF"><input id="otp-stQ" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search for one thing" aria-label="Search '+esc(n)+' for one thing"><button class="b" type="submit">Search</button></form>';
+}
+function storeWire(){
+  var sel=$('#otp-stSel');
+  if(sel)sel.addEventListener('change',function(){if(!mb(this.value))return;st.store=this.value;save();storeGo()});
+  var f=$('#otp-stF');
+  if(f)f.addEventListener('submit',function(e){e.preventDefault();var t=(($('#otp-stQ')||{}).value||'').trim();if(!t)return;var id=storeId();runProwl('one',[t],[id],(mb(id)||{}).n)});
+}
+function rStoreEmpty(){
+  var id=storeId(),n=(mb(id)||{}).n||'';
+  res.innerHTML='<div class="rc ol-rc"><div class="rh dg-rh"><div><p class=eb>One store</p><h2>Your hunts on '+esc(n)+'</h2></div>'+
+    '<div class=rh-acts><button class="gh dg-x" id=otp-cr type=button aria-label="Close">\u2715</button></div></div>'+storeBar(id)+
+    '<p class="dg-tip">Keep a few hunts (search for something, then tap <b>Keep this hunt</b>) and this tab checks all of them on '+esc(n)+' at once.</p></div>';
+  storeWire();
+  var cr=$('#otp-cr');if(cr)cr.addEventListener('click',clearRun);
+}
 /* v8.18 (Matt: "i want to see all hunts in goodwill. i don't like the way it is layed out", picked Grouped by hunt): on a
    site with live listings (ShopGoodwill and the LIVE_SRC sites) the all-hunts screen shows each hunt's listings right in
    Prowl, one block per hunt like Daily, instead of a list of links. Live lookups (OL_MAX, 100 since v8.19) are queued 250ms
@@ -5001,7 +5050,7 @@ function olBlock(r,t,j){
   for(i=0;i<its.length&&i<OL_CARDS;i++)cards+=sgwCard(its[i],t);
   return '<div class="dg-blk ol-blk" data-ol="'+j+'" data-done="1"><div class="dg-hd"><h3>'+olStar(t)+esc(t)+'</h3>'+
     '<span class="dg-n">'+its.length+' live</span>'+
-    (u?'<a class="dg-run" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Open on '+esc(oneName())+' ↗</a>':'')+'</div>'+
+    (u?'<a class="dg-run" href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Open on '+esc(runSiteName(r))+' ↗</a>':'')+'</div>'+
     '<div class="sgw-grid">'+cards+'</div></div>';
 }
 function olChip(r,t,j){var u=olUrl(olSite(r),t);return '<li data-ol="'+j+'"><a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+olStar(t)+esc(t)+'</a></li>'}
@@ -5020,23 +5069,26 @@ function olRender(r){
   var T=olTerms(r),j,has='',rest=[],k,total=r.launches.length,paused=r.phase==='paused',left=paused?total-(r.next||0):0;
   for(j=0;j<T.length;j++)if(olState(r,T[j])==='has')has+=olBlock(r,T[j],j);
   for(k=T.length;k<r.terms.length;k++)rest.push('<li><a href="'+esc(olUrl(olSite(r),r.terms[k]))+'" target="_blank" rel="noopener noreferrer">'+esc(r.terms[k])+' ↗</a></li>');
-  res.innerHTML='<div class="rc dg-rc ol-rc"><div class="rh dg-rh"><div><p class=eb>One site · '+esc(oneName())+'</p>'+
-    '<h2>All '+r.terms.length+' hunts on '+esc(oneName())+'</h2><p class=rs id="otp-olSum">'+olSum(r)+'</p></div>'+
-    '<div class=rh-acts><button class="gh dg-x" id=otp-cr type=button aria-label="Close">✕</button></div></div>'+
+  var sn=runSiteName(r),sto=r.mode==='store';
+  res.innerHTML='<div class="rc dg-rc ol-rc"><div class="rh dg-rh"><div><p class=eb>'+(sto?'One store':'One site · '+esc(sn))+'</p>'+
+    '<h2>'+olHead(r)+'</h2><p class=rs id="otp-olSum">'+olSum(r)+'</p></div>'+
+    '<div class=rh-acts><button class="gh dg-x" id=otp-cr type=button aria-label="Close">✕</button></div></div>'+(sto?storeBar(olSite(r)):'')+
     '<div id="otp-olHas">'+has+'</div><div class="ol-rest" id="otp-olNone" hidden></div><div class="ol-rest" id="otp-olErr" hidden></div>'+
-    (rest.length?'<div class="ol-rest"><p class="ol-fh">More hunts, open on '+esc(oneName())+' <span>'+rest.length+'</span></p><ul>'+rest.join('')+'</ul></div>':'')+
+    (rest.length?'<div class="ol-rest"><p class="ol-fh">More hunts, open on '+esc(sn)+' <span>'+rest.length+'</span></p><ul>'+rest.join('')+'</ul></div>':'')+
     '<div class=oabar>'+(paused?'<button class="b p" id=otp-next type=button>Open next '+Math.min(BATCH,left)+'</button>'
-      :'<button class="b" id=otp-oa type=button>Open all '+total+' on '+esc(oneName())+'</button>')+'<small>Opens a tab per hunt. Allow pop-ups first.</small></div></div>';
+      :'<button class="b" id=otp-oa type=button>Open all '+total+' on '+esc(sn)+'</button>')+'<small>Opens a tab per hunt. Allow pop-ups first.</small></div></div>';
   olFeet(r);
+  if(sto)storeWire();
   var cr=$('#otp-cr');if(cr)cr.addEventListener('click',clearRun);
   var oa=$('#otp-oa');if(oa)oa.addEventListener('click',launchAll);
   var nx=$('#otp-next');if(nx)nx.addEventListener('click',function(){launchNext(false)});
   if(!r.olGo){r.olGo=1;olFetchAll(r)}
 }
+function olHead(r){var n=r.terms.length;return (n===1?'Your hunt':'All '+n+' hunts')+' on '+esc(runSiteName(r))}
 function olFeet(r){
   var a=document.getElementById('otp-olNone'),b=document.getElementById('otp-olErr');
-  if(a)olFoot(r,a,'none','Nothing on '+esc(oneName())+' right now');
-  if(b)olFoot(r,b,'err','Could not check right now, tap to look on '+esc(oneName()));
+  if(a)olFoot(r,a,'none','Nothing on '+esc(runSiteName(r))+' right now');
+  if(b)olFoot(r,b,'err','Could not check right now, tap to look on '+esc(runSiteName(r)));
 }
 function olPatch(r,t){
   if(st.run!==r||r.phase==='launching')return;
@@ -5409,7 +5461,7 @@ function dgFetchAll(r){
 var HUNT={c:{},go:{}};
 var HUNT_NAME={hibid:'HiBid',craigslist:'Craigslist',ebaysold:'eBay Sold'};
 function huntSite(s){return (typeof LIVE_NAME!=='undefined'&&LIVE_NAME[s])||HUNT_NAME[s]||s}
-function huntTermOf(r){return (r&&r.terms&&r.terms.length===1&&r.mode!=='daily'&&r.mode!=='facebook')?cutWords(r.terms[0],80):''}   /* v7.67: the same words the live rows search */
+function huntTermOf(r){return (r&&r.terms&&r.terms.length===1&&r.mode!=='daily'&&r.mode!=='facebook'&&r.mode!=='store')?cutWords(r.terms[0],80):''}   /* v7.67: the same words the live rows search */
 function huntFetch(t,cb){
   var k=t.toLowerCase();
   if(HUNT.c[k]){if(cb)cb();return}
@@ -5475,6 +5527,7 @@ function rRes(){
   var sgm=$('#otp-sgw');if(sgm&&sgm.innerHTML)sgm.hidden=!!r;
   startSync();   /* v7.31 */
   rRq();   /* v7.82 */
+  if(!r&&st.storeEmpty){rStoreEmpty();return;}   /* v8.20 */
   if(!r&&st.focus){rFocus();return;}
   if(!r){res.hidden=true;res.innerHTML='';return;}
   var L=r.launches,total=L.length;
@@ -5491,7 +5544,7 @@ function rRes(){
 
   var head='<div class=rh><div>'+
     '<p class=eb>Prowling · '+esc(modeLabel(r))+'</p>'+
-    (oneAll(r)?'<h2>All '+r.terms.length+' hunts on '+esc(oneName())+'</h2>':'<h2>\u201C'+esc(r.terms.join(' · '))+'\u201D</h2>');
+    (oneAll(r)?'<h2>'+olHead(r)+'</h2>':'<h2>\u201C'+esc(r.terms.join(' · '))+'\u201D</h2>');
 
   if(r.phase==='launching'){
     var pct=Math.round((r.opened/Math.max(1,total))*100);
@@ -5536,6 +5589,7 @@ function rRes(){
   var BADGE={ebay:'EB',etsy:'ET',mercari:'ME',mercarijp:'MJ',salvation:'SA',poshmark:'PM',depop:'DP',grailed:'GR',rubylane:'RL',chairish:'CH','1stdibs':'1D',reverb:'RV',whatnot:'WN',vinted:'VI',bonanza:'BZ',ecrater:'EC',abebooks:'AB',aptdeco:'AD',offerup:'OU',facebook:'FB',ebaysold:'$',shopgoodwill:'GW',estatesales:'ES',estatesalesnet:'ES',hibid:'HB',liveauction:'LA',ctbids:'CT',invaluable:'IV',craigslist:'CL'};
   function badge(x){return BADGE[x.mkt]||String(x.name||'?').replace(/[^A-Za-z0-9]/g,'').slice(0,2).toUpperCase()}
   var oa1=oneAll(r);
+  var stoBar=r.mode==='store'?storeBar(r.scope[0]):'';   /* v8.20 */
   var groups=(r.mode==='facebook'||oa1)?[{k:'',ids:L.map(function(_,j){return j})}]:[{k:'Local & auctions',ids:[]},{k:'Online shops',ids:[]},{k:'Sold prices',ids:[]}];
   if(r.mode!=='facebook'&&!oa1)for(var gj=0;gj<total;gj++){var gm=L[gj].mkt;groups[gm==='ebaysold'?2:(LOCALS[gm]?0:1)].ids.push(gj)}
   /* v7.08: simple mode folds the list. v7.31: and everything under it (Facebook in every city, Instagram, sold prices,
@@ -5558,8 +5612,8 @@ function rRes(){
 
   /* v7.54 (the owner: "i had a hard time finding ebay sold and terapeak at the bottom"): sold prices sit under the
      title, in Keep it simple too, not in the footer that waits behind More places to look */
-  var comps=r.terms.length===1?compsRow(r.terms[0]):'';
-  res.innerHTML='<div class="rc'+(oa1?' dt-open':'')+'">'+head+comps+huntBlock(r)+viewSw()+runLive(r)+rows+
+  var comps=(r.terms.length===1&&r.mode!=='store')?compsRow(r.terms[0]):'';
+  res.innerHTML='<div class="rc'+(oa1?' dt-open':'')+'">'+head+stoBar+comps+huntBlock(r)+viewSw()+runLive(r)+rows+
     '<div class=oabar>'+
       (paused
         ?'<button class="b p" id=otp-next type=button>Open next '+nextN+'</button>'+
@@ -5588,6 +5642,7 @@ function rRes(){
   var fbx=$('#otp-fbAll');
   if(fbx)fbx.addEventListener('click',function(){runProwl('facebook',[r.terms[0]],[fbAllUsa()],'Facebook USA')});
   var oa=$('#otp-oa');if(oa)oa.addEventListener('click',launchAll);
+  if(r.mode==='store')storeWire();   /* v8.20 */
   var nx=$('#otp-next');if(nx)nx.addEventListener('click',function(){launchNext(false)});
   var rs=$('#otp-rest');if(rs)rs.addEventListener('click',function(){launchNext(true)});
   var ul=res.querySelector('.hits');
@@ -5613,7 +5668,7 @@ function clearRun(){
      box goes back to the favorite showing, so the box and the panel always agree */
   var runT=(st.run&&st.run.terms&&st.run.terms.length===1)?sgwClean(st.run.terms[0]).toLowerCase():'';
   var typed=q?sgwClean(q.value).toLowerCase():'',lt=runT||typed;
-  clearTimers();st.run=null;st.focus=false;st.mode='prowl';
+  clearTimers();st.run=null;st.focus=false;st.storeEmpty=false;st.mode='prowl';
   try{
     var i,hit=-1;
     if(lt)for(i=0;i<sgw.terms.length;i++)if(sgw.terms[i].t.toLowerCase()===lt){hit=i;break}
@@ -5669,6 +5724,7 @@ function dockGo(m){
   if(m==='flock'){if(flockOpen())flTop();else openFlock();return;}
   closeFlock();
   if(m==='prowl'){clearRun();window.scrollTo({top:0,behavior:'smooth'});return;}
+  if(m==='store'){storeGo();return;}   /* v8.20 */
   if(m==='one'){if(q.value.trim()){runProwl('one',chips(),[oneId()],oneName())}else{openFocus()}return;}
   if(m==='local'){goLocal();return;}
   if(m==='daily'){
@@ -5780,6 +5836,7 @@ function exportData(){
     theme:document.documentElement.getAttribute('data-theme')||'light',
     fbHub:st.fbHub||'local',   /* v6.00: restore already reads these two */
     one:oneId(),oneOn:!!st.oneOn,   /* v7.52 */
+    store:st.store||'',   /* v8.20 */
     runs:runsGet(),finds:findsGet(),mktStats:statsGet(),   /* v6.02 */
     research:resGet(),   /* v6.08 */
     discarded:disGet().slice(),   /* v6.38 */
@@ -5869,6 +5926,7 @@ function applyBackup(o){
     /* v5.87 (B3): a v2 fbHub is a Facebook region key, not a city */
     if(typeof o.fbHub==='string'&&fbHubKnown(o.fbHub))st.fbHub=o.fbHub;
     if(typeof o.one==='string'&&mb(o.one))st.one=o.one;   /* v6.00 */
+    if(typeof o.store==='string'&&mb(o.store))st.store=o.store;   /* v8.20 */
     if(typeof o.oneOn==='boolean')st.oneOn=o.oneOn;else if(typeof o.one==='string'&&mb(o.one)&&o.one!==ONE_DEFAULT)st.oneOn=true;   /* v7.52 */
     if(o.theme&&THEMES.indexOf(o.theme)>-1)applyTheme(o.theme);
     xImport(o);   /* v6.02: only the lists the backup carries */
