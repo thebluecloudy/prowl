@@ -1,16 +1,24 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.19 / v192).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.20 / v192).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.19** | 376,245 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.20** | 375,797 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v192** | |
 
 Recently shipped, newest first:
 
+- **v8.20: Store tab** (Matt, 2026-10-30: "instead of a button and going into the den to change it ... a drop down right
+  there", "a new button at the bottom ... to search just one store, everything", "mark the ones that are LIVE"). A sixth
+  dock tab, Store (Hunt · Daily · Store · Flock · Near me · Den), runs every hunt on one marketplace in one tap: the
+  v8.19 grouped screen for live stores, one row per hunt for the rest. At the top: a Store dropdown (LIVE stores first,
+  marked " · LIVE", then "Opens on their site"; no eBay Sold, Owl & Twig or Facebook), a note saying which kind it is,
+  and a box to search that store for one thing. The pick is `store` in prowl.v36 (new field, in backups), kept apart
+  from the Just … pill's `one`/`oneOn`, so picking a store never turns the pill on. No hunts: the dropdown, the box and
+  how to keep a hunt. Test `__tests__/page/store-tab-v820.test.mjs`; the dock tests now expect six tabs.
 - **v8.19: All hunts on Goodwill checks every hunt** (Matt, 2026-10-29: "can i search all hunts at the same time on
   shopgoodwill only"; he has 66). `OL_MAX` 30 → 100 (the Pro hunt limit), still 250 ms apart. Hunts with listings come
   first, in hunt order, as they land; the quiet ones fold into one line of chips (#otp-olNone, "Nothing on <site> right
@@ -1684,7 +1692,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.20, worker v193**. Claim one here when you start.
+Next free numbers: **page v8.21, worker v193**. Claim one here when you start.
 
 ## What's next
 

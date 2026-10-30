@@ -147,7 +147,7 @@ test('Recent searches: a search is text, never markup; a broken key is ignored',
 test('sentence case: the dock and every tab', async () => {
   const p = loadPage({ storage: DEN() });
   await tick(60);
-  assert.deepEqual(p.$$('#otp-dock .db span').map((s) => s.textContent), ['Hunt', 'Daily', 'Flock', 'Near me', 'Den']);
+  assert.deepEqual(p.$$('#otp-dock .db span').map((s) => s.textContent), ['Hunt', 'Daily', 'Store', 'Flock', 'Near me', 'Den']);
   assert.deepEqual(p.$$('#otp-den .tab').map((b) => b.textContent), ['All hunts', 'About', 'Stats', 'Settings']);
   assert.match(p.$('#otp-ts').textContent, /^Shop/);
   await p.close();
