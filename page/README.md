@@ -157,6 +157,20 @@ list on the page, yet every sale the extractor gave back had no distance or map 
 list by its name wherever it sits in a data block, as the check does. The check's extract now has `fromList`, the
 number of sales that came from that list: it should equal `count`. Lists are kept under `es3:`.
 
+## Weekend sweep (page v8.22, worker v193)
+
+Under Den › Local › Estate sales near you (same gate: the owner's key until `SALES_PUBLIC=on`), **This weekend** lists
+the estate sales open from the coming Friday to Sunday within 25 miles of the place typed above (or the phone's
+position). The page sends the point (2 decimals), its time zone and the Den's own hunts (`h=a|b|c`, sample hunts left
+out) to worker `GET /weekend`; the worker reads EstateSales.net's list near the point and each nearby sale's page, and
+answers `picks` (a hunt's every word is in the sale's title, description or a photo caption: `match {hunt, where}`) and
+`rest`, at most 12, each with `url` (the sale's own page), `city`, `st`, `co`, `dist`, `hours` (already in the device's
+zone) and `standout`. The page shows only links on www.estatesales.net. Nothing is stored on the device.
+
+The same sweep goes to Pro members by email on Thursday mornings around their local-pickup ZIP (`prefs.estate`, Den ›
+Settings › Thursday estate sales, shown when `/alerts/status` answers `estate: true`). See STATUS.md for the gate and
+the open questions about EstateSales.net's permission.
+
 ## Main stylesheet on the worker (page v6.92, worker v111)
 
 At v6.91 the page body sent to Shopify was 886 bytes under its 512 KB cap. The main stylesheet (about 141 KB, no logic)

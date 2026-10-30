@@ -1,16 +1,40 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.21 / v192).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.22 / v193).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.21** | 375,773 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v192** | |
+| Page | **v8.22** | 375,773 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v193** | |
 
 Recently shipped, newest first:
 
+- **v8.22 / v193: Weekend sweep** (Hark, for Matt, 2026-10-30; draft PR on `hark/estate-sweep`, live only once merged).
+  Two parts on one worker sweep (`worker/weekend.js`, `wkSweep` in `worker/index.js`):
+  1. **In the app**, Den > Local > Estate sales near you > **This weekend**: "Sweep this weekend" sends the place typed
+     in the box above (looked up with `/geo`, as In a location does), else the phone's position, rounded to 2 decimals,
+     with the Den's own hunts and the device's time zone to `GET /weekend?lat&lng&r=25&tz&h=a|b|c`. It lists the
+     estate sales open from the coming Friday to Sunday (this weekend from Friday on) within 25 miles: **Top picks**
+     first (a sale whose title, description or photo captions hold every word of a hunt, with the hunt and where it
+     matched), then the rest, at most 12. Each shows city, company, distance, dates and hours in local time, a short
+     standout line and its **own EstateSales.net link**; a sale without one, or whose page answers 404/410, is dropped;
+     ended days and ended sales are hidden; online-only auctions are left out. No new localStorage keys.
+  2. **Pro email on Thursday mornings** (7 AM to noon, the member's own time zone): the same sweep around the member's
+     saved ZIP (the local-pickup ZIP in Den > Settings > Only what fits) with their alert hunts, sent as its own email in
+     the daily email's style ("Prowl: 2 estate sale picks · Pyrex, Fire-King", or "Prowl: 9 estate sales this weekend
+     near 48375"). Nothing open: no email. `prefs.estate = "off"` stops it (Den > Settings > Thursday estate sales, shown
+     only when status says `estate: true`), and `/alerts/unsub?w=estate` (footer and one-click List-Unsubscribe) stops
+     only it. Marked `sub.estate` = the day, so it goes once; one per alert-clock run.
+  **Gate:** exactly as `/sales`: the owner's key, or `SALES_PUBLIC=on`. The email goes only while `SALES_PUBLIC=on`,
+  or to the addresses in a new optional var `SALES_TEST_EMAILS` (comma list). With neither set, nothing changes for
+  members. **Source:** EstateSales.net's list near a point is the JSON its own map asks for
+  (`/api/sale-details?bypass=bycoordinatesanddistance:LAT_LNG_MILES&include=dates`, no key; 112 sales within 25 mi of
+  Novi on 2026-10-30, against 20 on the city page); each nearby sale's own page (up to 16 in the app, 10 in the email)
+  gives the description and photo captions. KV keeps the list per point 3 hours (`wk1:`), each sale page a day
+  (`wkd1:`, dead links as `gone`), a ZIP's centre 90 days (`wkz:`). If the list fails, the city page (`esFetch`)
+  stands in. Tests `worker/__tests__/weekend-v193.test.mjs`, `__tests__/page/weekend-sweep-v822.test.mjs`.
 - **v8.21: the Store tab icon is written so Shopify keeps it byte for byte.** v8.20's deploy saved the page but failed
   the md5 check: its icon used self-closing `<path …/>`, which the rest of the page never does (Shopify rewrites them).
   Now `<path …></path>` like every other icon. Nothing visible changes. Test in `__tests__/page/store-tab-v820.test.mjs`.
@@ -1694,8 +1718,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| `hark/estate-sweep` | Hark | Weekend sweep: this weekend's estate sales in Den > Local with Top picks for your hunts, and a Thursday Pro email (page v8.22 / worker v193) | Draft PR, not reviewed. Needs Matt's call on the EstateSales.net questions under Waiting on Matt. |
 
-Next free numbers: **page v8.22, worker v193**. Claim one here when you start.
+Next free numbers: **page v8.23, worker v194**. Claim one here when you start.
 
 ## What's next
 
@@ -1709,6 +1734,15 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 (the piece, then its mark or back), then community-lite.
 
 ## Waiting on Matt
+
+- **Weekend sweep (v8.22 / v193, `hark/estate-sweep`), before it goes beyond the owner:**
+  1. Does EstateSales.net's permission cover the JSON list its map uses (`/api/sale-details`, an unpublished endpoint)
+     and reading each sale's own page, not only the city page? If not, the worker falls back to the city page, which
+     carries only 20 sales (many 50-100 miles out) and no descriptions, so Top picks would rarely fire.
+  2. Does it cover showing sales to the public (`SALES_PUBLIC=on`, the same open question as Estate sales for
+     customers)? Until then the in-app sweep is owner-only and the Thursday email goes to nobody unless an address is
+     in `SALES_TEST_EMAILS` (try it with your own Pro address first).
+  3. The Thursday email uses the local-pickup ZIP; a Pro member with no ZIP gets nothing. Ask for the ZIP elsewhere?
 
 - **Security and trust (2026-10-28 audit), the admin steps only Matt can take:**
   1. Done (Matt, 2026-10-30): the privacy policy is Shopify's template again with the three Prowl sections from
