@@ -1,13 +1,13 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.21 / v193).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.21 / v194).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.21** | 375,773 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v193** | |
+| Worker | **v194** | |
 
 Recently shipped, newest first:
 
@@ -27,6 +27,8 @@ Recently shipped, newest first:
   first, in hunt order, as they land; the quiet ones fold into one line of chips (#otp-olNone, "Nothing on <site> right
   now"), lookups that failed into another (#otp-olErr); the summary counts what is still being checked. No new keys.
   Test `__tests__/page/one-site-live-v819.test.mjs` (was v818).
+- **v194: Jev's price is TypeSafe's own.** The Spending tab's default for Jev is $0.04 per 1M input tokens, from
+  TypeSafe's model page (Matt sent it), was $0.042 from a third-party listing. A price Matt saved is kept.
 - **v193: Spending tab in the admin** (Matt, 2026-10-30: "how much i am spending in the ai, muse, jev, google, etc").
   - **What it shows:** per service, Today · 7 days · This month · Last month, as calls (Muse: tokens and web searches)
     and an estimated $. Monthly bills Matt types in (Shopify, Cloudflare, his Claude plan…) are added to the month
@@ -41,8 +43,8 @@ Recently shipped, newest first:
       The month columns take the allowance off; Today and 7 days are at the list price.
     - Cross-check: his Oct 16–30 Google costs were $112.39 ($104.12 Text Search, $8.27 Place Photos, the rest inside
       the free allowance). A test checks that 3,603 Text Search calls price at that $104.12.
-    - Muse ($1.25 / $4.25 per 1M tokens, $2.50 per 1,000 searches) and Jev ($0.042 per 1M input) come from third-party
-      listings, because neither provider prints prices.
+    - Muse ($1.25 / $4.25 per 1M tokens, $2.50 per 1,000 searches) comes from a third-party listing, because Meta prints
+      no price. Jev is TypeSafe's own price, $0.04 per 1M input tokens (v194; v193 had $0.042 from a third-party listing).
     - SerpApi has no default (it bills by monthly plan).
     - Matt edits any price in the tab (KV `spend:cfg`).
   - **Admin change:** the admin's tab strip now scrolls sideways on a phone (seven tabs).
@@ -1715,7 +1717,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.22, worker v194**. Claim one here when you start.
+Next free numbers: **page v8.22, worker v195**. Claim one here when you start.
 
 ## What's next
 
@@ -1732,7 +1734,7 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 - **Spending tab (worker v193):** open admin › Spending, then:
   - add your monthly bills (Shopify plan, Cloudflare Workers, a SerpApi plan if you pay for one, your Claude plan);
-  - check the Muse and Jev prices against your bills (third-party list prices);
+  - check the Muse price against your bill (a third-party list price; Jev's is TypeSafe's own since v194);
   - after a month, compare the tab's Google total with the Google Cloud bill and adjust prices if needed.
 - **Security and trust (2026-10-28 audit), the admin steps only Matt can take:**
   1. Done (Matt, 2026-10-30): the privacy policy is Shopify's template again with the three Prowl sections from

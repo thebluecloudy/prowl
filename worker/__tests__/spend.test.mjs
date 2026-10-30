@@ -143,6 +143,8 @@ test("prices: list prices until saved; empty clears one, a bad number is refused
     g_geo: [5, 10000], g_route: [5, 10000], g_vision: [3.5, 1000] };
   for (const s of SP.SPEND_SERVICES) if (G[s.key]) assert.deepEqual([s.price.call, s.free], G[s.key], s.key);
   assert.equal(SP.SPEND_SERVICES.find((s) => s.key === "muse").free, undefined, "Muse has no free allowance");
+  const jev = SP.SPEND_SERVICES.find((s) => s.key === "jev");
+  assert.deepEqual([jev.price, jev.src], [{ tin: 0.04 }, "https://typesafe.ai"], "v194: TypeSafe's own price (\"From $0.04 per 1M\")");
   for (const s of SP.SPEND_SERVICES) assert.match(s.src, /^https:\/\//, s.key + " has a source"), assert.match(s.bill, /^https:\/\//, s.key + " has a billing page");
   let r = SP.spendCfgClean({ prices: { muse: { tin: "2", tout: "", call: 9 }, g_text: { call: 35.123456 }, nope: { call: 1 } } });
   assert.deepEqual(r.errors, []);
