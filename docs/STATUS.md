@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-29 (v8.17 / v191).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-29 (v8.18 / v191).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.17** | 376,245 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.18** | 376,245 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v191** | |
 
 Recently shipped, newest first:
 
+- **v8.18: All hunts on Goodwill shows the listings, grouped by hunt** (Matt, 2026-10-29: "i don't like the way it is
+  layed out right now", picked Grouped by hunt). On a site with live listings (ShopGoodwill and the LIVE_SRC sites) the
+  v8.17 all-hunts screen is now one block per hunt like Daily: the hunt, "N live" / nothing right now, Open on <site>,
+  and up to 12 cards (filters apply). Lookups run for the first 30 hunts (`OL_MAX`), 250 ms apart; the rest are links.
+  Open all stays at the foot. Sites without live listings keep the v8.17 rows. No new keys, worker unchanged. Test
+  `__tests__/page/one-site-live-v818.test.mjs` (the v8.17 test now uses Ruby Lane).
 - **v8.17: every hunt on one marketplace** (Matt, 2026-10-29: "i want to look at all hunts in one store"). The one-site
   screen (the Just <site> pill with an empty box; the pill is turned on in Den > Settings > One-site button) gets an
   "All N hunts on <site>" button when there are 2+ hunts. It runs every hunt on that one site: one row per hunt (hunt
@@ -1666,7 +1672,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.18, worker v192**. Claim one here when you start.
+Next free numbers: **page v8.19, worker v192**. Claim one here when you start.
 
 ## What's next
 
