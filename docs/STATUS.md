@@ -1,16 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.18 / v192).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.19 / v192).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.18** | 376,245 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.19** | 376,245 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v192** | |
 
 Recently shipped, newest first:
 
+- **v8.19: All hunts on Goodwill checks every hunt** (Matt, 2026-10-29: "can i search all hunts at the same time on
+  shopgoodwill only"; he has 66). `OL_MAX` 30 → 100 (the Pro hunt limit), still 250 ms apart. Hunts with listings come
+  first, in hunt order, as they land; the quiet ones fold into one line of chips (#otp-olNone, "Nothing on <site> right
+  now"), lookups that failed into another (#otp-olErr); the summary counts what is still being checked. No new keys.
+  Test `__tests__/page/one-site-live-v819.test.mjs` (was v818).
 - **v192: a refused Shopify order token says why** (Matt's admin, 2026-10-30: "Could not reach the shop just now
   (shopify token refused)" with SHOPIFY_ORDERS_CLIENT_ID and _SECRET in Cloudflare). The worker threw away Shopify's
   answer to the token request; it now keeps its status and error code (`shopTokErr`: "400 invalid_client", "403 App is
@@ -1679,7 +1684,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.19, worker v193**. Claim one here when you start.
+Next free numbers: **page v8.20, worker v193**. Claim one here when you start.
 
 ## What's next
 
