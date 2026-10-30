@@ -1403,13 +1403,19 @@ test("Re-check Pro says when the shop could not be asked, and that free Pro need
   assert.equal(j.ok, false); assert.match(j.message, /^Could not reach the shop just now \(shopify unreachable\)\. Nothing changed\./);
   assert.ok(!/Checked the shop/.test(j.message));
   assert.equal(rec(env).pro, true, "a paying member keeps Pro");
+  /* v192: refused keys say what to check, and no "try again in a few minutes" */
+  H.nextPro = { pro: null, via: "shopify token refused: 400 invalid_client" };
+  ({ j } = await act(env, H, EMAIL, "refresh-pro"));
+  assert.equal(j.ok, false);
+  assert.match(j.message, /^Shopify refused the order app's keys \(400 invalid_client\)\. Check in the Shopify Dev Dashboard that the Prowl app is installed on the store with read_orders/);
+  assert.doesNotMatch(j.message, /Try again in a few minutes/);
   H.nextPro = { pro: null, via: "no token" };
   ({ j } = await act(env, H, EMAIL, "refresh-pro"));
   assert.match(j.message, /SHOPIFY_ORDERS_CLIENT_ID/); assert.equal(j.ok, false);
   env.PROWL_ALERTS.set("gift:" + giftHashOf(EMAIL), { note: "", added: "2026-10-01T00:00:00Z", until: "2027-01-05", by: "admin" });
   ({ j } = await act(env, H, EMAIL, "refresh-pro"));
   assert.equal(j.ok, true); assert.match(j.message, /free Pro from your gift \(until 2027-01-05\), so the shop was not asked/);
-  assert.equal(auditsOf(H).filter(a => a.action === "refresh-pro").map(a => a.ok).join(), "false,false,true");
+  assert.equal(auditsOf(H).filter(a => a.action === "refresh-pro").map(a => a.ok).join(), "false,false,false,true");
 });
 
 test("Send today's email again really resends today's listings; with no email today it says nothing will be resent", async () => {

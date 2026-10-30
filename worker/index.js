@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v192: 2026-10-30. A refused Shopify order token says why: the token request's status and Shopify's error code ride
+ *         along in the Pro check ("shopify token refused: 400 invalid_client"), up to 80 characters, never the keys.
  *   v191: 2026-10-29. Shelf scan: up to 8 picks (was 3), an ALL line (so.all {why, fair, payUpTo}) when most of the shelf is
  *        worth buying, and pay-up-to keeps only the dollar amount (fixes "Pay up to $40 to pay").
  *   v190: 2026-10-29. The Jev photo and shelf passes reworked so they cannot hold up or break a photo check: 3 eBay pictures
@@ -656,7 +658,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v191";
+const WORKER_VERSION = "v192";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4306,7 +4308,15 @@ async function alPro(env, email, force) {
    and SHOPIFY_ORDERS_CLIENT_SECRET set (the app needs read_orders), the worker asks for a fresh one itself, keeps it in
    this isolate's memory only (never in KV), renews it 5 minutes before it runs out and after a 401. Without them the
    pasted SHOPIFY_ORDERS_TOKEN is used as before. */
-let SHOP_TOK = null;
+let SHOP_TOK = null, SHOP_ERR = "";
+/* v192 (Matt's admin, 2026-10-30: "shopify token refused" with the keys in): say what Shopify answered the token request
+   with, its status and error code ("400 invalid_client", "404 not a shop"), never the keys. Long key-like strings are cut. */
+function shopTokErr(status, text) {
+  let j = null; try { j = JSON.parse(text); } catch (e) {}
+  let why = j ? (j.error || j.errors || j.error_description || "") : (/<html/i.test(text) ? "not a shop page" : text);
+  if (typeof why !== "string") why = JSON.stringify(why);
+  return (status + " " + why.replace(/[A-Za-z0-9_-]{24,}/g, "[key]").replace(/\s+/g, " ").trim()).slice(0, 60);
+}
 function shopHost(env) { return env.SHOPIFY_SHOP || "tz7xkc-du.myshopify.com"; }
 function shopCanToken(env) { return !!((env.SHOPIFY_ORDERS_CLIENT_ID && env.SHOPIFY_ORDERS_CLIENT_SECRET) || env.SHOPIFY_ORDERS_TOKEN); }
 async function shopToken(env, renew) {
@@ -4316,8 +4326,10 @@ async function shopToken(env, renew) {
   const r = await fetch("https://" + shopHost(env) + "/admin/oauth/access_token", { method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
     body: new URLSearchParams({ grant_type: "client_credentials", client_id: id, client_secret: secret }).toString() });
-  let j = null; try { j = await r.json(); } catch (e) {}
-  if (!r.ok || !j || !j.access_token) { SHOP_TOK = null; return ""; }
+  const text = await r.text().catch(() => "");
+  let j = null; try { j = JSON.parse(text); } catch (e) {}
+  if (!r.ok || !j || !j.access_token) { SHOP_TOK = null; SHOP_ERR = shopTokErr(r.status, text); return ""; }
+  SHOP_ERR = "";
   const life = Number(j.expires_in) > 0 ? Number(j.expires_in) * 1000 : 3600 * 1000;
   SHOP_TOK = { id: id, t: j.access_token, until: Date.now() + Math.max(60000, life - 5 * 60000) };
   return SHOP_TOK.t;
@@ -4339,7 +4351,7 @@ async function alProShop(env, email, c, cid) {
       let r, j;
       try {
         const tok = await shopToken(env, false);
-        if (!tok) return { err: "shopify token refused" };
+        if (!tok) return { err: ("shopify token refused" + (SHOP_ERR ? ": " + SHOP_ERR : "")).slice(0, 80) };
         const send = (t) => fetch("https://" + shopHost(env) + "/admin/api/2025-10/graphql.json", { method: "POST", signal: ctl.signal,
           headers: { "X-Shopify-Access-Token": t, "Content-Type": "application/json" },
           body: JSON.stringify({ query: "query pro($q: String!, $n: Int!) { orders(first: $n, query: $q, sortKey: CREATED_AT, reverse: true) { nodes { name createdAt cancelledAt displayFinancialStatus email statusPageUrl discountCodes totalPriceSet { shopMoney { amount currencyCode } } lineItems(first: 5) { nodes { sku customAttributes { key value } } } } } }", variables: { q: qq, n: n } }) });
@@ -4417,7 +4429,7 @@ async function alProSet(env, sub, force) {
   }
   if (p.pro !== null) sub.pro = p.pro;
   if (p.pro !== null) sub.plan = p.plan || null;
-  sub.proCheck = p.pro === null ? String(p.via || "check failed").slice(0, 40) : "";   /* v78: shown as "pro check failing" in the admin */
+  sub.proCheck = p.pro === null ? String(p.via || "check failed").slice(0, 80) : "";   /* v78: shown as "pro check failing" in the admin */
   if (sub.pro) sub.hadPro = true;   /* v55: the free month is once per member */
   sub.proDay = alNow(env).day;
   return sub.pro;

@@ -1,16 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-29 (v8.18 / v191).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.18 / v192).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.18** | 376,245 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v191** | |
+| Worker | **v192** | |
 
 Recently shipped, newest first:
 
+- **v192: a refused Shopify order token says why** (Matt's admin, 2026-10-30: "Could not reach the shop just now
+  (shopify token refused)" with SHOPIFY_ORDERS_CLIENT_ID and _SECRET in Cloudflare). The worker threw away Shopify's
+  answer to the token request; it now keeps its status and error code (`shopTokErr`: "400 invalid_client", "403 App is
+  not installed on this shop", "404 not a shop page"), never the keys, in the Pro check (up to 80 characters). The
+  admin's Re-check Pro then says "Shopify refused the order app's keys (...)" and what to check (the app installed on
+  the store with read_orders, the current Client ID and secret with no spaces) instead of "try again in a few
+  minutes". Test: `worker/__tests__/session.test.mjs`, `worker/__tests__/admin.test.mjs`.
 - **v8.18: All hunts on Goodwill shows the listings, grouped by hunt** (Matt, 2026-10-29: "i don't like the way it is
   layed out right now", picked Grouped by hunt). On a site with live listings (ShopGoodwill and the LIVE_SRC sites) the
   v8.17 all-hunts screen is now one block per hunt like Daily: the hunt, "N live" / nothing right now, Open on <site>,
@@ -1672,7 +1679,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.19, worker v192**. Claim one here when you start.
+Next free numbers: **page v8.19, worker v193**. Claim one here when you start.
 
 ## What's next
 
@@ -1688,19 +1695,19 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 ## Waiting on Matt
 
 - **Security and trust (2026-10-28 audit), the admin steps only Matt can take:**
-  1. Paste the updated `docs/privacy-policy-prowl-section.html` over the Prowl part of Shopify > Settings > Policies >
-     Privacy policy (the live one still says "we do not store your photo" and leaves out trips, push and Near me).
-     The security series is complete (v186 / page v8.12): the section is final, paste it now.
+  1. Done (Matt, 2026-10-30): the privacy policy is Shopify's template again with the three Prowl sections from
+     `docs/privacy-policy-prowl-section.html` (checked against worker v186 / page v8.12) after "Relationship with
+     Shopify". Checked live: every template section is there and the Prowl text matches the file word for word.
   2. Shopify > Settings > Customer accounts: confirm **new customer accounts** (passwordless), classic off. With
      classic accounts anyone can register a store account under someone else's email, and /proxy/login would link it
      to that person's Prowl.
-  3. Shopify > Settings > Customer privacy: **cookie banner on**, then check it shows on /pages/prowl and
-     /pages/prowl-app.
-  4. Resend dashboard: download the **DPA** and file it.
+  3. Done (Matt, 2026-10-30): the Shopify cookie banner is on.
+  4. Resend's **DPA** needs no signature: it is part of Resend's terms (resend.com/legal/dpa, last updated 2025-12-31),
+     accepted with the account. Save a PDF of that page with the business records.
   5. Google Cloud Console: a **daily quota and a budget alert** on GOOGLE_MAPS_KEY.
-  6. PROWLMONTH one use per customer and the order app's keys: both below, still open.
-  7. The Facebook sweep is retired (v178): stop its morning run on Prowl-the-agent, then delete the **FB_INGEST_KEY**
-     secret in Cloudflare > Workers > prowl > Settings > Variables and secrets.
+  6. Done (Matt, 2026-10-30): PROWLMONTH is one use per customer, first payment only. The order app works too.
+  7. Done (Matt, 2026-10-30): the **FB_INGEST_KEY** secret is deleted. If Prowl-the-agent still runs the old morning
+     sweep, it now only gets 410 Gone from /fb-ingest; turn that run off when convenient.
 
 - **The branch rule for `main` is set but not enforced** (2026-10-23). Matt added it (require **build**, require up
   to date), but GitHub enforces branch rules on private repositories only on a paid plan (GitHub Pro, about $4 a month);
@@ -1730,12 +1737,11 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
   VAPID_PRIVATE_JWK is in, above). Matches also show in the same place. The Not it button on the phone needs
   MEMBER_ID_SALT or ADMIN_KEY (both are set if admin works).
 
-- **URGENT: Pro checks fail until the order app's keys are in Cloudflare.** In the Shopify Dev Dashboard open the app
-  that will read orders ("Prowl"), make sure its access scopes include read_orders (release a new version if you add
-  it, and approve it in the store), copy its Client ID and Client secret, then in Cloudflare > Workers > prowl >
-  Settings > Variables and secrets add SHOPIFY_ORDERS_CLIENT_ID and SHOPIFY_ORDERS_CLIENT_SECRET (type Secret) and
-  Deploy. Then admin > Members > Re-check Pro.
-- **In Shopify:** set the PROWLMONTH discount to one use per customer (the code is visible in the page source).
+- **Done (Matt, 2026-10-30): the order app works.** The keys were in Cloudflare but Shopify refused them ("shopify
+  token refused") until Matt installed the Prowl app on the store; then admin > Re-check Pro on a free member answered
+  "Checked the shop: no current Prowl Pro order". Since v192 a refusal names Shopify's reason.
+- **Done (Matt, 2026-10-30): PROWLMONTH is one use per customer**, discount on the first payment only. A new email or Shop
+  Pay identity is a new customer to Shopify, so the free month can still be had again that way.
 - **Known gap:** if adding Pro to the cart fails, the page falls back to `/products/prowl-pro` without the code.
 - **Next:** check Den > Settings shows the free month and that the welcome email came.
 - **Facebook alerts cost test** (Apify, 5 real hunts in Detroit/Novi). Needs a go-ahead and the Apify token.

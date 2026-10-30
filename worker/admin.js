@@ -773,8 +773,11 @@ async function apiAction(c) {
       if (sub.proCheck) {   // the shop was asked and did not answer (or is not set up): say so, not "checked"
         ok = false; note = "shop not reached";
         msg = (String(sub.proCheck) === "no token" ? "The shop is not connected (set SHOPIFY_ORDERS_CLIENT_ID and SHOPIFY_ORDERS_CLIENT_SECRET in Cloudflare), so Prowl could not check it."
-          : "Could not reach the shop just now (" + clean(sub.proCheck, 40) + ").") +
-          (was && !sub.pro ? " Their free Pro has ended, so they are on the free plan for now." : " Nothing changed.") + " Try again in a few minutes.";
+          : /^shopify token refused/.test(String(sub.proCheck))   // v192: the keys are in but Shopify says no: say what to check, not "try again"
+            ? "Shopify refused the order app's keys (" + clean(String(sub.proCheck).replace(/^shopify token refused:?\s*/, ""), 70) + "). Check in the Shopify Dev Dashboard that the Prowl app is installed on the store with read_orders, then that SHOPIFY_ORDERS_CLIENT_ID and SHOPIFY_ORDERS_CLIENT_SECRET in Cloudflare are its current Client ID and secret, with no spaces."
+            : "Could not reach the shop just now (" + clean(sub.proCheck, 80) + ").") +
+          (was && !sub.pro ? " Their free Pro has ended, so they are on the free plan for now." : " Nothing changed.") +
+          (/^shopify token refused/.test(String(sub.proCheck)) ? "" : " Try again in a few minutes.");
       } else if (sub.pro && pl.via === "gift") msg = "They have free Pro from your gift (" + giftEnds(day10(pl.until)) + "), so the shop was not asked.";
       else if (sub.pro && pl.via === "list") msg = "They have free Pro from the PRO_EMAILS list in Cloudflare, so the shop was not asked.";
       else {
