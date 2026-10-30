@@ -1705,7 +1705,7 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
      /pages/prowl-app.
   4. Resend dashboard: download the **DPA** and file it.
   5. Google Cloud Console: a **daily quota and a budget alert** on GOOGLE_MAPS_KEY.
-  6. PROWLMONTH one use per customer, and the order app's keys (in Cloudflare, but Shopify refuses them): both below.
+  6. PROWLMONTH one use per customer: below, still open. (The order app works since 2026-10-30.)
   7. The Facebook sweep is retired (v178): stop its morning run on Prowl-the-agent, then delete the **FB_INGEST_KEY**
      secret in Cloudflare > Workers > prowl > Settings > Variables and secrets.
 
@@ -1737,13 +1737,9 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
   VAPID_PRIVATE_JWK is in, above). Matches also show in the same place. The Not it button on the phone needs
   MEMBER_ID_SALT or ADMIN_KEY (both are set if admin works).
 
-- **URGENT: the order app's keys are in Cloudflare but Shopify refuses them** (2026-10-30: admin > Re-check Pro on a
-  free member says "shopify token refused"). Pro checks fail for anyone without a gift until this is fixed. Since v192
-  the admin message names Shopify's reason. Check, in the Shopify Dev Dashboard (dev.shopify.com): the Prowl app is
-  **installed** on the store (not only created), its scopes include read_orders (release a version and approve it in
-  the store after adding one), and it was made in the Dev Dashboard by the organisation that owns the store; then that
-  SHOPIFY_ORDERS_CLIENT_ID and SHOPIFY_ORDERS_CLIENT_SECRET in Cloudflare are its current Client ID and secret (no
-  spaces, not swapped, the secret not rotated since). Re-check Pro on a free member to confirm.
+- **Done (Matt, 2026-10-30): the order app works.** The keys were in Cloudflare but Shopify refused them ("shopify
+  token refused") until Matt installed the Prowl app on the store; then admin > Re-check Pro on a free member answered
+  "Checked the shop: no current Prowl Pro order". Since v192 a refusal names Shopify's reason.
 - **In Shopify:** set the PROWLMONTH discount to one use per customer (the code is visible in the page source).
 - **Known gap:** if adding Pro to the cart fails, the page falls back to `/products/prowl-pro` without the code.
 - **Next:** check Den > Settings shows the free month and that the welcome email came.
