@@ -106,7 +106,7 @@ const APP_CSS = String.raw`
 .upd{font-size:13px;color:var(--mu);font-variant-numeric:tabular-nums}
 .tabbar{position:sticky;top:0;z-index:5;background:var(--bg);margin-top:10px;border-bottom:2px solid var(--ol)}
 .card,.view{scroll-margin-top:60px}
-.tabs{display:flex;justify-content:space-between}
+.tabs{display:flex;justify-content:space-between;gap:10px;overflow-x:auto;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
 .tab{font:inherit;font-weight:650;font-size:13px;color:var(--ink2);background:none;border:0;border-bottom:4px solid transparent;
   padding:12px 3px 9px;min-height:46px;cursor:pointer;white-space:nowrap;text-align:center}
 @media (min-width:600px){.tabs{justify-content:flex-start;gap:4px}.tab{font-size:14.5px;padding:12px 14px 9px}}
@@ -294,6 +294,8 @@ th:last-child,td:last-child{padding-right:0}
 .ggrid label{display:block;margin-bottom:6px}
 .gform .btn{align-self:flex-start}
 .affp{border-top:1px solid var(--hair);padding:16px 0 4px}
+.spp h3{font-size:14px;margin:0 0 6px}.spp>div{margin-bottom:8px}.spfx{display:flex;flex-direction:column;gap:8px}
+.fxrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.fxrow input{flex:1 1 160px;min-width:0}
 .affp:first-child{border-top:0;padding-top:4px}
 .affp .ggrid{margin:4px 0 2px}
 .affrow{display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap}
@@ -368,11 +370,12 @@ const SS = {
   get: k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
   set: (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) { /* private mode: just don't remember */ } }
 };
-const TABS = ["overview", "members", "diagnose", "errors", "searches", "affiliates"];
+const TABS = ["overview", "members", "diagnose", "errors", "searches", "spending", "affiliates"];
 const S = { tab: "", aData: null, ov: null, ovAt: 0, ovSeq: 0, out: false, health: null, sales: null, routesAll: false, top: "today",
   mFilter: "all", mSort: "created", mData: null, mAt: 0, mSeq: 0, member: null, memberId: "", pushed: false, lastMsg: null,
   late: null, diag: null, dSel: null, diagRes: null, diagShow: "all", diagSeq: 0, errSeq: 0, sDays: 7, sSeq: 0, uSeq: 0, uAt: 0, toastT: 0,
   gData: null, gAt: 0, gSeq: 0, giftsAll: false, glen: null };
+Object.assign(S, { spData: null, spSeq: 0 });   /* v193: Spending */
 
 /* ---------- DOM: API data only ever lands in textContent or vetted https attributes ---------- */
 function h(tag, a, kids) {
@@ -527,7 +530,7 @@ const AUDIT = { login: "Admin sign-in", logout: "Admin sign-out", "signin-link":
   "recheck-today": "Re-check hunts today", "resend-today": "Send today's email again", "mail-on": "Turned emails on", "mail-off": "Turned emails off",
   unpause: "Unpaused", "signout-all": "Signed out all devices", "clear-seen": "Cleared already-sent memory", delete: "Deleted a member",
   find: "Looked up a member", diagnose: "Ran Diagnose", healthcheck: "Ran a health check", salescheck: "Checked the garage-sale sites",
-  "aff-on": "Turned an affiliate on", "aff-off": "Turned an affiliate off", "aff-ids": "Saved affiliate IDs", "gift-add": "Gifted Pro", "gift-remove": "Turned off a gift", "gift-on": "Gifted Pro to a member", "gift-off": "Turned off free Pro" };
+  "aff-on": "Turned an affiliate on", "aff-off": "Turned an affiliate off", "aff-ids": "Saved affiliate IDs", "spend-prices": "Saved spending prices and bills", "gift-add": "Gifted Pro", "gift-remove": "Turned off a gift", "gift-on": "Gifted Pro to a member", "gift-off": "Turned off free Pro" };
 const ISSUES = { members: "member counts", alerts: "alert emails", metrics: "speed, errors and uptime", traffic: "speed and errors", uptime: "uptime",
   ai: "AI usage", pools: "AI usage", searches: "top searches", audit: "admin activity", errors: "recent errors" };
 
@@ -569,7 +572,8 @@ function selectTab(tab, detail) {
   if (TABS.indexOf(tab) < 0) tab = "overview";
   S.tab = tab;
   SS.set("prowl-admin-tab", tab);
-  tabBtns.forEach(b => { const on = b.getAttribute("data-tab") === tab; b.setAttribute("aria-selected", on ? "true" : "false"); b.tabIndex = on ? 0 : -1; });
+  tabBtns.forEach(b => { const on = b.getAttribute("data-tab") === tab; b.setAttribute("aria-selected", on ? "true" : "false"); b.tabIndex = on ? 0 : -1;
+    if (on && b.scrollIntoView) try { b.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (e) {} });   /* v193: seven tabs scroll sideways on a phone */
   TABS.forEach(t => { $("#v-" + t).hidden = t !== tab; });
   D.title = (detail ? S.memberId : $("[data-tab=" + tab + "]").textContent) + " \u00b7 Prowl admin";
   if (tab === "members" && !detail) {
@@ -582,6 +586,7 @@ function selectTab(tab, detail) {
   if (tab === "errors") loadErrors();
   if (tab === "searches") { loadSearches(); if (!S.uAt || Date.now() - S.uAt > 300000) loadUsage(); }
   if (tab === "affiliates") loadAff();
+  if (tab === "spending") loadSpend();   /* v193 */
 }
 function go(tab) { history.replaceState(null, "", "#" + tab); selectTab(tab); }
 /* Member ids are lower-case hex on the server; accept any case typed or pasted. */
@@ -611,6 +616,7 @@ $("#refresh").addEventListener("click", () => {
   else if (S.tab === "searches") { loadSearches(); loadUsage(); }
   else if (S.tab === "diagnose") { if (!S.ov) loadOverview(); stamp(); }
   else if (S.tab === "affiliates") loadAff();
+  else if (S.tab === "spending") loadSpend();
 });
 /* Every 60 s while this browser tab is in view and the overview is open; catch up when it comes back into view. */
 setInterval(() => { if (!S.out && D.visibilityState === "visible" && S.tab === "overview") loadOverview(); }, 60000);
@@ -1051,6 +1057,92 @@ async function setAff(p, btn) {
     if (e.status === 401) return;
     toast(e.message, true); btn.disabled = false; btn.textContent = was;
   }
+}
+
+/* ---------- Spending (v193): what Prowl's paid calls cost, estimated, plus the monthly bills ---------- */
+const SP_PER = [["today", "Today"], ["d7", "7 days"], ["month", "This month"], ["last", "Last month"]];
+const SP_UNIT = { call: "$ per 1,000 calls", tin: "$ per 1M input tokens", tout: "$ per 1M output tokens", ws: "$ per 1,000 web searches" };
+async function loadSpend() {
+  const box = $("#spbox"), seq = ++S.spSeq;
+  if (!S.spData) fill(box, loading("Loading spending\u2026"));
+  try { const j = await api("/admin/api/spend"); if (seq !== S.spSeq) return; S.spData = j; renderSpend(j); stamp(); }
+  catch (e) { if (e.status === 401 || seq !== S.spSeq) return; fill(box, note("bad", "Could not load spending. " + e.message, loadSpend)); }
+}
+function usd(n) {
+  if (n == null) return "no price";
+  const v = Number(n) || 0;
+  return v > 0 && v < 0.01 ? "under $0.01" : money(v);
+}
+function kfmt(n) { n = Number(n) || 0; return n >= 1e6 ? (Math.round(n / 1e5) / 10) + "M" : n >= 1e3 ? (Math.round(n / 100) / 10) + "k" : String(n); }
+function spCell(m, u) {
+  const bits = [num(u.n) + (u.n === 1 ? " call" : " calls")];
+  if (m.uses.indexOf("tin") >= 0 && (u.ti || u.to)) bits.push(kfmt(u.ti) + " in" + (m.uses.indexOf("tout") >= 0 ? " / " + kfmt(u.to) + " out" : "") + " tokens");
+  if (m.uses.indexOf("ws") >= 0 && u.ws) bits.push(num(u.ws) + " web searches");
+  if (!u.n && !u.ti && !u.to && !u.ws) return h("span", { class: "muted", text: "\u2014" });
+  return h("span", null, [h("b", { text: usd(u.cost) }), h("br"), h("span", { class: "muted small", text: bits.join(", ") })]);
+}
+function renderSpend(j) {
+  const M = Array.isArray(j.meta) ? j.meta : [], SV = Array.isArray(j.services) ? j.services : [], T = j.totals || {}, cfg = j.cfg || { prices: {}, fixed: [] };
+  const by = {}; SV.forEach(x => { by[x.key] = x; });
+  const out = [];
+  if (!j.ok) out.push(note("warn", "The call counts could not be loaded right now. The prices and bills below still work.", loadSpend));
+  const unp = T.month && T.month.unpriced ? " (" + T.month.unpriced + " service" + (T.month.unpriced === 1 ? "" : "s") + " used without a price)" : "";
+  out.push(h("p", { class: "ukpi", text: "About " + usd(T.monthAll) + " so far this month" + unp + ", " + usd(T.lastAll) + " last month. Calls today: " + usd(T.today && T.today.calls) + "." }));
+  const cols = [{ t: "Service" }].concat(SP_PER.map(p => ({ t: p[1], num: 1 })));
+  const rows = M.map(m => { const x = by[m.key] || {}; return [m.name].concat(SP_PER.map(p => spCell(m, x[p[0]] || {}))); });
+  (cfg.fixed || []).forEach(f => rows.push([f.name + " (monthly bill)", "", "", usd(f.perMonth), usd(f.perMonth)]));
+  rows.push([h("b", { text: "Total" }), h("b", { text: usd(T.today && T.today.calls) }), h("b", { text: usd(T.d7 && T.d7.calls) }), h("b", { text: usd(T.monthAll) }), h("b", { text: usd(T.lastAll) })]);
+  out.push(tableOf(cols, rows, "Spending by service", true));
+  out.push(h("p", { class: "hint", text: "Today and 7 days are calls only; the month columns add the monthly bills. \u201cNo price\u201d means Prowl used it but has no price for it: add one below. Counting started with worker v193 (30 Oct 2026), so earlier days are empty." }));
+  out.push(spForm(j, M, cfg));
+  fill($("#spbox"), out);
+}
+function spForm(j, M, cfg) {
+  const ins = [], blocks = M.map(m => h("div", { class: "spp" }, [h("h3", { text: m.name })].concat(m.uses.map(f => {
+    const id = "sp-" + m.key + "-" + f, cur = cfg.prices && cfg.prices[m.key] ? cfg.prices[m.key][f] : null, list = m.list ? m.list[f] : null;
+    const inp = h("input", { id: id, type: "number", min: "0", step: "any", inputmode: "decimal", value: cur == null ? "" : String(cur),
+      placeholder: list == null ? "price from your bill" : String(list), "data-k": m.key, "data-f": f, "aria-describedby": id + "-hint" });
+    ins.push(inp);
+    const src = https(m.src), bill = https(m.bill);
+    return h("div", null, [h("label", { for: id, text: SP_UNIT[f] || f }), inp,
+      h("p", { class: "hint", id: id + "-hint" }, ["List price " + (list == null ? "not published" : "$" + list) + (m.srcNote ? " (" + m.srcNote + ")" : "") + ". ",
+        src ? h("a", { href: src, target: "_blank", rel: "noopener noreferrer", text: "Source" }) : null, src && bill ? " \u00b7 " : null,
+        bill ? h("a", { href: bill, target: "_blank", rel: "noopener noreferrer", text: "Your bill" }) : null])]);
+  }))));
+  const fx = h("div", { class: "spfx" }), max = Number(j.fixedMax) || 12;
+  const addRow = (f) => {
+    if (fx.children.length >= max) return;
+    const i = fx.children.length, nm = h("input", { type: "text", maxlength: "40", autocomplete: "off", value: f ? f.name : "", placeholder: "e.g. Shopify plan", "aria-label": "Bill name " + (i + 1) });
+    const am = h("input", { type: "number", min: "0", step: "any", inputmode: "decimal", value: f ? String(f.perMonth) : "", placeholder: "$ a month", "aria-label": "Dollars a month " + (i + 1) });
+    const rm = h("button", { class: "btn btn-s", type: "button", text: "Remove" });
+    const row = h("div", { class: "fxrow" }, [nm, am, rm]);
+    rm.addEventListener("click", () => { row.remove(); add.disabled = fx.children.length >= max; });
+    fx.appendChild(row); add.disabled = fx.children.length >= max;
+  };
+  const add = h("button", { class: "btn btn-s", type: "button", text: "Add a monthly bill" });
+  add.addEventListener("click", () => addRow(null));
+  (cfg.fixed || []).forEach(addRow);
+  const save = h("button", { class: "btn btn-p", type: "submit", text: "Save prices and bills" });
+  const form = h("form", { class: "gform", autocomplete: "off" }, [h("h3", { class: "ubh", text: "Prices" }),
+    h("p", { class: "sub", text: "Start from the list prices (checked " + (j.pricesChecked || "") + "). Change any to match your bill; empty means no price." }),
+    h("div", { class: "ggrid" }, blocks), h("h3", { class: "ubh", text: "Monthly bills" }),
+    h("p", { class: "sub", text: "Fixed amounts you pay each month, such as the Shopify plan, Cloudflare Workers, a SerpApi plan or your Claude subscription." }), fx, add, save]);
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const prices = {};
+    ins.forEach(x => { const k = x.getAttribute("data-k"), f = x.getAttribute("data-f"); (prices[k] = prices[k] || {})[f] = x.value.trim() === "" ? null : Number(x.value); });
+    const fixed = Array.prototype.slice.call(fx.children).map(r => { const q = r.querySelectorAll("input"); return { name: q[0].value.trim(), perMonth: q[1].value.trim() === "" ? null : Number(q[1].value) }; });
+    save.disabled = true; save.textContent = "Saving\u2026";
+    try {
+      const r = await api("/admin/api/spend/cfg", { prices: prices, fixed: fixed });
+      $("#sp-msg").textContent = r.message || "Saved."; toast(r.message || "Saved.");
+      S.spData = r; renderSpend(r);
+    } catch (err) {
+      if (err.status === 401) return;
+      toast(err.message, true); $("#sp-msg").textContent = err.message; save.disabled = false; save.textContent = "Save prices and bills";
+    }
+  });
+  return form;
 }
 
 /* ---------- Gift Pro (free service) ---------- */
@@ -1620,7 +1712,7 @@ function appBody() {
     '<form method="post" action="/admin/logout"><button class="btn btn-s" type="submit">Sign out</button></form></div></div></header>' +
     /* outside the header: a sticky element only sticks within its parent, and the header is just as tall as itself */
     '<div class="tabbar"><div class="wrap"><nav class="tabs" role="tablist" aria-label="Admin sections">' +
-    tab("overview", "Overview") + tab("members", "Members") + tab("diagnose", "Diagnose") + tab("errors", "Errors") + tab("searches", "Searches") + tab("affiliates", "Affiliates") +
+    tab("overview", "Overview") + tab("members", "Members") + tab("diagnose", "Diagnose") + tab("errors", "Errors") + tab("searches", "Searches") + tab("affiliates", "Affiliates") + tab("spending", "Spending") +
     "</nav></div></div>" +
     '<main id="main" class="wrap">' +
     panel("overview", '<div class="view" id="ov"></div>') +
@@ -1670,6 +1762,10 @@ function appBody() {
       '<section class="card"><div class="ch"><h2>Affiliates</h2></div>' +
       '<p class="sub">Each affiliate program has its IDs and an on/off switch. Paste the IDs from the network, press Save IDs, then Turn on. Off means links to that site go out plain and no disclosure names it. The Prowl page follows within about 5 minutes, and the alert emails too for the programs marked so (the others keep plain links in email). IDs are public (they are in every affiliate link), so nothing secret goes here.</p>' +
       '<div id="affbox"></div><p class="msg" id="aff-msg" aria-live="polite"></p></section>') +
+    panel("spending",
+      '<section class="card"><div class="ch"><h2>Spending</h2></div>' +
+      '<p class="sub">What Prowl&rsquo;s paid services cost, estimated from the calls Prowl made (Muse, Jev, Google, Lens) and priced with the prices below, plus the monthly bills you add. Google&rsquo;s free monthly allowance is not taken off, so the real Google bill can be lower. The real figures are on each provider&rsquo;s billing page.</p>' +
+      '<div id="spbox"></div><p class="msg" id="sp-msg" aria-live="polite"></p></section>') +
     "</main>" +
     '<div class="toast" id="toast" role="status" aria-live="polite"></div>' +
     '<div class="out-ov" id="out" hidden><div class="card" role="alertdialog" aria-modal="true" aria-labelledby="out-h"><h2 id="out-h">You are signed out</h2>' +

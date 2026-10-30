@@ -11,7 +11,8 @@ about a minute. No dashboard paste needed.
 
 - `index.js` is the worker (ES module, no dependencies). Since v78 it imports three sibling files, which
   wrangler bundles with it on deploy: `admin.js` (the /admin sign-in and API), `admin-page.js` (the admin
-  page itself) and `metrics.js` (speed, error and uptime records for the admin dashboard).
+  page itself), `metrics.js` (speed, error and uptime records for the admin dashboard) and, since v193, `spend.js`
+  (what the paid services cost, for the admin's Spending tab).
 - `__tests__/` holds the unit tests: `node --test "worker/__tests__/*.test.mjs"` (Node 22, no packages).
 - `wrangler.toml` holds the name, KV binding, crons (the 5-minute alert clock and the hourly uptime
   test searches) and compatibility date.
@@ -50,6 +51,28 @@ about a minute. No dashboard paste needed.
   page, not OWNER_KEY). Without it the route answers 403 to everyone. The contract (one POST per locked hunt per
   morning, sent even when nothing is new; each adds its finds to the term's last 7 days; kept 8 days after the last
   POST, hidden on the page after 2) is in the comment above `handleFetch`. `FB_FINDS` in `wrangler.toml` says who can read the finds: "owner" (default), "public" or "off".
+
+## What Prowl spends (admin Spending tab, v193)
+
+`spend.js` counts every call to a paid service. `index.js` wraps the global `fetch` once, so the call sites stay plain
+`fetch` and a new paid call is counted without anyone remembering to.
+
+- **What is counted:**
+  - Muse (`api.meta.ai`), with the input/output tokens and web searches its answer reports.
+  - Jev (`api.typesafe.ai`), with TypeSafe's own token count, or about 4 characters a token of what was sent.
+  - Google Places Text / Nearby Search, Place Details (hours, reviews), Place Photos, Autocomplete.
+  - Google Geocoding, Routes and Cloud Vision.
+  - SerpApi Lens.
+- **What is not:** a Cloudflare cache hit, and a call that threw before any answer.
+- **Where it is kept:** counts go to the `spend` Caps object as `w:<UTC day>|<service>` rows, kept 400 days.
+  Caps' own alarm never clears `w:`.
+- **Prices:** start from the list prices in `SPEND_SERVICES`. Each row cites its source and the date it was checked,
+  and is empty where no per-unit price is published. The owner edits them in the admin, saved to KV `spend:cfg`
+  together with the monthly bills (at most 12).
+- **What the totals mean:** the tab shows Today, 7 days, This month and Last month per service. It is an estimate:
+  Google's free monthly allowance per SKU is not taken off, and the real figures are on each provider's billing page.
+- **Adding a paid host:** add a service row in `spend.js` and teach `paidKey` its address.
+  `worker/__tests__/spend.test.mjs` fails until both are done.
 
 ## Rolling back
 

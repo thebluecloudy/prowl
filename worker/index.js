@@ -19,6 +19,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v193: 2026-10-30. What Prowl spends (Matt: "how much i am spending in the ai, muse, jev, google, etc"): every paid
+ *         call (Muse, Jev, Google Places / Routes / Geocoding / Vision, SerpApi Lens) is counted by the wrapped global fetch
+ *         (Muse and Jev: tokens from their answers) into the "spend" Caps object per UTC day (spend.js). The admin's
+ *         Spending tab turns the counts into an estimate with editable list prices (KV spend:cfg) plus monthly bills.
  *   v192: 2026-10-30. A refused Shopify order token says why: the token request's status and Shopify's error code ride
  *         along in the Pro check ("shopify token refused: 400 invalid_client"), up to 80 characters, never the keys.
  *   v191: 2026-10-29. Shelf scan: up to 8 picks (was 3), an ALL line (so.all {why, fair, payUpTo}) when most of the shelf is
@@ -647,6 +651,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
+import { SpendBuffer, spendOp, spendWrap } from "./spend.js";   /* v193 */
 import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb64u } from "./push.js";   /* v114 */
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
@@ -658,7 +663,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v192";
+const WORKER_VERSION = "v193";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -2564,6 +2569,19 @@ async function capsCall(name, op, body) {
   } finally { clearTimeout(timer); }
 }
 function capsDay() { return "caps:" + new Date().toISOString().slice(0, 10); }
+/* v193: what Prowl spends. Every call to a paid service is counted where it leaves: the global fetch is wrapped once
+   (spendWrap in spend.js), which knows the paid hosts (Muse, Jev, Google Places / Routes / Geocoding / Vision, SerpApi)
+   and adds each call, and Muse's and Jev's reported tokens, to SBUF. Call sites stay plain fetch, so a new paid call is
+   counted without anyone remembering to. Flushed to the "spend" Caps object at the end of each request and cron run. */
+const SBUF = new SpendBuffer();
+try { if (typeof globalThis.fetch === "function" && !globalThis.fetch.__prowlSpend) globalThis.fetch = spendWrap(globalThis.fetch.bind(globalThis), SBUF); } catch (e) {}   /* a read-only fetch must never stop the worker starting */
+function spendFlush(ctx) {
+  const d = SBUF.drain();
+  if (!d) return null;
+  const p = capsCall("spend", "sadd", d).catch((e) => console.error("spend", String(e && e.message || e)));
+  if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(p);
+  return p;
+}
 function capsShard(k) { let h = 0; for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) | 0; return "cache:" + (Math.abs(h) % 8); }
 const PCACHE = {
   async match(req) {
@@ -2606,6 +2624,10 @@ export class Caps {
     if (op === "mrec" || op === "mget" || op === "peek") {
       const r = await metricsOp(this.s, op, q, Date.now());
       if (op === "mrec") await this.arm(86400000);
+      return J(r, r && r.error ? 400 : 200);
+    }
+    if (op === "sadd" || op === "sget") {   /* v193: what Prowl spends, in the "spend" object (spend.js) */
+      const r = await spendOp(this.s, op, q, Date.now());
       return J(r, r && r.error ? 400 : 200);
     }
     if (op === "take") {
@@ -7223,7 +7245,7 @@ export default {
     try { await affLoad(env); } catch (e) {}   /* v89 */
     /* v78: one test search per live marketplace each hour, for the uptime numbers */
     if (event && event.cron === PROBE_CRON) { ctx.waitUntil(runProbes(env).then(p => capsCall("metrics", "mrec", { p: p })).catch(e => console.error("probes", String(e && e.message || e)))); return; }
-    ctx.waitUntil(cronRun(env));
+    ctx.waitUntil(cronRun(env).then(() => spendFlush(null)));   /* v193: the alert clock's Jev and Muse calls */
   },
   async fetch(request, env, ctx) {
     G_ENV = env;
@@ -7232,6 +7254,7 @@ export default {
     try { res = await handleFetch(request, env, ctx); }
     catch (e) { thrown = e; console.error("unhandled", String(e && e.stack || e)); res = json({ error: "server error" }, 500, request.headers.get("Origin") || ""); }
     try { await mTrack(request, res, t0, thrown, ctx); } catch (e) {}
+    try { spendFlush(ctx); } catch (e) {}   /* v193 */
     return res;
   },
 };

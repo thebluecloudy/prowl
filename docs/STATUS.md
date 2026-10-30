@@ -1,13 +1,13 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.21 / v192).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.21 / v193).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.21** | 375,773 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v192** | |
+| Worker | **v193** | |
 
 Recently shipped, newest first:
 
@@ -27,6 +27,22 @@ Recently shipped, newest first:
   first, in hunt order, as they land; the quiet ones fold into one line of chips (#otp-olNone, "Nothing on <site> right
   now"), lookups that failed into another (#otp-olErr); the summary counts what is still being checked. No new keys.
   Test `__tests__/page/one-site-live-v819.test.mjs` (was v818).
+- **v193: Spending tab in the admin** (Matt, 2026-10-30: "how much i am spending in the ai, muse, jev, google, etc").
+  - **What it shows:** per service, Today · 7 days · This month · Last month, as calls (Muse: tokens and web searches)
+    and an estimated $. Monthly bills Matt types in (Shopify, Cloudflare, his Claude plan…) are added to the month
+    totals.
+  - **Where the counts come from:** every paid call is counted by the wrapped global fetch in `worker/spend.js`: Muse,
+    Jev, Google Places / Routes / Geocoding / Vision, SerpApi Lens. Rows are kept per UTC day in the `spend` Caps
+    object for 400 days.
+  - **Prices:**
+    - The defaults are list prices checked 2026-10-30, each with its source linked in the tab.
+    - Muse ($1.25 / $4.25 per 1M tokens, $2.50 per 1,000 searches) and Jev ($0.042 per 1M input) come from third-party
+      listings, because neither provider prints prices.
+    - Google Nearby Search and SerpApi have no default.
+    - Matt edits any price in the tab (KV `spend:cfg`). It is an estimate: Google's free monthly allowance is not taken
+      off.
+  - **Admin change:** the admin's tab strip now scrolls sideways on a phone (seven tabs).
+  - **Tests:** `worker/__tests__/spend.test.mjs`, `spend-ui.test.mjs`.
 - **v192: a refused Shopify order token says why** (Matt's admin, 2026-10-30: "Could not reach the shop just now
   (shopify token refused)" with SHOPIFY_ORDERS_CLIENT_ID and _SECRET in Cloudflare). The worker threw away Shopify's
   answer to the token request; it now keeps its status and error code (`shopTokErr`: "400 invalid_client", "403 App is
@@ -1695,7 +1711,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.22, worker v193**. Claim one here when you start.
+Next free numbers: **page v8.22, worker v194**. Claim one here when you start.
 
 ## What's next
 
@@ -1710,6 +1726,11 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 ## Waiting on Matt
 
+- **Spending tab (worker v193):** open admin › Spending, then:
+  - add your monthly bills (Shopify plan, Cloudflare Workers, a SerpApi plan if you pay for one, your Claude plan);
+  - copy the Google Nearby Search price from the Google Cloud bill (no default);
+  - check the Muse and Jev prices against your bills (third-party list prices);
+  - after a month, compare the tab's Google total with the Google Cloud bill and adjust prices if needed.
 - **Security and trust (2026-10-28 audit), the admin steps only Matt can take:**
   1. Done (Matt, 2026-10-30): the privacy policy is Shopify's template again with the three Prowl sections from
      `docs/privacy-policy-prowl-section.html` (checked against worker v186 / page v8.12) after "Relationship with
