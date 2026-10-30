@@ -1698,7 +1698,7 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
      /pages/prowl-app.
   4. Resend dashboard: download the **DPA** and file it.
   5. Google Cloud Console: a **daily quota and a budget alert** on GOOGLE_MAPS_KEY.
-  6. PROWLMONTH one use per customer and the order app's keys: both below, still open.
+  6. PROWLMONTH one use per customer: below, still open. (The order app's keys are in, 2026-10-30.)
   7. The Facebook sweep is retired (v178): stop its morning run on Prowl-the-agent, then delete the **FB_INGEST_KEY**
      secret in Cloudflare > Workers > prowl > Settings > Variables and secrets.
 
@@ -1730,11 +1730,9 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
   VAPID_PRIVATE_JWK is in, above). Matches also show in the same place. The Not it button on the phone needs
   MEMBER_ID_SALT or ADMIN_KEY (both are set if admin works).
 
-- **URGENT: Pro checks fail until the order app's keys are in Cloudflare.** In the Shopify Dev Dashboard open the app
-  that will read orders ("Prowl"), make sure its access scopes include read_orders (release a new version if you add
-  it, and approve it in the store), copy its Client ID and Client secret, then in Cloudflare > Workers > prowl >
-  Settings > Variables and secrets add SHOPIFY_ORDERS_CLIENT_ID and SHOPIFY_ORDERS_CLIENT_SECRET (type Secret) and
-  Deploy. Then admin > Members > Re-check Pro.
+- **Done (Matt, 2026-10-30): the order app's keys are in Cloudflare** (SHOPIFY_ORDERS_CLIENT_ID and
+  SHOPIFY_ORDERS_CLIENT_SECRET). To confirm they work: admin > Members > Re-check Pro on any member; "The shop is not
+  connected" would mean they are missing or wrong.
 - **In Shopify:** set the PROWLMONTH discount to one use per customer (the code is visible in the page source).
 - **Known gap:** if adding Pro to the cart fails, the page falls back to `/products/prowl-pro` without the code.
 - **Next:** check Den > Settings shows the free month and that the welcome email came.
