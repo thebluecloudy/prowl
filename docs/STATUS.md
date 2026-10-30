@@ -1701,9 +1701,9 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
   2. Shopify > Settings > Customer accounts: confirm **new customer accounts** (passwordless), classic off. With
      classic accounts anyone can register a store account under someone else's email, and /proxy/login would link it
      to that person's Prowl.
-  3. Shopify > Settings > Customer privacy: **cookie banner on**, then check it shows on /pages/prowl and
-     /pages/prowl-app.
-  4. Resend dashboard: download the **DPA** and file it.
+  3. Done (Matt, 2026-10-30): the Shopify cookie banner is on.
+  4. Resend's **DPA** needs no signature: it is part of Resend's terms (resend.com/legal/dpa, last updated 2025-12-31),
+     accepted with the account. Save a PDF of that page with the business records.
   5. Google Cloud Console: a **daily quota and a budget alert** on GOOGLE_MAPS_KEY.
   6. Done (Matt, 2026-10-30): PROWLMONTH is one use per customer, first payment only. The order app works too.
   7. Done (Matt, 2026-10-30): the **FB_INGEST_KEY** secret is deleted. If Prowl-the-agent still runs the old morning
