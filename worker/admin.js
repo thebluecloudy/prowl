@@ -10,6 +10,7 @@
    index.js alPro checks it (giftPro below) before any Shopify call. */
 
 import { appAsset } from "./admin-app.js";
+import { SPEND_SERVICES, SPEND_CFG_KEY, SPEND_FIXED_MAX, spendCfgClean, spendSummary, spendPeriods } from "./spend.js";   /* v193 */
 const COOKIE = "prowl_admin";
 const SESSION_S = 43200;                         // 12 hours
 const BODY_MAX = 8192;
@@ -1092,8 +1093,31 @@ async function apiAffiliateIds(c) {
   return jres({ ok: true, message: msg, programs: await affView(c) });
 }
 
-const GETS = { overview: apiOverview, members: apiMembers, member: apiMember, errors: apiErrors, searches: apiSearches, usage: apiUsage, gifts: apiGifts, affiliates: apiAffiliates };
-const POSTS = { find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, salescheck: apiSalesCheck, gift: apiGiftAdd, "gift/remove": apiGiftRemove, affiliate: apiAffiliateSet, "affiliate/ids": apiAffiliateIds };
+/* ---------- spending (v193) ----------
+   What Prowl's paid calls cost, estimated: the per-day counts the worker keeps in the "spend" Caps object (spend.js),
+   priced with KV spend:cfg (list prices until the owner saves), plus the monthly bills the owner types in. */
+async function spendCfg(c) { return spendCfgClean(await c.H.kvGet(c.env, SPEND_CFG_KEY, null)).cfg; }
+async function spendView(c) {
+  const per = spendPeriods(c.nowMs);
+  let rows = null;
+  try { const j = await c.H.capsCall("spend", "sget", { from: per.last.from < per.d7.from ? per.last.from : per.d7.from, to: per.today.to }); rows = j && Array.isArray(j.rows) ? j.rows : null; } catch (e) {}
+  const cfg = await spendCfg(c), sum = spendSummary(rows || [], cfg, c.nowMs);
+  return Object.assign(sum, { ok: rows !== null, cfg: cfg, fixedMax: SPEND_FIXED_MAX,
+    meta: SPEND_SERVICES.map(s => ({ key: s.key, name: s.name, uses: s.uses, list: s.price, free: s.free || 0, src: s.src, srcNote: s.srcNote, bill: s.bill })) });
+}
+async function apiSpend(c) { return jres(await spendView(c)); }
+async function apiSpendCfg(c) {
+  const H = c.H, b = c.body || {};
+  const { cfg, errors } = spendCfgClean({ prices: b.prices, fixed: b.fixed });
+  if (errors.length) return jerr(400, "Not saved: check " + errors.slice(0, 4).join(", ") + ". Prices are dollars (0 or more, or empty for none); each monthly bill needs a name and an amount.");
+  if (!(await H.vCount("admspend", 100))) return jerr(429, "That is a lot of price changes today. Try again tomorrow.");
+  await H.kvPut(c.env, SPEND_CFG_KEY, cfg);
+  await audit(c, { action: "spend-prices", ok: true, note: cfg.fixed.length + " monthly bills" });
+  return jres(Object.assign({ message: "Saved. The estimate uses these prices now." }, await spendView(c)));
+}
+
+const GETS = { overview: apiOverview, members: apiMembers, member: apiMember, errors: apiErrors, searches: apiSearches, usage: apiUsage, gifts: apiGifts, affiliates: apiAffiliates, spend: apiSpend };
+const POSTS = { "spend/cfg": apiSpendCfg, find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, salescheck: apiSalesCheck, gift: apiGiftAdd, "gift/remove": apiGiftRemove, affiliate: apiAffiliateSet, "affiliate/ids": apiAffiliateIds };
 
 /* ---------- sign in / out ---------- */
 const capsDayOf = c => typeof c.H.capsDay === "function" ? c.H.capsDay() : "caps:" + utcDay(c.nowMs);
