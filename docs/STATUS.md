@@ -1,16 +1,23 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-29 (v8.18 / v191).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.18 / v192).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.18** | 376,245 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v191** | |
+| Worker | **v192** | |
 
 Recently shipped, newest first:
 
+- **v192: a refused Shopify order token says why** (Matt's admin, 2026-10-30: "Could not reach the shop just now
+  (shopify token refused)" with SHOPIFY_ORDERS_CLIENT_ID and _SECRET in Cloudflare). The worker threw away Shopify's
+  answer to the token request; it now keeps its status and error code (`shopTokErr`: "400 invalid_client", "403 App is
+  not installed on this shop", "404 not a shop page"), never the keys, in the Pro check (up to 80 characters). The
+  admin's Re-check Pro then says "Shopify refused the order app's keys (...)" and what to check (the app installed on
+  the store with read_orders, the current Client ID and secret with no spaces) instead of "try again in a few
+  minutes". Test: `worker/__tests__/session.test.mjs`, `worker/__tests__/admin.test.mjs`.
 - **v8.18: All hunts on Goodwill shows the listings, grouped by hunt** (Matt, 2026-10-29: "i don't like the way it is
   layed out right now", picked Grouped by hunt). On a site with live listings (ShopGoodwill and the LIVE_SRC sites) the
   v8.17 all-hunts screen is now one block per hunt like Daily: the hunt, "N live" / nothing right now, Open on <site>,
@@ -1672,7 +1679,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.19, worker v192**. Claim one here when you start.
+Next free numbers: **page v8.19, worker v193**. Claim one here when you start.
 
 ## What's next
 
@@ -1698,7 +1705,7 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
      /pages/prowl-app.
   4. Resend dashboard: download the **DPA** and file it.
   5. Google Cloud Console: a **daily quota and a budget alert** on GOOGLE_MAPS_KEY.
-  6. PROWLMONTH one use per customer: below, still open. (The order app's keys are in, 2026-10-30.)
+  6. PROWLMONTH one use per customer, and the order app's keys (in Cloudflare, but Shopify refuses them): both below.
   7. The Facebook sweep is retired (v178): stop its morning run on Prowl-the-agent, then delete the **FB_INGEST_KEY**
      secret in Cloudflare > Workers > prowl > Settings > Variables and secrets.
 
@@ -1730,9 +1737,13 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
   VAPID_PRIVATE_JWK is in, above). Matches also show in the same place. The Not it button on the phone needs
   MEMBER_ID_SALT or ADMIN_KEY (both are set if admin works).
 
-- **Done (Matt, 2026-10-30): the order app's keys are in Cloudflare** (SHOPIFY_ORDERS_CLIENT_ID and
-  SHOPIFY_ORDERS_CLIENT_SECRET). To confirm they work: admin > Members > Re-check Pro on any member; "The shop is not
-  connected" would mean they are missing or wrong.
+- **URGENT: the order app's keys are in Cloudflare but Shopify refuses them** (2026-10-30: admin > Re-check Pro on a
+  free member says "shopify token refused"). Pro checks fail for anyone without a gift until this is fixed. Since v192
+  the admin message names Shopify's reason. Check, in the Shopify Dev Dashboard (dev.shopify.com): the Prowl app is
+  **installed** on the store (not only created), its scopes include read_orders (release a version and approve it in
+  the store after adding one), and it was made in the Dev Dashboard by the organisation that owns the store; then that
+  SHOPIFY_ORDERS_CLIENT_ID and SHOPIFY_ORDERS_CLIENT_SECRET in Cloudflare are its current Client ID and secret (no
+  spaces, not swapped, the secret not rotated since). Re-check Pro on a free member to confirm.
 - **In Shopify:** set the PROWLMONTH discount to one use per customer (the code is visible in the page source).
 - **Known gap:** if adding Pro to the cart fails, the page falls back to `/products/prowl-pro` without the code.
 - **Next:** check Den > Settings shows the free month and that the welcome email came.
