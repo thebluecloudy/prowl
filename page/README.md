@@ -171,6 +171,14 @@ The same sweep goes to Pro members by email on Thursday mornings around their lo
 Settings › Thursday estate sales, shown when `/alerts/status` answers `estate: true`). See STATUS.md for the gate and
 the open questions about EstateSales.net's permission.
 
+**Plan my weekend** (same versions): "Plan my weekend" under the Sweep results, or the Thursday email's button
+(`?wkplan=<ids>&wkp=<picks>&wkzip=ZIP&wkx&wks`, signed by the worker, read at load and then taken out of the address bar;
+the page asks `GET /weekend/plan` for the sales) opens the planner in `#otp-sheet`. `wpSplit` splits the checked sales
+into days (Saturday, Sunday, Friday; 5 a day; 45 min a stop; never before opening or within 30 min of closing), each day
+is ordered with Road Trip's `/order` (kept in the split's order when the optimizer's would break a sale's hours), and
+each day has one Google Maps and one Apple Maps link and Rebuild from here. Address-pending sales stay off the route.
+Constants `WP_STAY`, `WP_CAP`, `WP_LAST_IN`, `WP_DAY_PREF`. Nothing is stored on the device.
+
 ## Main stylesheet on the worker (page v6.92, worker v111)
 
 At v6.91 the page body sent to Shopify was 886 bytes under its 512 KB cap. The main stylesheet (about 141 KB, no logic)

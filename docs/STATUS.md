@@ -35,6 +35,40 @@ Recently shipped, newest first:
   gives the description and photo captions. KV keeps the list per point 3 hours (`wk1:`), each sale page a day
   (`wkd1:`, dead links as `gone`), a ZIP's centre 90 days (`wkz:`). If the list fails, the city page (`esFetch`)
   stands in. Tests `worker/__tests__/weekend-v193.test.mjs`, `__tests__/page/weekend-sweep-v822.test.mjs`.
+  3. **Plan my weekend** (same PR and versions, Matt approved the design 2026-10-30). A "Plan my weekend" button under
+     the Sweep results, and one in the Thursday email, open a planner (the page's `#otp-sheet`, `wpOpen`):
+     - **Start:** the place the sweep used (typed town, or the phone); for the email link the ZIP the sweep used; else
+       the saved ZIP (Only what fits); else just one ZIP box (looked up with `/geo`).
+     - **Sales:** Top picks start checked, the rest one tap. A sale whose company has not posted the street address yet
+       is listed under **Address pending** (with when it is due, if known), never on the route.
+     - **Day split** (`wpSplit`, ES5, `window.prowlWpSplit` for the tests): each checked sale goes on a day it is open,
+       Saturday first, then Sunday, then Friday (`WP_DAY_PREF`), at most `WP_CAP` = 5 a day, `WP_STAY` = 45 min at each.
+       The best order of a day's stops (every order of up to 5 tried, estimated legs) must reach no sale before it opens
+       (you leave so the first is reached at opening; later ones wait) or less than `WP_LAST_IN` = 30 min before it
+       closes. What does not fit is listed under "Didn't fit" with why (day full, or hours). A day known only as one span
+       (city-page fallback) uses the same clock each day, marked "hours estimated".
+     - **Order and times:** each day then goes through Road Trip's Optimize route (worker `/order`, `loop=1` from the
+       start, through `nrFetch`/`nrPtsQ`/`nrLegsOk`); if that order would break a sale's hours, the split's order is
+       kept and only its leg times are asked (`keep=1`), and the day says so. Arrival times use `nrClock`; a stop late
+       anyway is flagged as Road Trip flags estate sales ("Closed by the time you get there"). The leg estimate without
+       the router is Road Trip's own, now one helper (`nrEstMin`, used by `nrEtas` too).
+     - **Maps:** one Google Maps and one Apple Maps link a day (Road Trip's `nrMapsUrl`/`nrAppleUrl`, street addresses,
+       from the start and back to it; 5 stops is inside both apps' waypoint limits). **Rebuild from here** starts that
+       day again from the phone (and from now, on today); Maps then starts from the phone. Road Trip's own REBUILD FROM
+       HERE is unchanged.
+     - **Worker:** each sale page now also gives `addr` (SaleEvent `location.address.streetAddress`; "" while
+       `showAddress` is false), the record's `latitude`/`longitude`, `addrAt` (`utcShowAddressAfter`), and `img` = its
+       first `og:image` (cover photo). Kept under `wkd2:` (was `wkd1:`); a page with the address still hidden is read
+       again after 3 hours. Every sale the sweep shows has its page read (not only the nearest 16/10). Rows carry `lat`,
+       `lng`, `addr`, `addrAt` and `days` (`[{s, e}]` ms).
+     - **Email:** each sale's cover photo, 120x90, linked to the sale (none when there is none), and a **Plan my
+       weekend** button (top, and again at the foot when more than 3 sales): `PROWL_APP?wkplan=<ids>&wkp=<picks>&wkzip=
+       <ZIP>&wkx=<expiry>&wks=<sig>`, the signature an HMAC (`alCodeKey`) over ids, picks, ZIP and expiry (the Monday
+       after that weekend + 1 day). No email address and no sign-in ticket in it. The page reads it at load, takes it
+       out of the address bar and asks `GET /weekend/plan?ids&p&zip&x&s&tz` (open with a good signature, the owner's
+       key, or `SALES_PUBLIC=on`; 410 once run out; same per-IP limit as `/weekend`), which answers the start (the
+       ZIP's centre) and the sales from the same cached sweep. No new localStorage keys. Tests
+       `__tests__/page/weekend-plan-v822.test.mjs` and the Plan my weekend part of `worker/__tests__/weekend-v193.test.mjs`.
 - **v8.21: the Store tab icon is written so Shopify keeps it byte for byte.** v8.20's deploy saved the page but failed
   the md5 check: its icon used self-closing `<path …/>`, which the rest of the page never does (Shopify rewrites them).
   Now `<path …></path>` like every other icon. Nothing visible changes. Test in `__tests__/page/store-tab-v820.test.mjs`.
@@ -1718,7 +1752,7 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `hark/estate-sweep` | Hark | Weekend sweep: this weekend's estate sales in Den > Local with Top picks for your hunts, and a Thursday Pro email (page v8.22 / worker v193) | Draft PR, not reviewed. Needs Matt's call on the EstateSales.net questions under Waiting on Matt. |
+| `hark/estate-sweep` | Hark | Weekend sweep: this weekend's estate sales in Den > Local with Top picks for your hunts, a Thursday Pro email, and Plan my weekend (day-by-day route, also from the email) (page v8.22 / worker v193) | Draft PR, not reviewed. Needs Matt's call on the EstateSales.net questions under Waiting on Matt. |
 
 Next free numbers: **page v8.23, worker v194**. Claim one here when you start.
 
@@ -1743,6 +1777,10 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
      customers)? Until then the in-app sweep is owner-only and the Thursday email goes to nobody unless an address is
      in `SALES_TEST_EMAILS` (try it with your own Pro address first).
   3. The Thursday email uses the local-pickup ZIP; a Pro member with no ZIP gets nothing. Ask for the ZIP elsewhere?
+  4. Plan my weekend puts sales on Saturday first, then Sunday, then Friday (`WP_DAY_PREF`), even when a sale opens
+     Friday (estate sales are often best on day one). Say if you want Friday first, or the first day each sale opens.
+  5. The email's Plan my weekend link works without sign-in for anyone it is forwarded to, until the Monday after that
+     weekend. It carries only sale ids and the ZIP. OK?
 
 - **Security and trust (2026-10-28 audit), the admin steps only Matt can take:**
   1. Done (Matt, 2026-10-30): the privacy policy is Shopify's template again with the three Prowl sections from

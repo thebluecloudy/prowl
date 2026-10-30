@@ -1295,6 +1295,24 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .wk-hr{color:var(--i2)}
 .scout-app-wrapper .wk-so{font-style:italic}
 .scout-app-wrapper .wk-brief .wk-row{padding:8px 12px}
+.scout-app-wrapper .wk-plan{margin:12px 0 2px;width:100%}
+.scout-app-wrapper .wp .wk-h:first-child{margin-top:0}
+.scout-app-wrapper .wp-day{margin:12px 0;padding:10px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--cd)}
+.scout-app-wrapper .wp-day .wk-h{margin-top:0}
+.scout-app-wrapper .wp-stops{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+.scout-app-wrapper .wp-stop{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.scout-app-wrapper .wp-l{flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:#C2491F;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.scout-app-wrapper .wp-t{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:14px;color:var(--mu)}
+.scout-app-wrapper .wp-t a{color:var(--ink);text-decoration:none}
+.scout-app-wrapper .wp-t b{font-size:15px;color:var(--ink);overflow-wrap:anywhere}
+.scout-app-wrapper .wp-wait{color:var(--i2);font-style:italic}
+.scout-app-wrapper .wp-go{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
+.scout-app-wrapper .wp-go .b{min-width:0;padding:8px 4px;font-size:13.5px;text-align:center;white-space:normal;text-decoration:none}
+.scout-app-wrapper .wp-list{display:grid;gap:8px;margin-top:6px}
+.scout-app-wrapper .wp-sale{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--cd);cursor:pointer}
+.scout-app-wrapper .wp-sale input{flex:0 0 auto;width:20px;height:20px;margin:2px 0 0;accent-color:var(--ac)}
+.scout-app-wrapper .wp-drop ul{margin:4px 0 8px;padding-left:18px;font-size:14px;color:var(--mu)}
+.scout-app-wrapper .wp-zip{margin:6px 0 10px}
 .scout-app-wrapper .whyp[hidden],.scout-app-wrapper #otp-alerts[hidden]{display:none!important}
 .scout-app-wrapper .sgw-hunt{height:44px;padding:0 18px;font-size:15px}
 .scout-app-wrapper a.sgw-wh{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:var(--ink)}   /* v7.56: Best bets are links */
@@ -4636,7 +4654,7 @@ function esLoad(v){
    (looked up with /geo, as In a location does), else where the phone is. The hunts in the Den go with it; a sale whose
    title, description or photo captions hold every word of a hunt is a Top pick, with the hunt and where it matched.
    Every sale opens its own page on EstateSales.net; hours come back in this device's time zone. Nothing is kept. */
-var WK={busy:false,data:null,err:'',town:''};
+var WK={busy:false,data:null,err:'',town:'',pt:null,me:false};
 function wkHunts(){return st.hunts.filter(function(h){return !huntSample(h)}).slice(0,30)}
 function wkUrlOk(u){return /^https:\/\/www\.estatesales\.net\/[A-Za-z0-9\/._%-]+$/.test(String(u||''))}
 function wkRow(x,pick){
@@ -4655,6 +4673,7 @@ function wkHtml(){
     if(picks.length)h+='<h5 class="wk-h">Top picks <span>'+picks.length+'</span></h5><div class="wk-list">'+picks.map(function(x){return wkRow(x,true)}).join('')+'</div>';
     else if(rest.length&&wkHunts().length)h+='<p class="nearp">None of this weekend\u2019s sales mention your hunts yet.</p>';
     if(rest.length)h+='<h5 class="wk-h">'+(picks.length?'Also this weekend':'This weekend nearby')+' <span>'+rest.length+'</span></h5><div class="wk-list wk-brief">'+rest.map(function(x){return wkRow(x,false)}).join('')+'</div>';
+    if(picks.length||rest.length)h+='<button type="button" class="b p wk-plan" id="otp-wkPlan">\uD83D\uDDFA\uFE0F Plan my weekend</button>';   /* Plan my weekend */
     if(picks.length||rest.length)h+='<p class="nearp wk-src">From EstateSales.net'+(d.stale?' (from earlier)':'')+'. Tap a sale to open it there. Hours are your time.</p>';
   }
   return h+'</div>';
@@ -4664,7 +4683,7 @@ function wkLoad(){
   var inp=$('#otp-esIn'),v=inp?String(inp.value||'').replace(/\s+/g,' ').trim():'';
   WK.busy=true;WK.err='';rEs();
   function go(pt,town,city,stc){
-    WK.town=town||'where you are';
+    WK.town=town||'where you are';WK.pt={lat:pt.lat,lng:pt.lng};WK.me=!town;   /* Plan my weekend starts here */
     var u=SGW_API+'weekend?lat='+pt.lat.toFixed(2)+'&lng='+pt.lng.toFixed(2)+'&r=25&tz='+E(browserTz()||'')+(city&&stc?'&city='+E(city)+'&st='+E(stc):'')+'&h='+E(wkHunts().join('|'));
     fetch(u,{headers:{'X-Prowl-Owner':fbOwnerKey()},cache:'no-store'}).then(function(r){return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j}},function(){return {ok:false,status:r.status,j:null}})}).then(function(x){
       WK.busy=false;
@@ -4678,6 +4697,207 @@ function wkLoad(){
   var al=atLive();if(al){go({lat:al.lat,lng:al.lng},al.town,al.city,al.st);return}
   nrPos(function(p,e){if(!p){fail(e==='denied'?'Location is off for this site. Type a City, ST above instead.':'Could not tell where you are. Type a City, ST above instead.');return}go(p,'')});
 }
+/* v8.22 Plan my weekend (worker v193 /order and /weekend/plan): the Sweep's sales as a day-by-day route. Opened from
+   "Plan my weekend" under the Sweep results, or from the Thursday email's button (?wkplan=<ids>&wkp=<picks>&wkzip=ZIP,
+   signed by the worker; no app or sign-in). The start is the place the sweep used (the typed town, the phone, or the
+   email's ZIP); when there is none, the saved ZIP (Den > Settings > Only what fits); when there is no ZIP either, one ZIP
+   box. Top picks start checked, the others are one tap. wpSplit puts each checked sale on a day it is open (Saturday,
+   then Sunday, then Friday: WP_DAY_PREF), at most WP_CAP a day, WP_STAY minutes at each, and never so that a stop is
+   reached before it opens (the start waits) or less than WP_LAST_IN minutes before it closes; what does not fit is
+   named with why. Each day is then ordered by Road Trip's Optimize route (worker /order, a loop from the start), timed
+   with its legs; an order that would break a sale's hours keeps wpSplit's order instead. Sales whose company has not
+   posted the street address yet are listed as address pending, outside the route. One Google Maps and one Apple Maps
+   link a day (5 stops sit well inside both apps' waypoint limits). Rebuild from here starts a day again from where the
+   phone is (and from now, on today). Nothing is stored on the device. */
+var WP_STAY=45,WP_CAP=5,WP_LAST_IN=30,WP_DAY_PREF=[6,0,5],WP_MIN=60000;
+var WP={sales:[],start:null,on:{},here:null,plan:null,ord:{},missing:0,err:'',busy:false,zipBox:false,timer:0};
+function wpDayKey(ms){return nrLocalDay(new Date(ms))}
+function wpAt(key,from){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(key),d=new Date(from);return new Date(+m[1],+m[2]-1,+m[3],d.getHours(),d.getMinutes()).getTime()}
+/* a sale's open windows by local day, still reachable after now: [{key,o,c,est}]. A day known only as one span (first
+   start to last end) becomes the same opening and closing clock on each day it covers, marked est */
+function wpWindows(s,now){
+  var out=[],i,d,k,o,c,t,guard;
+  for(i=0;i<(s.days||[]).length;i++){
+    d=s.days[i];if(!d||!(d.e>d.s))continue;
+    if(d.span&&wpDayKey(d.s)!==wpDayKey(d.e)){
+      t=new Date(d.s);t=new Date(t.getFullYear(),t.getMonth(),t.getDate()).getTime();guard=0;
+      while(t<d.e&&guard++<8){k=wpDayKey(t);o=k===wpDayKey(d.s)?d.s:wpAt(k,d.s);c=k===wpDayKey(d.e)?d.e:wpAt(k,d.e);if(c>o)out.push({key:k,o:o,c:c,est:1});t=new Date(t+36*3600000);t=new Date(t.getFullYear(),t.getMonth(),t.getDate()).getTime()}
+    }else out.push({key:wpDayKey(d.s),o:d.s,c:d.e,est:d.span?1:0});
+  }
+  return out.filter(function(w){return w.c-WP_LAST_IN*WP_MIN>now});
+}
+function wpRank(key){var r=WP_DAY_PREF.indexOf(nrWeekday(key));return r===-1?9:r}
+/* one day's stops (items {s,w}) in this order: leave so the first is reached as it opens (not before 'floor'), wait at
+   any that is not open yet, WP_STAY at each, then home. legs: minutes start->1st->...->last->start, else estimated */
+function wpSched(start,items,legs,floor){
+  var n=items.length,i,cur,lg=[],out=[],ok=true,w,wait,late,pts=[start];
+  for(i=0;i<n;i++)pts.push({lat:items[i].s.lat,lng:items[i].s.lng});pts.push(start);
+  for(i=0;i<=n;i++)lg.push(legs&&legs[i]&&typeof legs[i].min==='number'?legs[i].min:nrEstMin(pts[i],pts[i+1]));
+  var leave=Math.max(floor||0,items[0].w.o-lg[0]*WP_MIN),drive=0;cur=leave;
+  for(i=0;i<n;i++){
+    w=items[i].w;cur+=lg[i]*WP_MIN;drive+=lg[i];wait=0;
+    if(cur<w.o){wait=w.o-cur;cur=w.o}
+    late=cur>w.c-WP_LAST_IN*WP_MIN;if(late)ok=false;
+    out.push({id:items[i].s.id,at:cur,wait:wait,late:late});cur+=WP_STAY*WP_MIN;
+  }
+  drive+=lg[n];
+  var lastLeg=lg[n];
+  return {ok:ok,leave:leave,stops:out,end:cur,back:cur+lg[n]*WP_MIN,drive:drive,lastLeg:lastLeg,routed:!!legs};
+}
+function wpPerms(a){if(a.length<2)return [a.slice()];var out=[],i,j,r;for(i=0;i<a.length;i++){r=wpPerms(a.slice(0,i).concat(a.slice(i+1)));for(j=0;j<r.length;j++)out.push([a[i]].concat(r[j]))}return out}
+/* the order of a day's stops that keeps every sale's hours and gets home soonest (at most WP_CAP stops, 120 orders) */
+function wpBest(start,items,floor){
+  var P=wpPerms(items),best=null,i,sc;
+  for(i=0;i<P.length;i++){sc=wpSched(start,P[i],null,floor);if(sc.ok&&(!best||sc.back<best.sched.back-1||(Math.abs(sc.back-best.sched.back)<=1&&sc.drive<best.sched.drive)))best={order:P[i],sched:sc}}
+  return best;
+}
+/* sales -> { days: [{key, items, sched}], dropped: [{s, why}], pending: [sale] }. o: {cap, here: {key, pt, at}} */
+function wpSplit(sales,start,now,o){
+  o=o||{};var cap=o.cap||WP_CAP,here=o.here||null,today=wpDayKey(now),days={},dropped=[],pending=[],list=[],i,j,s,W,d,best,full,hrs,tried;
+  function from(k){return here&&here.key===k?here.pt:start}
+  function floor(k){return here&&here.key===k&&k===today?here.at:now}
+  for(i=0;i<sales.length;i++){s=sales[i];if(!s.addr||typeof s.lat!=='number'||typeof s.lng!=='number'){pending.push(s);continue}W=wpWindows(s,now);list.push({s:s,W:W,c:W.length?Math.min.apply(null,W.map(function(w){return w.c})):0})}
+  list.sort(function(a,b){return ((b.s.pick||b.s.match)?1:0)-((a.s.pick||a.s.match)?1:0)||a.W.length-b.W.length||a.c-b.c||(a.s.dist||0)-(b.s.dist||0)});
+  for(i=0;i<list.length;i++){
+    s=list[i].s;W=list[i].W.slice().sort(function(a,b){return wpRank(a.key)-wpRank(b.key)||a.o-b.o});full=[];hrs=[];tried=false;
+    if(!W.length){dropped.push({s:s,why:'No time left to get there before it closes'});continue}
+    for(j=0;j<W.length;j++){
+      d=days[W[j].key]||{key:W[j].key,items:[],sched:null};
+      if(d.items.length>=cap){full.push(W[j].key);continue}
+      best=wpBest(from(W[j].key),d.items.concat([{s:s,w:W[j]}]),floor(W[j].key));
+      if(best){d.items=best.order;d.sched=best.sched;days[d.key]=d;tried=true;break}
+      hrs.push(W[j].key);
+    }
+    if(tried)continue;
+    dropped.push({s:s,why:hrs.length?'Its hours do not fit the route on '+nrAnd(hrs.map(function(k){return NR_DAYS[nrWeekday(k)]})):'Every day it is open already has '+cap+' stops',full:full.length&&!hrs.length?1:0});
+  }
+  var keys=Object.keys(days).sort();
+  return {days:keys.map(function(k){return days[k]}),dropped:dropped,pending:pending};
+}
+try{window.prowlWpSplit=wpSplit}catch(e){}   /* the day split, for the tests */
+function wpDayName(key){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(key);return NR_DAYS[nrWeekday(key)]+', '+NR_MON[+m[2]-1]+' '+(+m[3])}
+function wpHm(ms){var d=new Date(ms);return nrTime(d.getHours(),d.getMinutes())}
+function wpPick(s){return !!(s.pick||s.match)}
+function wpChosen(){return WP.sales.filter(function(s){return WP.on[s.id]})}
+function wpFrom(k){return WP.here&&WP.here.key===k?WP.here.pt:WP.start}
+function wpFloor(k,now){return WP.here&&WP.here.key===k&&k===wpDayKey(now)?WP.here.at:now}
+function wpStopName(s){return {name:s.addr,town:(s.city||'')+(s.st?', '+s.st:'')}}
+/* the day as shown: the optimizer's order and legs once they are in, else wpSplit's order, estimated */
+function wpDayView(d,now){
+  var o=WP.ord[d.key],start=wpFrom(d.key),q=nrPtsQ([start].concat(d.items.map(function(x){return {lat:x.s.lat,lng:x.s.lng}}))),items=d.items,legs=null,by={},i;
+  if(o&&o.q===q&&o.ids){for(i=0;i<d.items.length;i++)by[d.items[i].s.id]=d.items[i];items=o.ids.map(function(id){return by[id]}).filter(function(x){return !!x});if(items.length===d.items.length)legs=o.legs;else items=d.items}
+  return {items:items,sched:wpSched(start,items,legs,wpFloor(d.key,now)),src:o&&o.q===q?o.src:'',kept:o&&o.q===q?o.kept:0};
+}
+/* Road Trip's Optimize route for one day: /order loop=1 from the start; if that order breaks a sale's hours, wpSplit's
+   order is kept and only its leg times are asked for (keep=1) */
+function wpOrder(d){
+  var start=wpFrom(d.key),pts=[start].concat(d.items.map(function(x){return {lat:x.s.lat,lng:x.s.lng}})),q=nrPtsQ(pts),now=Date.now();
+  if(d.items.length<1||pts.length>14||(WP.ord[d.key]&&WP.ord[d.key].q===q))return;
+  WP.ord[d.key]={q:q,wait:1};
+  function done(v){if(!WP.ord[d.key]||WP.ord[d.key].q!==q)return;WP.ord[d.key]=v;wpDraw()}
+  function keep(){nrFetch('/order?keep=1&loop=1&p='+E(q)).then(function(r){done(r.ok&&nrLegsOk(r.j,pts.length)?{q:q,ids:d.items.map(function(x){return x.s.id}),legs:r.j.legs,src:r.j.src,kept:1}:{q:q,ids:null,legs:null,src:''})})}
+  if(d.items.length<2){keep();return}
+  nrFetch('/order?loop=1&p='+E(q)).then(function(r){
+    if(!r.ok||!r.j.order||r.j.order.length!==pts.length||!nrLegsOk(r.j,pts.length)){keep();return}
+    var items=[],i,k;for(i=0;i<r.j.order.length;i++){k=r.j.order[i];if(k>=1&&k<=d.items.length)items.push(d.items[k-1])}
+    if(items.length!==d.items.length||!wpSched(start,items,r.j.legs,wpFloor(d.key,now)).ok){keep();return}
+    done({q:q,ids:items.map(function(x){return x.s.id}),legs:r.j.legs,src:r.j.src});
+  });
+}
+function wpPlan(){
+  clearTimeout(WP.timer);
+  WP.plan=WP.start?wpSplit(wpChosen(),WP.start,Date.now(),{here:WP.here}):null;
+  wpDraw();
+  if(WP.plan)WP.timer=setTimeout(function(){if(WP.plan)WP.plan.days.forEach(wpOrder)},350);   /* one optimizer call a day, after the taps settle */
+}
+function wpMaps(d,v){
+  var from=WP.here&&WP.here.key===d.key?'':(WP.start&&!WP.start.me?WP.start.label:''),an=v.items.map(function(x){return wpStopName(x.s)}),back=!!from;
+  var wp=back?an:an.slice(0,-1),dest=back?from:an[an.length-1].name+', '+an[an.length-1].town;
+  return {g:nrMapsUrl(from,wp,dest),a:nrAppleUrl(from,wp,dest),back:back};
+}
+function wpDayHtml(d,now){
+  var v=wpDayView(d,now),S=v.sched,mp=wpMaps(d,v),h='<section class="wp-day" data-wpday="'+esc(d.key)+'"><h5 class="wk-h">'+esc(wpDayName(d.key))+' <span>'+v.items.length+' stop'+(v.items.length===1?'':'s')+'</span></h5>';
+  h+='<p class="nearp wp-sum">Leave ~'+nrClock(S.leave)+' · '+(mp.back?'back ~'+nrClock(S.back):'done ~'+nrClock(S.end))+' · about '+nrDurT(mp.back?S.drive:S.drive-(S.lastLeg||0))+' of driving'+(S.routed&&v.src==='osrm'?'':' (estimated)')+'</p><ol class="wp-stops">';
+  v.items.forEach(function(x,i){
+    var st=S.stops[i],w=x.w;
+    h+='<li class="wp-stop"><span class="wp-l" aria-hidden="true">'+nrLetter(i)+'</span><span class="wp-t"><a href="'+esc(x.s.url)+'" target="_blank" rel="noopener noreferrer"><b>'+esc(x.s.name)+'</b></a>'+
+      '<span>'+esc(x.s.addr+(x.s.city?', '+x.s.city:''))+'</span>'+
+      '<span class="wk-hr">Get there ~'+nrClock(st.at)+' · open '+wpHm(w.o)+'\u2013'+wpHm(w.c)+(w.est?' (hours estimated)':'')+'</span>'+
+      (st.late?'<span class="nr-ended">Closed by the time you get there (~'+nrClock(st.at)+')</span>':st.wait>=5*WP_MIN?'<span class="wp-wait">Opens '+wpHm(w.o)+': about '+nrDurT(Math.round(st.wait/WP_MIN))+' to wait</span>':'')+'</span></li>';
+  });
+  h+='</ol>'+(v.kept?'<p class="nearp wp-kept">Kept in this order so every sale is open when you get there.</p>':'');
+  h+='<div class="wp-go"><a class="b p" href="'+esc(mp.g)+'" target="_blank" rel="noopener noreferrer">Google Maps</a><a class="b" href="'+esc(mp.a)+'" target="_blank" rel="noopener noreferrer">Apple Maps</a><button type="button" class="b" data-wp="here" data-k="'+esc(d.key)+'">Rebuild from here</button></div></section>';
+  return h;
+}
+function wpHtml(){
+  var h='<div id="otp-wp" class="wp">',now=Date.now(),P=WP.plan,i,s,sel=WP.sales.filter(function(s){return s.addr}),pend=WP.sales.filter(function(s){return !s.addr});
+  if(WP.busy)return h+'<p class="nearp">'+FLY3+'Getting this weekend\u2019s sales\u2026</p></div>';
+  if(WP.err)h+='<p class="nearp es-err" role="status">'+esc(WP.err)+'</p>';
+  if(!WP.sales.length)return h+(WP.err?'':'<p class="nearp">No sales to plan.</p>')+'</div>';
+  if(!WP.start||WP.zipBox){
+    h+='<p class="nearp">'+(WP.start?'Start somewhere else:':'Where do you start from?')+'</p><div class="addrow wp-zip"><input id="otp-wpZip" type="text" inputmode="numeric" maxlength="5" placeholder="ZIP code" aria-label="ZIP code to start from"><button type="button" data-wp="zip">Start here</button></div>';
+    if(!WP.start)return h+'</div>';
+  }else h+='<p class="nearp wp-from">From <b>'+esc(WP.start.label||'where you are')+'</b> <button type="button" class="es-mapb" data-wp="chg">Change</button></p>';
+  if(P){
+    if(!P.days.length)h+='<p class="nearp">'+(wpChosen().filter(function(s){return s.addr}).length?'None of the checked sales fit a route this weekend.':'Check a sale below to plan the route.')+'</p>';
+    else h+='<p class="nearp nr-etan">Times allow about '+WP_STAY+' min at each sale, and no sale is reached before it opens or less than '+WP_LAST_IN+' min before it closes. Hours are your time.</p>';
+    for(i=0;i<P.days.length;i++)h+=wpDayHtml(P.days[i],now);
+    if(P.dropped.length)h+='<div class="wp-drop"><p class="nearp nr-late">Didn\u2019t fit:</p><ul>'+P.dropped.map(function(x){return '<li><b>'+esc(x.s.name)+'</b>: '+esc(x.why)+(x.full?' (5 a day is the most).':'.')+'</li>'}).join('')+'</ul></div>';
+  }
+  h+='<h5 class="wk-h">This weekend\u2019s sales <span>'+sel.length+'</span></h5><p class="nearp">Top picks start checked. Tap a sale to add it or take it off.</p><div class="wp-list">';
+  for(i=0;i<sel.length;i++){s=sel[i];h+='<label class="wp-sale'+(wpPick(s)?' wk-pick':'')+'"><input type="checkbox" data-wpid="'+esc(s.id)+'"'+(WP.on[s.id]?' checked':'')+'><span class="wp-t">'+(wpPick(s)?'<span class="wk-m">Top pick'+(s.match?' \u00b7 '+esc(s.match.hunt):'')+'</span>':'')+'<b>'+esc(s.name)+'</b><span>'+esc([s.city&&s.st?s.city+', '+s.st:s.city,typeof s.dist==='number'?s.dist+' mi':''].filter(function(v){return !!v}).join(' \u00b7 '))+'</span><span class="wk-hr">'+esc(s.hours||'')+'</span></span></label>'}
+  h+='</div>';
+  if(pend.length)h+='<h5 class="wk-h">Address pending <span>'+pend.length+'</span></h5><p class="nearp">The company has not posted the street address yet, so these stay off the route. Check back later.</p><div class="wk-list wk-brief">'+pend.map(function(s){return '<a class="wk-row wp-pend" href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer"><b>'+esc(s.name)+'</b><span>'+esc((s.city?s.city+(s.st?', '+s.st:'')+' \u00b7 ':'')+'address pending'+(s.addrAt>now?', posted '+NR_D3[new Date(s.addrAt).getDay()]+' '+nrClock(s.addrAt):''))+'</span><span class="wk-hr">'+esc(s.hours||'')+'</span></a>'}).join('')+'</div>';
+  if(WP.missing)h+='<p class="nearp">'+WP.missing+' sale'+(WP.missing===1?' from the email has':'s from the email have')+' ended or come down since.</p>';
+  return h+'<p class="nearp wk-src">Sales from EstateSales.net. Hours and addresses can change; check the sale page before you go.</p></div>';
+}
+function wpDraw(){var b=$('#otp-sheetB');if(b&&$('#otp-wp'))b.innerHTML=wpHtml()}
+/* o: { sales, start: {lat, lng, label, me} or null, missing } */
+function wpOpen(o){
+  WP.sales=(o.sales||[]).filter(function(s){return s&&wkUrlOk(s.url)});WP.on={};WP.here=null;WP.ord={};WP.zipBox=false;WP.err=o.err||'';WP.busy=!!o.busy;WP.missing=o.missing||0;
+  WP.sales.forEach(function(s){if(wpPick(s)&&s.addr)WP.on[s.id]=1});
+  WP.start=o.start&&typeof o.start.lat==='number'?o.start:null;
+  openSheet('Plan my weekend',wpHtml());
+  if(WP.busy)return;
+  if(WP.start){wpPlan();return}
+  var z=prefs().zip;   /* no start from the sweep: the saved ZIP, else one ZIP box */
+  if(z)wpZip(z);
+}
+function wpZip(z){
+  z=String(z||'').replace(/\D/g,'');if(!/^\d{5}$/.test(z)){toast('Type a 5-digit ZIP code.',2400);return}
+  atLookup(z,function(a,msg){if(!a){WP.err=msg||'That ZIP could not be found.';wpDraw();return}WP.err='';WP.zipBox=false;WP.here=null;WP.ord={};WP.start={lat:a.lat,lng:a.lng,label:a.zip?a.zip+(a.city?' ('+a.city+')':''):a.town,me:false};wpPlan()});
+}
+function wpFromSweep(){
+  var d=WK.data;if(!d)return;
+  wpOpen({sales:(d.picks||[]).map(function(x){var c=nrCopy(x);c.pick=true;return c}).concat(d.rest||[]),start:WK.pt?{lat:WK.pt.lat,lng:WK.pt.lng,label:WK.me?'where you are':WK.town,me:!!WK.me}:null});
+}
+document.addEventListener('click',function(e){
+  var b=e.target&&e.target.closest&&e.target.closest('#otp-wp [data-wp]');if(!b)return;
+  var a=b.getAttribute('data-wp');
+  if(a==='chg'){WP.zipBox=!WP.zipBox;wpDraw();var zi=$('#otp-wpZip');if(zi)zi.focus();return}
+  if(a==='zip'){wpZip(($('#otp-wpZip')||{}).value);return}
+  if(a==='here'){var k=b.getAttribute('data-k');b.textContent='Finding you\u2026';nrPos(function(p,err){if(!p){toast(err==='denied'?'Location is off for this site, so Prowl cannot tell where you are.':'Your location could not be read just now.',3200);wpDraw();return}WP.here={key:k,pt:{lat:p.lat,lng:p.lng},at:Date.now()};delete WP.ord[k];wpPlan();toast('Rebuilt '+esc(NR_DAYS[nrWeekday(k)])+' from where you are.',2800)},true);return}
+});
+document.addEventListener('change',function(e){var c=e.target;if(!c||!c.matches||!c.matches('#otp-wp input[data-wpid]'))return;var id=c.getAttribute('data-wpid');if(c.checked)WP.on[id]=1;else delete WP.on[id];wpPlan()});
+document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target&&e.target.id==='otp-wpZip'){e.preventDefault();wpZip(e.target.value)}});
+/* the Thursday email's button: ?wkplan=<ids>&wkp=<picks>&wkzip=ZIP&wkx=<expiry>&wks=<signature> opens the planner */
+try{(function(){
+  var m=/[?&]wkplan=([0-9,]{3,200})/.exec(location.search);if(!m)return;
+  function g(k){var r=new RegExp('[?&]'+k+'=([^&#]*)').exec(location.search);return r?decodeURIComponent(r[1]):''}
+  var q='ids='+E(m[1])+'&p='+E(g('wkp'))+'&zip='+E(g('wkzip'))+'&x='+E(g('wkx'))+'&s='+E(g('wks'))+'&tz='+E(browserTz()||'');
+  var rest=location.search.replace(/^\?/,'').split('&').filter(function(x){return x&&!/^wk(plan|p|zip|x|s)=/.test(x)}).join('&');
+  try{history.replaceState(null,'',location.pathname+(rest?'?'+rest:'')+location.hash)}catch(e){}
+  setTimeout(function(){
+    wpOpen({sales:[],busy:true});
+    var h={};if(fbOwnerKey())h['X-Prowl-Owner']=fbOwnerKey();
+    fetch(SGW_API+'weekend/plan?'+q,{headers:h,cache:'no-store'}).then(function(r){return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j||{}}},function(){return {ok:false,status:r.status,j:{}}})}).then(function(x){
+      if(!$('#otp-wp'))return;
+      if(!x.ok||!Array.isArray(x.j.sales)){wpOpen({sales:[],err:x.status===410?'This plan link has run out. Next Thursday\u2019s email brings a new one.':x.status===429?'Too many plans just now. Try again in a little while.':'This weekend\u2019s sales could not be loaded just now. Try the link again in a minute.'});return}
+      var st0=x.j.start;
+      wpOpen({sales:x.j.sales,missing:(x.j.missing||[]).length,start:st0&&typeof st0.lat==='number'?{lat:st0.lat,lng:st0.lng,label:st0.zip?st0.zip+(st0.town&&st0.town!==st0.zip?' ('+String(st0.town).split(',')[0]+')':''):st0.town,me:false}:null});
+    })['catch'](function(){if($('#otp-wp'))wpOpen({sales:[],err:'Prowl could not be reached. Check your signal and try the link again.'})});
+  },700);
+})()}catch(e){}
 function rEs(){
   var box=$('#otp-esBox');if(!box)return;
   if(!fbOwnerKey()){box.hidden=true;box.innerHTML='';return}
@@ -4695,6 +4915,7 @@ function rEs(){
   if(inp)inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();esLoad(inp.value)}});
   var fb=$('#otp-esFar');if(fb)fb.addEventListener('click',function(){ES.far=!ES.far;ES.map=null;rEs()});
   var wg=$('#otp-wkGo');if(wg)wg.addEventListener('click',wkLoad);   /* v8.22 */
+  var wpb=$('#otp-wkPlan');if(wpb)wpb.addEventListener('click',wpFromSweep);   /* v8.22 Plan my weekend */
   var mb=$('#otp-esMapB');if(mb)mb.addEventListener('click',function(){if(ES.map){ES.map=null;rEs();return}esMap(items)});
   if(ES.map)esMap(items);
 }
@@ -11629,12 +11850,15 @@ function nrLeaveTs(day){
 function nrEtas(t,stops){
   var c=nrChain(t,stops),t0=nrLeaveTs(t.day),out={},i,cur,key,legs,mpm;if(!c||!t0||!c.ids.length)return null;
   key=nrPtsQ(c.pts)+(t.loop?'L':'');legs=t.legsKey===key?t.legs:null;mpm=t.route&&t.route.min?nrMiles(t.route)/t.route.min:0.75;
-  function leg(i){return legs?legs[i].min:Math.round(nrKm(c.pts[i],c.pts[i+1])*0.621371*1.25/mpm)}
+  function leg(i){return legs?legs[i].min:nrEstMin(c.pts[i],c.pts[i+1],mpm)}
   cur=t0;
   for(i=0;i<c.ids.length;i++){cur+=leg(i)*60000;out[c.ids[i]]=cur;var s=null;for(var k=0;k<stops.length;k++)if((stops[k]._k||stops[k].id)===c.ids[i])s=stops[k];cur+=(s&&s.stay>0?s.stay:NR_STAY)*60000}
   if(c.end)out._dest=cur+leg(c.ids.length)*60000;
   return {at:out,leave:t0,routed:!!legs,src:t.legsSrc||''};
 }
+/* a leg's minutes without the router: straight-line miles, a quarter more for the road, at mpm miles a minute (45 mph);
+   v8.22: shared with Plan my weekend */
+function nrEstMin(a,b,mpm){return Math.round(nrKm(a,b)*0.621371*1.25/(mpm||0.75))}
 /* closed when you get there, on a day it opens at all */
 function nrLateAt(p,eta,day){if(!p||!p.hours||!eta)return false;var n=nrNext(p.hours,eta),wd=new Date(eta).getDay();return !!(n&&!n.open&&nrDayHours(p.hours,wd).open)}
 /* Optimize route: the shortest drive through the stops, the start and end kept */

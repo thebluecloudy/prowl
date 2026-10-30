@@ -141,10 +141,21 @@ function jsonBlocks(html) {
   });
   return out;
 }
-/* { desc, caps, img } from a sale page: the app's own record of the sale (plainTextDescription, pictures) or else its
-   SaleEvent block. caps are the photo captions the seller typed, when there are any. */
+/* { desc, caps, img, addr, lat, lng, addrAt } from a sale page: the app's own record of the sale (plainTextDescription,
+   pictures, latitude/longitude) or else its SaleEvent block. caps are the photo captions the seller typed, when there are
+   any. v193 (Plan my weekend): img is the page's own cover photo (its first og:image) when it has one; addr is the
+   SaleEvent's location.address.streetAddress ("" while the company keeps it hidden: showAddress false, or not posted
+   yet), lat/lng the record's own position, addrAt when the address is due to be shown (ms, 0 unknown). */
+const ES_PIC = /^https:\/\/picturescdn\.estatesales\.net\/[^\s"'<>]+$/;
+function ogImage(html) {
+  const m = /<meta\b[^>]*\bproperty=["']og:image["'][^>]*>/i.exec(String(html || ""));
+  const c = m ? /\bcontent=["']([^"']+)["']/i.exec(m[0]) : null;
+  const u = c ? c[1].replace(/&amp;/g, "&").trim() : "";
+  return ES_PIC.test(u) ? u : "";
+}
+function num(v) { const n = Number(v); return isFinite(n) && n !== 0 && v !== "" && v != null ? n : null; }
 export function wkDetailParse(html, id) {
-  const blocks = jsonBlocks(html);
+  const blocks = jsonBlocks(html), og = ogImage(html);
   let rec = null, ld = null;
   const walk = (v, d) => {
     if (rec || d > 10 || v == null || typeof v !== "object") return;
@@ -154,7 +165,7 @@ export function wkDetailParse(html, id) {
     Object.keys(v).slice(0, 120).forEach(k => walk(v[k], d + 1));
   };
   blocks.forEach(b => walk(b, 0));
-  if (!rec && !ld) return null;
+  if (!rec && !ld && !og) return null;
   const desc = txt((rec && (rec.plainTextDescription || rec.htmlDescription)) || (ld && ld.description) || "", 1500);
   const caps = [];
   for (const p of (rec && Array.isArray(rec.pictures) ? rec.pictures : []).slice(0, 300)) {
@@ -162,8 +173,20 @@ export function wkDetailParse(html, id) {
     for (const k of ["description", "caption", "title", "altText"]) { const c = txt(p[k], 140); if (c && caps.indexOf(c) === -1) { caps.push(c); break; } }
     if (caps.length >= 80) break;
   }
-  const img = (rec && rec.mainPicture && rec.mainPicture.thumbnailUrl) || (ld && (Array.isArray(ld.image) ? ld.image[0] : ld.image)) || "";
-  return { desc: desc, caps: caps, img: /^https:\/\/picturescdn\.estatesales\.net\/[^\s"'<>]+$/.test(String(img)) ? String(img) : "" };
+  const img0 = (rec && rec.mainPicture && rec.mainPicture.thumbnailUrl) || (ld && (Array.isArray(ld.image) ? ld.image[0] : ld.image)) || "";
+  const img = og || (ES_PIC.test(String(img0)) ? String(img0) : "");
+  /* the street address: the SaleEvent's PostalAddress, else the record's own address line; hidden means pending */
+  const la = ld && ld.location && typeof ld.location === "object" ? ld.location.address : null;
+  const li = rec && rec.locationInfo && typeof rec.locationInfo === "object" ? rec.locationInfo : null;
+  let addr = txt((la && typeof la === "object" && la.streetAddress) || (li && li.address && li.address.addressLine1) || "", 90);
+  if (!/\d/.test(addr) || !/[A-Za-z]/.test(addr) || (rec && rec.showAddress === false) || (li && li.showAddress === false)) addr = "";
+  const geo = ld && ld.geo && typeof ld.geo === "object" ? ld.geo : null;
+  let lat = num(rec && rec.latitude), lng = num(rec && rec.longitude);
+  if (lat == null || lng == null) { lat = num(li && li.latitude); lng = num(li && li.longitude); }
+  if (lat == null || lng == null) { lat = num(geo && geo.latitude); lng = num(geo && geo.longitude); }
+  if (lat == null || lng == null || Math.abs(lat) > 90 || Math.abs(lng) > 180) { lat = null; lng = null; }
+  const addrAt = wkTime((rec && rec.utcShowAddressAfter) || (li && li.utcShowAddressAfter) || "");
+  return { desc: desc, caps: caps, img: img, addr: addr, lat: lat, lng: lng, addrAt: addr ? 0 : addrAt };
 }
 
 /* ---- hunts against a sale ---- */
@@ -213,6 +236,16 @@ export function wkStandout(sale, detail, match) {
   return sale.pics ? sale.pics + " photos posted" : (sale.type || "");
 }
 
+/* one sale as the page and the email see it. v193 (Plan my weekend): its position (the page's own when read), street
+   address ("" = address pending, with addrAt when it is due), and its open days still to come this weekend (ms) */
+export function wkRowOf(s, det, match, days, tz) {
+  const addr = (det && det.addr) || "", own = det && typeof det.lat === "number" && typeof det.lng === "number";
+  return { id: s.id, name: s.name, url: s.url, city: s.city, st: s.st, co: s.co, dist: s.dist, type: s.type,
+    at: days[0].s, start: new Date(days[0].s).toISOString(), hours: wkHours(days, tz), standout: wkStandout(s, det, match), img: (det && det.img) || "",
+    match: match ? { hunt: match.hunt, where: match.where } : null,
+    lat: own ? det.lat : s.lat, lng: own ? det.lng : s.lon, addr: addr, addrAt: !addr && det && det.addrAt ? det.addrAt : 0,
+    days: days.slice(0, 6).map(d => (d.span ? { s: d.s, e: d.e, span: 1 } : { s: d.s, e: d.e })) };
+}
 /* the list a person sees: Top picks (a hunt matched) first, then the rest, at most cap in all. sales are already the
    ones open this weekend, details is id -> detail (null when not fetched), gone is id -> 1 for dead links. */
 export function wkBuild(sales, details, hunts, win, nowMs, tz, cap) {
@@ -224,10 +257,7 @@ export function wkBuild(sales, details, hunts, win, nowMs, tz, cap) {
     if (!days.length) continue;
     const det = details && details.by ? details.by[s.id] || null : null;
     const match = wkMatch(s, det, hunts);
-    const row = { id: s.id, name: s.name, url: s.url, city: s.city, st: s.st, co: s.co, dist: s.dist, type: s.type,
-      at: days[0].s, start: new Date(days[0].s).toISOString(), hours: wkHours(days, tz), standout: wkStandout(s, det, match), img: (det && det.img) || "",
-      match: match ? { hunt: match.hunt, where: match.where } : null };
-    (match ? picks : rest).push(row);
+    (match ? picks : rest).push(wkRowOf(s, det, match, days, tz));
   }
   const by = (a, b) => a.at - b.at || a.dist - b.dist;
   picks.sort(by); rest.sort(by);
@@ -243,4 +273,38 @@ export function wkHunts(v) {
   const list = Array.isArray(v) ? v : String(v || "").split("|"), out = [], seen = Object.create(null);
   for (const h of list) { const t = txt(h, 60); const k = t.toLowerCase(); if (t && !seen[k] && wkTerms(t).length) { seen[k] = 1; out.push(t); } if (out.length >= WK_HUNTS_MAX) break; }
   return out;
+}
+
+/* ---- v193: Plan my weekend ----
+   The Thursday email's "Plan my weekend" opens the Prowl page with the sweep's sale ids in its address (no app, no
+   sign-in): ?wkplan=<ids>&wkp=<top pick ids>&wkzip=<the ZIP the sweep used>&wkx=<expiry, s>&wks=<signature>. The page asks
+   GET /weekend/plan for those sales (wkPlanRows) and plans the days itself. WK_PLAN_MAX ids at most. */
+export const WK_PLAN_MAX = 12;
+/* "1,2,3" (or an array) -> sale ids, digits only, no repeats, at most WK_PLAN_MAX */
+export function wkPlanIds(v) {
+  const list = Array.isArray(v) ? v : String(v || "").split(/[,\s|]+/), out = [];
+  for (const x of list) { const id = String(x == null ? "" : x).trim(); if (/^\d{3,12}$/.test(id) && out.indexOf(id) === -1) out.push(id); if (out.length >= WK_PLAN_MAX) break; }
+  return out;
+}
+/* what the link's signature covers, in one fixed order */
+export function wkPlanMsg(ids, picks, zip, exp) { return "prowl-wkplan-v1|" + String(zip || "") + "|" + ids.join(",") + "|" + picks.join(",") + "|" + exp; }
+/* the link itself: base is the Prowl page; sig may be "" (then it opens only while estate sales are public) */
+export function wkPlanUrl(base, ids, picks, zip, exp, sig) {
+  return base + "?wkplan=" + ids.join(",") + (picks.length ? "&wkp=" + picks.join(",") : "") + (/^\d{5}$/.test(String(zip || "")) ? "&wkzip=" + zip : "") + "&wkx=" + exp + (sig ? "&wks=" + sig : "");
+}
+/* the sweep's sales for a plan link, in the link's order: { sales, missing } (missing: ended, gone or no longer listed) */
+export function wkPlanRows(items, details, ids, picks, win, nowMs, tz) {
+  const byId = Object.create(null), sales = [], missing = [];
+  for (const s of Array.isArray(items) ? items : []) if (s && s.id) byId[s.id] = s;
+  for (const id of ids) {
+    const s = byId[id];
+    if (!s || (details && details.gone && details.gone[id])) { missing.push(id); continue; }
+    const days = wkDaysIn(s, win, nowMs);
+    if (!days.length) { missing.push(id); continue; }
+    const det = details && details.by ? details.by[id] || null : null;
+    const row = wkRowOf(s, det, null, days, tz);
+    row.pick = picks.indexOf(id) !== -1;
+    sales.push(row);
+  }
+  return { sales: sales, missing: missing };
 }

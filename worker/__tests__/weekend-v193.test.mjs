@@ -153,7 +153,7 @@ function indexFn(name) {
   if ((line.match(/\{/g) || []).length === (line.match(/\}/g) || []).length) return line;
   return INDEX.slice(m.index, INDEX.indexOf("\n}\n", m.index) + 2);
 }
-const CONSTS = [/^const WK_LIST_TTL = .*$/m, /^const AL_ESTATE_HOUR = .*$/m].map((re) => re.exec(INDEX)[0]).join("\n");
+const CONSTS = [/^const WK_LIST_TTL = .*$/m, /^const AL_ESTATE_HOUR = .*$/m, /^const WK_PENDING_TTL = .*$/m, /^const AL_ESTATE_IMG = .*$/m].map((re) => re.exec(INDEX)[0]).join("\n");
 class FakeKV {
   constructor() { this.m = new Map(); }
   async get(k, type) { if (!this.m.has(k)) return null; const v = this.m.get(k); return type === "json" ? JSON.parse(v) : v; }
@@ -184,8 +184,9 @@ function rig({ api = 200, apiBody = null, pages = {}, env: envExtra = {}, owner 
     alSend: async (e, to, subject, html, text, unsub) => { sent.push({ to, subject, html, text, unsub }); return { ok: true }; },
     alMerge: async (e, sub, f) => { merged.push(f); return sub; },
     console: { log() {}, error() {} },
+    alCodeKey: (e) => e.PROWL_SESSION_SECRET || "", PROWL_APP: "https://www.owlandtwigvintage.com/pages/prowl-app", crypto: globalThis.crypto, TextEncoder,
   };
-  const names = ["wkOpen", "wkTester", "wkGet", "wkList", "wkDetails", "wkSweep", "wkRoute", "alEstateOpen", "alEstateDue", "alEstateUnsubUrl", "wkZipPoint", "alEstateRow", "alEstateHtml", "alEstateText", "alEstateSubject", "alEstateSend"];
+  const names = ["wkOpen", "wkTester", "wkGet", "wkList", "wkDetails", "wkSweep", "wkRoute", "alEstateOpen", "alEstateDue", "alEstateUnsubUrl", "wkZipPoint", "alEstateRow", "alEstateHtml", "alEstateText", "alEstateSubject", "alEstateSend", "alEstatePlanBtn", "wkPlanSig", "wkPlanLink", "wkPlanRoute", "pxHmac", "alSame"];
   const keys = Object.keys(deps);
   const X = new Function(...keys, CONSTS + "\n" + names.map(indexFn).join("\n") + "\nreturn { " + names.join(", ") + " };")(...keys.map((k) => deps[k]));
   return { X, env, kv, fetched, sent, merged };
@@ -226,7 +227,7 @@ test("a sweep reads the list near the point once, then the nearby sales' pages; 
   assert.ok(!JSON.stringify(r.body).includes("3003"), "a sale whose page is gone is never shown");
   assert.equal(r.body.hunts, 2);
   assert.ok(kv.m.has("wk1:42.48,-83.48:25"), "the list is kept per point");
-  assert.equal(JSON.parse(kv.m.get("wkd1:3003")).gone, 1, "a dead link is remembered for a day");
+  assert.equal(JSON.parse(kv.m.get("wkd2:3003")).gone, 1, "a dead link is remembered for a day");
   /* the second look asks EstateSales.net nothing */
   const n = fetched.length;
   const r2 = await X.wkRoute(REQ, env, url("lat=42.48&lng=-83.48&h=pyrex"), "o");
@@ -303,4 +304,120 @@ test("the member's settings keep estate (off stays off), the unsubscribe link ca
   assert.match(INDEX, /if \(p\.w === "estate"\) \{[\s\S]*?estate: "off"/);
   assert.match(INDEX, /estate: alEstateOpen\(env, sub\),/);
   assert.match(INDEX, /if \(estateLeft > 0 && alEstateDue\(env, sub, loc\)\)/);
+});
+
+/* ---- Plan my weekend (same PR, still v193): street address, position and cover photo from each sale page; the email's
+   thumbnails and its signed "Plan my weekend" link; GET /weekend/plan for the page's planner ---- */
+/* a sale page shaped like EstateSales.net's (2026-10-30): og:image tags (the first is the cover), the SaleEvent with its
+   PostalAddress, and the app's record with latitude/longitude and showAddress */
+function planPage(id, o = {}) {
+  const rec = { saleId: id, id, name: "Sale " + id, plainTextDescription: o.desc || "Pyrex and tools.", pictures: [], showAddress: o.hidden ? false : true,
+    latitude: o.lat == null ? 42.478986 : o.lat, longitude: o.lng == null ? -83.116174 : o.lng, mainPicture: { thumbnailUrl: "https://picturescdn.estatesales.net/" + id + "/1-2/main.jpg" },
+    utcShowAddressAfter: D("Thu 2026-10-29 9:00 AM EDT (UTC-04:00)") };
+  const ld = { "@context": "http://schema.org/", "@type": "SaleEvent", url: "https://www.estatesales.net/MI/Royal Oak/48067/traditional/" + id, description: "x",
+    location: { "@type": "Place", name: o.hidden ? "Royal Oak, MI 48067" : "2325 Barrett  Royal Oak, MI 48067", address: { "@type": "PostalAddress", streetAddress: o.hidden ? "" : "2325 Barrett ", addressLocality: "Royal Oak", addressRegion: "MI", postalCode: "48067" } } };
+  const og = o.noImg ? "" : `<meta property="og:image" content="https://picturescdn.estatesales.net/${id}/1-1/cover-uuid.jpg"><meta property="og:image" content="https://picturescdn.estatesales.net/${id}/1-1/second.jpg">`;
+  return `<html><head>${og}</head><script type="application/ld+json">${JSON.stringify(ld)}</script>` +
+    `<script id="estatesales-net-state" type="application/json">${JSON.stringify({ NGRX_STATE: { feature: { traditionalSaleViewState: { entitiesById: { [id]: rec } } } } })}</script></html>`;
+}
+
+test("a sale page gives its street address, its own position and its cover photo (the first og:image); a hidden address is pending", () => {
+  const d = W.wkDetailParse(planPage(5136894), "5136894");
+  assert.equal(d.addr, "2325 Barrett");
+  assert.equal(d.lat, 42.478986); assert.equal(d.lng, -83.116174);
+  assert.equal(d.img, "https://picturescdn.estatesales.net/5136894/1-1/cover-uuid.jpg", "the cover photo, not the second og:image or the thumbnail");
+  assert.equal(d.addrAt, 0);
+  const h = W.wkDetailParse(planPage(5136895, { hidden: true }), "5136895");
+  assert.equal(h.addr, "", "address pending");
+  assert.equal(h.addrAt, Date.UTC(2026, 9, 29, 13, 0), "when the company shows it");
+  assert.equal(W.wkDetailParse(planPage(5136896, { noImg: true }), "5136896").img, "https://picturescdn.estatesales.net/5136896/1-2/main.jpg", "no og:image: the old picture");
+  assert.equal(W.wkDetailParse('<meta property="og:image" content="https://evil.example/x.jpg">', "1"), null, "an image off EstateSales.net's CDN is never kept");
+  assert.equal(W.wkDetailParse('<meta property="og:image" content="https://picturescdn.estatesales.net/1/1-1/a.jpg">', "1").img, "https://picturescdn.estatesales.net/1/1-1/a.jpg");
+});
+
+test("each sale in the list carries its position (the page's own when read), street address and open days for the planner", () => {
+  const win = W.wkWindow(THU, TZ);
+  const sales = W.wkFromApi([sale(6001), sale(6002)], NOVI, 25);
+  const b = W.wkBuild(sales, { by: { 6001: W.wkDetailParse(planPage(6001), "6001"), 6002: W.wkDetailParse(planPage(6002, { hidden: true }), "6002") }, gone: {} }, [], win, THU, TZ, 12);
+  const a = b.rest.find((x) => x.id === "6001"), p = b.rest.find((x) => x.id === "6002");
+  assert.equal(a.addr, "2325 Barrett"); assert.equal(a.lat, 42.478986); assert.equal(a.lng, -83.116174);
+  assert.deepEqual(a.days, [{ s: Date.UTC(2026, 9, 30, 14, 0), e: Date.UTC(2026, 9, 30, 21, 0) }, { s: Date.UTC(2026, 9, 31, 14, 0), e: Date.UTC(2026, 9, 31, 18, 0) }]);
+  assert.equal(a.img, "https://picturescdn.estatesales.net/6001/1-1/cover-uuid.jpg");
+  assert.equal(p.addr, "", "address pending"); assert.ok(p.addrAt > 0);
+  assert.equal(p.lat, 42.478986, "position kept for the map even while the street is hidden");
+  const unread = W.wkBuild(sales, { by: {}, gone: {} }, [], win, THU, TZ, 12).rest[0];
+  assert.equal(unread.lat, 42.39, "no page read: the list's position"); assert.equal(unread.addr, "");
+});
+
+test("plan links: ids are digits only, at most 12; the URL carries ids, picks, ZIP, expiry and signature; rows keep the link's order", () => {
+  assert.deepEqual(W.wkPlanIds("5136894, 12,abc,5136894|5000001"), ["5136894", "5000001"]);
+  assert.equal(W.wkPlanIds(Array.from({ length: 20 }, (_, i) => 1000 + i)).length, 12);
+  assert.equal(W.wkPlanUrl("https://p.example/pages/prowl-app", ["1001", "1002"], ["1001"], "48375", 1900000000, "sig"),
+    "https://p.example/pages/prowl-app?wkplan=1001,1002&wkp=1001&wkzip=48375&wkx=1900000000&wks=sig");
+  const win = W.wkWindow(THU, TZ);
+  const items = W.wkFromApi([sale(7001), sale(7002), sale(7003, { dates: [{ utcStartDate: D("Thu 2026-10-29 9:00 AM EDT (UTC-04:00)"), utcEndDate: D("Thu 2026-10-29 3:00 PM EDT (UTC-04:00)") }] })], NOVI, 25);
+  const r = W.wkPlanRows(items, { by: { 7002: W.wkDetailParse(planPage(7002), "7002") }, gone: {} }, ["7002", "7001", "7003", "7999"], ["7002"], win, THU, TZ);
+  assert.deepEqual(r.sales.map((x) => [x.id, x.pick]), [["7002", true], ["7001", false]]);
+  assert.equal(r.sales[0].addr, "2325 Barrett");
+  assert.deepEqual(r.missing, ["7003", "7999"], "over before the weekend, or no longer listed");
+});
+
+test("the Thursday email: each sale's cover photo 120x90 linked to the sale (none when it has none), and a signed Plan my weekend link", async () => {
+  const now = Date.now(), win = W.wkWindow(now, TZ);
+  const sat = (h) => satAt(win, h);
+  const mk = (id, name) => sale(id, { name, firstUtcStartDate: sat(14), lastUtcEndDate: sat(20), dates: [{ utcStartDate: sat(14), utcEndDate: sat(20) }] });
+  const apiBody = JSON.stringify([mk(8001, "Jadeite house"), mk(8002, "No photo sale")]);
+  const pages = { "https://www.estatesales.net/MI/Livonia/48150/8001": { html: planPage(8001, { desc: "Fire King jadeite bowls." }) },
+    "https://www.estatesales.net/MI/Livonia/48150/8002": { html: planPage(8002, { noImg: true }).replace(/"thumbnailUrl":"[^"]+"/, '"thumbnailUrl":""') } };
+  const { X, env, sent } = rig({ env: { SALES_PUBLIC: "on", PROWL_SESSION_SECRET: "s3cret" }, apiBody, pages });
+  assert.equal(await X.alEstateSend(env, { ...PRO }, THU_LOC, true), "sent");
+  const m = sent[0];
+  assert.match(m.html, /<a href="https:\/\/www\.estatesales\.net\/MI\/Livonia\/48150\/8001"><img src="https:\/\/picturescdn\.estatesales\.net\/8001\/1-1\/cover-uuid\.jpg" width="120" height="90" alt="Jadeite house"/);
+  assert.equal((m.html.match(/<img /g) || []).length, 1, "a sale without a photo shows none");
+  const plan = /href="([^"]*wkplan=[^"]*)"[^>]*>[^<]*Plan my weekend/.exec(m.html);
+  assert.ok(plan, "a Plan my weekend button");
+  const u = new URL(plan[1].replace(/&amp;/g, "&"));
+  assert.equal(u.origin + u.pathname, "https://www.owlandtwigvintage.com/pages/prowl-app");
+  assert.equal(u.searchParams.get("wkplan"), "8001,8002"); assert.equal(u.searchParams.get("wkp"), "8001"); assert.equal(u.searchParams.get("wkzip"), "48375");
+  assert.ok(Number(u.searchParams.get("wkx")) * 1000 > Date.parse(new Date(win.to).toISOString()), "good until after the weekend");
+  assert.match(u.searchParams.get("wks"), /^[0-9a-f]{32}$/);
+  assert.ok(!/m@example\.com/.test(plan[1]), "no email address in the plan link");
+  assert.match(m.text, /Plan my weekend \(a day-by-day route with Maps links\): https:\/\/www\.owlandtwigvintage\.com\/pages\/prowl-app\?wkplan=8001,8002/);
+});
+
+test("GET /weekend/plan: the email's signature opens it with no sign-in; a wrong or run-out one does not; sales come back with addresses", async () => {
+  const now = Date.now(), win = W.wkWindow(now, TZ);
+  const sat = (h) => satAt(win, h);
+  const mk = (id) => sale(id, { firstUtcStartDate: sat(14), lastUtcEndDate: sat(20), dates: [{ utcStartDate: sat(14), utcEndDate: sat(20) }] });
+  const apiBody = JSON.stringify([mk(9001), mk(9002)]);
+  const pages = { "https://www.estatesales.net/MI/Livonia/48150/9001": { html: planPage(9001) }, "https://www.estatesales.net/MI/Livonia/48150/9002": { html: planPage(9002, { hidden: true }) } };
+  const { X, env } = rig({ env: { PROWL_SESSION_SECRET: "s3cret" }, apiBody, pages });
+  const exp = Math.floor(now / 1000) + 86400, ids = ["9001", "9002", "9003"], picks = ["9001"];
+  const sig = await X.wkPlanSig(env, ids, picks, "48375", exp);
+  const purl = (q) => new URL("https://w.example/weekend/plan?" + q);
+  const r = await X.wkPlanRoute(REQ, env, purl("ids=9001,9002,9003&p=9001&zip=48375&x=" + exp + "&s=" + sig + "&tz=America/Detroit"), "o");
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.deepEqual(r.body.sales.map((x) => [x.id, x.pick, x.addr]), [["9001", true, "2325 Barrett"], ["9002", false, ""]]);
+  assert.deepEqual(r.body.missing, ["9003"]);
+  assert.equal(r.body.start.zip, "48375"); assert.equal(r.body.start.town, "Novi, MI"); assert.equal(typeof r.body.start.lat, "number");
+  assert.equal((await X.wkPlanRoute(REQ, env, purl("ids=9001,9002&p=9001&zip=48375&x=" + exp + "&s=" + sig), "o")).status, 404, "the ids are covered by the signature");
+  assert.equal((await X.wkPlanRoute(REQ, env, purl("ids=9001,9002,9003&p=9001&zip=48376&x=" + exp + "&s=" + sig), "o")).status, 404, "so is the ZIP");
+  assert.equal((await X.wkPlanRoute(REQ, env, purl("ids=9001&zip=48375&x=" + exp), "o")).status, 404, "no signature, not public, not the owner");
+  const old = Math.floor(now / 1000) - 60, oldSig = await X.wkPlanSig(env, ["9001"], [], "48375", old);
+  assert.equal((await X.wkPlanRoute(REQ, env, purl("ids=9001&zip=48375&x=" + old + "&s=" + oldSig), "o")).status, 410, "a run-out link says so");
+  const pub = rig({ env: { SALES_PUBLIC: "on" }, apiBody, pages });
+  assert.equal((await pub.X.wkPlanRoute(REQ, pub.env, purl("ids=9001&zip=48375"), "o")).status, 200, "public: no signature needed");
+  assert.equal((await pub.X.wkPlanRoute(REQ, pub.env, purl("ids=9001"), "o")).status, 400, "a ZIP is needed");
+});
+
+test("a sweep reads the page of every sale it shows, not only the nearest few (the planner needs each address)", async () => {
+  const now = Date.now(), win = W.wkWindow(now, TZ);
+  const sat = (h) => satAt(win, h);
+  const list = Array.from({ length: 5 }, (_, i) => sale(9100 + i, { latitude: 42.48 + i * 0.05, firstUtcStartDate: sat(14), lastUtcEndDate: sat(20), dates: [{ utcStartDate: sat(14), utcEndDate: sat(20) }] }));
+  const pages = {}; list.forEach((s) => { pages["https://www.estatesales.net/MI/Livonia/48150/" + s.id] = { html: planPage(s.id) }; });
+  const { X, env, fetched } = rig({ env: { SALES_PUBLIC: "on" }, apiBody: JSON.stringify(list), pages });
+  const S = await X.wkSweep(env, { lat: 42.48, lng: -83.48 }, 25, [], TZ, null, 2);
+  assert.equal(S.rest.length, 5);
+  assert.ok(S.rest.every((x) => x.addr === "2325 Barrett"), "every sale shown has its address");
+  assert.equal(fetched.filter((u) => /\/MI\/Livonia\//.test(u)).length, 5);
 });

@@ -24,6 +24,9 @@
  *        photo captions), Top picks where a hunt's words all appear, every sale with its own link (dead links dropped),
  *        at most 12; same gate as /sales. Pro members with a ZIP get it by email on Thursday mornings (alEstateSend,
  *        prefs.estate = "off" stops it, /alerts/unsub?w=estate), only while SALES_PUBLIC=on or for SALES_TEST_EMAILS.
+ *        Plan my weekend: each sale also carries lat/lng, its street address (or "" = address pending) and its open days;
+ *        the email shows each sale's cover photo and a "Plan my weekend" button, a signed link to the page with the sale
+ *        ids (GET /weekend/plan?ids&p&zip&x&s answers those sales for the page's planner, no sign-in).
  *   v192: 2026-10-30. A refused Shopify order token says why: the token request's status and Shopify's error code ride
  *         along in the Pro check ("shopify token refused: 400 invalid_client"), up to 80 characters, never the keys.
  *   v191: 2026-10-29. Shelf scan: up to 8 picks (was 3), an ALL line (so.all {why, fair, payUpTo}) when most of the shelf is
@@ -659,7 +662,7 @@ import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize, huntNeeds, huntRelevant } from "./hunt.js";
 import { SAVED_BODY_MAX, SAVED_SYNCS_PER_DAY, SAVED_PHOTOS_PER_SYNC, SAVED_PHOTO_MAX, SAVED_SIG_SECONDS, SAVED_CHECKS_PER_LIST, savedMerge, savedToCopy, savedUntil, photoKey, savedDue, savedListDue, savedEndFrom, savedSrc, savedHp } from "./saved.js";   /* v168 */   /* v117; v152: huntNeeds, huntRelevant */
 import { wkAdd, wkFresh, wkCur, letterShorters, letterBuild, letterText, letterQuiet } from "./letter.js";   /* v152: the weekly letter */
-import { WK_RADIUS_MI, WK_RADIUS_MAX, WK_CAP, WK_DETAIL_MAX, wkApiUrl, wkFromApi, wkFromCity, wkWindow, wkToRead, wkDetailParse, wkBuild, wkHunts } from "./weekend.js";   /* v193: Weekend sweep */
+import { WK_RADIUS_MI, WK_RADIUS_MAX, WK_CAP, WK_DETAIL_MAX, wkApiUrl, wkFromApi, wkFromCity, wkWindow, wkToRead, wkDetailParse, wkBuild, wkHunts, wkPlanIds, wkPlanMsg, wkPlanUrl, wkPlanRows } from "./weekend.js";   /* v193: Weekend sweep, Plan my weekend */
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
@@ -5553,9 +5556,12 @@ async function wkZipPoint(env, zip) {
   try { await env.PROWL_ALERTS.put(k, JSON.stringify(v), { expirationTtl: WK_ZIP_TTL }); } catch (e) {}
   return v;
 }
+/* Plan my weekend: each sale's cover photo (its page's og:image), 120x90 and linked to the sale; none when it has none */
+const AL_ESTATE_IMG = /^https:\/\/picturescdn\.estatesales\.net\/[^\s"'<>]+$/;
 function alEstateRow(env, x, pick) {
   const meta = [x.city + (x.st ? ", " + x.st : ""), x.co, x.dist != null ? x.dist + " mi" : ""].filter(Boolean).join(" \u00b7 ");
-  return '<tr><td style="padding:10px 12px;border-top:1px solid #efe8dc">' +
+  const img = AL_ESTATE_IMG.test(String(x.img || "")) ? '<td width="120" valign="top" style="padding:12px 0 10px 12px;border-top:1px solid #efe8dc;width:120px"><a href="' + alEsc(x.url) + '"><img src="' + alEsc(x.img) + '" width="120" height="90" alt="' + alEsc(x.name) + '" style="display:block;width:120px;height:90px;object-fit:cover;border-radius:6px;border:0;background:#efe8dc"></a></td>' : '';
+  return '<tr>' + img + '<td valign="top" style="padding:10px 12px;border-top:1px solid #efe8dc">' +
     (pick && x.match ? '<div style="display:inline-block;font:bold 12px Arial,sans-serif;color:#8a4b1f;background:#fff3df;border-radius:4px;padding:3px 7px;margin-bottom:6px">\uD83D\uDC3E Your quarry: ' + alEsc(x.match.hunt) + ' \u00b7 in ' + alEsc(x.match.where) + '</div>' : '') +
     '<div style="font:bold ' + (pick ? '16' : '15') + 'px/1.35 Georgia,serif"><a href="' + alEsc(x.url) + '" style="color:#2b2118;text-decoration:none">' + alEsc(x.name) + '</a></div>' +
     '<div style="font:13px/1.5 Arial,sans-serif;color:#6b5b4a">' + alEsc(meta) + '</div>' +
@@ -5563,10 +5569,15 @@ function alEstateRow(env, x, pick) {
     (x.standout ? '<div style="font:italic 13px/1.5 Georgia,serif;color:#6b5b4a;margin-top:3px">' + alEsc(x.standout) + '</div>' : '') +
     '<div style="font:bold 13px Arial,sans-serif;margin-top:5px"><a href="' + alEsc(x.url) + '" style="color:#8a4b1f">See the sale on EstateSales.net \u2192</a></div></td></tr>';
 }
-function alEstateHtml(env, sub, S, zip) {
+/* the email's "Plan my weekend" button: a signed link to the Prowl page with this sweep's sale ids (wkPlanLink) */
+function alEstatePlanBtn(planUrl) {
+  return planUrl ? '<tr><td style="padding:14px 12px 0"><a href="' + alEsc(planUrl) + '" style="display:inline-block;background:#2b2118;color:#ffffff;padding:11px 18px;border-radius:6px;text-decoration:none;font:bold 14px Arial,sans-serif">\uD83D\uDDFA\uFE0F Plan my weekend</a>' +
+    '<div style="font:12px/1.5 Arial,sans-serif;color:#9a8b7a;padding-top:5px">Opens Prowl with these sales split into a day-by-day route, with Google and Apple Maps links. No app or sign-in needed.</div></td></tr>' : '';
+}
+function alEstateHtml(env, sub, S, zip, planUrl) {
   const n = S.picks.length + S.rest.length;
   let h = '<tr><td style="padding:12px 12px 6px;font:bold 24px Georgia,serif;color:#2b2118">' + (S.picks.length ? S.picks.length + ' estate sale' + (S.picks.length === 1 ? '' : 's') + ' worth the drive' : n + ' estate sale' + (n === 1 ? '' : 's') + ' this weekend') + '</td></tr>' +
-    '<tr><td style="padding:0 12px;font:14px/1.5 Arial,sans-serif;color:#6b5b4a">Friday to Sunday, within ' + WK_RADIUS_MI + ' miles of ' + alEsc(zip) + '. Hours are your local time.</td></tr>';
+    '<tr><td style="padding:0 12px;font:14px/1.5 Arial,sans-serif;color:#6b5b4a">Friday to Sunday, within ' + WK_RADIUS_MI + ' miles of ' + alEsc(zip) + '. Hours are your local time.</td></tr>' + alEstatePlanBtn(planUrl);
   if (S.picks.length) {
     h += '<tr><td style="padding:20px 12px 4px;font:bold 19px Georgia,serif;color:#2b2118">Top picks <span style="font:normal 14px Arial,sans-serif;color:#6b5b4a">\u00b7 they mention your hunts</span></td></tr><tr><td><table width="100%" cellpadding="0" cellspacing="0">' +
       S.picks.map(x => alEstateRow(env, x, true)).join("") + '</table></td></tr>';
@@ -5575,14 +5586,16 @@ function alEstateHtml(env, sub, S, zip) {
     h += '<tr><td style="padding:20px 12px 4px;font:bold 17px Georgia,serif;color:#2b2118">' + (S.picks.length ? 'Also this weekend' : 'This weekend nearby') + '</td></tr><tr><td><table width="100%" cellpadding="0" cellspacing="0">' +
       S.rest.map(x => alEstateRow(env, x, false)).join("") + '</table></td></tr>';
   }
+  if (planUrl && n > 3) h += alEstatePlanBtn(planUrl);
   h += '<tr><td style="padding:14px 12px 2px"><a href="' + alEsc(alHomeUrl(sub)) + '" style="display:inline-block;background:#8a4b1f;color:#ffffff;padding:11px 18px;border-radius:6px;text-decoration:none;font:bold 14px Arial,sans-serif">Open Prowl</a></td></tr>' +
     '<tr><td style="padding:10px 12px 0;font:12px/1.5 Arial,sans-serif;color:#9a8b7a">Sales and links from EstateSales.net. Hours and items can change; check the sale page before you go.</td></tr>';
   const links = '<a href="' + alEsc(alHomeUrl(sub)) + '" style="color:#8a4b1f">Open Prowl \u00b7 change your hunts or ZIP</a> \u00b7 <a href="' + alEsc(alEstateUnsubUrl(sub)) + '" style="color:#9a8b7a">Stop Thursday estate sale emails</a> \u00b7 <a href="' + alEsc(alUnsubUrl(sub)) + '" style="color:#9a8b7a">Unsubscribe from all Prowl emails</a>';
   return alShell(env, h, 'You are getting this because you have Prowl Pro and a ZIP code saved in Prowl. It comes on Thursday mornings; your daily alerts are separate. Turn it off in Prowl under Den, then Settings.', links);
 }
-function alEstateText(env, sub, S, zip) {
+function alEstateText(env, sub, S, zip, planUrl) {
   const row = x => ["- " + x.name + (x.match ? " [your quarry: " + x.match.hunt + ", in " + x.match.where + "]" : ""), "  " + [x.city + (x.st ? ", " + x.st : ""), x.co, x.dist + " mi"].filter(Boolean).join(" \u00b7 "), "  " + x.hours, x.standout ? "  " + x.standout : "", "  " + x.url].filter(Boolean).join("\n");
   const lines = ["Prowl: estate sales this weekend near " + zip, "Friday to Sunday, within " + WK_RADIUS_MI + " miles. Hours are your local time.", ""];
+  if (planUrl) lines.push("Plan my weekend (a day-by-day route with Maps links): " + planUrl, "");
   if (S.picks.length) lines.push("TOP PICKS (they mention your hunts)", S.picks.map(row).join("\n\n"), "");
   if (S.rest.length) lines.push(S.picks.length ? "ALSO THIS WEEKEND" : "THIS WEEKEND NEARBY", S.rest.map(row).join("\n\n"), "");
   lines.push("Sales and links from EstateSales.net. Hours and items can change; check the sale page before you go.");
@@ -5606,7 +5619,8 @@ async function alEstateSend(env, sub, loc, send) {
   if (!S) return "EstateSales.net did not answer";
   if (!S.picks.length && !S.rest.length) { if (send) { sub.estate = loc.day; await alMerge(env, sub, ["estate"]); } return "nothing this weekend"; }
   const ms = send ? await alMailSub(env, sub) : sub;
-  const mail = { subject: alEstateSubject(S, zip), html: alEstateHtml(env, ms, S, zip), text: alEstateText(env, ms, S, zip), S: S };
+  const planUrl = await wkPlanLink(env, S, zip);   /* Plan my weekend */
+  const mail = { subject: alEstateSubject(S, zip), html: alEstateHtml(env, ms, S, zip, planUrl), text: alEstateText(env, ms, S, zip, planUrl), S: S, planUrl: planUrl };
   if (!send) return mail;
   const r = await alSend(env, sub.email, mail.subject, mail.html, mail.text, alEstateUnsubUrl(ms));
   if (!r.ok) return "not sent: " + String(r.error || "unknown").slice(0, 120);
@@ -7307,11 +7321,14 @@ async function wkList(env, pt, r, place) {
   try { await env.PROWL_ALERTS.put(key, JSON.stringify(v), { expirationTtl: 2 * WK_LIST_TTL }); } catch (e) {}
   return v;
 }
-/* each sale's own page, read once a day: { by: id -> {desc, caps, img}, gone: id -> 1 (404/410: its link is dead) } */
+/* each sale's own page, read once a day: { by: id -> {desc, caps, img, addr, lat, lng, addrAt}, gone: id -> 1 (404/410:
+   its link is dead) }. Plan my weekend: kept under wkd2: (the street address and position are new); a page whose address
+   is still hidden is read again after WK_PENDING_TTL, so the address shows up soon after the company posts it. */
+const WK_PENDING_TTL = 3 * 3600;
 async function wkDetails(env, sales) {
   const by = Object.create(null), gone = Object.create(null), todo = [];
   await Promise.all(sales.map(async s => {
-    const d = await kvGet(env, "wkd1:" + s.id, null);
+    const d = await kvGet(env, "wkd2:" + s.id, null);
     if (d && d.gone) gone[s.id] = 1; else if (d) by[s.id] = d; else todo.push(s);
   }));
   for (let i = 0; i < todo.length; i += 4) {
@@ -7320,7 +7337,7 @@ async function wkDetails(env, sales) {
       let v = null;
       if (g.status === 404 || g.status === 410) { v = { gone: 1 }; gone[s.id] = 1; }
       else if (g.status === 200) { v = wkDetailParse(g.text, s.id) || { desc: "", caps: [], img: "" }; by[s.id] = v; }
-      if (v) { try { await env.PROWL_ALERTS.put("wkd1:" + s.id, JSON.stringify(v), { expirationTtl: WK_DETAIL_TTL }); } catch (e) {} }
+      if (v) { try { await env.PROWL_ALERTS.put("wkd2:" + s.id, JSON.stringify(v), { expirationTtl: v.gone || v.addr ? WK_DETAIL_TTL : WK_PENDING_TTL }); } catch (e) {} }
     }));
   }
   return { by: by, gone: gone };
@@ -7331,7 +7348,14 @@ async function wkSweep(env, pt, r, hunts, tz, place, detailMax) {
   if (!L) return null;
   const now = Date.now(), win = wkWindow(now, tz);
   const det = await wkDetails(env, wkToRead(L.items, win, now, detailMax || WK_DETAIL_MAX));
-  const b = wkBuild(L.items, det, hunts, win, now, tz, WK_CAP);
+  let b = wkBuild(L.items, det, hunts, win, now, tz, WK_CAP);
+  /* Plan my weekend: every sale shown needs its page (street address, position, cover photo), not only the nearest */
+  const unread = b.picks.concat(b.rest).filter(x => !det.by[x.id] && !det.gone[x.id]).map(x => L.items.find(s => s.id === x.id)).filter(Boolean);
+  if (unread.length) {
+    const more = await wkDetails(env, unread.slice(0, WK_CAP));
+    Object.assign(det.by, more.by); Object.assign(det.gone, more.gone);
+    b = wkBuild(L.items, det, hunts, win, now, tz, WK_CAP);
+  }
   return { at: L.at, src: L.src, stale: L.stale ? 1 : 0, from: new Date(win.from).toISOString(), to: new Date(win.to).toISOString(), picks: b.picks, rest: b.rest, total: b.total };
 }
 async function wkRoute(request, env, url, origin) {
@@ -7349,6 +7373,41 @@ async function wkRoute(request, env, url, origin) {
   const S = await wkSweep(env, pt, r, hunts, tz, city && st ? { city: city, st: st } : null);
   if (!S) return json({ error: "EstateSales.net did not answer just now" }, 502, origin, hdr);
   return json(Object.assign({ r: r, tz: tz, hunts: hunts.length }, S), 200, origin, hdr);
+}
+/* ---------- v193: Plan my weekend (GET /weekend/plan) ----------
+     GET /weekend/plan?ids=1,2,3[&p=1][&zip=48375][&x=<expiry, s>][&s=<signature>][&tz=America/Detroit]
+   The sales of one sweep, for the page's planner: the Thursday email's "Plan my weekend" link carries the sweep's sale
+   ids, its Top picks, the ZIP it used and a signature (alCodeKey, HMAC over wkPlanMsg), so it opens with no sign-in and
+   no app until it runs out (x, the Monday after that weekend). The owner's key or SALES_PUBLIC=on opens it without one.
+   The list comes from the same cached sweep around the ZIP (wkList, 3 hours), each sale's page from wkDetails.
+   Answers { start: { lat, lng, town, zip }, sales: [row with pick], missing: [ids no longer open] }. */
+async function wkPlanSig(env, ids, picks, zip, exp) { const key = alCodeKey(env); return key ? (await pxHmac(key, wkPlanMsg(ids, picks, zip, exp))).slice(0, 32) : ""; }
+/* the email's link for a sweep (S from wkSweep), signed */
+async function wkPlanLink(env, S, zip) {
+  const rows = S.picks.concat(S.rest), ids = wkPlanIds(rows.map(x => x.id)), picks = wkPlanIds(S.picks.map(x => x.id));
+  const exp = Math.floor((Date.parse(S.to) || Date.now() + 4 * 86400000) / 1000) + 86400;
+  return wkPlanUrl(PROWL_APP, ids, picks, zip, exp, await wkPlanSig(env, ids, picks, zip, exp));
+}
+async function wkPlanRoute(request, env, url, origin) {
+  const hdr = { "Cache-Control": "private, no-store", "Vary": "X-Prowl-Owner" };
+  if (!env.PROWL_ALERTS) return json({ error: "not found" }, 404, origin, hdr);
+  const sp = url.searchParams, ids = wkPlanIds(sp.get("ids")), picks = wkPlanIds(sp.get("p")).filter(id => ids.indexOf(id) !== -1);
+  const zip = /^\d{5}$/.test(String(sp.get("zip") || "")) ? String(sp.get("zip")) : "", exp = parseInt(sp.get("x"), 10) || 0, sig = String(sp.get("s") || "");
+  const owner = isOwner(request, env);
+  let ok = owner || wkOpen(env);
+  if (!ok && sig && exp * 1000 > Date.now()) { const want = await wkPlanSig(env, ids, wkPlanIds(sp.get("p")), zip, exp); ok = !!want && alSame(sig, want); }
+  if (!ok) return json({ error: exp && exp * 1000 <= Date.now() && sig ? "this link has run out" : "not found" }, exp && exp * 1000 <= Date.now() && sig ? 410 : 404, origin, hdr);
+  if (!ids.length || !zip) return json({ error: "ids and zip required" }, 400, origin, hdr);
+  if (!owner && !(await vCount("wkf:" + ipKey(request.headers.get("CF-Connecting-IP")), WK_PER_IP))) return json({ error: "slow down" }, 429, origin, hdr);
+  const pt = await wkZipPoint(env, zip);
+  if (!pt) return json({ error: "that ZIP could not be found" }, 502, origin, hdr);
+  const tz = alTzClean(sp.get("tz")) || AL_TZ;
+  const L = await wkList(env, pt, WK_RADIUS_MI, pt.city && pt.st ? { city: pt.city, st: pt.st } : null);
+  if (!L) return json({ error: "EstateSales.net did not answer just now" }, 502, origin, hdr);
+  const now = Date.now(), win = wkWindow(now, tz), want = L.items.filter(s => ids.indexOf(s.id) !== -1);
+  const det = await wkDetails(env, want);
+  const P = wkPlanRows(L.items, det, ids, picks, win, now, tz);
+  return json({ start: { lat: pt.lat, lng: pt.lng, town: pt.city && pt.st ? pt.city + ", " + pt.st : zip, zip: zip }, sales: P.sales, missing: P.missing, tz: tz, from: new Date(win.from).toISOString(), to: new Date(win.to).toISOString() }, 200, origin, hdr);
 }
 async function runProbes(env) {
   const srcs = [], resting = [];
@@ -8391,6 +8450,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname.startsWith("/finds/") && request.method === "GET") return findPhotoRoute(request, env, url);   /* v132: a find's photo, signed */
     if (url.pathname === "/sales" && request.method === "GET") return esSales(request, env, url, origin);   /* v103 */
     if (url.pathname === "/weekend" && request.method === "GET") return wkRoute(request, env, url, origin);   /* v193: Weekend sweep */
+    if (url.pathname === "/weekend/plan" && request.method === "GET") return wkPlanRoute(request, env, url, origin);   /* v193: Plan my weekend */
     if (url.pathname === "/shop-picks") {
       return shopPicks(env, url, origin, request);
     }
