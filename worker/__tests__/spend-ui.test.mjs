@@ -11,7 +11,7 @@ const NOW = Date.now();
 function spendAnswer(cfgIn, rows) {
   const cfg = SP.spendCfgClean(cfgIn || {}).cfg;
   return Object.assign(SP.spendSummary(rows || [], cfg, NOW), { ok: true, cfg, fixedMax: SP.SPEND_FIXED_MAX,
-    meta: SP.SPEND_SERVICES.map((s) => ({ key: s.key, name: s.name, uses: s.uses, list: s.price, src: s.src, srcNote: s.srcNote, bill: s.bill })) });
+    meta: SP.SPEND_SERVICES.map((s) => ({ key: s.key, name: s.name, uses: s.uses, list: s.price, free: s.free || 0, src: s.src, srcNote: s.srcNote, bill: s.bill })) });
 }
 async function boot(t, answer) {
   const sent = [];
@@ -34,7 +34,7 @@ async function boot(t, answer) {
 test("the Spending tab shows each service by period, the monthly bills, and a total", async (t) => {
   const today = SP.dayOf(NOW);
   const A = await boot(t, spendAnswer({ fixed: [{ name: "Shopify plan", perMonth: 39 }] },
-    [{ day: today, key: "g_text", n: 100 }, { day: today, key: "muse", n: 3, ti: 120000, to: 40000, ws: 2 }, { day: today, key: "g_nearby", n: 4 }]));
+    [{ day: today, key: "g_text", n: 100 }, { day: today, key: "muse", n: 3, ti: 120000, to: 40000, ws: 2 }, { day: today, key: "lens", n: 4 }]));
   const { d } = A;
   assert.equal(d.querySelector("#v-spending").hidden, false, "#spending opens the tab");
   assert.equal(d.querySelector("#t-spending").getAttribute("aria-selected"), "true");
@@ -44,7 +44,7 @@ test("the Spending tab shows each service by period, the monthly bills, and a to
   assert.match(text[1], /^\$4\.00.*100 calls/);
   const muse = rows.find((r) => /^Muse/.test(r[0]));
   assert.match(muse[1], /3 calls, 120k in \/ 40k out tokens, 2 web searches/);
-  assert.match(rows.find((r) => /Nearby/.test(r[0]))[1], /no price.*4 calls/, "used without a price says so");
+  assert.match(rows.find((r) => /SerpApi/.test(r[0]))[1], /no price.*4 calls/, "used without a price says so");
   assert.deepEqual(rows.find((r) => /Shopify plan/.test(r[0])).slice(3), ["$39.00", "$39.00"]);
   assert.equal(rows.at(-1)[0], "Total");
   assert.match(d.querySelector("#spbox .ukpi").textContent, /so far this month \(1 service used without a price\)/);
@@ -56,11 +56,12 @@ test("the prices form: list prices as placeholders with their sources; Save send
   const gt = d.querySelector("#sp-g_text-call");
   assert.equal(gt.value, "35");
   assert.equal(gt.placeholder, "40");
-  assert.equal(d.querySelector("#sp-g_nearby-call").placeholder, "price from your bill");
+  assert.equal(d.querySelector("#sp-lens-call").placeholder, "price from your bill");
+  assert.match(d.querySelector("#sp-g_text-call-hint").textContent, /SKU 120C-BEC3-B48F.*First 1,000 a month free/);
   const links = [...d.querySelectorAll("#spbox .spp a")];
   assert.ok(links.length >= SP.SPEND_SERVICES.length * 2);
   for (const a of links) { assert.match(a.href, /^https:\/\//); assert.equal(a.target, "_blank"); assert.match(a.rel, /noopener/); }
-  d.querySelector("#sp-g_nearby-call").value = "40";
+  d.querySelector("#sp-g_nearby-call").value = "41";
   d.querySelector("#sp-muse-ws").value = "";
   [...d.querySelectorAll("#spbox button")].find((b) => b.textContent === "Add a monthly bill").click();
   const row = d.querySelector("#spbox .fxrow"), ins = row.querySelectorAll("input");
@@ -68,7 +69,7 @@ test("the prices form: list prices as placeholders with their sources; Save send
   d.querySelector("#spbox form").dispatchEvent(new A.w.Event("submit", { cancelable: true, bubbles: true }));
   for (let i = 0; i < 50 && !sent.some((s) => s[0] === "/admin/api/spend/cfg"); i++) await new Promise((r) => setTimeout(r, 10));
   const body = sent.find((s) => s[0] === "/admin/api/spend/cfg")[1];
-  assert.equal(body.prices.g_nearby.call, 40);
+  assert.equal(body.prices.g_nearby.call, 41);
   assert.equal(body.prices.g_text.call, 35);
   assert.equal(body.prices.muse.ws, null, "empty sends none");
   assert.deepEqual(body.fixed, [{ name: "Cloudflare Workers", perMonth: 5 }]);

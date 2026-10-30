@@ -1093,7 +1093,7 @@ function renderSpend(j) {
   (cfg.fixed || []).forEach(f => rows.push([f.name + " (monthly bill)", "", "", usd(f.perMonth), usd(f.perMonth)]));
   rows.push([h("b", { text: "Total" }), h("b", { text: usd(T.today && T.today.calls) }), h("b", { text: usd(T.d7 && T.d7.calls) }), h("b", { text: usd(T.monthAll) }), h("b", { text: usd(T.lastAll) })]);
   out.push(tableOf(cols, rows, "Spending by service", true));
-  out.push(h("p", { class: "hint", text: "Today and 7 days are calls only; the month columns add the monthly bills. \u201cNo price\u201d means Prowl used it but has no price for it: add one below. Counting started with worker v193 (30 Oct 2026), so earlier days are empty." }));
+  out.push(h("p", { class: "hint", text: "Today and 7 days are calls at the list price. The month columns take off Google\u2019s free monthly allowance and add the monthly bills. \u201cNo price\u201d means Prowl used it but has no price for it: add one below. Counting started with worker v193 (30 Oct 2026), so earlier days are empty." }));
   out.push(spForm(j, M, cfg));
   fill($("#spbox"), out);
 }
@@ -1105,7 +1105,8 @@ function spForm(j, M, cfg) {
     ins.push(inp);
     const src = https(m.src), bill = https(m.bill);
     return h("div", null, [h("label", { for: id, text: SP_UNIT[f] || f }), inp,
-      h("p", { class: "hint", id: id + "-hint" }, ["List price " + (list == null ? "not published" : "$" + list) + (m.srcNote ? " (" + m.srcNote + ")" : "") + ". ",
+      h("p", { class: "hint", id: id + "-hint" }, ["List price " + (list == null ? "not published" : "$" + list) + (m.srcNote ? " (" + m.srcNote + ")" : "") + ". " +
+        (f === "call" && m.free ? "First " + num(m.free) + " a month free. " : ""),
         src ? h("a", { href: src, target: "_blank", rel: "noopener noreferrer", text: "Source" }) : null, src && bill ? " \u00b7 " : null,
         bill ? h("a", { href: bill, target: "_blank", rel: "noopener noreferrer", text: "Your bill" }) : null])]);
   }))));
@@ -1764,7 +1765,7 @@ function appBody() {
       '<div id="affbox"></div><p class="msg" id="aff-msg" aria-live="polite"></p></section>') +
     panel("spending",
       '<section class="card"><div class="ch"><h2>Spending</h2></div>' +
-      '<p class="sub">What Prowl&rsquo;s paid services cost, estimated from the calls Prowl made (Muse, Jev, Google, Lens) and priced with the prices below, plus the monthly bills you add. Google&rsquo;s free monthly allowance is not taken off, so the real Google bill can be lower. The real figures are on each provider&rsquo;s billing page.</p>' +
+      '<p class="sub">What Prowl&rsquo;s paid services cost, estimated from the calls Prowl made (Muse, Jev, Google, Lens) and priced with the prices below, plus the monthly bills you add. The month columns take off Google&rsquo;s free monthly allowance; Today and 7 days do not. The real figures are on each provider&rsquo;s billing page.</p>' +
       '<div id="spbox"></div><p class="msg" id="sp-msg" aria-live="polite"></p></section>') +
     "</main>" +
     '<div class="toast" id="toast" role="status" aria-live="polite"></div>' +

@@ -36,11 +36,15 @@ Recently shipped, newest first:
     object for 400 days.
   - **Prices:**
     - The defaults are list prices checked 2026-10-30, each with its source linked in the tab.
+    - Every Google price and free monthly allowance (1,000 a month for the Places SKUs and Vision; 10,000 for
+      Geocoding, Autocomplete and Routes) is from Matt's own Google billing account price list, exported 2026-10-30.
+      The month columns take the allowance off; Today and 7 days are at the list price.
+    - Cross-check: his Oct 16–30 Google costs were $112.39 ($104.12 Text Search, $8.27 Place Photos, the rest inside
+      the free allowance). A test checks that 3,603 Text Search calls price at that $104.12.
     - Muse ($1.25 / $4.25 per 1M tokens, $2.50 per 1,000 searches) and Jev ($0.042 per 1M input) come from third-party
       listings, because neither provider prints prices.
-    - Google Nearby Search and SerpApi have no default.
-    - Matt edits any price in the tab (KV `spend:cfg`). It is an estimate: Google's free monthly allowance is not taken
-      off.
+    - SerpApi has no default (it bills by monthly plan).
+    - Matt edits any price in the tab (KV `spend:cfg`).
   - **Admin change:** the admin's tab strip now scrolls sideways on a phone (seven tabs).
   - **Tests:** `worker/__tests__/spend.test.mjs`, `spend-ui.test.mjs`.
 - **v192: a refused Shopify order token says why** (Matt's admin, 2026-10-30: "Could not reach the shop just now
@@ -1728,7 +1732,6 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 - **Spending tab (worker v193):** open admin › Spending, then:
   - add your monthly bills (Shopify plan, Cloudflare Workers, a SerpApi plan if you pay for one, your Claude plan);
-  - copy the Google Nearby Search price from the Google Cloud bill (no default);
   - check the Muse and Jev prices against your bills (third-party list prices);
   - after a month, compare the tab's Google total with the Google Cloud bill and adjust prices if needed.
 - **Security and trust (2026-10-28 audit), the admin steps only Matt can take:**

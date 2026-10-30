@@ -69,8 +69,9 @@ about a minute. No dashboard paste needed.
 - **Prices:** start from the list prices in `SPEND_SERVICES`. Each row cites its source and the date it was checked,
   and is empty where no per-unit price is published. The owner edits them in the admin, saved to KV `spend:cfg`
   together with the monthly bills (at most 12).
-- **What the totals mean:** the tab shows Today, 7 days, This month and Last month per service. It is an estimate:
-  Google's free monthly allowance per SKU is not taken off, and the real figures are on each provider's billing page.
+- **What the totals mean:** the tab shows Today, 7 days, This month and Last month per service. It is an estimate.
+  The month columns take off Google's free monthly allowance per SKU (`free` in `SPEND_SERVICES`, from Matt's billing
+  account price list); Today and 7 days are at the list price. The real figures are on each provider's billing page.
 - **Adding a paid host:** add a service row in `spend.js` and teach `paidKey` its address.
   `worker/__tests__/spend.test.mjs` fails until both are done.
 

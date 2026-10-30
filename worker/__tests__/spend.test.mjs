@@ -137,7 +137,12 @@ test("prices: list prices until saved; empty clears one, a bad number is refused
   assert.deepEqual(d.prices.muse, { tin: 1.25, tout: 4.25, ws: 2.5 });
   assert.deepEqual(d.prices.g_text, { call: 40 });
   assert.deepEqual(d.prices.lens, { call: null }, "SerpApi bills by plan");
-  assert.deepEqual(d.prices.g_nearby, { call: null }, "no confirmed list price");
+  assert.deepEqual(d.prices.g_nearby, { call: 40 }, "from Matt's Google billing price list");
+  /* Matt's billing account price list (2026-10-30): the price after the free tier, and the free calls a month */
+  const G = { g_text: [40, 1000], g_nearby: [40, 1000], g_hours: [20, 1000], g_reviews: [25, 1000], g_photo: [7, 1000], g_suggest: [2.83, 10000],
+    g_geo: [5, 10000], g_route: [5, 10000], g_vision: [3.5, 1000] };
+  for (const s of SP.SPEND_SERVICES) if (G[s.key]) assert.deepEqual([s.price.call, s.free], G[s.key], s.key);
+  assert.equal(SP.SPEND_SERVICES.find((s) => s.key === "muse").free, undefined, "Muse has no free allowance");
   for (const s of SP.SPEND_SERVICES) assert.match(s.src, /^https:\/\//, s.key + " has a source"), assert.match(s.bill, /^https:\/\//, s.key + " has a billing page");
   let r = SP.spendCfgClean({ prices: { muse: { tin: "2", tout: "", call: 9 }, g_text: { call: 35.123456 }, nope: { call: 1 } } });
   assert.deepEqual(r.errors, []);
@@ -164,6 +169,9 @@ test("the estimate: per 1,000 calls and per 1M tokens; a used service without a 
   assert.equal(SP.spendCost(S.g_text, { n: 250 }, { call: 40 }), 10);
   assert.equal(SP.spendCost(S.muse, { n: 9, ti: 2e6, to: 1e6, ws: 4 }, { tin: 1.25, tout: 4.25, ws: 2.5 }), 2.5 + 4.25 + 0.01);
   assert.equal(SP.spendCost(S.g_nearby, { n: 5 }, { call: null }), null);
+  assert.equal(SP.spendCost(S.g_text, { n: 3603 }, { call: 40 }, 1000), 104.12, "Matt's Oct 16-30 Text Search: 2,603 billed calls after the free 1,000");
+  assert.equal(SP.spendCost(S.g_text, { n: 900 }, { call: 40 }, 1000), 0, "inside the free allowance");
+  assert.equal(SP.spendCost(S.muse, { n: 9, ti: 1e6 }, { tin: 1.25 }, 5), 1.25, "the allowance is calls, never tokens");
   assert.equal(SP.spendCost(S.g_nearby, { n: 0 }, { call: null }), 0, "nothing used costs nothing");
   assert.equal(SP.spendCost(S.muse, { n: 1, ti: 1e6, to: 0, ws: 0 }, { tin: 1.25, tout: null, ws: null }), 1.25, "only the parts used need a price");
 });
@@ -178,12 +186,12 @@ test("periods are UTC: today, 7 days, this month, last month (across a year end 
 
 test("the summary adds each service per period and the monthly bills to the month totals", () => {
   const cfg = SP.spendCfgClean({ fixed: [{ name: "Shopify", perMonth: 39 }, { name: "Cloudflare", perMonth: 5 }] }).cfg;
-  const rows = [{ day: "2026-10-30", key: "g_text", n: 100 }, { day: "2026-10-25", key: "g_text", n: 100 }, { day: "2026-10-02", key: "g_text", n: 100 },
-    { day: "2026-09-15", key: "g_text", n: 50 }, { day: "2026-10-30", key: "g_nearby", n: 3 }, { day: "2026-10-30", key: "muse", n: 2, ti: 1e6, to: 1e6, ws: 0 }];
+  const rows = [{ day: "2026-10-30", key: "g_text", n: 100 }, { day: "2026-10-25", key: "g_text", n: 100 }, { day: "2026-10-02", key: "g_text", n: 1100 },
+    { day: "2026-09-15", key: "g_text", n: 1050 }, { day: "2026-10-30", key: "lens", n: 3 }, { day: "2026-10-30", key: "muse", n: 2, ti: 1e6, to: 1e6, ws: 0 }];
   const s = SP.spendSummary(rows, cfg, NOW), g = s.services.find((x) => x.key === "g_text");
-  assert.deepEqual([g.today.n, g.d7.n, g.month.n, g.last.n], [100, 200, 300, 50]);
-  assert.deepEqual([g.today.cost, g.month.cost, g.last.cost], [4, 12, 2]);
-  assert.equal(s.services.find((x) => x.key === "g_nearby").today.cost, null);
+  assert.deepEqual([g.today.n, g.d7.n, g.month.n, g.last.n], [100, 200, 1300, 1050]);
+  assert.deepEqual([g.today.cost, g.d7.cost, g.month.cost, g.last.cost], [4, 8, 12, 2], "today and 7 days at list price; the months take off the free 1,000");
+  assert.equal(s.services.find((x) => x.key === "lens").today.cost, null, "SerpApi has no per-call price");
   assert.deepEqual(s.totals.today, { calls: 4 + 5.5, unpriced: 1 });
   assert.equal(s.totals.fixed, 44);
   assert.equal(s.totals.monthAll, Math.round((12 + 5.5 + 44) * 100) / 100);

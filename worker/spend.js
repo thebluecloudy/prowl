@@ -4,17 +4,18 @@
    web searches its answer reports). Counts are summed in this isolate and sent to the "spend" Caps object at the end
    of the request (or the cron run), one row per UTC day and service, kept SPEND_KEEP_DAYS. The admin turns them into
    an estimate with the prices in KV (spend:cfg), which start from the list prices below and which Matt can edit, and
-   adds the monthly bills he types in (Shopify, Cloudflare, his Claude plan...). An estimate: Google's free monthly
-   allowance per SKU is not taken off, and the real bill is on each provider's billing page.
+   adds the monthly bills he types in (Shopify, Cloudflare, his Claude plan...). An estimate: the month columns take off
+   Google's free monthly allowance per SKU, Today and 7 days do not; the real bill is on each provider's billing page.
    Nothing personal is kept: a day, a service key and four numbers. No imports: index.js and admin.js both use it. */
 
 export const SPEND_KEEP_DAYS = 400;
 export const SPEND_CFG_KEY = "spend:cfg";
 export const SPEND_FIXED_MAX = 12;
-const PRICES_CHECKED = "2026-10-30";
+const PRICES_CHECKED = "2026-10-30";   /* Google: Matt's billing account price list, exported that day */
 
 /* The paid services. price: $ per 1,000 calls (call), per 1M input / output tokens (tin / tout), per 1,000 web searches
-   (ws). null = no published per-unit price found; the admin asks for the one on the bill. src says where each list
+   (ws). null = no published per-unit price found; the admin asks for the one on the bill. free = calls a month Google
+   bills nothing for (per SKU, from Matt's billing account's price list, 2026-10-30): taken off the month columns. src says where each list
    price came from (third-party when the provider prints none). Google SKUs follow the field mask Prowl sends: Text and
    Nearby Search ask for editorialSummary (Atmosphere) and opening hours (Enterprise). */
 export const SPEND_SERVICES = [
@@ -25,24 +26,24 @@ export const SPEND_SERVICES = [
     price: { tin: 0.042 }, src: "https://safeguard.sh/models/typesafe-jev",
     srcNote: "third-party listing; output is free. Input tokens are estimated (4 characters a token) unless TypeSafe reports them; picture calls count as calls only.",
     bill: "https://typesafe.ai" },
-  { key: "g_text", name: "Google Places Text Search (Enterprise + Atmosphere)", uses: ["call"], price: { call: 40 },
-    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "first 1,000 a month free", bill: "https://console.cloud.google.com/billing" },
-  { key: "g_nearby", name: "Google Places Nearby Search (Enterprise + Atmosphere)", uses: ["call"], price: { call: null },
-    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "price not confirmed; copy it from the Google bill", bill: "https://console.cloud.google.com/billing" },
-  { key: "g_hours", name: "Google Place Details: opening hours (Enterprise)", uses: ["call"], price: { call: 20 },
-    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "first 1,000 a month free", bill: "https://console.cloud.google.com/billing" },
-  { key: "g_reviews", name: "Google Place Details: reviews (Enterprise + Atmosphere)", uses: ["call"], price: { call: 25 },
-    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "first 1,000 a month free", bill: "https://console.cloud.google.com/billing" },
-  { key: "g_photo", name: "Google Place Photos", uses: ["call"], price: { call: 7 },
-    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "cache hits are not counted", bill: "https://console.cloud.google.com/billing" },
-  { key: "g_suggest", name: "Google Places Autocomplete (typing a place)", uses: ["call"], price: { call: 2.83 },
-    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "per request; first 10,000 a month free", bill: "https://console.cloud.google.com/billing" },
-  { key: "g_geo", name: "Google Geocoding (town lookups)", uses: ["call"], price: { call: 5 },
-    src: "https://openplacesapi.com/blog/google-places-api-pricing", srcNote: "third-party; first 10,000 a month free", bill: "https://console.cloud.google.com/billing" },
-  { key: "g_route", name: "Google Routes: driving routes (Road trip, Essentials)", uses: ["call"], price: { call: 5 },
-    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "traffic-unaware, 3 stops at most; first 10,000 a month free", bill: "https://console.cloud.google.com/billing" },
-  { key: "g_vision", name: "Google Cloud Vision web detection (Photo check)", uses: ["call"], price: { call: 3.5 },
-    src: "https://cloud.google.com/vision/pricing", srcNote: "first 1,000 a month free", bill: "https://console.cloud.google.com/billing" },
+  { key: "g_text", name: "Google Places Text Search (Enterprise + Atmosphere)", uses: ["call"], price: { call: 40 }, free: 1000,
+    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "matches Matt's Google billing price list (SKU 120C-BEC3-B48F)", bill: "https://console.cloud.google.com/billing" },
+  { key: "g_nearby", name: "Google Places Nearby Search (Enterprise + Atmosphere)", uses: ["call"], price: { call: 40 }, free: 1000,
+    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "from Matt's Google billing price list (SKU F20E-7034-0EF7)", bill: "https://console.cloud.google.com/billing" },
+  { key: "g_hours", name: "Google Place Details: opening hours (Enterprise)", uses: ["call"], price: { call: 20 }, free: 1000,
+    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "matches Matt's Google billing price list (SKU 2D9A-3DE0-3766)", bill: "https://console.cloud.google.com/billing" },
+  { key: "g_reviews", name: "Google Place Details: reviews (Enterprise + Atmosphere)", uses: ["call"], price: { call: 25 }, free: 1000,
+    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "matches Matt's Google billing price list (SKU EB23-5ECC-F753)", bill: "https://console.cloud.google.com/billing" },
+  { key: "g_photo", name: "Google Place Photos", uses: ["call"], price: { call: 7 }, free: 1000,
+    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "matches Matt's Google billing price list (SKU DCD1-FE97-8C71); cache hits are not counted", bill: "https://console.cloud.google.com/billing" },
+  { key: "g_suggest", name: "Google Places Autocomplete (typing a place)", uses: ["call"], price: { call: 2.83 }, free: 10000,
+    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "matches Matt's Google billing price list (SKU 4EF4-B17C-B31A)", bill: "https://console.cloud.google.com/billing" },
+  { key: "g_geo", name: "Google Geocoding (town lookups)", uses: ["call"], price: { call: 5 }, free: 10000,
+    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "matches Matt's Google billing price list (SKU BAC8-4E68-E261)", bill: "https://console.cloud.google.com/billing" },
+  { key: "g_route", name: "Google Routes: driving routes (Road trip, Essentials)", uses: ["call"], price: { call: 5 }, free: 10000,
+    src: "https://developers.google.com/maps/billing-and-pricing/pricing", srcNote: "matches Matt's Google billing price list (SKU 9EFF-679A-9B16); traffic-unaware, 3 stops at most", bill: "https://console.cloud.google.com/billing" },
+  { key: "g_vision", name: "Google Cloud Vision web detection (Photo check)", uses: ["call"], price: { call: 3.5 }, free: 1000,
+    src: "https://cloud.google.com/vision/pricing", srcNote: "matches Matt's Google billing price list (SKU D89F-B380-AE61)", bill: "https://console.cloud.google.com/billing" },
   { key: "lens", name: "Google Lens through SerpApi", uses: ["call"], price: { call: null },
     src: "https://serpapi.com/pricing", srcNote: "billed by monthly plan (free plan: 250 a month); add a paid plan under monthly bills", bill: "https://serpapi.com/dashboard" }
 ];
@@ -222,9 +223,10 @@ export function spendCfgClean(raw) {
 
 /* ---------- the estimate ---------- */
 /* Cost of usage u under price p for service s: null when a price it needs is missing and that part was used. */
-export function spendCost(s, u, p) {
+export function spendCost(s, u, p, free) {
   let c = 0;
-  const parts = { call: [u.n, 1000], tin: [u.ti, 1e6], tout: [u.to, 1e6], ws: [u.ws, 1000] };
+  const billed = Math.max(0, (u.n || 0) - (Number(free) || 0));   /* free: calls a month Google charges nothing for */
+  const parts = { call: [billed, 1000], tin: [u.ti, 1e6], tout: [u.to, 1e6], ws: [u.ws, 1000] };
   for (const f of s.uses) {
     const used = parts[f][0] || 0, price = p ? p[f] : null;
     if (!used) continue;
@@ -253,7 +255,8 @@ export function spendSummary(rows, cfg, nowMs) {
     for (const pk of PERIODS) {
       const P = per[pk], u = { n: 0, ti: 0, to: 0, ws: 0 };
       for (const r of list) if (r && r.key === s.key && r.day >= P.from && r.day <= P.to) for (const f of FIELDS) u[f] += Number(r[f]) || 0;
-      o[pk] = Object.assign(u, { cost: spendCost(s, u, c.prices[s.key]) });
+      /* a calendar month takes off the free monthly allowance; Today and 7 days are at the list price */
+      o[pk] = Object.assign(u, { cost: spendCost(s, u, c.prices[s.key], pk === "month" || pk === "last" ? s.free : 0) });
     }
     return o;
   });

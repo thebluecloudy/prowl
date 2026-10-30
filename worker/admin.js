@@ -1103,7 +1103,7 @@ async function spendView(c) {
   try { const j = await c.H.capsCall("spend", "sget", { from: per.last.from < per.d7.from ? per.last.from : per.d7.from, to: per.today.to }); rows = j && Array.isArray(j.rows) ? j.rows : null; } catch (e) {}
   const cfg = await spendCfg(c), sum = spendSummary(rows || [], cfg, c.nowMs);
   return Object.assign(sum, { ok: rows !== null, cfg: cfg, fixedMax: SPEND_FIXED_MAX,
-    meta: SPEND_SERVICES.map(s => ({ key: s.key, name: s.name, uses: s.uses, list: s.price, src: s.src, srcNote: s.srcNote, bill: s.bill })) });
+    meta: SPEND_SERVICES.map(s => ({ key: s.key, name: s.name, uses: s.uses, list: s.price, free: s.free || 0, src: s.src, srcNote: s.srcNote, bill: s.bill })) });
 }
 async function apiSpend(c) { return jres(await spendView(c)); }
 async function apiSpendCfg(c) {
