@@ -134,3 +134,10 @@ test('the dropdown marks LIVE stores and lists them first (Matt: "mark the ones 
   assert.deepEqual(p.errors, []);
   await p.close();
 });
+
+test('v8.21: no self-closing tags in the page body (Shopify rewrites them and the deploy md5 check fails)', async () => {
+  const html = (await import('node:fs')).readFileSync(new URL('../../page/prowl.html', import.meta.url), 'utf8');
+  const i = html.indexOf('data-m="store"');
+  assert.ok(i > -1);
+  assert.doesNotMatch(html.slice(i, html.indexOf('</button>', i)), /\/>/);
+});

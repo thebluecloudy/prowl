@@ -1,16 +1,19 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.20 / v192).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.21 / v192).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.20** | 375,797 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.21** | 375,773 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v192** | |
 
 Recently shipped, newest first:
 
+- **v8.21: the Store tab icon is written so Shopify keeps it byte for byte.** v8.20's deploy saved the page but failed
+  the md5 check: its icon used self-closing `<path …/>`, which the rest of the page never does (Shopify rewrites them).
+  Now `<path …></path>` like every other icon. Nothing visible changes. Test in `__tests__/page/store-tab-v820.test.mjs`.
 - **v8.20: Store tab** (Matt, 2026-10-30: "instead of a button and going into the den to change it ... a drop down right
   there", "a new button at the bottom ... to search just one store, everything", "mark the ones that are LIVE"). A sixth
   dock tab, Store (Hunt · Daily · Store · Flock · Near me · Den), runs every hunt on one marketplace in one tap: the
@@ -1692,7 +1695,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.21, worker v193**. Claim one here when you start.
+Next free numbers: **page v8.22, worker v193**. Claim one here when you start.
 
 ## What's next
 
