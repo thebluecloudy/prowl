@@ -114,10 +114,19 @@ export function wkWindow(nowMs, tz) {
   const mon = new Date(Date.UTC(y, m - 1, d) + 3 * DAY_MS);
   return { from: localMidnight(y, m, d, tz), to: localMidnight(mon.getUTCFullYear(), mon.getUTCMonth() + 1, mon.getUTCDate(), tz) };
 }
-/* the days of a sale still to come inside the window ([] = not open this weekend, or already over) */
+/* the days of a sale still to come inside the window ([] = not open this weekend, or already over). v205 review: a sale
+   known only as one span (first start to last end, Thursday to Monday say) is clipped to the window by whole days, so
+   it keeps its opening and closing clock (Thu 9 AM - Mon 4 PM reads Fri 9 AM - Sun 4 PM) and never puts a sale on
+   Thursday or Monday; a span with nothing left inside the window is dropped. */
 export function wkDaysIn(sale, win, nowMs) {
   const lo = Math.max(win.from, nowMs || 0);
-  return (sale.days || []).filter(d => d.e > lo && d.s < win.to);
+  return (sale.days || []).map(d => {
+    if (!d || !d.span) return d;
+    let s = d.s, e = d.e;
+    for (let i = 0; s < win.from && i < 8; i++) s += DAY_MS;
+    for (let i = 0; e > win.to && i < 8; i++) e -= DAY_MS;
+    return s === d.s && e === d.e ? d : { s: s, e: e, span: 1 };
+  }).filter(d => d && d.e > d.s && d.e > lo && d.s < win.to);
 }
 
 const D3 = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], M3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

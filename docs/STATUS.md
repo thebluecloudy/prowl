@@ -35,9 +35,9 @@ Recently shipped, newest first:
   - **Thursday email:** 7 AM to noon in the member's time zone, to **every Pro member with a local-pickup ZIP** who has
     not turned it off (`prefs.estate`, Den › Settings › Thursday estate sales; `/alerts/unsub?w=estate` and
     List-Unsubscribe stop only it), no longer gated on `SALES_PUBLIC`/`SALES_TEST_EMAILS` (`wkTester` is gone). Nothing
-    open: no email. `sub.estate` = the day, so once. 3 a clock run (`AL_ESTATE_PER_RUN`, was 1: about 13 runs an hour
-    over five hours; members nearby share the cached sweep). `/alerts/status` answers `estate: true` for every member.
-    The alert clock still skips members with no hunts at all, so they get none. Each sale shows its cover photo, and
+    open: no email. `sub.estate` = the day, so once. 1 a clock run (`AL_ESTATE_PER_RUN`, see Review fixes; ~60 runs in
+    the 7 AM to noon window; members nearby share the cached sweep). `/alerts/status` answers `estate: true` for every
+    member. Members with no hunts get it too (see Review fixes). Each sale shows its cover photo, and
     a **Plan my weekend** button links `PROWL_APP?wkplan=<ids>&wkp=<picks>&wkzip&wkx&wks` (HMAC over ids, picks, ZIP,
     expiry): it works for anyone it is forwarded to until the Monday after that weekend (Matt: keep as designed).
   - **Plan my weekend** (`wpOpen`, in the same tab in place of the Sweep; "‹ This weekend's sales" goes back for a Pro
@@ -51,6 +51,19 @@ Recently shipped, newest first:
   - **Merge notes:** the FAQ answer keeps main's `www` URLs with Hark's "Tap Near me at the foot of the page" text (both
     the visible FAQ and its JSON-LD); `/alerts/status` keeps main's `fb` and Hark's `estate`; `alPrefs` keeps `fbusa`
     and `estate`. Comments and tests relabelled from v8.22 / v193 to v8.32 / v205.
+  - **Review fixes** (an independent review, still v8.32 / v205, worker only): (1) a Thursday send's real outside calls
+    are counted on the run (`wkRun`: the ZIP's geocode, the list, the city page, each sale page, the email, through
+    `wkZipPoint`/`wkGet`/`wkList`/`wkDetails`/`wkSweep`'s `run` argument; the HTTP routes pass none) and go into
+    `runUsed()`, the v200 `used` the Facebook sweep is left; a send starts only while the run still has
+    `AL_ESTATE_CALLS` = 16 of `FB_RUN_CALLS` after the hunt checks still to come, and its fetches stop at that
+    reservation (the sales not read are still listed); `AL_ESTATE_PER_RUN` back to 1. (2) Pro members with no hunts get
+    the Thursday email: the clock runs the day's Pro check for a member with no hunts only when the email would be due
+    if they were Pro, and every send waits for today's check (`sub.proDay` is today). (3) A try that did not finish is
+    counted (`sub.estateTry` { day, n }, `AL_ESTATE_TRIES` = 3 a Thursday); a ZIP Google answers has no place is kept
+    as `wkz:<zip>` { miss } for 6 hours (`WK_ZIP_MISS_TTL`, `gGeocode`'s `ans.none`) and marks that Thursday done; a
+    Google outage is only a try. (4) A span-only sale (first start to last end) is clipped to Fri-Sun by whole days in
+    `wkDaysIn`, keeping its clock (Thu 9 AM - Mon 4 PM reads Fri 9 AM - Sun 4 PM); a span with nothing left is dropped.
+    Tests: the review tests at the end of `worker/__tests__/weekend-v205.test.mjs` (alTick run with stand-ins).
   - Privacy section: a bullet on estate sales this weekend (what goes to EstateSales.net, the ZIP, the Thursday email,
     the plan link) and EstateSales.net under Who else; paste it with the Facebook bullets.
   - Tests: `worker/__tests__/weekend-v205.test.mjs` (free 403, signed out 401, owner, Pro by token and by session,

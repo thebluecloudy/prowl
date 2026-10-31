@@ -155,14 +155,14 @@ function indexFn(name) {
   if ((line.match(/\{/g) || []).length === (line.match(/\}/g) || []).length) return line;
   return INDEX.slice(m.index, INDEX.indexOf("\n}\n", m.index) + 2);
 }
-const CONSTS = [/^const WK_LIST_TTL = .*$/m, /^const AL_ESTATE_HOUR = .*$/m, /^const WK_PENDING_TTL = .*$/m, /^const AL_ESTATE_IMG = .*$/m].map((re) => re.exec(INDEX)[0]).join("\n");
+const CONSTS = [/^const WK_LIST_TTL = .*$/m, /^const AL_ESTATE_HOUR = .*$/m, /^const AL_ESTATE_CALLS = .*$/m, /^const WK_PENDING_TTL = .*$/m, /^const AL_ESTATE_IMG = .*$/m].map((re) => re.exec(INDEX)[0]).join("\n");
 class FakeKV {
   constructor() { this.m = new Map(); }
   async get(k, type) { if (!this.m.has(k)) return null; const v = this.m.get(k); return type === "json" ? JSON.parse(v) : v; }
   async put(k, v) { this.m.set(k, String(v)); }
   set(k, v) { this.m.set(k, JSON.stringify(v)); }
 }
-function rig({ api = 200, apiBody = null, pages = {}, env: envExtra = {}, owner = false, city = null } = {}) {
+function rig({ api = 200, apiBody = null, pages = {}, env: envExtra = {}, owner = false, city = null, geo = null } = {}) {
   const kv = new FakeKV(), fetched = [], sent = [], merged = [];
   const env = { PROWL_ALERTS: kv, ...envExtra };
   const deps = {
@@ -179,7 +179,7 @@ function rig({ api = 200, apiBody = null, pages = {}, env: envExtra = {}, owner 
       return p == null ? { status: 404, text: async () => "" } : { status: p.status || 200, text: async () => p.html || "" };
     },
     setTimeout, clearTimeout, AbortController,
-    gKey: () => "k", G_GEO_PER_DAY: 1000, gGeocode: async () => ({ lat: 42.47, lng: -83.47, city: "Novi", st: "MI" }),
+    gKey: () => "k", G_GEO_PER_DAY: 1000, gGeocode: geo || (async () => ({ lat: 42.47, lng: -83.47, city: "Novi", st: "MI" })),
     alPrefs: (sub) => ({ tz: "", zip: "", estate: "", ...(sub.prefs || {}) }), alPaused: () => false, alActive: (e, sub) => sub.hunts,
     alMailSub: async (e, sub) => ({ ...sub, k: "ticket" }), alUnsubUrl: (sub) => "https://w.example/alerts/unsub?e=" + sub.email, alHomeUrl: () => "https://prowl.example/?alerts=in",
     alEsc: (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"),
@@ -189,7 +189,7 @@ function rig({ api = 200, apiBody = null, pages = {}, env: envExtra = {}, owner 
     console: { log() {}, error() {} },
     alCodeKey: (e) => e.PROWL_SESSION_SECRET || "", PROWL_APP: "https://www.owlandtwigvintage.com/pages/prowl-app", crypto: globalThis.crypto, TextEncoder,
   };
-  const names = ["wkOpen", "wkWho", "fbWho", "wkGet", "wkList", "wkDetails", "wkSweep", "wkRoute", "alEstateOpen", "alEstateDue", "alEstateUnsubUrl", "wkZipPoint", "alEstateRow", "alEstateHtml", "alEstateText", "alEstateSubject", "alEstateSend", "alEstatePlanBtn", "wkPlanSig", "wkPlanLink", "wkPlanRoute", "pxHmac", "alSame"];
+  const names = ["wkOpen", "wkWho", "fbWho", "wkGet", "wkList", "wkDetails", "wkSweep", "wkRoute", "alEstateOpen", "alEstateDue", "alEstateUnsubUrl", "alEstateTried", "wkZipPoint", "alEstateRow", "alEstateHtml", "alEstateText", "alEstateSubject", "alEstateSend", "alEstatePlanBtn", "wkPlanSig", "wkPlanLink", "wkPlanRoute", "pxHmac", "alSame"];
   const keys = Object.keys(deps);
   const X = new Function(...keys, CONSTS + "\n" + names.map(indexFn).join("\n") + "\nreturn { " + names.join(", ") + " };")(...keys.map((k) => deps[k]));
   return { X, env, kv, fetched, sent, merged };
@@ -322,7 +322,7 @@ test("the member's settings keep estate (off stays off), the unsubscribe link ca
   assert.match(INDEX, /estate: p\.estate === "off" \? "off" : ""/);
   assert.match(INDEX, /if \(p\.w === "estate"\) \{[\s\S]*?estate: "off"/);
   assert.match(INDEX, /estate: alEstateOpen\(env, sub\),/);
-  assert.match(INDEX, /if \(estateLeft > 0 && alEstateDue\(env, sub, loc\)\)/);
+  assert.match(INDEX, /if \(estateLeft <= 0 \|\| sub\.proDay !== now\.day \|\| !alEstateDue\(env, sub, loc\)\) return;/);
 });
 
 /* ---- Plan my weekend (same PR, still v205): street address, position and cover photo from each sale page; the email's
@@ -444,4 +444,139 @@ test("a sweep reads the page of every sale it shows, not only the nearest few (t
   assert.equal(S.rest.length, 5);
   assert.ok(S.rest.every((x) => x.addr === "2325 Barrett"), "every sale shown has its address");
   assert.equal(fetched.filter((u) => /\/MI\/Livonia\//.test(u)).length, 5);
+});
+
+/* ---- v205 review fixes ---- */
+test("review: a span-only sale is clipped to Fri-Sun by whole days, keeping its clock; a span outside the weekend is dropped", () => {
+  const win = W.wkWindow(THU, TZ);
+  const span = (a, b) => W.wkFromApi([sale(7001, { dates: [], firstUtcStartDate: D(a), lastUtcEndDate: D(b) })], NOVI, 25)[0];
+  const wide = W.wkDaysIn(span("Thu 2026-10-29 9:00 AM EDT (UTC-04:00)", "Mon 2026-11-02 4:00 PM EST (UTC-05:00)"), win, THU);
+  assert.deepEqual(wide, [{ s: T("Fri 2026-10-30 9:00 AM EDT (UTC-04:00)"), e: T("Sun 2026-11-01 4:00 PM EST (UTC-05:00)"), span: 1 }], "Thu 9 AM - Mon 4 PM reads Fri 9 AM - Sun 4 PM");
+  assert.equal(W.wkHours(wide, TZ), "Fri Oct 30 9 AM – Sun Nov 1 4 PM");
+  const inside = span("Fri 2026-10-30 9:00 AM EDT (UTC-04:00)", "Sat 2026-10-31 3:00 PM EDT (UTC-04:00)");
+  assert.deepEqual(W.wkDaysIn(inside, win, THU), inside.days, "a span inside the weekend is left as it is");
+  assert.deepEqual(W.wkDaysIn(span("Mon 2026-10-26 9:00 AM EDT (UTC-04:00)", "Thu 2026-10-29 4:00 PM EDT (UTC-04:00)"), win, THU), [], "Mon-Thu: not this weekend");
+  assert.deepEqual(W.wkDaysIn(span("Thu 2026-10-29 9:00 AM EDT (UTC-04:00)", "Fri 2026-10-30 8:00 AM EDT (UTC-04:00)"), win, THU), [], "nothing left inside the weekend");
+  const b = W.wkBuild([span("Wed 2026-10-28 9:00 AM EDT (UTC-04:00)", "Mon 2026-11-02 4:00 PM EST (UTC-05:00)")], { by: {}, gone: {} }, [], win, THU, TZ, 12);
+  assert.equal(b.rest[0].at, T("Fri 2026-10-30 9:00 AM EDT (UTC-04:00)"), "the planner's first day is Friday");
+});
+
+test("review: a send counts its outside calls on the run and stops fetching sale pages at the reservation", async () => {
+  const now = Date.now(), win = W.wkWindow(now, TZ), sat = (h) => satAt(win, h);
+  const list = Array.from({ length: 30 }, (_, i) => sale(8000 + i, { name: "Sale " + i, latitude: 42.39 + i / 1000, firstUtcStartDate: sat(14), lastUtcEndDate: sat(20), dates: [{ utcStartDate: sat(14), utcEndDate: sat(20) }] }));
+  const pages = {};
+  list.forEach((x) => { pages["https://www.estatesales.net/MI/Livonia/48150/" + x.id] = { html: salePage(x.id, "Tools.", []) }; });
+  const { X, env, fetched, sent } = rig({ apiBody: JSON.stringify(list), pages });
+  const run = { calls: 0, max: 15 };   /* AL_ESTATE_CALLS - 1, as alTick sets it */
+  assert.equal(await X.alEstateSend(env, { ...PRO }, THU_LOC, true, run), "sent");
+  assert.equal(sent.length, 1);
+  assert.equal(fetched.length, 13, "the list, the 10 nearest pages and the 2 other shown sales' pages");
+  assert.equal(run.calls, 15, "and the geocode and the email: inside AL_ESTATE_CALLS");
+  /* a warm sweep (list, ZIP and pages kept) costs the email alone */
+  const run2 = { calls: 0, max: 15 };
+  assert.equal(await X.alEstateSend(env, { ...PRO }, THU_LOC, true, run2), "sent");
+  assert.equal(run2.calls, 1, "the email alone");
+  /* a tight reservation: the fetches stop there, the email still goes, and the sales not read are still shown */
+  const T2 = rig({ apiBody: JSON.stringify(list), pages });
+  const run3 = { calls: 0, max: 8 };
+  assert.equal(await T2.X.alEstateSend(T2.env, { ...PRO }, THU_LOC, true, run3), "sent");
+  assert.equal(T2.fetched.length, 7, "the list and 6 pages: the geocode took one of the 8");
+  assert.equal(run3.calls, 9);
+  assert.equal((T2.sent[0].html.match(/See the sale on EstateSales\.net/g) || []).length, 12, "every sale is still listed");
+  /* the HTTP routes are not counted or capped */
+  const r = await X.wkRoute(REQ, { ...env, SALES_PUBLIC: "on" }, url("lat=42.47&lng=-83.47"), "o");
+  assert.equal(r.status, 200);
+});
+
+test("review: a ZIP Google cannot place is remembered for a while and marks that Thursday done; a Google outage is only a try", async () => {
+  let asked = 0;
+  const none = rig({ apiBody: "[]", geo: async (e, q, ans) => { asked++; if (ans) ans.none = true; return null; } });
+  const sub = { ...PRO }, run = { calls: 0, max: 15 };
+  assert.equal(await none.X.alEstateSend(none.env, sub, THU_LOC, true, run), "no point for the ZIP");
+  assert.equal(sub.estate, "2026-10-29", "not tried again this Thursday");
+  assert.deepEqual(JSON.parse(none.kv.m.get("wkz:48375")), { miss: 1 });
+  assert.equal(await none.X.wkZipPoint(none.env, "48375"), null);
+  assert.equal(asked, 1, "the miss is kept: Google is not asked again");
+  const down = rig({ apiBody: "[]", geo: async () => null });
+  const sub2 = { ...PRO };
+  assert.equal(await down.X.alEstateSend(down.env, sub2, THU_LOC, true, { calls: 0, max: 15 }), "no point for the ZIP");
+  assert.equal(sub2.estate, undefined, "an outage is not a miss");
+  assert.equal(down.kv.m.has("wkz:48375"), false);
+  /* tries: three a Thursday, then not again until next week */
+  const t = { ...PRO };
+  for (let i = 0; i < 3; i++) { assert.equal(down.X.alEstateDue({}, t, THU_LOC), true, "try " + (i + 1)); await down.X.alEstateTried({}, t, THU_LOC); }
+  assert.deepEqual(t.estateTry, { day: "2026-10-29", n: 3 });
+  assert.equal(down.X.alEstateDue({}, t, THU_LOC), false, "tried enough this Thursday");
+  assert.equal(down.X.alEstateDue({}, t, { ...THU_LOC, day: "2026-11-05" }), true, "next Thursday starts again");
+});
+
+/* alTick itself, with stand-ins for everything but its estate parts */
+function tickRig(members, { estateCalls = 14, estateResult = "sent", pounceLeft = null, checkN = 0 } = {}) {
+  const kv = new FakeKV(), log = { estate: [], pro: [], fb: [], checks: 0 };
+  members.forEach((m) => kv.set("sub:" + m.email, m));
+  kv.list = async ({ prefix }) => ({ keys: [...kv.m.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })), list_complete: true });
+  const NOW = { day: "2026-10-29", hour: 11 };
+  const deps = {
+    alReady: () => true, alNow: () => NOW, POUNCE_PER_RUN: 30, PJ_RUN: null,
+    kvGet: async (e, k, d) => { const v = await kv.get(k, "json"); return v == null ? d : v; },
+    alBatch: () => 2, AL_PRO_REFRESH_PER_RUN: 8, AL_LETTERS_PER_RUN: 4, AL_CALLS_PER_HUNT: 9, FB_RUN_CALLS: 50,
+    alUrgency: () => 0, memberId: async (s, e) => "M-" + e.length, scrubPII: (x) => x, alTrialPlan: () => null, alTrialNotes: async () => "",
+    alLocal: () => THU_LOC, alPaused: () => false, pounceHasPhone: () => false, pounceQuarries: () => ({}),
+    alProSet: async (e, sub) => { log.pro.push(sub.email); sub.proDay = NOW.day; sub.pro = !!sub.shopPro; return sub.pro; }, alToken: () => "utok",
+    alMerge: async (e, sub, f) => { const cur = await kv.get("sub:" + sub.email, "json"); if (!cur) return null; f.forEach((k) => { cur[k] = sub[k]; }); kv.set("sub:" + sub.email, cur); return cur; },
+    alLetterDue: () => false, alLetterSend: async () => "", pounceRetry: async () => {}, pounceCarry: async () => 0,
+    alPrefs: (sub) => ({ tz: "", zip: "", estate: "", ...(sub.prefs || {}) }),
+    alCheck: async () => { if (pounceLeft != null) deps.PJ_RUN.left = pounceLeft; log.checks++; return checkN; }, alSlotHour: () => 23, alActive: (e, sub) => sub.hunts, alSendDay: () => true, alDigest: async () => ({ sent: false, reason: "nothing new" }),
+    alEstateSend: async (e, sub, loc, send, run) => { log.estate.push(sub.email); run.calls += estateCalls; if (estateResult === "sent") { sub.estate = loc.day; await deps.alMerge(e, sub, ["estate"]); } return estateResult; },
+    fbSweep: async (e, subs, left) => { log.fb.push(left); return { calls: 0, swept: 0, errors: [] }; },
+    rosterCounts: () => null, ADMIN_H: 0, console: { log() {}, error() {} },
+    Date: { now: () => 0 },   /* the run starts at the first member, so the order is the order given */
+  };
+  const consts = /^const AL_ESTATE_CALLS = .*$/m.exec(INDEX)[0] + "\n" + /^const AL_ESTATE_HOUR = .*$/m.exec(INDEX)[0];
+  const src = ["alTick", "alEstateDue", "alEstateTried"].map(indexFn).join("\n");
+  const keys = Object.keys(deps).filter((k) => k !== "PJ_RUN");
+  const run = new Function(...keys, "let PJ_RUN = null;\n" + consts + "\n" + src + "\nreturn { alTick, get PJ_RUN() { return PJ_RUN; } };")(...keys.map((k) => deps[k]));
+  Object.defineProperty(deps, "PJ_RUN", { get: () => run.PJ_RUN });
+  return { tick: () => run.alTick({ PROWL_ALERTS: kv }), kv, log };
+}
+const ZIP = { zip: "48375", tz: "America/Detroit" };
+
+test("review: a Pro member with no hunts gets the Thursday email, after today's Pro check; a free one with no hunts does not", async () => {
+  const R = tickRig([{ email: "nohunts@example.com", pro: false, shopPro: true, hunts: [], prefs: ZIP, utok: "u" },
+    { email: "free@example.com", pro: true, shopPro: false, hunts: [], prefs: ZIP, utok: "u" }]);
+  await R.tick(); await R.tick();
+  assert.deepEqual(R.log.pro.sort(), ["free@example.com", "nohunts@example.com"], "each is checked once first (the stored pro was stale)");
+  assert.deepEqual(R.log.estate, ["nohunts@example.com"], "only the one the check says is Pro");
+  assert.equal(R.log.checks, 0, "no hunt checks for members with no hunts");
+  /* not Thursday morning: no Pro check is spent on members with no hunts */
+  const off = tickRig([{ email: "nozip@example.com", pro: true, hunts: [], prefs: {}, utok: "u" }]);
+  await off.tick();
+  assert.deepEqual([off.log.pro, off.log.estate], [[], []]);
+});
+
+test("review: the estate send's calls go into what the Facebook sweep is left, one send a run, none without the room", async () => {
+  const m = (e) => ({ email: e, pro: true, proDay: "2026-10-29", hunts: ["pyrex"], prefs: ZIP, utok: "u" });
+  const R = tickRig([m("a@example.com"), m("b@example.com")], { estateCalls: 14 });
+  await R.tick();
+  assert.equal(R.log.estate.length, 1, "one a run");
+  assert.deepEqual(R.log.fb, [50 - 14 - 1], "the sweep's 14 calls and the sent email are taken off the Facebook share");
+  /* Pounce has used its 30 on an earlier member: 20 left, then the hunt check still to come; no room for a send */
+  const busy = tickRig([m("c@example.com"), m("d@example.com")], { pounceLeft: 0 });
+  await busy.tick();
+  assert.deepEqual(busy.log.estate, ["c@example.com"], "the first goes before Pounce spends");
+  const late = tickRig([{ ...m("e@example.com"), estate: "2026-10-29" }, m("g@example.com")], { pounceLeft: 0, checkN: 1 });
+  await late.tick();
+  assert.deepEqual(late.log.estate, [], "after Pounce's 30 (and a hunt check's share kept), under AL_ESTATE_CALLS: it waits a run");
+  const tight = tickRig(Array.from({ length: 9 }, (_, i) => ({ email: "p" + i + "@example.com", pro: true, proDay: "", shopPro: true, hunts: [], prefs: ZIP, utok: "u" })), { estateCalls: 14 });
+  await tight.tick();
+  assert.equal(tight.log.estate.length, 1, "still one a run however many are due");
+  assert.ok(tight.log.fb[0] >= 0, "the run stays inside its 50: " + tight.log.fb[0]);
+});
+
+test("review: a failed estate try is counted, three a Thursday at most, not every 5 minutes", async () => {
+  const sub = { email: "f@example.com", pro: true, proDay: "2026-10-29", hunts: ["pyrex"], prefs: ZIP, utok: "u" };
+  const R = tickRig([sub], { estateCalls: 2, estateResult: "EstateSales.net did not answer" });
+  for (let i = 0; i < 5; i++) await R.tick();
+  assert.equal(R.log.estate.length, 3, "tried three times, not every 5 minutes");
+  assert.deepEqual(JSON.parse(R.kv.m.get("sub:f@example.com")).estateTry, { day: "2026-10-29", n: 3 });
 });
