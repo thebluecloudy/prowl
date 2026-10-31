@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.32 / v205).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.33 / v205).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.32** | 368,327 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.33** | 368,327 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v205** | |
 
 Recently shipped, newest first:
 
+- **v8.33: estate sale photos in NEAR ME › Estate sales** (Matt, 2026-10-31: "the estate sale pictures aren't
+  working"). The worker already sent each sale's cover photo (`img`, the sale page's og:image on
+  `picturescdn.estatesales.net`, checked against a live page and fetched with the shop as referrer: 200), and the daily
+  email drew it, but the tab's `wkRow` never did. Each row now shows the photo as a 72 px thumbnail beside the text, or a
+  quiet ⌂ when there is none or the address is not EstateSales.net's picture host. Test:
+  `__tests__/page/estate-photos-v833.test.mjs`; checked in Chromium at 390 px with a real sale photo.
 - **v8.32 / v205: Estate sales this week, for every Prowl Pro member, in the daily email** (Hark's feature, PR #281 /
   `hark/estate-sweep`, built for Matt 2026-10-30; merged onto main with Matt's decisions of 2026-10-31; PR #297 held
   until the 7-day rework below was done). Numbered after the release that takes page v8.31 / worker v204. Hark's three
@@ -2054,7 +2060,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.33, worker v206** (page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.34, worker v206** (page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 is held by #289, `claude/jev-why-v197`, which claimed v200 before #287 shipped it).
 Claim one here when you start.
 
