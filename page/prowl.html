@@ -849,6 +849,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .fb-rl span{font-size:13px;color:var(--mu);line-height:1.45}
 .scout-app-wrapper .fb-rl i{display:block;font-style:normal;font-size:12.5px;opacity:.8}
 .scout-app-wrapper .fb-rest .sgw-note{padding:0 0 8px}
+.scout-app-wrapper .fb-rest{overflow-wrap:anywhere;min-width:0}   /* review fix: a long unbroken hunt name stays inside at 320 px */
 .scout-app-wrapper .sgw-fbm{display:inline-flex;gap:4px;margin-left:8px;flex-wrap:wrap}
 .scout-app-wrapper .sgw-fbm-b{min-height:32px;padding:0 10px;border:1px solid var(--l2);border-radius:999px;background:var(--cd);color:var(--i2);font-size:13px;font-weight:700;cursor:pointer}
 .scout-app-wrapper .sgw-fbm-b[aria-pressed=true]{background:var(--ac);border-color:var(--ac);color:#fff}
@@ -5305,10 +5306,11 @@ function fbAllDraw(){
 function fbWhyTxt(t,y,usa){
   if(!y||typeof y!=='object')return '';
   var n=function(v){v=Math.floor(Number(v));return isFinite(v)&&v>0?v:0},raw=n(y.raw),far=n(y.far),wd=n(y.words),mi=usa?500:n(y.mi)||50,p=[];
-  if(!raw)return 'Facebook had nothing for “'+t+'” near you this week.';
+  if(!raw)return 'Facebook had nothing for “'+t+'” '+(usa?'across the USA':'near you')+' in its last search.';   /* review fix: All USA is not near you; the counts are the last search's */
   if(far>=raw)return 'Facebook had '+raw+', none within '+mi+' mi.';
   if(wd>=raw)return 'Facebook had '+raw+', none with all your words. Try fewer words.';
-  if(far)p.push(far+' too far');if(wd)p.push(wd+' without all your words');
+  if(!far&&!wd)return 'Facebook had '+raw+', all sold or not usable.';
+  if(far)p.push(far+' too far');if(wd)p.push(wd+' without all your words');if(raw-far-wd>0)p.push((raw-far-wd)+' sold or not usable');   /* review fix: the rest are accounted for */
   return p.length?'Facebook had '+raw+': '+p.join(', ')+'.':'';
 }
 function fbOneGo(t){

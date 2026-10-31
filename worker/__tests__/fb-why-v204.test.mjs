@@ -184,3 +184,8 @@ test("wiring: every kept search saves its stat; the version", () => {
   assert.ok(Number(/const WORKER_VERSION = "v(\d+)";/.exec(INDEX)[1]) >= 204, "v204 or later");
   assert.match(INDEX, /^ \*   v204: /m, "a header line for v204");
 });
+
+test("review fix: no reason until the hunt's own pickup search has run (not from the shared ships search alone)", () => {
+  const src = readFileSync(new URL("../index.js", import.meta.url), "utf8");
+  assert.match(src, /const why = pick \? fbWhy\(usa \? \[pick, ship\] : \[pick\], mi\) : null;/);
+});

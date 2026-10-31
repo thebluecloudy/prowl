@@ -60,20 +60,21 @@ test('v8.31: each reason sentence; All USA says 500 mi; no counts (before v204) 
   const all = { live: true, left: 5, hunts: [
     H('ceramic panther', { raw: 0, far: 0, words: 0, mi: 25 }), H('a', { raw: 24, far: 24, words: 0, mi: 25 }), H('b', { raw: 12, far: 12, words: 0, mi: 500 }, true),
     H('c', { raw: 12, far: 12, words: 0, mi: 25 }, true), H('d', { raw: 9, far: 0, words: 9, mi: 25 }), H('e', { raw: 24, far: 15, words: 9, mi: 25 }),
-    H('f', { raw: 24, far: 15, words: 0, mi: 25 }), H('g', { raw: 5, far: 0, words: 0, mi: 25 }), H('h', null), H('i', 'junk')] };
+    H('f', { raw: 24, far: 15, words: 0, mi: 25 }), H('g', { raw: 5, far: 0, words: 0, mi: 25 }), H('h', null), H('i', 'junk'), H('j', { raw: 0, far: 0, words: 0, mi: 500 }, true)] };
   const p = await store(rig({ all }));
   const r = rows(p).map((x) => x[1].replace(/Updated this morning$/, ''));
   assert.deepEqual(r, [
-    'Facebook had nothing for \u201cceramic panther\u201d near you this week.',
+    'Facebook had nothing for \u201cceramic panther\u201d near you in its last search.',
     'Facebook had 24, none within 25 mi.',
     'Facebook had 12, none within 500 mi.',
     'Facebook had 12, none within 500 mi.',
     'Facebook had 9, none with all your words. Try fewer words.',
     'Facebook had 24: 15 too far, 9 without all your words.',
-    'Facebook had 24: 15 too far.',
+    'Facebook had 24: 15 too far, 9 sold or not usable.',
+    'Facebook had 5, all sold or not usable.',
     'Nothing on Facebook for this hunt lately.',
     'Nothing on Facebook for this hunt lately.',
-    'Nothing on Facebook for this hunt lately.',
+    'Facebook had nothing for \u201cj\u201d across the USA in its last search.',
   ]);
   assert.deepEqual(p.errors, []);
   await p.close();
@@ -91,7 +92,7 @@ test('v8.31: Store › Facebook: hunts with finds first, newest first; the rest 
   const r = rows(p);
   assert.deepEqual(r.map((x) => x[0]), ['fire king jadeite', 'pots & pans', 'hull vase', 'rookwood', 'pyrex']);
   assert.match(r[0][1], /^Facebook had 24, none within 25 mi\.Updated this morning$/);
-  assert.match(r[1][1], /^Facebook had nothing for “pots & pans” near you this week\./);
+  assert.match(r[1][1], /^Facebook had nothing for “pots & pans” near you in its last search\./);
   assert.match(r[2][1], /^Facebook had 9, none with all your words\. Try fewer words\./);
   assert.match(r[3][1], /^Nothing on Facebook for this hunt lately\./, 'an older record keeps the old sentence');
   assert.equal(r[4][1], 'Checks soon');

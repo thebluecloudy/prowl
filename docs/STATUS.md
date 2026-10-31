@@ -35,6 +35,9 @@ Recently shipped, newest first:
   - Privacy section: shipping searches are for hunts set to All USA; each search's counts are kept with the finds.
   - Tests: `worker/__tests__/fb-why-v204.test.mjs`, `__tests__/page/fb-why-v831.test.mjs`; `fb-rotation-v203`,
     `fb-apify-v200` and `fb-store-v827` follow the one-job near-me hunt and the folded line.
+  - Review fixes: a hunt switched to All USA shows no reason until its own pickup search has run; an empty All USA hunt
+    says "across the USA" and the reason names the last search, not the week; listings dropped as sold or pending are
+    counted ("all sold or not usable"); long hunt names wrap at 320 px.
 - **v8.30: SEO, from the PROWL_SEO_BRIEF** (Matt, 2026-10-31). Most of the brief was already live (title, canonical,
   `/prowl` 301, sitemap, one H1, schema, the count of 29; `/pages/prowl-app` is noindex with a canonical to
   `/pages/prowl`). Matt set the Shopify search listing the same day: title "Prowl — Search 29 Vintage Marketplaces at

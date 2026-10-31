@@ -7392,7 +7392,7 @@ function fbHuntMi(o, term) { return o.usa.indexOf(term) !== -1 ? FB_USA_MI : o.m
 async function fbHunt(env, o, cell, term) {
   const mi = fbHuntMi(o, term), usa = mi === FB_USA_MI;
   let [pick, ship] = await Promise.all([kvGet(env, fbPickKey(term, cell, mi), null), usa ? kvGet(env, fbShipKey(term), null) : null]);
-  const why = fbWhy(usa ? [pick, ship] : [pick], mi);
+  const why = pick ? fbWhy(usa ? [pick, ship] : [pick], mi) : null;   /* review fix: no reason until the hunt's own pickup search has run (not from the shared ships search alone) */
   if (!pick) {   /* review fix: a radius or All USA change keeps showing what an earlier search found, within the new distance */
     for (const m of [FB_USA_MI, 100, 50, 25]) {
       if (m === mi) continue;
