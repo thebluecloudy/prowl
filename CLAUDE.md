@@ -41,7 +41,8 @@ sees the others' conversations. The repo is the only shared memory, so:
 
 ## Checks and shipping
 
-- `npm run lint` and `npm test` must be clean before a push.
+- `npm run lint` and `npm test` must be clean before a push. `npm run lint` starts with a secret scan
+  (`scripts/scan-secrets.mjs`); the PR `build` check runs it too.
 - Conventional Commits (`feat:`, `fix:`, `chore:`…), with the page/worker version in the title.
 - Merging to main deploys both: the page by `.github/workflows/deploy-page.yml` (md5-checks the live page), the worker
   by Cloudflare Workers Builds. Never edit the live page by hand.

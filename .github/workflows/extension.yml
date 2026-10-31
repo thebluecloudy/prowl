@@ -52,3 +52,35 @@ jobs:
             notes=$(awk -v h="## $v" '$0==h{f=1;next} /^## /{f=0} f' extension/CHANGELOG.md)
             gh release create "$tag" "prowl-extension-$v.zip" --target "$GITHUB_SHA" --title "Prowl extension $v" --notes "${notes:-Prowl extension $v}"
           fi
+      # Optional: upload the same zip to the Chrome Web Store and submit it for review. Runs only once Matt has set all
+      # four repository secrets (extension/README.md, "Publishing to the Chrome Web Store"); until then it says so and
+      # passes, and the zip is uploaded by hand from the GitHub release. Plain curl, no third-party action.
+      - name: Upload to the Chrome Web Store (when its secrets are set)
+        env:
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+        run: |
+          v=$(jq -r .version extension/manifest.json)
+          zip="prowl-extension-$v.zip"
+          if [ -z "$CWS_CLIENT_ID" ] || [ -z "$CWS_CLIENT_SECRET" ] || [ -z "$CWS_REFRESH_TOKEN" ] || [ -z "$CWS_EXTENSION_ID" ]; then
+            echo "::notice::Chrome Web Store secrets not set: upload $zip by hand from the ext-v$v release."
+            exit 0
+          fi
+          tok=$(curl -sS -m 30 https://oauth2.googleapis.com/token \
+            --data-urlencode "client_id=$CWS_CLIENT_ID" --data-urlencode "client_secret=$CWS_CLIENT_SECRET" \
+            --data-urlencode "refresh_token=$CWS_REFRESH_TOKEN" --data-urlencode "grant_type=refresh_token" | jq -r '.access_token // empty')
+          if [ -z "$tok" ]; then echo "::error::Google refused the Chrome Web Store refresh token. Make a new one (extension/README.md)."; exit 1; fi
+          echo "::add-mask::$tok"
+          up=$(curl -sS -m 120 -X PUT -H "Authorization: Bearer $tok" -H "x-goog-api-version: 2" -T "$zip" \
+            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/$CWS_EXTENSION_ID")
+          state=$(echo "$up" | jq -r '.uploadState // "unknown"')
+          echo "upload: $state"
+          if [ "$state" != "SUCCESS" ]; then echo "::error::Chrome Web Store upload $state: $(echo "$up" | jq -c '.itemError // .error // empty' | head -c 500)"; exit 1; fi
+          pub=$(curl -sS -m 60 -X POST -H "Authorization: Bearer $tok" -H "x-goog-api-version: 2" -H "Content-Length: 0" \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/$CWS_EXTENSION_ID/publish")
+          echo "publish: $(echo "$pub" | jq -c '.status // .error // empty' | head -c 300)"
+          echo "$pub" | jq -e '(.status // []) | index("OK") != null or index("ITEM_PENDING_REVIEW") != null' >/dev/null \
+            || { echo "::error::Uploaded $v, but submitting it for review failed. Submit it in the Chrome Web Store dashboard."; exit 1; }
+          echo "::notice::Prowl extension $v uploaded and submitted for Chrome Web Store review."
