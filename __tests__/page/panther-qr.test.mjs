@@ -56,7 +56,7 @@ test('Send the link uses the system share sheet where there is one', async () =>
   const shared = [];
   const p = await open({ beforeLoad(win) { win.navigator.share = (d) => { shared.push(d); return Promise.resolve(); }; } });
   p.$('#otp-qrSend').click();
-  assert.deepEqual(JSON.parse(JSON.stringify(shared)), [{ title: 'Prowl', url: 'https://owlandtwigvintage.com/pages/prowl' }]);   // made in the page's realm
+  assert.deepEqual(JSON.parse(JSON.stringify(shared)), [{ title: 'Prowl', url: 'https://www.owlandtwigvintage.com/pages/prowl' }]);   // made in the page's realm
   await p.close();
 });
 
@@ -69,7 +69,7 @@ test('Send the link copies it, and says so, where there is no share sheet', asyn
   });
   assert.equal(typeof p.win.navigator.share, 'undefined');
   p.$('#otp-qrSend').click();
-  assert.deepEqual(copied, ['https://owlandtwigvintage.com/pages/prowl']);
+  assert.deepEqual(copied, ['https://www.owlandtwigvintage.com/pages/prowl']);
   assert.equal(p.$('#otp-toast').textContent, 'Link copied.');
   await p.close();
 });
