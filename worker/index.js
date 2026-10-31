@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v196: 2026-10-31. GET /version answers {"worker":"v196"} (no-store, nothing else), so .github/workflows/verify-worker.yml
+ *         can confirm after each merge that Cloudflare Workers Builds really deployed the merged version (Matt keeps
+ *         Workers Builds as the deployer). Not counted in the admin's traffic (metrics.js routeKey).
  *   v195: 2026-10-31. Muse's default prices in the Spending tab fitted to Matt's own Meta bill (Oct 24-30: $1.65 for 1.13M input,
  *         128k output, 114 web searches): $0.98 per 1M input (list $1.25, cached reads cheaper), $4.25 output, no separate
  *         search charge. v193's third-party $1.25 / $4.25 / $2.50 would have said $2.25 for that week.
@@ -668,7 +671,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v195";
+const WORKER_VERSION = "v196";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -8083,6 +8086,12 @@ function jsResponse(name, method) {
     "Access-Control-Allow-Origin": "*", "Access-Control-Expose-Headers": "X-Prowl-Js",
     "Cross-Origin-Resource-Policy": "cross-origin", "X-Content-Type-Options": "nosniff", "X-Prowl-Js": PAGE_JS_HASH } });
 }
+/* v196: which worker version is live, for verify-worker.yml after each merge. The version only: no env, no counts. */
+function versionResponse(method) {
+  if (method !== "GET" && method !== "HEAD") return new Response("Not allowed.", { status: 405, headers: { "Allow": "GET, HEAD", "Content-Type": "text/plain; charset=utf-8" } });
+  return new Response(method === "HEAD" ? null : JSON.stringify({ worker: WORKER_VERSION }), { status: 200,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*", "X-Content-Type-Options": "nosniff" } });
+}
 async function handleFetch(request, env, ctx) {
     G_ENV = env;
     const url = new URL(request.url);
@@ -8092,6 +8101,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname.startsWith("/css/")) return cssResponse(url.pathname.slice(5), request.method);
     if (url.pathname.startsWith("/js/")) return jsResponse(url.pathname.slice(4), request.method);   /* v124: its main script */
     try { await affLoad(env); } catch (e) {}   /* v89: affiliate switches for every link built below */
+    if (url.pathname === "/version") return versionResponse(request.method);   /* v196: the deploy check */
     const origin = request.headers.get("Origin") || "";
 
     /* v78: the owner's admin area. Its own sign-in, same-origin only, no CORS. */

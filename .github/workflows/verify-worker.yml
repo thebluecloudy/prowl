@@ -1,0 +1,38 @@
+name: Verify worker deploy
+
+# v196 (Matt keeps Cloudflare Workers Builds as the worker's deployer): after each merge that touches worker/, wait
+# until the live worker's GET /version names the version in worker/index.js. A red run here means Workers Builds did
+# not deploy it: look in Cloudflare under Workers & Pages > prowl > Deployments. No secrets needed.
+on:
+  push:
+    branches: [main]
+    paths: ['worker/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-worker
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for the live worker to report the merged version
+        run: |
+          want=$(grep -oE 'const WORKER_VERSION = "v[0-9]+"' worker/index.js | grep -oE 'v[0-9]+')
+          if [ -z "$want" ]; then echo "WORKER_VERSION not found in worker/index.js"; exit 1; fi
+          echo "Waiting for $want at https://prowl.thebluecloud.workers.dev/version"
+          live=""
+          for i in $(seq 1 32); do
+            live=$(curl -sS -m 10 -H "Cache-Control: no-cache" "https://prowl.thebluecloud.workers.dev/version" | grep -oE '"worker":"v[0-9]+"' | grep -oE 'v[0-9]+' || true)
+            if [ "$live" = "$want" ]; then echo "Live: $live. Deployed."; exit 0; fi
+            echo "try $i: live is ${live:-unknown}"
+            sleep 15
+          done
+          echo "::error::Workers Builds did not deploy $want within 8 minutes: live is ${live:-unknown}. Check Cloudflare: Workers & Pages > prowl > Deployments (and the build log)."
+          exit 1
