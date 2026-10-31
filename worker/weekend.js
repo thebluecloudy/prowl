@@ -52,7 +52,9 @@ const TYPE_NAME = { EstateSales: "Estate sale", MovedOffsiteToStore: "Moved to a
 function typeLabel(t) { t = String(t || ""); return TYPE_NAME[t] || t.replace(/([a-z])([A-Z])/g, "$1 $2").slice(0, 40); }
 
 /* the API's list -> sales within radiusMi of center, in person only, each with its own link and its open days */
-export function wkFromApi(list, center, radiusMi) {
+/* v205 review 2: nowMs (when given) drops dates that ended more than an hour ago before the 14 are kept, so a long
+   multi-session sale keeps this week's dates */
+export function wkFromApi(list, center, radiusMi, nowMs) {
   const out = [], seen = Object.create(null), r = Number(radiusMi) || WK_RADIUS_MI;
   for (const s of Array.isArray(list) ? list.slice(0, 600) : []) {
     if (!s || typeof s !== "object") continue;
@@ -65,10 +67,12 @@ export function wkFromApi(list, center, radiusMi) {
     if (!isFinite(lat) || !isFinite(lon) || (!lat && !lon)) continue;
     const dist = haversineMi(center, { lat: lat, lng: lon });
     if (!(dist <= r)) continue;
-    let days = (Array.isArray(s.dates) ? s.dates : []).map(d => ({ s: wkTime(d && d.utcStartDate), e: wkTime(d && d.utcEndDate) })).filter(d => d.s && d.e && d.e > d.s);
+    const past = nowMs ? nowMs - 3600000 : 0;
+    let days = (Array.isArray(s.dates) ? s.dates : []).map(d => ({ s: wkTime(d && d.utcStartDate), e: wkTime(d && d.utcEndDate) })).filter(d => d.s && d.e && d.e > d.s && d.e > past);
     if (!days.length) { const a = wkTime(s.firstUtcStartDate), b = wkTime(s.lastUtcEndDate); if (a && b && b > a) days = [{ s: a, e: b, span: 1 }]; }
     if (!days.length) continue;
     days.sort((x, y) => x.s - y.s);
+    if (past && !days.some(d => d.e > past)) continue;   /* over */
     seen[id] = 1;
     const co = txt(s.orgName, 80);
     out.push({ id: id, name: txt(s.name, 120) || "Estate sale", url: url, city: txt(s.cityName || s.postalCodeCityName, 40), st: txt(s.stateCode, 2).toUpperCase(),
@@ -128,27 +132,40 @@ function sameClockOn(ms, dayMs, tz) {
    never reaches past the 7th day; a span with nothing left inside the window is dropped. */
 export function wkDaysIn(sale, win, nowMs) {
   const lo = Math.max(win.from, nowMs || 0), tz = win.tz || "UTC";
+  const mins = ms => { const p = parts(ms, tz); return p.h * 60 + p.mi; };
   return (sale.days || []).map(d => {
     if (!d || !d.span) return d;
     let s = d.s, e = d.e;
     if (s < win.from) s = sameClockOn(d.s, win.from, tz);
-    if (e > win.to) e = sameClockOn(d.e, win.to - 1, tz);
+    /* v205 review 2: the closing clock on day 7, unless that falls at or before the opening (a span ending at midnight,
+       or one that opens on day 7 and closes earlier in the day on a later day): then the end of day 7 */
+    if (e > win.to) { e = sameClockOn(d.e, win.to - 1, tz); if (e <= s || mins(d.e) <= mins(d.s)) e = win.to - 60000; }
+    if (s >= e && s !== d.s) s = win.from;   /* moved onto today it would open after it closes: open from today's start */
     return s === d.s && e === d.e ? d : { s: s, e: e, span: 1 };
   }).filter(d => d && d.e > d.s && d.e > lo && d.s < win.to);
 }
 
 const D3 = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], M3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function clock(p) { const h = p.h % 12 || 12; return h + (p.mi ? ":" + String(p.mi).padStart(2, "0") : "") + " " + (p.h < 12 ? "AM" : "PM"); }
+function dayKey(ms, tz) { const p = parts(ms, tz); return p.y + "-" + p.m + "-" + p.d; }
+/* the entries of the first WK_DAYS distinct local days (two sessions a day stay together) */
+function capDays(days, tz) {
+  const seen = Object.create(null), out = [];
+  for (const d of days) { const k = dayKey(d.s, tz); if (!seen[k]) { if (Object.keys(seen).length >= WK_DAYS) break; seen[k] = 1; } out.push(d); }
+  return out;
+}
 function dayName(p) { return D3[p.wd] + " " + M3[p.m - 1] + " " + p.d; }
 /* "Fri Oct 30, 10 AM–5 PM · Sat Oct 31, 10 AM–2 PM", in tz; a sale known only by its first start and last end reads as a
    span. v205: a week can hold more days; past 4, "· +2 more days" */
 export function wkHours(days, tz) {
-  const n = (days || []).length;
+  const seen = Object.create(null);
+  (days || []).slice(0, 4).forEach(d => { seen[dayKey(d.s, tz)] = 1; });
+  const more = Object.keys((days || []).slice(4).reduce((o, d) => { const k = dayKey(d.s, tz); if (!seen[k]) o[k] = 1; return o; }, {})).length;
   return (days || []).slice(0, 4).map(d => {
     const a = parts(d.s, tz), b = parts(d.e, tz);
     const same = a.y === b.y && a.m === b.m && a.d === b.d;
     return same ? dayName(a) + ", " + clock(a) + "\u2013" + clock(b) : dayName(a) + " " + clock(a) + " \u2013 " + dayName(b) + " " + clock(b);
-  }).join(" \u00b7 ") + (n > 4 ? " \u00b7 +" + (n - 4) + " more day" + (n === 5 ? "" : "s") : "");
+  }).join(" \u00b7 ") + (more > 0 ? " \u00b7 +" + more + " more day" + (more === 1 ? "" : "s") : "");
 }
 
 /* ---- the sale's own page ---- */
@@ -263,7 +280,7 @@ export function wkRowOf(s, det, match, days, tz) {
     at: days[0].s, start: new Date(days[0].s).toISOString(), hours: wkHours(days, tz), standout: wkStandout(s, det, match), img: (det && det.img) || "",
     match: match ? { hunt: match.hunt, where: match.where } : null,
     lat: own ? det.lat : s.lat, lng: own ? det.lng : s.lon, addr: addr, addrAt: !addr && det && det.addrAt ? det.addrAt : 0,
-    days: days.slice(0, WK_DAYS).map(d => (d.span ? { s: d.s, e: d.e, span: 1 } : { s: d.s, e: d.e })) };
+    days: capDays(days, tz || "UTC").map(d => (d.span ? { s: d.s, e: d.e, span: 1 } : { s: d.s, e: d.e })) };
 }
 /* the list a person sees: Top picks (a hunt matched) first, then the rest, at most cap in all. sales are already the
    ones open in the window, details is id -> detail (null when not fetched), gone is id -> 1 for dead links. */

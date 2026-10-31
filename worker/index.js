@@ -5618,7 +5618,7 @@ async function alLetterRoute(request, env, origin) {
    a try that did not finish is counted (sub.estateTry { day, n }, AL_ESTATE_TRIES a day); a ZIP Google cannot place is
    remembered WK_ZIP_MISS_TTL and marks the day done. */
 const AL_ESTATE_KEEP = 40, AL_ESTATE_SHOW = 5, AL_ESTATE_PASSES = 3, AL_EST_SENT_MAX = 150, AL_EST_SENT_DAYS = 30, WK_EST_TTL = 36 * 3600, WK_ZIP_TTL = 90 * 86400;
-const AL_ESTATE_CALLS = 16, AL_ESTATE_HUNTS = 3, AL_ESTATE_TRIES = 3, WK_ZIP_MISS_TTL = 6 * 3600, AL_ESTATE_PER_RUN = 1;   /* v205 review */
+const AL_ESTATE_CALLS = 16, AL_ESTATE_MIN_CALLS = 4, AL_ESTATE_READY_CHECKS = 10, AL_ESTATE_TRIES = 3, WK_ZIP_MISS_TTL = 6 * 3600;   /* v205 review */
 /* v205: the Den shows the estate switch to every member (Pro: on/off; free: locked, with the Pro link) */
 function alEstateOpen(env, sub) { return !!sub; }
 /* the member wants the section and can have it: Pro, a ZIP, not turned off */
@@ -5748,14 +5748,14 @@ function alEstateSec(env, sub, est) {
   return '<tr><td style="padding:26px 12px 2px;font:bold 19px Georgia,serif;color:#2b2118">Estate sales near you <span style="font:normal 14px Arial,sans-serif;color:#6b5b4a">\u00b7 ' + n + ' new \u00b7 next 7 days</span></td></tr>' +
     '<tr><td style="padding:0 12px;font:13px/1.5 Arial,sans-serif;color:#6b5b4a">' + (n === 1 ? 'It mentions' : 'They mention') + ' your hunts. Within ' + WK_RADIUS_MI + ' miles of ' + alEsc(est.zip) + '; hours are your local time.</td></tr>' +
     est.picks.map(x => '<tr><td><table width="100%" cellpadding="0" cellspacing="0">' + alEstateRow(env, x, true) + '</table></td></tr>').join("") + alEstatePlanBtn(est.planUrl) +   /* a table each: a sale without a photo keeps the full width */
-    (est.more > 0 ? '<tr><td style="padding:10px 12px 0;font:13px Arial,sans-serif"><a href="' + alEsc(PROWL_APP + "?wk=1") + '" style="color:#8a4b1f">' + est.more + ' more estate sale' + (est.more === 1 ? '' : 's') + ' near you this week \u2192</a></td></tr>' : '') +
+    (est.more > 0 ? '<tr><td style="padding:10px 12px 0;font:13px Arial,sans-serif"><a href="' + alEsc(PROWL_APP + "?wk=1&wkzip=" + est.zip) + '" style="color:#8a4b1f">' + est.more + ' more estate sale' + (est.more === 1 ? '' : 's') + ' near you this week \u2192</a></td></tr>' : '') +
     '<tr><td style="padding:8px 12px 0;font:12px/1.5 Arial,sans-serif;color:#9a8b7a">Sales and links from EstateSales.net. Hours and items can change; check the sale page before you go.</td></tr>';
 }
 function alEstateText(sub, est) {
   if (!est || !est.picks || !est.picks.length) return "";
   const row = x => ["- " + x.name + (x.match ? " [your quarry: " + x.match.hunt + ", in " + x.match.where + "]" : ""), "  " + [x.city + (x.st ? ", " + x.st : ""), x.co, x.dist + " mi"].filter(Boolean).join(" \u00b7 "), "  " + x.hours, "  " + x.url].join("\n");
   return ["ESTATE SALES NEAR YOU (" + est.picks.length + " new, next 7 days, within " + WK_RADIUS_MI + " miles of " + est.zip + ")", est.picks.map(row).join("\n\n"),
-    est.planUrl ? "Plan my week (a day-by-day route with Maps links): " + est.planUrl : "", est.more > 0 ? est.more + " more estate sale" + (est.more === 1 ? "" : "s") + " near you this week: " + PROWL_APP + "?wk=1" : "",
+    est.planUrl ? "Plan my week (a day-by-day route with Maps links): " + est.planUrl : "", est.more > 0 ? est.more + " more estate sale" + (est.more === 1 ? "" : "s") + " near you this week: " + PROWL_APP + "?wk=1&wkzip=" + est.zip : "",
     "Sales and links from EstateSales.net. Stop estate sales in these emails: " + alEstateUnsubUrl(sub), ""].filter(Boolean).join("\n") + "\n";
 }
 /* "2 estate sale picks · Pyrex, Fire-King" */
@@ -5847,7 +5847,7 @@ async function alTick(env) {
   if (!alReady(env)) return { skipped: "off or no KV" };
   const now = alNow(env);
   PJ_RUN = { left: POUNCE_PER_RUN, m: {}, down: !!(await kvGet(env, "pjdown", null)) };   /* v112: Pounce's share of this run's outside calls; v112 review: none while Muse is down */
-  let budget = alBatch(env), proLeft = AL_PRO_REFRESH_PER_RUN, lettersLeft = AL_LETTERS_PER_RUN, estateLeft = AL_ESTATE_PER_RUN;   /* v152; v205 */
+  let budget = alBatch(env), proLeft = AL_PRO_REFRESH_PER_RUN, lettersLeft = AL_LETTERS_PER_RUN;   /* v152 */
   const wkRun = { calls: 0, max: 0 };   /* v205 review: the estate fetches' outside calls this run */
   /* v51: every member key (KV lists 1000 at a time), and each run starts at a
      different member, so the top of the alphabet never starves the bottom. */
@@ -5877,23 +5877,33 @@ async function alTick(env) {
   /* v200: the outside calls this run has made so far (a hunt is about AL_CALLS_PER_HUNT, a Shopify check, a Pounce
      judgement and an email one each); v205 review: and the estate fetches' own count */
   const runUsed = () => (tally.checked + AL_LETTERS_PER_RUN - lettersLeft) * AL_CALLS_PER_HUNT + (AL_PRO_REFRESH_PER_RUN - proLeft) + (POUNCE_PER_RUN - Math.max(0, PJ_RUN.left)) + tally.sent + tally.failed + wkRun.calls;
-  /* v205: today's estate sales near a Pro member's ZIP, fetched ahead of their digest (alEstatePrep): only on a Pro answer
-     from today's check, one fetch a run, only while the run has AL_ESTATE_CALLS left after the hunt checks still to
-     come; a record already there (another member nearby) costs nothing; a try that did not finish is counted */
-  const estate = async (sub, loc) => {
-    if (sub.proDay !== now.day || !alEstateDue(env, sub, loc)) return;
-    const done = async () => { sub.estate = loc.day; try { await alMerge(env, sub, ["estate"]); } catch (e) {} };
-    if (await alEstateReady(env, sub, loc)) { await done(); return; }
-    if (estateLeft <= 0) return;
-    if (FB_RUN_CALLS - runUsed() - Math.max(0, budget - AL_ESTATE_HUNTS) * AL_CALLS_PER_HUNT < AL_ESTATE_CALLS) return;
-    estateLeft--; budget = Math.max(0, budget - AL_ESTATE_HUNTS);
-    wkRun.max = wkRun.calls + AL_ESTATE_CALLS;
-    wkRun.miss = 0;
-    let er = "";
-    try { er = await alEstatePrep(env, sub, loc, wkRun); log.push((await who(sub)) + " estate: " + scrubPII(String(er))); }
-    catch (e) { log.push((await who(sub)) + " estate failed: " + why(e)); note("estate failed: " + String(e && e.message || e)); }
-    if (er === "ready" || er === "no place for the ZIP") await done();
-    else if (er !== "partly ready") await alEstateTried(env, sub, loc);
+  /* v205: today's estate sales near a Pro member's ZIP, fetched ahead of their digest (alEstatePrep). v205 review 3+4:
+     after the member loop and before the Facebook sweep, so it never holds back a hunt check and sees every call the
+     run has made (Pounce, Pro checks, emails): one fetch a run with the calls left (at most AL_ESTATE_CALLS, none under
+     AL_ESTATE_MIN_CALLS), for the due member whose email is soonest; a record already there (another member nearby)
+     costs no fetch and marks the member ready; a try that did not finish is counted */
+  const estatePrep = async () => {
+    const due = [];
+    for (const it of subs) {
+      const sub = it.sub, loc = alLocal(sub, now);
+      if (sub.hunts && sub.hunts.length && sub.proDay === now.day && alEstateDue(env, sub, loc)) due.push({ sub: sub, loc: loc, k: alSlotHour(env, sub) - loc.hour });
+    }
+    due.sort((a, b) => a.k - b.k);
+    const done = async (x) => { x.sub.estate = x.loc.day; try { await alMerge(env, x.sub, ["estate"]); } catch (e) {} };
+    let checks = 0;
+    for (const x of due) {
+      if (checks++ < AL_ESTATE_READY_CHECKS && (await alEstateReady(env, x.sub, x.loc))) { await done(x); continue; }
+      const left = Math.min(AL_ESTATE_CALLS, FB_RUN_CALLS - runUsed());
+      if (left < AL_ESTATE_MIN_CALLS) return;
+      wkRun.max = wkRun.calls + left;
+      wkRun.miss = 0;
+      let er = "";
+      try { er = await alEstatePrep(env, x.sub, x.loc, wkRun); log.push((await who(x.sub)) + " estate: " + scrubPII(String(er))); }
+      catch (e) { log.push((await who(x.sub)) + " estate failed: " + why(e)); note("estate failed: " + String(e && e.message || e)); }
+      if (er === "ready" || er === "no place for the ZIP") await done(x);
+      else if (er !== "partly ready") await alEstateTried(env, x.sub, x.loc);
+      return;   /* one fetch a run */
+    }
   };
   /* the day's Pro check (and an unsubscribe token for members from before v51); false when the member is gone */
   const fresh = async (sub) => {
@@ -5923,7 +5933,6 @@ async function alTick(env) {
       try { const lr = await alLetterSend(env, sub, loc, true); log.push((await who(sub)) + " letter: " + scrubPII(String(lr))); if (lr === "sent") tally.sent++; }
       catch (e) { log.push((await who(sub)) + " letter failed: " + why(e)); note("letter failed: " + String(e && e.message || e)); }
     }
-    await estate(sub, loc);   /* v205: today's estate sales, ready for the digest (KV) */
     /* v112 review: first the phone taps that did not go through, then the listings Pounce did not reach on earlier runs */
     let held = 0;
     if (sub.quarries) {
@@ -5947,6 +5956,7 @@ async function alTick(env) {
       if (r.sent) tally.sent++; else if (r.reason !== "nothing new") { tally.failed++; note("email not sent: " + (r.reason || r.error || "unknown")); }
     }
   }
+  try { await estatePrep(); } catch (e) { note("estate prep failed: " + String(e && e.message || e)); }   /* v205 review 3+4 */
   /* v200: Facebook finds, with the outside calls this run has left (runUsed; v205 review: the estate fetches' too) */
   try {
     const used = runUsed();
@@ -7494,7 +7504,7 @@ async function wkList(env, pt, r, place, run) {
   if (old && Array.isArray(old.items) && Date.now() - (old.at || 0) < WK_LIST_TTL * 1000) return old;
   let items = null, src = "list";
   const got = await wkGet(wkApiUrl(pt, r), "application/json", run);
-  if (got.status === 200) { try { const j = JSON.parse(got.text); if (Array.isArray(j)) items = wkFromApi(j, pt, r); } catch (e) {} }
+  if (got.status === 200) { try { const j = JSON.parse(got.text); if (Array.isArray(j)) items = wkFromApi(j, pt, r, Date.now());   /* v205 review 2: ended dates dropped */ } catch (e) {} }
   if (!items && place && !(run && run.calls >= run.max)) {
     const p = esPlace(place.st, place.city);
     if (p && run) run.calls++;
