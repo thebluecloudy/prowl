@@ -66,7 +66,7 @@ test('Check with Google Lens is a main button next to Hunt it on Prowl, with how
   assert.ok(/(^|\s)p(\s|$)/.test(lb.className), 'a main button');
   assert.ok(!lb.closest('details'), 'not under More');
   assert.equal(links.children[0].textContent, 'Hunt this on Prowl');
-  assert.equal(links.children[1], lb, 'right after it');
+  assert.equal(links.children[2], lb, 'right after it and the Save / Share row (v8.29)');
   assert.equal(p.$('#otp-aprOut .apr-lensn').textContent, 'Lens names it? Type that in Maker or words and tap Check again: the same photos are checked again free for 30 minutes.');
   await p.close();
 });

@@ -93,8 +93,8 @@ test('analyzing while /appraise is out (the form hidden, the photos kept); then 
   assert.equal(p.$('#otp-aprOut .apr-nm').textContent, 'Royal Haeger 616 orange winking Egyptian cat');
   assert.equal(p.$('#otp-aprOut .apr-meta').textContent, '1950s');
   assert.equal(p.$('#otp-aprOut .apr-conf').textContent, 'Medium confidence');
-  assert.equal(p.$('#otp-aprOut .apr-fv').textContent, '$90-140');
-  assert.equal(p.$('#otp-aprOut .apr-basis').textContent, 'Based on recent sold prices');
+  assert.equal(p.$('#otp-aprOut .apr-fv').textContent, '$90 – $140');
+  assert.equal(p.$('#otp-aprOut .apr-basis').textContent, 'Based on recent sold comps');
   assert.equal(p.$('#otp-aprOut .apr-call').textContent, 'Worth a look');
   const all = p.$$('#otp-aprOut *');
   const at = (s) => all.indexOf(p.$('#otp-aprOut ' + s));
@@ -193,4 +193,25 @@ test('the scan line is CSS only, scoped, and still under reduced motion', () => 
   const rules = CSS.split('\n').filter((l) => /photo-(capture|analyzing|scan)|apr-(hero|nm|conf|fair|fv|again|cond)\b/.test(l) && /\{/.test(l) && !/^@keyframes/.test(l));
   assert.ok(rules.length > 5);
   for (const r of rules) assert.match(r, /^(@media[^{]*\{)?\.scout-app-wrapper /, r);
+});
+
+test('the owner\'s mockups: an empty dashed tray until a photo is in; the header\'s back chevron only on an answer, back to the form with the photos', async () => {
+  const p = setup(() => res(200, ANSWER));
+  await tick(30); await open(p);
+  assert.equal(p.$('#otp-aprTrayPh').hidden, false, 'Photos will appear here.');
+  assert.equal(p.$('#otp-aprTrayPh').textContent, 'Photos will appear here.');
+  assert.equal(p.$('#otp-photoBack').hidden, true);
+  await addPhoto(p);
+  assert.equal(p.$('#otp-aprTrayPh').hidden, true);
+  p.$('#otp-aprRun').click();
+  await waitFor(() => p.$('#otp-aprOut .apr-nm'));
+  assert.equal(p.$('#otp-photoBack').hidden, false, 'the back chevron on the answer');
+  assert.equal(p.$('#otp-photoBack').getAttribute('aria-label'), 'Back to the photo form');
+  p.$('#otp-photoBack').click();
+  assert.ok(shown(p, '#otp-photoCapture'));
+  assert.equal(p.$('#otp-photoBack').hidden, true);
+  assert.equal(p.$$('#otp-aprTray .apr-th').length, 1, 'the photos stay');
+  assert.equal(p.$('#otp-aprRun').textContent, 'Check again');
+  assert.deepEqual(p.errors, []);
+  await p.close();
 });

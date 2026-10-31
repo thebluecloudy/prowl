@@ -1,16 +1,32 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.28 / v203).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.29 / v203).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.28** | 375,547 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.29** | 370582 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v203** | |
 
 Recently shipped, newest first:
 
+- **v8.29: Photo Check rebuilt for the field** (Matt, 2026-10-31: the PHOTO_CHECK_REBUILD brief and his two mockups,
+  capture and results). Page only; `/appraise` is unchanged and every `#otp-apr*` id is kept.
+  - **Three states** (`photoShow`): capture (`#otp-photoCapture`), analyzing (`#otp-photoAnalyzing`, "Checking this
+    piece…", a scan line that stops under reduced motion) and results (`#otp-aprOut`). The photos stay in memory while it
+    checks; any error (500, 429, the free-limit upsell, network, a 90-second client timeout) returns to capture with the
+    message; a late answer from an older check is dropped (`GEN`).
+  - **Capture, as the mockup:** big title, Asking and Maker side by side with tag icons, One piece / A whole shelf as one
+    segmented switch, full-width Take a photo (camera icon) and Choose from photos, a dashed "Photos will appear here."
+    box before the first photo, then the tray and its note, tip chips with icons, the quota line.
+  - **Results, as the mockup:** a ‹ back chevron in the header (keeps the photos), hero photo (thumbnails switch it), the
+    name large, maker/era, a High/Medium/Low confidence pill (the worker's `sure`) beside the call, the price large in the
+    accent colour with its basis ("Based on recent sold comps" / "asking prices, not sales"), **Hunt this on Prowl**, Save
+    and Share (the existing favorites and share actions), Check with Google Lens, condition notes as bullets, the eBay
+    look-alikes and Poshmark sold as sideways cards, then web matches. "Check another piece" and "Fix it and check again"
+    end the results. No "N comps" count: the worker does not send one.
+  - Tests: `__tests__/page/photo-rebuild-v829.test.mjs`; seven photo tests follow the new labels and order.
 - **v8.28: the theme switch is always on the bar** (Matt, 2026-10-31: "move the theme switcher so that it is always
   visible"). `#otp-themeBtn` left the ☰ menu (v7.03 had put it there) and sits on the top bar between the account dot
   and ☰, a round icon like the dot (`.bar-th`). It still cycles the five themes; the Den's Appearance button follows.
@@ -1888,7 +1904,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.29, worker v204** (open PRs hold page v8.22 and worker v198 (Hark's #281), and worker v201 for #289 (`claude/jev-why-v197`, which claimed v200 before #287 shipped it)). Claim one here when you start.
+Next free numbers: **page v8.30, worker v204** (open PRs hold page v8.22 and worker v198 (Hark's #281), and worker v201 for #289 (`claude/jev-why-v197`, which claimed v200 before #287 shipped it)). Claim one here when you start.
 
 ## What's next
 
