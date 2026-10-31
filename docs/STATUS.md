@@ -111,6 +111,8 @@ Recently shipped, newest first:
     `__tests__/page/weekend-plan-v832.test.mjs` (first open day, the fallbacks, weekdays in date order, dropped only when
     no day works). Checked in Chromium at 390x844, light and cockpit, and the digest email rendered (shots in
     `/home/user/shots/estate7-*.png`).
+  - Privacy follow-up (docs only, 2026-10-31): "How long Prowl keeps things" now lists the estate sales data (sent sale
+    numbers 30 days, a ZIP's day of sales about a day and a half, lists a few hours, sale pages a day, ZIP point 90 days).
 - **v8.31 / v204: Facebook says why a hunt shows nothing, and ships only for All USA** (Matt, 2026-10-31, after Store ›
   Facebook showed most hunts "Checks soon" and several "Nothing on Facebook for this hunt lately"; he approved all three).
   - **Ships only for All USA hunts:** in `fbSweep` a near-me hunt is one job (pickup within the member's radius); an All
