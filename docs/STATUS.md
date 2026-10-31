@@ -1,16 +1,63 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.31 / v204).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.32 / v205).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.31** | 368,728 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v204** | |
+| Page | **v8.32** | 368,327 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v205** | |
 
 Recently shipped, newest first:
 
+- **v8.32 / v205: Estate sales this weekend, for every Prowl Pro member** (Hark's feature, PR #281 /
+  `hark/estate-sweep`, built for Matt 2026-10-30; merged onto main with Matt's decisions of 2026-10-31). Numbered after
+  the release that takes page v8.31 / worker v204. Hark's three commits are kept (a merge, not a squash).
+  - **Where:** NEAR ME › **Estate sales**, a fourth tab right after Trips (`#otp-nrT4`, pane `#otp-nrWkPane`,
+    `nrMode('weekend')`, drawn by `rWk`; on a phone the four tabs sit two by two, `.tabs.nr-4`). **Sweep this weekend**
+    sends the place typed in the tab's box (`#otp-wkIn`, looked up with `/geo`) or the phone's position (2 decimals),
+    the Den's own hunts and the time zone to `GET /weekend?lat&lng&r=25&tz&h=a|b|c`: the estate sales open the coming
+    Friday to Sunday within 25 miles, **Top picks** first (a sale whose title, description or photo captions hold every
+    word of a hunt, with the hunt and where), then the rest, at most 12, each linked to its own EstateSales.net page
+    (none without one; a 404/410 page drops the sale). The old Around you › More ways to look › Estate sales near you
+    block keeps only its city list.
+  - **Who (Matt: "all Prowl Pro members"):** the tab shows for a signed-in Pro member (`mailPro()`) or the owner key
+    (`nrWkSweep`); free visitors do not see it (the Den's Thursday estate sales row shows them, locked, with the Pro
+    link). The worker decides Pro itself: `wkWho` lets the owner key through, everyone while `SALES_PUBLIC=on`, else
+    `fbWho` (a store session or `X-Prowl-Email`/`X-Prowl-Tok` member with `sub.pro`): 401 signed out, 403 not Pro. The
+    page sends `nrH()`; a 401/403 says so in the tab. `/weekend/plan` without a signature takes the same check.
+  - **Source (Matt: his EstateSales.net permission covers it):** EstateSales.net's map JSON
+    (`/api/sale-details?bypass=bycoordinatesanddistance:LAT_LNG_MILES&include=dates`) and each sale's own page
+    (description, photo captions, street address, position, cover photo). KV: `wk1:<point>:<mi>` 3 hours, `wkd2:<id>` a
+    day (3 hours while the address is hidden), `wkz:<zip>` the ZIP's centre 90 days. If the list fails the city page
+    (`esFetch`) stands in.
+  - **Thursday email:** 7 AM to noon in the member's time zone, to **every Pro member with a local-pickup ZIP** who has
+    not turned it off (`prefs.estate`, Den › Settings › Thursday estate sales; `/alerts/unsub?w=estate` and
+    List-Unsubscribe stop only it), no longer gated on `SALES_PUBLIC`/`SALES_TEST_EMAILS` (`wkTester` is gone). Nothing
+    open: no email. `sub.estate` = the day, so once. 3 a clock run (`AL_ESTATE_PER_RUN`, was 1: about 13 runs an hour
+    over five hours; members nearby share the cached sweep). `/alerts/status` answers `estate: true` for every member.
+    The alert clock still skips members with no hunts at all, so they get none. Each sale shows its cover photo, and
+    a **Plan my weekend** button links `PROWL_APP?wkplan=<ids>&wkp=<picks>&wkzip&wkx&wks` (HMAC over ids, picks, ZIP,
+    expiry): it works for anyone it is forwarded to until the Monday after that weekend (Matt: keep as designed).
+  - **Plan my weekend** (`wpOpen`, in the same tab in place of the Sweep; "‹ This weekend's sales" goes back for a Pro
+    member or the owner): start from the sweep's place, the email's ZIP, the saved ZIP or one ZIP box; Top picks
+    checked; **each sale on its first open day this weekend** (Matt: opening day), falling back to its next open day
+    when that day already has 5 stops or its hours no longer fit the route; dropped with the reason only when no day
+    works (`wpSplit`; `WP_DAY_PREF`, the old Saturday-Sunday-Friday order, is gone). 45 min a stop, never reached
+    before it opens or within 30 min of closing; each day ordered by Road Trip's `/order` (`loop=1`, or `keep=1` when
+    the optimizer's order breaks a sale's hours), one Google Maps and one Apple Maps link a day, Rebuild from here.
+    Address-pending sales stay off the route.
+  - **Merge notes:** the FAQ answer keeps main's `www` URLs with Hark's "Tap Near me at the foot of the page" text (both
+    the visible FAQ and its JSON-LD); `/alerts/status` keeps main's `fb` and Hark's `estate`; `alPrefs` keeps `fbusa`
+    and `estate`. Comments and tests relabelled from v8.22 / v193 to v8.32 / v205.
+  - Privacy section: a bullet on estate sales this weekend (what goes to EstateSales.net, the ZIP, the Thursday email,
+    the plan link) and EstateSales.net under Who else; paste it with the Facebook bullets.
+  - Tests: `worker/__tests__/weekend-v205.test.mjs` (free 403, signed out 401, owner, Pro by token and by session,
+    `SALES_PUBLIC`; the email for every Pro member; `/weekend/plan` for a Pro member, a free member and a forwarded
+    link), `__tests__/page/weekend-sweep-v832.test.mjs` (tab hidden for free, shown for Pro with the member headers, the
+    403 note), `__tests__/page/weekend-plan-v832.test.mjs` (first open day, the fallbacks, dropped only when no day
+    works). Checked in Chromium at 390x844 (shots in `/home/user/shots/estate-*.png`).
 - **v8.31 / v204: Facebook says why a hunt shows nothing, and ships only for All USA** (Matt, 2026-10-31, after Store ›
   Facebook showed most hunts "Checks soon" and several "Nothing on Facebook for this hunt lately"; he approved all three).
   - **Ships only for All USA hunts:** in `fbSweep` a near-me hunt is one job (pickup within the member's radius); an All
@@ -1952,7 +1999,9 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.32, worker v205** (open PRs hold page v8.22 and worker v198 (Hark's #281), and worker v201 for #289 (`claude/jev-why-v197`, which claimed v200 before #287 shipped it)). Claim one here when you start.
+Next free numbers: **page v8.33, worker v206** (page v8.31 / worker v204 go to the release just before Estate sales,
+which took v8.32 / v205; worker v201 is held by #289, `claude/jev-why-v197`, which claimed v200 before #287 shipped it).
+Claim one here when you start.
 
 ## What's next
 
@@ -1973,7 +2022,7 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
   2. In Apify Billing, set a **monthly spending limit** (the worker's own cap is $1 a day, about $30 a month at most).
   3. Done (Matt, 2026-10-31): the Cloudflare variable **`FB_LIVE` = `on`** is set (not in wrangler.toml; keep_vars keeps
      it), so Pro members' daily searches start as soon as v200 is live. **`FB_DAY_USD`** is optional (default 1).
-  4. Paste the updated `docs/privacy-policy-prowl-section.html` (Facebook finds bullets; Last updated October 31,
+  4. Paste the updated `docs/privacy-policy-prowl-section.html` (Facebook finds bullets, and since v205 the estate sales bullet; Last updated October 31,
      2026) before turning it on.
 - **Optional: let GitHub publish the extension.** Add the four repository secrets `CWS_EXTENSION_ID`,
   `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET` and `CWS_REFRESH_TOKEN` (steps in `extension/README.md`). After that, a
