@@ -219,10 +219,15 @@ test('a Pro member whose Pro the worker no longer sees is told so (403), not sho
 });
 
 /* the daily email's "N more estate sales near you this week" link: ?wk=1 */
-test('?wk=1 from the daily email opens NEAR ME on Estate sales for a Pro member, and leaves the address bar', async () => {
-  const { p } = openMail({ pro: true }, null, 'https://www.owlandtwigvintage.com/pages/prowl-app?wk=1');
+test('?wk=1&wkzip= from the daily email opens NEAR ME on Estate sales for a Pro member and sweeps around that ZIP', async () => {
+  const { p, sent } = openMail({ pro: true }, null, 'https://www.owlandtwigvintage.com/pages/prowl-app?wk=1&wkzip=48375');
   await waitFor(() => p.$('#otp-near') && !p.$('#otp-near').hidden && p.$('#otp-nrT4').getAttribute('aria-selected') === 'true', { timeout: 8000 });
   assert.ok(p.$('#otp-nrWkPane #otp-wk'), 'the Sweep is there');
+  await waitFor(() => p.$$('#otp-wk .wk-row').length === 2, { timeout: 5000 });
+  assert.equal(p.$('#otp-wkIn').value, '48375', 'the member\'s ZIP, not the device\'s position');
+  const wk = sent.filter((c) => /\/weekend\?/.test(c.u));
+  assert.equal(wk.length, 1, 'swept once');
+  assert.match(wk[0].u, /lat=42\.48&lng=-83\.48/);
   assert.equal(p.win.location.search, '');
   assert.deepEqual(p.errors, []);
   await p.close();

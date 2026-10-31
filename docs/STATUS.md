@@ -46,8 +46,8 @@ Recently shipped, newest first:
     (`sub.estSent`: id → the day, newest 150, 30 days, `alEstateMark`), soonest first, at most 5 (`AL_ESTATE_SHOW`), each
     with its cover photo, city, company, miles, days/hours in the window, the matched hunt and its own EstateSales.net
     link; a **Plan my week** button (signed link, runs out at the end of the window, today+7, no longer the Monday
-    after); one line "N more estate sales near you this week →" (`PROWL_APP?wk=1`, which opens NEAR ME › Estate sales
-    for a Pro member). No new picks: no section. On a day with nothing else new, new picks alone send the email
+    after); one line "N more estate sales near you this week →" (`PROWL_APP?wk=1&wkzip=<ZIP>`, which opens NEAR ME ›
+    Estate sales for a Pro member and sweeps around that ZIP). No new picks: no section. On a day with nothing else new, new picks alone send the email
     (subject "Prowl: 2 estate sale picks · Pyrex, Fire-King"; with listings, "… · 2 estate sales" is added). The
     member's days, frequency (`alSendDay`), pause and emails-off rules are the digest's own. The footer gets **Stop
     estate sales in these emails** (`/alerts/unsub?w=estate`, now "Stop estate sales in your Prowl emails?" / "Estate
@@ -58,8 +58,9 @@ Recently shipped, newest first:
     `sub.estate` not today, fewer than 3 tries), a clock run with room fetches for them (`alEstatePrep`: the ZIP's
     point, the list, then up to 40 nearest sales open in the window with their pages, `wkEstItem` keeping each sale's
     text for matching) and keeps it in `wke:<point>:<the member's day>`, shared by every member at that point. One fetch
-    a run (`AL_ESTATE_PER_RUN`), only while the run has `AL_ESTATE_CALLS` = 16 of `FB_RUN_CALLS` left after the hunt
-    checks still to come; its calls (`wkRun`) go into `runUsed()`, so the Facebook sweep gets what is left. Pages not
+    a run, after the member loop and before the Facebook sweep, with the calls the run has left (at most
+    `AL_ESTATE_CALLS` = 16, none under `AL_ESTATE_MIN_CALLS` = 4), for the due member whose email is soonest; its calls
+    (`wkRun`) go into `runUsed()`, so the Facebook sweep gets what is left. Pages not
     reached are read by a later run (`AL_ESTATE_PASSES` = 3); a record already there costs nothing (`alEstateReady`) and
     marks the member's day ready (`sub.estate`). Not ready when the digest goes: it goes without the section, and the
     picks come next time if still new. A failed try counts (`sub.estateTry`, 3 a day); a ZIP Google cannot place is
@@ -85,6 +86,18 @@ Recently shipped, newest first:
     that day done; a Google outage is only a try. (4) A span-only sale (first start to last end) is clipped to the 7 days
     by whole local days in `wkDaysIn`, keeping its clock across a clock change (Mon 9 AM to the Sunday after next 4 PM,
     seen on a Thursday, reads Thu 9 AM - Wed 4 PM); a span with nothing left is dropped.
+  - **Review fixes, 7-day rework** (a second independent review, still v8.32 / v205): (1) clipping a span at day 7 no
+    longer puts its end before its start: when the closing clock on day 7 is at or before the opening (a span ending at
+    midnight, or one opening on day 7 and closing earlier in the day later), it ends at the end of day 7; a span moved
+    onto today that would open after it closes is open from today's start (`wkDaysIn`). (2) `wkFromApi(list, pt, r,
+    now)` drops dates that ended over an hour ago before keeping 14 (a sale whose dates are all over is not listed), and
+    a row keeps its entries for up to 7 distinct local days (`capDays`; two sessions a day stay together); the hours
+    line's "+N more days" counts days. (3+4) The estate prefetch moved out of the member loop to after it, before the
+    Facebook sweep: it no longer charges the hunt-check budget (the old flat `AL_ESTATE_HUNTS` is gone) and its room is
+    what the run has really left after Pounce, Pro checks and emails; one fetch a run, soonest email first; up to 10
+    members with a record already there are marked ready for free (`AL_ESTATE_READY_CHECKS`). (5) The email's "N more"
+    link carries the ZIP (`?wk=1&wkzip=`); the page fills the tab's box with it (or the saved ZIP) and sweeps once for a
+    Pro member; free and signed-out visitors get NEAR ME as it is. Tests at the end of the two estate test files.
   - Privacy section: the estate sales bullet now describes the next 7 days and the daily email's section (what goes to
     EstateSales.net, the ZIP, `wke:`, the sent sale numbers kept 30 days, the plan link until the 7 days end), and
     EstateSales.net under Who else; paste it with the Facebook bullets.

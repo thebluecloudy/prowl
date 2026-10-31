@@ -5147,11 +5147,18 @@ try{(function(){
     })['catch'](function(){if($('#otp-wp'))wpOpen({sales:[],err:'Prowl could not be reached. Check your signal and try the link again.'})});
   },700);
 })()}catch(e){}
-/* the daily email's "N more estate sales near you this week": ?wk=1 opens NEAR ME > Estate sales once the Den knows the
-   member is Pro (else NEAR ME as it is) */
+/* the daily email's "N more estate sales near you this week": ?wk=1&wkzip=ZIP opens NEAR ME > Estate sales and sweeps
+   around the member's ZIP (else the saved one) once the Den knows the member is Pro; else NEAR ME as it is */
 try{if(/[?&]wk=1(&|$)/.test(location.search)){
-  try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])wk=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
-  (function wkGo(n){setTimeout(function(){if(nrWkSweep()||n>=8)nrWkShow();else wkGo(n+1)},n?600:700)})(0);
+  var wkZ=(/[?&]wkzip=(\d{5})(&|$)/.exec(location.search)||[])[1]||'';
+  try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])wkzip=[^&#]*(&|$)/,function(m,a,b){return b?a:''}).replace(/([?&])wk=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
+  (function wkGo(n){setTimeout(function(){
+    if(!nrWkSweep()&&n<8){wkGo(n+1);return}
+    var z=nrWkSweep()?(wkZ||prefs().zip||''):'';
+    if(z&&!WK.data){WK.q=z;WK.planOn=false}
+    nrWkShow();
+    if(z&&!WK.data&&!WK.busy&&$('#otp-wkIn')){$('#otp-wkIn').value=z;wkLoad()}
+  },n?600:700)})(0);
 }}catch(e){}
 function rEs(){
   var box=$('#otp-esBox');if(!box)return;

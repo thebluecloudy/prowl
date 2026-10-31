@@ -68,7 +68,9 @@ export function wkFromApi(list, center, radiusMi, nowMs) {
     const dist = haversineMi(center, { lat: lat, lng: lon });
     if (!(dist <= r)) continue;
     const past = nowMs ? nowMs - 3600000 : 0;
-    let days = (Array.isArray(s.dates) ? s.dates : []).map(d => ({ s: wkTime(d && d.utcStartDate), e: wkTime(d && d.utcEndDate) })).filter(d => d.s && d.e && d.e > d.s && d.e > past);
+    const all = (Array.isArray(s.dates) ? s.dates : []).map(d => ({ s: wkTime(d && d.utcStartDate), e: wkTime(d && d.utcEndDate) })).filter(d => d.s && d.e && d.e > d.s);
+    let days = all.filter(d => d.e > past);
+    if (all.length && !days.length) continue;   /* every date of it is over */
     if (!days.length) { const a = wkTime(s.firstUtcStartDate), b = wkTime(s.lastUtcEndDate); if (a && b && b > a) days = [{ s: a, e: b, span: 1 }]; }
     if (!days.length) continue;
     days.sort((x, y) => x.s - y.s);

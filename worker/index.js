@@ -27,8 +27,8 @@
  *         SALES_PUBLIC=on; 401 signed out, 403 not Pro. No separate estate email (Matt, 2026-10-31: "Can this be part of
  *         prowl email?"): the daily Prowl email of a Pro member with a local-pickup ZIP gets an "Estate sales near you"
  *         section with the new sales near the ZIP that mention a hunt (sub.estSent remembers what went), read from KV
- *         (wke:<point>:<day>) that an earlier clock run filled (one fetch a run, inside its 50 calls: wkRun,
- *         AL_ESTATE_CALLS), with a signed "Plan my week" link (GET /weekend/plan?ids&p&zip&x&s, open to anyone with it
+ *         (wke:<point>:<day>) that an earlier clock run filled (one fetch a run, after the member loop, with the calls
+ *         left of its 50: wkRun, AL_ESTATE_CALLS), with a signed "Plan my week" link (GET /weekend/plan?ids&p&zip&x&s, open to anyone with it
  *         until the window ends). prefs.estate = "off" or /alerts/unsub?w=estate takes the section out. A span-only sale
  *         is clipped to the 7 days.
  *   v204: 2026-10-31. Facebook finds say why a hunt shows nothing, and ships only for All USA (Matt, Store › Facebook):
@@ -5610,8 +5610,8 @@ async function alLetterRoute(request, env, origin) {
    line for the other sales near them this week. No new picks: no section, and the section alone is worth an email on a
    day with nothing else new. The member's days, pause and emails-off rules are the digest's own.
    Fetching: the digest never asks EstateSales.net anything. An earlier clock run that day (alEstatePrep, one a run,
-   only while the run has AL_ESTATE_CALLS of its FB_RUN_CALLS left after the hunt checks still to come; wkRun counts the
-   geocode, the list and each sale page) keeps the sales near the ZIP's point under wke:<point>:<the member's day>, shared
+   after the member loop and before the Facebook sweep, with the calls the run has left, at most AL_ESTATE_CALLS; wkRun
+   counts the geocode, the list and each sale page) keeps the sales near the ZIP's point under wke:<point>:<the member's day>, shared
    by every member at that point, with each sale's text for matching; a later run reads the pages it did not reach
    (AL_ESTATE_PASSES at most). The digest reads that record from KV (alEstatePicks); not ready yet: the email goes without
    the section, and the picks come next time if they are still new. sub.estate = the day the member's record was ready;

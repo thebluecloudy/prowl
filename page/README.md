@@ -177,8 +177,8 @@ No separate estate email (Matt, 2026-10-31: "Can this be part of prowl email?"):
 carries an "Estate sales near you" section with the new sales near their local-pickup ZIP that mention a hunt
 (`prefs.estate`, Den › Settings › **Estate sales in my daily email**, shown when `/alerts/status` answers `estate: true`,
 which it does for every member; a free member sees it locked with the Pro link). Its "N more estate sales near you this
-week" line links `?wk=1`, which opens NEAR ME › Estate sales once the Den knows the member is Pro (NEAR ME as it is
-otherwise). Matt's EstateSales.net permission covers the map JSON and each sale's page (2026-10-31).
+week" line links `?wk=1&wkzip=<ZIP>`, which opens NEAR ME › Estate sales once the Den knows the member is Pro and
+sweeps around that ZIP (or the saved one) once (NEAR ME as it is otherwise). Matt's EstateSales.net permission covers the map JSON and each sale's page (2026-10-31).
 
 **Plan my week** (same versions): "Plan my week" under the Sweep results, or the daily email's button
 (`?wkplan=<ids>&wkp=<picks>&wkzip=ZIP&wkx&wks`, signed by the worker, read at load and then taken out of the address bar;

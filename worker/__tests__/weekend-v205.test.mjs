@@ -342,7 +342,7 @@ test("the daily email gets an Estate sales near you section: new sales that ment
   assert.ok(!m.html.includes(LIV(5107)) && !m.html.includes(LIV(5104)), "at most 5, and only sales that mention a hunt");
   assert.match(m.html, /Your quarry: Fire-King jadeite · in the description/);
   assert.equal((m.html.match(/See the sale on EstateSales\.net/g) || []).length, 5);
-  assert.match(m.html, /href="https:\/\/www\.owlandtwigvintage\.com\/pages\/prowl-app\?wk=1"[^>]*>4 more estate sales near you this week/, "the other 4 open this week, in one line");
+  assert.match(m.html, /href="https:\/\/www\.owlandtwigvintage\.com\/pages\/prowl-app\?wk=1&amp;wkzip=48375"[^>]*>4 more estate sales near you this week/, "the other 4 open this week, in one line");
   assert.match(m.html, /Plan my week<\/a>/);
   assert.match(m.html, /href="https:\/\/w\.example\/alerts\/unsub\?e=m@example\.com&amp;w=estate"[^>]*>Stop estate sales in these emails/, "a stop link of its own in the footer");
   assert.ok(m.html.indexOf("Fire-King jadeite mug") < m.html.indexOf("Estate sales near you"), "after the hunts");
@@ -528,7 +528,13 @@ test("review: a span-only sale is clipped to the 7 days by whole days, keeping i
   assert.deepEqual(W.wkDaysIn(inside, win, THU), inside.days, "a span inside the week is left as it is");
   assert.deepEqual(W.wkDaysIn(span("Thu 2026-11-05 9:00 AM EST (UTC-05:00)", "Sat 2026-11-07 4:00 PM EST (UTC-05:00)"), win, THU), [], "starts after the 7 days");
   assert.deepEqual(W.wkDaysIn(span("Mon 2026-10-26 9:00 AM EDT (UTC-04:00)", "Wed 2026-10-28 4:00 PM EDT (UTC-04:00)"), win, THU), [], "over before today");
-  assert.deepEqual(W.wkDaysIn(span("Mon 2026-10-26 2:00 PM EDT (UTC-04:00)", "Thu 2026-10-29 1:00 PM EDT (UTC-04:00)"), win, THU), [], "moved onto today by whole days it opens at 2 PM after it closes at 1 PM: nothing left");
+  assert.deepEqual(W.wkDaysIn(span("Mon 2026-10-26 2:00 PM EDT (UTC-04:00)", "Thu 2026-10-29 1:00 PM EDT (UTC-04:00)"), win, THU), [{ s: win.from, e: T("Thu 2026-10-29 1:00 PM EDT (UTC-04:00)"), span: 1 }],
+    "review 2: moved onto today it would open at 2 PM after it closes at 1 PM, so it is open from today's start");
+  /* review 2: the end on day 7 (Wed Nov 4 here) never falls before the opening */
+  const day7 = W.wkDaysIn(span("Wed 2026-11-04 10:00 AM EST (UTC-05:00)", "Fri 2026-11-06 9:00 AM EST (UTC-05:00)"), win, THU);
+  assert.deepEqual(day7, [{ s: T("Wed 2026-11-04 10:00 AM EST (UTC-05:00)"), e: win.to - 60000, span: 1 }], "opens on day 7, closes at 9 AM on a later day: open to the end of day 7, not dropped");
+  const midnight = W.wkDaysIn(span("Mon 2026-10-26 9:00 AM EDT (UTC-04:00)", "Sat 2026-11-07 12:00 AM EST (UTC-05:00)"), win, THU);
+  assert.deepEqual(midnight, [{ s: T("Thu 2026-10-29 9:00 AM EDT (UTC-04:00)"), e: win.to - 60000, span: 1 }], "a span ending at midnight keeps day 7");
   const b = W.wkBuild([span("Wed 2026-10-28 9:00 AM EDT (UTC-04:00)", "Mon 2026-11-09 4:00 PM EST (UTC-05:00)")], { by: {}, gone: {} }, [], win, THU, TZ, 12);
   assert.equal(b.rest[0].at, T("Thu 2026-10-29 9:00 AM EDT (UTC-04:00)"), "the planner's first day is today");
   assert.equal(W.wkHours(Array.from({ length: 6 }, (_, i) => ({ s: THU + i * 86400000, e: THU + i * 86400000 + 3600000 })), TZ).split(" · ").pop(), "+2 more days", "past 4 days, a count");
@@ -577,6 +583,23 @@ test("review: a ZIP Google cannot place is remembered for a while; a Google outa
   assert.equal(down.X.alEstateDue({}, t, L), false, "tried enough today");
 });
 
+test("review 2: a long multi-session sale keeps this week's dates: ended ones are dropped first, and the row is capped by days, not entries", () => {
+  const dates = [];
+  for (let i = 0; i < 20; i++) {
+    const d = new Date(Date.UTC(2026, 9, 20 + i)), p2 = (n) => String(n).padStart(2, "0"), ds = d.getUTCFullYear() + "-" + p2(d.getUTCMonth() + 1) + "-" + p2(d.getUTCDate());
+    dates.push({ utcStartDate: D(ds + " 2:00 PM UTC (UTC+00:00)"), utcEndDate: D(ds + " 5:00 PM UTC (UTC+00:00)") });
+    dates.push({ utcStartDate: D(ds + " 7:00 PM UTC (UTC+00:00)"), utcEndDate: D(ds + " 10:00 PM UTC (UTC+00:00)") });
+  }
+  const s0 = sale(7701, { dates });
+  assert.equal(W.wkFromApi([s0], NOVI, 25)[0].days[0].s, T("Tue 2026-10-20 2:00 PM UTC (UTC+00:00)"), "without a clock: the first 14 as listed");
+  const got = W.wkFromApi([s0], NOVI, 25, THU)[0];
+  assert.equal(got.days[0].s, T("Thu 2026-10-29 2:00 PM UTC (UTC+00:00)"), "with now: the dates that ended are gone first");
+  const win = W.wkWindow(THU, TZ), row = W.wkBuild([got], { by: {}, gone: {} }, [], win, THU, TZ, 12).rest[0];
+  assert.equal(row.days.length, 14, "two sessions a day for the 7 days: all 14 kept");
+  assert.match(row.hours, /\+5 more days$/, "the hours line counts days, not sessions");
+  assert.equal(W.wkFromApi([sale(7702, { dates: dates.slice(0, 6) })], NOVI, 25, THU).length, 0, "every date over: not listed");
+});
+
 test("review: sent ids are bounded and expire", () => {
   const { X } = rig();
   const old = {}; for (let i = 0; i < 200; i++) old[String(100000 + i)] = i < 20 ? "2026-09-01" : "2026-10-" + String(1 + (i % 30)).padStart(2, "0");
@@ -591,7 +614,7 @@ test("review: sent ids are bounded and expire", () => {
 
 /* alTick itself, with stand-ins for everything but its estate parts */
 function tickRig(members, { estateCalls = 14, estateResult = "ready", ready = false, pounceLeft = null, checkN = 0 } = {}) {
-  const kv = new FakeKV(), log = { estate: [], pro: [], fb: [], checks: 0 };
+  const kv = new FakeKV(), log = { estate: [], pro: [], fb: [], checks: 0, budget: [] };
   members.forEach((m) => kv.set("sub:" + m.email, m));
   kv.list = async ({ prefix }) => ({ keys: [...kv.m.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })), list_complete: true });
   const NOW = { day: "2026-10-29", hour: 11 };
@@ -605,7 +628,7 @@ function tickRig(members, { estateCalls = 14, estateResult = "ready", ready = fa
     alMerge: async (e, sub, f) => { const cur = await kv.get("sub:" + sub.email, "json"); if (!cur) return null; f.forEach((k) => { cur[k] = sub[k]; }); kv.set("sub:" + sub.email, cur); return cur; },
     alLetterDue: () => false, alLetterSend: async () => "", pounceRetry: async () => {}, pounceCarry: async () => 0,
     alPrefs: (sub) => ({ tz: "", zip: "", estate: "", ...(sub.prefs || {}) }),
-    alCheck: async () => { if (pounceLeft != null) deps.PJ_RUN.left = pounceLeft; log.checks++; return checkN; }, alSlotHour: () => 23, alActive: (e, sub) => sub.hunts, alSendDay: () => true, alDigest: async () => ({ sent: false, reason: "nothing new" }),
+    alCheck: async (e, sub, budget) => { if (pounceLeft != null) deps.PJ_RUN.left = pounceLeft; log.checks++; log.budget.push(budget); return checkN; }, alSlotHour: (e, sub) => (sub.slot == null ? 23 : sub.slot), alActive: (e, sub) => sub.hunts, alSendDay: () => true, alDigest: async () => ({ sent: false, reason: "nothing new" }),
     alEstateReady: async () => ready,
     alEstatePrep: async (e, sub, loc, run) => { log.estate.push(sub.email); run.calls += estateCalls; return estateResult; },
     fbSweep: async (e, subs, left) => { log.fb.push(left); return { calls: 0, swept: 0, errors: [] }; },
@@ -629,21 +652,29 @@ test("review: members with no hunts get no estate fetch (nothing to match) and n
   assert.deepEqual([R.log.pro, R.log.estate, R.log.checks], [[], [], 0]);
 });
 
-test("review: the estate fetch's calls go into what the Facebook sweep is left, one fetch a run, none without the room", async () => {
+test("review: the estate fetch runs after the member loop with the calls left, takes them off the Facebook share, one a run, none without the room", async () => {
   const R = tickRig([m("a@example.com"), m("b@example.com")], { estateCalls: 14 });
   await R.tick();
+  assert.deepEqual(R.log.budget, [2, 2], "review 3: the hunt checks get the run's whole budget (no estate charge)");
   assert.equal(R.log.estate.length, 1, "one a run");
   assert.deepEqual(R.log.fb, [50 - 14], "the fetch's 14 calls are taken off the Facebook share (no email of its own)");
   assert.equal(JSON.parse(R.kv.m.get("sub:a@example.com")).estate, "2026-10-29", "ready: done for today");
   await R.tick();
   assert.deepEqual(R.log.estate, ["a@example.com", "b@example.com"], "the next run does the next member");
-  /* Pounce has used its 30 on an earlier member: 20 left, then the hunt check still to come; no room for a fetch */
-  const busy = tickRig([m("c@example.com"), m("d@example.com")], { pounceLeft: 0 });
+  /* review 4: Pounce has used its 30: the fetch sees it and takes what is left (20, so its 16) */
+  const busy = tickRig([m("c@example.com"), m("d@example.com")], { pounceLeft: 0, estateCalls: 16 });
   await busy.tick();
-  assert.deepEqual(busy.log.estate, ["c@example.com"], "the first goes before Pounce spends");
-  const late = tickRig([m("e@example.com", { estate: "2026-10-29" }), m("g@example.com")], { pounceLeft: 0, checkN: 1 });
+  assert.deepEqual(busy.log.estate, ["c@example.com"]);
+  assert.deepEqual(busy.log.fb, [50 - 30 - 16], "Pounce's 30 and the fetch's 16 both taken off");
+  /* Pounce's 30 and two hunt checks (9 each): 2 left, under AL_ESTATE_MIN_CALLS: it waits a run */
+  const late = tickRig([m("e@example.com"), m("g@example.com")], { pounceLeft: 0, checkN: 1 });
   await late.tick();
-  assert.deepEqual(late.log.estate, [], "after Pounce's 30 (and a hunt check's share kept), under AL_ESTATE_CALLS: it waits a run");
+  assert.deepEqual(late.log.estate, [], "no room left after every other call of the run");
+  assert.deepEqual(late.log.fb, [2]);
+  /* the member whose email is soonest goes first */
+  const soon = tickRig([m("late@example.com", { slot: 20 }), m("soon@example.com", { slot: 8 })]);
+  await soon.tick();
+  assert.deepEqual(soon.log.estate, ["soon@example.com"]);
   const tight = tickRig(Array.from({ length: 9 }, (_, i) => m("p" + i + "@example.com")), { estateCalls: 16 });
   await tight.tick();
   assert.equal(tight.log.estate.length, 1, "still one a run however many are due");
