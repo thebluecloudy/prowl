@@ -143,26 +143,5 @@ test('v7.77: Apple Maps and Google Maps are one link each, the whole drive; past
 });
 
 
-test('estate sales along the way (owner): within the detour, open on the trip day; one over before you get there says so', async () => {
-  const calls = [];
-  const today = ymd(D);
-  const S = [shop('A', 'Alpha Antiques', 'Toledo, OH', 41.65, -83.54)];
-  const sales = [
-    { name: 'Big Toledo Sale', url: 'https://www.estatesales.net/OH/Toledo/1', start: today, end: today + 'T00:01:00', city: 'Toledo', st: 'OH', lat: 41.66, lon: -83.55 },
-    { name: 'Far Away Sale', url: 'https://www.estatesales.net/OH/Lima/2', start: today, end: today, city: 'Lima', st: 'OH', lat: 40.74, lon: -84.9 },
-  ];
-  const p = loadPage({ storage: Object.assign({ 'prowl.owner': 'owner-key-0123456789' }, DEN), fetchImpl: fx(calls, { trip: () => mkTrip(S), sales }), beforeLoad: phone });
-  await toTrip(p, 'Blenko');
-  await tick(80);
-  assert.ok(calls.some((u) => /\/sales\?st=OH&city=Toledo/.test(u)), 'the towns on the trip');
-  const box = p.$('#otp-nrSales');
-  assert.match(box.textContent, /Estate sales along the way \(1\)/);
-  assert.match(box.textContent, /Big Toledo Sale/);
-  assert.doesNotMatch(box.textContent, /Far Away Sale/, 'outside the detour');
-  assert.match(box.textContent, /Ends before you get there/);
-  await p.close();
-  const q = loadPage({ storage: DEN, fetchImpl: fx([], { trip: () => mkTrip(S), sales }), beforeLoad: phone });
-  await toTrip(q, 'Blenko');
-  assert.equal(q.$('#otp-nrSales').textContent, '', 'everyone else: no estate sales (EstateSales.net said yes to the owner only)');
-  await q.close();
-});
+/* v8.34: the owner-only estate sales along the way (worker /sales by town) became Estate sales on the way for Pro
+   members (worker /trip/sales): __tests__/page/roadtrip-estate-v834.test.mjs */

@@ -1,16 +1,63 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.33 / v205).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.34 / v206).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.33** | 368,327 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v205** | |
+| Page | **v8.34** | 368,327 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v206** | |
 
 Recently shipped, newest first:
 
+- **v8.34 / v206: estate sales on the Road trip map** (Matt, 2026-10-31: "part of estate sale was to fold it into road
+  trip map that will take you to each one"; he chose both A and B). Branch `estate-roadtrip`, on top of v8.33.
+  - **A. Plan my week › a day › Open in Road trip** (page only, `wpTrip`): NEAR ME › Road trip opens with that day's
+    sales as fixed stops (`nrEsStop`: `est`, `pin`, labelled "Estate sale", the sale's photo, street address as `about`,
+    the day's hours as Road trip's weekly periods so OPEN / CLOSED and "closed by the time you get there" work, 45 min
+    there, `opensAt` so the drive waits for a sale not open yet), in the planner's drive order (`t.order`), timed from
+    the planner's leave time (`t.leaveAt`; the Leave at box still wins), on Road trip's own map (turned on), as a loop
+    back to the start (`t.loop`, `t.estate`; the start's ZIP/town label, or its coordinates for "where you are"), with
+    Road trip's Start in Maps / Google Maps / Apple Maps (each stop's street address through `nrMq`, the new
+    `mq` field; no Google place id), ✓ Been, × Remove, Share, and Rebuild from here (the day planned again from the
+    phone through `wpSplit`, as the planner's own button). Sales open that day whose address is not posted yet are
+    left out and named. No Optimize route on such a day (the planner already ordered it by the hours) and no new worker
+    path: a loop has no destination, and the leg times come from `/order?keep=1&loop=1` as for any loop.
+  - **B. Estate sales on the way** (worker `GET /trip/sales?p=lat,lng|...&day&tz&h`, page `nrEs*`): on a Road trip
+    built on the phone (to a place, or a loop; not a kept group trip, not a Plan my week day), a Pro member or the owner
+    key (`nrWkSweep()`; the worker checks `wkWho`: 401 signed out, 403 free) gets "Estate sales on the way · N" under
+    the stops and a purple ⌂ pin per sale on the map (popup with hours, miles off and + Add stop; Leaflet keeps popup
+    clicks to itself, so the button is wired on `popupopen`). Each row: photo, Top pick when a hunt matches, city,
+    miles off the road, that day's hours, + Add stop (or "Address not posted yet"). Add stop puts the sale in the trip
+    where it adds the least straight-line driving (`nrEsPut`), as an Estate sale stop timed like A, in the Maps links by
+    street address; it stays through Rebuild from here and new options (`nrEsCarry`), lives on this phone only (Save
+    trip keeps the shops). Replaces the owner-only "Estate sales along the way" (v7.62, `/sales` by town).
+  - **Worker:** the sales open on the trip's local day (`wkDayWin`) within 3 mi of the route (`WK_TRIP_MI`,
+    `nearestOnRoute` against the points sent), nearest to the road first, at most 12 (`WK_TRIP_CAP`), each a `wkRowOf`
+    row plus `off`, `prog`, `pick`. **A separate GET, not part of /trip:** /trip is cached and shared by everyone driving
+    the same way and decides nothing about Pro; this answer is Pro-only, depends on the day and the member's hunts, and
+    is asked after the trip is drawn, so a trip never waits on EstateSales.net. **Budget:** the page sends at most 60
+    points (2 decimals; the /trip line, which already skips the first mile, or a loop's start and stops); the worker
+    reads EstateSales.net's list around at most 5 points along it (`wkTripCircles`: 25-mile circles every 35 miles up
+    to 140 miles of road, else 50-mile circles every 80; centres snapped to 0.1 degree so trips share `wk1:` lists with
+    each other and /weekend; `partial` past ~400 miles), then the pages of the 14 nearest (`wkd2:`, a day), at most 16
+    outside calls a request (`WK_TRIP_CALLS`, through `wkRun`-style `run`); a request that needs a new list counts
+    against `WK_TRIP_PER_IP` (20) a day per IP key (`wkt:`), past it only kept lists are read (stale) or 429. The
+    owner is not counted. A day already over or more than 15 days off asks nothing.
+  - **Fixes on the way:** Road trip's map was drawn into a blank box when the leg times arrived before Leaflet had
+    loaded (two queued draws, the second cleared the first): `nrMap` removes the earlier map first.
+  - Privacy section: the estate sales bullet and "Who else" say what goes to EstateSales.net for a trip (a few points
+    along the route rounded to about 7 miles and a distance), that nothing about the trip is kept, and that an added
+    sale stays on the device; notes for v206 in the comment block.
+  - Tests: `worker/__tests__/trip-sales-v206.test.mjs` (points and day parsing, DST day, circles and coverage, the
+    gate, day filter, miles off and nearest-first, picks, address pending, dead links, cap 12, 16 calls, KV reuse, the
+    day's count and stale lists); `__tests__/page/roadtrip-estate-v834.test.mjs` (Open in Road trip: order, Estate sale
+    stops, note, times, map pins, Maps links, Directions, Remove, Rebuild from here; on the way: the request, the
+    section, pins and popups, Add stop's place, timing and Maps link, kept through a rebuild, Remove, free asks nothing).
+    `road-upgrades-v762`'s owner-only estate test is retired. Screens at 390x844, light and cockpit, with stubbed
+    worker routes and real OSM tiles: `/home/user/shots/roadtrip-estate-*.png` (plan, day, day-stops, onway-map,
+    onway-list, added, added-map).
 - **v8.33: estate sale photos in NEAR ME › Estate sales** (Matt, 2026-10-31: "the estate sale pictures aren't
   working"). The worker already sent each sale's cover photo (`img`, the sale page's og:image on
   `picturescdn.estatesales.net`, checked against a live page and fetched with the shop as referrer: 200), and the daily
@@ -2060,7 +2107,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.34, worker v206** (page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.35, worker v207** (v8.34 / v206: estate sales on the Road trip map, branch `estate-roadtrip`; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 is held by #289, `claude/jev-why-v197`, which claimed v200 before #287 shipped it).
 Claim one here when you start.
 
