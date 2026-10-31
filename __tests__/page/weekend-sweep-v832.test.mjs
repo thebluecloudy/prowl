@@ -1,8 +1,9 @@
-// Page v8.32 Weekend sweep (worker v205 /weekend): NEAR ME's own Estate sales tab, beside Trips (v8.32, Matt 2026-10-31:
+// Page v8.32 Estate sales this week (worker v205 /weekend): NEAR ME's own Estate sales tab, beside Trips (v8.32, Matt 2026-10-31:
 // every signed-in Prowl Pro member, and the owner's key; free visitors do not see it; Matt, earlier: "it shouldn't be put into den, it needs to be in the new near me section beside trips"). "Sweep
-// this weekend" looks up the place typed in the tab's box, sends its point (2 decimals), this device's time
-// zone and the Den's own hunts, and lists Top picks (with the hunt and where it matched) above the rest, each opening the
-// sale's own page on EstateSales.net. Den > Settings gets a Thursday estate sales switch when the worker says it can go.
+// this week" looks up the place typed in the tab's box, sends its point (2 decimals), this device's time zone and the
+// Den's own hunts, and lists the sales open in the next 7 days (Matt, 2026-10-31: "Estate sales are all week"), Top
+// picks (with the hunt and where it matched) above the rest, each opening the sale's own page on EstateSales.net.
+// Den > Settings gets an "Estate sales in my daily email" switch when the worker says it can go (no Thursday email now).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
@@ -76,13 +77,15 @@ test('the owner finds the Sweep in NEAR ME > Estate sales, beside Trips, and no 
   await p.close();
 });
 
-test('the owner sweeps the weekend: the typed place, the hunts and the time zone go; picks first, links only to EstateSales.net', async () => {
+test('the owner sweeps the week: the typed place, the hunts and the time zone go; picks first, links only to EstateSales.net', async () => {
   const calls = [], p = open({ 'prowl.owner': OWNER }, calls);
   await nearWeekend(p);
   const box = p.$('#otp-wk');
   assert.ok(box, 'the weekend box sits in NEAR ME > Estate sales');
-  assert.match(box.textContent, /This weekend\s*Fri–Sun · 25 mi/);
-  assert.equal(p.$('#otp-wkGo').textContent, 'Sweep this weekend');
+  assert.match(box.textContent, /Estate sales this week\s*next 7 days · 25 mi/);
+  assert.match(box.textContent, /Estate sales open in the next 7 days near/);
+  assert.ok(!/weekend|Fri–Sun/.test(box.textContent), 'no weekend wording left');
+  assert.equal(p.$('#otp-wkGo').textContent, 'Sweep this week');
   p.$('#otp-wkIn').value = 'Novi, MI';
   p.$('#otp-wkGo').click();
   await waitFor(() => p.$$('#otp-wk .wk-row').length === 2);
@@ -102,7 +105,7 @@ test('the owner sweeps the weekend: the typed place, the hunts and the time zone
   assert.match(rows[0].textContent, /Royal Oak, MI · Totally Vicki LLC · 18\.3 mi/);
   assert.match(rows[0].querySelector('.wk-hr').textContent, /Fri Oct 30, 10 AM–5 PM/);
   assert.match(rows[0].querySelector('.wk-so').textContent, /typewriter/);
-  assert.match(p.$('#otp-wk').textContent, /Top picks\s*1[\s\S]*Also this weekend\s*1/);
+  assert.match(p.$('#otp-wk').textContent, /Top picks\s*1[\s\S]*Also this week\s*1/);
   assert.equal(p.$$('#otp-wk a').filter((a) => !/^https:\/\/www\.estatesales\.net\//.test(a.getAttribute('href'))).length, 0, 'a sale without its own link is never shown');
   assert.match(p.$('#otp-wk').textContent, /Novi, MI/);
   assert.equal(p.$('#otp-wkGo').textContent, 'Sweep again');
@@ -110,19 +113,19 @@ test('the owner sweeps the weekend: the typed place, the hunts and the time zone
   await p.close();
 });
 
-test('nothing that mentions a hunt: the rest are listed under "This weekend nearby" with a note', async () => {
+test('nothing that mentions a hunt: the rest are listed under "This week nearby" with a note', async () => {
   const calls = [], p = open({ 'prowl.owner': OWNER }, calls, { ...WEEKEND, picks: [], rest: [WEEKEND.rest[0]] });
   await nearWeekend(p);
   p.$('#otp-wkIn').value = 'Novi, MI';
   p.$('#otp-wkGo').click();
   await waitFor(() => p.$$('#otp-wk .wk-row').length === 1);
-  assert.match(p.$('#otp-wk').textContent, /None of this weekend’s sales mention your hunts yet[\s\S]*This weekend nearby/);
+  assert.match(p.$('#otp-wk').textContent, /None of this week’s sales mention your hunts yet[\s\S]*This week nearby/);
   await p.close();
 });
 
 const SIGNED = { 'prowl.alertTok': 'tok-0123456789abcdef', 'prowl.alertEmail': 'member@example.com',
   'prowl.v36': { seen: true, hunts: ['rookwood owl'], lock: [0], h21: 1, h36: 1, h42: 1, h68: 1 } };
-function openMail(statusExtra, weekend) {
+function openMail(statusExtra, weekend, url) {
   const live = liveFetch({ perSource: 2 }), sent = [];
   const fetchImpl = (u, o) => {
     const s = String(u), body = o && o.body ? JSON.parse(o.body) : null;
@@ -133,23 +136,24 @@ function openMail(statusExtra, weekend) {
     if (/\/alerts\/letter$/.test(s)) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ letter: null }) });
     return live.impl(u, o);
   };
-  return { p: loadPage({ fetchImpl, storage: SIGNED }), sent };
+  return { p: loadPage({ fetchImpl, storage: SIGNED, url }), sent };
 }
 
-test('Den > Settings: the Thursday estate sales switch shows when the worker allows it and saves estate off', async () => {
+test('Den > Settings: the Estate sales in my daily email switch shows when the worker allows it and saves estate off', async () => {
   const { p, sent } = openMail({ estate: true });
   await tick(1600);
   p.$('#otp-dock .db[data-m="den"]').click();
   await tick(60);
   const set = await waitFor(() => p.$('#otp-estSet'), { timeout: 8000 });
-  assert.match(set.textContent, /Thursday estate sales[\s\S]*within 25 miles of 48375/);
+  assert.match(set.textContent, /Estate sales in my daily email[\s\S]*next 7 days within 25 miles of 48375[\s\S]*in your daily Prowl email/);
+  assert.ok(!/Thursday/.test(set.textContent), 'no Thursday email');
   set.querySelector('[data-mail="estate"][data-v="off"]').click();
   await waitFor(() => sent.some((x) => x.body.prefs.estate === 'off'), { timeout: 3000 });
   assert.deepEqual(p.errors, []);
   await p.close();
 });
 
-test('Den > Settings: no Thursday estate sales switch while the worker says it cannot go', async () => {
+test('Den > Settings: no estate sales switch while the worker says it cannot go', async () => {
   const { p } = openMail({});
   await tick(1600);
   p.$('#otp-dock .db[data-m="den"]').click();
@@ -211,5 +215,23 @@ test('a Pro member whose Pro the worker no longer sees is told so (403), not sho
   p.$('#otp-wkGo').click();
   const err = await waitFor(() => p.$('#otp-wk .es-err'));
   assert.match(err.textContent, /part of Prowl Pro/);
+  await p.close();
+});
+
+/* the daily email's "N more estate sales near you this week" link: ?wk=1 */
+test('?wk=1 from the daily email opens NEAR ME on Estate sales for a Pro member, and leaves the address bar', async () => {
+  const { p } = openMail({ pro: true }, null, 'https://www.owlandtwigvintage.com/pages/prowl-app?wk=1');
+  await waitFor(() => p.$('#otp-near') && !p.$('#otp-near').hidden && p.$('#otp-nrT4').getAttribute('aria-selected') === 'true', { timeout: 8000 });
+  assert.ok(p.$('#otp-nrWkPane #otp-wk'), 'the Sweep is there');
+  assert.equal(p.win.location.search, '');
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test('?wk=1 for a free member opens NEAR ME as it is, with no Estate sales tab', async () => {
+  const { p, sent } = openMail({ pro: false }, null, 'https://www.owlandtwigvintage.com/pages/prowl-app?wk=1');
+  await waitFor(() => p.$('#otp-near') && !p.$('#otp-near').hidden, { timeout: 9000 });
+  assert.equal(p.$('#otp-nrT4').hidden, true);
+  assert.ok(!sent.some((c) => /\/weekend\?/.test(c.u)));
   await p.close();
 });

@@ -20,15 +20,17 @@
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
  *   v205: 2026-10-31. Estate sales for every Pro member (Hark's PR #281, Matt's calls of 2026-10-31): GET /weekend?lat&lng[&r=25&tz&h]
- *         lists the estate sales open this Fri-Sun within r miles (EstateSales.net's map JSON plus each sale's own page,
- *         KV wk1:/wkd2:/wkz:), Top picks where a hunt's words all appear, at most 12, each with lat/lng, street address and
- *         open days for Plan my weekend. Who: a signed-in Pro member (session or X-Prowl-Email/X-Prowl-Tok, wkWho as
- *         fbWho), the owner key, or everyone while SALES_PUBLIC=on; 401 signed out, 403 not Pro. A Thursday morning email
- *         to every Pro member with a local-pickup ZIP (prefs.estate = "off" or /alerts/unsub?w=estate stops it), with a
- *         signed "Plan my weekend" link (GET /weekend/plan?ids&p&zip&x&s, open to anyone with it until that Monday).
- *         Review fixes: a Thursday send's outside calls count against the run's 50 (wkRun, AL_ESTATE_CALLS, one a run),
- *         Pro members with no hunts get it too, a failed try is retried 3 times at most (sub.estateTry, wkz: miss), and a
- *         span-only sale is clipped to Fri-Sun.
+ *         lists the estate sales open in the next 7 days (today through today+6 in tz; Matt: "Estate sales are all week")
+ *         within r miles (EstateSales.net's map JSON plus each sale's own page, KV wk1:/wkd2:/wkz:), Top picks where a
+ *         hunt's words all appear, at most 12, each with lat/lng, street address and open days for Plan my week. Who: a
+ *         signed-in Pro member (session or X-Prowl-Email/X-Prowl-Tok, wkWho as fbWho), the owner key, or everyone while
+ *         SALES_PUBLIC=on; 401 signed out, 403 not Pro. No separate estate email (Matt, 2026-10-31: "Can this be part of
+ *         prowl email?"): the daily Prowl email of a Pro member with a local-pickup ZIP gets an "Estate sales near you"
+ *         section with the new sales near the ZIP that mention a hunt (sub.estSent remembers what went), read from KV
+ *         (wke:<point>:<day>) that an earlier clock run filled (one fetch a run, inside its 50 calls: wkRun,
+ *         AL_ESTATE_CALLS), with a signed "Plan my week" link (GET /weekend/plan?ids&p&zip&x&s, open to anyone with it
+ *         until the window ends). prefs.estate = "off" or /alerts/unsub?w=estate takes the section out. A span-only sale
+ *         is clipped to the 7 days.
  *   v204: 2026-10-31. Facebook finds say why a hunt shows nothing, and ships only for All USA (Matt, Store › Facebook):
  *         a near-me hunt is one search (pickup), an All USA hunt two (pickup and ships), so 10 a day cover ~10 near-me
  *         hunts; each search keeps its counts with the finds (stat: Apify's raw, dropped far, dropped for words) and
@@ -699,7 +701,7 @@ import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize, huntNeeds, huntRelevant } from "./hunt.js";
 import { SAVED_BODY_MAX, SAVED_SYNCS_PER_DAY, SAVED_PHOTOS_PER_SYNC, SAVED_PHOTO_MAX, SAVED_SIG_SECONDS, SAVED_CHECKS_PER_LIST, savedMerge, savedToCopy, savedUntil, photoKey, savedDue, savedListDue, savedEndFrom, savedSrc, savedHp } from "./saved.js";   /* v168 */   /* v117; v152: huntNeeds, huntRelevant */
 import { wkAdd, wkFresh, wkCur, letterShorters, letterBuild, letterText, letterQuiet } from "./letter.js";   /* v152: the weekly letter */
-import { WK_RADIUS_MI, WK_RADIUS_MAX, WK_CAP, WK_DETAIL_MAX, wkApiUrl, wkFromApi, wkFromCity, wkWindow, wkToRead, wkDetailParse, wkBuild, wkHunts, wkPlanIds, wkPlanMsg, wkPlanUrl, wkPlanRows } from "./weekend.js";   /* v205: Weekend sweep, Plan my weekend */
+import { WK_RADIUS_MI, WK_RADIUS_MAX, WK_CAP, WK_DETAIL_MAX, wkApiUrl, wkFromApi, wkFromCity, wkWindow, wkToRead, wkDetailParse, wkBuild, wkHunts, wkPlanIds, wkPlanMsg, wkPlanUrl, wkPlanRows, wkDaysIn, wkMatch, wkRowOf } from "./weekend.js";   /* v205: estate sales this week, Plan my week, the daily email's section */
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
@@ -4310,7 +4312,7 @@ function alPrefs(sub) {
     local: Array.isArray(p.local) ? p.local.map(h => vClean(h, 60).toLowerCase()).filter(Boolean).slice(0, AL_MAX_HUNTS) : [],
     fbusa: Array.isArray(p.fbusa) ? p.fbusa.map(h => fbTerm(vClean(h, 200))).filter((h, i, a) => h && a.indexOf(h) === i).slice(0, AL_MAX_HUNTS) : [],   /* v203: hunts searched on Facebook across the US */
     letter: p.letter === "off" ? "off" : "",   /* v152: the Sunday letter, on unless turned off */
-    estate: p.estate === "off" ? "off" : ""   /* v205: the Thursday estate sale email (Pro), on unless turned off */
+    estate: p.estate === "off" ? "off" : ""   /* v205: estate sales in the daily email (Pro), on unless turned off */
   };
 }
 function alPaused(sub, now) { const p = alPrefs(sub).pause; return !!p && now.day < p; }
@@ -5430,7 +5432,8 @@ function alCopy() { return 'Copyright \u00a9 ' + new Date().getUTCFullYear() + '
 function alFootText(env, sub) { return ["", "--", "Prowl Alerts by Owl & Twig Vintage. You turned on Prowl Alerts at owlandtwigvintage.com/prowl.", sub ? "Open Prowl: " + alHomeUrl(sub) : "", sub ? "Unsubscribe: " + alUnsubUrl(sub) : "", sub ? 'Or just reply "unsubscribe" to this email.' : "", sub ? affNote() : "", "Copyright \u00a9 " + new Date().getUTCFullYear() + " Owl & Twig Vintage. All rights reserved.", alAddr(env) + " · owlandtwigvintage.com"].filter(Boolean).join("\n"); }
 
 /* The email. Tables and inline styles only: that is what Gmail and Outlook render. */
-function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
+/* v205: est, the estate sales section (alEstatePicks), goes after the hunts; with no new listings it is the whole email */
+function alEmailHtml(sub, pend, picks, pickHunt, env, test, est) {
   const hunts = sub.hunts.filter(h => pend[h] && pend[h].length);
   const total = hunts.reduce((n, h) => n + pend[h].length, 0);
   const card = (x) => {
@@ -5471,14 +5474,15 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test) {
     }
     shop += "</table></td></tr>";
   }
-  const sumLine = hunts.map(h => alEsc(h) + " (" + pend[h].length + ")").join(" · ");
+  const estN = !test && est && est.picks ? est.picks.length : 0;
+  const sumLine = hunts.map(h => alEsc(h) + " (" + pend[h].length + ")").concat(estN ? [(hunts.length ? "estate" : "Estate") + " sales near you (" + estN + ")"] : []).join(" · ");
   const banner = test ? '<tr><td style="padding:12px 12px 0"><div style="background:#fff3df;border:1px solid #e8c48f;border-radius:8px;padding:10px 12px;font:13px/1.5 Arial,sans-serif;color:#6b4a1f"><b>Test email.</b> This shows what is listed right now for ' + hunts.length + ' of your ' + (sub.allCount || sub.hunts.length) + ' hunts. The real email each morning covers every hunt and only listings you have not seen.</div></td></tr>' : '';
   const inner = banner +
-    '<tr><td style="padding:12px 12px 6px;font:bold 24px Georgia,serif;color:#2b2118">' + (test ? 'Your hunts right now · ' + total + ' listing' + (total === 1 ? "" : "s") : total + ' new find' + (total === 1 ? "" : "s")) + '</td></tr>' +
+    '<tr><td style="padding:12px 12px 6px;font:bold 24px Georgia,serif;color:#2b2118">' + (test ? 'Your hunts right now · ' + total + ' listing' + (total === 1 ? "" : "s") : !total && estN ? estN + ' estate sale' + (estN === 1 ? '' : 's') + ' worth the drive' : total + ' new find' + (total === 1 ? "" : "s")) + '</td></tr>' +
     '<tr><td style="padding:0 12px;font:14px/1.5 Arial,sans-serif;color:#6b5b4a">' + sumLine + '</td></tr>' +
     (test ? '' : '<tr><td style="padding:14px 12px 2px"><a href="' + alEsc(alDailyUrl(sub)) + '" style="display:inline-block;background:#8a4b1f;color:#ffffff;padding:11px 18px;border-radius:6px;text-decoration:none;font:bold 14px Arial,sans-serif">See every hunt live on Prowl Daily</a></td></tr>') +
-    body + shop;
-  const links = '<a href="' + alEsc(alHomeUrl(sub)) + '" style="color:#8a4b1f">Open Prowl · change your hunts</a> · <a href="' + alEsc(alUnsubUrl(sub)) + '" style="color:#9a8b7a">Unsubscribe</a>';
+    body + (estN ? alEstateSec(env, sub, est) : '') + shop;
+  const links = '<a href="' + alEsc(alHomeUrl(sub)) + '" style="color:#8a4b1f">Open Prowl · change your hunts</a> · ' + (estN ? '<a href="' + alEsc(alEstateUnsubUrl(sub)) + '" style="color:#9a8b7a">Stop estate sales in these emails</a> · ' : '') + '<a href="' + alEsc(alUnsubUrl(sub)) + '" style="color:#9a8b7a">Unsubscribe</a>';
   const all = sub.allCount || sub.hunts.length, free = alFree(env, sub);
   const up = (!sub.pro && all > free) ? '<tr><td style="padding:22px 12px 0"><div style="border:2px solid #8a4b1f;border-radius:10px;padding:14px;font:14px/1.5 Arial,sans-serif;color:#2b2118">' +
     '<b>You are on the free plan:</b> alerts for your first ' + free + ' hunts. You have ' + all + '. ' +
@@ -5491,7 +5495,7 @@ function alLocalNote(sub, h) {
   const p = alPrefs(sub);
   return " · local pickup within " + p.radius + " mi of " + alEsc(p.zip);
 }
-function alEmailText(sub, pend, env) {
+function alEmailText(sub, pend, env, est) {
   const lines = ["Prowl Alerts", ""];
   sub.hunts.filter(h => pend[h] && pend[h].length).forEach(h => {
     lines.push(h.toUpperCase() + " (" + pend[h].length + " new" + alLocalNote(sub, h) + ")");
@@ -5499,13 +5503,16 @@ function alEmailText(sub, pend, env) {
     lines.push("All: " + PROWL_APP + "?q=" + encodeURIComponent(h));
     lines.push("Also search: " + AL_ALSO.map(a => a[0] + " " + a[1](h)).join(" | "), "");
   });
+  if (est) lines.push(alEstateText(sub, est));   /* v205 */
   return lines.join("\n") + alFootText(env, sub);
 }
-function alSubject(sub, pend) {
+function alSubject(sub, pend, est) {
   const hunts = sub.hunts.filter(h => pend[h] && pend[h].length);
   const total = hunts.reduce((n, h) => n + pend[h].length, 0);
   const head = hunts.slice(0, 2).map(h => h + " (" + pend[h].length + ")").join(", ");
-  return "Prowl: " + total + " new · " + head + (hunts.length > 2 ? ", +" + (hunts.length - 2) + " more" : "");
+  const en = est && est.picks ? est.picks.length : 0;   /* v205: the estate sales section */
+  if (!hunts.length && en) return "Prowl: " + alEstateSubject(est);
+  return "Prowl: " + total + " new · " + head + (hunts.length > 2 ? ", +" + (hunts.length - 2) + " more" : "") + (en ? " · " + en + " estate sale" + (en === 1 ? "" : "s") : "");
 }
 
 /* ---------- v152: the weekly letter ----------
@@ -5593,34 +5600,37 @@ async function alLetterRoute(request, env, origin) {
   return json({ letter: await kvGet(env, "lt:" + email, null), off: alPrefs(sub).letter === "off" }, 200, origin);
 }
 
-/* ---------- v205: the Thursday estate sale email (Pro) ----------
-   Thursday from 7 AM in the member's own time zone (until noon, so a late clock never sends it at night), to Pro members
-   with emails on, not paused, a ZIP saved (Den > Settings > Only what fits, the local-pickup ZIP) and the email not
-   turned off (prefs.estate). The same sweep as /weekend: estate sales open Friday to Sunday within WK_RADIUS_MI miles of
-   the ZIP, the member's alert hunts matched against each sale's title, description and photo captions. v205 (Matt,
-   2026-10-31: "all Prowl Pro members"): every Pro member, hunts or not, no longer only while SALES_PUBLIC=on or for
-   SALES_TEST_EMAILS. Nothing open this weekend: no email. Marked sub.estate = the day, so it goes once. /alerts/unsub?w=estate stops only it.
-   v205 review: a send's outside calls are counted on the run (wkRun: the ZIP's geocode, the list, the city page, each sale
-   page, the email) and go into what the Facebook sweep is left; a send starts only while the run still has
-   AL_ESTATE_CALLS of its FB_RUN_CALLS (the free plan's 50 subrequests) and stops fetching sale pages at that reservation;
-   one a run (the cron fires every 5 minutes, ~60 runs in the 7 AM to noon window). A failed try is marked
-   (sub.estateTry { day, n }), so a member whose sweep keeps failing is tried AL_ESTATE_TRIES times that Thursday, not
-   every run; a ZIP Google cannot place is remembered WK_ZIP_MISS_TTL and that Thursday is marked done. Members with no
-   hunts get it too, after the day's Pro check (sub.proDay is today) decides they are Pro. */
-const AL_ESTATE_HOUR = 7, AL_ESTATE_LAST_HOUR = 12, AL_ESTATE_PER_RUN = 1, AL_ESTATE_DETAILS = 10, WK_ZIP_TTL = 90 * 86400;
-const AL_ESTATE_CALLS = 16, AL_ESTATE_HUNTS = 3, AL_ESTATE_TRIES = 3, WK_ZIP_MISS_TTL = 6 * 3600;   /* v205 review */
-/* v205: the Den shows the Thursday switch to every member (Pro: on/off; free: locked, with the Pro link) */
+/* ---------- v205: estate sales in the daily Prowl email (Pro) ----------
+   Matt, 2026-10-31: "Estate sales are all week, we can't just look at weekend. Can this be part of prowl email?" No
+   separate Thursday email: the daily Prowl email of a Pro member with a local-pickup ZIP (Den > Settings > Only what
+   fits) and prefs.estate not "off" gets an "Estate sales near you" section: the sales open in the next 7 days within
+   WK_RADIUS_MI miles of the ZIP whose title, description or photo captions hold every word of one of their hunts
+   (wkMatch, as Top picks), that the member has not been sent before (sub.estSent, id -> the day it went, at most
+   AL_EST_SENT_MAX for AL_EST_SENT_DAYS), soonest first, at most AL_ESTATE_SHOW, with a signed "Plan my week" link and one
+   line for the other sales near them this week. No new picks: no section, and the section alone is worth an email on a
+   day with nothing else new. The member's days, pause and emails-off rules are the digest's own.
+   Fetching: the digest never asks EstateSales.net anything. An earlier clock run that day (alEstatePrep, one a run,
+   only while the run has AL_ESTATE_CALLS of its FB_RUN_CALLS left after the hunt checks still to come; wkRun counts the
+   geocode, the list and each sale page) keeps the sales near the ZIP's point under wke:<point>:<the member's day>, shared
+   by every member at that point, with each sale's text for matching; a later run reads the pages it did not reach
+   (AL_ESTATE_PASSES at most). The digest reads that record from KV (alEstatePicks); not ready yet: the email goes without
+   the section, and the picks come next time if they are still new. sub.estate = the day the member's record was ready;
+   a try that did not finish is counted (sub.estateTry { day, n }, AL_ESTATE_TRIES a day); a ZIP Google cannot place is
+   remembered WK_ZIP_MISS_TTL and marks the day done. */
+const AL_ESTATE_KEEP = 40, AL_ESTATE_SHOW = 5, AL_ESTATE_PASSES = 3, AL_EST_SENT_MAX = 150, AL_EST_SENT_DAYS = 30, WK_EST_TTL = 36 * 3600, WK_ZIP_TTL = 90 * 86400;
+const AL_ESTATE_CALLS = 16, AL_ESTATE_HUNTS = 3, AL_ESTATE_TRIES = 3, WK_ZIP_MISS_TTL = 6 * 3600, AL_ESTATE_PER_RUN = 1;   /* v205 review */
+/* v205: the Den shows the estate switch to every member (Pro: on/off; free: locked, with the Pro link) */
 function alEstateOpen(env, sub) { return !!sub; }
-/* anyPlan: everything but Pro (whether the day's Pro check is worth running for a member with no hunts) */
-function alEstateDue(env, sub, loc, anyPlan) {
-  if (!sub || (!sub.pro && !anyPlan) || loc.wday !== 4 || loc.hour < AL_ESTATE_HOUR || loc.hour >= AL_ESTATE_LAST_HOUR || sub.estate === loc.day) return false;
+/* the member wants the section and can have it: Pro, a ZIP, not turned off */
+function alEstateOn(sub) { const p = alPrefs(sub); return !!sub && !!sub.pro && p.estate !== "off" && /^\d{5}$/.test(p.zip); }
+/* the clock should get today's estate sales ready for this member's digest: a send day, before it goes, emails on */
+function alEstateDue(env, sub, loc) {
+  if (!alEstateOn(sub) || sub.estate === loc.day || sub.sent === loc.day || sub.mail === "off" || alPaused(sub, loc) || !alSendDay(sub, loc)) return false;
   const t = sub.estateTry;
-  if (t && t.day === loc.day && t.n >= AL_ESTATE_TRIES) return false;   /* v205 review: tried enough this Thursday */
-  const p = alPrefs(sub);
-  return p.estate !== "off" && /^\d{5}$/.test(p.zip) && sub.mail !== "off" && !alPaused(sub, loc);
+  return !(t && t.day === loc.day && t.n >= AL_ESTATE_TRIES);   /* v205 review: tried enough today */
 }
 function alEstateUnsubUrl(sub) { return alUnsubUrl(sub) + "&w=estate"; }
-/* v205 review: a try that did not finish the Thursday, counted, so it is not tried again every 5 minutes */
+/* v205 review: a try that did not finish the day, counted, so it is not tried again every 5 minutes */
 async function alEstateTried(env, sub, loc) {
   const t = sub.estateTry && sub.estateTry.day === loc.day ? sub.estateTry.n || 0 : 0;
   sub.estateTry = { day: loc.day, n: t + 1 };
@@ -5644,7 +5654,76 @@ async function wkZipPoint(env, zip, run) {
   try { await env.PROWL_ALERTS.put(k, JSON.stringify(v), { expirationTtl: WK_ZIP_TTL }); } catch (e) {}
   return v;
 }
-/* Plan my weekend: each sale's cover photo (its page's og:image), 120x90 and linked to the sale; none when it has none */
+/* the day's estate sales near a point, for every member there: wke:<lat,lng 2 decimals>:<YYYY-MM-DD> */
+function wkEstKey(pt, day) { return "wke:" + pt.lat.toFixed(2) + "," + pt.lng.toFixed(2) + ":" + day; }
+function wkEstDone(rec) { return !!rec && Array.isArray(rec.items) && (!rec.unread || (rec.pass || 0) >= AL_ESTATE_PASSES); }
+/* one sale as kept in wke: its row fields, open days, and the words a hunt is matched against (read: its page was read) */
+function wkEstItem(s, det) {
+  const own = det && typeof det.lat === "number" && typeof det.lng === "number";
+  return { id: s.id, name: s.name, url: s.url, city: s.city, st: s.st, co: s.co, dist: s.dist, type: s.type, pics: s.pics,
+    lat: own ? det.lat : s.lat, lon: own ? det.lng : s.lon, days: s.days, read: det ? 1 : 0,
+    desc: det ? det.desc || "" : "", caps: det && Array.isArray(det.caps) ? det.caps.slice(0, 40) : [], img: det ? det.img || "" : "", addr: det ? det.addr || "" : "", addrAt: det ? det.addrAt || 0 : 0 };
+}
+/* is today's record for this member's ZIP already there (KV only) */
+async function alEstateReady(env, sub, loc) {
+  const pt = await kvGet(env, "wkz:" + alPrefs(sub).zip, null);
+  return !!pt && typeof pt.lat === "number" && wkEstDone(await kvGet(env, wkEstKey(pt, loc.day), null));
+}
+/* the clock's fetch for one member (run: the cron's wkRun { calls, max }, counting each outside call and stopping at max):
+   "ready", "partly ready" (pages left for a later run), "no place for the ZIP", or why it did not finish */
+async function alEstatePrep(env, sub, loc, run) {
+  const p = alPrefs(sub), pt = await wkZipPoint(env, p.zip, run);
+  if (!pt) return run && run.miss ? "no place for the ZIP" : "no point for the ZIP";
+  const key = wkEstKey(pt, loc.day), old = await kvGet(env, key, null);
+  if (wkEstDone(old)) return "ready";
+  const L = await wkList(env, pt, WK_RADIUS_MI, pt.city && pt.st ? { city: pt.city, st: pt.st } : null, run);
+  if (!L) return "EstateSales.net did not answer";
+  const now = Date.now(), win = wkWindow(now, p.tz || AL_TZ), open = wkToRead(L.items, win, now, AL_ESTATE_KEEP);
+  const det = await wkDetails(env, open, run);
+  const items = open.filter(s => !det.gone[s.id]).map(s => wkEstItem(s, det.by[s.id] || null));
+  const v = { at: now, pass: ((old && old.pass) || 0) + 1, unread: items.filter(x => !x.read).length, items: items };
+  try { await env.PROWL_ALERTS.put(key, JSON.stringify(v), { expirationTtl: WK_EST_TTL }); } catch (e) { return "not kept"; }
+  return wkEstDone(v) ? "ready" : "partly ready";
+}
+/* the section for this member's email, from KV only: { picks: [row], more, zip, planUrl, to } or null (nothing new) */
+async function alEstatePicks(env, sub, loc) {
+  if (!alEstateOn(sub) || !env || !env.PROWL_ALERTS) return null;
+  const p = alPrefs(sub), hunts = wkHunts(alActive(env, sub));
+  if (!hunts.length) return null;
+  const pt = await kvGet(env, "wkz:" + p.zip, null);
+  if (!pt || typeof pt.lat !== "number") return null;
+  const rec = await kvGet(env, wkEstKey(pt, loc.day), null);
+  if (!rec || !Array.isArray(rec.items)) return null;
+  const tz = p.tz || AL_TZ, now = Date.now(), win = wkWindow(now, tz), sent = sub.estSent && typeof sub.estSent === "object" ? sub.estSent : {};
+  const open = [], fresh = [];
+  for (const x of rec.items) {
+    const days = wkDaysIn(x, win, now);
+    if (!days.length) continue;
+    const m = wkMatch(x, x, hunts), row = { x: x, days: days, m: m };
+    open.push(row);
+    if (m && !sent[x.id]) fresh.push(row);
+  }
+  if (!fresh.length) return null;
+  const by = (a, b) => a.days[0].s - b.days[0].s || a.x.dist - b.x.dist;
+  fresh.sort(by); open.sort(by);
+  const picks = fresh.slice(0, AL_ESTATE_SHOW).map(r => wkRowOf(r.x, r.x, r.m, r.days, tz));
+  const pickIds = picks.map(x => x.id), ids = wkPlanIds(pickIds.concat(open.map(r => r.x.id).filter(id => pickIds.indexOf(id) === -1)));
+  const exp = Math.floor(win.to / 1000);   /* the plan link runs out with the window (today + 7) */
+  return { picks: picks, more: open.length - picks.length, zip: p.zip, to: win.to,
+    planUrl: wkPlanUrl(PROWL_APP, ids, pickIds, p.zip, exp, await wkPlanSig(env, ids, pickIds, p.zip, exp)) };
+}
+/* what went: id -> the day, the newest AL_EST_SENT_MAX, none older than AL_EST_SENT_DAYS */
+function alEstateMark(sub, picks, day) {
+  const old = sub.estSent && typeof sub.estSent === "object" ? sub.estSent : {}, cut = new Date(Date.parse(day + "T00:00:00Z") - AL_EST_SENT_DAYS * 86400000).toISOString().slice(0, 10);
+  const all = Object.keys(old).filter(id => /^\d{3,12}$/.test(id) && String(old[id]) >= cut).map(id => [id, String(old[id])]);
+  picks.forEach(x => { all.push([String(x.id), day]); });
+  all.sort((a, b) => (a[1] < b[1] ? 1 : a[1] > b[1] ? -1 : 0));
+  const out = {};
+  for (const [id, d] of all) { if (Object.keys(out).length >= AL_EST_SENT_MAX) break; if (!out[id]) out[id] = d; }
+  sub.estSent = out;
+  return out;
+}
+/* Plan my week: each sale's cover photo (its page's og:image), 120x90 and linked to the sale; none when it has none */
 const AL_ESTATE_IMG = /^https:\/\/picturescdn\.estatesales\.net\/[^\s"'<>]+$/;
 function alEstateRow(env, x, pick) {
   const meta = [x.city + (x.st ? ", " + x.st : ""), x.co, x.dist != null ? x.dist + " mi" : ""].filter(Boolean).join(" \u00b7 ");
@@ -5657,88 +5736,57 @@ function alEstateRow(env, x, pick) {
     (x.standout ? '<div style="font:italic 13px/1.5 Georgia,serif;color:#6b5b4a;margin-top:3px">' + alEsc(x.standout) + '</div>' : '') +
     '<div style="font:bold 13px Arial,sans-serif;margin-top:5px"><a href="' + alEsc(x.url) + '" style="color:#8a4b1f">See the sale on EstateSales.net \u2192</a></div></td></tr>';
 }
-/* the email's "Plan my weekend" button: a signed link to the Prowl page with this sweep's sale ids (wkPlanLink) */
+/* the section's "Plan my week" button: a signed link to the Prowl page with these sales (alEstatePicks) */
 function alEstatePlanBtn(planUrl) {
-  return planUrl ? '<tr><td style="padding:14px 12px 0"><a href="' + alEsc(planUrl) + '" style="display:inline-block;background:#2b2118;color:#ffffff;padding:11px 18px;border-radius:6px;text-decoration:none;font:bold 14px Arial,sans-serif">\uD83D\uDDFA\uFE0F Plan my weekend</a>' +
-    '<div style="font:12px/1.5 Arial,sans-serif;color:#9a8b7a;padding-top:5px">Opens Prowl with these sales split into a day-by-day route, with Google and Apple Maps links. No app or sign-in needed.</div></td></tr>' : '';
+  return planUrl ? '<tr><td style="padding:12px 12px 0"><a href="' + alEsc(planUrl) + '" style="display:inline-block;background:#2b2118;color:#ffffff;padding:10px 16px;border-radius:6px;text-decoration:none;font:bold 14px Arial,sans-serif">\uD83D\uDDFA\uFE0F Plan my week</a>' +
+    '<div style="font:12px/1.5 Arial,sans-serif;color:#9a8b7a;padding-top:5px">Opens Prowl with these sales on a day-by-day route, with Google and Apple Maps links. No sign-in needed.</div></td></tr>' : '';
 }
-function alEstateHtml(env, sub, S, zip, planUrl) {
-  const n = S.picks.length + S.rest.length;
-  let h = '<tr><td style="padding:12px 12px 6px;font:bold 24px Georgia,serif;color:#2b2118">' + (S.picks.length ? S.picks.length + ' estate sale' + (S.picks.length === 1 ? '' : 's') + ' worth the drive' : n + ' estate sale' + (n === 1 ? '' : 's') + ' this weekend') + '</td></tr>' +
-    '<tr><td style="padding:0 12px;font:14px/1.5 Arial,sans-serif;color:#6b5b4a">Friday to Sunday, within ' + WK_RADIUS_MI + ' miles of ' + alEsc(zip) + '. Hours are your local time.</td></tr>' + alEstatePlanBtn(planUrl);
-  if (S.picks.length) {
-    h += '<tr><td style="padding:20px 12px 4px;font:bold 19px Georgia,serif;color:#2b2118">Top picks <span style="font:normal 14px Arial,sans-serif;color:#6b5b4a">\u00b7 they mention your hunts</span></td></tr><tr><td><table width="100%" cellpadding="0" cellspacing="0">' +
-      S.picks.map(x => alEstateRow(env, x, true)).join("") + '</table></td></tr>';
-  }
-  if (S.rest.length) {
-    h += '<tr><td style="padding:20px 12px 4px;font:bold 17px Georgia,serif;color:#2b2118">' + (S.picks.length ? 'Also this weekend' : 'This weekend nearby') + '</td></tr><tr><td><table width="100%" cellpadding="0" cellspacing="0">' +
-      S.rest.map(x => alEstateRow(env, x, false)).join("") + '</table></td></tr>';
-  }
-  if (planUrl && n > 3) h += alEstatePlanBtn(planUrl);
-  h += '<tr><td style="padding:14px 12px 2px"><a href="' + alEsc(alHomeUrl(sub)) + '" style="display:inline-block;background:#8a4b1f;color:#ffffff;padding:11px 18px;border-radius:6px;text-decoration:none;font:bold 14px Arial,sans-serif">Open Prowl</a></td></tr>' +
-    '<tr><td style="padding:10px 12px 0;font:12px/1.5 Arial,sans-serif;color:#9a8b7a">Sales and links from EstateSales.net. Hours and items can change; check the sale page before you go.</td></tr>';
-  const links = '<a href="' + alEsc(alHomeUrl(sub)) + '" style="color:#8a4b1f">Open Prowl \u00b7 change your hunts or ZIP</a> \u00b7 <a href="' + alEsc(alEstateUnsubUrl(sub)) + '" style="color:#9a8b7a">Stop Thursday estate sale emails</a> \u00b7 <a href="' + alEsc(alUnsubUrl(sub)) + '" style="color:#9a8b7a">Unsubscribe from all Prowl emails</a>';
-  return alShell(env, h, 'You are getting this because you have Prowl Pro and a ZIP code saved in Prowl. It comes on Thursday mornings; your daily alerts are separate. Turn it off in Prowl under Den, then Settings.', links);
+/* the daily email's "Estate sales near you" section (est from alEstatePicks) */
+function alEstateSec(env, sub, est) {
+  if (!est || !est.picks || !est.picks.length) return "";
+  const n = est.picks.length;
+  return '<tr><td style="padding:26px 12px 2px;font:bold 19px Georgia,serif;color:#2b2118">Estate sales near you <span style="font:normal 14px Arial,sans-serif;color:#6b5b4a">\u00b7 ' + n + ' new \u00b7 next 7 days</span></td></tr>' +
+    '<tr><td style="padding:0 12px;font:13px/1.5 Arial,sans-serif;color:#6b5b4a">' + (n === 1 ? 'It mentions' : 'They mention') + ' your hunts. Within ' + WK_RADIUS_MI + ' miles of ' + alEsc(est.zip) + '; hours are your local time.</td></tr>' +
+    est.picks.map(x => '<tr><td><table width="100%" cellpadding="0" cellspacing="0">' + alEstateRow(env, x, true) + '</table></td></tr>').join("") + alEstatePlanBtn(est.planUrl) +   /* a table each: a sale without a photo keeps the full width */
+    (est.more > 0 ? '<tr><td style="padding:10px 12px 0;font:13px Arial,sans-serif"><a href="' + alEsc(PROWL_APP + "?wk=1") + '" style="color:#8a4b1f">' + est.more + ' more estate sale' + (est.more === 1 ? '' : 's') + ' near you this week \u2192</a></td></tr>' : '') +
+    '<tr><td style="padding:8px 12px 0;font:12px/1.5 Arial,sans-serif;color:#9a8b7a">Sales and links from EstateSales.net. Hours and items can change; check the sale page before you go.</td></tr>';
 }
-function alEstateText(env, sub, S, zip, planUrl) {
-  const row = x => ["- " + x.name + (x.match ? " [your quarry: " + x.match.hunt + ", in " + x.match.where + "]" : ""), "  " + [x.city + (x.st ? ", " + x.st : ""), x.co, x.dist + " mi"].filter(Boolean).join(" \u00b7 "), "  " + x.hours, x.standout ? "  " + x.standout : "", "  " + x.url].filter(Boolean).join("\n");
-  const lines = ["Prowl: estate sales this weekend near " + zip, "Friday to Sunday, within " + WK_RADIUS_MI + " miles. Hours are your local time.", ""];
-  if (planUrl) lines.push("Plan my weekend (a day-by-day route with Maps links): " + planUrl, "");
-  if (S.picks.length) lines.push("TOP PICKS (they mention your hunts)", S.picks.map(row).join("\n\n"), "");
-  if (S.rest.length) lines.push(S.picks.length ? "ALSO THIS WEEKEND" : "THIS WEEKEND NEARBY", S.rest.map(row).join("\n\n"), "");
-  lines.push("Sales and links from EstateSales.net. Hours and items can change; check the sale page before you go.");
-  return lines.join("\n") + alFootText(env, sub) + "\nStop Thursday estate sale emails: " + alEstateUnsubUrl(sub);
+function alEstateText(sub, est) {
+  if (!est || !est.picks || !est.picks.length) return "";
+  const row = x => ["- " + x.name + (x.match ? " [your quarry: " + x.match.hunt + ", in " + x.match.where + "]" : ""), "  " + [x.city + (x.st ? ", " + x.st : ""), x.co, x.dist + " mi"].filter(Boolean).join(" \u00b7 "), "  " + x.hours, "  " + x.url].join("\n");
+  return ["ESTATE SALES NEAR YOU (" + est.picks.length + " new, next 7 days, within " + WK_RADIUS_MI + " miles of " + est.zip + ")", est.picks.map(row).join("\n\n"),
+    est.planUrl ? "Plan my week (a day-by-day route with Maps links): " + est.planUrl : "", est.more > 0 ? est.more + " more estate sale" + (est.more === 1 ? "" : "s") + " near you this week: " + PROWL_APP + "?wk=1" : "",
+    "Sales and links from EstateSales.net. Stop estate sales in these emails: " + alEstateUnsubUrl(sub), ""].filter(Boolean).join("\n") + "\n";
 }
-/* "Prowl: 2 estate sale picks · Pyrex, Fire-King" or "Prowl: 9 estate sales this weekend near 48375" */
-function alEstateSubject(S, zip) {
-  if (S.picks.length) {
-    const hs = []; S.picks.forEach(x => { if (hs.indexOf(x.match.hunt) === -1) hs.push(x.match.hunt); });
-    return "Prowl: " + S.picks.length + " estate sale pick" + (S.picks.length === 1 ? "" : "s") + " \u00b7 " + hs.slice(0, 2).join(", ") + (hs.length > 2 ? ", +" + (hs.length - 2) + " more" : "");
-  }
-  const n = S.rest.length;
-  return "Prowl: " + n + " estate sale" + (n === 1 ? "" : "s") + " this weekend near " + zip;
-}
-/* build (send false: { subject, html, text, S } for tests and the admin) or send it. v205 review: run (the cron's
-   wkRun, { calls, max }) counts every outside call and stops the sweep's fetches at max; the email itself is one more */
-async function alEstateSend(env, sub, loc, send, run) {
-  const p = alPrefs(sub), zip = p.zip;
-  const pt = await wkZipPoint(env, zip, run);
-  if (!pt) {
-    if (send && run && run.miss) { sub.estate = loc.day; await alMerge(env, sub, ["estate"]); }   /* a ZIP with no place: not again this Thursday */
-    return "no point for the ZIP";
-  }
-  const S = await wkSweep(env, pt, WK_RADIUS_MI, wkHunts(alActive(env, sub)), p.tz || AL_TZ, pt.city && pt.st ? { city: pt.city, st: pt.st } : null, AL_ESTATE_DETAILS, run);
-  if (!S) return "EstateSales.net did not answer";
-  if (!S.picks.length && !S.rest.length) { if (send) { sub.estate = loc.day; await alMerge(env, sub, ["estate"]); } return "nothing this weekend"; }
-  const ms = send ? await alMailSub(env, sub) : sub;
-  const planUrl = await wkPlanLink(env, S, zip);   /* Plan my weekend */
-  const mail = { subject: alEstateSubject(S, zip), html: alEstateHtml(env, ms, S, zip, planUrl), text: alEstateText(env, ms, S, zip, planUrl), S: S, planUrl: planUrl };
-  if (!send) return mail;
-  if (run) run.calls++;   /* the email */
-  const r = await alSend(env, sub.email, mail.subject, mail.html, mail.text, alEstateUnsubUrl(ms));
-  if (!r.ok) return "not sent: " + String(r.error || "unknown").slice(0, 120);
-  sub.estate = loc.day;   /* once a Thursday, even when the write after it fails */
-  await alMerge(env, sub, ["estate"]);
-  return "sent";
+/* "2 estate sale picks · Pyrex, Fire-King" */
+function alEstateSubject(est) {
+  const hs = []; est.picks.forEach(x => { if (x.match && hs.indexOf(x.match.hunt) === -1) hs.push(x.match.hunt); });
+  return est.picks.length + " estate sale pick" + (est.picks.length === 1 ? "" : "s") + (hs.length ? " \u00b7 " + hs.slice(0, 2).join(", ") + (hs.length > 2 ? ", +" + (hs.length - 2) + " more" : "") : "");
 }
 
 async function alDigest(env, sub, send) {
   const pend = await kvGet(env, "pend:" + sub.email, {});
   const hunts = sub.hunts.filter(h => pend[h] && pend[h].length);
-  if (!hunts.length) return { sent: false, reason: "nothing new" };
+  /* v205: the estate sales section (Pro, a ZIP; KV only), worth an email on its own */
+  const loc = alLocal(sub, alNow(env));
+  let est = null;
+  try { est = await alEstatePicks(env, sub, loc); } catch (e) { est = null; }
+  if (!hunts.length && !est) return { sent: false, reason: "nothing new" };
   let top = hunts[0];
   hunts.forEach(h => { if (pend[h].length > pend[top].length) top = h; });
-  const picks = await alPicks(env, top, sub);
+  const picks = hunts.length ? await alPicks(env, top, sub) : [];
   const ms = send ? await alMailSub(env, sub) : sub;   /* v184: a sent email's links carry a ticket; a preview's carry none */
-  const html = alEmailHtml(Object.assign({}, ms, { allCount: sub.hunts.length }), pend, picks, top, env);
-  if (!send) return { sent: false, html: html, subject: alSubject(sub, pend) };
-  const r = await alSend(env, sub.email, alSubject(sub, pend), html, alEmailText(ms, pend, env), alUnsubUrl(ms));
+  const html = alEmailHtml(Object.assign({}, ms, { allCount: sub.hunts.length }), pend, picks, top, env, false, est);
+  const subject = alSubject(sub, pend, est);
+  if (!send) return { sent: false, html: html, subject: subject, est: est };
+  const r = await alSend(env, sub.email, subject, html, alEmailText(ms, pend, env, est), alUnsubUrl(ms));
   if (r.ok) {
     await kvPut(env, "pend:" + sub.email, {});
     /* v78: what went out, for two days, so the owner's "Send today's email again" can really send it again */
-    try { await env.PROWL_ALERTS.put("last:" + sub.email, JSON.stringify({ day: alLocal(sub, alNow(env)).day, pend: pend }), { expirationTtl: 2 * 86400 }); } catch (e) { console.error("last mail", String(e && e.message || e)); }
+    try { await env.PROWL_ALERTS.put("last:" + sub.email, JSON.stringify({ day: loc.day, pend: pend }), { expirationTtl: 2 * 86400 }); } catch (e) { console.error("last mail", String(e && e.message || e)); }
+    if (est) { alEstateMark(sub, est.picks, loc.day); try { await alMerge(env, sub, ["estSent"]); } catch (e) { console.error("estate sent", String(e && e.message || e)); } }   /* v205: never the same sale twice */
   }
-  return { sent: r.ok, error: r.error, hunts: hunts.length };
+  return { sent: r.ok, error: r.error, hunts: hunts.length, estate: est ? est.picks.length : 0 };
 }
 
 /* ---------- v55: free month emails ----------
@@ -5800,7 +5848,7 @@ async function alTick(env) {
   const now = alNow(env);
   PJ_RUN = { left: POUNCE_PER_RUN, m: {}, down: !!(await kvGet(env, "pjdown", null)) };   /* v112: Pounce's share of this run's outside calls; v112 review: none while Muse is down */
   let budget = alBatch(env), proLeft = AL_PRO_REFRESH_PER_RUN, lettersLeft = AL_LETTERS_PER_RUN, estateLeft = AL_ESTATE_PER_RUN;   /* v152; v205 */
-  const wkRun = { calls: 0, max: 0 };   /* v205 review: the estate sends' outside calls this run */
+  const wkRun = { calls: 0, max: 0 };   /* v205 review: the estate fetches' outside calls this run */
   /* v51: every member key (KV lists 1000 at a time), and each run starts at a
      different member, so the top of the alphabet never starves the bottom. */
   const names = [];
@@ -5827,21 +5875,25 @@ async function alTick(env) {
   const tally = { checked: 0, sent: 0, failed: 0, errors: [] };
   const note = m => { if (tally.errors.length < 5) tally.errors.push(scrubPII(m).slice(0, 160)); };
   /* v200: the outside calls this run has made so far (a hunt is about AL_CALLS_PER_HUNT, a Shopify check, a Pounce
-     judgement and an email one each); v205 review: and the estate sends' own count */
+     judgement and an email one each); v205 review: and the estate fetches' own count */
   const runUsed = () => (tally.checked + AL_LETTERS_PER_RUN - lettersLeft) * AL_CALLS_PER_HUNT + (AL_PRO_REFRESH_PER_RUN - proLeft) + (POUNCE_PER_RUN - Math.max(0, PJ_RUN.left)) + tally.sent + tally.failed + wkRun.calls;
-  /* v205: Thursday morning, the estate sale email (its own marker). v205 review: only on a Pro answer from today's
-     check, only while the run has AL_ESTATE_CALLS left after the hunt checks still to come, and a try that did not
-     finish is counted (AL_ESTATE_TRIES a Thursday) */
+  /* v205: today's estate sales near a Pro member's ZIP, fetched ahead of their digest (alEstatePrep): only on a Pro answer
+     from today's check, one fetch a run, only while the run has AL_ESTATE_CALLS left after the hunt checks still to
+     come; a record already there (another member nearby) costs nothing; a try that did not finish is counted */
   const estate = async (sub, loc) => {
-    if (estateLeft <= 0 || sub.proDay !== now.day || !alEstateDue(env, sub, loc)) return;
+    if (sub.proDay !== now.day || !alEstateDue(env, sub, loc)) return;
+    const done = async () => { sub.estate = loc.day; try { await alMerge(env, sub, ["estate"]); } catch (e) {} };
+    if (await alEstateReady(env, sub, loc)) { await done(); return; }
+    if (estateLeft <= 0) return;
     if (FB_RUN_CALLS - runUsed() - Math.max(0, budget - AL_ESTATE_HUNTS) * AL_CALLS_PER_HUNT < AL_ESTATE_CALLS) return;
     estateLeft--; budget = Math.max(0, budget - AL_ESTATE_HUNTS);
-    wkRun.max = wkRun.calls + AL_ESTATE_CALLS - 1;   /* the last one is the email's */
+    wkRun.max = wkRun.calls + AL_ESTATE_CALLS;
     wkRun.miss = 0;
     let er = "";
-    try { er = await alEstateSend(env, sub, loc, true, wkRun); log.push((await who(sub)) + " estate: " + scrubPII(String(er))); if (er === "sent") tally.sent++; }
+    try { er = await alEstatePrep(env, sub, loc, wkRun); log.push((await who(sub)) + " estate: " + scrubPII(String(er))); }
     catch (e) { log.push((await who(sub)) + " estate failed: " + why(e)); note("estate failed: " + String(e && e.message || e)); }
-    if (er !== "sent" && sub.estate !== loc.day) await alEstateTried(env, sub, loc);
+    if (er === "ready" || er === "no place for the ZIP") await done();
+    else if (er !== "partly ready") await alEstateTried(env, sub, loc);
   };
   /* the day's Pro check (and an unsubscribe token for members from before v51); false when the member is gone */
   const fresh = async (sub) => {
@@ -5856,12 +5908,7 @@ async function alTick(env) {
     const sub = it.sub;
     const tp = alTrialPlan(sub);   /* v55; v78: also a free month that a gift now covers */
     if (tp) { try { const tn = await alTrialNotes(env, tp === sub.plan ? sub : Object.assign({}, sub, { plan: tp })); if (tn) log.push((await who(sub)) + " " + scrubPII(String(tn))); } catch (e) { log.push((await who(sub)) + " trial mail error"); note("trial mail error"); } }
-    if (!sub.hunts || !sub.hunts.length) {
-      /* v205 review: a Pro member with no hunts still gets the Thursday estate email, after the day's Pro check */
-      const loc0 = alLocal(sub, now);
-      if (estateLeft > 0 && alEstateDue(env, sub, loc0, true) && (await fresh(sub))) await estate(sub, loc0);
-      continue;
-    }
+    if (!sub.hunts || !sub.hunts.length) continue;   /* v205: estate sales come in the digest, matched to hunts, so none without */
     /* v55: emails off, membership and Pro stay. v112 review: a member with emails off and phone alerts on still gets
        Pounce: their quarry hunts are checked and judged, nothing waits for a digest and no email goes. */
     const loc = alLocal(sub, now);   /* v53: the member's own clock */
@@ -5876,7 +5923,7 @@ async function alTick(env) {
       try { const lr = await alLetterSend(env, sub, loc, true); log.push((await who(sub)) + " letter: " + scrubPII(String(lr))); if (lr === "sent") tally.sent++; }
       catch (e) { log.push((await who(sub)) + " letter failed: " + why(e)); note("letter failed: " + String(e && e.message || e)); }
     }
-    await estate(sub, loc);   /* v205: Thursday morning, the estate sale email */
+    await estate(sub, loc);   /* v205: today's estate sales, ready for the digest (KV) */
     /* v112 review: first the phone taps that did not go through, then the listings Pounce did not reach on earlier runs */
     let held = 0;
     if (sub.quarries) {
@@ -5900,7 +5947,7 @@ async function alTick(env) {
       if (r.sent) tally.sent++; else if (r.reason !== "nothing new") { tally.failed++; note("email not sent: " + (r.reason || r.error || "unknown")); }
     }
   }
-  /* v200: Facebook finds, with the outside calls this run has left (runUsed; v205 review: the estate sends' too) */
+  /* v200: Facebook finds, with the outside calls this run has left (runUsed; v205 review: the estate fetches' too) */
   try {
     const used = runUsed();
     const fr = await fbSweep(env, subs.map(x => x.sub), FB_RUN_CALLS - used);
@@ -6904,12 +6951,12 @@ async function alUnsub(request, env, url, origin) {
     await alMerge(env, sub, ["prefs"]);
     return wantJson ? json({ ok: true, letter: "off" }, 200, origin) : alPage("The weekly letter is off", "No more Sunday letters. Your Prowl Alerts emails keep coming. Turn the letter back on any time in Prowl under Den, then Settings.");
   }
-  /* v205: the Thursday estate sale email alone */
+  /* v205: the estate sales section of the daily email alone (its link in the section, "Stop estate sales in these emails") */
   if (p.w === "estate") {
-    if (!p.post) return alGate("Stop the Thursday estate sale email?", "No more Thursday estate sale emails to " + email + ". Your Prowl Alerts emails keep coming.", "Stop estate sale emails", url);
+    if (!p.post) return alGate("Stop estate sales in your Prowl emails?", "Your daily Prowl emails to " + email + " will no longer carry estate sales near you. Everything else in them keeps coming.", "Stop estate sales", url);
     sub.prefs = Object.assign({}, sub.prefs || {}, { estate: "off" });
     await alMerge(env, sub, ["prefs"]);
-    return wantJson ? json({ ok: true, estate: "off" }, 200, origin) : alPage("Thursday estate sale emails are off", "No more Thursday estate sale emails. Your Prowl Alerts emails keep coming. Turn it back on any time in Prowl under Den, then Settings.");
+    return wantJson ? json({ ok: true, estate: "off" }, 200, origin) : alPage("Estate sales are off in your emails", "Your daily Prowl emails will no longer carry estate sales near you. Everything else in them keeps coming. Turn it back on any time in Prowl under Den, then Settings.");
   }
   const h = vClean(p.h, 60).toLowerCase();
   if (!p.post) return alGate(h ? "Stop emails for " + h + "?" : "Turn off Prowl emails?", h ? "Your other hunts keep coming." : "No more Prowl Alerts emails to " + email + ". Your hunts and settings stay in Prowl" + (sub.pro ? ", and Prowl Pro stays on. To stop paying for Pro, cancel it in your Owl & Twig account under Subscriptions" : "") + ".", h ? "Stop this hunt" : "Turn off emails", url);   /* v51: GET changes nothing */
@@ -6981,7 +7028,7 @@ async function alStatus(request, env, url, origin) {
     moving: (await kvGet(env, "mvf:" + email, null) || {}).to || "",   /* v54 */
     quarries: (sub.quarries && typeof sub.quarries === "object") ? sub.quarries : {}, quarryMax: pounceMax(sub), quarryMatches: await kvGet(env, "gm:" + email, []),
     fb: fbLive(env) && !!sub.pro,   /* v200: Facebook finds are on for this member */
-    estate: alEstateOpen(env, sub),   /* v205: the Thursday estate sale email can go to this member */
+    estate: alEstateOpen(env, sub),   /* v205: the Den shows the estate sales switch (the daily email's section) */
     phone: sub.phone || "", wpush: pushReady(env) ? { key: String(env.VAPID_PUBLIC), n: (await pushList(env, await pushId(env, email))).length } : null }, 200, origin);   /* v114 */   /* v112 */
 }
 
@@ -7410,11 +7457,12 @@ async function esSales(request, env, url, origin) {
   try { await env.PROWL_ALERTS.put(place.key, JSON.stringify(v), { expirationTtl: 7 * 86400 }); } catch (e) {}
   return json({ city: place.city, st: place.st, at: v.at, items: v.items }, 200, origin, hdr);
 }
-/* ---------- v205: Weekend sweep (GET /weekend) ----------
+/* ---------- v205: estate sales this week (GET /weekend; the name is kept) ----------
      GET /weekend?lat=..&lng=..[&r=25][&tz=America/Detroit][&h=hunt|hunt|...]
-   Estate sales open from the coming Friday to Sunday (this weekend from Friday on) within r miles (default 25, at most
-   50) of the point, from EstateSales.net: its list near a point (the JSON its own map uses) and, for the WK_DETAIL_MAX
-   nearest sales open this weekend, each sale's own page (its description and photo captions). A sale whose words hold
+   Estate sales open in the next 7 days (today through today+6 in tz; Matt, 2026-10-31: "Estate sales are all week")
+   within r miles (default 25, at most 50) of the point, from EstateSales.net: its list near a point (the JSON its own map
+   uses) and, for the WK_DETAIL_MAX nearest sales open this week, each sale's own page (its description and photo
+   captions). A sale whose words hold
    every word of one of the hunts goes to picks with the hunt and where it matched; the rest follow, at most WK_CAP in
    all. Every sale links to its own EstateSales.net page; one without a link of its own, or whose page answers 404/410,
    is dropped. Hours are written in tz. v205: Prowl Pro members, the owner, or everyone while SALES_PUBLIC=on (wkWho). The list is kept per point
@@ -7459,7 +7507,7 @@ async function wkList(env, pt, r, place, run) {
   return v;
 }
 /* each sale's own page, read once a day: { by: id -> {desc, caps, img, addr, lat, lng, addrAt}, gone: id -> 1 (404/410:
-   its link is dead) }. Plan my weekend: kept under wkd2: (the street address and position are new); a page whose address
+   its link is dead) }. Plan my week: kept under wkd2: (the street address and position are new); a page whose address
    is still hidden is read again after WK_PENDING_TTL, so the address shows up soon after the company posts it. */
 const WK_PENDING_TTL = 3 * 3600;
 async function wkDetails(env, sales, run) {
@@ -7486,7 +7534,7 @@ async function wkSweep(env, pt, r, hunts, tz, place, detailMax, run) {
   const now = Date.now(), win = wkWindow(now, tz);
   const det = await wkDetails(env, wkToRead(L.items, win, now, detailMax || WK_DETAIL_MAX), run);
   let b = wkBuild(L.items, det, hunts, win, now, tz, WK_CAP);
-  /* Plan my weekend: every sale shown needs its page (street address, position, cover photo), not only the nearest */
+  /* Plan my week: every sale shown needs its page (street address, position, cover photo), not only the nearest */
   const unread = b.picks.concat(b.rest).filter(x => !det.by[x.id] && !det.gone[x.id]).map(x => L.items.find(s => s.id === x.id)).filter(Boolean);
   if (unread.length) {
     const more = await wkDetails(env, unread.slice(0, WK_CAP), run);
@@ -7513,20 +7561,14 @@ async function wkRoute(request, env, url, origin) {
   if (!S) return json({ error: "EstateSales.net did not answer just now" }, 502, origin, hdr);
   return json(Object.assign({ r: r, tz: tz, hunts: hunts.length }, S), 200, origin, hdr);
 }
-/* ---------- v205: Plan my weekend (GET /weekend/plan) ----------
+/* ---------- v205: Plan my week (GET /weekend/plan) ----------
      GET /weekend/plan?ids=1,2,3[&p=1][&zip=48375][&x=<expiry, s>][&s=<signature>][&tz=America/Detroit]
-   The sales of one sweep, for the page's planner: the Thursday email's "Plan my weekend" link carries the sweep's sale
-   ids, its Top picks, the ZIP it used and a signature (alCodeKey, HMAC over wkPlanMsg), so it opens with no sign-in and
-   no app until it runs out (x, the Monday after that weekend). The owner's key, SALES_PUBLIC=on or (v205) a Pro member opens it without one.
+   The sales for the page's planner: the daily email's "Plan my week" link (its estate sales section) carries the sale
+   ids, its picks, the member's ZIP and a signature (alCodeKey, HMAC over wkPlanMsg), so it opens with no sign-in and no
+   app until it runs out (x, the end of that email's 7 days). The owner's key, SALES_PUBLIC=on or (v205) a Pro member opens it without one.
    The list comes from the same cached sweep around the ZIP (wkList, 3 hours), each sale's page from wkDetails.
    Answers { start: { lat, lng, town, zip }, sales: [row with pick], missing: [ids no longer open] }. */
 async function wkPlanSig(env, ids, picks, zip, exp) { const key = alCodeKey(env); return key ? (await pxHmac(key, wkPlanMsg(ids, picks, zip, exp))).slice(0, 32) : ""; }
-/* the email's link for a sweep (S from wkSweep), signed */
-async function wkPlanLink(env, S, zip) {
-  const rows = S.picks.concat(S.rest), ids = wkPlanIds(rows.map(x => x.id)), picks = wkPlanIds(S.picks.map(x => x.id));
-  const exp = Math.floor((Date.parse(S.to) || Date.now() + 4 * 86400000) / 1000) + 86400;
-  return wkPlanUrl(PROWL_APP, ids, picks, zip, exp, await wkPlanSig(env, ids, picks, zip, exp));
-}
 async function wkPlanRoute(request, env, url, origin) {
   const hdr = { "Cache-Control": "private, no-store", "Vary": "X-Prowl-Owner, X-Prowl-Email, X-Prowl-Tok, Authorization" };
   if (!env.PROWL_ALERTS) return json({ error: "not found" }, 404, origin, hdr);
@@ -8889,8 +8931,8 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname.startsWith("/lens/") && request.method === "GET") return lensPhotoRoute(request, env, url);   /* v173 */
     if (url.pathname.startsWith("/finds/") && request.method === "GET") return findPhotoRoute(request, env, url);   /* v132: a find's photo, signed */
     if (url.pathname === "/sales" && request.method === "GET") return esSales(request, env, url, origin);   /* v103 */
-    if (url.pathname === "/weekend" && request.method === "GET") return wkRoute(request, env, url, origin);   /* v205: Weekend sweep */
-    if (url.pathname === "/weekend/plan" && request.method === "GET") return wkPlanRoute(request, env, url, origin);   /* v205: Plan my weekend */
+    if (url.pathname === "/weekend" && request.method === "GET") return wkRoute(request, env, url, origin);   /* v205: estate sales this week */
+    if (url.pathname === "/weekend/plan" && request.method === "GET") return wkPlanRoute(request, env, url, origin);   /* v205: Plan my week */
     if (url.pathname === "/shop-picks") {
       return shopPicks(env, url, origin, request);
     }

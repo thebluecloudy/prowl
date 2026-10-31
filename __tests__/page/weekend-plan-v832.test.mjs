@@ -1,10 +1,11 @@
-// Page v8.32 Plan my weekend (worker v205 /order and /weekend/plan): the Sweep's sales as a day-by-day route. "Plan my
-// weekend" under the Sweep results (and the Thursday email's button, ?wkplan=<ids>&wkp=<picks>&wkzip=ZIP&wkx&wks) opens
-// the planner in NEAR ME > Estate sales, beside Trips: Top picks checked, the rest one tap; each checked sale on its first
-// open day this weekend (v8.32, Matt 2026-10-31: opening day), else its next open day when that one is full or its hours
-// do not fit, at most 5 a day, 45 min at each, never reached before it opens or within 30 min of closing; what does not fit
-// is named; address-pending sales stay off the route; Road Trip's /order orders each day; one Google and one Apple Maps
-// link a day; Rebuild from here starts a day again from the phone.
+// Page v8.32 Plan my week (worker v205 /order and /weekend/plan): the Sweep's sales as a day-by-day route over the next 7
+// days (Matt, 2026-10-31: "Estate sales are all week"). "Plan my week" under the Sweep results (and the daily email's
+// button in its estate sales section, ?wkplan=<ids>&wkp=<picks>&wkzip=ZIP&wkx&wks) opens the planner in NEAR ME > Estate
+// sales, beside Trips: Top picks checked, the rest one tap; each checked sale on its first open day in the 7 days (Matt
+// 2026-10-31: opening day), else its next open day when that one is full or its hours do not fit, at most 5 a day, 45
+// min at each, never reached before it opens or within 30 min of closing; what does not fit is named; address-pending
+// sales stay off the route; Road Trip's /order orders each day; days in date order; one Google and one Apple Maps link a
+// day; Rebuild from here starts a day again from the phone.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
@@ -102,6 +103,20 @@ test('the split puts a Fri-Sun sale on Friday, its opening day; a full Friday or
   await p.close();
 });
 
+/* v8.32 (Matt, 2026-10-31: "Estate sales are all week"): the plan covers the next 7 days, weekdays too */
+test('the split covers the week: a sale today, one Monday to Wednesday on Monday, a full Monday moves one to Tuesday, days in date order', async () => {
+  const p = page(); await tick(30);
+  const today = S({ days: [day(19, 10, 16)] }), mtw = S({ days: [day(23, 9, 16), day(24, 9, 16), day(25, 9, 16)] }), wed = S({ days: [day(25, 10, 15)] }), sun = S({ days: [day(22, 10, 15)] });
+  const r = J(p.win.prowlWpSplit([wed, mtw, sun, today], NOVI, THU, {}));
+  assert.deepEqual(r.days.map((d) => [d.key, d.items.map((x) => x.s.id)]), [['2026-11-19', [today.id]], ['2026-11-22', [sun.id]], ['2026-11-23', [mtw.id]], ['2026-11-25', [wed.id]]],
+    'Thursday (today), Sunday, Monday (the Mon-Wed sale\'s opening day), Wednesday: in date order');
+  const monOnly = Array.from({ length: 5 }, () => S({ days: [day(23, 8, 18)] })), m2 = S({ days: [day(23, 9, 16), day(24, 9, 16)] });
+  const full = J(p.win.prowlWpSplit(monOnly.concat([m2]), NOVI, THU, {}));
+  assert.deepEqual(full.days.find((d) => d.key === '2026-11-24').items.map((x) => x.s.id), [m2.id], 'Monday has 5: Tuesday, its next open day');
+  assert.deepEqual(full.dropped, []);
+  await p.close();
+});
+
 test('a sale without a street address yet is address pending: never on the route', async () => {
   const p = page(); await tick(30);
   const ok = S(), pend = S({ addr: '' });
@@ -144,15 +159,17 @@ async function sweep(p) {
   await waitFor(() => p.$('#otp-wkPlan'));
 }
 
-test('Plan my weekend under the Sweep: Top picks checked, the rest one tap; each day ordered by /order with Google and Apple Maps links', async () => {
+test('Plan my week under the Sweep: Top picks checked, the rest one tap; each day ordered by /order with Google and Apple Maps links', async () => {
   const { p, calls } = rig({ storage: { 'prowl.owner': OWNER } });
   await sweep(p);
-  assert.match(p.$('#otp-wkPlan').textContent, /Plan my weekend/);
+  assert.match(p.$('#otp-wkPlan').textContent, /Plan my week$/);
   p.$('#otp-wkPlan').click();
   await waitFor(() => p.$('#otp-wp .wp-day'));
   assert.ok(p.$('#otp-nrWkPane #otp-wpHost #otp-wp'), 'the planner opens in NEAR ME > Estate sales');
   assert.equal(p.$('#otp-nrT4').getAttribute('aria-selected'), 'true');
-  assert.match(p.$('#otp-wpHost .nearh').textContent, /Plan my weekend/);
+  assert.match(p.$('#otp-wpHost .nearh').textContent, /^Plan my week$/);
+  assert.match(p.$('#otp-wkBack').textContent, /This week’s sales/);
+  assert.match(p.$('#otp-wp').textContent, /This week’s sales\s*3/);
   assert.equal(p.$('#otp-wkHost').hidden, true, 'in place of the Sweep');
   assert.equal(p.$('#otp-sheet').classList.contains('on'), false, 'not a sheet any more');
   assert.match(p.$('#otp-wp .wp-from').textContent, /From Novi, MI/, 'the place the sweep used');
@@ -205,7 +222,7 @@ test('Rebuild from here starts the day again from the phone: /order is asked fro
   await p.close();
 });
 
-test('the Thursday email link opens the planner with no app or sign-in: the sale ids, picks, ZIP and signature go to /weekend/plan', async () => {
+test('the daily email\'s Plan my week link opens the planner with no app or sign-in: the sale ids, picks, ZIP and signature go to /weekend/plan', async () => {
   const url = 'https://www.owlandtwigvintage.com/pages/prowl-app?wkplan=5200001,5200002,5200004,5299999&wkp=5200001&wkzip=48375&wkx=1900000000&wks=abc123';
   const { p, calls } = rig({ url });
   await waitFor(() => p.$('#otp-wp .wp-day'), { timeout: 5000 });
@@ -245,7 +262,7 @@ test('a link that ran out says so', async () => {
   const url = 'https://www.owlandtwigvintage.com/pages/prowl-app?wkplan=5200001&wkzip=48375&wkx=1&wks=abc';
   const { p } = rig({ url, plan: () => Promise.resolve({ ok: false, status: 410, json: () => Promise.resolve({ error: 'this link has run out' }) }) });
   await waitFor(() => p.$('#otp-wp .es-err'), { timeout: 5000 });
-  assert.match(p.$('#otp-wp').textContent, /run out/);
+  assert.match(p.$('#otp-wp').textContent, /run out\. Your next Prowl email with estate sales brings a new one/);
   await p.close();
 });
 

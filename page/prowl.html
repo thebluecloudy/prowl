@@ -1318,11 +1318,12 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .es-row img,.scout-app-wrapper .es-ph{flex:0 0 56px;width:56px;height:56px;border-radius:8px;object-fit:cover;background:var(--cd2);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--mu)}
 .scout-app-wrapper .es-t{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:14px;color:var(--mu)}
 .scout-app-wrapper .es-t b{font-size:15px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* v8.32 Weekend sweep */
+/* v8.32 Estate sales this week */
 .scout-app-wrapper .wk-box{margin-top:16px;padding-top:12px;border-top:1px dashed var(--ln)}
 .scout-app-wrapper .wk-h{margin:12px 0 4px;font-size:14px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--i2)}
 .scout-app-wrapper .wk-h span{margin-left:4px;color:var(--mu)}
 .scout-app-wrapper .wk-list{display:grid;gap:8px;margin-top:6px}
+.scout-app-wrapper .es-form{flex-wrap:wrap}.scout-app-wrapper .es-form input{flex:1 1 220px;min-width:0}.scout-app-wrapper .es-form .b{flex:1 0 auto}   /* v8.32: the place box keeps its hint; the button wraps under it on a phone */
 .scout-app-wrapper .wk-row{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--cd);color:var(--mu);font-size:14px;text-decoration:none;min-width:0}
 .scout-app-wrapper .wk-row b{font-size:15px;color:var(--ink);overflow-wrap:anywhere}
 .scout-app-wrapper .wk-pick{border-color:var(--ac)}
@@ -4863,7 +4864,8 @@ function esLoad(v){
     rEs();
   })['catch'](function(){ES.busy=false;ES.err='Could not reach Prowl. Try again in a minute.';rEs()});
 }
-/* v8.32 Weekend sweep (worker v205 /weekend): the estate sales open this Friday to Sunday within 25 miles, in NEAR ME's
+/* v8.32 Estate sales this week (worker v205 /weekend): the estate sales open in the next 7 days (today through today+6,
+   this device's time zone; Matt, 2026-10-31: "Estate sales are all week") within 25 miles, in NEAR ME's
    own Estate sales tab beside Trips (v8.32: for Prowl Pro members and the owner's key; the worker decides). The place is the one typed in the
    tab's box (looked up with /geo, as In a location does), else where the phone is. The hunts in the Den go with it; a sale whose
    title, description or photo captions hold every word of a hunt is a Top pick, with the hunt and where it matched.
@@ -4878,17 +4880,17 @@ function wkRow(x,pick){
     '<b>'+esc(x.name)+'</b><span>'+esc(meta)+'</span><span class="wk-hr">'+esc(x.hours)+'</span>'+(x.standout?'<span class="wk-so">'+esc(x.standout)+'</span>':'')+'</a>';
 }
 function wkHtml(v){
-  var d=WK.data,h='<div class="wk-box" id="otp-wk"><h3 class="nearh">This weekend <span class="es-own">Fri\u2013Sun \u00b7 25 mi</span></h3>'+
-    '<p class="nearp">Estate sales open this weekend near '+(WK.town?'<b>'+esc(WK.town)+'</b>':'the place you type, or where you are')+'. Ones that mention your hunts come first.</p>'+
-    '<div class="addrow es-form"><input id="otp-wkIn" type="text" placeholder="City, ST, or empty for where you are" aria-label="City and state for this weekend\u2019s estate sales, or empty for where you are" autocomplete="off" enterkeyhint="go" value="'+esc(v||'')+'"><button type="button" id="otp-wkGo">'+(WK.busy?'Looking\u2026':(d?'Sweep again':'Sweep this weekend'))+'</button></div>';
+  var d=WK.data,h='<div class="wk-box" id="otp-wk"><h3 class="nearh">Estate sales this week <span class="es-own">next 7 days \u00b7 25 mi</span></h3>'+
+    '<p class="nearp">Estate sales open in the next 7 days near '+(WK.town?'<b>'+esc(WK.town)+'</b>':'the place you type, or where you are')+'. Ones that mention your hunts come first.</p>'+
+    '<div class="addrow es-form"><input id="otp-wkIn" type="text" placeholder="City, ST, or empty for where you are" aria-label="City and state for this week\u2019s estate sales, or empty for where you are" autocomplete="off" enterkeyhint="go" value="'+esc(v||'')+'"><button type="button" id="otp-wkGo">'+(WK.busy?'Looking\u2026':(d?'Sweep again':'Sweep this week'))+'</button></div>';
   if(WK.err)h+='<p class="nearp es-err" role="status">'+esc(WK.err)+'</p>';
   if(d){
     var picks=(d.picks||[]).filter(function(x){return wkUrlOk(x.url)}),rest=(d.rest||[]).filter(function(x){return wkUrlOk(x.url)});
-    if(!picks.length&&!rest.length)h+='<p class="nearp">No estate sales open this weekend within 25 miles yet. More are usually posted by Thursday.</p>';
+    if(!picks.length&&!rest.length)h+='<p class="nearp">No estate sales open in the next 7 days within 25 miles yet. New ones are posted every day.</p>';
     if(picks.length)h+='<h5 class="wk-h">Top picks <span>'+picks.length+'</span></h5><div class="wk-list">'+picks.map(function(x){return wkRow(x,true)}).join('')+'</div>';
-    else if(rest.length&&wkHunts().length)h+='<p class="nearp">None of this weekend\u2019s sales mention your hunts yet.</p>';
-    if(rest.length)h+='<h5 class="wk-h">'+(picks.length?'Also this weekend':'This weekend nearby')+' <span>'+rest.length+'</span></h5><div class="wk-list wk-brief">'+rest.map(function(x){return wkRow(x,false)}).join('')+'</div>';
-    if(picks.length||rest.length)h+='<button type="button" class="b p wk-plan" id="otp-wkPlan">\uD83D\uDDFA\uFE0F Plan my weekend</button>';   /* Plan my weekend */
+    else if(rest.length&&wkHunts().length)h+='<p class="nearp">None of this week\u2019s sales mention your hunts yet.</p>';
+    if(rest.length)h+='<h5 class="wk-h">'+(picks.length?'Also this week':'This week nearby')+' <span>'+rest.length+'</span></h5><div class="wk-list wk-brief">'+rest.map(function(x){return wkRow(x,false)}).join('')+'</div>';
+    if(picks.length||rest.length)h+='<button type="button" class="b p wk-plan" id="otp-wkPlan">\uD83D\uDDFA\uFE0F Plan my week</button>';   /* Plan my week */
     if(picks.length||rest.length)h+='<p class="nearp wk-src">From EstateSales.net'+(d.stale?' (from earlier)':'')+'. Tap a sale to open it there. Hours are your time.</p>';
   }
   return h+'</div>';
@@ -4898,12 +4900,12 @@ function wkLoad(){
   var inp=$('#otp-wkIn'),v=inp?String(inp.value||'').replace(/\s+/g,' ').trim():'';
   WK.q=v;WK.busy=true;WK.err='';rWk();
   function go(pt,town,city,stc){
-    WK.town=town||'where you are';WK.pt={lat:pt.lat,lng:pt.lng};WK.me=!town;   /* Plan my weekend starts here */
+    WK.town=town||'where you are';WK.pt={lat:pt.lat,lng:pt.lng};WK.me=!town;   /* Plan my week starts here */
     var u=SGW_API+'weekend?lat='+pt.lat.toFixed(2)+'&lng='+pt.lng.toFixed(2)+'&r=25&tz='+E(browserTz()||'')+(city&&stc?'&city='+E(city)+'&st='+E(stc):'')+'&h='+E(wkHunts().join('|'));
     fetch(u,{headers:nrH(),cache:'no-store'}).then(function(r){return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j}},function(){return {ok:false,status:r.status,j:null}})}).then(function(x){
       WK.busy=false;
       if(x.ok&&x.j&&Array.isArray(x.j.picks)){WK.data=x.j;WK.err=''}
-      else WK.err=x.status===429?'Too many sweeps just now. Try again in a little while.':x.status===401?'Sign in to Prowl Pro in the Den to sweep this weekend\u2019s sales.':x.status===403?'This weekend\u2019s estate sales are part of Prowl Pro.':((x.j&&x.j.error)||'Could not get this weekend\u2019s sales right now.');
+      else WK.err=x.status===429?'Too many sweeps just now. Try again in a little while.':x.status===401?'Sign in to Prowl Pro in the Den to sweep this week\u2019s sales.':x.status===403?'This week\u2019s estate sales are part of Prowl Pro.':((x.j&&x.j.error)||'Could not get this week\u2019s sales right now.');
       rWk();
     })['catch'](function(){WK.busy=false;WK.err='Could not reach Prowl. Try again in a minute.';rWk()});
   }
@@ -4913,11 +4915,11 @@ function wkLoad(){
   nrPos(function(p,e){if(!p){fail(e==='denied'?'Location is off for this site. Type a City, ST above instead.':'Could not tell where you are. Type a City, ST above instead.');return}go(p,'')});
 }
 /* v8.32 (Matt, 2026-10-30: "it shouldn't be put into den, it needs to be in the new near me section beside trips"): the
-   Sweep and Plan my weekend live in NEAR ME's fourth tab, Estate sales (#otp-nrT4, pane #otp-nrWkPane), beside Trips,
+   Sweep and Plan my week live in NEAR ME's fourth tab, Estate sales (#otp-nrT4, pane #otp-nrWkPane), beside Trips,
    no longer under Around you > More ways to look > Estate sales near you. v8.32 (Matt, 2026-10-31: "all Prowl Pro
    members"): the tab shows for a signed-in Pro member (mailPro) or the owner's key (nrWkSweep; worker /weekend checks
-   Pro itself), or once the Thursday email's signed plan link has opened the planner on this visit. Free visitors do not
-   see it (the Den's Thursday estate sales row carries the Pro link). The pane shows the Sweep (#otp-wkHost) or the
+   Pro itself), or once the daily email's signed plan link has opened the planner on this visit. Free visitors do not
+   see it (the Den's estate sales row carries the Pro link). The pane shows the Sweep (#otp-wkHost) or the
    planner (#otp-wpHost), one at a time. */
 function nrWkSweep(){return !!(fbOwnerKey()||mailPro())}
 function nrWkOk(){return nrWkSweep()||!!WK.link}
@@ -4926,7 +4928,7 @@ function rWk(){
   var host=$('#otp-wkHost'),ph=$('#otp-wpHost');if(!host||!ph)return;
   if(WK.planOn){
     host.hidden=true;host.innerHTML='';ph.hidden=false;
-    ph.innerHTML=(nrWkSweep()?'<button type="button" class="es-mapb wk-back" id="otp-wkBack">\u2039 This weekend\u2019s sales</button>':'')+'<h3 class="nearh">Plan my weekend</h3>'+wpHtml();
+    ph.innerHTML=(nrWkSweep()?'<button type="button" class="es-mapb wk-back" id="otp-wkBack">\u2039 This week\u2019s sales</button>':'')+'<h3 class="nearh">Plan my week</h3>'+wpHtml();
     var bk=$('#otp-wkBack');if(bk)bk.addEventListener('click',function(){WK.planOn=false;rWk()});
     return;
   }
@@ -4938,19 +4940,19 @@ function rWk(){
   var wi=$('#otp-wkIn');if(wi)wi.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();wkLoad()}});
   var wpb=$('#otp-wkPlan');if(wpb)wpb.addEventListener('click',wpFromSweep);
 }
-/* opens NEAR ME on Estate sales (from Plan my weekend, or the email's plan link) */
+/* opens NEAR ME on Estate sales (from Plan my week, the email's plan link, or its ?wk=1) */
 function nrWkShow(){
   nrWkTab();
   if(typeof nearOpen==='function'&&nearOpen()){nrMode('weekend');return}
   NR.wkGo=1;openNear();
 }
-/* v8.32 Plan my weekend (worker v205 /order and /weekend/plan): the Sweep's sales as a day-by-day route, shown in NEAR ME >
-   Estate sales in place of the Sweep (a back button returns to it). Opened from "Plan my weekend" under the Sweep
-   results, or from the Thursday email's button (?wkplan=<ids>&wkp=<picks>&wkzip=ZIP,
+/* v8.32 Plan my week (worker v205 /order and /weekend/plan): the Sweep's sales as a day-by-day route over the next 7
+   days, shown in NEAR ME > Estate sales in place of the Sweep (a back button returns to it). Opened from "Plan my week"
+   under the Sweep results, or from the daily email's button (its estate sales section) (?wkplan=<ids>&wkp=<picks>&wkzip=ZIP,
    signed by the worker; no app or sign-in). The start is the place the sweep used (the typed town, the phone, or the
    email's ZIP); when there is none, the saved ZIP (Den > Settings > Only what fits); when there is no ZIP either, one ZIP
-   box. Top picks start checked, the others are one tap. wpSplit puts each checked sale on its first open day this
-   weekend (v8.32, Matt 2026-10-31: opening day), else its next open day when that one is full or its hours do not fit, at most WP_CAP a day, WP_STAY minutes at each, and never so that a stop is
+   box. Top picks start checked, the others are one tap. wpSplit puts each checked sale on its first open day in
+   the 7 days (v8.32, Matt 2026-10-31: opening day), else its next open day when that one is full or its hours do not fit, at most WP_CAP a day, WP_STAY minutes at each, and never so that a stop is
    reached before it opens (the start waits) or less than WP_LAST_IN minutes before it closes; what does not fit is
    named with why. Each day is then ordered by Road Trip's Optimize route (worker /order, a loop from the start), timed
    with its legs; an order that would break a sale's hours keeps wpSplit's order instead. Sales whose company has not
@@ -5078,7 +5080,7 @@ function wpDayHtml(d,now){
 }
 function wpHtml(){
   var h='<div id="otp-wp" class="wp">',now=Date.now(),P=WP.plan,i,s,sel=WP.sales.filter(function(s){return s.addr}),pend=WP.sales.filter(function(s){return !s.addr});
-  if(WP.busy)return h+'<p class="nearp">'+FLY3+'Getting this weekend\u2019s sales\u2026</p></div>';
+  if(WP.busy)return h+'<p class="nearp">'+FLY3+'Getting this week\u2019s sales\u2026</p></div>';
   if(WP.err)h+='<p class="nearp es-err" role="status">'+esc(WP.err)+'</p>';
   if(!WP.sales.length)return h+(WP.err?'':'<p class="nearp">No sales to plan.</p>')+'</div>';
   if(!WP.start||WP.zipBox){
@@ -5086,12 +5088,12 @@ function wpHtml(){
     if(!WP.start)return h+'</div>';
   }else h+='<p class="nearp wp-from">From <b>'+esc(WP.start.label||'where you are')+'</b> <button type="button" class="es-mapb" data-wp="chg">Change</button></p>';
   if(P){
-    if(!P.days.length)h+='<p class="nearp">'+(wpChosen().filter(function(s){return s.addr}).length?'None of the checked sales fit a route this weekend.':'Check a sale below to plan the route.')+'</p>';
+    if(!P.days.length)h+='<p class="nearp">'+(wpChosen().filter(function(s){return s.addr}).length?'None of the checked sales fit a route this week.':'Check a sale below to plan the route.')+'</p>';
     else h+='<p class="nearp nr-etan">Times allow about '+WP_STAY+' min at each sale, and no sale is reached before it opens or less than '+WP_LAST_IN+' min before it closes. Hours are your time.</p>';
     for(i=0;i<P.days.length;i++)h+=wpDayHtml(P.days[i],now);
     if(P.dropped.length)h+='<div class="wp-drop"><p class="nearp nr-late">Didn\u2019t fit:</p><ul>'+P.dropped.map(function(x){return '<li><b>'+esc(x.s.name)+'</b>: '+esc(x.why)+(x.full?' (5 a day is the most).':'.')+'</li>'}).join('')+'</ul></div>';
   }
-  h+='<h5 class="wk-h">This weekend\u2019s sales <span>'+sel.length+'</span></h5><p class="nearp">Top picks start checked. Tap a sale to add it or take it off.</p><div class="wp-list">';
+  h+='<h5 class="wk-h">This week\u2019s sales <span>'+sel.length+'</span></h5><p class="nearp">Top picks start checked. Tap a sale to add it or take it off.</p><div class="wp-list">';
   for(i=0;i<sel.length;i++){s=sel[i];h+='<label class="wp-sale'+(wpPick(s)?' wk-pick':'')+'"><input type="checkbox" data-wpid="'+esc(s.id)+'"'+(WP.on[s.id]?' checked':'')+'><span class="wp-t">'+(wpPick(s)?'<span class="wk-m">Top pick'+(s.match?' \u00b7 '+esc(s.match.hunt):'')+'</span>':'')+'<b>'+esc(s.name)+'</b><span>'+esc([s.city&&s.st?s.city+', '+s.st:s.city,typeof s.dist==='number'?s.dist+' mi':''].filter(function(v){return !!v}).join(' \u00b7 '))+'</span><span class="wk-hr">'+esc(s.hours||'')+'</span></span></label>'}
   h+='</div>';
   if(pend.length)h+='<h5 class="wk-h">Address pending <span>'+pend.length+'</span></h5><p class="nearp">The company has not posted the street address yet, so these stay off the route. Check back later.</p><div class="wk-list wk-brief">'+pend.map(function(s){return '<a class="wk-row wp-pend" href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer"><b>'+esc(s.name)+'</b><span>'+esc((s.city?s.city+(s.st?', '+s.st:'')+' \u00b7 ':'')+'address pending'+(s.addrAt>now?', posted '+NR_D3[new Date(s.addrAt).getDay()]+' '+nrClock(s.addrAt):''))+'</span><span class="wk-hr">'+esc(s.hours||'')+'</span></a>'}).join('')+'</div>';
@@ -5127,7 +5129,7 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('change',function(e){var c=e.target;if(!c||!c.matches||!c.matches('#otp-wp input[data-wpid]'))return;var id=c.getAttribute('data-wpid');if(c.checked)WP.on[id]=1;else delete WP.on[id];wpPlan()});
 document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target&&e.target.id==='otp-wpZip'){e.preventDefault();wpZip(e.target.value)}});
-/* the Thursday email's button: ?wkplan=<ids>&wkp=<picks>&wkzip=ZIP&wkx=<expiry>&wks=<signature> opens the planner */
+/* the daily email's Plan my week button: ?wkplan=<ids>&wkp=<picks>&wkzip=ZIP&wkx=<expiry>&wks=<signature> opens the planner */
 try{(function(){
   var m=/[?&]wkplan=([0-9,]{3,200})/.exec(location.search);if(!m)return;
   function g(k){var r=new RegExp('[?&]'+k+'=([^&#]*)').exec(location.search);return r?decodeURIComponent(r[1]):''}
@@ -5139,12 +5141,18 @@ try{(function(){
     wpOpen({sales:[],busy:true});
     fetch(SGW_API+'weekend/plan?'+q,{headers:nrH(),cache:'no-store'}).then(function(r){return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j||{}}},function(){return {ok:false,status:r.status,j:{}}})}).then(function(x){
       if(!$('#otp-wp'))return;
-      if(!x.ok||!Array.isArray(x.j.sales)){wpOpen({sales:[],err:x.status===410?'This plan link has run out. Next Thursday\u2019s email brings a new one.':x.status===429?'Too many plans just now. Try again in a little while.':'This weekend\u2019s sales could not be loaded just now. Try the link again in a minute.'});return}
+      if(!x.ok||!Array.isArray(x.j.sales)){wpOpen({sales:[],err:x.status===410?'This plan link has run out. Your next Prowl email with estate sales brings a new one.':x.status===429?'Too many plans just now. Try again in a little while.':'This week\u2019s sales could not be loaded just now. Try the link again in a minute.'});return}
       var st0=x.j.start;
       wpOpen({sales:x.j.sales,missing:(x.j.missing||[]).length,start:st0&&typeof st0.lat==='number'?{lat:st0.lat,lng:st0.lng,label:st0.zip?st0.zip+(st0.town&&st0.town!==st0.zip?' ('+String(st0.town).split(',')[0]+')':''):st0.town,me:false}:null});
     })['catch'](function(){if($('#otp-wp'))wpOpen({sales:[],err:'Prowl could not be reached. Check your signal and try the link again.'})});
   },700);
 })()}catch(e){}
+/* the daily email's "N more estate sales near you this week": ?wk=1 opens NEAR ME > Estate sales once the Den knows the
+   member is Pro (else NEAR ME as it is) */
+try{if(/[?&]wk=1(&|$)/.test(location.search)){
+  try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])wk=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
+  (function wkGo(n){setTimeout(function(){if(nrWkSweep()||n>=8)nrWkShow();else wkGo(n+1)},n?600:700)})(0);
+}}catch(e){}
 function rEs(){
   var box=$('#otp-esBox');if(!box)return;
   if(!fbOwnerKey()){box.hidden=true;box.innerHTML='';return}
@@ -5156,7 +5164,7 @@ function rEs(){
     '<div class="addrow es-form"><input id="otp-esIn" type="text" placeholder="City, ST (like Novi, MI)" aria-label="City and state for estate sales" value="'+esc(atLive()&&atLive().city&&atLive().st?atLive().city+', '+atLive().st:esPlaceGet())+'"><button type="button" id="otp-esGo">'+(ES.busy?'Looking…':'Show sales')+'</button></div>'+
     (ES.err?'<p class="nearp es-err" role="status">'+esc(ES.err)+'</p>':'')+
     (d&&all.length?'<p class="nearp">'+items.length+' sale'+(items.length===1?'':'s')+(ES.far||!all.some(function(x){return x.dist!=null})?' near ':' within 30 miles of ')+esc(d.city+', '+d.st)+' from EstateSales.net'+(d.stale?' (from earlier)':'')+'. Tap one to open it there.'+(far||ES.far?' <button type="button" class="es-mapb" id="otp-esFar">'+(ES.far?'Only within 30 miles':'Show '+far+' farther')+'</button>':'')+(mapped?' <button type="button" class="es-mapb" id="otp-esMapB">'+(ES.map?'Hide the map':'Show on a map')+'</button>':'')+'</p>'+
-      '<div id="otp-esMap" class="es-map"'+(ES.map?'':' hidden')+'></div><div class="es-list">'+esList(items)+'</div>':'');   /* v8.32: the Weekend sweep is NEAR ME > Estate sales now (rWk) */
+      '<div id="otp-esMap" class="es-map"'+(ES.map?'':' hidden')+'></div><div class="es-list">'+esList(items)+'</div>':'');   /* v8.32: the estate sales Sweep is NEAR ME > Estate sales now (rWk) */
   var go=$('#otp-esGo'),inp=$('#otp-esIn');
   if(go)go.addEventListener('click',function(){esLoad(inp.value)});
   if(inp)inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();esLoad(inp.value)}});
@@ -7880,7 +7888,7 @@ function prefs(){
   o.fbusa=(Array.isArray(p.fbusa)?p.fbusa:[]).map(function(h){return String(h).toLowerCase()});   /* v8.27: hunts Facebook searches across the USA */
   o.noai=mGet('aiOff')==='1'?1:0;   /* v6.33 */
   o.letter=p.letter==='off'?'off':'';   /* v7.46: the Sunday letter */
-  o.estate=p.estate==='off'?'off':'';   /* v8.32: the Thursday estate sale email (worker v205) */
+  o.estate=p.estate==='off'?'off':'';   /* v8.32: estate sales in the daily email (worker v205) */
   return o;
 }
 var PREF_RADII=[25,50,100];
@@ -7947,14 +7955,15 @@ function letterFetch(){
       if(rc&&hd&&c&&!rc.querySelector('.lt-card')){tmp=document.createElement('div');tmp.innerHTML=c;hd.parentNode.insertBefore(tmp.firstChild,hd.nextSibling)}
     })['catch'](function(){});
 }
-/* v8.32: the Thursday estate sale email (worker v205). Shown only when the worker says it can go to this member
-   (j.estate: v8.32, every signed-in member; a free member sees it locked with the Pro link); Pro, and it needs the local-pickup ZIP. */
+/* v8.32: estate sales in the daily email (worker v205; Matt, 2026-10-31: no separate Thursday email). Shown only when the
+   worker says it can go to this member (j.estate: every signed-in member; a free member sees it locked with the Pro
+   link); Pro, and it needs the local-pickup ZIP. Same key as before (prefs.estate), on unless "off". */
 function estSetHtml(p,pro){
   if(!MAIL.estate)return '';
-  var off=p.estate==='off',h='<div class="mail-sec" id="otp-estSet"><h4>Thursday estate sales<small>'+(pro?'Prowl Pro':'\uD83D\uDD12 Prowl Pro')+'</small></h4><div class="mail-seg">';
+  var off=p.estate==='off',h='<div class="mail-sec" id="otp-estSet"><h4>Estate sales in my daily email<small>'+(pro?'Prowl Pro':'\uD83D\uDD12 Prowl Pro')+'</small></h4><div class="mail-seg">';
   h+='<button type="button" data-mail="estate" data-v="on"'+(off?' aria-pressed="false"':' class="on" aria-pressed="true"')+(pro?'':' disabled')+'>On</button>';
   h+='<button type="button" data-mail="estate" data-v="off"'+(off?' class="on" aria-pressed="true"':' aria-pressed="false"')+(pro?'':' disabled')+'>Off</button></div>';
-  h+='<p class="mail-fine">'+(!pro?'<a class="sgw-ml" href="'+PRO_URL+'">Prowl Pro</a> adds a Thursday email of the weekend\u2019s estate sales near your ZIP, the ones that mention your hunts first.':off?'Off: no Thursday estate sale email. Your alerts emails are separate.':p.zip?'Thursday mornings: estate sales open Friday to Sunday within 25 miles of '+esc(p.zip)+', the ones that mention your hunts first, each linked to its page on EstateSales.net.':'Add your ZIP under Only what fits, and Thursday mornings bring the estate sales open that weekend within 25 miles, the ones that mention your hunts first.')+'</p>';
+  h+='<p class="mail-fine">'+(!pro?'<a class="sgw-ml" href="'+PRO_URL+'">Prowl Pro</a> adds the estate sales near your ZIP that mention your hunts to your daily Prowl email, as soon as they are posted.':off?'Off: your daily emails carry no estate sales.':p.zip?'New estate sales open in the next 7 days within 25 miles of '+esc(p.zip)+' that mention your hunts, in your daily Prowl email, each linked to its page on EstateSales.net.':'Add your ZIP under Only what fits, and your daily Prowl email brings the new estate sales within 25 miles that mention your hunts.')+'</p>';
   return h+'</div>';
 }
 function letterSetHtml(p){
@@ -8021,7 +8030,7 @@ function prefsHtml(on,em,n){
   var p=prefs(),pro=mailPro(),act=prefsActive(),hs=mailHunts(),h='',i,k,muted,locked,paused=prefsPaused();
   h+=pncHtml();   /* v6.93: Pounce */
   h+=letterSetHtml(p);   /* v7.46: the weekly letter */
-  h+=estSetHtml(p,pro);   /* v8.32: Thursday estate sales */
+  h+=estSetHtml(p,pro);   /* v8.32: estate sales in my daily email */
   /* how often */
   h+='<div class="mail-sec"><h4>How often</h4><div class="mail-seg">';
   var fw=MAIL.freeWeekly&&!pro,fq=fw?'weekly':p.freq;   /* v6.05: free = Mondays */
@@ -12294,7 +12303,7 @@ function nrEtas(t,stops){
   return {at:out,leave:t0,routed:!!legs,src:t.legsSrc||''};
 }
 /* a leg's minutes without the router: straight-line miles, a quarter more for the road, at mpm miles a minute (45 mph);
-   v8.32: shared with Plan my weekend */
+   v8.32: shared with Plan my week */
 function nrEstMin(a,b,mpm){return Math.round(nrKm(a,b)*0.621371*1.25/(mpm||0.75))}
 /* closed when you get there, on a day it opens at all */
 function nrLateAt(p,eta,day){if(!p||!p.hours||!eta)return false;var n=nrNext(p.hours,eta),wd=new Date(eta).getDay();return !!(n&&!n.open&&nrDayHours(p.hours,wd).open)}

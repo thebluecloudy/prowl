@@ -1,8 +1,10 @@
-/* ---------- v205: Weekend sweep (estate sales this Fri-Sun near a point) ----------
-   Pure helpers for GET /weekend (the page's Den > Local "This weekend" list) and the Thursday-morning Pro estate email.
+/* ---------- v205: estate sales this week (the next 7 days near a point) ----------
+   Pure helpers for GET /weekend (the page's NEAR ME > Estate sales list; the route keeps its name) and the "Estate sales
+   near you" section of the daily Prowl email. v205 (Matt, 2026-10-31: "Estate sales are all week, we can't just look at
+   weekend"): the window is today through today+6 in the caller's time zone, no longer the coming Friday to Sunday.
    EstateSales.net is the only source: its sale list near a point (the JSON its own map asks for,
    /api/sale-details?bypass=bycoordinatesanddistance:LAT_LNG_MILES&include=dates) and, for the nearest sales open this
-   weekend, each sale's own page (description and photo captions, for matching hunts). Every sale shown carries its own
+   week, each sale's own page (description and photo captions, for matching hunts). Every sale shown carries its own
    EstateSales.net link; a sale without one, or whose page answers 404/410, is never shown.
    Times: EstateSales.net's "utc" dates are real instants written as "Fri 2026-10-30 10:00 AM EDT (UTC-04:00)"; its
    "local" dates are shifted and are never used here. Hours are written in the time zone the caller passes. */
@@ -93,38 +95,44 @@ export function wkFromCity(items, center, radiusMi) {
   return out;
 }
 
-/* ---- the weekend, in a time zone ---- */
+/* ---- the week, in a time zone ---- */
 function parts(ms, tz) {
   const p = new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23", weekday: "short" }).formatToParts(new Date(ms));
   const g = t => (p.find(x => x.type === t) || {}).value || "";
   return { y: Number(g("year")), m: Number(g("month")), d: Number(g("day")), h: Number(g("hour")) % 24, mi: Number(g("minute")), wd: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(g("weekday").slice(0, 3)) };
 }
 function offsetMs(ms, tz) { const p = parts(ms, tz); return Date.UTC(p.y, p.m - 1, p.d, p.h, p.mi) - Math.floor(ms / 60000) * 60000; }
-function localMidnight(y, m, d, tz) {
-  const guess = Date.UTC(y, m - 1, d);
+/* the instant of a local clock time in tz */
+function localAt(y, m, d, h, mi, tz) {
+  const guess = Date.UTC(y, m - 1, d, h, mi);
   let t = guess - offsetMs(guess, tz);
   t = guess - offsetMs(t, tz);   /* again at the answer, for a day that starts on the other side of a clock change */
   return t;
 }
-/* the coming Friday 00:00 to Monday 00:00 in tz; from Friday to Sunday it is this weekend. { from, to } in ms */
+function localMidnight(y, m, d, tz) { return localAt(y, m, d, 0, 0, tz); }
+/* v205 (Matt, 2026-10-31): the next 7 days, today 00:00 to the 7th day after at 00:00 in tz (today through today+6).
+   { from, to, tz } in ms. The name stays from the weekend version. */
+export const WK_DAYS = 7;
 export function wkWindow(nowMs, tz) {
-  const p = parts(nowMs, tz), back = p.wd === 5 ? 0 : p.wd === 6 ? 1 : p.wd === 0 ? 2 : -(5 - p.wd);
-  const fri = new Date(Date.UTC(p.y, p.m - 1, p.d) - back * DAY_MS);
-  const y = fri.getUTCFullYear(), m = fri.getUTCMonth() + 1, d = fri.getUTCDate();
-  const mon = new Date(Date.UTC(y, m - 1, d) + 3 * DAY_MS);
-  return { from: localMidnight(y, m, d, tz), to: localMidnight(mon.getUTCFullYear(), mon.getUTCMonth() + 1, mon.getUTCDate(), tz) };
+  const p = parts(nowMs, tz), end = new Date(Date.UTC(p.y, p.m - 1, p.d) + WK_DAYS * DAY_MS);
+  return { from: localMidnight(p.y, p.m, p.d, tz), to: localMidnight(end.getUTCFullYear(), end.getUTCMonth() + 1, end.getUTCDate(), tz), tz: tz };
 }
-/* the days of a sale still to come inside the window ([] = not open this weekend, or already over). v205 review: a sale
-   known only as one span (first start to last end, Thursday to Monday say) is clipped to the window by whole days, so
-   it keeps its opening and closing clock (Thu 9 AM - Mon 4 PM reads Fri 9 AM - Sun 4 PM) and never puts a sale on
-   Thursday or Monday; a span with nothing left inside the window is dropped. */
+/* ms with its local clock moved onto the local day of dayMs (both in tz) */
+function sameClockOn(ms, dayMs, tz) {
+  const c = parts(ms, tz), d = parts(dayMs, tz);
+  return localAt(d.y, d.m, d.d, c.h, c.mi, tz);
+}
+/* the days of a sale still to come inside the window ([] = not open in the next 7 days, or already over). v205 review: a
+   sale known only as one span (first start to last end) is clipped to the window by whole local days, so it keeps its
+   opening and closing clock (Mon 9 AM to the next Sunday 4 PM, seen on a Thursday, reads Thu 9 AM to Wed 4 PM) and
+   never reaches past the 7th day; a span with nothing left inside the window is dropped. */
 export function wkDaysIn(sale, win, nowMs) {
-  const lo = Math.max(win.from, nowMs || 0);
+  const lo = Math.max(win.from, nowMs || 0), tz = win.tz || "UTC";
   return (sale.days || []).map(d => {
     if (!d || !d.span) return d;
     let s = d.s, e = d.e;
-    for (let i = 0; s < win.from && i < 8; i++) s += DAY_MS;
-    for (let i = 0; e > win.to && i < 8; i++) e -= DAY_MS;
+    if (s < win.from) s = sameClockOn(d.s, win.from, tz);
+    if (e > win.to) e = sameClockOn(d.e, win.to - 1, tz);
     return s === d.s && e === d.e ? d : { s: s, e: e, span: 1 };
   }).filter(d => d && d.e > d.s && d.e > lo && d.s < win.to);
 }
@@ -132,13 +140,15 @@ export function wkDaysIn(sale, win, nowMs) {
 const D3 = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], M3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function clock(p) { const h = p.h % 12 || 12; return h + (p.mi ? ":" + String(p.mi).padStart(2, "0") : "") + " " + (p.h < 12 ? "AM" : "PM"); }
 function dayName(p) { return D3[p.wd] + " " + M3[p.m - 1] + " " + p.d; }
-/* "Fri Oct 30, 10 AM–5 PM · Sat Oct 31, 10 AM–2 PM", in tz; a sale known only by its first start and last end reads as a span */
+/* "Fri Oct 30, 10 AM–5 PM · Sat Oct 31, 10 AM–2 PM", in tz; a sale known only by its first start and last end reads as a
+   span. v205: a week can hold more days; past 4, "· +2 more days" */
 export function wkHours(days, tz) {
+  const n = (days || []).length;
   return (days || []).slice(0, 4).map(d => {
     const a = parts(d.s, tz), b = parts(d.e, tz);
     const same = a.y === b.y && a.m === b.m && a.d === b.d;
     return same ? dayName(a) + ", " + clock(a) + "\u2013" + clock(b) : dayName(a) + " " + clock(a) + " \u2013 " + dayName(b) + " " + clock(b);
-  }).join(" \u00b7 ");
+  }).join(" \u00b7 ") + (n > 4 ? " \u00b7 +" + (n - 4) + " more day" + (n === 5 ? "" : "s") : "");
 }
 
 /* ---- the sale's own page ---- */
@@ -152,7 +162,7 @@ function jsonBlocks(html) {
 }
 /* { desc, caps, img, addr, lat, lng, addrAt } from a sale page: the app's own record of the sale (plainTextDescription,
    pictures, latitude/longitude) or else its SaleEvent block. caps are the photo captions the seller typed, when there are
-   any. v205 (Plan my weekend): img is the page's own cover photo (its first og:image) when it has one; addr is the
+   any. v205 (Plan my week): img is the page's own cover photo (its first og:image) when it has one; addr is the
    SaleEvent's location.address.streetAddress ("" while the company keeps it hidden: showAddress false, or not posted
    yet), lat/lng the record's own position, addrAt when the address is due to be shown (ms, 0 unknown). */
 const ES_PIC = /^https:\/\/picturescdn\.estatesales\.net\/[^\s"'<>]+$/;
@@ -245,18 +255,18 @@ export function wkStandout(sale, detail, match) {
   return sale.pics ? sale.pics + " photos posted" : (sale.type || "");
 }
 
-/* one sale as the page and the email see it. v205 (Plan my weekend): its position (the page's own when read), street
-   address ("" = address pending, with addrAt when it is due), and its open days still to come this weekend (ms) */
+/* one sale as the page and the email see it. v205 (Plan my week): its position (the page's own when read), street
+   address ("" = address pending, with addrAt when it is due), and its open days still to come in the next 7 days (ms) */
 export function wkRowOf(s, det, match, days, tz) {
   const addr = (det && det.addr) || "", own = det && typeof det.lat === "number" && typeof det.lng === "number";
   return { id: s.id, name: s.name, url: s.url, city: s.city, st: s.st, co: s.co, dist: s.dist, type: s.type,
     at: days[0].s, start: new Date(days[0].s).toISOString(), hours: wkHours(days, tz), standout: wkStandout(s, det, match), img: (det && det.img) || "",
     match: match ? { hunt: match.hunt, where: match.where } : null,
     lat: own ? det.lat : s.lat, lng: own ? det.lng : s.lon, addr: addr, addrAt: !addr && det && det.addrAt ? det.addrAt : 0,
-    days: days.slice(0, 6).map(d => (d.span ? { s: d.s, e: d.e, span: 1 } : { s: d.s, e: d.e })) };
+    days: days.slice(0, WK_DAYS).map(d => (d.span ? { s: d.s, e: d.e, span: 1 } : { s: d.s, e: d.e })) };
 }
 /* the list a person sees: Top picks (a hunt matched) first, then the rest, at most cap in all. sales are already the
-   ones open this weekend, details is id -> detail (null when not fetched), gone is id -> 1 for dead links. */
+   ones open in the window, details is id -> detail (null when not fetched), gone is id -> 1 for dead links. */
 export function wkBuild(sales, details, hunts, win, nowMs, tz, cap) {
   cap = cap || WK_CAP;
   const picks = [], rest = [];
@@ -273,7 +283,7 @@ export function wkBuild(sales, details, hunts, win, nowMs, tz, cap) {
   const p = picks.slice(0, cap);
   return { picks: p, rest: rest.slice(0, Math.max(0, cap - p.length)), total: picks.length + rest.length };
 }
-/* the sales whose pages are worth reading: open this weekend, nearest first */
+/* the sales whose pages are worth reading: open in the next 7 days, nearest first */
 export function wkToRead(sales, win, nowMs, max) {
   return sales.filter(s => wkDaysIn(s, win, nowMs).length).sort((a, b) => a.dist - b.dist).slice(0, max || WK_DETAIL_MAX);
 }
@@ -284,9 +294,9 @@ export function wkHunts(v) {
   return out;
 }
 
-/* ---- v205: Plan my weekend ----
-   The Thursday email's "Plan my weekend" opens the Prowl page with the sweep's sale ids in its address (no app, no
-   sign-in): ?wkplan=<ids>&wkp=<top pick ids>&wkzip=<the ZIP the sweep used>&wkx=<expiry, s>&wks=<signature>. The page asks
+/* ---- v205: Plan my week ----
+   The daily email's "Plan my week" (its estate sales section) opens the Prowl page with the sale ids in its address (no
+   app, no sign-in): ?wkplan=<ids>&wkp=<top pick ids>&wkzip=<the ZIP the sweep used>&wkx=<expiry, s>&wks=<signature>. The page asks
    GET /weekend/plan for those sales (wkPlanRows) and plans the days itself. WK_PLAN_MAX ids at most. */
 export const WK_PLAN_MAX = 12;
 /* "1,2,3" (or an array) -> sale ids, digits only, no repeats, at most WK_PLAN_MAX */

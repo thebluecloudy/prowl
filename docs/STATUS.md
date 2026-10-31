@@ -11,66 +11,93 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.32 /
 
 Recently shipped, newest first:
 
-- **v8.32 / v205: Estate sales this weekend, for every Prowl Pro member** (Hark's feature, PR #281 /
-  `hark/estate-sweep`, built for Matt 2026-10-30; merged onto main with Matt's decisions of 2026-10-31). Numbered after
-  the release that takes page v8.31 / worker v204. Hark's three commits are kept (a merge, not a squash).
+- **v8.32 / v205: Estate sales this week, for every Prowl Pro member, in the daily email** (Hark's feature, PR #281 /
+  `hark/estate-sweep`, built for Matt 2026-10-30; merged onto main with Matt's decisions of 2026-10-31; PR #297 held
+  until the 7-day rework below was done). Numbered after the release that takes page v8.31 / worker v204. Hark's three
+  commits are kept (a merge, not a squash).
+  - **Matt's decision (2026-10-31):** "Estate sales are all week, we can't just look at weekend. Can this be part of
+    prowl email?" Answer chosen: **in the daily email**: a section in the daily Prowl email when a new estate sale near
+    the member matches a hunt (open in the next 7 days); no separate Thursday email; the tab shows the next 7 days.
   - **Where:** NEAR ME › **Estate sales**, a fourth tab right after Trips (`#otp-nrT4`, pane `#otp-nrWkPane`,
-    `nrMode('weekend')`, drawn by `rWk`; on a phone the four tabs sit two by two, `.tabs.nr-4`). **Sweep this weekend**
+    `nrMode('weekend')`, drawn by `rWk`; on a phone the four tabs sit two by two, `.tabs.nr-4`). **Sweep this week**
     sends the place typed in the tab's box (`#otp-wkIn`, looked up with `/geo`) or the phone's position (2 decimals),
-    the Den's own hunts and the time zone to `GET /weekend?lat&lng&r=25&tz&h=a|b|c`: the estate sales open the coming
-    Friday to Sunday within 25 miles, **Top picks** first (a sale whose title, description or photo captions hold every
-    word of a hunt, with the hunt and where), then the rest, at most 12, each linked to its own EstateSales.net page
-    (none without one; a 404/410 page drops the sale). The old Around you › More ways to look › Estate sales near you
+    the Den's own hunts and the time zone to `GET /weekend?lat&lng&r=25&tz&h=a|b|c` (the route keeps its name): the
+    estate sales open in the **next 7 days** (`wkWindow`: today 00:00 to today+7 00:00 in tz, so today through today+6)
+    within 25 miles, **Top picks** first (a sale whose title, description or photo captions hold every word of a hunt,
+    with the hunt and where), then the rest, at most 12, each linked to its own EstateSales.net page (none without one;
+    a 404/410 page drops the sale). Heading "Estate sales this week · next 7 days · 25 mi". A sale's hours list its days
+    in the window (`wkHours`, past 4 "· +N more days"). The old Around you › More ways to look › Estate sales near you
     block keeps only its city list.
   - **Who (Matt: "all Prowl Pro members"):** the tab shows for a signed-in Pro member (`mailPro()`) or the owner key
-    (`nrWkSweep`); free visitors do not see it (the Den's Thursday estate sales row shows them, locked, with the Pro
-    link). The worker decides Pro itself: `wkWho` lets the owner key through, everyone while `SALES_PUBLIC=on`, else
-    `fbWho` (a store session or `X-Prowl-Email`/`X-Prowl-Tok` member with `sub.pro`): 401 signed out, 403 not Pro. The
-    page sends `nrH()`; a 401/403 says so in the tab. `/weekend/plan` without a signature takes the same check.
+    (`nrWkSweep`); free visitors do not see it (the Den's estate sales row shows them, locked, with the Pro link). The
+    worker decides Pro itself: `wkWho` lets the owner key through, everyone while `SALES_PUBLIC=on`, else `fbWho` (a
+    store session or `X-Prowl-Email`/`X-Prowl-Tok` member with `sub.pro`): 401 signed out, 403 not Pro. The page sends
+    `nrH()`; a 401/403 says so in the tab. `/weekend/plan` without a signature takes the same check.
   - **Source (Matt: his EstateSales.net permission covers it):** EstateSales.net's map JSON
     (`/api/sale-details?bypass=bycoordinatesanddistance:LAT_LNG_MILES&include=dates`) and each sale's own page
     (description, photo captions, street address, position, cover photo). KV: `wk1:<point>:<mi>` 3 hours, `wkd2:<id>` a
-    day (3 hours while the address is hidden), `wkz:<zip>` the ZIP's centre 90 days. If the list fails the city page
-    (`esFetch`) stands in.
-  - **Thursday email:** 7 AM to noon in the member's time zone, to **every Pro member with a local-pickup ZIP** who has
-    not turned it off (`prefs.estate`, Den › Settings › Thursday estate sales; `/alerts/unsub?w=estate` and
-    List-Unsubscribe stop only it), no longer gated on `SALES_PUBLIC`/`SALES_TEST_EMAILS` (`wkTester` is gone). Nothing
-    open: no email. `sub.estate` = the day, so once. 1 a clock run (`AL_ESTATE_PER_RUN`, see Review fixes; ~60 runs in
-    the 7 AM to noon window; members nearby share the cached sweep). `/alerts/status` answers `estate: true` for every
-    member. Members with no hunts get it too (see Review fixes). Each sale shows its cover photo, and
-    a **Plan my weekend** button links `PROWL_APP?wkplan=<ids>&wkp=<picks>&wkzip&wkx&wks` (HMAC over ids, picks, ZIP,
-    expiry): it works for anyone it is forwarded to until the Monday after that weekend (Matt: keep as designed).
-  - **Plan my weekend** (`wpOpen`, in the same tab in place of the Sweep; "‹ This weekend's sales" goes back for a Pro
-    member or the owner): start from the sweep's place, the email's ZIP, the saved ZIP or one ZIP box; Top picks
-    checked; **each sale on its first open day this weekend** (Matt: opening day), falling back to its next open day
-    when that day already has 5 stops or its hours no longer fit the route; dropped with the reason only when no day
-    works (`wpSplit`; `WP_DAY_PREF`, the old Saturday-Sunday-Friday order, is gone). 45 min a stop, never reached
-    before it opens or within 30 min of closing; each day ordered by Road Trip's `/order` (`loop=1`, or `keep=1` when
-    the optimizer's order breaks a sale's hours), one Google Maps and one Apple Maps link a day, Rebuild from here.
-    Address-pending sales stay off the route.
+    day (3 hours while the address is hidden), `wkz:<zip>` the ZIP's centre 90 days, `wke:<point>:<day>` the day's sales
+    near a ZIP point for the email (36 hours). If the list fails the city page (`esFetch`) stands in.
+  - **The daily email's "Estate sales near you" section** (replaces the Thursday email: `alEstateSend`, its subjects,
+    its 7 AM-noon Thursday window and `alEstateDue`'s Thursday path are gone): for a **Pro member with a local-pickup ZIP**
+    and `prefs.estate` not "off" (Den › Settings › **Estate sales in my daily email**, same key, on unless "off"; free
+    members see the row locked with the Pro link). `alEstatePicks` (KV only) lists the sales open in the next 7 days
+    near the ZIP whose words hold every word of one of the member's hunts (`wkMatch`), that the member has not been sent
+    (`sub.estSent`: id → the day, newest 150, 30 days, `alEstateMark`), soonest first, at most 5 (`AL_ESTATE_SHOW`), each
+    with its cover photo, city, company, miles, days/hours in the window, the matched hunt and its own EstateSales.net
+    link; a **Plan my week** button (signed link, runs out at the end of the window, today+7, no longer the Monday
+    after); one line "N more estate sales near you this week →" (`PROWL_APP?wk=1`, which opens NEAR ME › Estate sales
+    for a Pro member). No new picks: no section. On a day with nothing else new, new picks alone send the email
+    (subject "Prowl: 2 estate sale picks · Pyrex, Fire-King"; with listings, "… · 2 estate sales" is added). The
+    member's days, frequency (`alSendDay`), pause and emails-off rules are the digest's own. The footer gets **Stop
+    estate sales in these emails** (`/alerts/unsub?w=estate`, now "Stop estate sales in your Prowl emails?" / "Estate
+    sales are off in your emails"; List-Unsubscribe stays the whole-email one). Members with no hunts get no section
+    (nothing to match), so the clock no longer runs a Pro check for them (review fix 2 below is undone).
+  - **Fetching ahead, inside the run's budget:** the digest never asks EstateSales.net anything. On a send day before
+    the member's digest has gone (`alEstateDue`: Pro, ZIP, on, emails on, not paused, `alSendDay`, `sub.sent` not today,
+    `sub.estate` not today, fewer than 3 tries), a clock run with room fetches for them (`alEstatePrep`: the ZIP's
+    point, the list, then up to 40 nearest sales open in the window with their pages, `wkEstItem` keeping each sale's
+    text for matching) and keeps it in `wke:<point>:<the member's day>`, shared by every member at that point. One fetch
+    a run (`AL_ESTATE_PER_RUN`), only while the run has `AL_ESTATE_CALLS` = 16 of `FB_RUN_CALLS` left after the hunt
+    checks still to come; its calls (`wkRun`) go into `runUsed()`, so the Facebook sweep gets what is left. Pages not
+    reached are read by a later run (`AL_ESTATE_PASSES` = 3); a record already there costs nothing (`alEstateReady`) and
+    marks the member's day ready (`sub.estate`). Not ready when the digest goes: it goes without the section, and the
+    picks come next time if still new. A failed try counts (`sub.estateTry`, 3 a day); a ZIP Google cannot place is
+    kept as `wkz:<zip>` { miss } 6 hours and marks the day done.
+  - **Plan my week** (`wpOpen`, in the same tab in place of the Sweep; "‹ This week's sales" goes back for a Pro member
+    or the owner): start from the sweep's place, the email's ZIP, the saved ZIP or one ZIP box; Top picks checked;
+    **each sale on its first open day in the 7 days** (Matt: opening day), falling back to its next open day when that
+    day already has 5 stops or its hours no longer fit the route; dropped with the reason only when no day works
+    (`wpSplit`); days in date order. 45 min a stop, never reached before it opens or within 30 min of closing; each day
+    ordered by Road Trip's `/order` (`loop=1`, or `keep=1` when the optimizer's order breaks a sale's hours), one Google
+    Maps and one Apple Maps link a day, Rebuild from here. Address-pending sales stay off the route. The signed link
+    (`/weekend/plan`, HMAC over ids, picks, ZIP, expiry) opens for anyone it is forwarded to until the window ends.
   - **Merge notes:** the FAQ answer keeps main's `www` URLs with Hark's "Tap Near me at the foot of the page" text (both
     the visible FAQ and its JSON-LD); `/alerts/status` keeps main's `fb` and Hark's `estate`; `alPrefs` keeps `fbusa`
     and `estate`. Comments and tests relabelled from v8.22 / v193 to v8.32 / v205.
-  - **Review fixes** (an independent review, still v8.32 / v205, worker only): (1) a Thursday send's real outside calls
-    are counted on the run (`wkRun`: the ZIP's geocode, the list, the city page, each sale page, the email, through
-    `wkZipPoint`/`wkGet`/`wkList`/`wkDetails`/`wkSweep`'s `run` argument; the HTTP routes pass none) and go into
-    `runUsed()`, the v200 `used` the Facebook sweep is left; a send starts only while the run still has
-    `AL_ESTATE_CALLS` = 16 of `FB_RUN_CALLS` after the hunt checks still to come, and its fetches stop at that
-    reservation (the sales not read are still listed); `AL_ESTATE_PER_RUN` back to 1. (2) Pro members with no hunts get
-    the Thursday email: the clock runs the day's Pro check for a member with no hunts only when the email would be due
-    if they were Pro, and every send waits for today's check (`sub.proDay` is today). (3) A try that did not finish is
-    counted (`sub.estateTry` { day, n }, `AL_ESTATE_TRIES` = 3 a Thursday); a ZIP Google answers has no place is kept
-    as `wkz:<zip>` { miss } for 6 hours (`WK_ZIP_MISS_TTL`, `gGeocode`'s `ans.none`) and marks that Thursday done; a
-    Google outage is only a try. (4) A span-only sale (first start to last end) is clipped to Fri-Sun by whole days in
-    `wkDaysIn`, keeping its clock (Thu 9 AM - Mon 4 PM reads Fri 9 AM - Sun 4 PM); a span with nothing left is dropped.
-    Tests: the review tests at the end of `worker/__tests__/weekend-v205.test.mjs` (alTick run with stand-ins).
-  - Privacy section: a bullet on estate sales this weekend (what goes to EstateSales.net, the ZIP, the Thursday email,
-    the plan link) and EstateSales.net under Who else; paste it with the Facebook bullets.
-  - Tests: `worker/__tests__/weekend-v205.test.mjs` (free 403, signed out 401, owner, Pro by token and by session,
-    `SALES_PUBLIC`; the email for every Pro member; `/weekend/plan` for a Pro member, a free member and a forwarded
-    link), `__tests__/page/weekend-sweep-v832.test.mjs` (tab hidden for free, shown for Pro with the member headers, the
-    403 note), `__tests__/page/weekend-plan-v832.test.mjs` (first open day, the fallbacks, dropped only when no day
-    works). Checked in Chromium at 390x844 (shots in `/home/user/shots/estate-*.png`).
+  - **Review fixes** (an independent review, still v8.32 / v205, worker only; carried into the 7-day rework): (1) the
+    estate fetch's real outside calls are counted on the run (`wkRun`: the ZIP's geocode, the list, the city page, each
+    sale page, through `wkZipPoint`/`wkGet`/`wkList`/`wkDetails`'s `run` argument; the HTTP routes pass none) and go into
+    `runUsed()`; a fetch starts only while the run still has `AL_ESTATE_CALLS` after the hunt checks still to come, and
+    stops at that reservation. (2) Pro members with no hunts got the Thursday email: undone with the Thursday email (no
+    hunts, nothing to match). (3) A try that did not finish is counted (`sub.estateTry` { day, n }, `AL_ESTATE_TRIES` = 3
+    a day); a ZIP Google answers has no place is kept as `wkz:<zip>` { miss } for 6 hours (`WK_ZIP_MISS_TTL`) and marks
+    that day done; a Google outage is only a try. (4) A span-only sale (first start to last end) is clipped to the 7 days
+    by whole local days in `wkDaysIn`, keeping its clock across a clock change (Mon 9 AM to the Sunday after next 4 PM,
+    seen on a Thursday, reads Thu 9 AM - Wed 4 PM); a span with nothing left is dropped.
+  - Privacy section: the estate sales bullet now describes the next 7 days and the daily email's section (what goes to
+    EstateSales.net, the ZIP, `wke:`, the sent sale numbers kept 30 days, the plan link until the 7 days end), and
+    EstateSales.net under Who else; paste it with the Facebook bullets.
+  - Tests: `worker/__tests__/weekend-v205.test.mjs` (the 7-day window and DST, clipping, free 403, signed out 401,
+    owner, Pro by token and by session, `SALES_PUBLIC`; the digest section included for Pro + ZIP + new matching sales
+    and left out when none is new, off, free, no ZIP or not fetched yet; sent ids remembered so a sale is not repeated,
+    bounded and expiring; a day with only new estate picks still sends; prefetch then a KV-only digest; the plan link's
+    expiry; `/weekend/plan` for a Pro member, a free member and a forwarded link; alTick: one fetch a run, the budget
+    room, a ready record costs nothing, partly ready, 3 tries), `__tests__/page/weekend-sweep-v832.test.mjs` (tab hidden
+    for free, shown for Pro with the member headers, the 403 note, the 7-day copy, the Den switch, `?wk=1`),
+    `__tests__/page/weekend-plan-v832.test.mjs` (first open day, the fallbacks, weekdays in date order, dropped only when
+    no day works). Checked in Chromium at 390x844, light and cockpit, and the digest email rendered (shots in
+    `/home/user/shots/estate7-*.png`).
 - **v8.31 / v204: Facebook says why a hunt shows nothing, and ships only for All USA** (Matt, 2026-10-31, after Store ›
   Facebook showed most hunts "Checks soon" and several "Nothing on Facebook for this hunt lately"; he approved all three).
   - **Ships only for All USA hunts:** in `fbSweep` a near-me hunt is one job (pickup within the member's radius); an All
