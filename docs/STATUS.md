@@ -1,13 +1,13 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-30 (v8.21 / v194).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.21 / v195).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.21** | 375,773 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v194** | |
+| Worker | **v195** | |
 
 Recently shipped, newest first:
 
@@ -27,6 +27,16 @@ Recently shipped, newest first:
   first, in hunt order, as they land; the quiet ones fold into one line of chips (#otp-olNone, "Nothing on <site> right
   now"), lookups that failed into another (#otp-olErr); the summary counts what is still being checked. No new keys.
   Test `__tests__/page/one-site-live-v819.test.mjs` (was v818).
+- **v195: Muse's prices fitted to Matt's own Meta bill.**
+  - **His Oct 24–30 export:** $1.65 for 263 requests, 1.13M input tokens, 128k output tokens and 114 web searches.
+  - **What the old defaults said:** v193's third-party $1.25 / $4.25 per 1M plus $2.50 per 1,000 searches came to
+    $2.25 for that week.
+  - **What fits:** $0.98 per 1M input (list $1.25, but cached reads are cheaper and the export does not split them),
+    $4.25 output, and no separate search charge. A test holds each day within 3 cents and the week to $1.65.
+  - **His earlier usage file** (Sep 30 – Oct 21, about 740 requests a day) is therefore TypeSafe/Jev, not Muse (about
+    38 a day): about $4.89 for those 22 days.
+  - **SerpApi:** Matt set `SERPAPI_KEY` (2026-10-30), so Lens matches in the photo check are live on SerpApi's free
+    plan (8 a day, 250 a month).
 - **v194: Jev's price is TypeSafe's own.** The Spending tab's default for Jev is $0.04 per 1M input tokens, from
   TypeSafe's model page (Matt sent it), was $0.042 from a third-party listing. A price Matt saved is kept.
 - **v193: Spending tab in the admin** (Matt, 2026-10-30: "how much i am spending in the ai, muse, jev, google, etc").
@@ -293,7 +303,7 @@ Recently shipped, newest first:
   2. **Generic labels dropped** (`VISION_GENERIC`: sculpture, figurine, ceramic, statue, colours...) from Seen as and
      from the AI.
   3. **Lens's own matches through SerpApi's free plan** (250 searches a month): with the worker secret **SERPAPI_KEY**
-     (not set yet: Matt makes a free account at serpapi.com), the quick check puts the first photo in R2 under
+     (set by Matt on 2026-10-30, free plan), the quick check puts the first photo in R2 under
      `finds/lens/` behind a 2-minute signed `GET /lens/<k>.jpg`, asks SerpApi's `google_lens` engine, deletes the photo,
      and hands back `lens` (up to 6: title, url, image, source, price). `LENS_PER_DAY` 8 (gl:all on the usage card).
      The titles go to the AI as the strongest evidence of maker and model (`apPrompt` 7th argument). The page shows
@@ -1717,7 +1727,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.22, worker v195**. Claim one here when you start.
+Next free numbers: **page v8.22, worker v196**. Claim one here when you start.
 
 ## What's next
 
@@ -1734,7 +1744,7 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 - **Spending tab (worker v193):** open admin › Spending, then:
   - add your monthly bills (Shopify plan, Cloudflare Workers, a SerpApi plan if you pay for one, your Claude plan);
-  - check the Muse price against your bill (a third-party list price; Jev's is TypeSafe's own since v194);
+  - type 0 as the SerpApi Lens price (free plan; a paid plan goes under monthly bills);
   - after a month, compare the tab's Google total with the Google Cloud bill and adjust prices if needed.
 - **Security and trust (2026-10-28 audit), the admin steps only Matt can take:**
   1. Done (Matt, 2026-10-30): the privacy policy is Shopify's template again with the three Prowl sections from

@@ -134,7 +134,7 @@ test("rows older than SPEND_KEEP_DAYS are pruned once a day, when a row is added
 
 test("prices: list prices until saved; empty clears one, a bad number is refused; monthly bills cleaned and capped", () => {
   const d = SP.spendDefaults();
-  assert.deepEqual(d.prices.muse, { tin: 1.25, tout: 4.25, ws: 2.5 });
+  assert.deepEqual(d.prices.muse, { tin: 0.98, tout: 4.25, ws: 0 }, "v195: fitted to Matt's Meta bill");
   assert.deepEqual(d.prices.g_text, { call: 40 });
   assert.deepEqual(d.prices.lens, { call: null }, "SerpApi bills by plan");
   assert.deepEqual(d.prices.g_nearby, { call: 40 }, "from Matt's Google billing price list");
@@ -148,7 +148,7 @@ test("prices: list prices until saved; empty clears one, a bad number is refused
   for (const s of SP.SPEND_SERVICES) assert.match(s.src, /^https:\/\//, s.key + " has a source"), assert.match(s.bill, /^https:\/\//, s.key + " has a billing page");
   let r = SP.spendCfgClean({ prices: { muse: { tin: "2", tout: "", call: 9 }, g_text: { call: 35.123456 }, nope: { call: 1 } } });
   assert.deepEqual(r.errors, []);
-  assert.deepEqual(r.cfg.prices.muse, { tin: 2, tout: null, ws: 2.5 }, "a field the service does not use is ignored");
+  assert.deepEqual(r.cfg.prices.muse, { tin: 2, tout: null, ws: 0 }, "a field the service does not use is ignored");
   assert.equal(r.cfg.prices.g_text.call, 35.1235);
   assert.equal("nope" in r.cfg.prices, false);
   r = SP.spendCfgClean({ prices: { g_text: { call: -1 }, g_geo: { call: "abc" }, jev: { tin: 1e9 } } });
@@ -178,6 +178,20 @@ test("the estimate: per 1,000 calls and per 1M tokens; a used service without a 
   assert.equal(SP.spendCost(S.muse, { n: 1, ti: 1e6, to: 0, ws: 0 }, { tin: 1.25, tout: null, ws: null }), 1.25, "only the parts used need a price");
 });
 
+test("v195: the Muse defaults price Matt's Oct 24-30 Meta week at his bill's $1.65, day by day within 3 cents", () => {
+  const S = SP.SPEND_SERVICES.find((s) => s.key === "muse"), p = SP.spendDefaults().prices.muse;
+  /* his export: date, input tokens, output tokens, web searches, spend */
+  const week = [["10-24", 271547, 24079, 31, 0.38], ["10-25", 497504, 32244, 47, 0.6], ["10-26", 114354, 10672, 10, 0.15], ["10-27", 5553, 5133, 0, 0.02],
+    ["10-28", 143798, 21900, 18, 0.25], ["10-29", 66059, 17383, 5, 0.14], ["10-30", 32771, 16925, 3, 0.11]];
+  let sum = 0;
+  for (const [d, ti, to, ws, paid] of week) {
+    const c = SP.spendCost(S, { n: 1, ti, to, ws }, p);
+    assert.ok(Math.abs(c - paid) <= 0.03, d + ": " + c + " vs " + paid);
+    sum += c;
+  }
+  assert.ok(Math.abs(sum - 1.65) <= 0.05, "the week: " + sum);
+});
+
 test("periods are UTC: today, 7 days, this month, last month (across a year end too)", () => {
   assert.deepEqual(SP.spendPeriods(NOW), { today: { from: "2026-10-30", to: "2026-10-30" }, d7: { from: "2026-10-24", to: "2026-10-30" },
     month: { from: "2026-10-01", to: "2026-10-30" }, last: { from: "2026-09-01", to: "2026-09-30" } });
@@ -194,9 +208,9 @@ test("the summary adds each service per period and the monthly bills to the mont
   assert.deepEqual([g.today.n, g.d7.n, g.month.n, g.last.n], [100, 200, 1300, 1050]);
   assert.deepEqual([g.today.cost, g.d7.cost, g.month.cost, g.last.cost], [4, 8, 12, 2], "today and 7 days at list price; the months take off the free 1,000");
   assert.equal(s.services.find((x) => x.key === "lens").today.cost, null, "SerpApi has no per-call price");
-  assert.deepEqual(s.totals.today, { calls: 4 + 5.5, unpriced: 1 });
+  assert.deepEqual(s.totals.today, { calls: 4 + 5.23, unpriced: 1 });
   assert.equal(s.totals.fixed, 44);
-  assert.equal(s.totals.monthAll, Math.round((12 + 5.5 + 44) * 100) / 100);
+  assert.equal(s.totals.monthAll, Math.round((12 + 5.23 + 44) * 100) / 100);
   assert.equal(s.totals.lastAll, 2 + 44);
   assert.equal(s.services.length, SP.SPEND_SERVICES.length, "every service has a row, used or not");
 });
