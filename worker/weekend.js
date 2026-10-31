@@ -8,7 +8,7 @@
    EstateSales.net link; a sale without one, or whose page answers 404/410, is never shown.
    Times: EstateSales.net's "utc" dates are real instants written as "Fri 2026-10-30 10:00 AM EDT (UTC-04:00)"; its
    "local" dates are shifted and are never used here. Hours are written in the time zone the caller passes. */
-import { haversineMi } from "./trip.js";
+import { haversineMi, nearestOnRoute, corridorCenters } from "./trip.js";
 
 export const WK_RADIUS_MI = 25, WK_RADIUS_MAX = 50, WK_CAP = 12, WK_DETAIL_MAX = 16, WK_HUNTS_MAX = 30;
 export const ES_BASE = "https://www.estatesales.net";
@@ -345,4 +345,89 @@ export function wkPlanRows(items, details, ids, picks, win, nowMs, tz) {
     sales.push(row);
   }
   return { sales: sales, missing: missing };
+}
+
+/* ---- v206: estate sales along a Road trip (GET /trip/sales) ----
+   Matt, 2026-10-31: "part of estate sale was to fold it into road trip map". The page sends its trip's route (the
+   line /trip answers, or a loop's start and stops) as points; the worker reads EstateSales.net's list around a few
+   points along it (the same wk1: lists /weekend keeps), keeps the sales open on the trip day within WK_TRIP_MI of the
+   road, nearest to the road first, at most WK_TRIP_CAP, and reads their pages (wkd2:, a day) for the photo, street
+   address and hunt words. */
+export const WK_TRIP_MI = 3, WK_TRIP_CAP = 12, WK_TRIP_LISTS = 5, WK_TRIP_PTS = 80;
+/* "lat,lng|lat,lng|..." -> 2 to WK_TRIP_PTS points (2 decimals, ~1 km), or null */
+export function wkTripLine(s) {
+  const parts = String(s || "").split("|").filter(Boolean), out = [];
+  if (parts.length < 2 || parts.length > WK_TRIP_PTS) return null;
+  for (const x of parts) {
+    const m = /^(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)$/.exec(x.trim());
+    if (!m) return null;
+    const lat = Number(m[1]), lng = Number(m[2]);
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+    out.push({ lat: Math.round(lat * 100) / 100, lng: Math.round(lng * 100) / 100 });
+  }
+  return out;
+}
+/* the line with a point at least every stepMi (a loop's straight legs can be long) */
+function densify(line, stepMi) {
+  const out = [];
+  for (let i = 0; i < line.length; i++) {
+    if (i > 0) {
+      const a = line[i - 1], b = line[i], n = Math.floor(haversineMi(a, b) / stepMi);
+      for (let k = 1; k <= n; k++) out.push({ lat: a.lat + (b.lat - a.lat) * k / (n + 1), lng: a.lng + (b.lng - a.lng) * k / (n + 1) });
+    }
+    out.push(line[i]);
+  }
+  return out;
+}
+/* where to ask along the route: { pts, r, partial, mi }. A drive of up to 140 miles is read in 25-mile circles every 35
+   miles, a longer one in 50-mile circles every 80; each centre is snapped to 0.1 degree (about 7 miles), so trips that
+   pass the same way share the kept lists, and EstateSales.net never sees the route more closely than that. At most
+   WK_TRIP_LISTS circles (about 400 miles); partial when the road goes on past them. */
+export function wkTripCircles(line) {
+  const L = Array.isArray(line) ? line : [];
+  let mi = 0; for (let i = 1; i < L.length; i++) mi += haversineMi(L[i - 1], L[i]);
+  const long = mi > 140, r = long ? 50 : 25, step = long ? 80 : 35, seen = Object.create(null), pts = [];
+  for (const c of corridorCenters(densify(L, 5), step)) {
+    const p = { lat: Math.round(c.lat * 10) / 10, lng: Math.round(c.lng * 10) / 10 }, k = p.lat + "," + p.lng;
+    if (!seen[k]) { seen[k] = 1; pts.push(p); }
+  }
+  return { pts: pts.slice(0, WK_TRIP_LISTS), r: r, partial: pts.length > WK_TRIP_LISTS ? 1 : 0, mi: Math.round(mi) };
+}
+/* the local day "YYYY-MM-DD" in tz as a window { from, to, tz }, or null */
+export function wkDayWin(day, tz) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(day || ""));
+  if (!m) return null;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const next = new Date(Date.UTC(y, mo - 1, d) + DAY_MS);
+  return { from: localMidnight(y, mo, d, tz), to: localMidnight(next.getUTCFullYear(), next.getUTCMonth() + 1, next.getUTCDate(), tz), tz: tz };
+}
+/* the sales open that day within maxMi of the line, nearest to the road first: [{ s, days, off, prog }] (no pages yet) */
+export function wkAlong(items, line, win, nowMs, maxMi) {
+  const out = [], seen = Object.create(null), max = maxMi || WK_TRIP_MI;
+  for (const s of Array.isArray(items) ? items : []) {
+    if (!s || !s.id || seen[s.id]) continue;
+    seen[s.id] = 1;
+    const days = wkDaysIn(s, win, nowMs);
+    if (!days.length) continue;
+    const n = nearestOnRoute(line, { lat: s.lat, lng: s.lon });
+    if (!(n.mi <= max)) continue;
+    out.push({ s: s, days: days, off: Math.round(n.mi * 10) / 10, prog: n.idx });
+  }
+  return out.sort((a, b) => a.off - b.off || a.days[0].s - b.days[0].s);
+}
+/* those sales as the page draws them: wkRowOf plus off (miles off the road), prog (how far along it) and pick (every
+   word of a hunt is there, as Top picks); a sale whose page is gone is dropped, and so is one whose page was not read
+   (the request's budget ran out), so a sale is never shown without its address, photo and dead-link check; at most cap */
+export function wkAlongRows(cands, details, hunts, tz, cap) {
+  const out = [], by = (details && details.by) || {}, gone = (details && details.gone) || {};
+  for (const c of cands) {
+    if (gone[c.s.id] || !by[c.s.id]) continue;
+    const det = by[c.s.id], match = wkMatch(c.s, det, hunts);
+    const row = wkRowOf(c.s, det, match, c.days, tz);
+    row.dist = c.off; row.off = c.off; row.prog = c.prog; row.pick = !!match;
+    out.push(row);
+    if (out.length >= (cap || WK_TRIP_CAP)) break;
+  }
+  return out;
 }

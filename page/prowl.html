@@ -1349,6 +1349,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .wp-wait{color:var(--i2);font-style:italic}
 .scout-app-wrapper .wp-go{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
 .scout-app-wrapper .wp-go .b{min-width:0;padding:8px 4px;font-size:13.5px;text-align:center;white-space:normal;text-decoration:none}
+.scout-app-wrapper .wp-rt{display:block;width:100%;margin-top:6px;font-size:14px}   /* v8.34 */
 .scout-app-wrapper .wp-list{display:grid;gap:8px;margin-top:6px}
 .scout-app-wrapper .wp-sale{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--cd);cursor:pointer}
 .scout-app-wrapper .wp-sale input{flex:0 0 auto;width:20px;height:20px;margin:2px 0 0;accent-color:var(--ac)}
@@ -2562,6 +2563,13 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .nr-pin{display:flex;align-items:center;justify-content:center;border-radius:50%;background:#C2491F;color:#fff;font:700 13px/1 system-ui,-apple-system,sans-serif;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .scout-app-wrapper .nr-pin-sub{background:#F2A743}
 .scout-app-wrapper .nr-pin-dest{background:#1b5e20;font-size:14px}
+.scout-app-wrapper .nr-pin-es{background:#6a3d9a;font-size:13px;border-radius:7px}   /* v8.34: estate sales on the way */
+.scout-app-wrapper .nr-esl{display:flex;flex-direction:column;gap:8px}
+.scout-app-wrapper .nr-esr{display:flex;flex-direction:column;gap:6px;padding-bottom:8px;border-bottom:1px solid var(--ln)}
+.scout-app-wrapper .nr-esr .wk-row{border:0;padding:0;background:transparent}
+.scout-app-wrapper .nr-esadd{align-self:flex-start;min-height:36px;padding:6px 14px;font-size:13.5px}
+.scout-app-wrapper .nr-eson,.scout-app-wrapper .nr-espend{align-self:flex-start;font-size:13px;font-weight:700;color:var(--mu)}
+.scout-app-wrapper .nr-eson{color:var(--ac)}
 .scout-app-wrapper .nr-pop{font-size:13.5px;line-height:1.35;min-width:170px;color:#222}
 .scout-app-wrapper .nr-pop .b{display:inline-block;margin-top:7px;padding:5px 10px;font-size:12.5px}
 .scout-app-wrapper .nr-legs{display:flex;flex:1 1 0;gap:6px;min-width:0}
@@ -4141,7 +4149,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.33';
+var PROWL_VERSION='v8.34';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -4873,6 +4881,7 @@ function esLoad(v){
    Every sale opens its own page on EstateSales.net; hours come back in this device's time zone. Nothing is kept. */
 var WK={busy:false,data:null,err:'',town:'',pt:null,me:false,q:null,planOn:false,link:false};
 function wkHunts(){return st.hunts.filter(function(h){return !huntSample(h)}).slice(0,30)}
+var ES_PIC_RE=/^https:\/\/picturescdn\.estatesales\.net\/[^\s"'<>]+$/;   /* v8.34: shared with Road trip */
 function wkUrlOk(u){return /^https:\/\/www\.estatesales\.net\/[A-Za-z0-9\/._%-]+$/.test(String(u||''))}
 function wkRow(x,pick){
   var meta=[x.city&&x.st?x.city+', '+x.st:x.city,x.co,typeof x.dist==='number'?(Math.round(x.dist*10)/10)+' mi':''].filter(function(v){return !!v}).join(' \u00b7 ');
@@ -5031,6 +5040,8 @@ function wpDayName(key){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(key);return NR_DA
 function wpHm(ms){var d=new Date(ms);return nrTime(d.getHours(),d.getMinutes())}
 function wpPick(s){return !!(s.pick||s.match)}
 function wpChosen(){return WP.sales.filter(function(s){return WP.on[s.id]})}
+/* v8.34: the checked sales, less any marked Been on the Road trip of a day it is open (e:|day), so every replan agrees */
+function wpLive(){var B={};function g(k){if(!B[k])B[k]=nrBeenGet({estate:true,day:k});return B[k]}return wpChosen().filter(function(s){return !wpWindows(s,0).some(function(w){return g(w.key)['es'+s.id]})})}
 function wpFrom(k){return WP.here&&WP.here.key===k?WP.here.pt:WP.start}
 function wpFloor(k,now){return WP.here&&WP.here.key===k&&k===wpDayKey(now)?WP.here.at:now}
 function wpStopName(s){return {name:s.addr,town:(s.city||'')+(s.st?', '+s.st:'')}}
@@ -5058,7 +5069,7 @@ function wpOrder(d){
 }
 function wpPlan(){
   clearTimeout(WP.timer);
-  WP.plan=WP.start?wpSplit(wpChosen(),WP.start,Date.now(),{here:WP.here}):null;
+  WP.plan=WP.start?wpSplit(wpLive(),WP.start,Date.now(),{here:WP.here}):null;
   wpDraw();
   if(WP.plan)WP.timer=setTimeout(function(){if(WP.plan)WP.plan.days.forEach(wpOrder)},350);   /* one optimizer call a day, after the taps settle */
 }
@@ -5078,8 +5089,26 @@ function wpDayHtml(d,now){
       (st.late?'<span class="nr-ended">Closed by the time you get there (~'+nrClock(st.at)+')</span>':st.wait>=5*WP_MIN?'<span class="wp-wait">Opens '+wpHm(w.o)+': about '+nrDurT(Math.round(st.wait/WP_MIN))+' to wait</span>':'')+'</span></li>';
   });
   h+='</ol>'+(v.kept&&v.items.length>1?'<p class="nearp wp-kept">Kept in this order so every sale is open when you get there.</p>':'');
-  h+='<div class="wp-go"><a class="b p" href="'+esc(mp.g)+'" target="_blank" rel="noopener noreferrer">Google Maps</a><a class="b" href="'+esc(mp.a)+'" target="_blank" rel="noopener noreferrer">Apple Maps</a><button type="button" class="b" data-wp="here" data-k="'+esc(d.key)+'">Rebuild from here</button></div></section>';
+  h+='<div class="wp-go"><a class="b p" href="'+esc(mp.g)+'" target="_blank" rel="noopener noreferrer">Google Maps</a><a class="b" href="'+esc(mp.a)+'" target="_blank" rel="noopener noreferrer">Apple Maps</a><button type="button" class="b" data-wp="here" data-k="'+esc(d.key)+'">Rebuild from here</button></div><button type="button" class="b wp-rt" data-wp="trip" data-k="'+esc(d.key)+'">\uD83D\uDDFA\uFE0F Open in Road trip</button></section>';
   return h;
+}
+/* v8.34 (Matt, 2026-10-31: "part of estate sale was to fold it into road trip map that will take you to each one"):
+   Open in Road trip takes a planned day to NEAR ME > Road trip as a loop of fixed stops: the day's sales in the
+   planner's drive order, on Road trip's own map, timed from the planner's leave time (45 min at each, waiting for one not
+   open yet), with its Google Maps and Apple Maps links (street addresses), Rebuild from here (the day planned again from
+   the phone) and \u2713 Been. Sales open that day whose address is not posted yet are left out and named. No new worker
+   call: /order gives the leg times, as for any loop. Returns false when the day has no stops. */
+function wpTrip(k){
+  var d=null,i,now=Date.now();if(!WP.plan||!WP.start)return false;for(i=0;i<WP.plan.days.length;i++)if(WP.plan.days[i].key===k)d=WP.plan.days[i];if(!d||!d.items.length)return false;
+  var v=wpDayView(d,now),st=wpFrom(k),me=!!(WP.here&&WP.here.key===k)||!!st.me,label=me?'':(st.label||'');
+  var pend=WP.sales.filter(function(s){return !s.addr&&wpWindows(s,0).some(function(w){return w.key===k})}),stops=v.items.map(function(x){return nrEsStop(x.s,k)});
+  var t={loop:true,estate:true,origin:{town:label},dest:{name:label||'the start',town:'',lat:st.lat,lng:st.lng,id:'',mq:label||(st.lat.toFixed(4)+','+st.lng.toFixed(4))},route:null,day:k,stops:stops,more:[],maps:'loop',to:'',
+    leaveAt:v.sched.leave,order:stops.map(function(x){return x.id}),note:pend.length?'Left out, the address is not posted yet: '+nrAnd(pend.map(function(x){return x.name}))+'.':''};
+  t.fromAt=label;NR.built=t;NR.view=null;NR.builtFrom={lat:st.lat,lng:st.lng};NR.day=k;NR.lastTo='';NR.mapOn.trip=true;
+  if(!nearOpen()){NR.mode='trip';openNear()}else nrMode('trip');
+  nrDrawTrip(t,{});
+  var out=$('#otp-nrOut');if(out&&out.scrollIntoView)try{out.scrollIntoView({block:'start'})}catch(e){}
+  return true;
 }
 function wpHtml(){
   var h='<div id="otp-wp" class="wp">',now=Date.now(),P=WP.plan,i,s,sel=WP.sales.filter(function(s){return s.addr}),pend=WP.sales.filter(function(s){return !s.addr});
@@ -5128,6 +5157,7 @@ document.addEventListener('click',function(e){
   var a=b.getAttribute('data-wp');
   if(a==='chg'){WP.zipBox=!WP.zipBox;wpDraw();var zi=$('#otp-wpZip');if(zi)zi.focus();return}
   if(a==='zip'){wpZip(($('#otp-wpZip')||{}).value);return}
+  if(a==='trip'){wpTrip(b.getAttribute('data-k'));return}   /* v8.34 */
   if(a==='here'){var k=b.getAttribute('data-k');b.textContent='Finding you\u2026';nrPos(function(p,err){if(!p){toast(err==='denied'?'Location is off for this site, so Prowl cannot tell where you are.':'Your location could not be read just now.',3200);wpDraw();return}WP.here={key:k,pt:{lat:p.lat,lng:p.lng},at:Date.now()};delete WP.ord[k];wpPlan();toast('Rebuilt '+esc(NR_DAYS[nrWeekday(k)])+' from where you are.',2800)},true);return}
 });
 document.addEventListener('change',function(e){var c=e.target;if(!c||!c.matches||!c.matches('#otp-wp input[data-wpid]'))return;var id=c.getAttribute('data-wpid');if(c.checked)WP.on[id]=1;else delete WP.on[id];wpPlan()});
@@ -11805,7 +11835,7 @@ function nrSkipSet(o){try{localStorage.setItem(SKIP_KEY,JSON.stringify(o))}catch
    (a kept trip by its id, a built one by where to, from and the day), the last 10 trips. */
 var BEEN_KEY='prowl.nearBeen';   /* new key */
 function nrBeenAll(){var v=null;try{v=JSON.parse(localStorage.getItem(BEEN_KEY)||'null')}catch(e){}return v&&typeof v==='object'&&!v.length&&v.o&&v.o.length!==undefined&&v.s&&typeof v.s==='object'?v:{o:[],s:{}}}
-function nrBeenSig(t){if(!t)return '';if(t.id)return 'v:'+t.id;var from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||'');return 'b:'+String(t.to||'').toLowerCase()+'|'+String(from).toLowerCase()+'|'+(t.day||'')}
+function nrBeenSig(t){if(!t)return '';if(t.id)return 'v:'+t.id;if(t.estate)return 'e:|'+(t.day||'');var from=t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||'');return (t.estate?'e:':'b:')+String(t.to||'').toLowerCase()+'|'+String(from).toLowerCase()+'|'+(t.day||'')}
 /* v7.90: on a group trip the marks are the group's too (worker v167: the trip view's been, POST /trips/<id>/been) */
 function nrBeenGet(t){var A=nrBeenAll(),g=A.s[nrBeenSig(t)],o={},k,i;g=g&&typeof g==='object'?g:{};for(k in g)if(g[k])o[k]=1;if(t&&t.id&&t.been&&t.been.length)for(i=0;i<t.been.length;i++)o[String(t.been[i])]=1;return o}
 function nrBeenToggle(t,id){
@@ -11852,7 +11882,9 @@ function nrVisible(t){
   if(t.order&&t.order.length){var ix=function(o){var k=t.order.indexOf(o._k);return k===-1?1e3+out.indexOf(o):k};out=out.slice().sort(function(x,y){return ix(x)-ix(y)})}   /* v7.62: Optimize route */
   return {stops:out,hidden:hid};
 }
-function nrMapsUrl(from,anchors,dest){var wp=anchors.slice(0,9).map(function(a){return a.name+(a.town?', '+a.town:'')}).join('|');return 'https://www.google.com/maps/dir/?api=1&travelmode=driving'+(from?'&origin='+E(from):'')+'&destination='+E(dest||'')+(wp?'&waypoints='+E(wp):'')}
+/* v8.34: what Maps is asked for a stop: an estate sale its street address (mq), a shop its name and town */
+function nrMq(a){return a.mq||((a.name||'')+(a.town?', '+a.town:''))}
+function nrMapsUrl(from,anchors,dest){var wp=anchors.slice(0,9).map(nrMq).join('|');return 'https://www.google.com/maps/dir/?api=1&travelmode=driving'+(from?'&origin='+E(from):'')+'&destination='+E(dest||'')+(wp?'&waypoints='+E(wp):'')}
 /* v7.39 (Meta's two legs): Google Maps takes about nine waypoints, so more anchors than that become legs, each leg
    ending at the next leg's first stop */
 function nrMapsLegs(t){
@@ -11871,16 +11903,16 @@ function nrMapsPick(an,cap){
   return an.filter(function(a){return keep[a.id]});
 }
 function nrLegsGen(t,cap,mk,one,lab0){
-  var d=t.dest||{},from=nrBeenAny(t)?'':t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),an=nrAhead(t),destL=d.name+(d.town?', '+d.town:'');   /* v7.83: from the phone once you have been somewhere */
+  var d=t.dest||{},from=nrBeenAny(t)?'':t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||''),an=nrAhead(t),destL=nrMq(d);   /* v7.83: from the phone once you have been somewhere */
   return [{label:one,url:mk(from,nrMapsPick(an,cap),destL)}];   /* v7.77: one link */
 }
 /* v7.62 (the owner: the Apple Maps export must carry every stop): Apple's unified Maps URL (iOS 18.4+, macOS 15.4+):
    maps.apple.com/directions with source, destination and a repeated waypoint, driving. Apple Maps takes 14 stops on a
    route, so a link carries at most 13 waypoints plus its destination and longer trips split into legs. */
 var APPLE_WP=13;
-function nrAppleUrl(from,anchors,dest){var w=anchors.slice(0,APPLE_WP).map(function(a){return '&waypoint='+E(a.name+(a.town?', '+a.town:''))}).join('');return 'https://maps.apple.com/directions?'+(from?'source='+E(from)+'&':'')+'destination='+E(dest||'')+w+'&mode=driving'}
+function nrAppleUrl(from,anchors,dest){var w=anchors.slice(0,APPLE_WP).map(function(a){return '&waypoint='+E(nrMq(a))}).join('');return 'https://maps.apple.com/directions?'+(from?'source='+E(from)+'&':'')+'destination='+E(dest||'')+w+'&mode=driving'}
 function nrAppleLegs(t){if(!t||!t.dest||!t.dest.name)return [];return nrLegsGen(t,APPLE_WP,nrAppleUrl,'Apple Maps','Apple Maps ')}
-function nrMapsFor(t){if(!t)return '';var d=t.dest||{};if(!d.name)return t.maps||'';var from=nrBeenAny(t)?'':t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||'');return nrMapsUrl(from,nrMapsPick(nrAhead(t),9),d.name+(d.town?', '+d.town:''))}   /* v7.83 */
+function nrMapsFor(t){if(!t)return '';var d=t.dest||{};if(!d.name)return t.maps||'';var from=nrBeenAny(t)?'':t.origin&&t.origin.town!==undefined?t.origin.town:(t.origin||'');return nrMapsUrl(from,nrMapsPick(nrAhead(t),9),nrMq(d))}   /* v7.83 */
 function nrH(){var h={},k=fbOwnerKey(),em=mGet('alertEmail'),tk=mGet('alertTok');if(k)h['X-Prowl-Owner']=k;if(em&&tk){h['X-Prowl-Email']=em;h['X-Prowl-Tok']=tk}return window.prowlAuth?window.prowlAuth(h):h}   /* v7.38: the alerts member too */
 /* v7.38 (the owner: "it took me to the den and tried to make me sign in, but i am pro"): a Prowl Alerts sign-in is a sign-in */
 function nrSigned(){return !!((window.prowlSess&&window.prowlSess())||(mGet('alertTok')&&mGet('alertEmail')))}
@@ -11966,9 +11998,9 @@ function nrState(hrs,day,eta){
 function nrClock(ts){var d=new Date(Math.round(ts/300000)*300000);return nrTime(d.getHours(),d.getMinutes())}
 /* a place's card: photo, name, town, the one-line differentiator, the day's hours, OPEN NOW / CLOSED; one tap opens Maps */
 function nrCard(p,day,cls,num,o){
-  o=o||{};var s=nrState(p.hours,day,o.eta),ph=(num?'<span class="nr-num" aria-hidden="true">'+num+'</span>':'')+(p.photo?'<img class="nr-ph" src="'+esc(NR_API+p.photo)+'" alt="" loading="lazy">':'<span class="nr-ph nr-nop" aria-hidden="true">🛒</span>');
+  o=o||{};var s=nrState(p.hours,day,o.eta),ph=(num?'<span class="nr-num" aria-hidden="true">'+num+'</span>':'')+(p.photo?'<img class="nr-ph" src="'+esc(NR_API+p.photo)+'" alt="" loading="lazy">':p.est&&ES_PIC_RE.test(String(p.esImg||''))?'<img class="nr-ph" src="'+esc(p.esImg)+'" alt="" loading="lazy">':'<span class="nr-ph nr-nop" aria-hidden="true">'+(p.est?'\u2302':'🛒')+'</span>');   /* v8.34: an estate sale stop shows its own cover photo */
   return '<a class="nr-card'+(cls?' '+cls:'')+'" href="'+esc(p.url||('https://www.google.com/maps/search/?api=1&query='+E(p.name+' '+(p.town||''))))+'" target="_blank" rel="noopener noreferrer">'+ph+
-    '<span class="nr-body">'+(o.been?'<span class="nr-beent">✓ Been there</span>':'')+(p.pin?'<span class="nr-yours">Your stop</span>':'')+'<b class="nr-n">'+esc(p.name||'')+'</b><span class="nr-h'+(s.cls?' '+s.cls:'')+'">'+esc(s.text)+'</span>'+nrRate(p)+'<span class="nr-t">'+esc(p.town||'')+(p.why?' · '+esc(p.why):'')+'</span>'+(p.about?'<span class="nr-about">'+esc(p.about)+'</span>':'')+nrPlanLine(p)+(o.off?'<span class="nr-nm">Listed only, not in the Maps route</span>':'')+'</span>'+
+    '<span class="nr-body">'+(o.been?'<span class="nr-beent">✓ Been there</span>':'')+(p.pin?'<span class="nr-yours">'+(p.est?'Estate sale':'Your stop')+'</span>':'')+'<b class="nr-n">'+esc(p.name||'')+'</b><span class="nr-h'+(s.cls?' '+s.cls:'')+'">'+esc(s.text)+'</span>'+nrRate(p)+'<span class="nr-t">'+esc(p.town||'')+(p.why?' · '+esc(p.why):'')+'</span>'+(p.about?'<span class="nr-about">'+esc(p.about)+'</span>':'')+nrPlanLine(p)+(o.off?'<span class="nr-nm">Listed only, not in the Maps route</span>':'')+'</span>'+
     (s.tag||o.mi!=null||typeof o.det==='number'?'<span class="nr-side">'+(s.tag?'<span class="nr-st '+s.cls+'">'+s.tag+'</span>':'')+(o.mi!=null?'<span class="nr-mi">'+nrMiTxt(o.mi)+'</span>':'')+(typeof o.det==='number'?'<span class="nr-det" title="Adds about '+Math.max(1,Math.round(o.det))+' min to the drive">+'+Math.max(1,Math.round(o.det))+' min</span>':'')+'</span>':'')+'</a>';   /* v7.72: +12 min, what the stop adds */
 }
 /* v7.51 (the owner, from Gemini's Findlay to Milton run: time to allow, worth the detour, walkable): the worker's
@@ -11993,14 +12025,14 @@ function nrKm(a,b){var R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*
    OpenStreetMap tiles through esLeaflet, loaded the first time a map is asked for. Your blue dot, the shops as
    numbered pins that match the list, tap a pin for Directions. The Directions link names no origin, so Google Maps
    starts it from the phone itself; your position never goes into a link. */
-function nrDirUrl(p){var d=(p.name||'')+(p.town?', '+p.town:'');if(mapsPref()==='apple')return 'https://maps.apple.com/?daddr='+E(d)+'&dirflg=d';return 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+E(d)+(p.id?'&destination_place_id='+E(p.id):'')}   /* v7.71: Apple Maps when that is the pick (the starting point is the phone in both) */
+function nrDirUrl(p){var d=nrMq(p);if(mapsPref()==='apple')return 'https://maps.apple.com/?daddr='+E(d)+'&dirflg=d';return 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+E(d)+(p.id&&!p.est?'&destination_place_id='+E(p.id):'')}   /* v7.71: Apple Maps when that is the pick (the starting point is the phone in both) */
 /* v7.69 (the owner: "pull the description, reviews, review stars for each area? I want to see that quickly before I
    decide to even go"): every card shows its stars and review count under the name, and the line about it from Google Maps; a
    Reviews button opens three of its reviews from Google Maps under the card (worker /reviews, read on the tap) */
 function nrStars(r){var n=Math.round(r),s='',i;for(i=0;i<5;i++)s+=i<n?'★':'☆';return s}
 function nrCount(n){return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
 function nrRate(p){var r=Number(p.rating)||0;if(!(r>0))return '';return '<span class="nr-r" aria-label="Rated '+r.toFixed(1)+' out of 5'+(p.n?' from '+nrCount(p.n)+' reviews':'')+'"><span class="nr-stars" aria-hidden="true">'+nrStars(r)+'</span> <b>'+r.toFixed(1)+'</b>'+(p.n?' · '+nrCount(p.n)+' reviews':'')+'</span>'}
-function nrRvBtn(p){return p&&p.id?'<button type="button" class="nr-rvb" data-nrrv="'+esc(p.id)+'" aria-expanded="false">Reviews</button>':''}
+function nrRvBtn(p){return p&&p.id&&!p.est?'<button type="button" class="nr-rvb" data-nrrv="'+esc(p.id)+'" aria-expanded="false">Reviews</button>':''}
 function nrRvDraw(box,j){
   var h='',i,r;
   if(!j){box.innerHTML='<p class="nearp">The reviews could not be read just now.</p>';return}
@@ -12040,7 +12072,7 @@ function nrStopAdd(v,id){
   for(i=0;i<V.length;i++)if(V[i].toLowerCase()===low){toast('That one is already a stop on the way.',2600);return}
   if(V.length>=3){if(NR.mode!=='trip')nrMode('trip');toast('Three stops on the way is the most. Take one out with × first.',3600);return}
   var at=NR.mode==='trip'&&t?nrStopAt(t,id,v):V.length;V.splice(at,0,v);NR.vias=V;
-  if(NR.mode==='trip'&&t&&NR.lastTo){rNrVias();nrBuild(NR.lastTo);toast('Building the trip again by way of '+esc(v.split(',')[0])+'.',3000);return}
+  if(NR.mode==='trip'&&t&&NR.lastTo){rNrVias();nrBuild(NR.lastTo,1);toast('Building the trip again by way of '+esc(v.split(',')[0])+'.',3000);return}
   if(NR.mode!=='trip')nrMode('trip');else rNrVias();
   toast((NR.lastTo||($('#otp-nrTo')||{}).value?'Added as a stop on the way. Tap Build trip to go by way of it.':'Added as a stop on the way. Now say where you are headed, then Build trip.'),3800);
   var vb=$('#otp-nrVias');if(vb&&vb.scrollIntoView)try{vb.scrollIntoView({block:'center'})}catch(e){}
@@ -12055,6 +12087,7 @@ function nrMapPts(mode){
   t=NR.view||NR.built;if(!t)return out;vis=nrVisible(t);
   for(i=0;i<vis.stops.length;i++){a=vis.stops[i];x=nrPt(a,nrLetter(i),'');if(x)out.push(x);for(j=0;j<(a.nested||[]).length;j++){x=nrPt(a.nested[j],'','nr-pin-sub');if(x)out.push(x)}}
   if(t.dest){x=nrPt(t.dest,'⚑','nr-pin-dest');if(x)out.push(x)}
+  var on=nrEsIds(t);nrEsList(t).forEach(function(s){if(!on[s.id]){x=nrPt(s,'\u2302','nr-pin-es');if(x){x.pop=nrEsPop(t,s);out.push(x)}}});   /* v8.34: estate sales on the way, their own layer */
   return out;
 }
 function nrPop(p,day){var s=nrState(p.hours,day);return '<div class="nr-pop"><b>'+esc(p.name||'')+'</b><br><span>'+esc(p.town||'')+(s.tag?' · '+s.tag:'')+'</span><br><a class="b p" href="'+esc(nrDirUrl(p))+'" target="_blank" rel="noopener noreferrer">Directions</a> <a class="b" href="'+esc(p.url||('https://www.google.com/maps/search/?api=1&query='+E((p.name||'')+' '+(p.town||''))))+'" target="_blank" rel="noopener noreferrer">In Maps</a></div>'}
@@ -12069,18 +12102,20 @@ function nrMap(mode){
   esLeaflet(function(err){
     var el2=$(id);if(!el2||!NR.mapOn[mode])return;
     if(err||!window.L||!window.L.map){el2.innerHTML='<p class="nearp nr-mapwait">The map could not load. The list still works.</p>';return}
+    if(NR.lmap[mode]){try{NR.lmap[mode].remove()}catch(e){}NR.lmap[mode]=null}   /* v8.34: drawn twice while Leaflet loaded (the leg times came first): one map, not a blank box */
     el2.innerHTML='';
     var L=window.L,touch=!!(L.Browser&&L.Browser.mobile),m,b=[],pl=mode==='around'?atLive():null,you=pl?null:nrYou();   /* v7.62: the typed place instead of your dot */try{touch=touch||!!(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches)}catch(e){}
     m=L.map(el2,{scrollWheelZoom:false,dragging:!touch,tap:false});   /* v7.57: on a phone one finger scrolls the screen (the owner: Road trip would not scroll on an iPhone); pinch to zoom */
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors · shops from Google Maps'}).addTo(m);
     pts.forEach(function(x){
       b.push([x.lat,x.lng]);
-      var sub=x.cls==='nr-pin-sub',sz=sub?16:26;
-      L.marker([x.lat,x.lng],{icon:L.divIcon({className:'nr-pin'+(x.cls?' '+x.cls:''),html:String(x.num||''),iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],popupAnchor:[0,-sz/2-2]}),title:x.p.name||'',zIndexOffset:sub?0:400}).addTo(m).bindPopup(nrPop(x.p,day));
+      var sub=x.cls==='nr-pin-sub',es=x.cls==='nr-pin-es',sz=sub?16:es?22:26;
+      L.marker([x.lat,x.lng],{icon:L.divIcon({className:'nr-pin'+(x.cls?' '+x.cls:''),html:String(x.num||''),iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],popupAnchor:[0,-sz/2-2]}),title:x.p.name||'',zIndexOffset:sub||es?0:400}).addTo(m).bindPopup(x.pop||nrPop(x.p,day));
     });
     if(pl){b.push([pl.lat,pl.lng]);L.circleMarker([pl.lat,pl.lng],{radius:9,weight:3,color:'#fff',fillColor:'#C2491F',fillOpacity:1}).addTo(m).bindPopup('<div class="nr-pop"><b>'+esc(pl.town)+'</b><br><span>In a location</span></div>')}
     if(you){b.push([you.lat,you.lng]);L.circleMarker([you.lat,you.lng],{radius:9,weight:3,color:'#fff',fillColor:'#1a73e8',fillOpacity:1}).addTo(m).bindPopup('<div class="nr-pop"><b>You are here</b>'+(NR.aroundTown?'<br><span>'+esc(NR.aroundTown)+'</span>':'')+'</div>')}
     if(b.length)m.fitBounds(b,{padding:[28,28],maxZoom:14});
+    if(m.on)m.on('popupopen',function(ev){var pe=ev.popup&&ev.popup.getElement?ev.popup.getElement():null,ab=pe&&pe.querySelector('[data-nresadd]');if(ab)ab.addEventListener('click',function(){nrEsAdd(ab.getAttribute('data-nresadd'))})});   /* v8.34: Leaflet keeps a popup's clicks to itself */
     NR.lmap[mode]=m;
   });
 }
@@ -12202,8 +12237,8 @@ function nrNoStart(err,msg){
   return '<div class="nearp nr-nofix">'+(blk?nrBlocked('from'):'Your location could not be read just now. Tap <b>Change</b> by From above, type a town, City, ST or ZIP and build the trip again.')+
     '<p class="nr-nofixb"><button type="button" class="sgw-ml" data-nrme="from">📍 Use my location</button> <button type="button" class="sgw-ml" data-nrfromopen="1">Type where you start</button>'+(a?' <button type="button" class="sgw-ml" data-nrfrom="1">Start from '+esc(a.town)+'</button>':'')+'</p></div>';
 }
-function nrBuild(to){
-  var out=$('#otp-nrOut'),fi=$('#otp-nrFrom'),from=fi?atClean(fi.value):'';if(!out||NR.busy)return;if(!to){nrLoop(from);return}   /* v7.62: no end, a loop */NR.busy=true;NR.view=null;NR.built=null;NR.lastTo=to;NR.optDirty=false;
+function nrBuild(to,again){   /* again: the same trip built again (Rebuild from here, new options, + Stop), so the estate sales you added come along */
+  var out=$('#otp-nrOut'),fi=$('#otp-nrFrom'),from=fi?atClean(fi.value):'';if(!out||NR.busy)return;if(!to){nrLoop(from,again);return}   /* v7.62: no end, a loop */var prev=NR.built;NR.busy=true;NR.view=null;NR.built=null;NR.lastTo=to;NR.optDirty=false;
   var vv=nrViasGet();   /* v7.75: the stops on the way */
   out.innerHTML=nrFlock('otp-nrFlockT',[from?'Finding '+from+'…':'Finding where you are…','Mapping the drive to '+to+(vv.length?' by way of '+nrAnd(vv):'')+'…','Searching the shops along the way…','Picking the stops worth the time…','Almost there: a long drive takes a little longer…']);nrFoot(null);   /* v7.61 */
   nrStart(from,function(pos,err,pl,msg){
@@ -12215,7 +12250,7 @@ function nrBuild(to){
       if(nrDayLimit(r)){out.innerHTML='<p class="nearp">Road trips have looked up all the shops they can for today. They are back tomorrow. For now, search the map there: <a class="b" href="'+esc('https://www.google.com/maps/search/?api=1&query='+E('antique stores near '+to))+'" target="_blank" rel="noopener noreferrer">Antique stores near '+esc(to)+'</a></p>';return}   /* v7.97 */
       if(r.status===429){out.innerHTML='<p class="nearp">That is a lot of road trips for one day. Try again tomorrow.</p>';return}   /* v7.97: 10 a day each (worker v170) */
       if(!r.ok){out.innerHTML='<p class="nearp">The trip could not be built just now. Try again in a moment.</p>';return}
-      nrToAdd(to);NR.built=r.j;NR.built.to=to;NR.built.fromAt=pl&&!pl.me?pl.town:'';NR.builtFrom={lat:pos.lat,lng:pos.lng};nrDrawTrip(r.j,{});   /* v7.62: where it started, for Keep */
+      nrToAdd(to);NR.built=r.j;NR.built.to=to;NR.built.fromAt=pl&&!pl.me?pl.town:'';NR.builtFrom={lat:pos.lat,lng:pos.lng};if(again&&prev&&String(prev.to||'').toLowerCase()===String(to).toLowerCase())nrEsCarry(prev,r.j);nrDrawTrip(r.j,{});   /* v7.62: where it started, for Keep; v8.34: the estate sales you added */
     });
   });
 }
@@ -12249,7 +12284,8 @@ function nrOptsChanged(){NR.optDirty=true;rNrOpts();rNrTripL()}
 function nrOptsApply(){
   var d=$('#otp-nrOpts');if(d&&d.open)d.open=false;if(!NR.optDirty)return;NR.optDirty=false;
   var t=NR.built,fi=$('#otp-nrFrom');if(!t||NR.view)return;
-  if(t.to)nrBuild(t.to);else if(t.loop)nrLoop(fi?atClean(fi.value):'');
+  if(t.estate){nrRedraw();return}   /* v8.34: a Plan my week day keeps its sales; a new leave time retimes it */
+  if(t.to)nrBuild(t.to,1);else if(t.loop)nrLoop(fi?atClean(fi.value):'',1);
 }
 /* v7.73: the last places a trip was built to, one tap each (no typing in the car after the first trip). A new key,
    prowl.nearTo, on this device only */
@@ -12265,8 +12301,8 @@ function nrStartLeg(t){
   return {url:n?L[0].url:(nrMapsFor(t)||t.maps||''),app:ap.length?'Apple Maps':'Google Maps',label:(nrBeenAny(t)?'Carry on in Maps':'Start in Maps')+(n>1?' (1 of '+n+')':'')};   /* v7.83 */
 }
 /* a loop: the shops around the start, then back. The worker's Around you list, ordered by /order loop=1 */
-function nrLoop(from){
-  var out=$('#otp-nrOut');if(!out||NR.busy)return;NR.busy=true;NR.view=null;NR.built=null;NR.lastTo='';NR.optDirty=false;
+function nrLoop(from,again){
+  var out=$('#otp-nrOut'),prev=NR.built;if(!out||NR.busy)return;NR.busy=true;NR.view=null;NR.built=null;NR.lastTo='';NR.optDirty=false;
   out.innerHTML=nrFlock('otp-nrFlockT',[from?'Finding '+from+'…':'Finding where you are…','Looking for the shops around there…','Planning a loop back to the start…']);nrFoot(null);
   nrStart(from,function(pos,err,pl,msg){
     if(!pos){NR.busy=false;out.innerHTML=nrNoStart(err,msg);return}
@@ -12276,7 +12312,7 @@ function nrLoop(from){
       if(!r.ok){out.innerHTML='<p class="nearp">The shops for a loop could not be found just now. Type a place in To for a trip there.</p>';return}
       var sk=nrSkipGet(),town=pl?pl.town:(r.j.town||''),L=(r.j.places||[]).filter(function(p){return !sk[p.id]&&typeof p.lat==='number'}).slice(0,8).map(function(p){var o=nrCopy(p);o.nested=[];return o});
       var t={loop:true,origin:{town:town},dest:{name:town||'Back to the start',town:'',lat:pos.lat,lng:pos.lng,id:''},route:null,day:NR.day,stops:L,more:[],maps:'loop',to:''};
-      t.fromAt=pl&&!pl.me?pl.town:'';NR.built=t;NR.builtFrom={lat:pos.lat,lng:pos.lng};nrDrawTrip(t,{});
+      t.fromAt=pl&&!pl.me?pl.town:'';NR.built=t;NR.builtFrom={lat:pos.lat,lng:pos.lng};if(again&&prev&&prev.loop){if(L.length>1&&!NR.optBusy)NR.esCarry={t:t,p:prev};else nrEsCarry(prev,t)}nrDrawTrip(t,{});   /* v8.34: the sales you added come along once Optimize has set the drive order */
       if(L.length>1)nrOptimize(true);
     });
   });
@@ -12304,11 +12340,11 @@ function nrLeaveTs(day){
 }
 /* when you get to each stop: legs from the router or estimated, NR_STAY (or the stop's own stay) at each */
 function nrEtas(t,stops){
-  var c=nrChain(t,stops),t0=nrLeaveTs(t.day),out={},i,cur,key,legs,mpm;if(!c||!t0||!c.ids.length)return null;
+  var c=nrChain(t,stops),t0=t.leaveAt&&!($('#otp-nrLeave')||{}).value?Math.max(t.leaveAt,Date.now()):nrLeaveTs(t.day),out={},i,cur,key,legs,mpm;if(!c||!t0||!c.ids.length)return null;
   key=nrPtsQ(c.pts)+(t.loop?'L':'');legs=t.legsKey===key?t.legs:null;mpm=t.route&&t.route.min?nrMiles(t.route)/t.route.min:0.75;
   function leg(i){return legs?legs[i].min:nrEstMin(c.pts[i],c.pts[i+1],mpm)}
   cur=t0;
-  for(i=0;i<c.ids.length;i++){cur+=leg(i)*60000;out[c.ids[i]]=cur;var s=null;for(var k=0;k<stops.length;k++)if((stops[k]._k||stops[k].id)===c.ids[i])s=stops[k];cur+=(s&&s.stay>0?s.stay:NR_STAY)*60000}
+  for(i=0;i<c.ids.length;i++){cur+=leg(i)*60000;var s=null;for(var k=0;k<stops.length;k++)if((stops[k]._k||stops[k].id)===c.ids[i])s=stops[k];if(s&&s.opensAt>cur)cur=s.opensAt;out[c.ids[i]]=cur;cur+=(s&&s.stay>0?s.stay:NR_STAY)*60000}   /* v8.34: an estate sale not open yet is waited for (t.leaveAt: Plan my week's leave time) */
   if(c.end)out._dest=cur+leg(c.ids.length)*60000;
   return {at:out,leave:t0,routed:!!legs,src:t.legsSrc||''};
 }
@@ -12320,49 +12356,107 @@ function nrLateAt(p,eta,day){if(!p||!p.hours||!eta)return false;var n=nrNext(p.h
 /* Optimize route: the shortest drive through the stops, the start and end kept */
 function nrOptimize(quiet){
   var t=NR.view||NR.built;if(!t||NR.optBusy)return;var vis=nrVisible(t),c=nrChain(t,vis.stops);
+  if(!c||c.ids.length<2||c.pts.length>14){if(nrEsDue(t))nrRedraw()}
   if(!c||c.ids.length<2){if(!quiet)toast(nrOrigin()?'Nothing to reorder: fewer than two stops.':'Prowl needs the start to reorder the stops. Tap REBUILD first.',3000);return}
   if(c.pts.length>14){if(!quiet)toast('Optimize takes up to 12 stops at a time. Skip a few and try again.',3600);return}
   NR.optBusy=true;var before=t.legs&&t.legsKey===nrPtsQ(c.pts)+(t.loop?'L':'')?t.legs.reduce(function(a,l){return a+l.min},0):0;
   nrFetch('/order?'+(t.loop?'loop=1&':'')+'p='+E(nrPtsQ(c.pts))).then(function(r){
     NR.optBusy=false;var n=c.pts.length-1+(t.loop?1:0);
-    if(!r.ok||!r.j.order||r.j.order.length!==c.pts.length||!nrLegsOk(r.j,n)){if(!quiet)toast('The stops could not be reordered just now.',3000);return}
+    if(!r.ok||!r.j.order||r.j.order.length!==c.pts.length||!nrLegsOk(r.j,n)){if(nrEsDue(t))nrRedraw();if(!quiet)toast('The stops could not be reordered just now.',3000);return}
     var ids=[],i,k;for(i=0;i<r.j.order.length;i++){k=r.j.order[i];if(k>=1&&k<=c.ids.length)ids.push(c.ids[k-1])}
     t.order=ids;
     var pts=[c.pts[0]];for(i=0;i<r.j.order.length;i++){k=r.j.order[i];if(k>=1&&k<=c.ids.length)pts.push(c.pts[k])}if(c.end)pts.push(c.pts[c.pts.length-1]);
-    t.legs=r.j.legs;t.legsSrc=r.j.src;t.legsKey=nrPtsQ(pts)+(t.loop?'L':'');
+    t.legs=r.j.legs;t.legsSrc=r.j.src;t.legsKey=nrPtsQ(pts)+(t.loop?'L':'');nrEsDue(t);
     var after=r.j.legs.reduce(function(a,l){return a+l.min},0);
     nrRedraw();
     if(!quiet)toast('Reordered for the shortest drive: about '+nrDurT(after)+' of driving'+(before>after?', '+nrDurT(before-after)+' less':'')+(r.j.src==='est'?' (estimated)':'')+'.',3600);
   });
 }
-/* estate sales along the way (EstateSales.net through worker /sales, the owner's key only, as in Den > Local) */
-function nrSaleEnd(x){var e=String(x.end||x.start||'');if(!e)return 0;if(/T\d{2}:\d{2}/.test(e)){var d=Date.parse(e);return isNaN(d)?0:d}var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(e);return m?new Date(+m[1],+m[2]-1,+m[3],16,0).getTime():0}
-function nrSales(t){
-  if(!fbOwnerKey()||t.salesWait||t.sales)return;
-  var vis=nrVisible(t),seen={},towns=[],add=function(s){var p=esPlaceParse(s);if(p&&!seen[p.city+p.st]&&towns.length<4){seen[p.city+p.st]=1;towns.push(p)}},i;
-  add(t.origin&&t.origin.town||'');for(i=0;i<vis.stops.length;i++)add(vis.stops[i].town||'');add(t.dest&&t.dest.town||'');
-  if(!towns.length)return;t.salesWait=true;
-  var left=towns.length,all=[],urls={};
-  towns.forEach(function(p){
-    fetch(SGW_API+'sales?st='+encodeURIComponent(p.st)+'&city='+encodeURIComponent(p.city),{headers:{'X-Prowl-Owner':fbOwnerKey()},cache:'no-store'}).then(function(r){return r.json()}).then(function(j){(j&&j.items||[]).forEach(function(x){if(x&&x.url&&!urls[x.url]){urls[x.url]=1;all.push(x)}})},function(){})['catch'](function(){}).then(function(){if(--left)return;t.salesWait=false;t.sales=all;if((NR.view||NR.built)===t)nrSalesDraw(t)});
+/* v8.34 / worker v207 (Matt, 2026-10-31: "part of estate sale was to fold it into road trip map that will take you to
+   each one"): estate sales on the way. On a Road trip built here (not a kept group trip, not a Plan my week day) a Prowl
+   Pro member or the owner key gets the estate sales open on the trip's day within 3 miles of the road (worker GET
+   /trip/sales: the route as at most 60 points at 2 decimals, the day, this device's time zone and the Den's hunts),
+   closest to the road first, at most 12: a section under the stops and their own pins on the map, each with its photo,
+   that day's hours, miles off the road, Top pick when a hunt matches, and Add stop. Add stop puts the sale in the trip
+   where it adds the least driving, as an Estate sale stop (x Remove takes it out): Road trip times it (45 min there,
+   waiting when it is not open yet), flags it when it is closed by the time you get there, and sends Maps its street
+   address. A sale whose address is not posted yet cannot be added. Added sales come along when the trip is built again
+   (Rebuild from here, new options) and live on this phone only; Save trip keeps the shops. Replaces the owner-only
+   "Estate sales along the way" (worker /sales by town, v7.62). */
+function nrEsOn(t){return !!(t&&!t.estate&&NR.built===t&&!NR.view&&nrWkSweep())}
+function nrEsIds(t){var o={},i;for(i=0;i<(t.stops||[]).length;i++)if(t.stops[i].est)o[t.stops[i].esId]=1;return o}
+/* a sale (a /weekend, /weekend/plan or /trip/sales row) as a trip stop on day k: its hours that day as Road trip's
+   weekly periods (this device's clock), 45 minutes there, opensAt for the wait */
+function nrEsStop(x,k){
+  var W=wpWindows(x,0).filter(function(w){return w.key===k}),wd=nrWeekday(k),off=W.length?-new Date(W[0].o).getTimezoneOffset():-new Date().getTimezoneOffset();
+  var hm=function(ms){var d=new Date(ms);return {day:d.getDay(),hour:d.getHours(),minute:d.getMinutes()}};
+  var hrs=W.length?{offset:off,periods:W.map(function(w){return {open:hm(w.o),close:hm(w.c)}}),days:[NR_DAYS[wd]+': '+W.map(function(w){return wpHm(w.o)+'–'+wpHm(w.c)}).join(', ')]}:null;
+  var town=(x.city||'')+(x.st?', '+x.st:'');
+  return {id:'es'+x.id,esId:x.id,est:1,pin:1,name:x.name||'Estate sale',town:town,mq:x.addr+(town?', '+town:''),url:x.url,esImg:x.img||'',lat:x.lat,lng:x.lng,
+    stay:WP_STAY,opensAt:W.length?W[0].o:0,hours:hrs,about:x.addr,why:x.co||'Estate sale',nested:[]};
+}
+/* the route to send: the line /trip answered, else (a loop) the start, the stops and back; at most 60 points */
+function nrEsLine(t){
+  var L=(t.line||[]).map(function(x){return {lat:x[0],lng:x[1]}}),o=nrOrigin(),vis,i,out=[],step;
+  if(!L.length){if(!o)return [];L=[o];vis=nrVisible(t).stops;for(i=0;i<vis.length;i++)if(typeof vis[i].lat==='number'&&!vis[i].est)L.push(vis[i]);L.push(o)}
+  step=Math.max(1,Math.ceil(L.length/60));for(i=0;i<L.length;i+=step)out.push(L[i]);if(out[out.length-1]!==L[L.length-1])out.push(L[L.length-1]);
+  return out.length>=2?out:[];
+}
+function nrEsLoad(t){
+  if(!nrEsOn(t)||t.es||t.esWait)return;var L=nrEsLine(t);if(!L.length)return;t.esWait=1;
+  nrFetch('/trip/sales?p='+E(L.map(function(p){return p.lat.toFixed(2)+','+p.lng.toFixed(2)}).join('|'))+'&day='+E(t.day||nrLocalDay(new Date()))+'&tz='+E(browserTz()||'')+'&h='+E(wkHunts().join('|'))).then(function(r){
+    t.esWait=0;t.es=r.ok&&r.j&&r.j.sales?r.j:{sales:[]};if(NR.built===t&&(t.es.sales.length||t.es.missing||t.es.partial))nrRedraw();
   });
 }
-function nrSalesNear(t){
-  var vis=nrVisible(t),line=(t.line||[]).map(function(x){return {lat:x[0],lng:x[1]}}),o=nrOrigin(),day=t.day||nrLocalDay(new Date()),maxMi=Math.max(2,nrDetourGet()*37/120),pts;
-  pts=line.concat(vis.stops.filter(function(s){return typeof s.lat==='number'}));if(o)pts.push(o);if(t.dest&&typeof t.dest.lat==='number')pts.push(t.dest);
-  return (t.sales||[]).filter(function(x){
-    if(!x.lat||!x.lon)return false;var s=String(x.start||'').slice(0,10),e=String(x.end||x.start||'').slice(0,10);if(s&&s>day)return false;if(e&&e<day)return false;
-    for(var i=0;i<pts.length;i++)if(nrKm(pts[i],{lat:x.lat,lng:x.lon})*0.621371<=maxMi)return true;return false;
-  });
+function nrEsList(t){return t&&t.es&&nrEsOn(t)?(t.es.sales||[]).filter(function(x){return wkUrlOk(x.url)&&typeof x.lat==='number'&&typeof x.lng==='number'}):[]}
+function nrEsCan(x){return !!(x.addr&&typeof x.lat==='number')}
+function nrEsBtn(t,x){return nrEsIds(t)[x.id]?'<span class="nr-eson">✓ On the trip</span>':nrEsCan(x)?'<button type="button" class="b p nr-esadd" data-nresadd="'+esc(x.id)+'" aria-label="Add '+esc(x.name)+' to the trip">+ Add stop</button>':'<span class="nr-espend">Address not posted yet</span>'}
+function nrEsMeta(x){return [x.city&&x.st?x.city+', '+x.st:x.city,typeof x.off==='number'?(x.off<0.1?'on the road':nrMiTxt(x.off)+' off the road'):''].filter(function(v){return !!v}).join(' · ')}
+function nrEsHtml(t){
+  var S=nrEsList(t),day=t.day||nrLocalDay(new Date());
+  if(!S.length)return t.es&&nrEsOn(t)&&(t.es.missing||t.es.partial)?'<p class="nearp nr-es">Estate sales on the way: '+(t.es.missing?'some of the route could not be checked just now.':'none open on the first stretch of a long drive, the only part checked.')+'</p>':'';   /* v8.34: the note stands alone when none came back */
+  return '<details class="nr-more nr-es" open><summary>Estate sales on the way · '+S.length+'</summary><p class="nearp">Open '+(day===nrLocalDay(new Date())?'today':'on '+NR_DAYS[nrWeekday(day)])+' within '+(t.es.mi||3)+' mi of the road, closest to it first. From EstateSales.net; hours are your time. <b>Add stop</b> puts one in the trip where it adds the least driving.</p><div class="nr-esl">'+S.map(function(x){
+    var im=ES_PIC_RE.test(String(x.img||''))?'<img class="wk-img" src="'+esc(x.img)+'" alt="" loading="lazy" decoding="async">':'<span class="wk-img wk-noimg" aria-hidden="true">⌂</span>';
+    return '<div class="nr-esr'+(x.pick?' wk-pick':'')+'"><a class="wk-row wk-ri" href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer">'+im+'<span class="wk-tx">'+(x.pick&&x.match?'<span class="wk-m">🐾 Top pick · '+esc(x.match.hunt)+'</span>':'')+'<b>'+esc(x.name)+'</b><span>'+esc(nrEsMeta(x))+'</span><span class="wk-hr">'+esc(x.hours||'')+'</span></span></a>'+nrEsBtn(t,x)+'</div>';
+  }).join('')+'</div>'+(t.es.missing?'<p class="nearp">Some of the route could not be checked just now.</p>':'')+(t.es.partial?'<p class="nearp">Only the first stretch of a long drive is checked.</p>':'')+'</details>';
 }
-function nrSalesDraw(t){
-  var box=$('#otp-nrSales');if(!box)return;var L=nrSalesNear(t);if(!L.length){box.innerHTML='';return}
-  var vis=nrVisible(t),E2=nrEtas(t,vis.stops);
-  box.innerHTML='<details class="nr-more" open><summary>Estate sales along the way ('+L.length+')</summary><p class="nearp">From EstateSales.net, open on the trip day within the detour. Only you see this.</p><div class="es-list">'+L.map(function(x){
-    var eta=0,bd=1e9,i,s,d;if(E2)for(i=0;i<vis.stops.length;i++){s=vis.stops[i];if(typeof s.lat!=='number'||!E2.at[s._k||s.id])continue;d=nrKm(s,{lat:x.lat,lng:x.lon});if(d<bd){bd=d;eta=E2.at[s._k||s.id]}}
-    var end=nrSaleEnd(x),late=eta&&end&&eta>end;
-    return esList([x]).replace('</span></a>','</span>'+(eta?'<span class="'+(late?'nr-ended':'')+'">'+(late?'Ends before you get there (~'+nrClock(eta)+')':'Get there ~'+nrClock(eta))+'</span>':'')+'</span></a>');
-  }).join('')+'</div></details>';
+function nrEsPop(t,x){return '<div class="nr-pop"><b>'+esc(x.name)+'</b><br><span>'+esc(x.hours||'')+'</span><br><span>'+esc(nrEsMeta(x))+'</span><br>'+(nrEsCan(x)&&!nrEsIds(t)[x.id]?'<button type="button" class="b p" data-nresadd="'+esc(x.id)+'">+ Add stop</button> ':'')+'<a class="b" href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer">Sale page</a></div>'}
+/* the ids of every stop (skipped too) in the order shown, as nrVisible sorts them */
+function nrOrderAll(t){var S=t.stops||[],O=t.order||[],ix=function(i){var k=O.indexOf(S[i].id);return k===-1?1e3+i:k},a=S.map(function(x,i){return i});a.sort(function(x,y){return ix(x)-ix(y)});return a.map(function(i){return S[i].id})}
+/* where a new stop adds the least straight-line driving among the stops as shown (start, stops, the end or back) */
+function nrEsPut(t,s){
+  var vis=nrVisible(t).stops,o=nrOrigin(),end=t.loop?o:(t.dest&&typeof t.dest.lat==='number'?t.dest:null),i,best=vis.length,bd=1e12,d,a,b,ids;
+  function km(p,q){return p&&q&&typeof p.lat==='number'&&typeof q.lat==='number'?nrKm(p,q):0}
+  for(i=0;i<=vis.length;i++){a=i?vis[i-1]:o;b=i<vis.length?vis[i]:end;if(!a&&!b)continue;d=km(a,s)+km(s,b)-km(a,b);if(!a||!b)d+=1e-6*(vis.length-i);if(d<bd-1e-9){bd=d;best=i}}
+  ids=nrOrderAll(t);a=best<vis.length?ids.indexOf(vis[best]._k):best?ids.indexOf(vis[best-1]._k)+1:ids.length;ids.splice(a<0?ids.length:a,0,s.id);   /* every stop, skipped ones too, so one unskipped later keeps its place */
+  t.stops=(t.stops||[]).concat([s]);t.order=ids;
+}
+function nrEsAdd(id){
+  var t=NR.built,S=nrEsList(t),x=null,i;for(i=0;i<S.length;i++)if(S[i].id===id)x=S[i];
+  if(!x||!nrEsCan(x)||nrEsIds(t)[id])return;
+  try{if(NR.lmap.trip)NR.lmap.trip.closePopup()}catch(e){}
+  nrEsPut(t,nrEsStop(x,t.day||nrLocalDay(new Date())));nrRedraw();
+  toast('Added <b>'+esc(x.name)+'</b> to the trip.',2800);
+}
+function nrEsDrop(id){
+  var t=NR.view||NR.built;if(!t)return;var n=(t.stops||[]).length;
+  t.stops=(t.stops||[]).filter(function(s){return s.id!==id});if(t.order)t.order=t.order.filter(function(k){return k!==id});
+  if(t.stops.length!==n)nrRedraw();
+}
+/* a trip built again (Rebuild from here, new options, + Stop): the estate sales you added come along, unless you have been */
+function nrEsCarry(prev,t){
+  if(!prev||prev.estate||!t||(prev.day||'')!==(t.day||''))return;var g=nrBeenGet(prev),L=(prev.stops||[]).filter(function(s){return s.est&&!g[s.id]&&nrEsOff(t,s)<=3.5}),i;   /* not one now more than ~3 mi (the worker's WK_TRIP_MI) off the new road */
+  for(i=0;i<L.length;i++)nrEsPut(t,L[i]);
+}
+/* a loop's carry waiting on Optimize (nrLoop): done now, against the order it set */
+function nrEsDue(t){var c=NR.esCarry;if(!c||c.t!==t)return false;NR.esCarry=null;nrEsCarry(c.p,t);return true}
+/* miles from p to the trip's road: the line /trip answered, else (a loop) the start, its shops in the order shown and back */
+function nrEsOff(t,p){
+  var L=(t.line||[]).map(function(x){return {lat:x[0],lng:x[1]}}),o=nrOrigin(),i,m=1e9,k=Math.cos(p.lat*Math.PI/180)*69.17,vis;
+  if(!L.length){if(o)L.push(o);vis=nrVisible(t).stops;for(i=0;i<vis.length;i++)if(typeof vis[i].lat==='number'&&!vis[i].est)L.push(vis[i]);if(o)L.push(o)}
+  function seg(a,b){var ax=(a.lng-p.lng)*k,ay=(a.lat-p.lat)*69.17,dx=(b.lng-a.lng)*k,dy=(b.lat-a.lat)*69.17,l=dx*dx+dy*dy,u=l?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/l)):0,x=ax+u*dx,y=ay+u*dy;return Math.sqrt(x*x+y*y)}
+  for(i=0;i<L.length;i++)m=Math.min(m,seg(L[i],L[i+1]||L[i]));
+  return L.length?m:0;
 }
 /* the stop list, in drive order: anchors numbered, the rest of each town nested, the destination last */
 function nrDrawTrip(t,o){
@@ -12377,18 +12471,19 @@ function nrDrawTrip(t,o){
   var BN=nrBeenGet(t),ahead=stops.filter(function(a){return !BN[a.id]}),today=nrToday(t),nx=nrBeenAny(t)?nrNextStop(stops,BN):null;   /* v7.83 */
   var inMaps={},mp=nrMapsPick(ahead,mapsPref()==='apple'?APPLE_WP:9),off=ahead.length-mp.length;mp.forEach(function(a){inMaps[a.id]=1});   /* v7.77 */
   function beenB(p){return today||BN[p.id]?'<button type="button" class="nr-beenb'+(BN[p.id]?' on':'')+'" data-nrbeen="'+esc(p.id||'')+'" aria-pressed="'+!!BN[p.id]+'" aria-label="'+(BN[p.id]?'Not been to ':'Been to ')+esc(p.name||'')+'">'+(BN[p.id]?'Undo':'✓ Been')+'</button>':''}   /* v7.83 */
-  function row(p,cls,num,det){var bn=!!BN[p.id];return '<div class="nr-row'+(p.pin?' nr-pinrow':'')+(bn?' nr-beenrow':'')+'">'+nrCard(p,day,cls+(bn?' nr-been':''),num,{eta:eta(p),det:det,been:bn,off:cls==='nr-anchor'&&!bn&&off>0&&!inMaps[p.id]})+'<span class="nr-acts'+(p.pin?'':' nr-acts4')+'">'+nrGo(p)+nrRvBtn(p)+beenB(p)+(p.pin?'':nrStopBtn(p)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'"><span aria-hidden="true">−</span> Skip</button>')+'</span></div>'}   /* v7.78: + Stop; v7.75: a stop you named is not skipped; take it out above */
-  h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+(t.loop?'the shops around it and back':esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):''))+(t.loop?'</b>':'')+'</p>'+nrTripActs(t)+   /* v7.98 */
+  function row(p,cls,num,det){var bn=!!BN[p.id];return '<div class="nr-row'+(p.pin?' nr-pinrow':'')+(bn?' nr-beenrow':'')+'">'+nrCard(p,day,cls+(bn?' nr-been':''),num,{eta:eta(p),det:det,been:bn,off:cls==='nr-anchor'&&!bn&&off>0&&!inMaps[p.id]})+'<span class="nr-acts'+(p.pin&&!p.est?'':' nr-acts4')+'">'+nrGo(p)+nrRvBtn(p)+beenB(p)+(p.pin?(p.est?'<button type="button" class="nr-skip" data-nresx="'+esc(p.id||'')+'" aria-label="Take '+esc(p.name||'')+' off the trip"><span aria-hidden="true">×</span> Remove</button>':''):nrStopBtn(p)+'<button type="button" class="nr-skip" data-nrskip="'+esc(p.id||'')+'" aria-label="Skip '+esc(p.name||'')+'"><span aria-hidden="true">−</span> Skip</button>')+'</span></div>'}   /* v7.78: + Stop; v7.75: a stop you named is not skipped; take it out above */
+  h+='<div class="nr-head"><p class="nr-route"><b>'+esc(from||'Here')+'</b> → <b>'+(t.loop?(t.estate?'the day’s estate sales and back':'the shops around it and back'):esc(dest.name||'')+'</b>'+(dest.town?', '+esc(dest.town):''))+(t.loop?'</b>':'')+'</p>'+nrTripActs(t)+   /* v7.98 */
      (t.via&&t.via.length?'<p class="nearp nr-viah">By way of '+esc(nrAnd(t.via.map(function(v){return String(v).split(',')[0]})))+'</p>':'')+   /* v7.75 */
+     (t.note?'<p class="nearp">'+esc(t.note)+'</p>':'')+   /* v8.34: Plan my week's address-pending sales */
      (t.missing&&t.missing.length?'<p class="nearp nr-late">Not found on the map: '+esc(nrAnd(t.missing.map(function(v){return String(v).split(',')[0]})))+'. The drive still goes there, but it is not in the list or in Maps; check the name.</p>':'')+   /* v7.77 */
      (nx?'<div class="nr-next"><p class="nr-nexth">Next stop</p><div class="nr-row">'+nrCard(nx.p,day,'nr-anchor',nrLetter(nx.i),{eta:eta(nx.p)})+'<span class="nr-acts">'+nrGo(nx.p)+'</span></div>'+nrNextLine(t,nx.p,stops,BN)+'</div>':nrBeenAny(t)&&dest.name&&!t.loop?'<p class="nearp nr-next">Every stop done. On to <b>'+esc(dest.name)+'</b>.</p>':'')+   /* v7.83 */
      (off>0?'<p class="nearp nr-mapsn">Maps takes '+(ahead.length-off)+' stops in one route: your stops and the biggest shops. The other '+off+' are marked Listed only; Skip one to bring another in.</p>':'')+
      '<p class="nearp">'+(t.route&&(t.route.mi||t.route.km)?nrMiles(t.route)+' mi · '+nrDur(t.route.min||0)+' of driving · ':'')+'Trip day '+NR_DAYS[wd]+'<span id="otp-nrMembers">'+(o.members?' · '+o.members+' on this trip':'')+'</span></p>'+
      nrPlanSum(t,stops)+   /* v7.51 */
-     (live?'<p class="nearp nr-etan">Open or closed is for when you would get there, leaving '+(($('#otp-nrLeave')||{}).value?'at '+nrClock(ET.leave):'now')+' and allowing about '+NR_STAY+' min at a stop'+(ET.routed&&ET.src==='osrm'?'.':' (drive times estimated).')+'</p>':'')+
+     (live?'<p class="nearp nr-etan">Open or closed is for when you would get there, leaving '+(($('#otp-nrLeave')||{}).value||t.leaveAt?'at '+nrClock(ET.leave):'now')+' and allowing about '+(t.estate?WP_STAY:NR_STAY)+' min at a stop'+(ET.routed&&ET.src==='osrm'?'.':' (drive times estimated).')+'</p>':'')+
      (lateN.length&&NR.lateHide?'<p class="nearp nr-late">Hiding '+lateN.length+' closed by the time you get there.</p>':lateN.length?'<p class="nearp nr-late">Closed by the time you get there: '+esc(nrAnd(lateN.slice(0,4)))+(lateN.length>4?' and '+(lateN.length-4)+' more':'')+'. Optimize route, leave earlier, Skip them, or hide them.</p>':'')+
      (lateN.length?'<button type="button" class="hubc nr-lateb'+(NR.lateHide?' on':'')+'" data-nrlate="1" aria-pressed="'+!!NR.lateHide+'">'+(NR.lateHide?'Show the '+lateN.length+' closed by then':'Hide the '+lateN.length+' closed by then')+'</button>':'')+   /* v7.90 */
-     (stops.length>1&&nrOrigin()?'<button type="button" class="hubc nr-opt" data-nropt="1">Optimize route</button>':'')+
+     (stops.length>1&&nrOrigin()&&!t.estate?'<button type="button" class="hubc nr-opt" data-nropt="1">Optimize route</button>':'')+
      (t.route&&t.route.slower>0?'<p class="nearp nr-alt">The road with the most to see, '+nrDur(t.route.slower)+' longer than the fastest drive.</p>':'')+'</div>'+nrMapBar('trip');   /* v7.45: the map, you and the stops */
   if(vis.hidden)h+='<p class="nr-skipped">'+vis.hidden+' skipped · <button type="button" class="sgw-ml" id="otp-nrUnskip">Show them again</button></p>';
   if(!stops.length)h+='<p class="nearp nr-empty">'+(vis.hidden?'Every stop on this route is skipped.':'No shops of the kinds you picked are worth a stop inside this route’s corridor.')+' The drive itself is ready: <a class="sgw-ml" href="'+esc(nrStartLeg(t).url)+'" target="_blank" rel="noopener noreferrer">Open the drive in '+nrStartLeg(t).app+' ↗</a></p>';   /* v7.72: the bar is hidden with no stops, so the link is here */
@@ -12400,11 +12495,11 @@ function nrDrawTrip(t,o){
   if(t.loop)h+='<p class="nearp nr-back">Then back to <b>'+esc(from||'the start')+'</b>'+(ET&&ET.at._dest?' (~'+nrClock(ET.at._dest)+')':'')+'.</p>';
   else if(dest.name)h+='<div class="nr-dest"><p class="nr-nesth">Final stop</p><div class="nr-row">'+nrCard(dest,day,'nr-anchor','',{eta:eta(dest)})+nrGo(dest)+'</div></div>';
   if(t.more&&t.more.length)h+='<details class="nr-more"><summary>Smaller shops along the way ('+t.more.length+')</summary><p class="nearp">Not worth planning around, but there if you pass. These never go into the Maps link, unless you make one a stop with + Stop.</p><div class="nr-list">'+t.more.map(function(p){return '<div class="nr-row">'+nrCard(p,day,'nr-sub')+'<span class="nr-acts">'+nrStopBtn(p)+'</span></div>'}).join('')+'</div></details>';   /* v7.39 */
-  h+='<div id="otp-nrSales"></div>';   /* v7.62 */
+  h+='<div id="otp-nrSales">'+nrEsHtml(t)+'</div>';   /* v7.62; v8.34: estate sales on the way */
   out.innerHTML=h;
   nrFoot(t);
   nrMap('trip');   /* v7.45 */
-  nrLegsFetch(t,stops);if(t.sales)nrSalesDraw(t);else nrSales(t);   /* v7.62 */
+  nrLegsFetch(t,stops);nrEsLoad(t);   /* v8.34 */
 }
 /* v7.98 (Matt: "Trips used to be for groups we need a save trip button and a share inside trips area"): what a trip is
    for sits at its top, not under More › Share. A built trip: Save trip (kept for the group, nrKeep) and Share (the route
@@ -12431,7 +12526,8 @@ function nrFoot(t){
    so everyone on the trip sees the new list; on a built trip, or someone else's, it redraws your own view. */
 function nrHere(){
   var t=NR.view||NR.built;if(!t||NR.busy)return;
-  if(t.loop){var lf=$('#otp-nrFrom');if(lf)lf.value='';rNrFrom();nrLoop('');return}   /* v7.62: a loop starts again from the phone */
+  if(t.estate){nrPos(function(pos,err){if(!pos){toast(err==='denied'?'Location is off for this site, so Prowl cannot tell where you are.':'Your location could not be read just now.',3200);return}WP.here={key:t.day,pt:{lat:pos.lat,lng:pos.lng},at:Date.now()};delete WP.ord[t.day];WP.plan=WP.start?wpSplit(wpLive(),WP.start,Date.now(),{here:WP.here}):null;if(wpTrip(t.day))toast('Rebuilt from where you are.',2600);else toast('None of that day\u2019s sales fit from here any more.',3200)},true);return}   /* v8.34: a Plan my week day, planned again from the phone */
+  if(t.loop){var lf=$('#otp-nrFrom');if(lf)lf.value='';rNrFrom();nrLoop('',1);return}   /* v7.62: a loop starts again from the phone */
   var dest=t.dest||{},to=NR.built&&NR.built.to?NR.built.to:(dest.name||'')+(dest.town?', '+dest.town:''),out=$('#otp-nrOut');if(!to||!out)return;
   NR.busy=true;out.insertAdjacentHTML('afterbegin','<div id="otp-nrHereWait">'+nrFlock('otp-nrFlockH',['Finding where you are…','Finding the stops still ahead…','Picking the stops worth the time…'])+'</div>');   /* v7.61 */
   function fail(msg){NR.busy=false;var w=$('#otp-nrHereWait');if(w)w.innerHTML='<p class="nearp nr-wait">'+msg+'</p>'}   /* msg: plain words, or already escaped */
@@ -12445,7 +12541,7 @@ function nrHere(){
       });
       return;
     }
-    NR.busy=false;NR.view=null;var fi=$('#otp-nrFrom');if(fi)fi.value='';rNrFrom();nrBuild(to);   /* v7.62: FROM HERE is the phone, not the From box */
+    NR.busy=false;NR.view=null;var fi=$('#otp-nrFrom');if(fi)fi.value='';rNrFrom();nrBuild(to,1);   /* v7.62: FROM HERE is the phone, not the From box */
   },true);
 }
 function nrSignin(){var e2;try{e2=new Event('prowl-signin')}catch(x){e2=document.createEvent('Event');e2.initEvent('prowl-signin',true,true)}closeNear();document.dispatchEvent(e2)}
@@ -12746,6 +12842,8 @@ if(near){
     if(e.target.closest&&e.target.closest('#otp-nrViaAdd')){nrViaAdd();return}   /* v7.75 */
     var bv=e.target.closest&&e.target.closest('[data-nrbeen]');if(bv){e.preventDefault();var bt=NR.view||NR.built;if(bt){var bon=nrBeenToggle(bt,bv.getAttribute('data-nrbeen'));nrRedraw();if(bon)nrPos(function(pos){if(pos&&(NR.view||NR.built)===bt)nrRedraw()})}return}   /* v7.83; v7.90: and where you are, for Next stop */
     if(e.target.closest&&e.target.closest('[data-nrlate]')){NR.lateHide=!NR.lateHide;nrRedraw();return}   /* v7.90 */
+    var ea=e.target.closest&&e.target.closest('[data-nresadd]');if(ea){e.preventDefault();nrEsAdd(ea.getAttribute('data-nresadd'));return}   /* v8.34: an estate sale on the way */
+    var ex=e.target.closest&&e.target.closest('[data-nresx]');if(ex){e.preventDefault();nrEsDrop(ex.getAttribute('data-nresx'));return}
     var av=e.target.closest&&e.target.closest('[data-nradd]');if(av){e.preventDefault();nrStopAdd(av.getAttribute('data-nradd'),av.getAttribute('data-nraddid'));return}   /* v7.78 */
     var vu=e.target.closest&&e.target.closest('[data-viaup]');if(vu){nrViaUp(+vu.getAttribute('data-viaup'));return}   /* v7.84 */
     var vx=e.target.closest&&e.target.closest('[data-viax]');if(vx){NR.vias.splice(+vx.getAttribute('data-viax'),1);rNrVias();return}

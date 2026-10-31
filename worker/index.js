@@ -19,6 +19,14 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v207: 2026-10-31. Estate sales on the way (Matt: "fold it into road trip map"): GET /trip/sales?p=lat,lng|...&day&tz[&h]
+ *         lists the estate sales open on a Road trip's day within 3 miles of its route (the page sends the route /trip
+ *         answered, or a loop's start and stops), nearest to the road first, at most 12, from the wk1: lists around at most
+ *         5 points along it (snapped to 0.1 degree, 25 or 50 miles) and the sales' own pages (wkd2:); 16 outside calls a
+ *         request at most, WK_TRIP_PER_IP a day for new lists; Pro members and the owner only (wkWho). Plan my week's days
+ *         open in Road trip on the page alone (a loop of fixed stops, /order as before). A sale whose page the budget did
+ *         not reach is left out (never shown without its address); partial=1 is a route longer than the circles read,
+ *         missing=1 a circle whose list could not be had just now.
  *   v206: 2026-10-31. Diagnose says why the AI check did not answer (Matt's eBay test: "The AI check did not answer"):
  *         jevClassify keeps TypeSafe's status and error message, or "timed out", in info.status ("jev failed: ...") and
  *         logs it; the admin shows it under the warning. Nothing else changes.
@@ -704,12 +712,12 @@ import { PAGE_JS, PAGE_JS_HASH } from "./page-js.js";   /* v124 */
 import { huntCombine, huntPriceN, craigslistNormalize, huntNeeds, huntRelevant } from "./hunt.js";
 import { SAVED_BODY_MAX, SAVED_SYNCS_PER_DAY, SAVED_PHOTOS_PER_SYNC, SAVED_PHOTO_MAX, SAVED_SIG_SECONDS, SAVED_CHECKS_PER_LIST, savedMerge, savedToCopy, savedUntil, photoKey, savedDue, savedListDue, savedEndFrom, savedSrc, savedHp } from "./saved.js";   /* v168 */   /* v117; v152: huntNeeds, huntRelevant */
 import { wkAdd, wkFresh, wkCur, letterShorters, letterBuild, letterText, letterQuiet } from "./letter.js";   /* v152: the weekly letter */
-import { WK_RADIUS_MI, WK_RADIUS_MAX, WK_CAP, WK_DETAIL_MAX, wkApiUrl, wkFromApi, wkFromCity, wkWindow, wkToRead, wkDetailParse, wkBuild, wkHunts, wkPlanIds, wkPlanMsg, wkPlanUrl, wkPlanRows, wkDaysIn, wkMatch, wkRowOf } from "./weekend.js";   /* v205: estate sales this week, Plan my week, the daily email's section */
+import { WK_RADIUS_MI, WK_RADIUS_MAX, WK_CAP, WK_DETAIL_MAX, wkApiUrl, wkFromApi, wkFromCity, wkWindow, wkToRead, wkDetailParse, wkBuild, wkHunts, wkPlanIds, wkPlanMsg, wkPlanUrl, wkPlanRows, wkDaysIn, wkMatch, wkRowOf, WK_TRIP_MI, WK_TRIP_CAP, wkTripLine, wkTripCircles, wkDayWin, wkAlong, wkAlongRows } from "./weekend.js";   /* v205: estate sales this week, Plan my week, the daily email's section */
 import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard, rankPlaces, alongRoute, clusterStops, mapsDirUrl, hasStreet, townOf, townLabel,
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v206";
+const WORKER_VERSION = "v207";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -7536,11 +7544,12 @@ async function wkList(env, pt, r, place, run) {
    is still hidden is read again after WK_PENDING_TTL, so the address shows up soon after the company posts it. */
 const WK_PENDING_TTL = 3 * 3600;
 async function wkDetails(env, sales, run) {
-  const by = Object.create(null), gone = Object.create(null), todo = [];
-  await Promise.all(sales.map(async s => {
+  const by = Object.create(null), gone = Object.create(null), miss = [];
+  await Promise.all(sales.map(async (s, i) => {
     const d = await kvGet(env, "wkd2:" + s.id, null);
-    if (d && d.gone) gone[s.id] = 1; else if (d) by[s.id] = d; else todo.push(s);
+    if (d && d.gone) gone[s.id] = 1; else if (d) by[s.id] = d; else miss[i] = s;
   }));
+  const todo = miss.filter(Boolean);   /* v206: in the order asked (nearest first), so a spent budget drops the last ones */
   for (let i = 0; i < todo.length; i += 4) {
     await Promise.all(todo.slice(i, i + 4).map(async s => {
       const g = await wkGet(s.url, "text/html,application/xhtml+xml", run);
@@ -7615,6 +7624,48 @@ async function wkPlanRoute(request, env, url, origin) {
   const det = await wkDetails(env, want);
   const P = wkPlanRows(L.items, det, ids, picks, win, now, tz);
   return json({ start: { lat: pt.lat, lng: pt.lng, town: pt.city && pt.st ? pt.city + ", " + pt.st : zip, zip: zip }, sales: P.sales, missing: P.missing, tz: tz, from: new Date(win.from).toISOString(), to: new Date(win.to).toISOString() }, 200, origin, hdr);
+}
+/* ---------- v206: estate sales on the way (GET /trip/sales) ----------
+     GET /trip/sales?p=lat,lng|lat,lng|...&day=YYYY-MM-DD[&tz=America/Detroit][&h=hunt|hunt]
+   The estate sales open on a Road trip's day within WK_TRIP_MI of its route, nearest to the road first, at most
+   WK_TRIP_CAP, each with its photo, that day's hours, its miles off the road and (for Add stop) its street address and
+   position; a sale whose words hold every word of a hunt is marked pick. A separate GET, not part of /trip: /trip is
+   cached and shared by everyone who drives the same way and decides nothing about Pro; this answer is for Pro members
+   and the owner (wkWho), depends on the day and the member's hunts, and is asked after the trip is drawn, so the trip
+   never waits on EstateSales.net. Budget: the lists around at most WK_TRIP_LISTS points (wkTripCircles: snapped to 0.1
+   degree, kept 3 hours as wk1:, shared with /weekend) and the pages of the sales shown (wkd2:, a day), at most
+   WK_TRIP_CALLS outside calls a request; a request that needs a new list counts against WK_TRIP_PER_IP a day (past it,
+   only the kept lists are read). EstateSales.net sees only the snapped points and a radius. */
+const WK_TRIP_CALLS = 16, WK_TRIP_PER_IP = 20;
+async function wkTripRoute(request, env, url, origin) {
+  const hdr = { "Cache-Control": "private, no-store", "Vary": "X-Prowl-Owner, X-Prowl-Email, X-Prowl-Tok, Authorization" };
+  if (!env.PROWL_ALERTS) return json({ error: "not found" }, 404, origin, hdr);
+  const w = await wkWho(request, env, origin, hdr);   /* Pro members, the owner, or SALES_PUBLIC=on; 401/403 otherwise */
+  if (w instanceof Response) return w;
+  const sp = url.searchParams, line = wkTripLine(sp.get("p")), tz = alTzClean(sp.get("tz")) || AL_TZ, win = wkDayWin(sp.get("day"), tz);
+  if (!line) return json({ error: "p: 2 to 80 points, lat,lng|lat,lng" }, 400, origin, hdr);
+  if (!win) return json({ error: "day: YYYY-MM-DD" }, 400, origin, hdr);
+  const now = Date.now(), day = String(sp.get("day"));
+  if (win.to <= now || win.from > now + 15 * 86400000) return json({ day: day, tz: tz, sales: [], total: 0, lists: 0 }, 200, origin, hdr);
+  const C = wkTripCircles(line), hunts = wkHunts(sp.get("h")), run = { calls: 0, max: WK_TRIP_CALLS };
+  const keyOf = (pt) => "wk1:" + pt.lat.toFixed(2) + "," + pt.lng.toFixed(2) + ":" + C.r;
+  const kept = await Promise.all(C.pts.map((pt) => kvGet(env, keyOf(pt), null)));
+  const fresh = (v) => v && Array.isArray(v.items) && now - (v.at || 0) < WK_LIST_TTL * 1000;
+  let ask = true;
+  if (!w.owner && kept.some((v) => !fresh(v))) ask = await vCount("wkt:" + ipKey(request.headers.get("CF-Connecting-IP")), WK_TRIP_PER_IP);
+  const lists = await Promise.all(C.pts.map((pt, i) => (fresh(kept[i]) ? kept[i] : ask ? wkList(env, pt, C.r, null, run) : (kept[i] && Array.isArray(kept[i].items) ? Object.assign({}, kept[i], { stale: 1 }) : null))));
+  const items = [];
+  let got = 0, stale = 0;
+  lists.forEach((L) => { if (L) { got++; if (L.stale) stale = 1; L.items.forEach((s) => items.push(s)); } });
+  if (!got && C.pts.length) return ask ? json({ error: "EstateSales.net did not answer just now" }, 502, origin, hdr) : json({ error: "slow down" }, 429, origin, hdr);
+  const cands = wkAlong(items, line, win, now, WK_TRIP_MI);
+  /* the pages of the nearest WK_TRIP_CAP + 2: those kept in wkd2: cost nothing; of the rest, wkDetails reads the nearest
+     first, only as many as the calls the lists left (run); a sale whose page was not read is left out, not shown bare */
+  const det = await wkDetails(env, cands.slice(0, WK_TRIP_CAP + 2).map((c) => c.s), run);
+  const sales = wkAlongRows(cands, det, hunts, tz, WK_TRIP_CAP);
+  /* partial: the route is longer than the circles read; missing: a circle's list could not be had just now (it failed,
+     or this IP is past its count and nothing was kept) */
+  return json({ day: day, tz: tz, r: C.r, mi: WK_TRIP_MI, lists: C.pts.length, partial: C.partial ? 1 : 0, missing: got < C.pts.length ? 1 : 0, stale: stale, calls: run.calls, total: cands.length, sales: sales }, 200, origin, hdr);
 }
 async function runProbes(env) {
   const srcs = [], resting = [];
@@ -8945,6 +8996,7 @@ async function handleFetch(request, env, ctx) {
     }
     if (url.pathname === "/fb-finds" && request.method === "GET") return fbFinds(request, env, url, origin);   /* v200: Facebook finds through Apify (410 in v178-v196) */
     if (url.pathname === "/near" && request.method === "GET") return nearRoute(request, env, url, origin);   /* v132: Around You */
+    if (url.pathname === "/trip/sales" && request.method === "GET") return wkTripRoute(request, env, url, origin);   /* v206: estate sales on the way */
     if (url.pathname === "/trip" && request.method === "GET") return tripRoute(request, env, url, origin, ctx);   /* v132: Road Trip */
     if (url.pathname === "/geo" && request.method === "GET") return geoRoute(request, env, url, origin);   /* v157: In a location */
     if (url.pathname === "/order" && request.method === "GET") return orderRoute(request, env, url, origin);   /* v157: Optimize route */
