@@ -126,7 +126,7 @@ test('v8.27: the Facebook store screen shows each hunt from fb-finds?all=1, then
   tab(p).click();
   await tick(50);
   pick(p, 'facebook');
-  await waitFor(() => p.$$('#otp-fbAll h3').length === 2);
+  await waitFor(() => p.$$('#otp-fbAll h3').length === 1 && p.$('#otp-fbAll details.fb-rest'));   /* v8.31: hunts without finds fold into one line */
   assert.equal(f.asked.filter((a) => a.all === '1').length, 1);
   assert.equal(f.asked.find((a) => a.all === '1').h['X-Prowl-Tok'], 'T'.repeat(24));
   assert.equal(p.$('#otp-res h2').textContent, 'Your hunts on Facebook Marketplace');
@@ -135,7 +135,8 @@ test('v8.27: the Facebook store screen shows each hunt from fb-finds?all=1, then
   assert.equal(subs[0].querySelector('h3').textContent, 'ceramic panther');
   assert.equal(subs[0].querySelector('.sgw-upd').textContent, 'Updated this morning');
   assert.match(subs[0].nextElementSibling.querySelector('.sgw-m').textContent, /Facebook · Novi, MI · 8 mi/);
-  assert.equal(subs[1].querySelector('.sgw-upd').textContent, 'Checks soon');
+  assert.equal(p.$('#otp-fbAll .fb-rest summary').textContent, '1 hunt checking soon');
+  assert.match(p.$('#otp-fbAll .fb-rl li').textContent, /fire king jadeite\s*Checks soon/);
   assert.match(p.$('#otp-fbOne').textContent, /4 searches left today/);
   assert.equal(p.$('#otp-stF'), null, 'no per-site search form');
   pick(p, 'shopgoodwill');
@@ -163,7 +164,7 @@ test('v8.27: Search Facebook for one thing posts fb-search, shows the cards and 
   tab(p).click();
   await tick(50);
   pick(p, 'facebook');
-  await waitFor(() => p.$$('#otp-fbAll h3').length === 2);
+  await waitFor(() => p.$$('#otp-fbAll h3').length === 1);
   const go = (q) => { p.$('#otp-fbQ').value = q; p.$('#otp-fbF').dispatchEvent(new p.win.Event('submit', { bubbles: true, cancelable: true })); };
   go('  teak   bench ');
   await waitFor(() => p.$('#otp-fbOne .sgw-cell'));

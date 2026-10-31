@@ -845,9 +845,9 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .fb-rest[open]>summary::after{transform:rotate(90deg)}
 .scout-app-wrapper .fb-rl{list-style:none;margin:0 0 8px;padding:0}
 .scout-app-wrapper .fb-rl li{display:flex;flex-direction:column;gap:2px;padding:9px 0;border-top:1px solid var(--ln);min-width:0}
-.scout-app-wrapper .fb-rl b{font-size:15px;color:var(--ink);overflow-wrap:anywhere}
+.scout-app-wrapper .fb-rl b{font-size:15px;font-weight:800;color:var(--ink);overflow-wrap:anywhere}
 .scout-app-wrapper .fb-rl span{font-size:13px;color:var(--mu);line-height:1.45}
-.scout-app-wrapper .fb-rl i{font-style:normal;opacity:.8;white-space:nowrap}
+.scout-app-wrapper .fb-rl i{display:block;font-style:normal;font-size:12.5px;opacity:.8}
 .scout-app-wrapper .fb-rest .sgw-note{padding:0 0 8px}
 .scout-app-wrapper .sgw-fbm{display:inline-flex;gap:4px;margin-left:8px;flex-wrap:wrap}
 .scout-app-wrapper .sgw-fbm-b{min-height:32px;padding:0 10px;border:1px solid var(--l2);border-radius:999px;background:var(--cd);color:var(--i2);font-size:13px;font-weight:700;cursor:pointer}
@@ -5292,7 +5292,7 @@ function fbAllDraw(){
     if(none.length)sm.push(none.length+' hunt'+(none.length===1?'':'s')+' with nothing yet');
     if(soon.length)sm.push(soon.length+(none.length?'':' hunt'+(soon.length===1?'':'s'))+' checking soon');
     for(i=0;i<none.length;i++){x=none[i];r=fbWhyTxt(x.term,x.why,x.usa)||'Nothing on Facebook for this hunt lately.';w=fbWhen(x.updated);
-      li+='<li><b>'+esc(x.term)+'</b><span>'+esc(r)+(w?' <i>'+esc(w)+'</i>':'')+'</span></li>'}
+      li+='<li><b>'+esc(x.term)+'</b><span>'+esc(r)+(w?'<i>'+esc(w)+'</i>':'')+'</span></li>'}
     for(i=0;i<soon.length;i++)li+='<li><b>'+esc(soon[i].term)+'</b><span>Checks soon</span></li>';
     h+='<details class="fb-rest"'+(got.length?'':' open')+'><summary>'+esc(sm.join(' · '))+'</summary><ul class="fb-rl">'+li+'</ul>'+
       (soon.length?'<p class="sgw-note">Each day Prowl searches Facebook for up to 10 of your hunts, in turn.</p>':'')+'</details>';
