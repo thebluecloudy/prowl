@@ -1,16 +1,58 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.25 / v199).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.26 / v200).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.25** | 375,639 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v199** | |
+| Page | **v8.26** | 375,639 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v200** | |
 
 Recently shipped, newest first:
 
+- **v8.26 / v200: Facebook Marketplace finds again, through Apify, for Pro members** (Matt, 2026-10-31: use Apify, he
+  set the secret `APIFY_TOKEN`; Pro members get it; a hard cap of $1 a day). The v94-v177 sweep ran through Matt's own
+  account and was retired in v178; this one never logs in and never sends a cookie (`worker/fb.js`).
+  - **How:** Apify's actor `curious_coder~facebook-marketplace` (`APIFY_FB_ACTOR`, env `FB_ACTOR` overrides), one
+    `POST /v2/acts/<actor>/run-sync-get-dataset-items?timeout=75&maxItems=24` per hunt and area, the token in the
+    Bearer header only; input: hunt words, the area point, `radiusKm` 40, listing details and all photos off, strict
+    filtering, one page, US proxy. Kept of each listing: id, title (emails removed), price (USD only), photo (only
+    https `*.fbcdn.net`), town, the link built from the id, the day found. Sold, pending and hidden ones are dropped;
+    seller fields are never read.
+  - **Area:** a Pro member's local-pickup ZIP (prefs.zip), geocoded once (counted in `ggeo:all`), kept as its 0.1
+    degree cell (about 10 km) in `fbz:<zip>` for 90 days (a miss 7, kept only when Google says `ZERO_RESULTS`; a quota or
+    key error keeps nothing). Members nearby share one search. No ZIP, no finds.
+  - **Sweep:** on the alert clock, only while the Cloudflare var `FB_LIVE` is "on": each Pro member's active hunts
+    once a day per hunt and cell, at most `FB_PER_RUN` (2) Apify calls a run and only with room left in the run's
+    outside calls (4 a call, 2 more for a new ZIP's geocoding). `fb2:<term>|<cell>` = the week's finds merged by id,
+    newest first, 60 at most, 8 days. Each try is taken in Caps first (`fbtry:<term>|<cell>`, 2 a day, atomic), so a run
+    killed mid-call or two overlapping runs never retry uncounted. `fb2day:<day>` remembers what was swept, tries used
+    and that the cap was reached. A failure keeps nothing new and leaves a
+    short scrubbed note in the admin's errors.
+  - **Cost cap:** `fbusd:all` in the day's Caps, in 1/100,000 of a dollar. Before a call the estimate (24 listings at
+    $0.0005 + $0.00005 start = $0.01205) is reserved in one Caps step (op `addlim`, refused if it would pass
+    `FB_DAY_USD`, default 1), and Apify is told `maxTotalChargeUsd` of the same amount; only a cost above the estimate is
+    added after. No Caps answer (binding missing or erroring), no call. An admin AI pool row shows it in dollars. `worker/spend.js` counts api.apify.com
+    (calls and listings, $0.05 per 1,000 starts and $0.50 per 1,000 listings) on the Spending tab.
+  - **Delivery:** the daily email adds a Pro member's cached Facebook finds as source "facebook" through the same
+    exact-match, seen and price/skip-word rules (no outside call). GET `/fb-finds?term=` answers again (410 since
+    v178): a store session or X-Prowl-Email / X-Prowl-Tok of a Pro member, or the owner key (which may pass `&zip=`);
+    401 signed out, 403 not Pro; while FB_LIVE is off a member gets `{ live: false, items: [] }` with no counter, no
+    Google lookup and nothing kept. `/fb-ingest` stays 410. `/alerts/status` says `fb: true` for a Pro member while live.
+  - **Page:** the Facebook strip (v6.65's `fbFetch`/`fbBlock`/`fbHas`, `.sgw-fbh`) is back under the Goodwill block
+    for the owner key, or a signed-in Pro member once `/alerts/status` says `fb` (the page asks nothing before), keyed
+    by the worker's own cut (`cutWords(t,60)`, a whole word, so a hunt over 60 characters finds its finds), plain links; a Pro member without a ZIP is told to add one (while
+    live). Den > Settings, by the local-pickup ZIP, says Facebook finds use it (only when status says fb). No new keys.
+  - **Admin:** Diagnose tab, **Facebook test** (built once there, so the Overview's minute redraw cannot strand a running
+    test): a hunt and a ZIP, one Apify call now (counts against the cap,
+    works while FB_LIVE is off), shows the listings (title, price, town, link), the count, the cost and today's spend.
+  - Privacy section updated. Tests: `worker/__tests__/fb-apify-v200.test.mjs`, `__tests__/page/fb-strip-v826.test.mjs`;
+    `worker/__tests__/fb-admin-v200.test.mjs`; `fb-retired.test.mjs` and `fb-retired-v808.test.mjs` now assert no
+    session cookies; `spend.test.mjs` scans fb.js. A review pass fixed: the cap reserved before the call (overlap, a
+    killed run), `maxTotalChargeUsd`, no Caps = no call, FB_LIVE off asks nothing, Google errors not kept as misses,
+    geocoding in the run's budget, the admin test's stale box, the page's key for long hunts.
+    Numbered v8.26 / v200 because v8.23 / v197 were overtaken while it waited (v8.24 / v199 and v8.25 shipped first).
 - **v8.25: the blood moon header goes live.**
   - **What went wrong:** v8.24's page deploy failed its md5 check, and the workflow put the v8.21 page back. The header's
     `<picture>` had three `<source>` tags, and Shopify rewrote that markup (it added a `</source>`).
@@ -1781,7 +1823,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.26, worker v200** (open PRs hold page v8.22 and worker v198 (Hark's #281 draft), and page v8.23 and worker v197 (#287, Facebook through Apify)). Claim one here when you start.
+Next free numbers: **page v8.27, worker v201** (Hark's open PR #281 holds page v8.22 and worker v198). Claim one here when you start.
 
 ## What's next
 
@@ -1796,6 +1838,14 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 ## Waiting on Matt
 
+- **Facebook finds through Apify (worker v200 / page v8.25), in this order:**
+  1. In the admin, **Diagnose** tab, run **Facebook test** for about 5 of your hunts with the Novi ZIP (48375): check
+     the listings are right and the cost (about $0.012 a test at most) and today's spend line.
+  2. In Apify Billing, set a **monthly spending limit** (the worker's own cap is $1 a day, about $30 a month at most).
+  3. Done (Matt, 2026-10-31): the Cloudflare variable **`FB_LIVE` = `on`** is set (not in wrangler.toml; keep_vars keeps
+     it), so Pro members' daily searches start as soon as v200 is live. **`FB_DAY_USD`** is optional (default 1).
+  4. Paste the updated `docs/privacy-policy-prowl-section.html` (Facebook finds bullets; Last updated October 31,
+     2026) before turning it on.
 - **Optional: let GitHub publish the extension.** Add the four repository secrets `CWS_EXTENSION_ID`,
   `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET` and `CWS_REFRESH_TOKEN` (steps in `extension/README.md`). After that, a
   merged version bump goes to Chrome Web Store review by itself.

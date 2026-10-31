@@ -4,11 +4,12 @@
   2. Paste everything below the dashed line (three sections: "Prowl, Prowl Alerts and Field Guides", "How long Prowl
      keeps things" and "How Prowl uses AI") directly BEFORE the line  <h2>Third Party Websites and Links</h2>
      (that is, right after the "Relationship with Shopify" paragraph), replacing the older Prowl sections if they are there.
-  3. Change the first line of the policy to:  <p>Last updated: October 28, 2026</p>
+  3. Change the first line of the policy to:  <p>Last updated: October 31, 2026</p>
   4. Save.
   Every statement below was checked against how Prowl actually works: checked against worker v186 / page v8.12 on
   2026-10-28 (worker/index.js, worker/saved.js, worker/trip.js, worker/push.js, worker/metrics.js, page/prowl.html,
-  extension/). Re-check it if Prowl's data handling changes.
+  extension/). Re-check it if Prowl's data handling changes. The Facebook Marketplace finds bullets (Prowl Alerts, Who
+  else, How long, What it does not remove) were added against worker v200 / page v8.26 on 2026-10-31 (worker/fb.js).
   Notes for the next check:
   - Delete my Prowl Alerts account runs alPurge (worker/index.js). Since v181 it also covers every earlier address
     (prev: saved finds and photos, acct:, tripinv:) and the trips (tripsForget: the member leaves each trip, a trip they
@@ -31,7 +32,13 @@
     link (sharenomail:<keyed code>) and the postal address.
   - Google Lens through SerpApi needs the SERPAPI_KEY secret and Cloud Vision needs GOOGLE_VISION_KEY; the text says
     "when switched on" for both.
-  - The Facebook sweep is being retired in this series and is deliberately not described. Depop live search is off
+  - v200: Facebook finds through Apify (worker/fb.js). Sent to Apify: the hunt words (fbTerm) and the ZIP's point
+    rounded to a 0.1 degree cell (fbCell), radiusKm 40, getListingDetails false, no cookies; the token is ours. Kept:
+    fb2:<term>|<cell> {id, title, price, image (fbcdn only), location (city, state), url, found}, FB_TTL 8 days, shared
+    by everyone with that hunt in that cell, so alPurge does not touch it (it expires). fbz:<zip> = the cell, 90 days (a
+    miss 7, only on Google's ZERO_RESULTS). Only while FB_LIVE is "on", Pro members with prefs.zip only: with it off,
+    /fb-finds sends nothing to Google and keeps nothing, and the page does not ask. The ZIP goes to Google Geocoding once.
+    The v94-v177 sweep through Matt's own account stays retired and is not described. Depop live search is off
     (DEPOP_LIVE); put Depop in the server-search list if that is ever turned on.
   - v181: saved finds move on an email change (alMoveConfirm copies saved:, the photos stay under the old address's
     sha16 and each find keeps it as hp); an email-only member keeps their trip id (tid); acct: and tripinv: follow.
@@ -86,6 +93,7 @@
   <li><b>The weekly letter.</b> On Sundays we email Prowl Alerts members a short letter about their week. To write it we keep a running tally of the week's new finds and the best one, reset each week. When the letter is written it also reads your likes, and for a hunt that found nothing it may ask eBay once whether a shorter search finds something. We keep a copy of the letter for the app for 21 days. You can turn the letter off on its own from the link in it or in your settings.</li>
   <li><b>Likes and ignored words.</b> If you are signed in, the finds you like (the heart) and the words you ask Prowl to ignore are kept with your record so they follow you to your other devices.</li>
   <li><b>Saved finds (Prowl Pro).</b> Pro members' saved finds follow the account. Each one is kept for a year from the day you saved it, with a copy of the listing's photo in our storage, because marketplaces take their photos down once a piece sells. For finds on eBay, Etsy, ShopGoodwill and The Salvation Army, we look at the listing up to about once a day to mark it sold or ended. Photos are shown only through private links that expire.</li>
+  <li><b>Facebook Marketplace finds (Prowl Pro).</b> If you have Prowl Pro and have set a local-pickup ZIP code, once a day our service sends the words of your hunts and an area point to Apify, which searches Facebook Marketplace for them from its own servers, logged out: it never uses your Facebook account or anyone else's, and no cookies are sent. The area point is the middle of a square of about 10 km around your ZIP code, shared with everyone nearby; your ZIP code, address and email address are not sent to Apify. To find that point, your ZIP code is sent once to Google's Geocoding service, and the point is kept for 90 days. Of each listing we keep only its title, price, photo, town and link, for about a week (8 days), kept by hunt words and area rather than by person, and we show them in Prowl and in your alert emails. We never keep seller details. Apify itself holds each search's raw results, which can include a seller's public name, in our Apify account for its short storage period (about a week) before deleting them; we do not read or copy those fields. When you open a listing, your browser goes to Facebook under Facebook's own policy.</li>
   <li><b>Pounce.</b> If you set up a Pounce quarry, we keep its description, skip words, size and price range, the photo link you chose, whether you want "maybe" matches, and up to 8 listings you told it were not it. Our service checks your hunt's new listings against it with Meta's Muse AI service, sending each listing's title, price and photo and your reference photo. It remembers which listings it has already checked, keeps listings it has not reached yet for the rest of the day, and keeps up to 20 recent matches for you.</li>
   <li><b>Phone alerts.</b> If you turn on "Alert this phone", we keep your phone's notification address and keys (up to 5 phones), with a label for the kind of device (such as iPhone or Android), under a one-way code of your email address. Notifications are sent through your browser maker's push service (for example Google or Apple), encrypted so that service cannot read them. They name the piece, its price and marketplace, your hunt, why it matched, and the listing's photo. Your name and email address are never readable in them.</li>
   <li><b>Changing your email address.</b> We keep up to three earlier addresses with your record, and a forwarding note for each for 90 days, so links in older emails still work. We send one notice to the old address.</li>
@@ -112,6 +120,7 @@
   <li><b>Cloudflare</b> hosts our Prowl service, its storage and caches, processes requests (including IP addresses), and provides the page's visit counts.</li>
   <li><b>Resend</b> sends our emails.</li>
   <li><b>Meta</b> provides the Muse AI service, and <b>TypeSafe</b> provides the background helpers (it receives hunt words and listing details).</li>
+  <li><b>Apify</b> searches Facebook Marketplace for Prowl Pro members' hunts. It receives the hunt words and an area point of about 10 km, never a name, an email address or a Facebook account.</li>
   <li><b>Google</b> provides Maps Platform for Near me and road trips, and, when switched on, Cloud Vision for photo checks. <b>SerpApi</b> fetches Google Lens matches when that is switched on.</li>
   <li><b>OSRM</b>, a public route service, receives route points to order the stops. <b>OpenStreetMap</b> provides the map pictures.</li>
   <li><b>Your browser</b> also loads the page's fonts from Google Fonts and the map code from cdnjs (Cloudflare), and listing photos straight from each marketplace, so those services see your IP address.</li>
@@ -122,7 +131,7 @@
 <h3>Deleting your data</h3>
 <ul>
   <li><b>Delete my Prowl Alerts account.</b> In Den, then Settings, "Delete my Prowl Alerts account" removes your Prowl Alerts record and everything kept with it: your email address and hunts, settings and ZIP code, sign-in keys, waiting and already-sent listings, likes and ignored words, saved finds and their photos (under your current and any earlier address), Pounce quarries and matches, the weekly tally and letter, phone alerts, the Prowl Pro note, earlier addresses and their forwarding notes, the link to your store customer number, and your group trips: you are taken off every trip you are on, with the finds and photos you posted; a trip you organized passes to the next member, or is deleted if nobody else is on it; your list of trips, waiting trip invitations (including ones you have not answered) and the one-way code that links your address to your member id for trip invitations are deleted too. Your device is signed out of Prowl Alerts; a store sign-in on it stays until you log out. It does not cancel Prowl Pro billing: cancel that in your Owl &amp; Twig account first.</li>
-  <li><b>What it does not remove.</b> A trip you passed on stays with its other members, as do their finds. A gift record or a request to stop gift or shared emails (a do-not-email list), the one-way code of a store sign-in address that differs from your Prowl Alerts address (it points only at your customer number), and the anonymous counts, which hold nothing that identifies you, also stay. To have any of these removed, email us.</li>
+  <li><b>What it does not remove.</b> A trip you passed on stays with its other members, as do their finds. A gift record or a request to stop gift or shared emails (a do-not-email list), the one-way code of a store sign-in address that differs from your Prowl Alerts address (it points only at your customer number), and the anonymous counts, which hold nothing that identifies you, also stay. Facebook Marketplace finds and ZIP code area points are kept by hunt words and place, not by person, and run out on their own (8 and 90 days). To have any of these removed, email us.</li>
   <li><b>On your device.</b> Clearing your browser data, or removing the app or extension, removes what is kept there.</li>
   <li><b>Requests.</b> To ask what we hold about you, or to have it removed or corrected, email <a href="mailto:hello@owlandtwigvintage.com">hello@owlandtwigvintage.com</a> from the address you use with Prowl.</li>
 </ul>
@@ -133,10 +142,11 @@
   <li><b>Until you delete your Prowl Alerts account:</b> the trip-invitation link to your member id and the list of your trips.</li>
   <li><b>Until you ask us to remove it:</b> gift records and requests to stop gift emails.</li>
   <li><b>A year from saving:</b> Pro saved finds and their photos.</li>
-  <li><b>90 days:</b> forwarding notes for an earlier email address.</li>
+  <li><b>90 days:</b> forwarding notes for an earlier email address; the area point for a ZIP code (Facebook finds).</li>
   <li><b>60 days:</b> anonymous daily counts.</li>
   <li><b>30 days or less:</b> cached AI answers (Fair price, photo prices, Research, Field Guides) and town lookups, kept by item, subject or place; a waiting trip invitation; error records.</li>
   <li><b>21 days:</b> the weekly letter's copy for the app.</li>
+  <li><b>8 days:</b> Facebook Marketplace finds for a hunt and area.</li>
   <li><b>7 days:</b> the Prowl Pro note; a group trip, its finds and photos after the trip closes.</li>
   <li><b>Two to three days:</b> daily usage counters, the daily visitor code, the confirm link for a new sign-up, the note that an email's sign-in pass was used, and a copy of your last alert email's listings (so it can be sent again).</li>
   <li><b>A day or less:</b> sign-in links and codes, a pending email-change link, Pounce listings waiting to be checked, cached listing details, search results, shops and routes.</li>

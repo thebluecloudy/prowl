@@ -1061,7 +1061,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-head b{font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.015em}
 .scout-app-wrapper .sgw-live{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:800;letter-spacing:.06em;color:var(--suc);text-transform:uppercase}
 .scout-app-wrapper .sgw-live:before{content:'';width:7px;height:7px;border-radius:50%;background:var(--suc);animation:otpPulse 1.6s ease-in-out infinite}
-/* v6.65: the Facebook strip's head: the morning sweep, not live, so no pulse */
+/* v6.65: the Facebook strip's head: the morning sweep, not live, so no pulse (v8.26: back, through Apify) */
+.scout-app-wrapper .sgw-fbh{font-size:12.5px;font-weight:800;letter-spacing:.06em;color:var(--i2);text-transform:uppercase}
 @keyframes otpPulse{50%{opacity:.35}}
 .scout-app-wrapper .sgw-upd{margin-left:auto}
 .scout-app-wrapper .sgw-card{border-radius:12px;transition:border-color .15s,transform .15s}
@@ -1118,12 +1119,12 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .dg-blk .sgw-sub{margin:4px 18px 8px}
 /* v5.17: each live source gets a clear, big section label */
 .scout-app-wrapper .sgw-sub{border-top:1px solid var(--ln);padding-top:14px;margin-top:16px}
-.scout-app-wrapper .sgw-sub .sgw-live{font-family:var(--display);font-size:20px;font-weight:800;letter-spacing:.01em;color:var(--ink);text-transform:none}
+.scout-app-wrapper .sgw-sub .sgw-live,.scout-app-wrapper .sgw-sub .sgw-fbh{font-family:var(--display);font-size:20px;font-weight:800;letter-spacing:.01em;color:var(--ink);text-transform:none}
 .scout-app-wrapper .sgw-sub .sgw-live:before{width:10px;height:10px}
 .scout-app-wrapper .sgw-sub .sgw-upd{font-size:14px}
 .scout-app-wrapper .rlive .sgw-head{border-top:1px solid var(--ln);padding-top:14px}
 .scout-app-wrapper .rlive .sgw-head b{font-size:21px}
-@media(max-width:480px){.scout-app-wrapper .sgw-sub .sgw-live{font-size:18px}.scout-app-wrapper .rlive .sgw-head b{font-size:19px} }
+@media(max-width:480px){.scout-app-wrapper .sgw-sub .sgw-live,.scout-app-wrapper .sgw-sub .sgw-fbh{font-size:18px}.scout-app-wrapper .rlive .sgw-head b{font-size:19px} }
 .scout-app-wrapper .dg-blk .sgw-grid{padding:0 18px 12px}
 .scout-app-wrapper .dg-blk .sgw-note{padding:0 18px 10px}
 .scout-app-wrapper .dg-blk.dg-quiet{padding:10px 0 4px}
@@ -3918,7 +3919,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.25';
+var PROWL_VERSION='v8.26';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -6782,7 +6783,7 @@ function relTerms(t){
   for(i=0;i<pool.length;i++)if(lw.some(function(x){return (' '+String(pool[i]).toLowerCase()+' ').indexOf(' '+x+' ')>-1}))add(pool[i]);
   return out;
 }
-function liveEmptyCard(t,fb){   /* fb: unused since v8.08 (the Facebook strip is gone) */
+function liveEmptyCard(t,fb){   /* fb: the Facebook strip is above (v8.26) */
   var links='',i,m,u;
   for(i=0;i<EMPTY_LINKS.length;i++){if(fb&&EMPTY_LINKS[i]==='facebook')continue;m=mb(EMPTY_LINKS[i]);if(!m)continue;   /* v6.65: fb, the Facebook strip is above */try{u=m.u(t)}catch(e){u=''}if(!/^https:\/\//.test(u)&&u.charAt(0)!=='/')continue;links+=(links?' · ':'')+'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(m.n)+'</a>'}
   return '<div class="sgw-empty"><p class="sgw-empty-h">'+(fb?'Nothing on Goodwill or the other live sites yet for':'Nothing live yet for')+' <b>“'+esc(t)+'”</b>.</p>'+
@@ -6809,10 +6810,69 @@ function liveBlock(name,t,c,busy){
   var r=exRows(items,t);   /* v6.72: exact matches first */
   return head+exUpd(r,c)+'</div><div class="sgw-grid">'+r.rows+'</div>';   /* v6.61: worker v91's spare answer */
 }
-/* v8.08 (Matt, 2026-10-28, the security and trust plan: "No session-cookie storage or replay of anyone's account,
-   including Matthew's own"): the morning Facebook sweep through Matt's own account is retired, and with it the
-   Facebook strip (worker v178 retired its route). Facebook stays a link-out search. fbOwnerKey is the owner key. */
+/* v8.08 retired the morning Facebook sweep through Matt's own account (the security and trust plan: "No session-cookie
+   storage or replay of anyone's account"). v8.26 (worker v200, Matt 2026-10-31: Apify, Pro members) brings the strip
+   back: the worker searches Facebook Marketplace logged out through Apify once a day for each Pro member's hunts around
+   their local-pickup ZIP, and GET /fb-finds hands a signed-in Pro member (or the owner key) that hunt's finds for the
+   week. The worker decides Pro; a 401 or 403 shows nothing. A Pro member without a ZIP is told to add one. Links are
+   plain (Facebook has no affiliate program) and open the listing on Facebook. fbOwnerKey is the owner key. */
+var FB={cache:Object.create(null),busy:Object.create(null)},FB_FRESH=30*60000;
 function fbOwnerKey(){try{var k=localStorage.getItem('prowl.owner');return k&&/^[A-Za-z0-9_-]{12,80}$/.test(k)?k:''}catch(e){return ''}}
+function fbKey(t){return cutWords(t,60).toLowerCase()}   /* the worker's fbTerm: cut at a whole word, so a long hunt asks for the key the sweep wrote */
+function fbOn(){return !!fbOwnerKey()||(mailPro()&&!!MAIL.fb)}   /* a member asks only once /alerts/status says Facebook finds are on */
+function fbClean(a){
+  var out=[],i,x,id;
+  if(!Array.isArray(a))return out;
+  for(i=0;i<a.length&&out.length<60;i++){
+    x=a[i];if(!x||typeof x.title!=='string'||!x.title)continue;
+    id=/^https:\/\/www\.facebook\.com\/marketplace\/item\/(\d{5,20})\/?$/.exec(String(x.url||''));if(!id)continue;
+    out.push({title:x.title.slice(0,160),price:typeof x.price==='string'?x.price.slice(0,24):'',url:'https://www.facebook.com/marketplace/item/'+id[1]+'/',
+      image:typeof x.image==='string'&&/^https:\/\/([a-z0-9-]+\.)*fbcdn\.net\//i.test(x.image)?x.image:'',src:'facebook',location:typeof x.location==='string'?x.location.slice(0,60):'',
+      found:/^\d{4}-\d{2}-\d{2}$/.test(String(x.found||''))?String(x.found):''});
+  }
+  return out;
+}
+function fbFetch(t){
+  var k=fbKey(t);
+  if(!k||!fbOn()||typeof fetch!=='function'||FB.busy[k])return;
+  var c=FB.cache[k];if(c&&Date.now()-c.at<FB_FRESH)return;
+  FB.busy[k]=1;
+  fetch(SGW_API+'fb-finds?term='+encodeURIComponent(k),{headers:nrH(),cache:'no-store'}).then(function(r){
+    if(r.status===401||r.status===403)return {swept:false};
+    return r.ok?r.json().then(function(j){j=j||{};return {swept:!!j.updated,nozip:!!(j.nozip&&j.live),items:fbClean(j.items),updated:typeof j.updated==='string'?j.updated:''}}):null;
+  }).then(function(v){
+    FB.busy[k]=0;
+    if(!v){fbKeep(k);return}
+    v.at=Date.now();FB.cache[k]=v;
+    if((v.swept||v.nozip)&&fbKey(sgwCurTerm())===k)rSGW();
+  },function(){FB.busy[k]=0;fbKeep(k)});
+}
+/* a failed check is quiet: what was shown stays, and it is asked again in 5 minutes rather than on every draw */
+function fbKeep(k){var o=FB.cache[k];if(!o||!o.swept)o=FB.cache[k]={swept:false};o.at=Date.now()-FB_FRESH+5*60000}
+/* whole days from the sweep to today, on this device's calendar (0 = today); -1 when there is no usable time */
+function fbDays(iso){
+  var t=Date.parse(iso||'');if(!(t>0))return -1;
+  var d=new Date(t),n=new Date(),day=function(x){return new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime()};
+  return Math.max(0,Math.round((day(n)-day(d))/86400000));
+}
+function fbWhen(iso){
+  var dd=fbDays(iso);if(dd<0)return '';
+  if(dd===0){var hr=new Date(Date.parse(iso)).getHours();return 'Updated '+(hr<12?'this morning':hr<17?'this afternoon':'this evening')}
+  return dd===1?'Updated yesterday':'Updated '+dd+' days ago';
+}
+/* the week's finds, today's first; a sweep more than 2 days old is not shown */
+function fbHas(t){var c=FB.cache[fbKey(t)];return !!(c&&c.swept&&c.items.length&&fbDays(c.updated)<=2)}
+function fbBlock(t){
+  var c=FB.cache[fbKey(t)];
+  if(c&&c.nozip)return '<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span></div><p class="sgw-note">Add your local-pickup ZIP in Den \u203a Settings (Prowl Alerts, Only what fits) and Prowl looks for this hunt on Facebook Marketplace near you every day.</p>';
+  if(!c||!c.swept)return '';
+  var dd=fbDays(c.updated);if(dd<0||dd>2)return '';
+  var w=fbWhen(c.updated),head='<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span>'+(w?'<span class="sgw-upd">'+esc(w)+'</span>':'')+'</div>';
+  var sday=String(c.updated||'').slice(0,10),fresh=0,rows='',i;
+  for(i=0;i<c.items.length;i++){if(c.items[i].found===sday)fresh++;rows+=sgwCard(c.items[i],t)}
+  var note=fresh?'':'<p class="sgw-note">Nothing new on Facebook for this hunt '+(dd===0?'today':dd===1?'yesterday':'lately')+(rows?'. Earlier this week:':'.')+'</p>';
+  return head+note+(rows?'<div class="sgw-grid">'+rows+'</div>':'');
+}
 /* v6.74: the panel shows only the live listings; the full hunt (every marketplace) was a button up in the left
    column, easy to miss under a long list of hunts. It is offered again where the live listings end. */
 function sgwCont(t){
@@ -6829,9 +6889,10 @@ function liveLine(t){
 }
 function sgwBody(){var t=sgwCurTerm();if(t&&sgw.terms.length)huntFetch(t,function(){huntPaint(t)});return (t&&sgw.terms.length?liveLine(t)+compsRow(t)+huntBox(t)+viewSw():'')+sgwBody0(t)+sgwCont(sgw.terms.length?t:'')}   /* v7.07: Best picks for the chosen hunt pill too */
 function sgwBody0(t){
+  if(t)fbFetch(t);   /* v8.26 */
   if(!sgw.terms.length)return '<p class="sgw-note">Type something you hunt into the box above. It is saved to your hunts, locked for Daily, and checked on ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Vinted and Grailed right away.</p>';
   var sm=liveSummary(t);
-  if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return liveEmptyCard(t);   /* v6.33 */
+  if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return fbHas(t)?fbBlock(t)+liveEmptyCard(t,1):liveEmptyCard(t)+fbBlock(t);   /* v6.33; v8.26: Facebook finds first when there are some */
   if(sm.done&&!sm.n&&sm.err1===sm.count)return '<div class="sgw-empty"><p class="sgw-empty-h">Prowl\u2019s live results are not reaching you.</p><p>Check your connection. If you use a content or ad blocker, allow <b>prowl.thebluecloud.workers.dev</b>. More places to look still searches every site directly.</p></div>';
   /* v7.32 (the owner: "MC Escher ... needs to get to the hunt faster"): marketplaces with listings come first, the
      ones with nothing (or still asking) after them, so "Nothing live on ShopGoodwill" no longer sits on top */
@@ -6844,8 +6905,9 @@ function sgwBody0(t){
     if(n||fb){jump.push('<button type="button" class="lv-j" data-lvj="'+jump.length+'">'+esc(name)+(n?' <b>'+n+'</b>':'')+'</button>');html+=liveBlock(name,t,c,busy).replace('<div class="sgw-sub">','<div class="sgw-sub" data-lvb="'+(jump.length-1)+'">')+(fb||'');return}
     if(busy||!c)look.push(name);else if(c.err)errs+=liveBlock(name,t,c,busy);else none.push(name);
   }
-  one('ShopGoodwill',sgw.cache[k],sgw.busy===t,'');
+  one('ShopGoodwill',sgw.cache[k],sgw.busy===t,fbHas(t)?fbBlock(t):'');   /* v8.26: Facebook under Goodwill */
   for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];one(s.name,lv[s.id].cache[k],lvBusy(s.id,t),'')}
+  if(!fbHas(t))html+=fbBlock(t);
   return (jump.length>1?'<nav class="lv-jump" aria-label="Jump to a marketplace">'+jump.join('')+'</nav>':'')+html+errs+
     (look.length||none.length?'<div class="lv-rest">'+(look.length?'<p class="lv-look">'+FLY3+'Looking on '+lvList(look)+'\u2026</p>':'')+
       (none.length?'<p class="lv-none">Nothing live for <b>'+esc(t)+'</b> on '+lvList(none)+' right now. The full hunt below still searches everywhere else.</p>':'')+'</div>':'');
@@ -7345,7 +7407,7 @@ function prefsHtml(on,em,n){
     '<div class="mail-in"><label class="mail-fine" style="margin:0;flex-basis:100%" for="otp-prefSkip">Skip listings whose title has any of these words</label><input id="otp-prefSkip" type="text" data-k="skip" placeholder="reproduction, lot, replica" value="'+esc(p.skip.join(', '))+'"'+(pro?'':' disabled')+'><button type="button" class="b" data-mail="skip"'+(pro?'':' disabled')+'>Set</button></div>'+
     '<div class="mail-in"><label class="mail-fine" style="margin:0;flex-basis:100%" for="otp-prefZip">Local pickup near ZIP code</label><input id="otp-prefZip" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" pattern="[0-9]*" data-k="zip" placeholder="48375" value="'+esc(p.zip)+'"'+(pro?'':' disabled')+'><button type="button" class="b" data-mail="zip"'+(pro?'':' disabled')+'>Set</button></div>'+
     '<div class="mail-seg">'+PREF_RADII.map(function(rd){return '<button type="button" data-mail="radius" data-v="'+rd+'"'+(p.radius===rd?' class="on" aria-pressed="true"':' aria-pressed="false"')+(pro?'':' disabled')+'>'+rd+' mi</button>'}).join('')+'</div>'+
-    '<p class="mail-fine">'+(pro?'Tap <b>Local</b> on a hunt above and its email only carries eBay listings you can pick up within '+p.radius+' miles'+(p.zip?' of '+esc(p.zip):'')+'. Made for wheels, furniture, anything too big to ship. Other sites are skipped for that hunt.':'<a class="sgw-ml" href="'+PRO_URL+'">Prowl Pro</a> adds a price ceiling, skip-words and local pickup (eBay listings near your ZIP, for the big stuff), so the email only carries what you would actually buy.')+'</p>'+
+    '<p class="mail-fine">'+(pro?'Tap <b>Local</b> on a hunt above and its email only carries eBay listings you can pick up within '+p.radius+' miles'+(p.zip?' of '+esc(p.zip):'')+'. Made for wheels, furniture, anything too big to ship. Other sites are skipped for that hunt.'+(MAIL.fb?'</p><p class="mail-fine" id="otp-fbZip">Facebook Marketplace finds on your hunts use this ZIP too: once a day Prowl looks about 25 miles around it.':''):'<a class="sgw-ml" href="'+PRO_URL+'">Prowl Pro</a> adds a price ceiling, skip-words and local pickup (eBay listings near your ZIP, for the big stuff), so the email only carries what you would actually buy.')+'</p>'+
     '</div>';
   if(MAIL.saving)h+='<p class="mail-save" role="status">'+esc(MAIL.saving)+'</p>';
   return h;
@@ -7619,7 +7681,7 @@ function mailStatus(fresh,cb){
       /* v6.04: the membership moved to a new address (same token): follow it once */
       if(j&&j.on===false&&j.moved&&!MAIL.movedHop){MAIL.movedHop=1;var mv=String(j.moved).toLowerCase();mSet('alertEmail',mv);mSet('alertSig','');MAIL.moving='';MAIL.msg='Your Prowl Alerts now go to '+mv+'. This device switched over.';setTimeout(function(){mailStatus(true,cb)},0);return}
       if(j&&j.on){MAIL.moving=j.moving||'';mailStoreLook();}
-      if(j&&j.on){mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;if(typeof j.defHour==='number')MAIL.defHour=j.defHour;MAIL.mail=j.mail==='off'?'off':'on';MAIL.hadPro=!!j.hadPro;MAIL.freeWeekly=!!j.freeWeekly;MAIL.plan=j.plan||null;if(j.prefs&&!MAIL.pending&&!MAIL.saving){MAIL.prefs=j.prefs;setTimeout(prefsTzSync,0)}if(j.hunts&&j.hunts.length!==undefined)mailMerge(j.hunts);MAIL.quarries=j.quarries||{};MAIL.quarryMax=j.quarryMax||1;MAIL.wpush=j.wpush||null;MAIL.phone=j.phone||'';pncSeen(j.quarryMatches);}
+      if(j&&j.on){mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;if(typeof j.defHour==='number')MAIL.defHour=j.defHour;MAIL.mail=j.mail==='off'?'off':'on';MAIL.hadPro=!!j.hadPro;MAIL.freeWeekly=!!j.freeWeekly;MAIL.plan=j.plan||null;if(j.prefs&&!MAIL.pending&&!MAIL.saving){MAIL.prefs=j.prefs;setTimeout(prefsTzSync,0)}if(j.hunts&&j.hunts.length!==undefined)mailMerge(j.hunts);MAIL.quarries=j.quarries||{};MAIL.quarryMax=j.quarryMax||1;MAIL.wpush=j.wpush||null;MAIL.phone=j.phone||'';var fb0=MAIL.fb;MAIL.fb=!!j.fb;if(MAIL.fb&&!fb0)setTimeout(rSGW,0);pncSeen(j.quarryMatches);}
       else if(j&&j.on===false){mSet('alertTok','');mSet('alertSig','');mSet('alertNoAuto','1');sessSet('')}   /* v8.11: signed out elsewhere (Sign out every other device): no store auto sign-in straight back in, as Sign out */
       /* v6.00: this device may push its list only after a real pull merged the
          member's list in; a bad or missing answer leaves sync off until the next status */
