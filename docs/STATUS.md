@@ -1,21 +1,300 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.25 / v200).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.33 / v206).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.25** | 375,639 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v200** | |
+| Page | **v8.33** | 368,327 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v206** | |
 
 Recently shipped, newest first:
 
-- **v200: Diagnose says why the AI check did not answer.** Matt's eBay test in the admin showed "The AI check did
+- **v206: Diagnose says why the AI check did not answer.** Matt's eBay test in the admin showed "The AI check did
   not answer" with no reason: `jevClassify` dropped TypeSafe's reply on any failure. Now it keeps the HTTP status and
   TypeSafe's error message (or "timed out after 6 s", "could not reach TypeSafe", "answered with no answers") in
   `info.status` as `jev failed: <reason>`, logs it, and the admin shows it inside the warning. Sorting itself is
-  unchanged. Test: `worker/__tests__/jev-why-v200.test.mjs`.
+  unchanged. Test: `worker/__tests__/jev-why-v206.test.mjs`.
+- **v8.33: estate sale photos in NEAR ME › Estate sales** (Matt, 2026-10-31: "the estate sale pictures aren't
+  working"). The worker already sent each sale's cover photo (`img`, the sale page's og:image on
+  `picturescdn.estatesales.net`, checked against a live page and fetched with the shop as referrer: 200), and the daily
+  email drew it, but the tab's `wkRow` never did. Each row now shows the photo as a 72 px thumbnail beside the text, or a
+  quiet ⌂ when there is none or the address is not EstateSales.net's picture host. Test:
+  `__tests__/page/estate-photos-v833.test.mjs`; checked in Chromium at 390 px with a real sale photo.
+- **v8.32 / v205: Estate sales this week, for every Prowl Pro member, in the daily email** (Hark's feature, PR #281 /
+  `hark/estate-sweep`, built for Matt 2026-10-30; merged onto main with Matt's decisions of 2026-10-31; PR #297 held
+  until the 7-day rework below was done). Numbered after the release that takes page v8.31 / worker v204. Hark's three
+  commits are kept (a merge, not a squash).
+  - **Matt's decision (2026-10-31):** "Estate sales are all week, we can't just look at weekend. Can this be part of
+    prowl email?" Answer chosen: **in the daily email**: a section in the daily Prowl email when a new estate sale near
+    the member matches a hunt (open in the next 7 days); no separate Thursday email; the tab shows the next 7 days.
+  - **Where:** NEAR ME › **Estate sales**, a fourth tab right after Trips (`#otp-nrT4`, pane `#otp-nrWkPane`,
+    `nrMode('weekend')`, drawn by `rWk`; on a phone the four tabs sit two by two, `.tabs.nr-4`). **Sweep this week**
+    sends the place typed in the tab's box (`#otp-wkIn`, looked up with `/geo`) or the phone's position (2 decimals),
+    the Den's own hunts and the time zone to `GET /weekend?lat&lng&r=25&tz&h=a|b|c` (the route keeps its name): the
+    estate sales open in the **next 7 days** (`wkWindow`: today 00:00 to today+7 00:00 in tz, so today through today+6)
+    within 25 miles, **Top picks** first (a sale whose title, description or photo captions hold every word of a hunt,
+    with the hunt and where), then the rest, at most 12, each linked to its own EstateSales.net page (none without one;
+    a 404/410 page drops the sale). Heading "Estate sales this week · next 7 days · 25 mi". A sale's hours list its days
+    in the window (`wkHours`, past 4 "· +N more days"). The old Around you › More ways to look › Estate sales near you
+    block keeps only its city list.
+  - **Who (Matt: "all Prowl Pro members"):** the tab shows for a signed-in Pro member (`mailPro()`) or the owner key
+    (`nrWkSweep`); free visitors do not see it (the Den's estate sales row shows them, locked, with the Pro link). The
+    worker decides Pro itself: `wkWho` lets the owner key through, everyone while `SALES_PUBLIC=on`, else `fbWho` (a
+    store session or `X-Prowl-Email`/`X-Prowl-Tok` member with `sub.pro`): 401 signed out, 403 not Pro. The page sends
+    `nrH()`; a 401/403 says so in the tab. `/weekend/plan` without a signature takes the same check.
+  - **Source (Matt: his EstateSales.net permission covers it):** EstateSales.net's map JSON
+    (`/api/sale-details?bypass=bycoordinatesanddistance:LAT_LNG_MILES&include=dates`) and each sale's own page
+    (description, photo captions, street address, position, cover photo). KV: `wk1:<point>:<mi>` 3 hours, `wkd2:<id>` a
+    day (3 hours while the address is hidden), `wkz:<zip>` the ZIP's centre 90 days, `wke:<point>:<day>` the day's sales
+    near a ZIP point for the email (36 hours). If the list fails the city page (`esFetch`) stands in.
+  - **The daily email's "Estate sales near you" section** (replaces the Thursday email: `alEstateSend`, its subjects,
+    its 7 AM-noon Thursday window and `alEstateDue`'s Thursday path are gone): for a **Pro member with a local-pickup ZIP**
+    and `prefs.estate` not "off" (Den › Settings › **Estate sales in my daily email**, same key, on unless "off"; free
+    members see the row locked with the Pro link). `alEstatePicks` (KV only) lists the sales open in the next 7 days
+    near the ZIP whose words hold every word of one of the member's hunts (`wkMatch`), that the member has not been sent
+    (`sub.estSent`: id → the day, newest 150, 30 days, `alEstateMark`), soonest first, at most 5 (`AL_ESTATE_SHOW`), each
+    with its cover photo, city, company, miles, days/hours in the window, the matched hunt and its own EstateSales.net
+    link; a **Plan my week** button (signed link, runs out at the end of the window, today+7, no longer the Monday
+    after); one line "N more estate sales near you this week →" (`PROWL_APP?wk=1&wkzip=<ZIP>`, which opens NEAR ME ›
+    Estate sales for a Pro member and sweeps around that ZIP). No new picks: no section. On a day with nothing else new, new picks alone send the email
+    (subject "Prowl: 2 estate sale picks · Pyrex, Fire-King"; with listings, "… · 2 estate sales" is added). The
+    member's days, frequency (`alSendDay`), pause and emails-off rules are the digest's own. The footer gets **Stop
+    estate sales in these emails** (`/alerts/unsub?w=estate`, now "Stop estate sales in your Prowl emails?" / "Estate
+    sales are off in your emails"; List-Unsubscribe stays the whole-email one). Members with no hunts get no section
+    (nothing to match), so the clock no longer runs a Pro check for them (review fix 2 below is undone).
+  - **Fetching ahead, inside the run's budget:** the digest never asks EstateSales.net anything. On a send day before
+    the member's digest has gone (`alEstateDue`: Pro, ZIP, on, emails on, not paused, `alSendDay`, `sub.sent` not today,
+    `sub.estate` not today, fewer than 3 tries), a clock run with room fetches for them (`alEstatePrep`: the ZIP's
+    point, the list, then up to 40 nearest sales open in the window with their pages, `wkEstItem` keeping each sale's
+    text for matching) and keeps it in `wke:<point>:<the member's day>`, shared by every member at that point. One fetch
+    a run, after the member loop and before the Facebook sweep, with the calls the run has left (at most
+    `AL_ESTATE_CALLS` = 16, none under `AL_ESTATE_MIN_CALLS` = 4), for the due member whose email is soonest; its calls
+    (`wkRun`) go into `runUsed()`, so the Facebook sweep gets what is left. Pages not
+    reached are read by a later run (`AL_ESTATE_PASSES` = 3); a record already there costs nothing (`alEstateReady`) and
+    marks the member's day ready (`sub.estate`). Not ready when the digest goes: it goes without the section, and the
+    picks come next time if still new. A failed try counts (`sub.estateTry`, 3 a day); a ZIP Google cannot place is
+    kept as `wkz:<zip>` { miss } 6 hours and marks the day done.
+  - **Plan my week** (`wpOpen`, in the same tab in place of the Sweep; "‹ This week's sales" goes back for a Pro member
+    or the owner): start from the sweep's place, the email's ZIP, the saved ZIP or one ZIP box; Top picks checked;
+    **each sale on its first open day in the 7 days** (Matt: opening day), falling back to its next open day when that
+    day already has 5 stops or its hours no longer fit the route; dropped with the reason only when no day works
+    (`wpSplit`); days in date order. 45 min a stop, never reached before it opens or within 30 min of closing; each day
+    ordered by Road Trip's `/order` (`loop=1`, or `keep=1` when the optimizer's order breaks a sale's hours), one Google
+    Maps and one Apple Maps link a day, Rebuild from here. Address-pending sales stay off the route. The signed link
+    (`/weekend/plan`, HMAC over ids, picks, ZIP, expiry) opens for anyone it is forwarded to until the window ends.
+  - **Merge notes:** the FAQ answer keeps main's `www` URLs with Hark's "Tap Near me at the foot of the page" text (both
+    the visible FAQ and its JSON-LD); `/alerts/status` keeps main's `fb` and Hark's `estate`; `alPrefs` keeps `fbusa`
+    and `estate`. Comments and tests relabelled from v8.22 / v193 to v8.32 / v205.
+  - **Review fixes** (an independent review, still v8.32 / v205, worker only; carried into the 7-day rework): (1) the
+    estate fetch's real outside calls are counted on the run (`wkRun`: the ZIP's geocode, the list, the city page, each
+    sale page, through `wkZipPoint`/`wkGet`/`wkList`/`wkDetails`'s `run` argument; the HTTP routes pass none) and go into
+    `runUsed()`; a fetch starts only while the run still has `AL_ESTATE_CALLS` after the hunt checks still to come, and
+    stops at that reservation. (2) Pro members with no hunts got the Thursday email: undone with the Thursday email (no
+    hunts, nothing to match). (3) A try that did not finish is counted (`sub.estateTry` { day, n }, `AL_ESTATE_TRIES` = 3
+    a day); a ZIP Google answers has no place is kept as `wkz:<zip>` { miss } for 6 hours (`WK_ZIP_MISS_TTL`) and marks
+    that day done; a Google outage is only a try. (4) A span-only sale (first start to last end) is clipped to the 7 days
+    by whole local days in `wkDaysIn`, keeping its clock across a clock change (Mon 9 AM to the Sunday after next 4 PM,
+    seen on a Thursday, reads Thu 9 AM - Wed 4 PM); a span with nothing left is dropped.
+  - **Review fixes, 7-day rework** (a second independent review, still v8.32 / v205): (1) clipping a span at day 7 no
+    longer puts its end before its start: when the closing clock on day 7 is at or before the opening (a span ending at
+    midnight, or one opening on day 7 and closing earlier in the day later), it ends at the end of day 7; a span moved
+    onto today that would open after it closes is open from today's start (`wkDaysIn`). (2) `wkFromApi(list, pt, r,
+    now)` drops dates that ended over an hour ago before keeping 14 (a sale whose dates are all over is not listed), and
+    a row keeps its entries for up to 7 distinct local days (`capDays`; two sessions a day stay together); the hours
+    line's "+N more days" counts days. (3+4) The estate prefetch moved out of the member loop to after it, before the
+    Facebook sweep: it no longer charges the hunt-check budget (the old flat `AL_ESTATE_HUNTS` is gone) and its room is
+    what the run has really left after Pounce, Pro checks and emails; one fetch a run, soonest email first; up to 10
+    members with a record already there are marked ready for free (`AL_ESTATE_READY_CHECKS`). (5) The email's "N more"
+    link carries the ZIP (`?wk=1&wkzip=`); the page fills the tab's box with it (or the saved ZIP) and sweeps once for a
+    Pro member; free and signed-out visitors get NEAR ME as it is. Tests at the end of the two estate test files.
+  - Privacy section: the estate sales bullet now describes the next 7 days and the daily email's section (what goes to
+    EstateSales.net, the ZIP, `wke:`, the sent sale numbers kept 30 days, the plan link until the 7 days end), and
+    EstateSales.net under Who else; paste it with the Facebook bullets.
+  - Tests: `worker/__tests__/weekend-v205.test.mjs` (the 7-day window and DST, clipping, free 403, signed out 401,
+    owner, Pro by token and by session, `SALES_PUBLIC`; the digest section included for Pro + ZIP + new matching sales
+    and left out when none is new, off, free, no ZIP or not fetched yet; sent ids remembered so a sale is not repeated,
+    bounded and expiring; a day with only new estate picks still sends; prefetch then a KV-only digest; the plan link's
+    expiry; `/weekend/plan` for a Pro member, a free member and a forwarded link; alTick: one fetch a run, the budget
+    room, a ready record costs nothing, partly ready, 3 tries), `__tests__/page/weekend-sweep-v832.test.mjs` (tab hidden
+    for free, shown for Pro with the member headers, the 403 note, the 7-day copy, the Den switch, `?wk=1`),
+    `__tests__/page/weekend-plan-v832.test.mjs` (first open day, the fallbacks, weekdays in date order, dropped only when
+    no day works). Checked in Chromium at 390x844, light and cockpit, and the digest email rendered (shots in
+    `/home/user/shots/estate7-*.png`).
+  - Privacy follow-up (docs only, 2026-10-31): "How long Prowl keeps things" now lists the estate sales data (sent sale
+    numbers 30 days, a ZIP's day of sales about a day and a half, lists a few hours, sale pages a day, ZIP point 90 days).
+- **v8.31 / v204: Facebook says why a hunt shows nothing, and ships only for All USA** (Matt, 2026-10-31, after Store ›
+  Facebook showed most hunts "Checks soon" and several "Nothing on Facebook for this hunt lately"; he approved all three).
+  - **Ships only for All USA hunts:** in `fbSweep` a near-me hunt is one job (pickup within the member's radius); an All
+    USA hunt (`prefs.fbusa`) keeps two (pickup within 500 mi and the shared `fb3s:` shipping search). A member's 10 a
+    day now cover ~10 near-me hunts instead of ~5. `fbHunt` (so `/fb-finds`, `?all=1` and the alert email through
+    `fbAlertItems`) reads `fb3s:` only for an All USA hunt: a near-me hunt shows pickup finds only. Old `fb3s:` records
+    of near-me hunts are simply no longer read (they expire in 8 days).
+  - **Why it is empty:** `fbClean(raw, day, ctx, stat)` counts what it drops (`far` = past radius + 5 mi or no point,
+    `words` = a hunt word missing); `fbRun` returns `stat: { raw, far, words, at }` (raw = Apify's listing count);
+    `fbMerge(old, fresh, day, updated, stat)` keeps the latest search's `stat` on the `fb3:`/`fb3s:` record (an old one
+    stays when none is given; `fbStat` cleans it). The sweep, `/fb-search` and the admin test all pass it. `fbHunt`
+    returns `why: { raw, far, words, mi }` (`fbWhy`: the pickup search, plus ships for All USA; null for a record from
+    before v204 or one borrowed from another radius), in `/fb-finds` and each hunt of `?all=1`.
+  - **Page:** `fbWhyTxt` turns `why` into: raw 0 "Facebook had nothing for “<hunt>” near you this week."; all far
+    "Facebook had N, none within R mi." (500 for All USA); all words "Facebook had N, none with all your words. Try fewer
+    words."; mixed "Facebook had N: X too far, Y without all your words."; no counts (or nothing dropped) keeps the old
+    sentence. Used in the Store's list and on the hunt page's empty Facebook strip; everything through `esc()`.
+  - **Store › Facebook layout:** the search box on top, then hunts with finds (newest update first), then one folded
+    line, `details.fb-rest` ("5 hunts with nothing yet · 4 checking soon"), that opens to each hunt with its reason or
+    "Checks soon" (`.fb-rl`). It starts open when no hunt has finds. Checked in Chromium at 320 and 390 px, light and
+    cockpit (no overflow).
+  - Privacy section: shipping searches are for hunts set to All USA; each search's counts are kept with the finds.
+  - Tests: `worker/__tests__/fb-why-v204.test.mjs`, `__tests__/page/fb-why-v831.test.mjs`; `fb-rotation-v203`,
+    `fb-apify-v200` and `fb-store-v827` follow the one-job near-me hunt and the folded line.
+  - Review fixes: a hunt switched to All USA shows no reason until its own pickup search has run; an empty All USA hunt
+    says "across the USA" and the reason names the last search, not the week; listings dropped as sold or pending are
+    counted ("all sold or not usable"); long hunt names wrap at 320 px.
+- **v8.30: SEO, from the PROWL_SEO_BRIEF** (Matt, 2026-10-31). Most of the brief was already live (title, canonical,
+  `/prowl` 301, sitemap, one H1, schema, the count of 29; `/pages/prowl-app` is noindex with a canonical to
+  `/pages/prowl`). Matt set the Shopify search listing the same day: title "Prowl — Search 29 Vintage Marketplaces at
+  Once" (Shopify adds the store name once, 69 characters; it was doubled, 90) and a 152-character description naming
+  ShopGoodwill, eBay, Etsy and Facebook Marketplace. In the page:
+  - The canonical `https://www.owlandtwigvintage.com` everywhere: the WebApplication schema `url`, Share Prowl, the
+    Facebook share link and the share/QR addresses (5 were without `www`).
+  - A first visit (what Google sees) shows, under "29 vintage marketplaces, one search. Free.", one line in the static
+    HTML: what Prowl is and ShopGoodwill, eBay, Etsy, Chairish, Poshmark and Facebook Marketplace (`p.lede.lede-more`).
+    The paragraph that said so before sits in the Classic look only, hidden in the default one.
+  - "Near Me … It's in the Den, under Local" (stale since v7.36) now points at Near me at the bottom.
+  - A 1200×630 share image was made for Matt to upload as the store's social sharing image (Shopify has one per store).
+  - v8.29's page deploy failed its md5 check (the page did go live): Shopify adds a line break between
+    `<div id="otp-aprTrayPh">` and its empty `<i>` icon. The file now carries that line break, so v8.30's check matches;
+    a test in `photo-rebuild-v829` keeps it.
+  - Tests: `__tests__/page/seo-v830.test.mjs`; `panther-qr` follows the www address.
+- **v8.29: Photo Check rebuilt for the field** (Matt, 2026-10-31: the PHOTO_CHECK_REBUILD brief and his two mockups,
+  capture and results). Page only; `/appraise` is unchanged and every `#otp-apr*` id is kept.
+  - **Three states** (`photoShow`): capture (`#otp-photoCapture`), analyzing (`#otp-photoAnalyzing`, "Checking this
+    piece…", a scan line that stops under reduced motion) and results (`#otp-aprOut`). The photos stay in memory while it
+    checks; any error (500, 429, the free-limit upsell, network, a 90-second client timeout) returns to capture with the
+    message; a late answer from an older check is dropped (`GEN`).
+  - **Capture, as the mockup:** big title, Asking and Maker side by side with tag icons, One piece / A whole shelf as one
+    segmented switch, full-width Take a photo (camera icon) and Choose from photos, a dashed "Photos will appear here."
+    box before the first photo, then the tray and its note, tip chips with icons, the quota line.
+  - **Results, as the mockup:** a ‹ back chevron in the header (keeps the photos), hero photo (thumbnails switch it), the
+    name large, maker/era, a High/Medium/Low confidence pill (the worker's `sure`) beside the call, the price large in the
+    accent colour with its basis ("Based on recent sold comps" / "asking prices, not sales"), **Hunt this on Prowl**, Save
+    and Share (the existing favorites and share actions), Check with Google Lens, condition notes as bullets, the eBay
+    look-alikes and Poshmark sold as sideways cards, then web matches. "Check another piece" and "Fix it and check again"
+    end the results. No "N comps" count: the worker does not send one.
+  - Review fixes: focus follows each state (analyzing block, the answer's heading, the alert, Check it / Take a photo),
+    never moved while the drawer is closed; the analyzing status is set after it shows; a reopened recent check has no
+    Fix buttons and keeps unsent tray photos; the "type the maker above" copy points at Fix it and check again; a price
+    that lands after leaving still reaches Your last photo checks; Save's label says Saved. The scan line passes over the
+    first photo.
+  - Tests: `__tests__/page/photo-rebuild-v829.test.mjs` (19); seven photo tests follow the new labels and order.
+- **v8.28: the theme switch is always on the bar** (Matt, 2026-10-31: "move the theme switcher so that it is always
+  visible"). `#otp-themeBtn` left the ☰ menu (v7.03 had put it there) and sits on the top bar between the account dot
+  and ☰, a round icon like the dot (`.bar-th`). It still cycles the five themes; the Den's Appearance button follows.
+  Checked in Chromium at 320 px (standard and large text), 390 px and 1280 px: no overflow. Tests:
+  `__tests__/page/theme-visible-v828.test.mjs`; `declutter-v703` and `flock-steady` follow the move.
+- **v8.27 / v203: Facebook finds, Matt's way: 10 searches a member a day, near me or All USA, plus ships, in the Store**
+  (Matt, 2026-10-31: "10 a day is fine, build it"; "User should pick. Local plus ship with a radius. All USA."; "Should
+  we add Facebook to the store section. Pro only.").
+  - **Per member, in turn:** each Pro member gets `FB_MEMBER_DAY` (10) Facebook searches a day (Caps `fbm:`), taken in
+    turn through their hunts from where yesterday stopped (`fbrot:<keyed hash>` in KV, 60 days). A search another member
+    already did today is free. The site cap (`FB_DAY_USD`, $1) stays the backstop; a capped search gives the member's
+    count back.
+  - **A hunt is two searches:** pickup within the member's local-pickup radius (`prefs.radius` 25/50/100 miles, or 500
+    for a hunt in `prefs.fbusa`, "All USA"), kept at `fb3:<hunt>|<cell>|<miles>`; and the listings that ship
+    (`deliveryMethod: "shipping"`, 805 km), kept by hunt words alone at `fb3s:<hunt>` and shared by every member.
+  - **Junk dropped:** Facebook pads a thin local search with far-away "similar items" (Cleveland in a Novi search), strict
+    filtering or not. `fbClean` now drops pickup listings with no coordinates or more than radius + 5 miles from the area
+    point (each listing's own `location.latitude/longitude`, haversine `fbMiles`), and any listing whose title lacks a
+    hunt word (`fbMatch`: each word, de-pluralised, starts a title word; stop words skipped). Each keeps `miles`;
+    shipping ones `ships: true`.
+  - **Store (page):** "Facebook Marketplace · LIVE" in the Store drop-down for a Pro member or the owner key (`fbOn()`).
+    One screen with every hunt's saved finds (`GET /fb-finds?all=1`, no Apify call), freshness, "Checks soon" for a hunt
+    not reached yet, and **Search Facebook for one thing** (`POST /fb-search`, 5 a day per member as Caps `fbq:`, a
+    failed search not counted; owner 40).
+  - **Hunt page (page):** cards say "12 mi" or "Ships"; the strip says "Facebook checks this hunt soon" for a hunt not
+    searched yet; a signed-in Pro member gets a **Near me · N mi / All USA** switch on the strip (saved in
+    `prefs.fbusa` through `/alerts/prefs`).
+  - **Admin:** the Facebook test picks Pickup 25/50/100 mi, All USA (500 mi) or Ships nationwide, and shows miles.
+  - Privacy section updated (search distance, shipping searches, miles kept, the choice and counters).
+  - Tests: `__tests__/page/fb-store-v827.test.mjs`, `worker/__tests__/fb-rotation-v203.test.mjs`; the v200/v202
+    Facebook tests follow the new keys (`fb3:`, `fb3s:`, `fb3day:`).
+  - Review fixes: `POST /fb-search` routed above the GET-only guard (it was 405); a Store search that reached Apify and
+    failed stays counted (it may have cost: before, repeated failures could drain the site cap), only an unreserved or
+    capped one is given back (`noCall`), in the sweep too; a Store search marks the sweep's job done; shipping finds
+    carry no miles (shared, so not from one member's ZIP); the email takes a hunt's newest finds, not its nearest; a
+    radius or All USA change shows the earlier finds within the new distance until the next turn; `fbusa` is kept as
+    sent (a new hunt can reach the worker after the setting); the owner key alone reads the last test's distance
+    (`fbownzip` = {zip, mi}); Delete removes `fbrot:`; the Store box shows the worker's reason (no ZIP, the site's
+    searches used); the switch keeps keyboard focus and its "Saved" note goes after 6 s; rotation pointer and
+    refused-try refund (tests); `fbMatch` handles "glasses" and "fire-king"/"Fireking".
+- **v202: Facebook finds show prices and photos, and the admin's test fills the hunt page** (Matt, 2026-10-31: his
+  first Diagnose › Facebook test listed 15 panthers with every price "—", and he asked to see them on the hunt pages
+  with photos). Worker only; the page's Facebook strip already draws each find as a photo card (`sgwCard`).
+  - **Price and photo:** v200 read one guessed shape (`listing_price.formatted_amount` with `currency` "USD", and
+    `primary_listing_photo_url`), so a listing without a currency field lost its price. `fbPrice` and `fbPhoto` in
+    `worker/fb.js` now read each likely shape: a "$" formatted amount, a plain amount ("1250.5" → "$1,250.50", 0 → "Free"),
+    `price`/`formatted_price`; a photo from `primary_listing_photo_url`, `primary_listing_photo.image.uri`,
+    `listing_photos[0].image.uri` and a few more. Still kept only: dollar prices (another named currency gives none) and
+    https photos on `*.fbcdn.net`.
+  - **The shape, seen:** the admin's test lists the field names and types of the first listing Apify sent (`fbShape`,
+    names only, never a value, 80 at most), under "Fields Apify sent", so a wrong guess shows at once.
+  - **The test fills the hunt page:** its finds are kept as the sweep keeps them (`fb2:<hunt>|<cell>`, merged by id, 8
+    days), so the hunt shows them at once for a signed-in Pro member (or the owner key) whose local-pickup ZIP is in that
+    cell. Before, a test kept nothing. The test box shows a photo per listing and says where the finds went.
+  - **The owner key's hunt page:** the page never sends a ZIP, so the owner key alone used to get "add your ZIP". The
+    test's ZIP is now kept (`fbownzip`, 30 days) and `/fb-finds` uses it for the owner key (before a signed-in member's
+    own ZIP); members still get only their own ZIP's area. A test also marks its hunt and cell done in the day's
+    `fb2day:`, so the sweep does not pay again for it.
+  - Review fixes: photos showed on phones only once the admin table stopped counting an image cell as empty; a formatted
+    price in another currency ("CA$40", "40 CAD") gives no price even without a currency field; a blank, true/false or
+    list amount is no price (it was "Free"); the test takes a hunt over 60 characters and cuts it at a whole word as the
+    page does; the hint says where the finds show (owner key, or a Pro member in the same ~10 km area, once FB_LIVE is
+    on; reload an open hunt page).
+  - Tests: `worker/__tests__/fb-shape-v202.test.mjs`; `fb-apify-v200.test.mjs` now expects the test to keep its finds.
+  - Numbered v202: open PR #289 (`claude/jev-why-v197`) holds worker v200, which #287 shipped first, so it moves to v201.
+- **v8.26 / v200: Facebook Marketplace finds again, through Apify, for Pro members** (Matt, 2026-10-31: use Apify, he
+  set the secret `APIFY_TOKEN`; Pro members get it; a hard cap of $1 a day). The v94-v177 sweep ran through Matt's own
+  account and was retired in v178; this one never logs in and never sends a cookie (`worker/fb.js`).
+  - **How:** Apify's actor `curious_coder~facebook-marketplace` (`APIFY_FB_ACTOR`, env `FB_ACTOR` overrides), one
+    `POST /v2/acts/<actor>/run-sync-get-dataset-items?timeout=75&maxItems=24` per hunt and area, the token in the
+    Bearer header only; input: hunt words, the area point, `radiusKm` 40, listing details and all photos off, strict
+    filtering, one page, US proxy. Kept of each listing: id, title (emails removed), price (USD only), photo (only
+    https `*.fbcdn.net`), town, the link built from the id, the day found. Sold, pending and hidden ones are dropped;
+    seller fields are never read.
+  - **Area:** a Pro member's local-pickup ZIP (prefs.zip), geocoded once (counted in `ggeo:all`), kept as its 0.1
+    degree cell (about 10 km) in `fbz:<zip>` for 90 days (a miss 7, kept only when Google says `ZERO_RESULTS`; a quota or
+    key error keeps nothing). Members nearby share one search. No ZIP, no finds.
+  - **Sweep:** on the alert clock, only while the Cloudflare var `FB_LIVE` is "on": each Pro member's active hunts
+    once a day per hunt and cell, at most `FB_PER_RUN` (2) Apify calls a run and only with room left in the run's
+    outside calls (4 a call, 2 more for a new ZIP's geocoding). `fb2:<term>|<cell>` = the week's finds merged by id,
+    newest first, 60 at most, 8 days. Each try is taken in Caps first (`fbtry:<term>|<cell>`, 2 a day, atomic), so a run
+    killed mid-call or two overlapping runs never retry uncounted. `fb2day:<day>` remembers what was swept, tries used
+    and that the cap was reached. A failure keeps nothing new and leaves a
+    short scrubbed note in the admin's errors.
+  - **Cost cap:** `fbusd:all` in the day's Caps, in 1/100,000 of a dollar. Before a call the estimate (24 listings at
+    $0.0005 + $0.00005 start = $0.01205) is reserved in one Caps step (op `addlim`, refused if it would pass
+    `FB_DAY_USD`, default 1), and Apify is told `maxTotalChargeUsd` of the same amount; only a cost above the estimate is
+    added after. No Caps answer (binding missing or erroring), no call. An admin AI pool row shows it in dollars. `worker/spend.js` counts api.apify.com
+    (calls and listings, $0.05 per 1,000 starts and $0.50 per 1,000 listings) on the Spending tab.
+  - **Delivery:** the daily email adds a Pro member's cached Facebook finds as source "facebook" through the same
+    exact-match, seen and price/skip-word rules (no outside call). GET `/fb-finds?term=` answers again (410 since
+    v178): a store session or X-Prowl-Email / X-Prowl-Tok of a Pro member, or the owner key (which may pass `&zip=`);
+    401 signed out, 403 not Pro; while FB_LIVE is off a member gets `{ live: false, items: [] }` with no counter, no
+    Google lookup and nothing kept. `/fb-ingest` stays 410. `/alerts/status` says `fb: true` for a Pro member while live.
+  - **Page:** the Facebook strip (v6.65's `fbFetch`/`fbBlock`/`fbHas`, `.sgw-fbh`) is back under the Goodwill block
+    for the owner key, or a signed-in Pro member once `/alerts/status` says `fb` (the page asks nothing before), keyed
+    by the worker's own cut (`cutWords(t,60)`, a whole word, so a hunt over 60 characters finds its finds), plain links; a Pro member without a ZIP is told to add one (while
+    live). Den > Settings, by the local-pickup ZIP, says Facebook finds use it (only when status says fb). No new keys.
+  - **Admin:** Diagnose tab, **Facebook test** (built once there, so the Overview's minute redraw cannot strand a running
+    test): a hunt and a ZIP, one Apify call now (counts against the cap,
+    works while FB_LIVE is off), shows the listings (title, price, town, link), the count, the cost and today's spend.
+  - Privacy section updated. Tests: `worker/__tests__/fb-apify-v200.test.mjs`, `__tests__/page/fb-strip-v826.test.mjs`;
+    `worker/__tests__/fb-admin-v200.test.mjs`; `fb-retired.test.mjs` and `fb-retired-v808.test.mjs` now assert no
+    session cookies; `spend.test.mjs` scans fb.js. A review pass fixed: the cap reserved before the call (overlap, a
+    killed run), `maxTotalChargeUsd`, no Caps = no call, FB_LIVE off asks nothing, Google errors not kept as misses,
+    geocoding in the run's budget, the admin test's stale box, the page's key for long hunts.
+    Numbered v8.26 / v200 because v8.23 / v197 were overtaken while it waited (v8.24 / v199 and v8.25 shipped first).
 - **v8.25: the blood moon header goes live.**
   - **What went wrong:** v8.24's page deploy failed its md5 check, and the workflow put the v8.21 page back. The header's
     `<picture>` had three `<source>` tags, and Shopify rewrote that markup (it added a `</source>`).
@@ -1786,7 +2065,9 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.26, worker v201** (open PRs hold page v8.22 and worker v198 (Hark's #281 draft), and page v8.23 and worker v197 (#287, Facebook through Apify)). Claim one here when you start.
+Next free numbers: **page v8.34, worker v207** (page v8.31 / worker v204 go to the release just before Estate sales,
+which took v8.32 / v205; worker v201 is held by #289, `claude/jev-why-v197`, which claimed v200 before #287 shipped it).
+Claim one here when you start.
 
 ## What's next
 
@@ -1801,6 +2082,14 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 ## Waiting on Matt
 
+- **Facebook finds through Apify (worker v200 / page v8.25), in this order:**
+  1. In the admin, **Diagnose** tab, run **Facebook test** for about 5 of your hunts with the Novi ZIP (48375): check
+     the listings are right and the cost (about $0.012 a test at most) and today's spend line.
+  2. In Apify Billing, set a **monthly spending limit** (the worker's own cap is $1 a day, about $30 a month at most).
+  3. Done (Matt, 2026-10-31): the Cloudflare variable **`FB_LIVE` = `on`** is set (not in wrangler.toml; keep_vars keeps
+     it), so Pro members' daily searches start as soon as v200 is live. **`FB_DAY_USD`** is optional (default 1).
+  4. Paste the updated `docs/privacy-policy-prowl-section.html` (Facebook finds bullets, and since v205 the estate sales bullet; Last updated October 31,
+     2026) before turning it on.
 - **Optional: let GitHub publish the extension.** Add the four repository secrets `CWS_EXTENSION_ID`,
   `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET` and `CWS_REFRESH_TOKEN` (steps in `extension/README.md`). After that, a
   merged version bump goes to Chrome Web Store review by itself.

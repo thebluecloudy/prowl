@@ -385,6 +385,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v6.85: the account chip, on every screen: the first letter of who is signed in (a ring when Pro), or a person when
    nobody is. The installed app has no store header to show it. On a phone the ... link home makes way for it */
 .scout-app-wrapper .bar .acct{flex:none;min-width:0;align-self:stretch;aspect-ratio:1/1;padding:0;border-radius:50%;font-weight:800;font-size:15px;text-transform:uppercase}
+.scout-app-wrapper .bar .bar-th{flex:none;min-width:0;align-self:stretch;aspect-ratio:1/1;padding:0;border-radius:50%;font-size:17px;line-height:1}   /* v8.28: the theme switch, always on the bar */
 .scout-app-wrapper.is-pro .bar .acct{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}
 @media (max-width:479px){.scout-app-wrapper .bar .brand .homedots{display:none}}
 .scout-app-wrapper .bar .brand{flex-shrink:0}
@@ -647,6 +648,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 [data-theme=uranium] .scout-app-wrapper .pmark img{max-height:96px}
 .scout-app-wrapper.scout-app-wrapper p.lede{display:none}   /* beats .k2 .k2-only; shown below on a first visit only */
 .scout-app-wrapper.is-new.k2 p.lede.k2-only,.scout-app-wrapper.is-new:not(.k2) p.lede.k2-hide{display:block}
+.scout-app-wrapper p.lede.lede-more{margin-top:6px;font-size:15px;line-height:1.45;color:var(--i2);font-weight:500;max-width:46ch}   /* v8.30 */
 [data-theme=uranium] .scout-app-wrapper .heromark{aspect-ratio:auto;height:120px;margin-top:0}
 [data-theme=uranium] .scout-app-wrapper .heromark .hm-mark{display:none}
 [data-theme=uranium] .scout-app-wrapper .heromark .hm-scene{object-fit:cover}
@@ -834,6 +836,23 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .st-q{display:flex;gap:8px;margin:0 18px 14px}
 .scout-app-wrapper .st-q input{flex:1;min-width:0;min-height:44px;padding:0 12px;border:1px solid var(--l2);border-radius:12px;background:var(--cd);color:var(--i1);font-size:16px;-webkit-appearance:none;appearance:none}
 .scout-app-wrapper .st-q .b{min-height:44px}
+.scout-app-wrapper .st-fb{margin:0 18px 14px}
+.scout-app-wrapper .st-fb h3.sgw-fbh{margin:0}
+.scout-app-wrapper .fb-rest{border-top:1px solid var(--ln);margin:16px 15px 0;padding-top:6px}
+.scout-app-wrapper .fb-rest>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;min-height:44px;font-size:15px;font-weight:700;color:var(--ac)}
+.scout-app-wrapper .fb-rest>summary::-webkit-details-marker{display:none}
+.scout-app-wrapper .fb-rest>summary::after{content:'\203A';font-size:18px;margin-left:auto;transition:transform .2s}
+.scout-app-wrapper .fb-rest[open]>summary::after{transform:rotate(90deg)}
+.scout-app-wrapper .fb-rl{list-style:none;margin:0 0 8px;padding:0}
+.scout-app-wrapper .fb-rl li{display:flex;flex-direction:column;gap:2px;padding:9px 0;border-top:1px solid var(--ln);min-width:0}
+.scout-app-wrapper .fb-rl b{font-size:15px;font-weight:800;color:var(--ink);overflow-wrap:anywhere}
+.scout-app-wrapper .fb-rl span{font-size:13px;color:var(--mu);line-height:1.45}
+.scout-app-wrapper .fb-rl i{display:block;font-style:normal;font-size:12.5px;opacity:.8}
+.scout-app-wrapper .fb-rest .sgw-note{padding:0 0 8px}
+.scout-app-wrapper .fb-rest{overflow-wrap:anywhere;min-width:0}   /* review fix: a long unbroken hunt name stays inside at 320 px */
+.scout-app-wrapper .sgw-fbm{display:inline-flex;gap:4px;margin-left:8px;flex-wrap:wrap}
+.scout-app-wrapper .sgw-fbm-b{min-height:32px;padding:0 10px;border:1px solid var(--l2);border-radius:999px;background:var(--cd);color:var(--i2);font-size:13px;font-weight:700;cursor:pointer}
+.scout-app-wrapper .sgw-fbm-b[aria-pressed=true]{background:var(--ac);border-color:var(--ac);color:#fff}
 .scout-app-wrapper .fz-all{width:100%;min-height:48px;margin:4px 0 14px;font-size:16px}
 .scout-app-wrapper .fz-note{font-size:14px;color:var(--i2);margin:12px 0 0}
 .scout-app-wrapper .rf .fbx{width:100%;height:auto;min-height:48px;padding:12px 16px;margin:0 0 12px;white-space:normal;line-height:1.35;text-align:center;border-color:var(--ac);color:var(--ink);background:var(--ac-soft)}
@@ -1061,7 +1080,8 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-head b{font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.015em}
 .scout-app-wrapper .sgw-live{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:800;letter-spacing:.06em;color:var(--suc);text-transform:uppercase}
 .scout-app-wrapper .sgw-live:before{content:'';width:7px;height:7px;border-radius:50%;background:var(--suc);animation:otpPulse 1.6s ease-in-out infinite}
-/* v6.65: the Facebook strip's head: the morning sweep, not live, so no pulse */
+/* v6.65: the Facebook strip's head: the morning sweep, not live, so no pulse (v8.26: back, through Apify) */
+.scout-app-wrapper .sgw-fbh{font-size:12.5px;font-weight:800;letter-spacing:.06em;color:var(--i2);text-transform:uppercase}
 @keyframes otpPulse{50%{opacity:.35}}
 .scout-app-wrapper .sgw-upd{margin-left:auto}
 .scout-app-wrapper .sgw-card{border-radius:12px;transition:border-color .15s,transform .15s}
@@ -1118,12 +1138,12 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .dg-blk .sgw-sub{margin:4px 18px 8px}
 /* v5.17: each live source gets a clear, big section label */
 .scout-app-wrapper .sgw-sub{border-top:1px solid var(--ln);padding-top:14px;margin-top:16px}
-.scout-app-wrapper .sgw-sub .sgw-live{font-family:var(--display);font-size:20px;font-weight:800;letter-spacing:.01em;color:var(--ink);text-transform:none}
+.scout-app-wrapper .sgw-sub .sgw-live,.scout-app-wrapper .sgw-sub .sgw-fbh{font-family:var(--display);font-size:20px;font-weight:800;letter-spacing:.01em;color:var(--ink);text-transform:none}
 .scout-app-wrapper .sgw-sub .sgw-live:before{width:10px;height:10px}
 .scout-app-wrapper .sgw-sub .sgw-upd{font-size:14px}
 .scout-app-wrapper .rlive .sgw-head{border-top:1px solid var(--ln);padding-top:14px}
 .scout-app-wrapper .rlive .sgw-head b{font-size:21px}
-@media(max-width:480px){.scout-app-wrapper .sgw-sub .sgw-live{font-size:18px}.scout-app-wrapper .rlive .sgw-head b{font-size:19px} }
+@media(max-width:480px){.scout-app-wrapper .sgw-sub .sgw-live,.scout-app-wrapper .sgw-sub .sgw-fbh{font-size:18px}.scout-app-wrapper .rlive .sgw-head b{font-size:19px} }
 .scout-app-wrapper .dg-blk .sgw-grid{padding:0 18px 12px}
 .scout-app-wrapper .dg-blk .sgw-note{padding:0 18px 10px}
 .scout-app-wrapper .dg-blk.dg-quiet{padding:10px 0 4px}
@@ -1298,6 +1318,42 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .es-row img,.scout-app-wrapper .es-ph{flex:0 0 56px;width:56px;height:56px;border-radius:8px;object-fit:cover;background:var(--cd2);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--mu)}
 .scout-app-wrapper .es-t{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:14px;color:var(--mu)}
 .scout-app-wrapper .es-t b{font-size:15px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* v8.32 Estate sales this week */
+.scout-app-wrapper .wk-box{margin-top:16px;padding-top:12px;border-top:1px dashed var(--ln)}
+.scout-app-wrapper .wk-h{margin:12px 0 4px;font-size:14px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--i2)}
+.scout-app-wrapper .wk-h span{margin-left:4px;color:var(--mu)}
+.scout-app-wrapper .wk-list{display:grid;gap:8px;margin-top:6px}
+.scout-app-wrapper .es-form{flex-wrap:wrap}.scout-app-wrapper .es-form input{flex:1 1 220px;min-width:0}.scout-app-wrapper .es-form .b{flex:1 0 auto}   /* v8.32: the place box keeps its hint; the button wraps under it on a phone */
+.scout-app-wrapper .wk-row{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--cd);color:var(--mu);font-size:14px;text-decoration:none;min-width:0}
+.scout-app-wrapper .wk-row b{font-size:15px;color:var(--ink);overflow-wrap:anywhere}
+.scout-app-wrapper .wk-row.wk-ri{flex-direction:row;align-items:flex-start;gap:12px}.scout-app-wrapper .wk-tx{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto}.scout-app-wrapper .wk-img{flex:0 0 72px;width:72px;height:72px;border-radius:10px;object-fit:cover;background:var(--cd2);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--mu)}   /* v8.33 */
+.scout-app-wrapper .wk-pick{border-color:var(--ac)}
+.scout-app-wrapper .wk-m{align-self:flex-start;margin-bottom:3px;padding:2px 8px;border-radius:99px;background:var(--cd2);color:var(--ac);font-size:12.5px;font-weight:800}
+.scout-app-wrapper .wk-hr{color:var(--i2)}
+.scout-app-wrapper .wk-so{font-style:italic}
+.scout-app-wrapper .wk-brief .wk-row{padding:8px 12px}
+.scout-app-wrapper .wk-plan{margin:12px 0 2px;width:100%}
+.scout-app-wrapper #otp-nrWkPane .wk-box{margin-top:0;padding-top:0;border-top:0}   /* v8.32: its own NEAR ME tab */
+.scout-app-wrapper #otp-nrWkPane .es-form{margin:8px 0 4px}
+.scout-app-wrapper .wk-back{margin:0 0 10px}
+@media (max-width:600px){.scout-app-wrapper #otp-near .tabs.nr-4{flex-wrap:wrap;row-gap:4px}.scout-app-wrapper #otp-near .tabs.nr-4 .tab{flex:1 1 40%}}   /* four NEAR ME tabs, two by two on a phone */
+.scout-app-wrapper .wp .wk-h:first-child{margin-top:0}
+.scout-app-wrapper .wp-day{margin:12px 0;padding:10px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--cd)}
+.scout-app-wrapper .wp-day .wk-h{margin-top:0}
+.scout-app-wrapper .wp-stops{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+.scout-app-wrapper .wp-stop{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.scout-app-wrapper .wp-l{flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:#C2491F;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.scout-app-wrapper .wp-t{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:14px;color:var(--mu)}
+.scout-app-wrapper .wp-t a{color:var(--ink);text-decoration:none}
+.scout-app-wrapper .wp-t b{font-size:15px;color:var(--ink);overflow-wrap:anywhere}
+.scout-app-wrapper .wp-wait{color:var(--i2);font-style:italic}
+.scout-app-wrapper .wp-go{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
+.scout-app-wrapper .wp-go .b{min-width:0;padding:8px 4px;font-size:13.5px;text-align:center;white-space:normal;text-decoration:none}
+.scout-app-wrapper .wp-list{display:grid;gap:8px;margin-top:6px}
+.scout-app-wrapper .wp-sale{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--cd);cursor:pointer}
+.scout-app-wrapper .wp-sale input{flex:0 0 auto;width:20px;height:20px;margin:2px 0 0;accent-color:var(--ac)}
+.scout-app-wrapper .wp-drop ul{margin:4px 0 8px;padding-left:18px;font-size:14px;color:var(--mu)}
+.scout-app-wrapper .wp-zip{margin:6px 0 10px}
 .scout-app-wrapper .whyp[hidden],.scout-app-wrapper #otp-alerts[hidden]{display:none!important}
 .scout-app-wrapper .sgw-hunt{height:44px;padding:0 18px;font-size:15px}
 .scout-app-wrapper a.sgw-wh{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:var(--ink)}   /* v7.56: Best bets are links */
@@ -1465,6 +1521,92 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper #otp-photo .apr-trayn{flex:1 1 100%;margin:0;font-size:14px;line-height:1.4;color:var(--mu)}
 .scout-app-wrapper #otp-photo .apr-go{flex:none;width:100%;padding:15px 16px;font-size:17px;display:flex;align-items:center;justify-content:center;text-align:center}
 .scout-app-wrapper #otp-photo .apr-go[hidden]{display:none}
+/* v8.29 Photo check rebuild (the owner's brief): capture, analyzing, results */
+/* v8.29 the owner's mockups: icons (masks, so they take the theme's colour), boxes, the empty tray, the answer */
+.scout-app-wrapper .apr-ico,.scout-app-wrapper #otp-aprB::before,.scout-app-wrapper #otp-aprB2::before,.scout-app-wrapper #otp-photo .apr-tips li::before,.scout-app-wrapper .apr-cond .apr-lkh::before,.scout-app-wrapper .apr-ss .b::before{content:'';display:inline-block;flex:none;width:20px;height:20px;background:currentColor;vertical-align:-4px}
+.scout-app-wrapper .apr-i-tag,.scout-app-wrapper #otp-photo .apr-tips li:first-child::before{-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12V4h8l10 10-7 7z'/%3E%3Ccircle cx='7.5' cy='8.5' r='1.3'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12V4h8l10 10-7 7z'/%3E%3Ccircle cx='7.5' cy='8.5' r='1.3'/%3E%3C/svg%3E") center/contain no-repeat}
+.scout-app-wrapper .apr-i-img,.scout-app-wrapper #otp-aprB2::before{-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Ccircle cx='9' cy='9.5' r='1.6'/%3E%3Cpath d='M4 18l5-5 4 4 3-3 5 5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Ccircle cx='9' cy='9.5' r='1.6'/%3E%3Cpath d='M4 18l5-5 4 4 3-3 5 5'/%3E%3C/svg%3E") center/contain no-repeat}
+.scout-app-wrapper #otp-aprB::before{width:24px;height:24px;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8h4l2-3h6l2 3h4v12H3z'/%3E%3Ccircle cx='12' cy='13.5' r='3.5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8h4l2-3h6l2 3h4v12H3z'/%3E%3Ccircle cx='12' cy='13.5' r='3.5'/%3E%3C/svg%3E") center/contain no-repeat}
+.scout-app-wrapper #otp-photo .apr-tips li:nth-child(2)::before{-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3Cpath d='M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5'/%3E%3C/svg%3E") center/contain no-repeat}
+.scout-app-wrapper #otp-photo .apr-tips li:nth-child(3)::before{-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='M16 16l5 5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='M16 16l5 5'/%3E%3C/svg%3E") center/contain no-repeat}
+.scout-app-wrapper .apr-cond .apr-lkh::before{width:22px;height:22px;color:var(--ac);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M8 12.5l3 3 5-6'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M8 12.5l3 3 5-6'/%3E%3C/svg%3E") center/contain no-repeat}
+.scout-app-wrapper .apr-ss .apr-sv::before{-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3h12v18l-6-5-6 5z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3h12v18l-6-5-6 5z'/%3E%3C/svg%3E") center/contain no-repeat}
+.scout-app-wrapper .apr-ss .apr-sh::before{-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V3M7 8l5-5 5 5M5 13v8h14v-8'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V3M7 8l5-5 5 5M5 13v8h14v-8'/%3E%3C/svg%3E") center/contain no-repeat}
+
+.scout-app-wrapper .apr-sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.scout-app-wrapper #otp-photo .dh{gap:8px}
+.scout-app-wrapper #otp-photo .dh h2{flex:1 1 auto;min-width:0}
+.scout-app-wrapper #otp-photo .apr-back{font-size:30px;line-height:1}
+.scout-app-wrapper #otp-photo .apr-back[hidden]{display:none}
+.scout-app-wrapper #otp-photo .apr-txt b{font-family:var(--display);font-size:25px;line-height:1.12;letter-spacing:-.02em}
+.scout-app-wrapper #otp-photo .photo-fields .apr-price{flex:1 1 140px;flex-direction:row;align-items:center;gap:6px;min-width:0;padding:0 10px;min-height:54px;border:1.5px solid var(--l2);border-radius:12px;background:var(--cd2);color:var(--i2)}
+.scout-app-wrapper #otp-photo .photo-fields .apr-price span{min-width:0;font-size:14px;font-weight:700;color:var(--ink)}
+.scout-app-wrapper #otp-photo .photo-fields .apr-price input{flex:1 1 auto;width:auto;min-width:0;padding:10px 0;border:0;background:none;font-size:16px}
+.scout-app-wrapper #otp-photo .photo-fields .apr-price:focus-within{border-color:var(--ac)}
+.scout-app-wrapper #otp-photo .photo-fields .apr-price .apr-ico{width:18px;height:18px}
+.scout-app-wrapper #otp-photo .photo-fields input::placeholder{font-size:13.5px}
+.scout-app-wrapper #otp-photo .apr-mode button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px}
+.scout-app-wrapper #otp-photo .apr-mode button::before{content:'';width:10px;height:10px;border:1.5px solid currentColor;border-radius:50%;box-sizing:border-box}
+.scout-app-wrapper #otp-photo .apr-mode button.on{background:var(--ac-tint);color:var(--ink)}
+.scout-app-wrapper #otp-photo .apr-mode button.on::before{background:currentColor}
+.scout-app-wrapper #otp-aprB,.scout-app-wrapper #otp-aprB2{display:flex;align-items:center;justify-content:center;gap:10px}
+.scout-app-wrapper .apr-trayph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:130px;border:1.5px dashed var(--l2);border-radius:14px;background:var(--cd2);color:var(--i2);font-size:15px}
+.scout-app-wrapper .apr-trayph .apr-ico{width:30px;height:30px;color:var(--mu)}
+.scout-app-wrapper .apr-trayph[hidden]{display:none}
+.scout-app-wrapper #otp-photo .apr-tips{justify-content:center}
+.scout-app-wrapper #otp-photo .apr-tips li{display:inline-flex;align-items:center;gap:6px}
+.scout-app-wrapper #otp-photo .apr-tips li::before{width:16px;height:16px;color:var(--i2)}
+.scout-app-wrapper #otp-photo .apr-left{text-align:center;font-size:14px}
+.scout-app-wrapper #otp-photo .apr-left b{font-weight:800;color:var(--ink)}
+.scout-app-wrapper #otp-photo .apr-fine{text-align:center}
+@media (max-width:340px){.scout-app-wrapper #otp-photo .photo-fields .apr-price{flex-basis:100%}}
+.scout-app-wrapper #otp-photo .photo-capture[hidden],.scout-app-wrapper #otp-photo .photo-analyzing[hidden]{display:none}
+.scout-app-wrapper #otp-photo .photo-fields{display:flex;flex-wrap:wrap;gap:10px}
+.scout-app-wrapper #otp-photo #otp-aprB.p{padding:17px 16px;font-size:17px;font-weight:800;border-radius:14px}
+.scout-app-wrapper #otp-photo #otp-aprB2,.scout-app-wrapper #otp-photo .apr-go{border-radius:14px;margin:0}
+.scout-app-wrapper #otp-photo .photo-capture>.apr-trayn{margin-top:-4px}
+.scout-app-wrapper #otp-photo .apr-tips{margin:2px 0 0;gap:8px}
+.scout-app-wrapper #otp-photo .apr-tips li{padding:7px 12px;font-weight:700}
+.scout-app-wrapper .photo-analyzing{text-align:center;padding:28px 12px 20px}
+.scout-app-wrapper .photo-analyzing-visual{position:relative;width:120px;height:120px;margin:0 auto 18px;border-radius:18px;background:var(--cd2);border:1.5px solid var(--l2);overflow:hidden}
+.scout-app-wrapper .photo-ana-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.scout-app-wrapper #otp-photo [tabindex="-1"]:focus,.scout-app-wrapper #otp-photo [tabindex="-1"]:focus-visible{outline:none!important;box-shadow:none!important}   /* focus moved there by the page, not a control */
+.scout-app-wrapper .photo-scan-line{position:absolute;left:0;right:0;top:0;z-index:1;height:3px;background:var(--ac);box-shadow:0 0 10px var(--ac);opacity:.9;animation:aprscan 1.4s ease-in-out infinite}
+@keyframes aprscan{0%,100%{transform:translateY(8px)}50%{transform:translateY(108px)}}
+@media (prefers-reduced-motion:reduce){.scout-app-wrapper .photo-scan-line{animation:none;transform:translateY(58px)}}
+.scout-app-wrapper .photo-analyzing-title{margin:0 0 6px;font-size:18px;font-weight:800;color:var(--ink)}
+.scout-app-wrapper .photo-analyzing-sub{margin:0;font-size:14px;line-height:1.45;color:var(--mu)}
+.scout-app-wrapper .apr-card.apr-hero{display:block;margin-top:0;padding:0;border:0;border-radius:0;background:none}
+.scout-app-wrapper .apr-hero>img{display:block;width:100%;height:auto;max-height:240px;object-fit:cover;border-radius:16px;background:var(--cd3)}
+.scout-app-wrapper .apr-hs{display:flex;gap:8px;padding:10px 0 0}
+.scout-app-wrapper button.apr-ht{width:44px;height:44px;padding:0;border:1.5px solid var(--l2);border-radius:9px;background:none;overflow:hidden;cursor:pointer}
+.scout-app-wrapper button.apr-ht[aria-pressed="true"]{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}
+.scout-app-wrapper .apr-hero .apr-ht img{width:100%;height:100%;border-radius:0}
+.scout-app-wrapper .apr-hb{padding:14px 0 0}
+.scout-app-wrapper h3.apr-nm{margin:0 0 4px;font-family:var(--display);font-size:27px;letter-spacing:-.02em;font-weight:800;line-height:1.25;color:var(--ink);overflow-wrap:anywhere}
+.scout-app-wrapper .apr-meta{margin:0 0 10px;font-size:16px;line-height:1.4;color:var(--mu)}
+.scout-app-wrapper .apr-pills{display:flex;flex-wrap:wrap;gap:6px}
+.scout-app-wrapper .apr-conf,.scout-app-wrapper .apr-call{display:inline-block;padding:4px 10px;border:1.5px solid var(--l2);border-radius:999px;background:var(--cd2);font-size:13px;font-weight:700;color:var(--ink)}
+.scout-app-wrapper .apr-conf{border-color:transparent;background:var(--ac-tint)}
+.scout-app-wrapper .apr-conf::before{content:'\2605';margin-right:6px;color:var(--ac)}
+.scout-app-wrapper .apr-conf.apr-cl{border-color:var(--warn);background:var(--warn-soft)}
+.scout-app-wrapper .apr-fair{margin:12px 0 0;padding:0 0 14px;border-bottom:1px solid var(--l2)}
+.scout-app-wrapper .apr-fl{display:block;font-size:13px;font-weight:700;color:var(--mu)}
+.scout-app-wrapper .apr-fv{display:block;font-family:var(--display);font-size:36px;font-weight:800;line-height:1.1;letter-spacing:-.02em;color:var(--ac);overflow-wrap:anywhere}
+.scout-app-wrapper .apr-fv.apr-pend{font-size:18px;color:var(--i2)}
+.scout-app-wrapper .apr-basis{display:block;margin-top:4px;font-size:15px;color:var(--i2)}
+.scout-app-wrapper .apr-why{margin:10px 0 0;font-size:15px;line-height:1.45;color:var(--i2)}
+.scout-app-wrapper #otp-photo .apr-links .apr-hunt,.scout-app-wrapper #otp-photo .apr-links .apr-lensb{flex:1 1 100%;min-height:48px}
+.scout-app-wrapper #otp-photo .apr-links .apr-hunt{min-height:54px;font-size:17px;font-weight:800;border-radius:14px}
+.scout-app-wrapper .apr-cond{margin:14px 0 0;padding:0 0 14px;border-bottom:1px solid var(--l2)}
+.scout-app-wrapper .apr-cond .apr-lkh{display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:17px;color:var(--ink)}
+.scout-app-wrapper .apr-ss{flex:1 1 100%;display:flex;gap:8px}
+.scout-app-wrapper .apr-links .apr-ss .b{flex:1 1 0;gap:8px;min-height:48px}
+.scout-app-wrapper #otp-photo .apr-looks .apr-lkg{display:flex;overflow-x:auto;gap:10px;padding-bottom:4px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.scout-app-wrapper #otp-photo .apr-looks .apr-lk{flex:0 0 150px;scroll-snap-align:start}
+.scout-app-wrapper .apr-cond ul{margin:0;padding-left:20px;list-style:disc;font-size:15px;line-height:1.5;color:var(--ink)}
+.scout-app-wrapper .apr-again{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0}
+.scout-app-wrapper .apr-again .b{flex:1 1 100%;white-space:normal}
 .scout-app-wrapper .apr-left{margin:8px 0 0;font-size:14px;line-height:1.45;color:var(--i2)}
 .scout-app-wrapper .apr-left a,.scout-app-wrapper .apr-up a.apr-upl{color:var(--ac);font-weight:700;text-decoration:underline}
 .scout-app-wrapper .apr-up{margin-top:14px;padding:14px 16px;border:1.5px solid var(--l2);border-left:4px solid var(--ac);border-radius:10px;background:var(--cd);font-size:15px;line-height:1.5;color:var(--ink)}
@@ -2652,11 +2794,11 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   </span>
   <div class="bar-actions">
     <button class="gh acct" id="otp-acct" type="button" aria-label="Sign in">•</button>
+    <button class="gh bar-th" id="otp-themeBtn" type="button" aria-label="Cycle theme" title="Dark mode">☾</button>   <!-- v8.28 (Matt: "move the theme switcher so that it is always visible"): out of the menu, always on the bar -->
     <button class="gh bar-mb" id="otp-menuTop" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="otp-barMenu" aria-label="Menu">☰</button>
     <div class="bar-menu" id="otp-barMenu" role="menu" hidden>
     <button class="gh apphdr" id="otp-appHdr" type="button" role="menuitem" hidden>App</button>
     <button class="gh" id="otp-sizeTop" type="button" role="menuitem" data-l="Text size" aria-label="Text size: Standard. Tap for bigger." title="Text size">Aa</button>
-    <button class="gh" id="otp-themeBtn" type="button" role="menuitem" data-l="Theme" aria-label="Cycle theme" title="Dark mode">☾</button>
     <button class="gh" id="otp-how" type="button" role="menuitem" data-l="How Prowl works" aria-label="How Prowl works">?</button>
     </div>
   </div>
@@ -2675,6 +2817,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 
   <h1>Find the prey</h1>
   <p class="lede k2-only"><span data-t>29</span> vintage marketplaces, one search. Free.</p>
+  <p class="lede k2-only lede-more">Prowl by Owl &amp; Twig is a free search tool for vintage collectors and resellers: one hunt searches ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Facebook Marketplace and the rest, from one screen.</p>   <!-- v8.30 (SEO brief): what Prowl is, in the static HTML search engines read; shown on a first visit like the line above -->
   <p class="lede k2-hide"><strong>Prowl by Owl &amp; Twig</strong> is a free search tool for vintage collectors. Type a hunt or tap one of yours below, and it builds the same search for all <span data-t>29</span> vintage marketplaces on one screen — open them one at a time, or all at once.</p>
 
   <form id="otp-sf" autocomplete="off">
@@ -2781,17 +2924,20 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 </main>
 <aside class="drawer" id="otp-photo" role="dialog" aria-modal="true" aria-labelledby="otp-photoT" hidden>
   <div class="dh">
-<h2 id="otp-photoT">Photo check</h2>
+<button class="ic apr-back" id="otp-photoBack" type="button" aria-label="Back to the photo form" hidden>‹</button><h2 id="otp-photoT">Photo check</h2>
 <button class="ic" id="otp-photoClose" aria-label="Close Photo check">✕</button>
 </div>
   <div class="phb">
     <section class="apr" id="otp-apr" aria-labelledby="otp-aprT">
-      <div class="apr-row">
+      <!-- v8.29 Photo check in three states: capture, analyzing, results (photoShow) -->
+      <div class="apr-row photo-capture" id="otp-photoCapture">
         <div class="apr-txt">
-<b id="otp-aprT">At a sale? Check a photo.</b><span>Snap the piece, add a close-up of its mark if it has one, type anything you know, then tap Check it. You get what it is, visible flaws and a fair range.</span>
+<b id="otp-aprT">At a sale? Check a photo.</b><span>Snap the piece, add a close-up of its mark if it has one, then tap Check it.</span>
 </div>
-        <label class="apr-price" for="otp-aprP"><span>Asking</span><input id="otp-aprP" type="text" inputmode="decimal" placeholder="$ optional" autocomplete="off"></label>
-        <label class="apr-price apr-hint" for="otp-aprH"><span>Maker or words</span><input id="otp-aprH" type="text" maxlength="80" placeholder="maker, mark, what it is" autocomplete="off"></label>
+        <div class="photo-fields">
+<label class="apr-price" for="otp-aprP"><i class="apr-ico apr-i-tag" aria-hidden="true"></i><span>Asking</span><input id="otp-aprP" type="text" inputmode="decimal" placeholder="$ optional" autocomplete="off"></label>
+<label class="apr-price apr-hint" for="otp-aprH"><i class="apr-ico apr-i-tag" aria-hidden="true"></i><span class="apr-sr">Maker or words</span><input id="otp-aprH" type="text" maxlength="80" placeholder="Maker or words" autocomplete="off"></label>
+</div>
         <div class="apr-mode" role="group" aria-label="What is in the photo">
 <button type="button" class="on" data-am="one" aria-pressed="true">One piece</button><button type="button" data-am="shelf" aria-pressed="false">A whole shelf</button>
 </div>
@@ -2799,17 +2945,25 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
         <input id="otp-aprF" type="file" accept="image/*" capture="environment" hidden>
         <button class="b" id="otp-aprB2" type="button">Choose from photos</button>
         <input id="otp-aprF2" type="file" accept="image/*" multiple hidden>
+        <div class="apr-trayph" id="otp-aprTrayPh">
+<i class="apr-ico apr-i-img" aria-hidden="true"></i>Photos will appear here.</div>
         <div class="apr-tray" id="otp-aprTray" role="group" aria-label="Photos to check" hidden></div>
+        <p class="apr-trayn" id="otp-aprTrayNote" hidden>Add up to 3 angles. A mark close-up helps a lot.</p>
         <button class="b p apr-go" id="otp-aprRun" type="button" hidden>Check it</button>
-      </div>
-      <ul class="apr-tips" aria-label="Photo tips">
+        <ul class="apr-tips" aria-label="Photo tips">
 <li>One piece</li>
 <li>Good light</li>
 <li>Show the mark</li>
 </ul>
-      <p class="apr-left" id="otp-aprLeft">Free: 1 photo check a day. Prowl Pro: unlimited.</p>
-      <p class="apr-fine">Your photo is sent to an AI model to identify and price the piece.</p>
-      <div id="otp-aprOut" aria-live="polite"></div>
+        <p class="apr-left" id="otp-aprLeft">Free: 1 photo check a day. <b>Prowl Pro:</b> unlimited.</p>
+        <p class="apr-fine">Your photo is sent to an AI model to identify and price the piece.</p>
+      </div>
+      <div class="photo-analyzing" id="otp-photoAnalyzing" role="status" tabindex="-1" hidden>
+        <div class="photo-analyzing-visual" aria-hidden="true"><div class="photo-scan-line"></div></div>
+        <p class="photo-analyzing-title">Checking this piece…</p>
+        <p class="photo-analyzing-sub" id="otp-aprStatus">Identifying · looking up sales · estimating a fair range</p>
+      </div>
+      <div id="otp-aprOut" class="photo-out" aria-live="polite"></div>
       <div class="apr-recent" id="otp-aprRecent" hidden></div>
     </section>
   </div>
@@ -2825,6 +2979,20 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   var B=document.getElementById('otp-aprB'),F=document.getElementById('otp-aprF'),O=document.getElementById('otp-aprOut'),P=document.getElementById('otp-aprP'),H=document.getElementById('otp-aprH');
   if(!B||!F||!O||!window.FileReader)return;
   var API='https://prowl.thebluecloud.workers.dev/appraise',busy=false;
+  /* v8.29 (the owner's Photo Check brief): three states. Capture is the form; analyzing shows while /appraise is out
+     (the photos stay in the tray); results is the answer in #otp-aprOut with the form hidden, and Check another piece
+     or Fix it brings the form back. An error goes back to the form with the message. GEN counts the checks: an answer
+     for an older one (started over, timed out) is dropped. */
+  var CAP=document.getElementById('otp-photoCapture'),ANA=document.getElementById('otp-photoAnalyzing'),AST=document.getElementById('otp-aprStatus'),PST='capture',GEN=0;
+  var BK=document.getElementById('otp-photoBack');
+  function photoShow(s){PST=s;if(BK)BK.hidden=s!=='results';if(CAP)CAP.hidden=s!=='capture';if(ANA)ANA.hidden=s!=='analyzing';if(s==='capture')while(O.firstChild)O.removeChild(O.firstChild);}
+  /* v8.29 (review): a hidden block takes the focus with it, behind an aria-modal drawer. Each state hands it on: the
+     analyzing block, the answer's heading, Check it (or Take a photo), or the alert. Never while the drawer is closed. */
+  function pFocus(el){var ph=document.getElementById('otp-photo');if(!el||!ph||ph.hidden||!ph.classList.contains('on'))return;try{el.focus({preventScroll:true});}catch(e){try{el.focus();}catch(x){} }}
+  function capFocus(){pFocus(GO&&!GO.hidden?GO:B);}
+  function resFocus(h,force){if(!h)return;h.setAttribute('tabindex','-1');var ae=document.activeElement,ph=document.getElementById('otp-photo');
+    if(force||!ae||ae===document.body||!ph||!ph.contains(ae)||(ANA&&ANA.contains(ae))||(CAP&&CAP.hidden&&CAP.contains(ae))||!document.documentElement.contains(ae))pFocus(h);}
+  window.prowlPhotoOpen=function(){if(!busy&&PST==='analyzing')photoShow('capture');};   /* never a spinner with nothing behind it */
   /* v5.59 owner pass: open the page once with ?owner=CODE and this device
      skips the Worker's daily caps. Kept in prowl.owner, outside the backup. */
   try{var om=/[?&]owner=([A-Za-z0-9_-]{12,80})/.exec(location.search);if(om){localStorage.setItem('prowl.owner',om[1]);if(history.replaceState)history.replaceState(null,'',location.pathname);} }catch(e){}
@@ -2840,16 +3008,21 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     if(typeof j.left!=='number')return;lfClear();
     LF.appendChild(document.createTextNode(j.left+' free photo check'+(j.left===1?'':'s')+' left today \u00b7 '));
     var a=document.createElement('a');a.href='/products/prowl-pro';a.textContent='Unlimited with Prowl Pro';LF.appendChild(a);}
-  function upsell(n){while(O.firstChild)O.removeChild(O.firstChild);var d=document.createElement('div');d.className='apr-up';d.setAttribute('role','alert');
+  function upsell(n){photoShow('capture');var d=document.createElement('div');d.className='apr-up';d.setAttribute('role','alert');
     var p1=document.createElement('p');p1.textContent='That\u2019s today\u2019s '+n+' free photo check'+(n===1?'':'s')+'. They reset tomorrow.';d.appendChild(p1);
     var p2=document.createElement('p');p2.textContent='Pro members get unlimited photo checks (fair use, 100 a day), with the piece named, visible flaws noted and a fair range backed by sold prices, not asking prices. Price a whole booth. The same plan covers alerts for up to 100 hunts. Your first month is free, then $7 a month. Cancel any time.';d.appendChild(p2);
     var a=document.createElement('a');a.className='b p';a.href='/products/prowl-pro';a.textContent='Try Pro free for a month';d.appendChild(a);
     if(!lsG('alertTok')){var sp=document.createElement('p');sp.className='apr-ups';var s=document.createElement('a');sp.appendChild(s);s.className='apr-upl';s.href='#';s.textContent='Already Pro? Sign in';s.addEventListener('click',function(ev){ev.preventDefault();var e2;try{e2=new Event('prowl-signin');}catch(x){e2=document.createEvent('Event');e2.initEvent('prowl-signin',true,true);}document.dispatchEvent(e2);});d.appendChild(sp);}
-    O.appendChild(d);if(LF){lfClear();LF.appendChild(document.createTextNode('0 free photo checks left today.'));} }
-  function note(t){while(O.firstChild)O.removeChild(O.firstChild);var p=document.createElement('p');p.className='apr-note';p.textContent=t;O.appendChild(p);}
-  var TM=null,ST=['Looking at your photo\u2026','Working out what it is\u2026','Checking the maker and marks\u2026','Checking sold prices\u2026','Almost there\u2026'];
-  function stopT(){if(TM){clearInterval(TM);TM=null;}}
-  function startT(){var i=0;note(ST[0]+' (up to 40 seconds)');var p=O.firstChild;if(p&&p.parentNode){var pw=document.createElement('span');pw.className='paws';pw.setAttribute('aria-hidden','true');for(var pi=0;pi<3;pi++){var pe=document.createElement('i'),sv=document.createElementNS('http://www.w3.org/2000/svg','svg'),us=document.createElementNS('http://www.w3.org/2000/svg','use');sv.setAttribute('viewBox','0 0 24 24');us.setAttribute('href','#otp-swallow');sv.appendChild(us);pe.appendChild(sv);pw.appendChild(pe)}   /* v7.81: swallows, as everywhere */O.insertBefore(pw,p);}var bar=document.createElement('div');bar.className='apr-bar';bar.appendChild(document.createElement('i'));O.appendChild(bar);TM=setInterval(function(){i=Math.min(i+1,ST.length-1);if(p&&p.parentNode)p.textContent=ST[i];},7000);}
+    O.appendChild(d);d.setAttribute('tabindex','-1');pFocus(d);if(LF){lfClear();LF.appendChild(document.createTextNode('0 free photo checks left today.'));} }
+  var TM=null;
+  function stopT(){if(TM){clearTimeout(TM);TM=null;}}
+  function startT(){stopT();if(AST)AST.textContent='';
+    /* v8.29 (the owner): the scan line passes over their own photo */
+    var av=ANA&&ANA.querySelector('.photo-analyzing-visual'),ai=av&&av.querySelector('img');if(av&&TRAY[0]){if(!ai){ai=document.createElement('img');ai.alt='';ai.className='photo-ana-img';av.insertBefore(ai,av.firstChild);}ai.src=TRAY[0];}
+    var tt=ANA&&ANA.querySelector('.photo-analyzing-title');if(tt&&!tt.querySelector('.paws')){var pw=document.createElement('span');pw.className='paws';pw.setAttribute('aria-hidden','true');for(var pi=0;pi<3;pi++){var pe=document.createElement('i'),sv=document.createElementNS('http://www.w3.org/2000/svg','svg'),us=document.createElementNS('http://www.w3.org/2000/svg','use');sv.setAttribute('viewBox','0 0 24 24');us.setAttribute('href','#otp-swallow');sv.appendChild(us);pe.appendChild(sv);pw.appendChild(pe)}tt.insertBefore(pw,tt.firstChild);}   /* v7.81: swallows, as everywhere */
+    photoShow('analyzing');pFocus(ANA);
+    setTimeout(function(){if(AST&&PST==='analyzing')AST.textContent='Identifying \u00b7 looking up sales \u00b7 estimating a fair range';},60);   /* shown first, then the words, so a screen reader hears them */
+    TM=setTimeout(function(){TM=null;if(AST&&PST==='analyzing')AST.textContent='Still checking. This can take up to a minute.';},20000);}
   function cardLines(x,t,mw,maxL){var w=String(t||'').split(/\s+/),out=[],line='';for(var i=0;i<w.length;i++){var tt=line?line+' '+w[i]:w[i];if(x.measureText(tt).width>mw&&line){out.push(line);line=w[i];}else line=tt;}if(line)out.push(line);if(out.length>maxL){out=out.slice(0,maxL);out[maxL-1]=out[maxL-1].replace(/\s*\S*$/,'')+'\u2026';}return out;}
   /* v5.99: the photo card (photo + item + fair price + Prowl footer) is drawn
      once here, so "Share this find" and "Share this research" send the same
@@ -2926,17 +3099,19 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   function priceIt(fj,data){
     var pb={mode:'price',item:fj.item,search:fj.search||'',looks:(fj.looks||[]).slice(0,3),price:P.value||''};
     if(lsG('alertTok')&&lsG('alertEmail')){pb.e=lsG('alertEmail');pb.t=lsG('alertTok');}   /* v6.64: Pro members get their own count on the price step (worker v93), as on the photo check */
-    var st=0;
+    var st=0,g=GEN;   /* v8.29: dropped if a newer check (or Check another piece) came first */
     /* v6.64: with no answer the "Checking sold prices" placeholder never stands in for a price (Share drew it on the card),
        and a daily limit or a busy moment says so instead of "could not be checked" */
     function noPrice(){if(/^Checking sold prices/.test(fj.fair||''))fj.fair='';}
     return fetch(API,{method:'POST',headers:OH(),body:JSON.stringify(pb)}).then(function(res){st=res.status;return res.ok?res.json():res.json().then(function(j){return {_err:(j&&j.error)||''};},function(){return null;});}).then(function(pj){
       if(pj&&pj.fair){if(pj.name&&typeof pj.name==='string'&&!/\(maker you entered\)|\(your ID\)/.test(fj.item||''))fj.item=String(pj.name).slice(0,120);fj.fair=pj.fair;fj.verdict=pj.verdict||fj.verdict;fj.why=pj.why||fj.why;fj.basis=pj.basis||'sold';}
       else{noPrice();fj.basis=st===429?(/^busy/.test((pj&&pj._err)||'')?'busy':'limit'):'estimate';}
-      show(fj,data);
-    }).catch(function(){noPrice();fj.basis='estimate';show(fj,data);});
+      if(g!==GEN){late();return;}show(fj,data);
+    }).catch(function(){noPrice();fj.basis='estimate';if(g!==GEN){late();return;}show(fj,data);});
+    /* v8.29 (review): the visitor left before the price came; not shown, but still kept in Your last photo checks */
+    function late(){if(!fj._kept&&fj.item&&data){fj._kept=1;pckKeep(fj,data);}}
   }
-  function warn(t){while(O.firstChild)O.removeChild(O.firstChild);var p=document.createElement('p');p.className='apr-warn';p.setAttribute('role','alert');p.textContent=t;O.appendChild(p);try{O.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}}
+  function warn(t){photoShow('capture');var p=document.createElement('p');p.className='apr-warn';p.setAttribute('role','alert');p.setAttribute('tabindex','-1');p.textContent=t;O.appendChild(p);pFocus(p);try{O.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}}
   function shrink(file,cb){
     var rd=new FileReader();
     rd.onload=function(){var img=new Image();img.onload=function(){
@@ -3048,29 +3223,45 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   if(RCX)RCX.addEventListener('click',function(e){
     if(e.target.closest('.apr-rcx')){try{localStorage.removeItem(PCK_KEY);}catch(x){}pckDraw();return;}
     var b=e.target.closest('.apr-rc');if(!b||busy)return;var c=pckGet()[+b.getAttribute('data-pk')];if(!c)return;
-    var r=JSON.parse(JSON.stringify(c.r));r._kept=1;show(r,c.th);
+    var r=JSON.parse(JSON.stringify(c.r));r._kept=1;r._recent=1;show(r,c.th);resFocus(O.querySelector('.apr-nm'),true);
     try{O.scrollIntoView({behavior:'smooth',block:'start'});}catch(x){}
   });
   pckDraw();
   function show(r,src){
     if(r&&!r._kept&&r.basis!=='pending'&&r.item&&src){r._kept=1;pckKeep(r,src);}   /* v7.96 */
-    while(O.firstChild)O.removeChild(O.firstChild);
-    var card=document.createElement('div');card.className='apr-card';
+    while(O.firstChild)O.removeChild(O.firstChild);photoShow('results');
+    /* v8.29 (the owner's brief): the photo large, then the name, maker and era, how sure, and the fair price loudest;
+       Hunt this on Prowl right under it, the condition after, then the comps and the web. Text only, never markup. */
+    var card=document.createElement('div');card.className='apr-card apr-hero';
     var im=document.createElement('img');im.src=src;im.alt='';card.appendChild(im);
-    var dl=document.createElement('dl');
+    if(TRAY.length>1&&src===TRAY[0]){var hs=document.createElement('div');hs.className='apr-hs';hs.setAttribute('role','group');hs.setAttribute('aria-label','Your photos');
+      for(var hi=0;hi<TRAY.length;hi++){var ht=document.createElement('button');ht.type='button';ht.className='apr-ht';ht.setAttribute('aria-label','Show photo '+(hi+1));ht.setAttribute('aria-pressed',hi?'false':'true');var hm=document.createElement('img');hm.src=TRAY[hi];hm.alt='';ht.appendChild(hm);hs.appendChild(ht);}
+      hs.addEventListener('click',function(e){var b=e.target.closest('.apr-ht');if(!b)return;im.src=b.querySelector('img').src;var all=hs.querySelectorAll('.apr-ht');for(var k=0;k<all.length;k++)all[k].setAttribute('aria-pressed',all[k]===b?'true':'false');});
+      card.appendChild(hs);}
+    function cap1(t){t=String(t||'');return t.charAt(0).toUpperCase()+t.slice(1);}
+    function sent(t){t=String(t||'');return t.charAt(0)+t.slice(1).toLowerCase();}
+    function el(tag,c,t,host){var e=document.createElement(tag);e.className=c;e.textContent=t;(host||bd).appendChild(e);return e;}
+    var bd=document.createElement('div');bd.className='apr-hb';
     /* v7.95: the worker's "(maker you entered)" marker stays on r.item (priceIt reads it) but is not shown; the call is
        in sentence case like the rest of the app (the share card keeps its capitals) */
-    var rows=[['Item',String(r.item||'').replace(/\s*\((maker you entered|your ID)\)/g,'')],['How sure',r.sure?String(r.sure).charAt(0)+String(r.sure).slice(1).toLowerCase():''],['Condition',r.condition],['Flaws',r.flaws],['Fair price',r.fair],['Call',r.verdict?String(r.verdict).charAt(0)+String(r.verdict).slice(1).toLowerCase():''],['Why',r.why]];
-    for(var i=0;i<rows.length;i++){if(!rows[i][1])continue;var dt=document.createElement('dt');dt.textContent=rows[i][0];var dd=document.createElement('dd');dd.textContent=rows[i][1];dl.appendChild(dt);dl.appendChild(dd);}
-    card.appendChild(dl);O.appendChild(card);
+    var nm=String(r.item||'').replace(/\s*\((maker you entered|your ID)\)/g,''),nsg=nm.split(/,\s+/),mt='';
+    if(nsg.length>1&&nsg[0].split(/\s+/).length>=3){nm=nsg[0];mt=nsg.slice(1).join(' \u00b7 ');}   /* "maker line form, era": the era on the line under */
+    el('h3','apr-nm',nm);if(mt)el('p','apr-meta',mt);
+    var su=String(r.sure||'').toUpperCase(),cf=/^HIGH/.test(su)?'High':/^MED/.test(su)?'Medium':/^LOW/.test(su)?'Low':'';   /* the worker's SURE, nothing made up */
+    var pl=el('div','apr-pills','');if(cf)el('span','apr-conf apr-c'+cf.charAt(0).toLowerCase(),cf+' confidence',pl);if(r.verdict)el('span','apr-call',sent(r.verdict),pl);if(!pl.firstChild)bd.removeChild(pl);
+    var fx=el('div','apr-fair','');
+    if(r.fair){el('b','apr-fv'+(r.basis==='pending'?' apr-pend':''),String(r.fair).replace(/^\$(\d[\d,]*)\s*-\s*\$?(\d[\d,]*)/,'$$$1 \u2013 $$$2'),fx);   /* $90-140 reads $90 \u2013 $140 */
+      var bs=r.basis==='sold'?'Based on recent sold comps':r.basis==='listed'?'Based on asking prices, not sales':'';if(bs)el('span','apr-basis',bs,fx);}   /* the worker sends no comp count, so none is shown */
+    if(r.why)el('p','apr-why',r.why,fx);if(!fx.firstChild)bd.removeChild(fx);
+    card.appendChild(bd);O.appendChild(card);
     /* v5.59 eBay photo search: the closest-looking live listings, so the ID
        can be checked by eye. DOM only; eBay https links only. */
     var q=String(r.item||'').replace(/\([^)]*\)/g,' ').replace(/\blikely\b/ig,' ').replace(/\s+/g,' ').replace(/^[\s,]+|[\s,]+$/g,'').slice(0,90);
     var pq=r.search?String(r.search).slice(0,60):shortQ(q);   /* v6.11 */
     /* v8.01 (worker v173): Google Lens's matches (through SerpApi's free plan), found by the picture itself: first,
        because Lens named Matt's orange cat (Royal Haeger 616) where the other searches could not */
-    var LN=[];if(r.lens&&r.lens.length)for(var ni=0;ni<r.lens.length&&LN.length<6;ni++){var nx=r.lens[ni];if(nx&&typeof nx.url==='string'&&/^https:\/\//.test(nx.url)&&nx.title)LN.push(nx);}
-    if(LN.length){var nw=document.createElement('div');nw.className='apr-looks apr-lens';var nh=document.createElement('p');nh.className='apr-lkh';nh.textContent='Google Lens found';nw.appendChild(nh);var ng=document.createElement('div');ng.className='apr-lkg';
+    var nw=null,ww=null,LN=[];if(r.lens&&r.lens.length)for(var ni=0;ni<r.lens.length&&LN.length<6;ni++){var nx=r.lens[ni];if(nx&&typeof nx.url==='string'&&/^https:\/\//.test(nx.url)&&nx.title)LN.push(nx);}
+    if(LN.length){nw=document.createElement('div');nw.className='apr-looks apr-lens';var nh=document.createElement('p');nh.className='apr-lkh';nh.textContent='Google Lens found';nw.appendChild(nh);var ng=document.createElement('div');ng.className='apr-lkg';
       for(var nj=0;nj<LN.length;nj++){var na=document.createElement('a');na.className='apr-lk';var nu=LN[nj].url,ns=/^https:\/\/([a-z0-9-]+\.)*ebay\.com\//i.test(nu)?'ebay':/^https:\/\/([a-z0-9-]+\.)*etsy\.com\//i.test(nu)?'etsy':/^https:\/\/([a-z0-9-]+\.)*poshmark\.com\//i.test(nu)?'poshmark':'';
         na.href=ns==='ebay'?window.prowlAff(nu,'prowl-lens'):nu;na.target='_blank';na.rel='noopener noreferrer';
         if(ns)aprCell(na,nu,LN[nj].title,LN[nj].price||'',ns,pq,'Found by Google Lens');
@@ -3079,7 +3270,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
         if(LN[nj].price){var np=document.createElement('span');np.className='apr-lkp';np.textContent=String(LN[nj].price).slice(0,20);na.appendChild(np);}
         if(LN[nj].source){var nd=document.createElement('span');nd.className='apr-lkd';nd.textContent=String(LN[nj].source).slice(0,40);na.appendChild(nd);}
         ng.appendChild(na);}
-      nw.appendChild(ng);var nn=document.createElement('p');nn.className='apr-note';nn.textContent='Matched by the picture itself. Open each one to check it is the same piece; prices are asking, not sold.';nw.appendChild(nn);O.appendChild(nw);}
+      nw.appendChild(ng);var nn=document.createElement('p');nn.className='apr-note';nn.textContent='Matched by the picture itself. Open each one to check it is the same piece; prices are asking, not sold.';nw.appendChild(nn);}   /* v8.29: shown after the comps */
     var LK=[];if(r.looks&&r.looks.length)for(var li=0;li<r.looks.length&&LK.length<3;li++){var x=r.looks[li];if(x&&typeof x.url==='string'&&/^https:\/\/(www\.)?ebay\.com\//.test(x.url)&&x.title)LK.push(x);}
     if(LK.length){var lw=document.createElement('div');lw.className='apr-looks';var lh=document.createElement('p');lh.className='apr-lkh';lh.textContent='Looks like these on eBay';lw.appendChild(lh);
       var lg=document.createElement('div');lg.className='apr-lkg';
@@ -3102,7 +3293,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     /* v8.03 (Matt's Haeger 616, named for sure: "Reptiles \u00b7 Safari \u00b7 Birds" and orange toys): an answer sure of itself
        does not need the web search's loose labels and look-alike colours; pages with the very same picture still show */
     if(String(r.sure||'').toUpperCase()==='HIGH'){WS=[];WA=[];}
-    if(WP.length||WS.length||WA.length){var ww=document.createElement('div');ww.className='apr-looks apr-web';var wh=document.createElement('p');wh.className='apr-lkh';wh.textContent='Seen on the web';ww.appendChild(wh);
+    if(WP.length||WS.length||WA.length){ww=document.createElement('div');ww.className='apr-looks apr-web';var wh=document.createElement('p');wh.className='apr-lkh';wh.textContent='Seen on the web';ww.appendChild(wh);
       if(WS.length){var wsn=document.createElement('p');wsn.className='apr-wguess';wsn.textContent='Seen as: '+WS.join(' \u00b7 ');ww.appendChild(wsn);}
       else if(WB.guess&&WP.length){var wgs=document.createElement('p');wgs.className='apr-wguess';wgs.textContent='Best guess on the web: '+String(WB.guess).slice(0,80);ww.appendChild(wgs);}
       if(WP.length){var wg=document.createElement('div');wg.className='apr-lkg';
@@ -3117,15 +3308,16 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       if(WA.length){var wah=document.createElement('p');wah.className='apr-wsub';wah.textContent='Pictures that look like it';ww.appendChild(wah);var wag=document.createElement('div');wag.className='apr-lkg apr-alike';
         for(var wk=0;wk<WA.length;wk++){var wl=document.createElement('a');wl.className='apr-lk';wl.href=WA[wk];wl.target='_blank';wl.rel='noopener noreferrer';wl.setAttribute('aria-label','Picture '+(wk+1)+' that looks like it');var wi2=document.createElement('img');wi2.src=WA[wk];wi2.alt='';wi2.loading='lazy';wi2.referrerPolicy='no-referrer';wi2.onerror=function(){var a=this.parentNode;if(a&&a.parentNode)a.parentNode.removeChild(a)};wl.appendChild(wi2);wag.appendChild(wl);}
         ww.appendChild(wag);}
-      var wn=document.createElement('p');wn.className='apr-note';wn.textContent=WP.length?'Pages on the web with the same picture. Open each one to check it is the same piece.':'Machine labels and look-alike pictures from the web: a hint, not an answer.';ww.appendChild(wn);O.appendChild(ww);}
+      var wn=document.createElement('p');wn.className='apr-note';wn.textContent=WP.length?'Pages on the web with the same picture. Open each one to check it is the same piece.':'Machine labels and look-alike pictures from the web: a hint, not an answer.';ww.appendChild(wn);}
     if(pq&&String(r.basis)!=='pending')O.appendChild(poshBox(pq));
+    if(nw)O.appendChild(nw);if(ww)O.appendChild(ww);   /* v8.29: Lens and the web after the comps (eBay look-alikes, Poshmark sold) */
     var L=document.createElement('div');L.className='apr-links';
     function lk(t,u){var a=document.createElement('a');a.className='b';a.href=u;a.target='_blank';a.rel='noopener';a.textContent=t;L.appendChild(a);}
     var hq=r.search?String(r.search).slice(0,60):shortQ(q);
     var QI=document.getElementById('otp-q');
-    if(hq&&QI&&QI.form){var hb=document.createElement('button');hb.type='button';hb.className='b p';hb.textContent='Hunt it on Prowl';hb.addEventListener('click',function(){var ph=document.getElementById('otp-photo'),pc=document.getElementById('otp-photoClose');if(ph&&pc&&ph.classList.contains('on'))pc.click();QI.value=hq;var sub=QI.form.querySelector('[type=submit]');if(sub)sub.click();setTimeout(function(){try{QI.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){} },350);});L.appendChild(hb);
+    if(hq&&QI&&QI.form){var hb=document.createElement('button');hb.type='button';hb.className='b p apr-hunt';hb.textContent='Hunt this on Prowl';hb.addEventListener('click',function(){var ph=document.getElementById('otp-photo'),pc=document.getElementById('otp-photoClose');if(ph&&pc&&ph.classList.contains('on'))pc.click();QI.value=hq;var sub=QI.form.querySelector('[type=submit]');if(sub)sub.click();setTimeout(function(){try{QI.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){} },350);});L.appendChild(hb);
       /* v5.95: save the identified piece as a locked hunt without leaving the photo screen */
-      if(typeof window.prowlAddHunt==='function'){var fb=document.createElement('button');fb.type='button';fb.className='b';fb.textContent='\u2605 Add to favorites';fb.addEventListener('click',function(){if(window.prowlAddHunt(hq)){fb.textContent='\u2605 In your favorites';fb.disabled=true;}});L.appendChild(fb);}}
+      if(typeof window.prowlAddHunt==='function'){var fb=document.createElement('button');fb.type='button';fb.className='b';fb.textContent='\u2605 Add to favorites';fb.addEventListener('click',function(){if(window.prowlAddHunt(hq)){fb.textContent='Saved';fb.setAttribute('aria-label','Saved to your favorite hunts');fb.disabled=true;}});L.appendChild(fb);}}
     /* v8.01 (Matt: Google Lens named his orange cat at once): Check with Google Lens is a main button beside Hunt it on Prowl, not under More;
        the phone's share sheet hands Lens the photo, else Lens opens to take one */
     /* v8.01 (Matt: open the image search in a separate screen, as a marketplace opens): a new tab opens on the tap, the photo goes to the worker (/lens/up keeps it 15 minutes behind a signed
@@ -3143,19 +3335,41 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     if(hq){lk('Google Images','https://www.google.com/search?tbm=isch&q='+encodeURIComponent(hq));lk('eBay sold prices \u2197',window.prowlAff('https://www.ebay.com/sch/i.html?_nkw='+encodeURIComponent(hq)+'&LH_Sold=1&LH_Complete=1','prowl-photo'));}
     if(r.basis!=='pending'&&r.fair){var shb=document.createElement('button');shb.type='button';shb.className='b';shb.textContent='Share this find';shb.addEventListener('click',function(){shareCard(r,src);});L.insertBefore(shb,L.children[1]||null);var svb=document.createElement('button');svb.type='button';svb.className='b';svb.textContent='Save picture';svb.addEventListener('click',function(){shareCard(r,src,true);});L.insertBefore(svb,shb.nextSibling);
       var emb=document.createElement('button');emb.type='button';emb.className='b';emb.textContent='Email this';emb.addEventListener('click',function(){var it=String(r.item||'').replace(/\([^)]*\)/g,' ').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'');emailRow(O,it||hq||'A find',(it||'A find')+' \u2014 fair price '+(r.fair||'')+(r.why?'. '+r.why:'')+'\nChecked with Prowl: https://www.owlandtwigvintage.com/pages/prowl?utm_source=share&utm_medium=photo_email',r,src);});L.insertBefore(emb,svb.nextSibling);}   /* v6.74 */
-    if(r.basis!=='pending'&&TRAY.length){var rpb=document.createElement('button');rpb.type='button';rpb.className='b';rpb.textContent='Wrong? Fix the maker and check again';rpb.addEventListener('click',function(){if(H){H.placeholder='maker or what it really is';try{H.scrollIntoView({behavior:'smooth',block:'center'});H.focus();}catch(e){}}});L.appendChild(rpb);}   /* v7.76: the photos stay; Check again sends them with the words */
+    if(r.basis!=='pending'&&TRAY.length&&!r._recent){var rpb=document.createElement('button');rpb.type='button';rpb.className='b';rpb.textContent='Wrong? Fix the maker and check again';rpb.addEventListener('click',fixIt);L.appendChild(rpb);}   /* v7.76: the photos stay; Check again sends them with the words */
     if(RESEARCH_ON&&r.basis!=='pending'&&hq){var rsb=document.createElement('button');rsb.type='button';rsb.className='b';rsb.textContent='Research this piece';rsb.addEventListener('click',function(){researchIt(hq,rsb,r,src);});L.appendChild(rsb);}
     if(r.basis!=='pending'&&window.prowlTripActive&&window.prowlTripActive()){var tfb=document.createElement('button');tfb.type='button';tfb.className='b p apr-trip';tfb.textContent='SHARE THIS FIND';tfb.addEventListener('click',function(){window.prowlTripFind(r,src,P?String(P.value||'').replace(/^\s+|\s+$/g,''):'',tfb);});L.insertBefore(tfb,L.firstChild);}   /* v7.36: one tap to the trip's Finds (NEAR ME > Road trip) */
+    /* v8.29 (the owner's mockup): Save (the piece as a favorite hunt) and Share (the photo card) side by side under Hunt this on Prowl */
+    if(fb||shb){var ssR=document.createElement('div');ssR.className='apr-ss';
+      if(fb){fb.textContent='Save';fb.className='b apr-sv';fb.setAttribute('aria-label','Save to your favorite hunts');ssR.appendChild(fb);}
+      if(shb){shb.textContent='Share';shb.className='b apr-sh';shb.setAttribute('aria-label','Share this find');ssR.appendChild(shb);}
+      L.insertBefore(ssR,hb&&hb.parentNode===L?hb.nextSibling:L.firstChild);}
     /* v7.82: one main button (Hunt it on Prowl; on a trip, Share this find too), the rest under More */
-    var mvL=[],mvI;for(mvI=0;mvI<L.children.length;mvI++)if(!/(^|\s)p(\s|$)/.test(L.children[mvI].className))mvL.push(L.children[mvI]);
+    var mvL=[],mvI;for(mvI=0;mvI<L.children.length;mvI++)if(!/(^|\s)(p|apr-ss)(\s|$)/.test(L.children[mvI].className))mvL.push(L.children[mvI]);
     if(mvL.length>1&&mvL.length<L.children.length){var mvD=document.createElement('details');mvD.className='apr-more';var mvS=document.createElement('summary');mvS.textContent='More';mvD.appendChild(mvS);
       var mvB=document.createElement('div');mvB.className='apr-moreb';for(mvI=0;mvI<mvL.length;mvI++)mvB.appendChild(mvL[mvI]);mvD.appendChild(mvB);L.appendChild(mvD);}
     /* v8.02 (Matt: "I don't see Check with Google Lens"): the buttons sit right under the answer, above the look-alikes */
     if(L.firstChild)O.insertBefore(L,card.nextSibling);
-    if(L.firstChild&&L.querySelector('.apr-lensb')){var lh2=document.createElement('p');lh2.className='apr-lensn';lh2.textContent='Lens names it? Type that in Maker or words and tap Check again: the same photos are checked again free for 30 minutes.';O.insertBefore(lh2,L.nextSibling);}   /* v8.01 */
+    if(L.firstChild&&L.querySelector('.apr-lensb')&&TRAY.length&&!r._recent){var lh2=document.createElement('p');lh2.className='apr-lensn';lh2.textContent='Lens names it? Tap Fix it and check again and type that in: the same photos are checked again free for 30 minutes.';O.insertBefore(lh2,L.nextSibling);}   /* v8.01 */
+    var CL=[];if(r.condition)CL.push(cap1(r.condition));if(r.flaws)CL.push(/^none/i.test(r.flaws)?'No flaws visible':'Flaws: '+r.flaws);
+    if(CL.length){var cw=document.createElement('div');cw.className='apr-cond';el('p','apr-lkh','Condition notes',cw);var cu=document.createElement('ul');for(var ci=0;ci<CL.length;ci++)el('li','',CL[ci],cu);cw.appendChild(cu);
+      var ca=O.querySelector('.apr-lensn')||(L.parentNode===O?L:card);O.insertBefore(cw,ca.nextSibling);}   /* v8.29: under the buttons, as bullets */
     if(r.basis!=='pending'&&hq)guideLink(hq);
     var n=document.createElement('p');n.className='apr-note';n.textContent=r.basis==='pending'?'Found it. Now checking recent sold prices\u2026':r.basis==='sold'?'A gut check from the photo, not an appraisal.':r.basis==='listed'?'No recent sales found, so this range comes from asking prices, which usually run higher than what pieces sell for.':r.basis==='limit'?'You have used today\u2019s price lookups. They reset tomorrow.':r.basis==='busy'?'Prowl is busy right now. Try again in a little while.':r.fair?'Estimate only: sold prices could not be checked just now.':'Sold prices could not be checked just now.';   /* v6.64: limit, busy */O.appendChild(n);
+    againRow(!!r._recent);
+    resFocus(O.querySelector('.apr-nm'));
   }
+  /* v8.29: the way back from an answer. Check another piece empties the tray; Fix it keeps the photos and opens the
+     form at Maker or words (Check again re-sends them, free for 30 minutes). Either drops a price still coming. */
+  /* v8.29 (review): a recent check opened again is not the tray's: no Fix it (it would send the new photos with the old
+     piece's words), and Check another piece keeps any photos waiting in the tray */
+  function againRow(kept){var d=document.createElement('div');d.className='apr-again';
+    var a=document.createElement('button');a.type='button';a.className='b';a.textContent='Check another piece';a.addEventListener('click',function(){if(kept)backIt();else trayClear();try{(CAP||O).scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}});d.appendChild(a);
+    if(TRAY.length&&!kept){var f=document.createElement('button');f.type='button';f.className='b';f.textContent='Fix it and check again';f.addEventListener('click',fixIt);d.appendChild(f);}
+    O.appendChild(d);}
+  /* the header's back chevron: the form again, the photos kept (Check again re-sends them) */
+  function backIt(){if(busy){GEN++;stopT();busy=false;}photoShow('capture');trayDraw();capFocus();}
+  if(BK)BK.addEventListener('click',backIt);
+  function fixIt(){if(busy){GEN++;stopT();busy=false;}DONE=true;photoShow('capture');trayDraw();if(H){H.placeholder='maker or what it really is';try{H.scrollIntoView({behavior:'smooth',block:'center'});H.focus();}catch(e){}}}
   /* v5.53 Research this piece: the Worker runs a web-search model (Meta Muse) and returns plain fields plus sources. */
   var RESEARCH_ON=true,RAPI='https://prowl.thebluecloud.workers.dev/research';
   /* v6.08: a small JPEG of the photo for saved research (longest side 480px) */
@@ -3287,13 +3501,14 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
      up to TRAY_MAX (the piece, its mark, the back); nothing is sent until Check it. After an answer the photos stay:
      fix the words or add a close-up and Check again (worker v164 sees them all; a re-check of the same photos within 30
      minutes does not use another free check). Start over empties the tray. */
-  var TRAY=[],TRAY_MAX=3,DONE=false,GO=document.getElementById('otp-aprRun'),TR=document.getElementById('otp-aprTray');
+  var TRAY=[],TRAY_MAX=3,DONE=false,GO=document.getElementById('otp-aprRun'),TR=document.getElementById('otp-aprTray'),TN=document.getElementById('otp-aprTrayNote'),PH=document.getElementById('otp-aprTrayPh');
   function trayDraw(){
     if(TR){while(TR.firstChild)TR.removeChild(TR.firstChild);TR.hidden=!TRAY.length;
       for(var i=0;i<TRAY.length;i++){var th=document.createElement('span');th.className='apr-th';var ti=document.createElement('img');ti.src=TRAY[i];ti.alt='Photo '+(i+1);th.appendChild(ti);
         var tx=document.createElement('button');tx.type='button';tx.className='apr-thx';tx.setAttribute('data-ti',String(i));tx.setAttribute('aria-label','Remove photo '+(i+1));tx.textContent='\u00d7';th.appendChild(tx);TR.appendChild(th);}
       if(TRAY.length){var tc=document.createElement('button');tc.type='button';tc.className='apr-clr';tc.textContent='Start over';TR.appendChild(tc);
-        var tn=document.createElement('p');tn.className='apr-trayn';tn.textContent=TRAY.length<TRAY_MAX?TRAY.length+' of '+TRAY_MAX+' photos. Add a close-up of the mark or the back for a better answer.':TRAY_MAX+' photos: that is the most for one check.';TR.appendChild(tn);}}
+        var tn=document.createElement('p');tn.className='apr-trayn';tn.textContent=TRAY.length<TRAY_MAX?TRAY.length+' of '+TRAY_MAX+' photos':TRAY_MAX+' photos: that is the most for one check.';TR.appendChild(tn);}}   /* v8.29: the tip is #otp-aprTrayNote */
+    if(TN)TN.hidden=!TRAY.length;if(PH)PH.hidden=!!TRAY.length;   /* v8.29: the empty dashed tray until a photo is in */
     var sec=document.getElementById('otp-apr');if(sec)sec.classList.toggle('apr-has',!!TRAY.length);   /* v7.82: the tips and the free-check note fold once a photo is in */
     var full=TRAY.length>=TRAY_MAX;B.disabled=busy||full;if(B2)B2.disabled=busy||full;
     if(!busy){B.textContent=TRAY.length?'Add another photo':'Take a photo';B.className=TRAY.length?'b':'b p';}   /* one orange button: Check it, once there is a photo */
@@ -3303,47 +3518,50 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     if(!f||busy||TRAY.length>=TRAY_MAX)return;
     shrink(f,function(data){
       if(!data){warn('That photo could not be read. Try another one.');return;}
-      if(TRAY.length>=TRAY_MAX)return;TRAY.push(data);trayDraw();
+      if(TRAY.length>=TRAY_MAX)return;if(PST==='results')photoShow('capture');TRAY.push(data);trayDraw();   /* v8.29: a new photo after an answer opens the form */
       try{(GO||B).scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}
     });
   }
-  function trayClear(){TRAY=[];DONE=false;while(O.firstChild)O.removeChild(O.firstChild);trayDraw();}
+  function trayClear(){if(busy){GEN++;stopT();busy=false;}TRAY=[];DONE=false;photoShow('capture');trayDraw();capFocus();}
   if(TR)TR.addEventListener('click',function(e){var x=e.target.closest('.apr-thx');if(x&&!busy){TRAY.splice(+x.getAttribute('data-ti'),1);if(!TRAY.length)DONE=false;trayDraw();return;}if(e.target.closest('.apr-clr')&&!busy)trayClear();});
   if(GO)GO.addEventListener('click',function(){run();});
   var SHELF=false,AM=document.querySelector('#otp-apr .apr-mode');   /* v7.08: shelf scan */
   if(AM)AM.addEventListener('click',function(e){var b=e.target.closest('[data-am]');if(!b||busy)return;SHELF=b.getAttribute('data-am')==='shelf';var bs=AM.querySelectorAll('[data-am]');for(var i=0;i<bs.length;i++){var on=bs[i]===b;bs[i].classList.toggle('on',on);bs[i].setAttribute('aria-pressed',on?'true':'false')}});
-  function shelfShow(j){while(O.firstChild)O.removeChild(O.firstChild);var h=document.createElement('h3');h.className='sh-h';h.textContent=j.shelf&&j.shelf.length?(j.shelf.length>1?j.shelf.length+' worth a closer look':'Worth a closer look'):'Nothing stands out';O.appendChild(h);
+  function shelfShow(j){while(O.firstChild)O.removeChild(O.firstChild);photoShow('results');var h=document.createElement('h3');h.className='sh-h';h.textContent=j.shelf&&j.shelf.length?(j.shelf.length>1?j.shelf.length+' worth a closer look':'Worth a closer look'):'Nothing stands out';O.appendChild(h);
     if(j.all&&j.shelf&&j.shelf.length){var ac=document.createElement('div');ac.className='sh-card sh-all';var ab=document.createElement('b');ab.textContent='Buy the whole shelf';ac.appendChild(ab);if(j.all.why){var aw=document.createElement('small');aw.textContent=j.all.why;ac.appendChild(aw)}var al=document.createElement('p');al.textContent=(j.all.fair?'All of it sells for '+j.all.fair:'')+(j.all.fair&&j.all.payUpTo?' \u00b7 ':'')+(j.all.payUpTo?'Pay up to '+j.all.payUpTo+' for everything':'');if(al.textContent)ac.appendChild(al);O.appendChild(ac)}   /* v8.15 */
-    if(!j.shelf||!j.shelf.length){var p0=document.createElement('p');p0.className='apr-note';p0.textContent='Nothing on this shelf looks worth more than a thrift price. Try a closer photo of one piece if something catches your eye.';O.appendChild(p0);return}
+    if(!j.shelf||!j.shelf.length){var p0=document.createElement('p');p0.className='apr-note';p0.textContent='Nothing on this shelf looks worth more than a thrift price. Try a closer photo of one piece if something catches your eye.';O.appendChild(p0);againRow();resFocus(O.querySelector('.sh-h'));return}
     for(var i=0;i<j.shelf.length;i++){var s=j.shelf[i],c=document.createElement('div');c.className='sh-card';var t=document.createElement('b');t.textContent=s.item;c.appendChild(t);
       if(s.where){var w=document.createElement('small');w.textContent=s.where;c.appendChild(w)}
       var l=document.createElement('p');l.textContent=(s.fair?'Sells for '+s.fair:'')+(s.fair&&s.payUpTo?' \u00b7 ':'')+(s.payUpTo?'Pay up to '+s.payUpTo:'');if(l.textContent)c.appendChild(l);
       var a=document.createElement('button');a.type='button';a.className='gh sh-go';a.textContent='Search this on Prowl';a.setAttribute('data-q',s.item.replace(/\(.*?\)/g,' ').replace(/\blikely\b/ig,' ').replace(/\s+/g,' ').trim().slice(0,60));c.appendChild(a);O.appendChild(c)}
-    var f=document.createElement('p');f.className='apr-fine';f.textContent='A quick read of the whole shelf. Check marks and condition in hand before you buy.';O.appendChild(f)}
+    var f=document.createElement('p');f.className='apr-fine';f.textContent='A quick read of the whole shelf. Check marks and condition in hand before you buy.';O.appendChild(f);againRow();resFocus(O.querySelector('.sh-h'))}
   O.addEventListener('click',function(e){var g=e.target.closest('.sh-go');if(!g)return;var q=document.getElementById('otp-q'),sa=document.getElementById('otp-sa'),cl=document.getElementById('otp-photoClose');if(cl)cl.click();if(q&&sa){q.value=g.getAttribute('data-q');setTimeout(function(){sa.click()},250)}});
   var F2=document.getElementById('otp-aprF2'),B2=document.getElementById('otp-aprB2');
   if(B2&&F2){B2.addEventListener('click',function(){if(!busy&&TRAY.length<TRAY_MAX)F2.click();});F2.addEventListener('change',function(){var fs=F2.files||[],i;for(i=0;i<fs.length&&i<TRAY_MAX;i++)trayAdd(fs[i]);F2.value='';});}   /* v7.76: several at once */
   window.prowlPhotoFile=function(f){trayAdd(f);};   /* v7.15 shared photo; v7.76 into the tray */
   F.addEventListener('change',function(){var f=F.files&&F.files[0];F.value='';trayAdd(f);});
   function run(){
-    if(busy||!TRAY.length)return;busy=true;trayDraw();if(GO){GO.textContent='Looking\u2026';GO.className='b p apr-go apr-busy';}startT();
+    if(busy||!TRAY.length)return;busy=true;var g=++GEN;trayDraw();if(GO){GO.textContent='Looking\u2026';GO.className='b p apr-go apr-busy';}startT();
     var data=TRAY[0];
     (function(){
       /* v5.50: Google Lens identifies better than the AI photo guess, and it is free.
          The photo stays on the device; the old /appraise path is kept behind APR_AI. */
       if(!APR_AI){stopT();busy=false;DONE=true;trayDraw();lensStep(data);return;}
       var pb={images:TRAY.slice(0,TRAY_MAX),price:P.value||'',hint:(H&&H.value)||'',mode:SHELF?'shelf':'fast'};if(SHELF){try{var sh=typeof window.prowlHunts==='function'?window.prowlHunts():[];if(sh&&sh.length)pb.hunts=sh.slice(0,30);}catch(e){}}   /* v8.14: the shelf scan checks every hunt (worker v188) */if(lsG('alertTok')&&lsG('alertEmail')){pb.e=lsG('alertEmail');pb.t=lsG('alertTok');}   /* v7.76: every photo in the tray */
+      /* v8.29: no answer in 90 seconds is an error, not a spinner for ever (the worker gives up well before) */
+      var TO=setTimeout(function(){if(g!==GEN)return;GEN++;stopT();busy=false;DONE=true;trayDraw();warn('That took too long. Check your signal and try again.');},90000);
       fetch(API,{method:'POST',headers:OH(),body:JSON.stringify(pb)}).then(function(res){
         return res.json().then(function(j){return {ok:res.ok,status:res.status,j:j} });
       }).then(function(x){
+        clearTimeout(TO);if(g!==GEN)return;stopT();
         if(x.ok&&x.j)leftNote(x.j);
         if(x.ok&&x.j&&x.j.shelf){shelfShow(x.j);return;}   /* v7.08 */
         if(x.status===429&&x.j&&x.j.error==='free limit'){upsell(x.j.limit||2);return;}
-        if(x.ok&&x.j&&(x.j.item||x.j.fair)){var fj=x.j;if(/^low/i.test(fj.sure||'')){fj.fair='Not sure enough to price';fj.verdict='';fj.why='Type the maker or what it is above, add a close-up of the mark, and tap Check again. Or try Google Lens below.';fj.basis='estimate';show(fj,data);return;}if(fj.basis==='sold'||!fj.item||/cannot tell|not identifiable|unknown item/i.test(fj.item)){show(fj,data);return;}show({item:fj.item,search:fj.search,condition:fj.condition,flaws:fj.flaws,sure:fj.sure,looks:fj.looks,fair:'Checking sold prices\u2026',basis:'pending'},data);return priceIt(fj,data);}
+        if(x.ok&&x.j&&(x.j.item||x.j.fair)){var fj=x.j;if(/^low/i.test(fj.sure||'')){fj.fair='Not sure enough to price';fj.verdict='';fj.why='Not sure? Tap Fix it and check again, type the maker, and add a close-up of the mark. Or try Check with Google Lens.';fj.basis='estimate';show(fj,data);return;}if(fj.basis==='sold'||!fj.item||/cannot tell|not identifiable|unknown item/i.test(fj.item)){show(fj,data);return;}show({item:fj.item,search:fj.search,condition:fj.condition,flaws:fj.flaws,sure:fj.sure,looks:fj.looks,fair:'Checking sold prices\u2026',basis:'pending'},data);return priceIt(fj,data);}
         else if(x.status===429&&x.j&&/^busy/.test(x.j.error||''))warn('Prowl is busy right now. Try again in a little while.');   /* v6.33: the shared pool, not this visitor's checks */
         else if(x.status===429)warn('You have used today\'s photo checks. They reset tomorrow.');
         else warn('Could not check this photo right now. Try again in a minute.');
-      }).catch(function(){warn('Could not check this photo right now. Try again in a minute.');}).then(function(){stopT();busy=false;DONE=true;trayDraw();});
+      }).catch(function(){clearTimeout(TO);if(g!==GEN)return;warn('Could not check this photo right now. Try again in a minute.');}).then(function(){if(g!==GEN)return;stopT();busy=false;DONE=true;trayDraw();});
     })();
   }
 } catch(e){} })();
@@ -3402,8 +3620,8 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 </script>
 
 
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Prowl by Owl & Twig","url":"https://owlandtwigvintage.com/pages/prowl","applicationCategory":"ShoppingApplication","operatingSystem":"Any","description":"Free tool for vintage collectors - type a piece once and search 29 marketplaces at once, including ShopGoodwill, Facebook Marketplace and Craigslist.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"Matt"},"publisher":{"@type":"Organization","name":"Owl & Twig Vintage","url":"https://owlandtwigvintage.com"}}</script>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is Prowl?","acceptedAnswer":{"@type":"Answer","text":"Prowl by Owl & Twig is a free search tool for vintage collectors. Type a piece once and it builds that search for 29 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist. It is built by Matt at Owl & Twig Vintage, a family vintage shop in Michigan."} },{"@type":"Question","name":"Which marketplaces does Prowl search?","acceptedAnswer":{"@type":"Answer","text":"eBay, Etsy, Mercari, Mercari Japan, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, Salvation Army, EstateSales.net, HiBid, LiveAuctioneers, CTBids, Heritage Auctions, Invaluable, Craigslist and eBay Sold, for what pieces actually sold for: 29 in all. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed and Salvation Army results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search."} },{"@type":"Question","name":"How do I find antique shops and estate sales near me?","acceptedAnswer":{"@type":"Answer","text":"Open the Den and tap Local. Tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area."} },{"@type":"Question","name":"Is Prowl free?","acceptedAnswer":{"@type":"Answer","text":"Yes. Searching is free and needs no account, and your search list stays on your device. Your Den keeps 5 hunts of your own for free, or up to 100 with Prowl Pro. Email alerts are optional: free for 3 hunts, as often as you like, or up to 100 hunts with Prowl Pro."} },{"@type":"Question","name":"Does it work on my phone?","acceptedAnswer":{"@type":"Answer","text":"Yes. Built mobile-first. Add it to your home screen, and allow pop-ups if you use Open all. On a phone, Facebook opens in your browser so the search sticks, so log in to Facebook there once."} },{"@type":"Question","name":"How does Price Check work?","acceptedAnswer":{"@type":"Answer","text":"One tap opens eBay's sold listings for your term — actual sale prices from the last 90 days, the most accurate read on what a piece is worth right now. Asking prices lie; sold prices don't."} },{"@type":"Question","name":"What if nothing sold in 90 days?","acceptedAnswer":{"@type":"Answer","text":"That happens with genuinely rare pieces. Price Check has a second button for three years of deep comps via eBay's Terapeak research — free with any eBay account. Open it in your browser rather than the eBay app, or the date range gets dropped."} }]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Prowl by Owl & Twig","url":"https://www.owlandtwigvintage.com/pages/prowl","applicationCategory":"ShoppingApplication","operatingSystem":"Any","description":"Free tool for vintage collectors - type a piece once and search 29 marketplaces at once, including ShopGoodwill, Facebook Marketplace and Craigslist.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"Matt"},"publisher":{"@type":"Organization","name":"Owl & Twig Vintage","url":"https://www.owlandtwigvintage.com"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What is Prowl?","acceptedAnswer":{"@type":"Answer","text":"Prowl by Owl & Twig is a free search tool for vintage collectors. Type a piece once and it builds that search for 29 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist. It is built by Matt at Owl & Twig Vintage, a family vintage shop in Michigan."} },{"@type":"Question","name":"Which marketplaces does Prowl search?","acceptedAnswer":{"@type":"Answer","text":"eBay, Etsy, Mercari, Mercari Japan, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, Salvation Army, EstateSales.net, HiBid, LiveAuctioneers, CTBids, Heritage Auctions, Invaluable, Craigslist and eBay Sold, for what pieces actually sold for: 29 in all. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed and Salvation Army results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search."} },{"@type":"Question","name":"How do I find antique shops and estate sales near me?","acceptedAnswer":{"@type":"Answer","text":"Tap Near me at the foot of the page. Around you lists the shops near you, and under More ways to look you can tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area."} },{"@type":"Question","name":"Is Prowl free?","acceptedAnswer":{"@type":"Answer","text":"Yes. Searching is free and needs no account, and your search list stays on your device. Your Den keeps 5 hunts of your own for free, or up to 100 with Prowl Pro. Email alerts are optional: free for 3 hunts, as often as you like, or up to 100 hunts with Prowl Pro."} },{"@type":"Question","name":"Does it work on my phone?","acceptedAnswer":{"@type":"Answer","text":"Yes. Built mobile-first. Add it to your home screen, and allow pop-ups if you use Open all. On a phone, Facebook opens in your browser so the search sticks, so log in to Facebook there once."} },{"@type":"Question","name":"How does Price Check work?","acceptedAnswer":{"@type":"Answer","text":"One tap opens eBay's sold listings for your term — actual sale prices from the last 90 days, the most accurate read on what a piece is worth right now. Asking prices lie; sold prices don't."} },{"@type":"Question","name":"What if nothing sold in 90 days?","acceptedAnswer":{"@type":"Answer","text":"That happens with genuinely rare pieces. Price Check has a second button for three years of deep comps via eBay's Terapeak research — free with any eBay account. Open it in your browser rather than the eBay app, or the date range gets dropped."} }]}</script>
 
 
 <aside class="drawer otp-sheet" id="otp-sheet" role="dialog" aria-modal="true" aria-labelledby="otp-sheetT" hidden>
@@ -3520,7 +3738,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 </div>
 <div class="tile">
 <u>06</u><h3>Near Me</h3>
-<p>Antique shops, estate sales, flea markets and more around you, in Google Maps or Apple Maps. It's in the Den, under Local.</p>
+<p>Antique shops, estate sales, flea markets and more around you, in Google Maps or Apple Maps, and Road trip for the shops along a drive. Tap Near me at the bottom.</p>
 </div>
 <div class="tile">
 <u>07</u><h3>Books &amp; paper</h3>
@@ -3555,7 +3773,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <h3>Which marketplaces does Prowl search?</h3>
 <p>eBay, Etsy, Mercari, Mercari Japan, Poshmark, Depop, Grailed, Ruby Lane, Chairish, 1stDibs, Reverb, Whatnot, Vinted, Bonanza, eCrater, AbeBooks, AptDeco, OfferUp, Facebook Marketplace, ShopGoodwill, Salvation Army, EstateSales.net, HiBid, LiveAuctioneers, CTBids, Heritage Auctions, Invaluable, Craigslist and eBay Sold, for what pieces actually sold for: <span data-t>29</span> in all. ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed and Salvation Army results show right on the page; the rest open in their own tab. Instagram sits beside them as a hashtag search.</p>
 <h3>How do I find antique shops and estate sales near me?</h3>
-<p>Open the Den and tap Local. Tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area.</p>
+<p>Tap Near me at the foot of the page. Around you lists the shops near you, and under More ways to look you can tap a store type, like antique stores, thrift stores, estate sales or flea markets, and a map search opens around you in Google Maps or Apple Maps. Save your city there too, and Craigslist and Facebook search that area.</p>
 <h3>Is Prowl free?</h3>
 <p>Yes. Searching is free and needs no account, and your search list stays on your device. Your Den keeps 5 hunts of your own for free, or up to 100 with Prowl Pro. Email alerts are optional: free for 3 hunts, as often as you like, or up to 100 hunts with Prowl Pro.</p>
 <h3>Does it work on my phone?</h3>
@@ -3577,7 +3795,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <div class="share-strip">
 <div class="ss-title">Know another collector? Send them Prowl 🐾</div>
 <div class="share-btns">
-<a class="btn-share" id="otp-shareBtn" href="https://owlandtwigvintage.com/pages/prowl">📤 Share Prowl</a> <a class="btn-fb" id="otp-fbShareBtn" href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fowlandtwigvintage.com%2Fpages%2Fprowl" rel="noopener" target="_blank">f Facebook</a> <a class="btn-kofi" id="otp-kofiBtn" href="https://ko-fi.com/owlandtwigvintage" rel="noopener" target="_blank">☕ Buy Matt a coffee</a> <button class="btn-qr" id="otp-qrBtn" type="button" aria-expanded="false" aria-controls="otp-qrPanel">▦ QR code</button>
+<a class="btn-share" id="otp-shareBtn" href="https://www.owlandtwigvintage.com/pages/prowl">📤 Share Prowl</a> <a class="btn-fb" id="otp-fbShareBtn" href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fwww.owlandtwigvintage.com%2Fpages%2Fprowl" rel="noopener" target="_blank">f Facebook</a> <a class="btn-kofi" id="otp-kofiBtn" href="https://ko-fi.com/owlandtwigvintage" rel="noopener" target="_blank">☕ Buy Matt a coffee</a> <button class="btn-qr" id="otp-qrBtn" type="button" aria-expanded="false" aria-controls="otp-qrPanel">▦ QR code</button>
 </div>
 <div class="qr-panel" id="otp-qrPanel" hidden>
 <div class="qr-box"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewbox="0 0 41 41" shape-rendering="crispEdges" role="img" aria-label="QR code for owlandtwigvintage.com/pages/prowl"><rect width="41" height="41" fill="#fff"></rect><path fill="#000" d="M2 2h7v1h-7zM11 2h1v1h-1zM13 2h2v1h-2zM16 2h1v1h-1zM18 2h2v1h-2zM32 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM12 3h2v1h-2zM16 3h2v1h-2zM21 3h3v1h-3zM25 3h3v1h-3zM30 3h1v1h-1zM32 3h1v1h-1zM38 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM10 4h1v1h-1zM14 4h1v1h-1zM16 4h2v1h-2zM20 4h2v1h-2zM23 4h1v1h-1zM25 4h4v1h-4zM32 4h1v1h-1zM34 4h3v1h-3zM38 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h1v1h-1zM15 5h3v1h-3zM19 5h2v1h-2zM25 5h1v1h-1zM27 5h2v1h-2zM30 5h1v1h-1zM32 5h1v1h-1zM34 5h3v1h-3zM38 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM11 6h1v1h-1zM13 6h1v1h-1zM15 6h1v1h-1zM21 6h2v1h-2zM24 6h5v1h-5zM32 6h1v1h-1zM34 6h3v1h-3zM38 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM13 7h1v1h-1zM17 7h1v1h-1zM19 7h1v1h-1zM23 7h3v1h-3zM28 7h1v1h-1zM32 7h1v1h-1zM38 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h1v1h-1zM26 8h1v1h-1zM28 8h1v1h-1zM30 8h1v1h-1zM32 8h7v1h-7zM13 9h1v1h-1zM15 9h1v1h-1zM20 9h2v1h-2zM27 9h4v1h-4zM5 10h2v1h-2zM8 10h2v1h-2zM11 10h3v1h-3zM15 10h1v1h-1zM18 10h3v1h-3zM24 10h1v1h-1zM26 10h2v1h-2zM30 10h1v1h-1zM35 10h2v1h-2zM2 11h1v1h-1zM4 11h2v1h-2zM9 11h4v1h-4zM14 11h2v1h-2zM17 11h3v1h-3zM21 11h1v1h-1zM23 11h2v1h-2zM26 11h4v1h-4zM31 11h1v1h-1zM33 11h4v1h-4zM3 12h1v1h-1zM5 12h2v1h-2zM8 12h2v1h-2zM14 12h2v1h-2zM18 12h1v1h-1zM20 12h1v1h-1zM22 12h1v1h-1zM24 12h2v1h-2zM27 12h1v1h-1zM29 12h4v1h-4zM34 12h1v1h-1zM38 12h1v1h-1zM2 13h3v1h-3zM6 13h2v1h-2zM9 13h1v1h-1zM11 13h1v1h-1zM14 13h1v1h-1zM17 13h1v1h-1zM19 13h1v1h-1zM21 13h1v1h-1zM24 13h1v1h-1zM28 13h2v1h-2zM31 13h2v1h-2zM35 13h4v1h-4zM3 14h1v1h-1zM5 14h5v1h-5zM14 14h7v1h-7zM22 14h5v1h-5zM29 14h2v1h-2zM32 14h2v1h-2zM38 14h1v1h-1zM3 15h1v1h-1zM6 15h2v1h-2zM11 15h1v1h-1zM14 15h1v1h-1zM16 15h2v1h-2zM19 15h3v1h-3zM24 15h8v1h-8zM33 15h2v1h-2zM36 15h1v1h-1zM2 16h1v1h-1zM4 16h1v1h-1zM6 16h3v1h-3zM12 16h2v1h-2zM15 16h2v1h-2zM18 16h1v1h-1zM20 16h2v1h-2zM23 16h1v1h-1zM25 16h1v1h-1zM28 16h2v1h-2zM31 16h2v1h-2zM35 16h4v1h-4zM2 17h1v1h-1zM4 17h3v1h-3zM11 17h1v1h-1zM13 17h5v1h-5zM19 17h1v1h-1zM21 17h3v1h-3zM25 17h2v1h-2zM28 17h2v1h-2zM32 17h5v1h-5zM38 17h1v1h-1zM2 18h3v1h-3zM7 18h2v1h-2zM11 18h4v1h-4zM18 18h2v1h-2zM21 18h1v1h-1zM23 18h2v1h-2zM26 18h2v1h-2zM32 18h2v1h-2zM36 18h1v1h-1zM2 19h1v1h-1zM9 19h2v1h-2zM12 19h1v1h-1zM15 19h2v1h-2zM19 19h1v1h-1zM22 19h1v1h-1zM25 19h1v1h-1zM27 19h1v1h-1zM29 19h1v1h-1zM33 19h1v1h-1zM36 19h2v1h-2zM2 20h1v1h-1zM6 20h3v1h-3zM11 20h2v1h-2zM15 20h1v1h-1zM21 20h2v1h-2zM24 20h1v1h-1zM29 20h1v1h-1zM33 20h2v1h-2zM36 20h1v1h-1zM38 20h1v1h-1zM2 21h1v1h-1zM5 21h2v1h-2zM9 21h3v1h-3zM13 21h1v1h-1zM15 21h3v1h-3zM20 21h2v1h-2zM27 21h1v1h-1zM34 21h2v1h-2zM37 21h2v1h-2zM3 22h1v1h-1zM5 22h1v1h-1zM7 22h7v1h-7zM18 22h1v1h-1zM20 22h1v1h-1zM23 22h3v1h-3zM28 22h1v1h-1zM30 22h3v1h-3zM34 22h2v1h-2zM2 23h1v1h-1zM6 23h2v1h-2zM9 23h1v1h-1zM12 23h1v1h-1zM16 23h2v1h-2zM19 23h3v1h-3zM23 23h1v1h-1zM27 23h1v1h-1zM29 23h2v1h-2zM33 23h2v1h-2zM36 23h1v1h-1zM2 24h1v1h-1zM5 24h10v1h-10zM16 24h2v1h-2zM21 24h3v1h-3zM25 24h3v1h-3zM29 24h1v1h-1zM31 24h2v1h-2zM34 24h1v1h-1zM38 24h1v1h-1zM2 25h1v1h-1zM5 25h2v1h-2zM10 25h1v1h-1zM12 25h1v1h-1zM14 25h2v1h-2zM18 25h1v1h-1zM21 25h1v1h-1zM23 25h5v1h-5zM29 25h3v1h-3zM33 25h1v1h-1zM35 25h2v1h-2zM2 26h1v1h-1zM4 26h1v1h-1zM7 26h5v1h-5zM15 26h2v1h-2zM18 26h1v1h-1zM20 26h2v1h-2zM24 26h4v1h-4zM32 26h1v1h-1zM35 26h1v1h-1zM38 26h1v1h-1zM2 27h1v1h-1zM5 27h1v1h-1zM7 27h1v1h-1zM11 27h1v1h-1zM15 27h3v1h-3zM23 27h1v1h-1zM28 27h3v1h-3zM34 27h1v1h-1zM37 27h1v1h-1zM2 28h7v1h-7zM10 28h4v1h-4zM20 28h1v1h-1zM23 28h4v1h-4zM28 28h2v1h-2zM32 28h1v1h-1zM34 28h1v1h-1zM37 28h2v1h-2zM2 29h1v1h-1zM4 29h1v1h-1zM6 29h2v1h-2zM9 29h1v1h-1zM14 29h3v1h-3zM18 29h1v1h-1zM21 29h1v1h-1zM23 29h3v1h-3zM29 29h1v1h-1zM31 29h1v1h-1zM33 29h1v1h-1zM36 29h1v1h-1zM2 30h1v1h-1zM4 30h1v1h-1zM8 30h3v1h-3zM13 30h2v1h-2zM17 30h1v1h-1zM19 30h1v1h-1zM22 30h1v1h-1zM26 30h2v1h-2zM30 30h7v1h-7zM10 31h3v1h-3zM14 31h2v1h-2zM17 31h2v1h-2zM20 31h3v1h-3zM24 31h1v1h-1zM27 31h2v1h-2zM30 31h1v1h-1zM34 31h4v1h-4zM2 32h7v1h-7zM10 32h3v1h-3zM14 32h1v1h-1zM16 32h2v1h-2zM19 32h1v1h-1zM24 32h2v1h-2zM27 32h2v1h-2zM30 32h1v1h-1zM32 32h1v1h-1zM34 32h3v1h-3zM38 32h1v1h-1zM2 33h1v1h-1zM8 33h1v1h-1zM11 33h4v1h-4zM19 33h1v1h-1zM21 33h1v1h-1zM24 33h1v1h-1zM26 33h2v1h-2zM29 33h2v1h-2zM34 33h2v1h-2zM37 33h1v1h-1zM2 34h1v1h-1zM4 34h3v1h-3zM8 34h1v1h-1zM10 34h2v1h-2zM16 34h2v1h-2zM19 34h1v1h-1zM22 34h1v1h-1zM28 34h7v1h-7zM37 34h2v1h-2zM2 35h1v1h-1zM4 35h3v1h-3zM8 35h1v1h-1zM10 35h1v1h-1zM12 35h1v1h-1zM14 35h3v1h-3zM18 35h1v1h-1zM20 35h3v1h-3zM26 35h1v1h-1zM28 35h2v1h-2zM32 35h1v1h-1zM35 35h1v1h-1zM2 36h1v1h-1zM4 36h3v1h-3zM8 36h1v1h-1zM12 36h1v1h-1zM17 36h3v1h-3zM25 36h1v1h-1zM28 36h2v1h-2zM33 36h6v1h-6zM2 37h1v1h-1zM8 37h1v1h-1zM11 37h1v1h-1zM14 37h8v1h-8zM25 37h2v1h-2zM32 37h7v1h-7zM2 38h7v1h-7zM11 38h2v1h-2zM16 38h2v1h-2zM22 38h1v1h-1zM24 38h3v1h-3zM30 38h1v1h-1zM34 38h2v1h-2zM38 38h1v1h-1z"></path><rect x="13.0" y="17.0" width="15" height="7" rx="1.2" fill="#fff"></rect><image href="https://cdn.shopify.com/s/files/1/0807/8537/5486/files/panther_white_eyes_new_tail_clear.png?v=1785688388&amp;width=400" xlink:href="https://cdn.shopify.com/s/files/1/0807/8537/5486/files/panther_white_eyes_new_tail_clear.png?v=1785688388&amp;width=400" x="13.9" y="17.6" width="13.2" height="5.8" preserveaspectratio="xMidYMid meet"></image></svg></div>
@@ -3692,6 +3910,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <button class="tab on" id="otp-nrT1" role="tab" aria-selected="true">Around you</button>
     <button class="tab" id="otp-nrT2" role="tab" aria-selected="false">Road trip</button>
     <button class="tab" id="otp-nrT3" role="tab" aria-selected="false">Trips</button>
+    <button class="tab" id="otp-nrT4" role="tab" aria-selected="false" hidden>Estate sales</button>
   </div>
   <div id="otp-nearBody">
     <div class="denPane" id="otp-nrAround">
@@ -3785,6 +4004,10 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <p class="nearp">Road trips kept for a group: yours, and the ones friends invite you to. Open one for its stops, live hours and the group's Finds. To start one, build it under Road trip, tap <b>Save trip</b>, then <b>Invite friends</b>.</p>
       <div id="otp-nrJoin"></div>
       <div id="otp-nrTrips"></div>
+    </div>
+    <div class="denPane" id="otp-nrWkPane" hidden>
+      <div id="otp-wkHost"></div>
+      <div id="otp-wpHost" hidden></div>
     </div>
   </div>
   <div class="nr-foot" id="otp-nrFoot" hidden>
@@ -3918,7 +4141,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.25';
+var PROWL_VERSION='v8.33';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -4642,6 +4865,304 @@ function esLoad(v){
     rEs();
   })['catch'](function(){ES.busy=false;ES.err='Could not reach Prowl. Try again in a minute.';rEs()});
 }
+/* v8.32 Estate sales this week (worker v205 /weekend): the estate sales open in the next 7 days (today through today+6,
+   this device's time zone; Matt, 2026-10-31: "Estate sales are all week") within 25 miles, in NEAR ME's
+   own Estate sales tab beside Trips (v8.32: for Prowl Pro members and the owner's key; the worker decides). The place is the one typed in the
+   tab's box (looked up with /geo, as In a location does), else where the phone is. The hunts in the Den go with it; a sale whose
+   title, description or photo captions hold every word of a hunt is a Top pick, with the hunt and where it matched.
+   Every sale opens its own page on EstateSales.net; hours come back in this device's time zone. Nothing is kept. */
+var WK={busy:false,data:null,err:'',town:'',pt:null,me:false,q:null,planOn:false,link:false};
+function wkHunts(){return st.hunts.filter(function(h){return !huntSample(h)}).slice(0,30)}
+function wkUrlOk(u){return /^https:\/\/www\.estatesales\.net\/[A-Za-z0-9\/._%-]+$/.test(String(u||''))}
+function wkRow(x,pick){
+  var meta=[x.city&&x.st?x.city+', '+x.st:x.city,x.co,typeof x.dist==='number'?(Math.round(x.dist*10)/10)+' mi':''].filter(function(v){return !!v}).join(' \u00b7 ');
+  /* v8.33 (Matt: "the estate sale pictures aren't working"): each sale's own cover photo, as the email shows it */
+  var im=/^https:\/\/picturescdn\.estatesales\.net\/[^\s"'<>]+$/.test(String(x.img||''))?'<img class="wk-img" src="'+esc(x.img)+'" alt="" loading="lazy" decoding="async">':'<span class="wk-img wk-noimg" aria-hidden="true">\u2302</span>';
+  return '<a class="wk-row wk-ri'+(pick?' wk-pick':'')+'" href="'+esc(x.url)+'" target=_blank rel="noopener noreferrer">'+im+'<span class="wk-tx">'+
+    (pick&&x.match?'<span class="wk-m">\uD83D\uDC3E '+esc(x.match.hunt)+' \u00b7 in '+esc(x.match.where)+'</span>':'')+
+    '<b>'+esc(x.name)+'</b><span>'+esc(meta)+'</span><span class="wk-hr">'+esc(x.hours)+'</span>'+(x.standout?'<span class="wk-so">'+esc(x.standout)+'</span>':'')+'</span></a>';
+}
+function wkHtml(v){
+  var d=WK.data,h='<div class="wk-box" id="otp-wk"><h3 class="nearh">Estate sales this week <span class="es-own">next 7 days \u00b7 25 mi</span></h3>'+
+    '<p class="nearp">Estate sales open in the next 7 days near '+(WK.town?'<b>'+esc(WK.town)+'</b>':'the place you type, or where you are')+'. Ones that mention your hunts come first.</p>'+
+    '<div class="addrow es-form"><input id="otp-wkIn" type="text" placeholder="City, ST, or empty for where you are" aria-label="City and state for this week\u2019s estate sales, or empty for where you are" autocomplete="off" enterkeyhint="go" value="'+esc(v||'')+'"><button type="button" id="otp-wkGo">'+(WK.busy?'Looking\u2026':(d?'Sweep again':'Sweep this week'))+'</button></div>';
+  if(WK.err)h+='<p class="nearp es-err" role="status">'+esc(WK.err)+'</p>';
+  if(d){
+    var picks=(d.picks||[]).filter(function(x){return wkUrlOk(x.url)}),rest=(d.rest||[]).filter(function(x){return wkUrlOk(x.url)});
+    if(!picks.length&&!rest.length)h+='<p class="nearp">No estate sales open in the next 7 days within 25 miles yet. New ones are posted every day.</p>';
+    if(picks.length)h+='<h5 class="wk-h">Top picks <span>'+picks.length+'</span></h5><div class="wk-list">'+picks.map(function(x){return wkRow(x,true)}).join('')+'</div>';
+    else if(rest.length&&wkHunts().length)h+='<p class="nearp">None of this week\u2019s sales mention your hunts yet.</p>';
+    if(rest.length)h+='<h5 class="wk-h">'+(picks.length?'Also this week':'This week nearby')+' <span>'+rest.length+'</span></h5><div class="wk-list wk-brief">'+rest.map(function(x){return wkRow(x,false)}).join('')+'</div>';
+    if(picks.length||rest.length)h+='<button type="button" class="b p wk-plan" id="otp-wkPlan">\uD83D\uDDFA\uFE0F Plan my week</button>';   /* Plan my week */
+    if(picks.length||rest.length)h+='<p class="nearp wk-src">From EstateSales.net'+(d.stale?' (from earlier)':'')+'. Tap a sale to open it there. Hours are your time.</p>';
+  }
+  return h+'</div>';
+}
+function wkLoad(){
+  if(WK.busy)return;
+  var inp=$('#otp-wkIn'),v=inp?String(inp.value||'').replace(/\s+/g,' ').trim():'';
+  WK.q=v;WK.busy=true;WK.err='';rWk();
+  function go(pt,town,city,stc){
+    WK.town=town||'where you are';WK.pt={lat:pt.lat,lng:pt.lng};WK.me=!town;   /* Plan my week starts here */
+    var u=SGW_API+'weekend?lat='+pt.lat.toFixed(2)+'&lng='+pt.lng.toFixed(2)+'&r=25&tz='+E(browserTz()||'')+(city&&stc?'&city='+E(city)+'&st='+E(stc):'')+'&h='+E(wkHunts().join('|'));
+    fetch(u,{headers:nrH(),cache:'no-store'}).then(function(r){return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j}},function(){return {ok:false,status:r.status,j:null}})}).then(function(x){
+      WK.busy=false;
+      if(x.ok&&x.j&&Array.isArray(x.j.picks)){WK.data=x.j;WK.err=''}
+      else WK.err=x.status===429?'Too many sweeps just now. Try again in a little while.':x.status===401?'Sign in to Prowl Pro in the Den to sweep this week\u2019s sales.':x.status===403?'This week\u2019s estate sales are part of Prowl Pro.':((x.j&&x.j.error)||'Could not get this week\u2019s sales right now.');
+      rWk();
+    })['catch'](function(){WK.busy=false;WK.err='Could not reach Prowl. Try again in a minute.';rWk()});
+  }
+  function fail(m){WK.busy=false;WK.err=m;rWk()}
+  if(v){atLookup(v,function(a,msg){if(!a){fail(msg||'That place could not be looked up.');return}go({lat:a.lat,lng:a.lng},a.city&&a.st?a.city+', '+a.st:a.town,a.city,a.st)});return}
+  var al=atLive();if(al){go({lat:al.lat,lng:al.lng},al.town,al.city,al.st);return}
+  nrPos(function(p,e){if(!p){fail(e==='denied'?'Location is off for this site. Type a City, ST above instead.':'Could not tell where you are. Type a City, ST above instead.');return}go(p,'')});
+}
+/* v8.32 (Matt, 2026-10-30: "it shouldn't be put into den, it needs to be in the new near me section beside trips"): the
+   Sweep and Plan my week live in NEAR ME's fourth tab, Estate sales (#otp-nrT4, pane #otp-nrWkPane), beside Trips,
+   no longer under Around you > More ways to look > Estate sales near you. v8.32 (Matt, 2026-10-31: "all Prowl Pro
+   members"): the tab shows for a signed-in Pro member (mailPro) or the owner's key (nrWkSweep; worker /weekend checks
+   Pro itself), or once the daily email's signed plan link has opened the planner on this visit. Free visitors do not
+   see it (the Den's estate sales row carries the Pro link). The pane shows the Sweep (#otp-wkHost) or the
+   planner (#otp-wpHost), one at a time. */
+function nrWkSweep(){return !!(fbOwnerKey()||mailPro())}
+function nrWkOk(){return nrWkSweep()||!!WK.link}
+function nrWkTab(){var t=$('#otp-nrT4'),ok=nrWkOk();if(t){t.hidden=!ok;if(t.parentNode&&t.parentNode.classList)t.parentNode.classList.toggle('nr-4',ok)}return ok}
+function rWk(){
+  var host=$('#otp-wkHost'),ph=$('#otp-wpHost');if(!host||!ph)return;
+  if(WK.planOn){
+    host.hidden=true;host.innerHTML='';ph.hidden=false;
+    ph.innerHTML=(nrWkSweep()?'<button type="button" class="es-mapb wk-back" id="otp-wkBack">\u2039 This week\u2019s sales</button>':'')+'<h3 class="nearh">Plan my week</h3>'+wpHtml();
+    var bk=$('#otp-wkBack');if(bk)bk.addEventListener('click',function(){WK.planOn=false;rWk()});
+    return;
+  }
+  ph.hidden=true;ph.innerHTML='';host.hidden=false;
+  if(!nrWkSweep()){host.innerHTML='';return}
+  var old=$('#otp-wkIn'),al=atLive(),v=old?old.value:(WK.q!=null?WK.q:(al&&al.city&&al.st?al.city+', '+al.st:esPlaceGet()));
+  host.innerHTML=wkHtml(v);
+  var wg=$('#otp-wkGo');if(wg)wg.addEventListener('click',wkLoad);
+  var wi=$('#otp-wkIn');if(wi)wi.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();wkLoad()}});
+  var wpb=$('#otp-wkPlan');if(wpb)wpb.addEventListener('click',wpFromSweep);
+}
+/* opens NEAR ME on Estate sales (from Plan my week, the email's plan link, or its ?wk=1) */
+function nrWkShow(){
+  nrWkTab();
+  if(typeof nearOpen==='function'&&nearOpen()){nrMode('weekend');return}
+  NR.wkGo=1;openNear();
+}
+/* v8.32 Plan my week (worker v205 /order and /weekend/plan): the Sweep's sales as a day-by-day route over the next 7
+   days, shown in NEAR ME > Estate sales in place of the Sweep (a back button returns to it). Opened from "Plan my week"
+   under the Sweep results, or from the daily email's button (its estate sales section) (?wkplan=<ids>&wkp=<picks>&wkzip=ZIP,
+   signed by the worker; no app or sign-in). The start is the place the sweep used (the typed town, the phone, or the
+   email's ZIP); when there is none, the saved ZIP (Den > Settings > Only what fits); when there is no ZIP either, one ZIP
+   box. Top picks start checked, the others are one tap. wpSplit puts each checked sale on its first open day in
+   the 7 days (v8.32, Matt 2026-10-31: opening day), else its next open day when that one is full or its hours do not fit, at most WP_CAP a day, WP_STAY minutes at each, and never so that a stop is
+   reached before it opens (the start waits) or less than WP_LAST_IN minutes before it closes; what does not fit is
+   named with why. Each day is then ordered by Road Trip's Optimize route (worker /order, a loop from the start), timed
+   with its legs; an order that would break a sale's hours keeps wpSplit's order instead. Sales whose company has not
+   posted the street address yet are listed as address pending, outside the route. One Google Maps and one Apple Maps
+   link a day (5 stops sit well inside both apps' waypoint limits). Rebuild from here starts a day again from where the
+   phone is (and from now, on today). Nothing is stored on the device. */
+var WP_STAY=45,WP_CAP=5,WP_LAST_IN=30,WP_MIN=60000;
+var WP={sales:[],start:null,on:{},here:null,plan:null,ord:{},missing:0,err:'',busy:false,zipBox:false,timer:0};
+function wpDayKey(ms){return nrLocalDay(new Date(ms))}
+function wpAt(key,from){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(key),d=new Date(from);return new Date(+m[1],+m[2]-1,+m[3],d.getHours(),d.getMinutes()).getTime()}
+/* a sale's open windows by local day, still reachable after now: [{key,o,c,est}]. A day known only as one span (first
+   start to last end) becomes the same opening and closing clock on each day it covers, marked est */
+function wpWindows(s,now){
+  var out=[],i,d,k,o,c,t,guard;
+  for(i=0;i<(s.days||[]).length;i++){
+    d=s.days[i];if(!d||!(d.e>d.s))continue;
+    if(d.span&&wpDayKey(d.s)!==wpDayKey(d.e)){
+      t=new Date(d.s);t=new Date(t.getFullYear(),t.getMonth(),t.getDate()).getTime();guard=0;
+      while(t<d.e&&guard++<8){k=wpDayKey(t);o=k===wpDayKey(d.s)?d.s:wpAt(k,d.s);c=k===wpDayKey(d.e)?d.e:wpAt(k,d.e);if(c>o)out.push({key:k,o:o,c:c,est:1});t=new Date(t+36*3600000);t=new Date(t.getFullYear(),t.getMonth(),t.getDate()).getTime()}
+    }else out.push({key:wpDayKey(d.s),o:d.s,c:d.e,est:d.span?1:0});
+  }
+  return out.filter(function(w){return w.c-WP_LAST_IN*WP_MIN>now});
+}
+/* one day's stops (items {s,w}) in this order: leave so the first is reached as it opens (not before 'floor'), wait at
+   any that is not open yet, WP_STAY at each, then home. legs: minutes start->1st->...->last->start, else estimated */
+function wpSched(start,items,legs,floor){
+  var n=items.length,i,cur,lg=[],out=[],ok=true,w,wait,late,pts=[start];
+  for(i=0;i<n;i++)pts.push({lat:items[i].s.lat,lng:items[i].s.lng});pts.push(start);
+  for(i=0;i<=n;i++)lg.push(legs&&legs[i]&&typeof legs[i].min==='number'?legs[i].min:nrEstMin(pts[i],pts[i+1]));
+  var leave=Math.max(floor||0,items[0].w.o-lg[0]*WP_MIN),drive=0;cur=leave;
+  for(i=0;i<n;i++){
+    w=items[i].w;cur+=lg[i]*WP_MIN;drive+=lg[i];wait=0;
+    if(cur<w.o){wait=w.o-cur;cur=w.o}
+    late=cur>w.c-WP_LAST_IN*WP_MIN;if(late)ok=false;
+    out.push({id:items[i].s.id,at:cur,wait:wait,late:late});cur+=WP_STAY*WP_MIN;
+  }
+  drive+=lg[n];
+  var lastLeg=lg[n];
+  return {ok:ok,leave:leave,stops:out,end:cur,back:cur+lg[n]*WP_MIN,drive:drive,lastLeg:lastLeg,routed:!!legs};
+}
+function wpPerms(a){if(a.length<2)return [a.slice()];var out=[],i,j,r;for(i=0;i<a.length;i++){r=wpPerms(a.slice(0,i).concat(a.slice(i+1)));for(j=0;j<r.length;j++)out.push([a[i]].concat(r[j]))}return out}
+/* the order of a day's stops that keeps every sale's hours and gets home soonest (at most WP_CAP stops, 120 orders) */
+function wpBest(start,items,floor){
+  var P=wpPerms(items),best=null,i,sc;
+  for(i=0;i<P.length;i++){sc=wpSched(start,P[i],null,floor);if(sc.ok&&(!best||sc.back<best.sched.back-1||(Math.abs(sc.back-best.sched.back)<=1&&sc.drive<best.sched.drive)))best={order:P[i],sched:sc}}
+  return best;
+}
+/* sales -> { days: [{key, items, sched}], dropped: [{s, why}], pending: [sale] }. o: {cap, here: {key, pt, at}} */
+function wpSplit(sales,start,now,o){
+  o=o||{};var cap=o.cap||WP_CAP,here=o.here||null,today=wpDayKey(now),days={},dropped=[],pending=[],list=[],i,j,s,W,d,best,full,hrs,tried;
+  function from(k){return here&&here.key===k?here.pt:start}
+  function floor(k){return here&&here.key===k&&k===today?here.at:now}
+  for(i=0;i<sales.length;i++){s=sales[i];if(!s.addr||typeof s.lat!=='number'||typeof s.lng!=='number'){pending.push(s);continue}W=wpWindows(s,now);list.push({s:s,W:W,c:W.length?Math.min.apply(null,W.map(function(w){return w.c})):0})}
+  list.sort(function(a,b){return ((b.s.pick||b.s.match)?1:0)-((a.s.pick||a.s.match)?1:0)||a.W.length-b.W.length||a.c-b.c||(a.s.dist||0)-(b.s.dist||0)});
+  for(i=0;i<list.length;i++){
+    s=list[i].s;W=list[i].W.slice().sort(function(a,b){return a.o-b.o});   /* v8.32: opening day first, then the next */full=[];hrs=[];tried=false;
+    if(!W.length){dropped.push({s:s,why:'No time left to get there before it closes'});continue}
+    for(j=0;j<W.length;j++){
+      d=days[W[j].key]||{key:W[j].key,items:[],sched:null};
+      if(d.items.length>=cap){full.push(W[j].key);continue}
+      best=wpBest(from(W[j].key),d.items.concat([{s:s,w:W[j]}]),floor(W[j].key));
+      if(best){d.items=best.order;d.sched=best.sched;days[d.key]=d;tried=true;break}
+      hrs.push(W[j].key);
+    }
+    if(tried)continue;
+    dropped.push({s:s,why:hrs.length?'Its hours do not fit the route on '+nrAnd(hrs.map(function(k){return NR_DAYS[nrWeekday(k)]})):'Every day it is open already has '+cap+' stops',full:full.length&&!hrs.length?1:0});
+  }
+  var keys=Object.keys(days).sort();
+  return {days:keys.map(function(k){return days[k]}),dropped:dropped,pending:pending};
+}
+try{window.prowlWpSplit=wpSplit}catch(e){}   /* the day split, for the tests */
+function wpDayName(key){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(key);return NR_DAYS[nrWeekday(key)]+', '+NR_MON[+m[2]-1]+' '+(+m[3])}
+function wpHm(ms){var d=new Date(ms);return nrTime(d.getHours(),d.getMinutes())}
+function wpPick(s){return !!(s.pick||s.match)}
+function wpChosen(){return WP.sales.filter(function(s){return WP.on[s.id]})}
+function wpFrom(k){return WP.here&&WP.here.key===k?WP.here.pt:WP.start}
+function wpFloor(k,now){return WP.here&&WP.here.key===k&&k===wpDayKey(now)?WP.here.at:now}
+function wpStopName(s){return {name:s.addr,town:(s.city||'')+(s.st?', '+s.st:'')}}
+/* the day as shown: the optimizer's order and legs once they are in, else wpSplit's order, estimated */
+function wpDayView(d,now){
+  var o=WP.ord[d.key],start=wpFrom(d.key),q=nrPtsQ([start].concat(d.items.map(function(x){return {lat:x.s.lat,lng:x.s.lng}}))),items=d.items,legs=null,by={},i;
+  if(o&&o.q===q&&o.ids){for(i=0;i<d.items.length;i++)by[d.items[i].s.id]=d.items[i];items=o.ids.map(function(id){return by[id]}).filter(function(x){return !!x});if(items.length===d.items.length)legs=o.legs;else items=d.items}
+  return {items:items,sched:wpSched(start,items,legs,wpFloor(d.key,now)),src:o&&o.q===q?o.src:'',kept:o&&o.q===q?o.kept:0};
+}
+/* Road Trip's Optimize route for one day: /order loop=1 from the start; if that order breaks a sale's hours, wpSplit's
+   order is kept and only its leg times are asked for (keep=1) */
+function wpOrder(d){
+  var start=wpFrom(d.key),pts=[start].concat(d.items.map(function(x){return {lat:x.s.lat,lng:x.s.lng}})),q=nrPtsQ(pts),now=Date.now();
+  if(d.items.length<1||pts.length>14||(WP.ord[d.key]&&WP.ord[d.key].q===q))return;
+  WP.ord[d.key]={q:q,wait:1};
+  function done(v){if(!WP.ord[d.key]||WP.ord[d.key].q!==q)return;WP.ord[d.key]=v;wpDraw()}
+  function keep(){nrFetch('/order?keep=1&loop=1&p='+E(q)).then(function(r){done(r.ok&&nrLegsOk(r.j,pts.length)?{q:q,ids:d.items.map(function(x){return x.s.id}),legs:r.j.legs,src:r.j.src,kept:1}:{q:q,ids:null,legs:null,src:''})})}
+  if(d.items.length<2){keep();return}
+  nrFetch('/order?loop=1&p='+E(q)).then(function(r){
+    if(!r.ok||!r.j.order||r.j.order.length!==pts.length||!nrLegsOk(r.j,pts.length)){keep();return}
+    var items=[],i,k;for(i=0;i<r.j.order.length;i++){k=r.j.order[i];if(k>=1&&k<=d.items.length)items.push(d.items[k-1])}
+    if(items.length!==d.items.length||!wpSched(start,items,r.j.legs,wpFloor(d.key,now)).ok){keep();return}
+    done({q:q,ids:items.map(function(x){return x.s.id}),legs:r.j.legs,src:r.j.src});
+  });
+}
+function wpPlan(){
+  clearTimeout(WP.timer);
+  WP.plan=WP.start?wpSplit(wpChosen(),WP.start,Date.now(),{here:WP.here}):null;
+  wpDraw();
+  if(WP.plan)WP.timer=setTimeout(function(){if(WP.plan)WP.plan.days.forEach(wpOrder)},350);   /* one optimizer call a day, after the taps settle */
+}
+function wpMaps(d,v){
+  var from=WP.here&&WP.here.key===d.key?'':(WP.start&&!WP.start.me?WP.start.label:''),an=v.items.map(function(x){return wpStopName(x.s)}),back=!!from;
+  var wp=back?an:an.slice(0,-1),dest=back?from:an[an.length-1].name+', '+an[an.length-1].town;
+  return {g:nrMapsUrl(from,wp,dest),a:nrAppleUrl(from,wp,dest),back:back};
+}
+function wpDayHtml(d,now){
+  var v=wpDayView(d,now),S=v.sched,mp=wpMaps(d,v),h='<section class="wp-day" data-wpday="'+esc(d.key)+'"><h5 class="wk-h">'+esc(wpDayName(d.key))+' <span>'+v.items.length+' stop'+(v.items.length===1?'':'s')+'</span></h5>';
+  h+='<p class="nearp wp-sum">Leave ~'+nrClock(S.leave)+' · '+(mp.back?'back ~'+nrClock(S.back):'done ~'+nrClock(S.end))+' · about '+nrDurT(mp.back?S.drive:S.drive-(S.lastLeg||0))+' of driving'+(S.routed&&v.src==='osrm'?'':' (estimated)')+'</p><ol class="wp-stops">';
+  v.items.forEach(function(x,i){
+    var st=S.stops[i],w=x.w;
+    h+='<li class="wp-stop"><span class="wp-l" aria-hidden="true">'+nrLetter(i)+'</span><span class="wp-t"><a href="'+esc(x.s.url)+'" target="_blank" rel="noopener noreferrer"><b>'+esc(x.s.name)+'</b></a>'+
+      '<span>'+esc(x.s.addr+(x.s.city?', '+x.s.city:''))+'</span>'+
+      '<span class="wk-hr">Get there ~'+nrClock(st.at)+' · open '+wpHm(w.o)+'\u2013'+wpHm(w.c)+(w.est?' (hours estimated)':'')+'</span>'+
+      (st.late?'<span class="nr-ended">Closed by the time you get there (~'+nrClock(st.at)+')</span>':st.wait>=5*WP_MIN?'<span class="wp-wait">Opens '+wpHm(w.o)+': about '+nrDurT(Math.round(st.wait/WP_MIN))+' to wait</span>':'')+'</span></li>';
+  });
+  h+='</ol>'+(v.kept&&v.items.length>1?'<p class="nearp wp-kept">Kept in this order so every sale is open when you get there.</p>':'');
+  h+='<div class="wp-go"><a class="b p" href="'+esc(mp.g)+'" target="_blank" rel="noopener noreferrer">Google Maps</a><a class="b" href="'+esc(mp.a)+'" target="_blank" rel="noopener noreferrer">Apple Maps</a><button type="button" class="b" data-wp="here" data-k="'+esc(d.key)+'">Rebuild from here</button></div></section>';
+  return h;
+}
+function wpHtml(){
+  var h='<div id="otp-wp" class="wp">',now=Date.now(),P=WP.plan,i,s,sel=WP.sales.filter(function(s){return s.addr}),pend=WP.sales.filter(function(s){return !s.addr});
+  if(WP.busy)return h+'<p class="nearp">'+FLY3+'Getting this week\u2019s sales\u2026</p></div>';
+  if(WP.err)h+='<p class="nearp es-err" role="status">'+esc(WP.err)+'</p>';
+  if(!WP.sales.length)return h+(WP.err?'':'<p class="nearp">No sales to plan.</p>')+'</div>';
+  if(!WP.start||WP.zipBox){
+    h+='<p class="nearp">'+(WP.start?'Start somewhere else:':'Where do you start from?')+'</p><div class="addrow wp-zip"><input id="otp-wpZip" type="text" inputmode="numeric" maxlength="5" placeholder="ZIP code" aria-label="ZIP code to start from"><button type="button" data-wp="zip">Start here</button></div>';
+    if(!WP.start)return h+'</div>';
+  }else h+='<p class="nearp wp-from">From <b>'+esc(WP.start.label||'where you are')+'</b> <button type="button" class="es-mapb" data-wp="chg">Change</button></p>';
+  if(P){
+    if(!P.days.length)h+='<p class="nearp">'+(wpChosen().filter(function(s){return s.addr}).length?'None of the checked sales fit a route this week.':'Check a sale below to plan the route.')+'</p>';
+    else h+='<p class="nearp nr-etan">Times allow about '+WP_STAY+' min at each sale, and no sale is reached before it opens or less than '+WP_LAST_IN+' min before it closes. Hours are your time.</p>';
+    for(i=0;i<P.days.length;i++)h+=wpDayHtml(P.days[i],now);
+    if(P.dropped.length)h+='<div class="wp-drop"><p class="nearp nr-late">Didn\u2019t fit:</p><ul>'+P.dropped.map(function(x){return '<li><b>'+esc(x.s.name)+'</b>: '+esc(x.why)+(x.full?' (5 a day is the most).':'.')+'</li>'}).join('')+'</ul></div>';
+  }
+  h+='<h5 class="wk-h">This week\u2019s sales <span>'+sel.length+'</span></h5><p class="nearp">Top picks start checked. Tap a sale to add it or take it off.</p><div class="wp-list">';
+  for(i=0;i<sel.length;i++){s=sel[i];h+='<label class="wp-sale'+(wpPick(s)?' wk-pick':'')+'"><input type="checkbox" data-wpid="'+esc(s.id)+'"'+(WP.on[s.id]?' checked':'')+'><span class="wp-t">'+(wpPick(s)?'<span class="wk-m">Top pick'+(s.match?' \u00b7 '+esc(s.match.hunt):'')+'</span>':'')+'<b>'+esc(s.name)+'</b><span>'+esc([s.city&&s.st?s.city+', '+s.st:s.city,typeof s.dist==='number'?s.dist+' mi':''].filter(function(v){return !!v}).join(' \u00b7 '))+'</span><span class="wk-hr">'+esc(s.hours||'')+'</span></span></label>'}
+  h+='</div>';
+  if(pend.length)h+='<h5 class="wk-h">Address pending <span>'+pend.length+'</span></h5><p class="nearp">The company has not posted the street address yet, so these stay off the route. Check back later.</p><div class="wk-list wk-brief">'+pend.map(function(s){return '<a class="wk-row wp-pend" href="'+esc(s.url)+'" target="_blank" rel="noopener noreferrer"><b>'+esc(s.name)+'</b><span>'+esc((s.city?s.city+(s.st?', '+s.st:'')+' \u00b7 ':'')+'address pending'+(s.addrAt>now?', posted '+NR_D3[new Date(s.addrAt).getDay()]+' '+nrClock(s.addrAt):''))+'</span><span class="wk-hr">'+esc(s.hours||'')+'</span></a>'}).join('')+'</div>';
+  if(WP.missing)h+='<p class="nearp">'+WP.missing+' sale'+(WP.missing===1?' from the email has':'s from the email have')+' ended or come down since.</p>';
+  return h+'<p class="nearp wk-src">Sales from EstateSales.net. Hours and addresses can change; check the sale page before you go.</p></div>';
+}
+function wpDraw(){if(WK.planOn&&$('#otp-wp'))rWk()}
+/* o: { sales, start: {lat, lng, label, me} or null, missing } */
+function wpOpen(o){
+  WP.sales=(o.sales||[]).filter(function(s){return s&&wkUrlOk(s.url)});WP.on={};WP.here=null;WP.ord={};WP.zipBox=false;WP.err=o.err||'';WP.busy=!!o.busy;WP.missing=o.missing||0;
+  WP.sales.forEach(function(s){if(wpPick(s)&&s.addr)WP.on[s.id]=1});
+  WP.start=o.start&&typeof o.start.lat==='number'?o.start:null;
+  WK.planOn=true;nrWkShow();rWk();
+  if(WP.busy)return;
+  if(WP.start){wpPlan();return}
+  var z=prefs().zip;   /* no start from the sweep: the saved ZIP, else one ZIP box */
+  if(z)wpZip(z);
+}
+function wpZip(z){
+  z=String(z||'').replace(/\D/g,'');if(!/^\d{5}$/.test(z)){toast('Type a 5-digit ZIP code.',2400);return}
+  atLookup(z,function(a,msg){if(!a){WP.err=msg||'That ZIP could not be found.';wpDraw();return}WP.err='';WP.zipBox=false;WP.here=null;WP.ord={};WP.start={lat:a.lat,lng:a.lng,label:a.zip?a.zip+(a.city?' ('+a.city+')':''):a.town,me:false};wpPlan()});
+}
+function wpFromSweep(){
+  var d=WK.data;if(!d)return;
+  wpOpen({sales:(d.picks||[]).map(function(x){var c=nrCopy(x);c.pick=true;return c}).concat(d.rest||[]),start:WK.pt?{lat:WK.pt.lat,lng:WK.pt.lng,label:WK.me?'where you are':WK.town,me:!!WK.me}:null});
+}
+document.addEventListener('click',function(e){
+  var b=e.target&&e.target.closest&&e.target.closest('#otp-wp [data-wp]');if(!b)return;
+  var a=b.getAttribute('data-wp');
+  if(a==='chg'){WP.zipBox=!WP.zipBox;wpDraw();var zi=$('#otp-wpZip');if(zi)zi.focus();return}
+  if(a==='zip'){wpZip(($('#otp-wpZip')||{}).value);return}
+  if(a==='here'){var k=b.getAttribute('data-k');b.textContent='Finding you\u2026';nrPos(function(p,err){if(!p){toast(err==='denied'?'Location is off for this site, so Prowl cannot tell where you are.':'Your location could not be read just now.',3200);wpDraw();return}WP.here={key:k,pt:{lat:p.lat,lng:p.lng},at:Date.now()};delete WP.ord[k];wpPlan();toast('Rebuilt '+esc(NR_DAYS[nrWeekday(k)])+' from where you are.',2800)},true);return}
+});
+document.addEventListener('change',function(e){var c=e.target;if(!c||!c.matches||!c.matches('#otp-wp input[data-wpid]'))return;var id=c.getAttribute('data-wpid');if(c.checked)WP.on[id]=1;else delete WP.on[id];wpPlan()});
+document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target&&e.target.id==='otp-wpZip'){e.preventDefault();wpZip(e.target.value)}});
+/* the daily email's Plan my week button: ?wkplan=<ids>&wkp=<picks>&wkzip=ZIP&wkx=<expiry>&wks=<signature> opens the planner */
+try{(function(){
+  var m=/[?&]wkplan=([0-9,]{3,200})/.exec(location.search);if(!m)return;
+  function g(k){var r=new RegExp('[?&]'+k+'=([^&#]*)').exec(location.search);return r?decodeURIComponent(r[1]):''}
+  var q='ids='+E(m[1])+'&p='+E(g('wkp'))+'&zip='+E(g('wkzip'))+'&x='+E(g('wkx'))+'&s='+E(g('wks'))+'&tz='+E(browserTz()||'');
+  var rest=location.search.replace(/^\?/,'').split('&').filter(function(x){return x&&!/^wk(plan|p|zip|x|s)=/.test(x)}).join('&');
+  try{history.replaceState(null,'',location.pathname+(rest?'?'+rest:'')+location.hash)}catch(e){}
+  WK.link=true;   /* the signed link opens NEAR ME > Estate sales for this visit, owner key or not */
+  setTimeout(function(){
+    wpOpen({sales:[],busy:true});
+    fetch(SGW_API+'weekend/plan?'+q,{headers:nrH(),cache:'no-store'}).then(function(r){return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j||{}}},function(){return {ok:false,status:r.status,j:{}}})}).then(function(x){
+      if(!$('#otp-wp'))return;
+      if(!x.ok||!Array.isArray(x.j.sales)){wpOpen({sales:[],err:x.status===410?'This plan link has run out. Your next Prowl email with estate sales brings a new one.':x.status===429?'Too many plans just now. Try again in a little while.':'This week\u2019s sales could not be loaded just now. Try the link again in a minute.'});return}
+      var st0=x.j.start;
+      wpOpen({sales:x.j.sales,missing:(x.j.missing||[]).length,start:st0&&typeof st0.lat==='number'?{lat:st0.lat,lng:st0.lng,label:st0.zip?st0.zip+(st0.town&&st0.town!==st0.zip?' ('+String(st0.town).split(',')[0]+')':''):st0.town,me:false}:null});
+    })['catch'](function(){if($('#otp-wp'))wpOpen({sales:[],err:'Prowl could not be reached. Check your signal and try the link again.'})});
+  },700);
+})()}catch(e){}
+/* the daily email's "N more estate sales near you this week": ?wk=1&wkzip=ZIP opens NEAR ME > Estate sales and sweeps
+   around the member's ZIP (else the saved one) once the Den knows the member is Pro; else NEAR ME as it is */
+try{if(/[?&]wk=1(&|$)/.test(location.search)){
+  var wkZ=(/[?&]wkzip=(\d{5})(&|$)/.exec(location.search)||[])[1]||'';
+  try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])wkzip=[^&#]*(&|$)/,function(m,a,b){return b?a:''}).replace(/([?&])wk=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
+  (function wkGo(n){setTimeout(function(){
+    if(!nrWkSweep()&&n<8){wkGo(n+1);return}
+    var z=nrWkSweep()?(wkZ||prefs().zip||''):'';
+    if(z&&!WK.data){WK.q=z;WK.planOn=false}
+    nrWkShow();
+    if(z&&!WK.data&&!WK.busy&&$('#otp-wkIn')){$('#otp-wkIn').value=z;wkLoad()}
+  },n?600:700)})(0);
+}}catch(e){}
 function rEs(){
   var box=$('#otp-esBox');if(!box)return;
   if(!fbOwnerKey()){box.hidden=true;box.innerHTML='';return}
@@ -4653,7 +5174,7 @@ function rEs(){
     '<div class="addrow es-form"><input id="otp-esIn" type="text" placeholder="City, ST (like Novi, MI)" aria-label="City and state for estate sales" value="'+esc(atLive()&&atLive().city&&atLive().st?atLive().city+', '+atLive().st:esPlaceGet())+'"><button type="button" id="otp-esGo">'+(ES.busy?'Looking…':'Show sales')+'</button></div>'+
     (ES.err?'<p class="nearp es-err" role="status">'+esc(ES.err)+'</p>':'')+
     (d&&all.length?'<p class="nearp">'+items.length+' sale'+(items.length===1?'':'s')+(ES.far||!all.some(function(x){return x.dist!=null})?' near ':' within 30 miles of ')+esc(d.city+', '+d.st)+' from EstateSales.net'+(d.stale?' (from earlier)':'')+'. Tap one to open it there.'+(far||ES.far?' <button type="button" class="es-mapb" id="otp-esFar">'+(ES.far?'Only within 30 miles':'Show '+far+' farther')+'</button>':'')+(mapped?' <button type="button" class="es-mapb" id="otp-esMapB">'+(ES.map?'Hide the map':'Show on a map')+'</button>':'')+'</p>'+
-      '<div id="otp-esMap" class="es-map"'+(ES.map?'':' hidden')+'></div><div class="es-list">'+esList(items)+'</div>':'');
+      '<div id="otp-esMap" class="es-map"'+(ES.map?'':' hidden')+'></div><div class="es-list">'+esList(items)+'</div>':'');   /* v8.32: the estate sales Sweep is NEAR ME > Estate sales now (rWk) */
   var go=$('#otp-esGo'),inp=$('#otp-esIn');
   if(go)go.addEventListener('click',function(){esLoad(inp.value)});
   if(inp)inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();esLoad(inp.value)}});
@@ -4809,7 +5330,7 @@ $('#otp-denClose').addEventListener('click',closeDen);
 /* v5.93: Photo check has its own screen, like the Den. Opened from the dock,
    the home card or ?photo=1. The photo script binds by id, so it is unchanged. */
 var pho=$('#otp-photo');
-function openPhoto(){if(aiOff()){toast('AI is off in your settings.',2200);return}if(!pho||pho.classList.contains('on'))return;if(den.classList.contains('on'))closeDen();if(dw.classList.contains('on'))closeDw();lf=document.activeElement;pho.hidden=false;requestAnimationFrame(function(){sc.classList.add('on');pho.classList.add('on')});var c=$('#otp-photoClose');if(c)c.focus();}
+function openPhoto(){if(aiOff()){toast('AI is off in your settings.',2200);return}if(!pho||pho.classList.contains('on'))return;if(den.classList.contains('on'))closeDen();if(dw.classList.contains('on'))closeDw();lf=document.activeElement;if(window.prowlPhotoOpen)window.prowlPhotoOpen();pho.hidden=false;requestAnimationFrame(function(){sc.classList.add('on');pho.classList.add('on')});var c=$('#otp-photoClose');if(c)c.focus();}
 function closePhoto(){if(!pho)return;sc.classList.remove('on');pho.classList.remove('on');setTimeout(function(){if(!pho.classList.contains('on'))pho.hidden=true},300);if(lf&&lf.focus)lf.focus();}
 var phGo=$('#otp-aprGo');if(phGo)phGo.addEventListener('click',openPhoto);
 var phCam=$('#otp-cam');if(phCam)phCam.addEventListener('click',openPhoto);
@@ -5017,13 +5538,15 @@ function oneAll(r){return !!(r&&r.terms&&((r.mode==='one'&&r.terms.length>1)||(r
    the bottom ... to search just one store, everything"): the STORE dock tab runs every hunt on one marketplace at once.
    The marketplace is a drop-down at the top of that screen (st.store, kept apart from the Just … pill's st.one so
    picking a store never turns the pill on), with a box to search that store for one thing. */
-function storeId(){return (st.store&&mb(st.store))?st.store:oneId()}
+function storeId(){return st.store==='facebook'?(fbOn()?'facebook':oneId()):(st.store&&mb(st.store))?st.store:oneId()}   /* v8.27: Facebook only while fbOn() */
 function runSiteName(r){var m=mb(r&&r.scope&&r.scope[0]);return m?m.n:oneName()}
 function storeHunts(){var a=[],b=[];st.hunts.forEach(function(t,j){(st.lock.has(j)?a:b).push(t)});return a.concat(b)}
 var STORE_SKIP={ebaysold:1,owltwig:1,facebook:1};   /* sold prices, our own shop, Facebook's city-by-city search */
 function storeLive(id){return id==='shopgoodwill'||!!lv[id]}
 function storeGo(){
   var T=storeHunts(),m=mb(storeId());
+  st.storeFb=false;
+  if(storeId()==='facebook'){clearTimers();st.run=null;st.focus=false;st.storeEmpty=false;st.storeFb=true;st.mode='store';rRes();rDock();res.hidden=false;fbAllFetch();return}   /* v8.27 */
   if(!T.length){clearTimers();st.run=null;st.focus=false;st.storeEmpty=true;st.mode='store';rRes();rDock();res.hidden=false;return}
   st.storeEmpty=false;
   runProwl('store',T,[storeId()],m?m.n:'');
@@ -5032,6 +5555,10 @@ function storeBar(id){
   /* v8.20 (Matt: "we should mark the ones that are LIVE in the dropdown"): stores whose listings show right here first */
   var live='',other='';
   M.forEach(function(m){if(STORE_SKIP[m.id])return;var o='<option value="'+esc(m.id)+'"'+(m.id===id?' selected':'')+'>'+esc(m.n)+(storeLive(m.id)?' \u00b7 LIVE':'')+'</option>';if(storeLive(m.id))live+=o;else other+=o});
+  if(fbOn())live+='<option value="facebook"'+(id==='facebook'?' selected':'')+'>Facebook Marketplace \u00b7 LIVE</option>';   /* v8.27: worker v203's finds */
+  if(id==='facebook')return '<div class="st-bar"><label class="st-lab" for="otp-stSel">Store</label><select id="otp-stSel"><optgroup label="LIVE: listings show here">'+live+'</optgroup><optgroup label="Opens on their site">'+other+'</optgroup></select></div>'+
+    '<p class="st-note"><b>LIVE</b>: Facebook Marketplace finds for your hunts, from Prowl\u2019s daily Facebook searches.</p>'+
+    '<form class="st-q" id="otp-fbF"><input id="otp-fbQ" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search Facebook for one thing" aria-label="Search Facebook for one thing" maxlength="80"><button class="b" type="submit">Search</button></form>';
   var opts='<optgroup label="LIVE: listings show here">'+live+'</optgroup><optgroup label="Opens on their site">'+other+'</optgroup>';
   var n=(mb(id)||{}).n||'';
   return '<div class="st-bar"><label class="st-lab" for="otp-stSel">Store</label><select id="otp-stSel">'+opts+'</select></div>'+
@@ -5040,7 +5567,7 @@ function storeBar(id){
 }
 function storeWire(){
   var sel=$('#otp-stSel');
-  if(sel)sel.addEventListener('change',function(){if(!mb(this.value))return;st.store=this.value;save();storeGo()});
+  if(sel)sel.addEventListener('change',function(){if(!mb(this.value)&&this.value!=='facebook')return;st.store=this.value;save();storeGo()});
   var f=$('#otp-stF');
   if(f)f.addEventListener('submit',function(e){e.preventDefault();var t=(($('#otp-stQ')||{}).value||'').trim();if(!t)return;var id=storeId();runProwl('one',[t],[id],(mb(id)||{}).n)});
 }
@@ -5051,6 +5578,101 @@ function rStoreEmpty(){
     '<p class="dg-tip">Keep a few hunts (search for something, then tap <b>Keep this hunt</b>) and this tab checks all of them on '+esc(n)+' at once.</p></div>';
   storeWire();
   var cr=$('#otp-cr');if(cr)cr.addEventListener('click',clearRun);
+}
+/* v8.27 (worker v203): the Store tab on Facebook Marketplace. No per-site run: the screen shows each active hunt's
+   finds from GET /fb-finds?all=1 and a box for a live one-off search (POST /fb-search, 5 a day per Pro member). */
+var FBS={all:null,busy:0,err:'',one:null,q:'',left:-1};
+function rStoreFb(){
+  res.innerHTML='<div class="rc ol-rc"><div class="rh dg-rh"><div><p class=eb>One store</p><h2>Your hunts on Facebook Marketplace</h2></div>'+
+    '<div class=rh-acts><button class="gh dg-x" id=otp-cr type=button aria-label="Close">\u2715</button></div></div>'+storeBar('facebook')+
+    '<div class="st-fb"><div id="otp-fbOne"></div><div id="otp-fbAll"></div></div></div>';
+  storeWire();fbOneDraw();fbAllDraw();
+  var cr=$('#otp-cr');if(cr)cr.addEventListener('click',clearRun);
+  var f=$('#otp-fbF');
+  if(f)f.addEventListener('submit',function(e){e.preventDefault();var t=(($('#otp-fbQ')||{}).value||'').replace(/\s+/g,' ').trim().slice(0,80);if(t)fbOneGo(t)});
+}
+function fbScr(){return !!(st.storeFb&&!st.run&&$('#otp-fbAll'))}
+function fbLeftTxt(){return FBS.left>=0?'<p class="sgw-note">'+esc(String(FBS.left))+' search'+(FBS.left===1?'':'es')+' left today.</p>':''}
+function fbGrid(a){var h='',i;for(i=0;i<a.length;i++)h+=sgwCard(a[i],'');return h?'<div class="sgw-grid">'+h+'</div>':''}
+function fbAllFetch(){
+  if(typeof fetch!=='function'||FBS.busy)return;
+  FBS.busy=1;FBS.err='';if(fbScr())fbAllDraw();
+  fetch(SGW_API+'fb-finds?all=1',{headers:nrH(),cache:'no-store'}).then(function(r){
+    if(r.status===401||r.status===403)return {e:'Facebook finds are for signed-in Prowl Pro members.'};
+    return r.ok?r.json():{e:'Could not load Facebook finds. Try again in a minute.'};
+  }).then(function(j){
+    FBS.busy=0;j=j||{};
+    if(j.e)FBS.err=j.e;else{FBS.all=j;if(typeof j.left==='number'&&j.left>=0)FBS.left=Math.floor(j.left)}
+    if(fbScr()){fbAllDraw();fbOneDraw()}
+  },function(){FBS.busy=0;FBS.err='Could not reach Prowl. Check your connection.';if(fbScr())fbAllDraw()});
+}
+function fbAllDraw(){
+  var el=$('#otp-fbAll');if(!el)return;
+  var j=FBS.all,h='',i,x,w,a,it,got=[],none=[],soon=[],r;
+  if(FBS.err&&!j){el.innerHTML='<p class="sgw-note">'+esc(FBS.err)+'</p>';return}
+  if(!j){el.innerHTML='<p class="sgw-note">Loading your hunts on Facebook…</p>';return}
+  if(j.nozip)h+='<p class="sgw-note">Add your local-pickup ZIP in Den › Settings (Prowl Alerts, Only what fits) and Prowl looks for your hunts on Facebook Marketplace near you every day.</p>';
+  a=Array.isArray(j.hunts)?j.hunts:[];
+  /* v8.31 (worker v204, Matt: most rows said "Checks soon" or nothing): hunts with finds first, newest first; the rest
+     fold into one line that opens to each hunt's reason */
+  for(i=0;i<a.length&&i<100;i++){
+    x=a[i]||{};if(typeof x.term!=='string'||!x.term)continue;
+    it=fbClean(x.items).slice(0,12);
+    if(it.length)got.push({x:x,it:it,t:Date.parse(x.updated||'')||0,i:i});
+    else if(x.pending&&!x.updated)soon.push(x);
+    else none.push(x);
+  }
+  got.sort(function(p,q){return q.t-p.t||p.i-q.i});
+  for(i=0;i<got.length;i++){
+    x=got[i].x;w=fbWhen(x.updated);
+    h+='<div class="sgw-sub"><h3 class="sgw-fbh">'+esc(x.term)+'</h3>'+(w?'<span class="sgw-upd">'+esc(w)+'</span>':'')+'</div>'+fbGrid(got[i].it);
+  }
+  if(none.length||soon.length){
+    var sm=[],li='';
+    if(none.length)sm.push(none.length+' hunt'+(none.length===1?'':'s')+' with nothing yet');
+    if(soon.length)sm.push(soon.length+(none.length?'':' hunt'+(soon.length===1?'':'s'))+' checking soon');
+    for(i=0;i<none.length;i++){x=none[i];r=fbWhyTxt(x.term,x.why,x.usa)||'Nothing on Facebook for this hunt lately.';w=fbWhen(x.updated);
+      li+='<li><b>'+esc(x.term)+'</b><span>'+esc(r)+(w?'<i>'+esc(w)+'</i>':'')+'</span></li>'}
+    for(i=0;i<soon.length;i++)li+='<li><b>'+esc(soon[i].term)+'</b><span>Checks soon</span></li>';
+    h+='<details class="fb-rest"'+(got.length?'':' open')+'><summary>'+esc(sm.join(' · '))+'</summary><ul class="fb-rl">'+li+'</ul>'+
+      (soon.length?'<p class="sgw-note">Each day Prowl searches Facebook for up to 10 of your hunts, in turn.</p>':'')+'</details>';
+  }
+  if(!a.length&&!j.nozip)h+='<p class="sgw-note">No hunts to show on Facebook yet. Keep a few hunts and Prowl searches Facebook for them every day.</p>';
+  el.innerHTML=h;
+}
+/* v8.31 (worker v204): why a searched hunt shows nothing, from the worker's counts {raw, far, words, mi}: '' when there
+   are none (a search from before v204) or they do not say */
+function fbWhyTxt(t,y,usa){
+  if(!y||typeof y!=='object')return '';
+  var n=function(v){v=Math.floor(Number(v));return isFinite(v)&&v>0?v:0},raw=n(y.raw),far=n(y.far),wd=n(y.words),mi=usa?500:n(y.mi)||50,p=[];
+  if(!raw)return 'Facebook had nothing for “'+t+'” '+(usa?'across the USA':'near you')+' in its last search.';   /* review fix: All USA is not near you; the counts are the last search's */
+  if(far>=raw)return 'Facebook had '+raw+', none within '+mi+' mi.';
+  if(wd>=raw)return 'Facebook had '+raw+', none with all your words. Try fewer words.';
+  if(!far&&!wd)return 'Facebook had '+raw+', all sold or not usable.';
+  if(far)p.push(far+' too far');if(wd)p.push(wd+' without all your words');if(raw-far-wd>0)p.push((raw-far-wd)+' sold or not usable');   /* review fix: the rest are accounted for */
+  return p.length?'Facebook had '+raw+': '+p.join(', ')+'.':'';
+}
+function fbOneGo(t){
+  if(typeof fetch!=='function'||FBS.one==='busy')return;
+  FBS.q=t;FBS.one='busy';fbOneDraw();
+  var hd=nrH();hd['Content-Type']='application/json';
+  fetch(SGW_API+'fb-search',{method:'POST',headers:hd,body:JSON.stringify({q:t}),cache:'no-store'}).then(function(r){
+    return r.json()['catch'](function(){return {}}).then(function(j){return {s:r.status,ok:r.ok,j:j||{}}});
+  }).then(function(v){
+    if(typeof v.j.left==='number'&&v.j.left>=0)FBS.left=Math.floor(v.j.left);
+    if(v.ok&&v.j.ok)FBS.one={items:fbClean(v.j.items)};
+    else FBS.one={e:v.s===401||v.s===403?'Facebook search is for signed-in Prowl Pro members.':v.s===429?'That\u2019s today\u2019s 5 Facebook searches. More tomorrow.':(typeof v.j.error==='string'&&v.j.error)?v.j.error.slice(0,160):v.s===400?'Try a shorter search, a few words.':'Facebook search did not answer. Try again in a minute.'};   /* review fix: the worker's own reason (no ZIP, the day's searches used) */
+    if(fbScr())fbOneDraw();
+  },function(){FBS.one={e:'Could not reach Prowl. Check your connection.'};if(fbScr())fbOneDraw()});
+}
+function fbOneDraw(){
+  var el=$('#otp-fbOne');if(!el)return;
+  var o=FBS.one,h='';
+  if(o==='busy')h='<p class="sgw-note">Searching Facebook for \u201c'+esc(FBS.q)+'\u201d\u2026</p>';
+  else if(o&&o.e)h='<p class="sgw-note">'+esc(o.e)+'</p>';
+  else if(o&&o.items)h='<div class="sgw-sub"><h3 class="sgw-fbh">\u201c'+esc(FBS.q)+'\u201d on Facebook</h3></div>'+(o.items.length?fbGrid(o.items):'<p class="sgw-note">Nothing on Facebook near you for that right now.</p>')+fbLeftTxt();
+  else h=fbLeftTxt();
+  el.innerHTML=h;
 }
 /* v8.18 (Matt: "i want to see all hunts in goodwill. i don't like the way it is layed out", picked Grouped by hunt): on a
    site with live listings (ShopGoodwill and the LIVE_SRC sites) the all-hunts screen shows each hunt's listings right in
@@ -5550,6 +6172,7 @@ function rRes(){
   var sgm=$('#otp-sgw');if(sgm&&sgm.innerHTML)sgm.hidden=!!r;
   startSync();   /* v7.31 */
   rRq();   /* v7.82 */
+  if(!r&&st.storeFb){rStoreFb();return;}   /* v8.27 */
   if(!r&&st.storeEmpty){rStoreEmpty();return;}   /* v8.20 */
   if(!r&&st.focus){rFocus();return;}
   if(!r){res.hidden=true;res.innerHTML='';return;}
@@ -5691,7 +6314,7 @@ function clearRun(){
      box goes back to the favorite showing, so the box and the panel always agree */
   var runT=(st.run&&st.run.terms&&st.run.terms.length===1)?sgwClean(st.run.terms[0]).toLowerCase():'';
   var typed=q?sgwClean(q.value).toLowerCase():'',lt=runT||typed;
-  clearTimers();st.run=null;st.focus=false;st.storeEmpty=false;st.mode='prowl';
+  clearTimers();st.run=null;st.focus=false;st.storeEmpty=false;st.storeFb=false;st.mode='prowl';
   try{
     var i,hit=-1;
     if(lt)for(i=0;i<sgw.terms.length;i++)if(sgw.terms[i].t.toLowerCase()===lt){hit=i;break}
@@ -5746,6 +6369,7 @@ function dockGo(m){
   /* v6.38: Flock is a tab; every other mode closes it */
   if(m==='flock'){if(flockOpen())flTop();else openFlock();return;}
   closeFlock();
+  if(m!=='store')st.storeFb=false;   /* v8.27 */
   if(m==='prowl'){clearRun();window.scrollTo({top:0,behavior:'smooth'});return;}
   if(m==='store'){storeGo();return;}   /* v8.20 */
   if(m==='one'){if(q.value.trim()){runProwl('one',chips(),[oneId()],oneName())}else{openFocus()}return;}
@@ -6162,7 +6786,9 @@ function sgwCard(it,hunt,bare){
   var m=LIVE_NAME[it.src]||'ShopGoodwill';
   if(typeof it.bids==='number')m+=' · '+esc(String(it.bids))+' bid'+(it.bids===1?'':'s');
   if(it.time_left)m+=' · '+esc(it.time_left)+' left';
+  if(it.src==='facebook'&&it.ships)m+=' · Ships';   /* v8.27 */
   if(it.location)m+=' · '+esc(it.location);   /* v6.65: Facebook finds say where */
+  if(it.src==='facebook'&&typeof it.miles==='number')m+=' · '+esc(String(it.miles))+' mi';
   /* v5.63: worker v21 Jev tags likely reproductions; turning JEV_RESULTS off removes the tag */
   if(it.repro)m+='<br><span class="sgw-repro" title="The title reads like a reproduction, reissue or a lookalike from another maker">Possible reproduction</span>';
   var al=typeof alsoLine==='function'?alsoLine(it.url):'';if(al)m+='<br>'+al;   /* v7.34 */
@@ -6782,7 +7408,7 @@ function relTerms(t){
   for(i=0;i<pool.length;i++)if(lw.some(function(x){return (' '+String(pool[i]).toLowerCase()+' ').indexOf(' '+x+' ')>-1}))add(pool[i]);
   return out;
 }
-function liveEmptyCard(t,fb){   /* fb: unused since v8.08 (the Facebook strip is gone) */
+function liveEmptyCard(t,fb){   /* fb: the Facebook strip is above (v8.26) */
   var links='',i,m,u;
   for(i=0;i<EMPTY_LINKS.length;i++){if(fb&&EMPTY_LINKS[i]==='facebook')continue;m=mb(EMPTY_LINKS[i]);if(!m)continue;   /* v6.65: fb, the Facebook strip is above */try{u=m.u(t)}catch(e){u=''}if(!/^https:\/\//.test(u)&&u.charAt(0)!=='/')continue;links+=(links?' · ':'')+'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(m.n)+'</a>'}
   return '<div class="sgw-empty"><p class="sgw-empty-h">'+(fb?'Nothing on Goodwill or the other live sites yet for':'Nothing live yet for')+' <b>“'+esc(t)+'”</b>.</p>'+
@@ -6809,10 +7435,94 @@ function liveBlock(name,t,c,busy){
   var r=exRows(items,t);   /* v6.72: exact matches first */
   return head+exUpd(r,c)+'</div><div class="sgw-grid">'+r.rows+'</div>';   /* v6.61: worker v91's spare answer */
 }
-/* v8.08 (Matt, 2026-10-28, the security and trust plan: "No session-cookie storage or replay of anyone's account,
-   including Matthew's own"): the morning Facebook sweep through Matt's own account is retired, and with it the
-   Facebook strip (worker v178 retired its route). Facebook stays a link-out search. fbOwnerKey is the owner key. */
+/* v8.08 retired the morning Facebook sweep through Matt's own account (the security and trust plan: "No session-cookie
+   storage or replay of anyone's account"). v8.26 (worker v200, Matt 2026-10-31: Apify, Pro members) brings the strip
+   back: the worker searches Facebook Marketplace logged out through Apify once a day for each Pro member's hunts around
+   their local-pickup ZIP, and GET /fb-finds hands a signed-in Pro member (or the owner key) that hunt's finds for the
+   week. The worker decides Pro; a 401 or 403 shows nothing. A Pro member without a ZIP is told to add one. Links are
+   plain (Facebook has no affiliate program) and open the listing on Facebook. fbOwnerKey is the owner key. */
+var FB={cache:Object.create(null),busy:Object.create(null)},FB_FRESH=30*60000;
 function fbOwnerKey(){try{var k=localStorage.getItem('prowl.owner');return k&&/^[A-Za-z0-9_-]{12,80}$/.test(k)?k:''}catch(e){return ''}}
+function fbKey(t){return cutWords(t,60).toLowerCase()}   /* the worker's fbTerm: cut at a whole word, so a long hunt asks for the key the sweep wrote */
+function fbOn(){return !!fbOwnerKey()||(mailPro()&&!!MAIL.fb)}   /* a member asks only once /alerts/status says Facebook finds are on */
+function fbClean(a){
+  var out=[],i,x,id;
+  if(!Array.isArray(a))return out;
+  for(i=0;i<a.length&&out.length<60;i++){
+    x=a[i];if(!x||typeof x.title!=='string'||!x.title)continue;
+    id=/^https:\/\/www\.facebook\.com\/marketplace\/item\/(\d{5,20})\/?$/.exec(String(x.url||''));if(!id)continue;
+    out.push({title:x.title.slice(0,160),price:typeof x.price==='string'?x.price.slice(0,24):'',url:'https://www.facebook.com/marketplace/item/'+id[1]+'/',
+      image:typeof x.image==='string'&&/^https:\/\/([a-z0-9-]+\.)*fbcdn\.net\//i.test(x.image)?x.image:'',src:'facebook',location:typeof x.location==='string'?x.location.slice(0,60):'',
+      found:/^\d{4}-\d{2}-\d{2}$/.test(String(x.found||''))?String(x.found):''});
+    if(typeof x.miles==='number'&&isFinite(x.miles)&&x.miles>=0&&x.miles<=3000)out[out.length-1].miles=Math.round(x.miles);   /* v8.27: from the member's ZIP */
+    if(x.ships===true)out[out.length-1].ships=true;
+  }
+  return out;
+}
+function fbFetch(t){
+  var k=fbKey(t);
+  if(!k||!fbOn()||typeof fetch!=='function'||FB.busy[k])return;
+  var c=FB.cache[k];if(c&&Date.now()-c.at<FB_FRESH)return;
+  FB.busy[k]=1;
+  fetch(SGW_API+'fb-finds?term='+encodeURIComponent(k),{headers:nrH(),cache:'no-store'}).then(function(r){
+    if(r.status===401||r.status===403)return {swept:false};
+    return r.ok?r.json().then(function(j){j=j||{};return {swept:!!j.updated,nozip:!!(j.nozip&&j.live),pending:!!j.pending&&!j.updated,items:fbClean(j.items),updated:typeof j.updated==='string'?j.updated:'',why:j.why&&typeof j.why==='object'?j.why:null,usa:j.usa===true}}):null;
+  }).then(function(v){
+    FB.busy[k]=0;
+    if(!v){fbKeep(k);return}
+    v.at=Date.now();FB.cache[k]=v;
+    if((v.swept||v.nozip||v.pending)&&fbKey(sgwCurTerm())===k)rSGW();
+  },function(){FB.busy[k]=0;fbKeep(k)});
+}
+/* a failed check is quiet: what was shown stays, and it is asked again in 5 minutes rather than on every draw */
+function fbKeep(k){var o=FB.cache[k];if(!o||!o.swept)o=FB.cache[k]={swept:false};o.at=Date.now()-FB_FRESH+5*60000}
+/* whole days from the sweep to today, on this device's calendar (0 = today); -1 when there is no usable time */
+function fbDays(iso){
+  var t=Date.parse(iso||'');if(!(t>0))return -1;
+  var d=new Date(t),n=new Date(),day=function(x){return new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime()};
+  return Math.max(0,Math.round((day(n)-day(d))/86400000));
+}
+function fbWhen(iso){
+  var dd=fbDays(iso);if(dd<0)return '';
+  if(dd===0){var hr=new Date(Date.parse(iso)).getHours();return 'Updated '+(hr<12?'this morning':hr<17?'this afternoon':'this evening')}
+  return dd===1?'Updated yesterday':'Updated '+dd+' days ago';
+}
+/* the week's finds, today's first; a sweep more than 2 days old is not shown */
+function fbHas(t){var c=FB.cache[fbKey(t)];return !!(c&&c.swept&&c.items.length&&fbDays(c.updated)<=2)}
+function fbBlock(t){
+  var c=FB.cache[fbKey(t)];
+  if(c&&c.nozip)return '<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span></div><p class="sgw-note">Add your local-pickup ZIP in Den \u203a Settings (Prowl Alerts, Only what fits) and Prowl looks for this hunt on Facebook Marketplace near you every day.</p>';
+  if(c&&c.pending&&!c.swept&&fbOn())return '<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span>'+fbMode(t)+'</div>'+fbSaved(t)+'<p class="sgw-note">Facebook checks this hunt soon. Each day Prowl searches Facebook for up to 10 of your hunts, in turn.</p>';   /* v8.27 */
+  if(!c||!c.swept)return '';
+  var dd=fbDays(c.updated);if(dd<0||dd>2)return '';
+  var w=fbWhen(c.updated),head='<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span>'+(w?'<span class="sgw-upd">'+esc(w)+'</span>':'')+fbMode(t)+'</div>'+fbSaved(t);
+  var sday=String(c.updated||'').slice(0,10),fresh=0,rows='',i;
+  for(i=0;i<c.items.length;i++){if(c.items[i].found===sday)fresh++;rows+=sgwCard(c.items[i],t)}
+  var why=rows?'':fbWhyTxt(t,c.why,c.usa);   /* v8.31: an empty strip says why */
+  var note=fresh?'':'<p class="sgw-note">'+(why?esc(why):'Nothing new on Facebook for this hunt '+(dd===0?'today':dd===1?'yesterday':'lately')+(rows?'. Earlier this week:':'.'))+'</p>';
+  return head+note+(rows?'<div class="sgw-grid">'+rows+'</div>':'');
+}
+/* v8.27 (worker v203): a Pro member picks, per hunt, where Facebook looks: near their ZIP (the local-pickup radius;
+   v8.31 / worker v204: pickup only) or all of the USA plus listings that ship (prefs().fbusa, lowercased hunt names, saved with the other email prefs). It
+   takes effect from that hunt's next Facebook turn, so nothing is fetched again. The owner key alone gets no control. */
+function fbUsa(t){return prefs().fbusa.indexOf(String(t||'').toLowerCase())!==-1}
+function fbMode(t){
+  if(!mailPro()||!t)return '';
+  var u=fbUsa(t),b=function(v,on,x){return '<button type="button" class="sgw-fbm-b" data-fbm="'+v+'" data-h="'+esc(t)+'" aria-pressed="'+(on?'true':'false')+'">'+x+'</button>'};
+  return '<span class="sgw-fbm" role="group" aria-label="Where Facebook looks for this hunt">'+b('near',!u,'Near me \u00b7 '+prefs().radius+' mi')+b('usa',u,'All USA')+'</span>';
+}
+function fbSaved(t){return FB.saved===String(t||'').toLowerCase()?'<p class="sgw-note sgw-fbm-ok" role="status">Saved. Facebook searches this hunt that way from its next turn.</p>':''}
+document.addEventListener('click',function(e){
+  var b=e.target&&e.target.closest&&e.target.closest('button[data-fbm]');if(!b||!b.closest('.scout-app-wrapper')||!mailPro())return;
+  var h=String(b.getAttribute('data-h')||'').toLowerCase(),u=b.getAttribute('data-fbm')==='usa',l=prefs().fbusa.slice(),i=l.indexOf(h);
+  if(!h)return;
+  if(u&&i===-1)l.push(h);else if(!u&&i!==-1)l.splice(i,1);else return;
+  prefsSet({fbusa:l});FB.saved=h;rSGW();
+  /* review fix: keep keyboard focus on the choice just made, and let the note go after a few seconds */
+  var nb=document.querySelectorAll('.scout-app-wrapper button[data-fbm="'+(u?'usa':'near')+'"]'),k;
+  for(k=0;k<nb.length;k++)if(String(nb[k].getAttribute('data-h')||'').toLowerCase()===h){try{nb[k].focus()}catch(x){}break}
+  setTimeout(function(){if(FB.saved!==h)return;FB.saved='';var n=document.querySelectorAll('.scout-app-wrapper .sgw-fbm-ok'),j;for(j=0;j<n.length;j++)n[j].parentNode.removeChild(n[j])},6000);
+});
 /* v6.74: the panel shows only the live listings; the full hunt (every marketplace) was a button up in the left
    column, easy to miss under a long list of hunts. It is offered again where the live listings end. */
 function sgwCont(t){
@@ -6829,9 +7539,10 @@ function liveLine(t){
 }
 function sgwBody(){var t=sgwCurTerm();if(t&&sgw.terms.length)huntFetch(t,function(){huntPaint(t)});return (t&&sgw.terms.length?liveLine(t)+compsRow(t)+huntBox(t)+viewSw():'')+sgwBody0(t)+sgwCont(sgw.terms.length?t:'')}   /* v7.07: Best picks for the chosen hunt pill too */
 function sgwBody0(t){
+  if(t)fbFetch(t);   /* v8.26 */
   if(!sgw.terms.length)return '<p class="sgw-note">Type something you hunt into the box above. It is saved to your hunts, locked for Daily, and checked on ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Vinted and Grailed right away.</p>';
   var sm=liveSummary(t);
-  if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return liveEmptyCard(t);   /* v6.33 */
+  if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return fbHas(t)?fbBlock(t)+liveEmptyCard(t,1):liveEmptyCard(t)+fbBlock(t);   /* v6.33; v8.26: Facebook finds first when there are some */
   if(sm.done&&!sm.n&&sm.err1===sm.count)return '<div class="sgw-empty"><p class="sgw-empty-h">Prowl\u2019s live results are not reaching you.</p><p>Check your connection. If you use a content or ad blocker, allow <b>prowl.thebluecloud.workers.dev</b>. More places to look still searches every site directly.</p></div>';
   /* v7.32 (the owner: "MC Escher ... needs to get to the hunt faster"): marketplaces with listings come first, the
      ones with nothing (or still asking) after them, so "Nothing live on ShopGoodwill" no longer sits on top */
@@ -6844,8 +7555,9 @@ function sgwBody0(t){
     if(n||fb){jump.push('<button type="button" class="lv-j" data-lvj="'+jump.length+'">'+esc(name)+(n?' <b>'+n+'</b>':'')+'</button>');html+=liveBlock(name,t,c,busy).replace('<div class="sgw-sub">','<div class="sgw-sub" data-lvb="'+(jump.length-1)+'">')+(fb||'');return}
     if(busy||!c)look.push(name);else if(c.err)errs+=liveBlock(name,t,c,busy);else none.push(name);
   }
-  one('ShopGoodwill',sgw.cache[k],sgw.busy===t,'');
+  one('ShopGoodwill',sgw.cache[k],sgw.busy===t,fbHas(t)?fbBlock(t):'');   /* v8.26: Facebook under Goodwill */
   for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];one(s.name,lv[s.id].cache[k],lvBusy(s.id,t),'')}
+  if(!fbHas(t))html+=fbBlock(t);
   return (jump.length>1?'<nav class="lv-jump" aria-label="Jump to a marketplace">'+jump.join('')+'</nav>':'')+html+errs+
     (look.length||none.length?'<div class="lv-rest">'+(look.length?'<p class="lv-look">'+FLY3+'Looking on '+lvList(look)+'\u2026</p>':'')+
       (none.length?'<p class="lv-none">Nothing live for <b>'+esc(t)+'</b> on '+lvList(none)+' right now. The full hunt below still searches everywhere else.</p>':'')+'</div>':'');
@@ -7059,6 +7771,7 @@ function mailInit(mount){
       if(a==='set'){e.preventDefault();openMailSettings();return}
       if(a==='freq'){prefsSet({freq:b.getAttribute('data-v')});return}
       if(a==='letter'){prefsSet({letter:b.getAttribute('data-v')==='off'?'off':''});return}   /* v7.46 */
+      if(a==='estate'){prefsSet({estate:b.getAttribute('data-v')==='off'?'off':''});return}   /* v8.32 */
       if(a==='letterpeek'){letterPeek();return}
       if(a==='letteropen'){letterOpenSaved(parseInt(b.getAttribute('data-i'),10));return}
       if(a==='slot'){prefsSet({slot:slotOk(b.getAttribute('data-v'))});return}   /* v6.02 */
@@ -7182,8 +7895,10 @@ function prefs(){
   o.zip=/^\d{5}$/.test(String(p.zip||''))?String(p.zip):'';   /* v6.06: local pickup */
   o.radius=PREF_RADII.indexOf(parseInt(p.radius,10))!==-1?parseInt(p.radius,10):50;
   o.local=(p.local||[]).map(function(h){return String(h).toLowerCase()});
+  o.fbusa=(Array.isArray(p.fbusa)?p.fbusa:[]).map(function(h){return String(h).toLowerCase()});   /* v8.27: hunts Facebook searches across the USA */
   o.noai=mGet('aiOff')==='1'?1:0;   /* v6.33 */
   o.letter=p.letter==='off'?'off':'';   /* v7.46: the Sunday letter */
+  o.estate=p.estate==='off'?'off':'';   /* v8.32: estate sales in the daily email (worker v205) */
   return o;
 }
 var PREF_RADII=[25,50,100];
@@ -7250,6 +7965,17 @@ function letterFetch(){
       if(rc&&hd&&c&&!rc.querySelector('.lt-card')){tmp=document.createElement('div');tmp.innerHTML=c;hd.parentNode.insertBefore(tmp.firstChild,hd.nextSibling)}
     })['catch'](function(){});
 }
+/* v8.32: estate sales in the daily email (worker v205; Matt, 2026-10-31: no separate Thursday email). Shown only when the
+   worker says it can go to this member (j.estate: every signed-in member; a free member sees it locked with the Pro
+   link); Pro, and it needs the local-pickup ZIP. Same key as before (prefs.estate), on unless "off". */
+function estSetHtml(p,pro){
+  if(!MAIL.estate)return '';
+  var off=p.estate==='off',h='<div class="mail-sec" id="otp-estSet"><h4>Estate sales in my daily email<small>'+(pro?'Prowl Pro':'\uD83D\uDD12 Prowl Pro')+'</small></h4><div class="mail-seg">';
+  h+='<button type="button" data-mail="estate" data-v="on"'+(off?' aria-pressed="false"':' class="on" aria-pressed="true"')+(pro?'':' disabled')+'>On</button>';
+  h+='<button type="button" data-mail="estate" data-v="off"'+(off?' class="on" aria-pressed="true"':' aria-pressed="false"')+(pro?'':' disabled')+'>Off</button></div>';
+  h+='<p class="mail-fine">'+(!pro?'<a class="sgw-ml" href="'+PRO_URL+'">Prowl Pro</a> adds the estate sales near your ZIP that mention your hunts to your daily Prowl email, as soon as they are posted.':off?'Off: your daily emails carry no estate sales.':p.zip?'New estate sales open in the next 7 days within 25 miles of '+esc(p.zip)+' that mention your hunts, in your daily Prowl email, each linked to its page on EstateSales.net.':'Add your ZIP under Only what fits, and your daily Prowl email brings the new estate sales within 25 miles that mention your hunts.')+'</p>';
+  return h+'</div>';
+}
 function letterSetHtml(p){
   var off=p.letter==='off',sv=letterSaved(),h='<div class="mail-sec" id="otp-letterSet"><h4>Weekly letter</h4><div class="mail-seg">',i;
   h+='<button type="button" data-mail="letter" data-v="on"'+(off?' aria-pressed="false"':' class="on" aria-pressed="true"')+'>On</button>';
@@ -7314,6 +8040,7 @@ function prefsHtml(on,em,n){
   var p=prefs(),pro=mailPro(),act=prefsActive(),hs=mailHunts(),h='',i,k,muted,locked,paused=prefsPaused();
   h+=pncHtml();   /* v6.93: Pounce */
   h+=letterSetHtml(p);   /* v7.46: the weekly letter */
+  h+=estSetHtml(p,pro);   /* v8.32: estate sales in my daily email */
   /* how often */
   h+='<div class="mail-sec"><h4>How often</h4><div class="mail-seg">';
   var fw=MAIL.freeWeekly&&!pro,fq=fw?'weekly':p.freq;   /* v6.05: free = Mondays */
@@ -7345,7 +8072,7 @@ function prefsHtml(on,em,n){
     '<div class="mail-in"><label class="mail-fine" style="margin:0;flex-basis:100%" for="otp-prefSkip">Skip listings whose title has any of these words</label><input id="otp-prefSkip" type="text" data-k="skip" placeholder="reproduction, lot, replica" value="'+esc(p.skip.join(', '))+'"'+(pro?'':' disabled')+'><button type="button" class="b" data-mail="skip"'+(pro?'':' disabled')+'>Set</button></div>'+
     '<div class="mail-in"><label class="mail-fine" style="margin:0;flex-basis:100%" for="otp-prefZip">Local pickup near ZIP code</label><input id="otp-prefZip" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" pattern="[0-9]*" data-k="zip" placeholder="48375" value="'+esc(p.zip)+'"'+(pro?'':' disabled')+'><button type="button" class="b" data-mail="zip"'+(pro?'':' disabled')+'>Set</button></div>'+
     '<div class="mail-seg">'+PREF_RADII.map(function(rd){return '<button type="button" data-mail="radius" data-v="'+rd+'"'+(p.radius===rd?' class="on" aria-pressed="true"':' aria-pressed="false"')+(pro?'':' disabled')+'>'+rd+' mi</button>'}).join('')+'</div>'+
-    '<p class="mail-fine">'+(pro?'Tap <b>Local</b> on a hunt above and its email only carries eBay listings you can pick up within '+p.radius+' miles'+(p.zip?' of '+esc(p.zip):'')+'. Made for wheels, furniture, anything too big to ship. Other sites are skipped for that hunt.':'<a class="sgw-ml" href="'+PRO_URL+'">Prowl Pro</a> adds a price ceiling, skip-words and local pickup (eBay listings near your ZIP, for the big stuff), so the email only carries what you would actually buy.')+'</p>'+
+    '<p class="mail-fine">'+(pro?'Tap <b>Local</b> on a hunt above and its email only carries eBay listings you can pick up within '+p.radius+' miles'+(p.zip?' of '+esc(p.zip):'')+'. Made for wheels, furniture, anything too big to ship. Other sites are skipped for that hunt.'+(MAIL.fb?'</p><p class="mail-fine" id="otp-fbZip">Facebook Marketplace finds on your hunts use this ZIP too: once a day Prowl looks about 25 miles around it.':''):'<a class="sgw-ml" href="'+PRO_URL+'">Prowl Pro</a> adds a price ceiling, skip-words and local pickup (eBay listings near your ZIP, for the big stuff), so the email only carries what you would actually buy.')+'</p>'+
     '</div>';
   if(MAIL.saving)h+='<p class="mail-save" role="status">'+esc(MAIL.saving)+'</p>';
   return h;
@@ -7619,7 +8346,7 @@ function mailStatus(fresh,cb){
       /* v6.04: the membership moved to a new address (same token): follow it once */
       if(j&&j.on===false&&j.moved&&!MAIL.movedHop){MAIL.movedHop=1;var mv=String(j.moved).toLowerCase();mSet('alertEmail',mv);mSet('alertSig','');MAIL.moving='';MAIL.msg='Your Prowl Alerts now go to '+mv+'. This device switched over.';setTimeout(function(){mailStatus(true,cb)},0);return}
       if(j&&j.on){MAIL.moving=j.moving||'';mailStoreLook();}
-      if(j&&j.on){mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;if(typeof j.defHour==='number')MAIL.defHour=j.defHour;MAIL.mail=j.mail==='off'?'off':'on';MAIL.hadPro=!!j.hadPro;MAIL.freeWeekly=!!j.freeWeekly;MAIL.plan=j.plan||null;if(j.prefs&&!MAIL.pending&&!MAIL.saving){MAIL.prefs=j.prefs;setTimeout(prefsTzSync,0)}if(j.hunts&&j.hunts.length!==undefined)mailMerge(j.hunts);MAIL.quarries=j.quarries||{};MAIL.quarryMax=j.quarryMax||1;MAIL.wpush=j.wpush||null;MAIL.phone=j.phone||'';pncSeen(j.quarryMatches);}
+      if(j&&j.on){mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;if(typeof j.defHour==='number')MAIL.defHour=j.defHour;MAIL.mail=j.mail==='off'?'off':'on';MAIL.hadPro=!!j.hadPro;MAIL.freeWeekly=!!j.freeWeekly;MAIL.plan=j.plan||null;if(j.prefs&&!MAIL.pending&&!MAIL.saving){MAIL.prefs=j.prefs;setTimeout(prefsTzSync,0)}if(j.hunts&&j.hunts.length!==undefined)mailMerge(j.hunts);MAIL.quarries=j.quarries||{};MAIL.quarryMax=j.quarryMax||1;MAIL.wpush=j.wpush||null;MAIL.phone=j.phone||'';var fb0=MAIL.fb;MAIL.fb=!!j.fb;if(MAIL.fb&&!fb0)setTimeout(rSGW,0);MAIL.estate=!!j.estate;setTimeout(nrWkTab,0);pncSeen(j.quarryMatches);}
       else if(j&&j.on===false){mSet('alertTok','');mSet('alertSig','');mSet('alertNoAuto','1');sessSet('')}   /* v8.11: signed out elsewhere (Sign out every other device): no store auto sign-in straight back in, as Sign out */
       /* v6.00: this device may push its list only after a real pull merged the
          member's list in; a bad or missing answer leaves sync off until the next status */
@@ -9348,7 +10075,7 @@ function gdPlain(g){
   if(g.glance&&g.glance.length){L.push('');for(i=0;i<g.glance.length;i++)L.push(g.glance[i].label+': '+g.glance[i].value)}
   for(i=0;i<g.sections.length;i++){x=g.sections[i];L.push('',x.h,x.body)}
   if(g.sources.length){L.push('','Sources:');for(i=0;i<g.sources.length;i++)if(gdHttps(g.sources[i].url))L.push(g.sources[i].url)}
-  L.push('','AI research from the web. Check the sources before you buy. Made with Prowl by Owl & Twig Vintage: https://owlandtwigvintage.com/pages/prowl');
+  L.push('','AI research from the web. Check the sources before you buy. Made with Prowl by Owl & Twig Vintage: https://www.owlandtwigvintage.com/pages/prowl');
   return L.join('\n');
 }
 function gdRender(g){
@@ -9902,7 +10629,7 @@ if(qrb&&qrp)qrb.addEventListener('click',function(){
 var panQr=$('#otp-panQr');
 function showQr(){
   var box=$('#otp-qrPanel .qr-box');if(!box)return;
-  var u=shb?shb.getAttribute('href'):'https://owlandtwigvintage.com/pages/prowl';
+  var u=shb?shb.getAttribute('href'):'https://www.owlandtwigvintage.com/pages/prowl';
   openSheet('Show someone Prowl','<div class="qr-panel qr-big">'+box.outerHTML+
     '<p>Have them point their <b>phone camera</b> at it. Prowl opens straight away.</p>'+
     '<p class="qr-name">Or search <b>Prowl by Owl &amp; Twig</b><br>'+esc(u.replace(/^https?:\/\/(www\.)?/,''))+'</p>'+
@@ -11579,12 +12306,15 @@ function nrLeaveTs(day){
 function nrEtas(t,stops){
   var c=nrChain(t,stops),t0=nrLeaveTs(t.day),out={},i,cur,key,legs,mpm;if(!c||!t0||!c.ids.length)return null;
   key=nrPtsQ(c.pts)+(t.loop?'L':'');legs=t.legsKey===key?t.legs:null;mpm=t.route&&t.route.min?nrMiles(t.route)/t.route.min:0.75;
-  function leg(i){return legs?legs[i].min:Math.round(nrKm(c.pts[i],c.pts[i+1])*0.621371*1.25/mpm)}
+  function leg(i){return legs?legs[i].min:nrEstMin(c.pts[i],c.pts[i+1],mpm)}
   cur=t0;
   for(i=0;i<c.ids.length;i++){cur+=leg(i)*60000;out[c.ids[i]]=cur;var s=null;for(var k=0;k<stops.length;k++)if((stops[k]._k||stops[k].id)===c.ids[i])s=stops[k];cur+=(s&&s.stay>0?s.stay:NR_STAY)*60000}
   if(c.end)out._dest=cur+leg(c.ids.length)*60000;
   return {at:out,leave:t0,routed:!!legs,src:t.legsSrc||''};
 }
+/* a leg's minutes without the router: straight-line miles, a quarter more for the road, at mpm miles a minute (45 mph);
+   v8.32: shared with Plan my week */
+function nrEstMin(a,b,mpm){return Math.round(nrKm(a,b)*0.621371*1.25/(mpm||0.75))}
 /* closed when you get there, on a day it opens at all */
 function nrLateAt(p,eta,day){if(!p||!p.hours||!eta)return false;var n=nrNext(p.hours,eta),wd=new Date(eta).getDay();return !!(n&&!n.open&&nrDayHours(p.hours,wd).open)}
 /* Optimize route: the shortest drive through the stops, the start and end kept */
@@ -11937,17 +12667,19 @@ function nrShrink(src,max,q,cb){
 function nrNearestStop(t){var p=NR.pos&&Date.now()-NR.posAt<900000?NR.pos:null,best=null,bd=2,i,s,d;if(!p||!t||!t.stops)return null;for(i=0;i<t.stops.length;i++){s=t.stops[i];if(typeof s.lat!=='number'||typeof s.lng!=='number')continue;d=nrKm(p,s);if(d<bd){bd=d;best=s}}return best}
 /* ---- the screen ---- */
 function nrMode(m){
-  if(m!=='around'&&m!=='trips')m='trip';
-  NR.mode=m;var a=m==='around',T={around:['#otp-nrT1','#otp-nrAround'],trip:['#otp-nrT2','#otp-nrTrip'],trips:['#otp-nrT3','#otp-nrTripsPane']},k,tb,pn;   /* v7.69: a third tab, TRIPS */
+  if(m!=='around'&&m!=='trips'&&m!=='weekend')m='trip';
+  if(m==='weekend'&&!nrWkTab())m='around';   /* v8.32: Estate sales, beside Trips, only where the Sweep is allowed */
+  NR.mode=m;var a=m==='around',T={around:['#otp-nrT1','#otp-nrAround'],trip:['#otp-nrT2','#otp-nrTrip'],trips:['#otp-nrT3','#otp-nrTripsPane'],weekend:['#otp-nrT4','#otp-nrWkPane']},k,tb,pn;   /* v7.69: a third tab, TRIPS; v8.32: a fourth, Estate sales */
   for(k in T){tb=$(T[k][0]);pn=$(T[k][1]);if(tb){tb.classList.toggle('on',k===m);tb.setAttribute('aria-selected',String(k===m))}if(pn)pn.hidden=k!==m}
   if(a){nrFoot(null);nrAroundLoad()}
   else if(m==='trips'){nrFoot(null);nrTripsLoad();nrJoinDraw()}
+  else if(m==='weekend'){nrFoot(null);rWk()}
   else{rNrDays();rNrDetour();rNrVias();nrTripsLoad();nrFoot(NR.view||NR.built);var fi=$('#otp-nrFrom'),pl=atLive();if(fi&&!fi.value&&pl)fi.value=pl.town;rNrFrom();rNrTripL();rNrOpts();rNrRecent()}   /* v7.62 */   /* v7.57: no keyboard until the box is tapped (the owner) */
 }
 function openNear(){
   if(!near||near.classList.contains('on'))return;
   if(den.classList.contains('on'))closeDen();if(dw.classList.contains('on'))closeDw();if(pho&&pho.classList.contains('on'))closePhoto();
-  NR.lf=document.activeElement;near.hidden=false;NR.whereOpen=false;rDenLocal();rNrCats();rAtBar();rNrWhere();atErr('');if(nrInvGet())NR.mode='trips';nrMode(NR.mode);   /* v7.69: an invite waiting opens on TRIPS */
+  NR.lf=document.activeElement;near.hidden=false;NR.whereOpen=false;rDenLocal();rNrCats();rAtBar();rNrWhere();atErr('');nrWkTab();if(NR.wkGo){NR.wkGo=0;NR.mode='weekend'}else if(nrInvGet())NR.mode='trips';nrMode(NR.mode);   /* v8.32: Plan my weekend and the email's plan link open on Estate sales */   /* v7.69: an invite waiting opens on TRIPS */
   requestAnimationFrame(function(){sc.classList.add('on');near.classList.add('on')});
   var c=$('#otp-nearClose');if(c)c.focus();
 }
@@ -11958,6 +12690,7 @@ if(near){
   $('#otp-nrT1').addEventListener('click',function(){nrMode('around')});
   $('#otp-nrT2').addEventListener('click',function(){nrMode('trip')});
   $('#otp-nrT3').addEventListener('click',function(){nrMode('trips')});   /* v7.69 */
+  $('#otp-nrT4').addEventListener('click',function(){nrMode('weekend')});   /* v8.32: Estate sales (the Sweep, Plan my weekend) */
   (function(){   /* v7.69: arriving on an invite link (?trip=<id>.<code>): kept until used, the address tidied, NEAR ME open on TRIPS */
     var mm=/[?&]trip=(t[a-z0-9]{9}\.[0-9a-f]{24})(?:&|$)/.exec(location.search);if(!mm)return;
     nrInvSet(mm[1]);

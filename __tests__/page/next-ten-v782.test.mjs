@@ -169,8 +169,9 @@ test('photo check: the tips and the free-check note fold once a photo is in; Sta
   await tick(30);
   const sec = p.$('#otp-apr');
   assert.ok(!sec.classList.contains('apr-has'));
-  p.win.prowlPhotoFile(new p.win.File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1])], 'a.jpg', { type: 'image/jpeg' })); await tick(40);
-  assert.ok(sec.classList.contains('apr-has'));
+  p.win.prowlPhotoFile(new p.win.File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1])], 'a.jpg', { type: 'image/jpeg' }));
+  /* wait for the photo to load rather than a fixed 40 ms: a slow CI runner took longer (PR #292's build) */
+  assert.ok(await waitFor(() => sec.classList.contains('apr-has'), { timeout: 8000 }));
   assert.ok(PAGE.includes('.scout-app-wrapper .apr.apr-has .apr-tips,.scout-app-wrapper .apr.apr-has .apr-left{display:none}'));
   p.$('#otp-aprTray .apr-clr').click();
   assert.ok(!sec.classList.contains('apr-has'));
@@ -184,16 +185,19 @@ test('photo check: the answer has one main button, Hunt it on Prowl, and the res
   p.$('#otp-aprRun').click();
   const L = await waitFor(() => p.$('#otp-aprOut .apr-links'), { timeout: 8000 });
   const top = [...L.children];
-  assert.equal(top.length, 3, 'the main buttons and More');   /* v8.01: Check with Google Lens is a main button too (Matt) */
-  assert.equal(top[0].textContent, 'Hunt it on Prowl');
+  assert.equal(top.length, 4, 'the main buttons, Save / Share and More');   /* v8.01: Check with Google Lens is a main button too (Matt) */
+  assert.equal(top[0].textContent, 'Hunt this on Prowl');
   assert.ok(top[0].classList.contains('p'));
-  assert.equal(top[1].textContent, 'Check with Google Lens');
-  assert.ok(top[1].classList.contains('p'));
-  assert.equal(top[2].tagName, 'DETAILS');
-  assert.equal(top[2].querySelector('summary').textContent, 'More');
-  assert.equal(top[2].open, false, 'closed until tapped');
-  const more = [...top[2].querySelectorAll('.apr-moreb>*')].map((b) => b.textContent);
-  for (const t of ['★ Add to favorites', 'Share this find', 'Google Images']) assert.ok(more.includes(t), t);
+  /* v8.29 (the owner's mockup): Save (to favorites) and Share (the photo card) in a row under Hunt this on Prowl */
+  assert.ok(top[1].classList.contains('apr-ss'));
+  assert.deepEqual([...top[1].children].map((b) => b.getAttribute('aria-label')), ['Save to your favorite hunts', 'Share this find']);
+  assert.equal(top[2].textContent, 'Check with Google Lens');
+  assert.ok(top[2].classList.contains('p'));
+  assert.equal(top[3].tagName, 'DETAILS');
+  assert.equal(top[3].querySelector('summary').textContent, 'More');
+  assert.equal(top[3].open, false, 'closed until tapped');
+  const more = [...top[3].querySelectorAll('.apr-moreb>*')].map((b) => b.textContent);
+  for (const t of ['Save picture', 'Email this', 'Google Images']) assert.ok(more.includes(t), t);
   await p.close();
 });
 

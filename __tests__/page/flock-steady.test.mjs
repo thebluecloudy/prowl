@@ -56,8 +56,8 @@ test('the Aa button at the top changes the text size, like the one in the Den', 
   const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [] } } });
   await tick(30);
   const top = p.$('#otp-sizeTop'), theme = p.$('#otp-themeBtn');
-  assert.ok(top && top.parentNode === theme.parentNode, 'beside the theme switch');
-  assert.equal(top.nextElementSibling, theme);
+  assert.ok(top && theme, 'both buttons are there');
+  assert.equal(top.parentNode.id, 'otp-barMenu', 'Aa is in the menu (v8.28: the theme switch moved out onto the bar)');
   const wrap = p.$('.scout-app-wrapper');
   top.click();
   assert.equal(wrap.style.zoom, '1.12');

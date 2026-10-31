@@ -157,6 +157,39 @@ list on the page, yet every sale the extractor gave back had no distance or map 
 list by its name wherever it sits in a data block, as the check does. The check's extract now has `fromList`, the
 number of sales that came from that list: it should equal `count`. Lists are kept under `es3:`.
 
+## Estate sales this week (page v8.32, worker v205; Hark's PR #281)
+
+In **NEAR ME › Estate sales**, NEAR ME's fourth tab, right after Trips (`#otp-nrT4`, pane `#otp-nrWkPane`, drawn by
+`rWk`; shown for a signed-in Prowl Pro member (`mailPro()`) or the owner's key (`nrWkSweep`), hidden for free visitors;
+the worker's `GET /weekend` (the route keeps its name) decides Pro itself (`wkWho`: session or `X-Prowl-Email`/`X-Prowl-Tok` member with `sub.pro`,
+the owner key, or everyone while `SALES_PUBLIC=on`; 401 signed out, 403 not Pro), and the page sends `nrH()`), **Estate
+sales this week** lists the estate sales open in the **next 7 days** (today through today+6 in the device's time zone;
+Matt, 2026-10-31: "Estate sales are all week, we can't just look at weekend") within 25 miles of the place typed in the
+tab's box (`#otp-wkIn`, or the phone's position). It moved there from Around you › More ways to look › Estate sales near you (the old Den › Local
+block) on Matt's word (2026-10-30: "it shouldn't be put into den, it needs to be in the new near me section beside
+trips"); that block keeps only its EstateSales.net city list. With four tabs a phone lays them two by two (`.tabs.nr-4`). The page sends the point (2 decimals), its time zone and the Den's own hunts (`h=a|b|c`, sample hunts left
+out) to worker `GET /weekend`; the worker reads EstateSales.net's list near the point and each nearby sale's page, and
+answers `picks` (a hunt's every word is in the sale's title, description or a photo caption: `match {hunt, where}`) and
+`rest`, at most 12, each with `url` (the sale's own page), `city`, `st`, `co`, `dist`, `hours` (already in the device's
+zone) and `standout`. The page shows only links on www.estatesales.net. Nothing is stored on the device.
+
+No separate estate email (Matt, 2026-10-31: "Can this be part of prowl email?"): a Pro member's **daily Prowl email**
+carries an "Estate sales near you" section with the new sales near their local-pickup ZIP that mention a hunt
+(`prefs.estate`, Den › Settings › **Estate sales in my daily email**, shown when `/alerts/status` answers `estate: true`,
+which it does for every member; a free member sees it locked with the Pro link). Its "N more estate sales near you this
+week" line links `?wk=1&wkzip=<ZIP>`, which opens NEAR ME › Estate sales once the Den knows the member is Pro and
+sweeps around that ZIP (or the saved one) once (NEAR ME as it is otherwise). Matt's EstateSales.net permission covers the map JSON and each sale's page (2026-10-31).
+
+**Plan my week** (same versions): "Plan my week" under the Sweep results, or the daily email's button
+(`?wkplan=<ids>&wkp=<picks>&wkzip=ZIP&wkx&wks`, signed by the worker, read at load and then taken out of the address bar;
+the page asks `GET /weekend/plan` for the sales) opens the planner in the same NEAR ME › Estate sales tab, in place of
+the Sweep (`#otp-wpHost`; "‹ This week's sales" returns to it for a Pro member or the owner). The email link opens NEAR ME on that tab
+(`nrWkShow`) and shows the tab for that visit even for a free visitor (the link works for anyone until the 7 days end). `wpSplit` splits the checked sales
+into days (each sale on its first open day, else its next open day when that one is full or its hours do not fit; 5 a day; 45 min a stop; never before opening or within 30 min of closing), days in date order, each day
+is ordered with Road Trip's `/order` (kept in the split's order when the optimizer's would break a sale's hours), and
+each day has one Google Maps and one Apple Maps link and Rebuild from here. Address-pending sales stay off the route.
+Constants `WP_STAY`, `WP_CAP`, `WP_LAST_IN` (v8.32 dropped `WP_DAY_PREF`, the old Saturday-Sunday-Friday order). Nothing is stored on the device.
+
 ## Main stylesheet on the worker (page v6.92, worker v111)
 
 At v6.91 the page body sent to Shopify was 886 bytes under its 512 KB cap. The main stylesheet (about 141 KB, no logic)

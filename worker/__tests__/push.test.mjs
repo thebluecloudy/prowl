@@ -236,5 +236,5 @@ test("wired in: the routes, status, delete and address change", () => {
   assert.match(indexFn("alPurge"), /await pushPurge\(env, email\)/);
   assert.match(indexFn("alMoveConfirm"), /await pushMove\(env, from, to\)/);
   assert.match(indexFn("pushRoute"), /sub\.phone = "prowl"/, "subscribing makes Prowl's own alerts the default");
-  assert.match(INDEX, /const WORKER_VERSION = "v(11[4-9]|1[2-9]\d|[2-9]\d\d)";/);
+  assert.ok(Number(/const WORKER_VERSION = "v(\d+)";/.exec(INDEX)[1]) >= 114, "v114 or later");   /* v200: a number test, so v200 and up pass */
 });
