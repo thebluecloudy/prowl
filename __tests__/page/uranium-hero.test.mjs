@@ -24,8 +24,10 @@ test("the scene's addresses are the worker's art, versioned: animated, and its f
     assert.ok(u.pathname.startsWith('/art/') && Object.hasOwn(ART, u.pathname.slice(5)), 'the worker has ' + u.pathname);
     assert.match(u.search, /^\?v=\d+$/, 'a new drawing is a new address (the worker caches a year)');
   }
-  /* v8.24: wide sources too (Cockpit's blood moon has a 1600 px photo for screens over 480 px); Uranium's art is the same everywhere */
-  assert.match(PAGE, /<picture><source media="\(hover:none\) and \(min-width:481px\)" data-art="fireflies-still\.svg" data-art-ck="bloodmoon\.webp"><source media="\(hover:none\)" data-art="fireflies-still\.svg" data-art-ck="bloodmoon-sm\.webp"><source media="\(min-width:481px\)" data-art="fireflies\.svg" data-art-ck="bloodmoon\.webp"><img class="hm-scene" alt="" decoding="async" loading="lazy" [^>]*data-art="fireflies\.svg" data-art-ck="bloodmoon-sm\.webp"><\/picture>/,   /* v8.05: Cockpit's own */
+  /* v8.25: one <source> only (Shopify rewrites a <picture> with several, which failed v8.24's deploy check); Cockpit's two
+     photo widths are a srcset list the browser chooses from */
+  assert.equal((PAGE.match(/<picture>[\s\S]*?<\/picture>/)[0].match(/<source\b/g) || []).length, 1, 'one source, as Shopify keeps it');
+  assert.match(PAGE, /<picture><source media="\(hover:none\)" sizes="\(min-width:481px\) 560px, 100vw" data-art="fireflies-still\.svg" data-art-ck="bloodmoon-sm\.webp 800w, bloodmoon\.webp 1600w"><img class="hm-scene" alt="" decoding="async" loading="lazy" [^>]*sizes="\(min-width:481px\) 560px, 100vw" data-art="fireflies\.svg" data-art-ck="bloodmoon-sm\.webp 800w, bloodmoon\.webp 1600w"><\/picture>/,
     'phones get the still; lazy, so reduced motion (where it is hidden) never fetches it');
 });
 
@@ -45,14 +47,18 @@ test('the scene loads only in Uranium: at once when Uranium is saved, or when th
   btn.click();   /* Uranium */
   assert.equal(p.doc.documentElement.getAttribute('data-theme'), 'uranium');
   assert.equal(scene(p).getAttribute('src'), HERO);
-  btn.click();   /* v8.05: Cockpit has its own scene (v8.24: the blood moon photo) */
+  btn.click();   /* v8.05: Cockpit has its own scene (v8.25: the blood moon photo, 800 or 1600 px) */
+  const MOON = BASE + 'bloodmoon-sm.webp' + V + ' 800w, ' + BASE + 'bloodmoon.webp' + V + ' 1600w';
   assert.equal(scene(p).getAttribute('src'), BASE + 'bloodmoon-sm.webp' + V);
-  assert.equal(p.$('.heromark source').getAttribute('srcset'), BASE + 'bloodmoon.webp' + V);
+  assert.equal(scene(p).getAttribute('srcset'), MOON);
+  assert.equal(p.$('.heromark source').getAttribute('srcset'), MOON);
   assert.equal(p.$('.heromark').classList.contains('has-scene'), false, 'the mark shows until the red scene arrives');
   btn.click(); btn.click(); btn.click();   /* Light, Blue hour, Midnight */
   assert.equal(scene(p).getAttribute('src'), BASE + 'bloodmoon-sm.webp' + V, 'left as it was outside the two');
   btn.click();   /* Uranium again */
   assert.equal(scene(p).getAttribute('src'), HERO, 'back to the fireflies');
+  assert.equal(scene(p).getAttribute('srcset'), null, 'no photo list left over from Cockpit');
+  assert.equal(p.$('.heromark source').getAttribute('srcset'), STILL);
   await p.close();
 });
 

@@ -1061,7 +1061,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-head b{font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.015em}
 .scout-app-wrapper .sgw-live{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:800;letter-spacing:.06em;color:var(--suc);text-transform:uppercase}
 .scout-app-wrapper .sgw-live:before{content:'';width:7px;height:7px;border-radius:50%;background:var(--suc);animation:otpPulse 1.6s ease-in-out infinite}
-/* v6.65: the Facebook strip's head: the morning sweep, not live, so no pulse (v8.25: back, through Apify) */
+/* v6.65: the Facebook strip's head: the morning sweep, not live, so no pulse (v8.26: back, through Apify) */
 .scout-app-wrapper .sgw-fbh{font-size:12.5px;font-weight:800;letter-spacing:.06em;color:var(--i2);text-transform:uppercase}
 @keyframes otpPulse{50%{opacity:.35}}
 .scout-app-wrapper .sgw-upd{margin-left:auto}
@@ -2669,7 +2669,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 
   <div class="heromark">
     <img class="hm-mark" src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Cdefs%3E%3CradialGradient%20id='pmSky'%20cx='50%25'%20cy='62%25'%20r='75%25'%3E%3Cstop%20offset='0'%20stop-color='%23123a2a'/%3E%3Cstop%20offset='.45'%20stop-color='%230b1a2e'/%3E%3Cstop%20offset='1'%20stop-color='%23050816'/%3E%3C/radialGradient%3E%3CradialGradient%20id='pmBloom'%20cx='50%25'%20cy='50%25'%20r='50%25'%3E%3Cstop%20offset='0'%20stop-color='%23b8ff9a'%20stop-opacity='.95'/%3E%3Cstop%20offset='.18'%20stop-color='%2339ff14'%20stop-opacity='.6'/%3E%3Cstop%20offset='.45'%20stop-color='%2339ff14'%20stop-opacity='.32'/%3E%3Cstop%20offset='.75'%20stop-color='%231aff8c'%20stop-opacity='.12'/%3E%3Cstop%20offset='1'%20stop-color='%231aff8c'%20stop-opacity='0'/%3E%3C/radialGradient%3E%3CradialGradient%20id='pmPool'%20cx='50%25'%20cy='50%25'%20r='50%25'%3E%3Cstop%20offset='0'%20stop-color='%237dff4f'%20stop-opacity='.7'/%3E%3Cstop%20offset='.5'%20stop-color='%2339ff14'%20stop-opacity='.2'/%3E%3Cstop%20offset='1'%20stop-color='%2339ff14'%20stop-opacity='0'/%3E%3C/radialGradient%3E%3CradialGradient%20id='pmCap'%20cx='45%25'%20cy='30%25'%20r='75%25'%3E%3Cstop%20offset='0'%20stop-color='%23ffffff'/%3E%3Cstop%20offset='.22'%20stop-color='%23d4ffb8'/%3E%3Cstop%20offset='.55'%20stop-color='%235dff2e'/%3E%3Cstop%20offset='1'%20stop-color='%232bd60f'/%3E%3C/radialGradient%3E%3ClinearGradient%20id='pmStem'%20x1='0'%20x2='1'%3E%3Cstop%20offset='0'%20stop-color='%235df2b4'/%3E%3Cstop%20offset='.5'%20stop-color='%23f0fff8'/%3E%3Cstop%20offset='1'%20stop-color='%235df2b4'/%3E%3C/linearGradient%3E%3CradialGradient%20id='pmFly'%20cx='50%25'%20cy='50%25'%20r='50%25'%3E%3Cstop%20offset='0'%20stop-color='%23f4ffd0'/%3E%3Cstop%20offset='.35'%20stop-color='%23d4ff6a'%20stop-opacity='.7'/%3E%3Cstop%20offset='1'%20stop-color='%23d4ff6a'%20stop-opacity='0'/%3E%3C/radialGradient%3E%3CclipPath%20id='pmClip'%3E%3Crect%20width='100'%20height='100'%20rx='22'/%3E%3C/clipPath%3E%3C/defs%3E%3Cg%20clip-path='url(%23pmClip)'%3E%3Crect%20width='100'%20height='100'%20fill='url(%23pmSky)'/%3E%3Cg%20fill='%23cfe9ff'%20opacity='.7'%3E%3Ccircle%20cx='18'%20cy='9'%20r='.6'/%3E%3Ccircle%20cx='42'%20cy='6'%20r='.5'/%3E%3Ccircle%20cx='66'%20cy='10'%20r='.6'/%3E%3Ccircle%20cx='83'%20cy='5'%20r='.5'/%3E%3Ccircle%20cx='8'%20cy='20'%20r='.4'/%3E%3C/g%3E%3Ccircle%20cx='84'%20cy='15'%20r='5'%20fill='%23e8f3ff'%20opacity='.9'/%3E%3Ccircle%20cx='86.2'%20cy='13.6'%20r='4.4'%20fill='%23081226'/%3E%3Cg%20fill='%2315384a'%3E%3Cpath%20d='M-2%2078%20L6%2034%20L14%2078%20Z'/%3E%3Cpath%20d='M12%2080%20L22%2028%20L32%2080%20Z'/%3E%3Cpath%20d='M70%2080%20L79%2030%20L88%2080%20Z'/%3E%3Cpath%20d='M84%2078%20L93%2038%20L102%2078%20Z'/%3E%3C/g%3E%3Cg%20fill='%23081522'%3E%3Cpath%20d='M-6%20100%20L4%2022%20L16%20100%20Z'/%3E%3Cpath%20d='M84%20100%20L96%2018%20L108%20100%20Z'/%3E%3C/g%3E%3Ccircle%20cx='50'%20cy='50'%20r='62'%20fill='url(%23pmBloom)'/%3E%3Ccircle%20cx='50'%20cy='44'%20r='44'%20fill='url(%23pmBloom)'/%3E%3Cpath%20d='M0%2084%20Q50%2076%20100%2084%20L100%20100%20L0%20100%20Z'%20fill='%23071a14'/%3E%3Cellipse%20cx='50'%20cy='86'%20rx='44'%20ry='8'%20fill='url(%23pmPool)'/%3E%3Cg%20stroke='%232ee86a'%20stroke-width='1'%20stroke-linecap='round'%20fill='none'%20opacity='.8'%3E%3Cpath%20d='M28%2086%20l-2%20-5%20M30%2086%20l0%20-6%20M32%2086%20l2%20-4'/%3E%3Cpath%20d='M66%2086%20l-2%20-4%20M68%2086%20l0%20-6%20M70%2086%20l2%20-5'/%3E%3C/g%3E%3Cellipse%20cx='76'%20cy='80'%20rx='9'%20ry='6'%20fill='url(%23pmBloom)'/%3E%3Cpath%20d='M74.6%2077%20L74%2084%20L78%2084%20L77.4%2077%20Z'%20fill='url(%23pmStem)'/%3E%3Cpath%20d='M70%2078%20Q70%2071%2076%2071%20Q82%2071%2082%2078%20Z'%20fill='url(%23pmCap)'/%3E%3Cpath%20d='M42%2058%20Q40%2076%2038.5%2084%20Q38.5%2088%2050%2088%20Q61.5%2088%2061.5%2084%20Q60%2076%2058%2058%20Z'%20fill='url(%23pmStem)'/%3E%3Cpath%20d='M14%2056%20Q14%2022%2050%2020%20Q86%2022%2086%2056%20Q86%2061%2079%2061%20L21%2061%20Q14%2061%2014%2056%20Z'%20fill='url(%23pmCap)'/%3E%3Cpath%20d='M21%2061%20Q50%2069%2079%2061%20Z'%20fill='%2322b84a'/%3E%3Cpath%20d='M28%2062.5%20Q50%2068%2072%2062.5'%20fill='none'%20stroke='%23e6fff2'%20stroke-width='1.3'%20stroke-linecap='round'%20opacity='.85'/%3E%3Cpath%20d='M26%2038%20Q35%2026%2049%2025'%20fill='none'%20stroke='%23fff'%20stroke-width='2.6'%20stroke-linecap='round'%20opacity='.7'/%3E%3Cg%20fill='%230a1a3a'%20opacity='.78'%3E%3Ccircle%20cx='35'%20cy='45'%20r='5'/%3E%3Ccircle%20cx='61'%20cy='34'%20r='6'/%3E%3Ccircle%20cx='72'%20cy='50'%20r='3.6'/%3E%3Ccircle%20cx='50'%20cy='51'%20r='2.9'/%3E%3C/g%3E%3Cg%3E%3Ccircle%20cx='20'%20cy='66'%20r='3.2'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='20'%20cy='66'%20r='.8'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='82'%20cy='58'%20r='2.8'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='82'%20cy='58'%20r='.7'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='30'%20cy='16'%20r='2.4'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='30'%20cy='16'%20r='.6'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='66'%20cy='14'%20r='2'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='66'%20cy='14'%20r='.5'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='12'%20cy='44'%20r='1.8'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='90'%20cy='40'%20r='1.8'%20fill='url(%23pmFly)'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E" alt="" decoding="async">
-    <picture><source media="(hover:none) and (min-width:481px)" data-art="fireflies-still.svg" data-art-ck="bloodmoon.webp"><source media="(hover:none)" data-art="fireflies-still.svg" data-art-ck="bloodmoon-sm.webp"><source media="(min-width:481px)" data-art="fireflies.svg" data-art-ck="bloodmoon.webp"><img class="hm-scene" alt="" decoding="async" loading="lazy" width="300" height="120" data-art="fireflies.svg" data-art-ck="bloodmoon-sm.webp"></picture>
+    <picture><source media="(hover:none)" sizes="(min-width:481px) 560px, 100vw" data-art="fireflies-still.svg" data-art-ck="bloodmoon-sm.webp 800w, bloodmoon.webp 1600w"><img class="hm-scene" alt="" decoding="async" loading="lazy" width="300" height="120" sizes="(min-width:481px) 560px, 100vw" data-art="fireflies.svg" data-art-ck="bloodmoon-sm.webp 800w, bloodmoon.webp 1600w"></picture>
   </div>
   <p class="eb" id="otp-verEb"></p>   <!-- v8.06: under the scene, so the panther can sit in it -->
   <div class="proban" id="otp-proBan" hidden></div>
@@ -3919,7 +3919,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.25';
+var PROWL_VERSION='v8.26';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -3945,15 +3945,23 @@ var THEME_LABEL={light:'Light',dark:'Blue hour',midnight:'Midnight',uranium:'Ura
    fetched), and if it cannot load. HERO_V changes with the drawing (the worker caches it a year). */
 var HERO_ART='https://prowl.thebluecloud.workers.dev/art/',HERO_V='?v=1';
 /* v8.05 (worker v177): Cockpit has its own scene, a red glowworm cave (data-art-ck); switching between the two swaps it */
+/* v8.25: one <source> again (Shopify rewrites a <picture> with several and v8.24's deploy check failed), so the blood moon's
+   two widths are a srcset list: "name 800w, name 1600w" becomes worker addresses with the same descriptors */
+function heroSet(v){
+  var p=String(v).split(','),o=[],i,w;
+  for(i=0;i<p.length;i++){w=p[i].replace(/^\s+|\s+$/g,'').split(/\s+/);if(w[0])o.push(HERO_ART+w[0]+HERO_V+(w[1]?' '+w[1]:''))}
+  return o.join(', ');
+}
 function heroScene(t){
-  var hm=document.querySelector('.scout-app-wrapper .heromark'),img=hm&&hm.querySelector('.hm-scene'),srcs=hm?hm.querySelectorAll('source'):[],i;
-  var k=t==='cockpit'?'data-art-ck':'data-art';
-  if(!img||!img.getAttribute(k)||img.getAttribute('src')===HERO_ART+img.getAttribute(k)+HERO_V)return;
+  var hm=document.querySelector('.scout-app-wrapper .heromark'),img=hm&&hm.querySelector('.hm-scene'),src=hm&&hm.querySelector('source');
+  var k=t==='cockpit'?'data-art-ck':'data-art',v=img&&img.getAttribute(k),set=v?heroSet(v):'',first=set.split(' ')[0],multi=set.indexOf(' ')>-1;
+  if(!img||!v||img.getAttribute('src')===first)return;
   hm.classList.remove('has-scene');
   img.onload=function(){hm.classList.add('has-scene')};
   img.onerror=function(){hm.classList.remove('has-scene')};
-  for(i=0;i<srcs.length;i++)if(srcs[i].getAttribute(k))srcs[i].setAttribute('srcset',HERO_ART+srcs[i].getAttribute(k)+HERO_V);   /* v8.24: every source (wide and phone) */
-  img.setAttribute('src',HERO_ART+img.getAttribute(k)+HERO_V);
+  if(src&&src.getAttribute(k))src.setAttribute('srcset',heroSet(src.getAttribute(k)));
+  if(multi)img.setAttribute('srcset',set);else img.removeAttribute('srcset');   /* a plain drawing: no srcset left over from Cockpit */
+  img.setAttribute('src',first);
 }
 function applyTheme(t){
   if(THEMES.indexOf(t)===-1)t='light';
@@ -6775,7 +6783,7 @@ function relTerms(t){
   for(i=0;i<pool.length;i++)if(lw.some(function(x){return (' '+String(pool[i]).toLowerCase()+' ').indexOf(' '+x+' ')>-1}))add(pool[i]);
   return out;
 }
-function liveEmptyCard(t,fb){   /* fb: the Facebook strip is above (v8.25) */
+function liveEmptyCard(t,fb){   /* fb: the Facebook strip is above (v8.26) */
   var links='',i,m,u;
   for(i=0;i<EMPTY_LINKS.length;i++){if(fb&&EMPTY_LINKS[i]==='facebook')continue;m=mb(EMPTY_LINKS[i]);if(!m)continue;   /* v6.65: fb, the Facebook strip is above */try{u=m.u(t)}catch(e){u=''}if(!/^https:\/\//.test(u)&&u.charAt(0)!=='/')continue;links+=(links?' · ':'')+'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(m.n)+'</a>'}
   return '<div class="sgw-empty"><p class="sgw-empty-h">'+(fb?'Nothing on Goodwill or the other live sites yet for':'Nothing live yet for')+' <b>“'+esc(t)+'”</b>.</p>'+
@@ -6803,7 +6811,7 @@ function liveBlock(name,t,c,busy){
   return head+exUpd(r,c)+'</div><div class="sgw-grid">'+r.rows+'</div>';   /* v6.61: worker v91's spare answer */
 }
 /* v8.08 retired the morning Facebook sweep through Matt's own account (the security and trust plan: "No session-cookie
-   storage or replay of anyone's account"). v8.25 (worker v200, Matt 2026-10-31: Apify, Pro members) brings the strip
+   storage or replay of anyone's account"). v8.26 (worker v200, Matt 2026-10-31: Apify, Pro members) brings the strip
    back: the worker searches Facebook Marketplace logged out through Apify once a day for each Pro member's hunts around
    their local-pickup ZIP, and GET /fb-finds hands a signed-in Pro member (or the owner key) that hunt's finds for the
    week. The worker decides Pro; a 401 or 403 shows nothing. A Pro member without a ZIP is told to add one. Links are
@@ -6881,10 +6889,10 @@ function liveLine(t){
 }
 function sgwBody(){var t=sgwCurTerm();if(t&&sgw.terms.length)huntFetch(t,function(){huntPaint(t)});return (t&&sgw.terms.length?liveLine(t)+compsRow(t)+huntBox(t)+viewSw():'')+sgwBody0(t)+sgwCont(sgw.terms.length?t:'')}   /* v7.07: Best picks for the chosen hunt pill too */
 function sgwBody0(t){
-  if(t)fbFetch(t);   /* v8.25 */
+  if(t)fbFetch(t);   /* v8.26 */
   if(!sgw.terms.length)return '<p class="sgw-note">Type something you hunt into the box above. It is saved to your hunts, locked for Daily, and checked on ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Vinted and Grailed right away.</p>';
   var sm=liveSummary(t);
-  if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return fbHas(t)?fbBlock(t)+liveEmptyCard(t,1):liveEmptyCard(t)+fbBlock(t);   /* v6.33; v8.25: Facebook finds first when there are some */
+  if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return fbHas(t)?fbBlock(t)+liveEmptyCard(t,1):liveEmptyCard(t)+fbBlock(t);   /* v6.33; v8.26: Facebook finds first when there are some */
   if(sm.done&&!sm.n&&sm.err1===sm.count)return '<div class="sgw-empty"><p class="sgw-empty-h">Prowl\u2019s live results are not reaching you.</p><p>Check your connection. If you use a content or ad blocker, allow <b>prowl.thebluecloud.workers.dev</b>. More places to look still searches every site directly.</p></div>';
   /* v7.32 (the owner: "MC Escher ... needs to get to the hunt faster"): marketplaces with listings come first, the
      ones with nothing (or still asking) after them, so "Nothing live on ShopGoodwill" no longer sits on top */
@@ -6897,7 +6905,7 @@ function sgwBody0(t){
     if(n||fb){jump.push('<button type="button" class="lv-j" data-lvj="'+jump.length+'">'+esc(name)+(n?' <b>'+n+'</b>':'')+'</button>');html+=liveBlock(name,t,c,busy).replace('<div class="sgw-sub">','<div class="sgw-sub" data-lvb="'+(jump.length-1)+'">')+(fb||'');return}
     if(busy||!c)look.push(name);else if(c.err)errs+=liveBlock(name,t,c,busy);else none.push(name);
   }
-  one('ShopGoodwill',sgw.cache[k],sgw.busy===t,fbHas(t)?fbBlock(t):'');   /* v8.25: Facebook under Goodwill */
+  one('ShopGoodwill',sgw.cache[k],sgw.busy===t,fbHas(t)?fbBlock(t):'');   /* v8.26: Facebook under Goodwill */
   for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];one(s.name,lv[s.id].cache[k],lvBusy(s.id,t),'')}
   if(!fbHas(t))html+=fbBlock(t);
   return (jump.length>1?'<nav class="lv-jump" aria-label="Jump to a marketplace">'+jump.join('')+'</nav>':'')+html+errs+

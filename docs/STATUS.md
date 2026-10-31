@@ -1,17 +1,17 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.25 / v200).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.26 / v200).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.25** | 375,572 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.26** | 375,639 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v200** | |
 
 Recently shipped, newest first:
 
-- **v8.25 / v200: Facebook Marketplace finds again, through Apify, for Pro members** (Matt, 2026-10-31: use Apify, he
+- **v8.26 / v200: Facebook Marketplace finds again, through Apify, for Pro members** (Matt, 2026-10-31: use Apify, he
   set the secret `APIFY_TOKEN`; Pro members get it; a hard cap of $1 a day). The v94-v177 sweep ran through Matt's own
   account and was retired in v178; this one never logs in and never sends a cookie (`worker/fb.js`).
   - **How:** Apify's actor `curious_coder~facebook-marketplace` (`APIFY_FB_ACTOR`, env `FB_ACTOR` overrides), one
@@ -47,12 +47,21 @@ Recently shipped, newest first:
   - **Admin:** Diagnose tab, **Facebook test** (built once there, so the Overview's minute redraw cannot strand a running
     test): a hunt and a ZIP, one Apify call now (counts against the cap,
     works while FB_LIVE is off), shows the listings (title, price, town, link), the count, the cost and today's spend.
-  - Privacy section updated. Tests: `worker/__tests__/fb-apify-v200.test.mjs`, `__tests__/page/fb-strip-v825.test.mjs`;
+  - Privacy section updated. Tests: `worker/__tests__/fb-apify-v200.test.mjs`, `__tests__/page/fb-strip-v826.test.mjs`;
     `worker/__tests__/fb-admin-v200.test.mjs`; `fb-retired.test.mjs` and `fb-retired-v808.test.mjs` now assert no
     session cookies; `spend.test.mjs` scans fb.js. A review pass fixed: the cap reserved before the call (overlap, a
     killed run), `maxTotalChargeUsd`, no Caps = no call, FB_LIVE off asks nothing, Google errors not kept as misses,
     geocoding in the run's budget, the admin test's stale box, the page's key for long hunts.
-    Numbered v8.25 / v200 because v8.23 / v197 were overtaken while it waited (v8.24 / v199 shipped first).
+    Numbered v8.26 / v200 because v8.23 / v197 were overtaken while it waited (v8.24 / v199 and v8.25 shipped first).
+- **v8.25: the blood moon header goes live.**
+  - **What went wrong:** v8.24's page deploy failed its md5 check, and the workflow put the v8.21 page back. The header's
+    `<picture>` had three `<source>` tags, and Shopify rewrote that markup (it added a `</source>`).
+  - **The fix:** one `<source>` again, the shape that has always survived. The photo's two widths are a `srcset` list
+    (`bloodmoon-sm.webp 800w, bloodmoon.webp 1600w`, `sizes="(min-width:481px) 560px, 100vw"`), so the browser picks
+    the size.
+  - **Code:** `heroSet` turns that list into worker addresses. `heroScene` sets the img's `srcset` for Cockpit and
+    removes it for a plain drawing.
+  - **Guard:** `__tests__/page/uranium-hero.test.mjs` asserts there is exactly one `<source>`.
 - **v8.24 / v199: Cockpit's header is a blood moon** (Matt, 2026-10-31: "fix the mushroom and panther illustration,
   make it look more professional", then his blood moon photo).
   - **What was wrong:**
@@ -1814,7 +1823,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.26, worker v201** (Hark's open PR #281 holds page v8.22 and worker v198). Claim one here when you start.
+Next free numbers: **page v8.27, worker v201** (Hark's open PR #281 holds page v8.22 and worker v198). Claim one here when you start.
 
 ## What's next
 
