@@ -346,6 +346,25 @@ fieldset{border:0;padding:0;margin:0;min-width:0}
 .more{margin-top:10px}
 .fbt{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.fbt input{flex:1 1 180px;min-width:0}.fbt input#fbt-zip{flex:0 1 110px}
 .fbt-img{display:block;width:56px;height:56px;object-fit:cover;border-radius:6px;background:#0002}   /* v202 */
+.fbl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}   /* v208: Feedback */
+.fbe{border:1.5px solid var(--hair2);border-radius:12px;padding:12px 14px;background:var(--card);display:flex;flex-direction:column;gap:8px;min-width:0}
+.fbh{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.fbs{color:#c98a00;font-size:17px;letter-spacing:1px}
+.fbt2 h4{font-size:13px;color:var(--mu);font-weight:650;margin:0 0 2px}
+.fbt2 p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.fba{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.nws{margin-bottom:12px}.nws dd{font-size:17px}
+.nwbar{height:10px;border-radius:99px;background:var(--chip);overflow:hidden;margin:4px 0 6px}
+.nwbar i{display:block;height:100%;background:var(--ac)}
+.nwf{margin:14px 0}.nwf textarea{width:100%;min-height:72px;font:inherit;padding:9px 11px;border-radius:10px;border:2px solid var(--hair2);background:var(--card);color:var(--ink)}
+.nwtools{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:16px 0 8px}.nwtools h3{font-size:17px;margin-right:auto}
+.nwframe{border:1.5px solid var(--hair2);border-radius:12px;overflow:hidden;background:#f6f1e8;max-width:390px;margin:0 auto}
+.nwframe.wide{max-width:none}
+.nwframe iframe{display:block;width:100%;height:1700px;border:0;background:#f6f1e8}
+.nwacts{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-top:14px}
+.nwconf{margin-top:12px;padding:12px 14px;border:2px solid var(--ac);border-radius:12px;background:var(--card2)}
+.nwconf h3{font-size:16px;margin:0 0 6px}.nwconf p{margin:0;color:var(--ink2)}
+.nwbar-0{width:0%}.nwbar-1{width:1%}.nwbar-2{width:2%}.nwbar-3{width:3%}.nwbar-4{width:4%}.nwbar-5{width:5%}.nwbar-6{width:6%}.nwbar-7{width:7%}.nwbar-8{width:8%}.nwbar-9{width:9%}.nwbar-10{width:10%}.nwbar-11{width:11%}.nwbar-12{width:12%}.nwbar-13{width:13%}.nwbar-14{width:14%}.nwbar-15{width:15%}.nwbar-16{width:16%}.nwbar-17{width:17%}.nwbar-18{width:18%}.nwbar-19{width:19%}.nwbar-20{width:20%}.nwbar-21{width:21%}.nwbar-22{width:22%}.nwbar-23{width:23%}.nwbar-24{width:24%}.nwbar-25{width:25%}.nwbar-26{width:26%}.nwbar-27{width:27%}.nwbar-28{width:28%}.nwbar-29{width:29%}.nwbar-30{width:30%}.nwbar-31{width:31%}.nwbar-32{width:32%}.nwbar-33{width:33%}.nwbar-34{width:34%}.nwbar-35{width:35%}.nwbar-36{width:36%}.nwbar-37{width:37%}.nwbar-38{width:38%}.nwbar-39{width:39%}.nwbar-40{width:40%}.nwbar-41{width:41%}.nwbar-42{width:42%}.nwbar-43{width:43%}.nwbar-44{width:44%}.nwbar-45{width:45%}.nwbar-46{width:46%}.nwbar-47{width:47%}.nwbar-48{width:48%}.nwbar-49{width:49%}.nwbar-50{width:50%}.nwbar-51{width:51%}.nwbar-52{width:52%}.nwbar-53{width:53%}.nwbar-54{width:54%}.nwbar-55{width:55%}.nwbar-56{width:56%}.nwbar-57{width:57%}.nwbar-58{width:58%}.nwbar-59{width:59%}.nwbar-60{width:60%}.nwbar-61{width:61%}.nwbar-62{width:62%}.nwbar-63{width:63%}.nwbar-64{width:64%}.nwbar-65{width:65%}.nwbar-66{width:66%}.nwbar-67{width:67%}.nwbar-68{width:68%}.nwbar-69{width:69%}.nwbar-70{width:70%}.nwbar-71{width:71%}.nwbar-72{width:72%}.nwbar-73{width:73%}.nwbar-74{width:74%}.nwbar-75{width:75%}.nwbar-76{width:76%}.nwbar-77{width:77%}.nwbar-78{width:78%}.nwbar-79{width:79%}.nwbar-80{width:80%}.nwbar-81{width:81%}.nwbar-82{width:82%}.nwbar-83{width:83%}.nwbar-84{width:84%}.nwbar-85{width:85%}.nwbar-86{width:86%}.nwbar-87{width:87%}.nwbar-88{width:88%}.nwbar-89{width:89%}.nwbar-90{width:90%}.nwbar-91{width:91%}.nwbar-92{width:92%}.nwbar-93{width:93%}.nwbar-94{width:94%}.nwbar-95{width:95%}.nwbar-96{width:96%}.nwbar-97{width:97%}.nwbar-98{width:98%}.nwbar-99{width:99%}.nwbar-100{width:100%}
 .out-ov{position:fixed;inset:0;z-index:20;background:rgba(11,20,48,.55);display:flex;align-items:center;justify-content:center;padding:16px}
 .out-ov[hidden]{display:none}
 .out-ov .card{max-width:400px;width:100%;display:flex;flex-direction:column;gap:10px}
@@ -372,7 +391,7 @@ const SS = {
   get: k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
   set: (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) { /* private mode: just don't remember */ } }
 };
-const TABS = ["overview", "members", "diagnose", "errors", "searches", "spending", "affiliates"];
+const TABS = ["overview", "members", "feedback", "updates", "diagnose", "errors", "searches", "spending", "affiliates"];   /* v208: feedback, updates */
 const S = { tab: "", aData: null, ov: null, ovAt: 0, ovSeq: 0, out: false, health: null, sales: null, routesAll: false, top: "today",
   mFilter: "all", mSort: "created", mData: null, mAt: 0, mSeq: 0, member: null, memberId: "", pushed: false, lastMsg: null,
   late: null, diag: null, dSel: null, diagRes: null, diagShow: "all", diagSeq: 0, errSeq: 0, sDays: 7, sSeq: 0, uSeq: 0, uAt: 0, toastT: 0,
@@ -590,6 +609,8 @@ function selectTab(tab, detail) {
   if (tab === "searches") { loadSearches(); if (!S.uAt || Date.now() - S.uAt > 300000) loadUsage(); }
   if (tab === "affiliates") loadAff();
   if (tab === "spending") loadSpend();   /* v193 */
+  if (tab === "feedback") loadFeedback();   /* v208 */
+  if (tab === "updates") loadNews();   /* v208 */
 }
 function go(tab) { history.replaceState(null, "", "#" + tab); selectTab(tab); }
 /* Member ids are lower-case hex on the server; accept any case typed or pasted. */
@@ -620,6 +641,8 @@ $("#refresh").addEventListener("click", () => {
   else if (S.tab === "diagnose") { if (!S.ov) loadOverview(); stamp(); }
   else if (S.tab === "affiliates") loadAff();
   else if (S.tab === "spending") loadSpend();
+  else if (S.tab === "feedback") loadFeedback();
+  else if (S.tab === "updates") loadNews();
 });
 /* Every 60 s while this browser tab is in view and the overview is open; catch up when it comes back into view. */
 setInterval(() => { if (!S.out && D.visibilityState === "visible" && S.tab === "overview") loadOverview(); }, 60000);
@@ -1748,6 +1771,150 @@ async function loadSearches() {
   finally { if (seq === S.sSeq) box.classList.remove("busy"); }
 }
 
+/* ---------- Feedback (v208): what people sent from Send feedback in Prowl ---------- */
+Object.assign(S, { fbData: null, fbSeq: 0, fbFilter: "all", nwData: null, nwSeq: 0, nwAs: "free", nwWide: false, nwConfirm: 0, nwT: 0 });
+async function loadFeedback() {
+  const box = $("#fbkbox"), seq = ++S.fbSeq;
+  if (!S.fbData) fill(box, loading("Loading feedback\u2026"));
+  try { const j = await api("/admin/api/feedback"); if (seq !== S.fbSeq) return; S.fbData = j; renderFeedback(); stamp(); }
+  catch (e) { if (e.status === 401 || seq !== S.fbSeq) return; fill(box, note("bad", "Could not load feedback. " + e.message, loadFeedback)); }
+}
+const FB_PLAN = { pro: "Pro", free: "Free", "signed-out": "Signed out" };
+function fbStars(n) { n = Number(n) || 0; return n ? "\u2605\u2605\u2605\u2605\u2605".slice(0, n) + "\u2606\u2606\u2606\u2606\u2606".slice(0, 5 - n) : ""; }
+function fbShown(E) { return E.filter(e => S.fbFilter === "low" ? e.rating >= 1 && e.rating <= 2 : S.fbFilter === "reply" ? e.reply : true); }
+function renderFeedback() {
+  const j = S.fbData || { entries: [] }, E = Array.isArray(j.entries) ? j.entries : [], L = fbShown(E);
+  D.querySelectorAll("[data-ff]").forEach(x => x.setAttribute("aria-pressed", x.getAttribute("data-ff") === S.fbFilter ? "true" : "false"));
+  const low = E.filter(e => e.rating >= 1 && e.rating <= 2).length, rep = E.filter(e => e.reply).length;
+  $("#fbkcnt").textContent = plural(E.length, "note", "notes") + " in the last " + (j.keepDays || 180) + " days" + (j.more ? " (the newest " + E.length + " of " + num(j.total) + (j.totalMore ? "+" : "") + ")" : "") +
+    " \u00b7 " + num(low) + " rated 2 or less \u00b7 " + num(rep) + " want a reply" + (S.fbFilter !== "all" ? " \u00b7 showing " + num(L.length) : "");
+  if (!E.length) { fill($("#fbkbox"), h("p", { class: "muted", text: "No feedback yet. It shows here as soon as someone sends some from Den, Settings, Send feedback, or the link at the foot of the Prowl page." })); return; }
+  if (!L.length) { fill($("#fbkbox"), h("p", { class: "muted", text: "Nothing matches this filter." })); return; }
+  fill($("#fbkbox"), h("ul", { class: "fbl" }, L.map(e => {
+    const top = h("div", { class: "fbh" }, [
+      e.rating ? h("span", { class: "fbs", role: "img", "aria-label": e.rating + " out of 5", text: fbStars(e.rating) }) : h("span", { class: "muted small", text: "No rating" }),
+      h("span", { class: "bdg" + (e.plan === "pro" ? " b-pro" : ""), text: FB_PLAN[e.plan] || e.plan }),
+      e.reply ? h("span", { class: "bdg b-trial", text: "Wants a reply" }) : null,
+      h("span", { class: "muted small", text: fmtWhen(e.at) + (e.v ? " \u00b7 page " + e.v : "") })]);
+    const part = (label, t) => t ? h("div", { class: "fbt2" }, [h("h4", { text: label }), h("p", { text: t })]) : null;
+    const del = h("button", { class: "btn btn-s", type: "button", text: "Delete" });
+    del.addEventListener("click", async () => {
+      if (!confirm("Delete this note for good?")) return;
+      del.disabled = true;
+      try { await api("/admin/api/feedback/delete", { id: e.id }); S.fbData.entries = S.fbData.entries.filter(x => x.id !== e.id); S.fbData.total = Math.max(0, num(S.fbData.total) - 1); renderFeedback(); toast("Deleted."); }
+      catch (err) { if (err.status !== 401) { toast(err.message, true); del.disabled = false; } }
+    });
+    let rp = null;
+    if (e.reply) {
+      rp = h("button", { class: "btn btn-s btn-p", type: "button", text: "Reply by email" });
+      rp.addEventListener("click", async () => {
+        rp.disabled = true;
+        try { const r = await api("/admin/api/feedback/reply", { id: e.id }); if (/^mailto:/.test(String(r.mailto || ""))) location.href = r.mailto; }
+        catch (err) { if (err.status !== 401) toast(err.message, true); }
+        finally { rp.disabled = false; }
+      });
+    }
+    return h("li", { class: "fbe" }, [top, part("What they like", e.like), part("What\u2019s missing or broken", e.miss), h("div", { class: "fba" }, [rp, del])]);
+  })));
+}
+D.querySelectorAll("[data-ff]").forEach(b => b.addEventListener("click", () => { S.fbFilter = b.getAttribute("data-ff"); renderFeedback(); }));
+
+/* ---------- Updates (v208): the "What's new" email ---------- */
+async function loadNews(quiet) {
+  const box = $("#nwbox"), seq = ++S.nwSeq;
+  if (!S.nwData && !quiet) fill(box, loading("Loading the update email\u2026"));
+  try { const j = await api("/admin/api/news"); if (seq !== S.nwSeq) return; S.nwData = j; renderNews(); stamp(); }
+  catch (e) { if (e.status === 401 || seq !== S.nwSeq) return; fill(box, note("bad", "Could not load the update email. " + e.message, () => loadNews())); }
+}
+const NW_STATE = { draft: "Draft: not sent yet", sending: "Sending", stopped: "Stopped", done: "Sent" };
+function nwHours(n, per) { const runs = Math.ceil((Number(n) || 0) / (per || 10)), min = runs * 5; return min < 60 ? "about " + Math.max(5, min) + " minutes" : "about " + (Math.round(min / 6) / 10) + " hours"; }
+function renderNews() {
+  const j = S.nwData || {}, c = j.campaign || { status: "draft", note: "", subject: "What\u2019s new in Prowl" }, n = j.counts || {}, st = c.status || "draft", per = j.perRun || 10;
+  clearTimeout(S.nwT);
+  if (st === "sending" && S.tab === "updates") S.nwT = setTimeout(() => { if (S.tab === "updates" && D.visibilityState === "visible") loadNews(true); }, 30000);
+  const out = [];
+  const total = Number(c.total) || 0, sent = Number(c.sent) || 0, failed = Number(c.failed) || 0;
+  out.push(h("dl", { class: "dsum nws" }, [fact("Subject", c.subject || "What\u2019s new in Prowl"), fact("Status", NW_STATE[st] || st),
+    fact(st === "draft" ? "Would go to" : "Sent", st === "draft" ? (n.eligible == null ? "\u2014" : plural(n.eligible, "member", "members")) : num(sent) + " of " + num(total)),
+    fact("Failed", num(failed)), fact("Members", n.members == null ? "\u2014" : num(n.members)), fact("Not getting it (emails off, no hunts or updates stopped)", n.members == null ? "\u2014" : num(Math.max(0, (n.members || 0) - (n.eligible || 0))))]));
+  if (st !== "draft") {
+    const pct = total ? Math.min(100, Math.round((sent + failed) / total * 100)) : 0;
+    out.push(h("div", { class: "nwbar", role: "progressbar", "aria-label": "Sent", "aria-valuemin": "0", "aria-valuemax": String(total), "aria-valuenow": String(sent + failed) }, h("i", { class: "nwbar-" + pct })));
+    out.push(h("p", { class: "hint", text: st === "sending" ? "Going out " + per + " every 5 minutes with the alert clock; " + nwHours(Math.max(0, total - sent - failed), per) + " left. This page checks every 30 seconds." :
+      st === "stopped" ? "Stopped " + fmtWhen(c.stoppedAt) + ". Resume carries on with the members who do not have it yet." : "Finished " + fmtWhen(c.doneAt) + "." }));
+  }
+  /* the note */
+  const ta = h("textarea", { id: "nw-note", rows: "3", maxlength: "600", placeholder: "e.g. Thank you for hunting with us this year. \u2014 Matt", "aria-describedby": "nw-note-hint" });
+  ta.value = c.note || "";
+  const save = h("button", { class: "btn btn-s", type: "submit", text: "Save note" });
+  const nf = h("form", { class: "gform nwf", autocomplete: "off" }, [h("label", { for: "nw-note", text: "Personal note at the top (optional)" }), ta,
+    h("p", { class: "hint", id: "nw-note-hint", text: "Plain text, 600 characters at most, shown in italics above the intro. Leave it empty for none." }), save]);
+  if (st !== "draft") { ta.disabled = true; save.disabled = true; }
+  nf.addEventListener("submit", async e => {
+    e.preventDefault(); save.disabled = true;
+    try { const r = await api("/admin/api/news/draft", { note: ta.value }); S.nwData.campaign = r.campaign; toast(r.message || "Saved."); renderNews(); }
+    catch (err) { if (err.status !== 401) { toast(err.message, true); save.disabled = false; } }
+  });
+  out.push(nf);
+  /* the preview */
+  const seg = (attr, pairs, cur, on) => h("div", { class: "seg", role: "group", "aria-label": attr }, pairs.map(p => { const b = h("button", { type: "button", "aria-pressed": p[0] === cur ? "true" : "false", text: p[1] }); b.addEventListener("click", () => on(p[0])); return b; }));
+  out.push(h("div", { class: "nwtools" }, [h("h3", { text: "Preview" }),
+    seg("Preview as", [["free", "Free member"], ["pro", "Pro member"]], S.nwAs, v => { S.nwAs = v; renderNews(); }),
+    seg("Width", [["phone", "Phone"], ["desk", "Desktop"]], S.nwWide ? "desk" : "phone", v => { S.nwWide = v === "desk"; renderNews(); })]));
+  out.push(h("div", { class: "nwframe" + (S.nwWide ? " wide" : "") }, h("iframe", { title: "The update email as a " + (S.nwAs === "pro" ? "Pro" : "Free") + " member sees it", src: "/admin/api/news/preview?as=" + S.nwAs + "&n=" + encodeURIComponent((c.note || "").length + "-" + (c.id || "")),
+    sandbox: "allow-popups allow-popups-to-escape-sandbox", loading: "lazy", referrerpolicy: "no-referrer" })));
+  out.push(h("p", { class: "hint", text: "Exactly as members get it, with each member\u2019s own sign-in and unsubscribe links in place of these. Free members see the Prowl Pro line; Pro members do not." }));
+  /* the buttons */
+  const acts = h("div", { class: "nwacts" });
+  const test = h("button", { class: "btn", type: "button", text: "Send a test to me" });
+  test.addEventListener("click", async () => {
+    test.disabled = true; test.textContent = "Sending\u2026";
+    try { const r = await api("/admin/api/news/test", { as: S.nwAs }); toast(r.message || "Test sent."); }
+    catch (err) { if (err.status !== 401) toast(err.message, true); }
+    finally { test.disabled = false; test.textContent = "Send a test to me"; }
+  });
+  acts.appendChild(test);
+  acts.appendChild(h("span", { class: "hint", text: "To " + (j.owner || "the shop inbox") + ", as a " + (S.nwAs === "pro" ? "Pro" : "Free") + " member." }));
+  const conf = h("div", { class: "nwconf", role: "alertdialog", "aria-labelledby": "nw-conf-h", hidden: S.nwConfirm ? null : true });
+  if (st === "draft") {
+    const go = h("button", { class: "btn btn-p", type: "button", text: "Send to all members\u2026" });
+    go.addEventListener("click", () => { S.nwConfirm = Number(n.eligible) || 0; renderNews(); const y = $("#nw-yes"); if (y) y.focus(); });
+    if (!n.eligible) go.disabled = true;
+    acts.appendChild(go);
+    if (S.nwConfirm) {
+      const yes = h("button", { class: "btn btn-p", id: "nw-yes", type: "button", text: "Yes, send to " + plural(S.nwConfirm, "member", "members") });
+      const no = h("button", { class: "btn", type: "button", text: "Cancel" });
+      no.addEventListener("click", () => { S.nwConfirm = 0; renderNews(); });
+      yes.addEventListener("click", async () => {
+        yes.disabled = true; no.disabled = true;
+        try { const r = await api("/admin/api/news/send", { count: S.nwConfirm }); S.nwConfirm = 0; toast(r.message || "Sending."); loadNews(true); }
+        catch (err) { if (err.status === 401) return; if (err.status === 409) { S.nwConfirm = 0; loadNews(true); } toast(err.message, true); yes.disabled = false; no.disabled = false; }
+      });
+      fill(conf, [h("h3", { id: "nw-conf-h", text: "Send \u201c" + (c.subject || "What\u2019s new in Prowl") + "\u201d to " + plural(S.nwConfirm, "member", "members") + "?" }),
+        h("p", { text: "Everyone with Prowl emails on and a saved hunt, paused members too (not those with emails off, no hunts or product updates stopped). It goes out " + per + " every 5 minutes, " + nwHours(S.nwConfirm, per) + " in all, and nobody gets it twice. You can stop it any time." }),
+        h("div", { class: "nwacts" }, [yes, no])]);
+    }
+  } else if (st === "sending") {
+    const stop = h("button", { class: "btn", type: "button", text: "Stop" });
+    stop.addEventListener("click", async () => { stop.disabled = true; try { const r = await api("/admin/api/news/stop", {}); toast(r.message); S.nwData.campaign = r.campaign; renderNews(); } catch (err) { if (err.status !== 401) { toast(err.message, true); stop.disabled = false; } } });
+    acts.appendChild(stop);
+  } else if (st === "stopped") {
+    const res = h("button", { class: "btn btn-p", type: "button", text: "Resume" });
+    res.addEventListener("click", async () => { res.disabled = true; try { const r = await api("/admin/api/news/resume", {}); toast(r.message); S.nwData.campaign = r.campaign; renderNews(); } catch (err) { if (err.status !== 401) { toast(err.message, true); res.disabled = false; } } });
+    acts.appendChild(res);
+  }
+  if (st === "done" || st === "stopped") {
+    const nu = h("button", { class: "btn", type: "button", text: "New update" });
+    nu.addEventListener("click", async () => {
+      if (!confirm("Put this update aside and start a new one? A new update goes to everyone again, including members who got this one.")) return;
+      nu.disabled = true; try { const r = await api("/admin/api/news/new", {}); toast(r.message); loadNews(true); } catch (err) { if (err.status !== 401) { toast(err.message, true); nu.disabled = false; } }
+    });
+    acts.appendChild(nu);
+  }
+  out.push(acts, conf);
+  fill($("#nwbox"), out);
+}
+
 route();
 })();
 `;
@@ -1765,7 +1932,7 @@ function appBody() {
     '<form method="post" action="/admin/logout"><button class="btn btn-s" type="submit">Sign out</button></form></div></div></header>' +
     /* outside the header: a sticky element only sticks within its parent, and the header is just as tall as itself */
     '<div class="tabbar"><div class="wrap"><nav class="tabs" role="tablist" aria-label="Admin sections">' +
-    tab("overview", "Overview") + tab("members", "Members") + tab("diagnose", "Diagnose") + tab("errors", "Errors") + tab("searches", "Searches") + tab("affiliates", "Affiliates") + tab("spending", "Spending") +
+    tab("overview", "Overview") + tab("members", "Members") + tab("feedback", "Feedback") + tab("updates", "Updates") + tab("diagnose", "Diagnose") + tab("errors", "Errors") + tab("searches", "Searches") + tab("affiliates", "Affiliates") + tab("spending", "Spending") +
     "</nav></div></div>" +
     '<main id="main" class="wrap">' +
     panel("overview", '<div class="view" id="ov"></div>') +
@@ -1794,6 +1961,16 @@ function appBody() {
       '<label class="sort" for="msort">Sort by <select id="msort"><option value="created">Newest first</option><option value="hunts">Most hunts</option>' +
       '<option value="lastSent">Last email</option></select></label><div id="mrows"></div></div></section></div>' +
       '<div class="view" id="mdetail" hidden><div><button class="btn btn-s" id="mback" type="button">&larr; All members</button></div><div class="view" id="mbody"></div></div>') +
+    panel("feedback",
+      '<section class="card"><div class="ch"><h2>Feedback</h2></div>' +
+      '<p class="sub">What people sent from Send feedback in Prowl (Den, Settings, or the link at the foot of the page), newest first, kept 180 days. An address is kept only when they ticked &ldquo;OK to email me back&rdquo;; it is not shown here, and Reply by email opens your mail app with it. Each note is also emailed to the shop inbox.</p>' +
+      '<div class="chips" role="group" aria-label="Show feedback">' +
+      '<button class="chip" type="button" data-ff="all" aria-pressed="true">All</button><button class="chip" type="button" data-ff="low" aria-pressed="false">Rating 2 or less</button><button class="chip" type="button" data-ff="reply" aria-pressed="false">Wants a reply</button></div>' +
+      '<p class="cnt" id="fbkcnt" aria-live="polite"></p><div id="fbkbox"></div></section>') +
+    panel("updates",
+      '<section class="card"><div class="ch"><h2>Update email</h2></div>' +
+      '<p class="sub">The &ldquo;What&rsquo;s new in Prowl&rdquo; email. Its sections are written in the worker (news.js); you can add a short personal note, look at it as a Free or a Pro member, send yourself a test, then send it to everyone with Prowl emails on and a saved hunt. Each email has the usual footer, a Stop product updates link (one-click in mail apps too) and the address.</p>' +
+      '<div id="nwbox"></div></section>') +
     panel("diagnose",
       '<section class="card"><div class="ch"><h2>Why am I seeing wrong results?</h2></div>' +
       '<p class="sub">Runs the search live on each marketplace right now, then shows which listings Prowl&rsquo;s AI would hide, which the member&rsquo;s own settings leave out, and which they were already emailed.</p>' +

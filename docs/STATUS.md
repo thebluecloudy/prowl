@@ -1,16 +1,87 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.34 / v207).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.35 / v208).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.34** | 368,327 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v207** | |
+| Page | **v8.35** | 367,966 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v208** | |
 
 Recently shipped, newest first:
 
+- **v8.35 / v208: Send feedback, and the "What's new" update email** (Matt, 2026-10-31: "i would like to see it in the
+  admin"; "send them an update to show them all of the new features"). Branch `feedback-news`, on top of v8.34 (Road trip, now worker v207)
+  (`claude/gifted-johnson-wzaqr3`). New module `worker/news.js` (index.js hands it its helpers, `newsDeps`).
+  - **Send feedback (page):** Den › Settings › **Send feedback** (a row above More settings), a **Send feedback** link
+    at the foot of the page (`#otp-fbkFoot`, `href="?feedback=1"`), and `?feedback=1` (the update email's button; waits
+    for a sign-in from the link) open the sheet (`openSheet`, `fbkOpen`): five stars (optional; a second tap clears),
+    "What do you like?" and "What's missing or broken?" (1000 characters each), and, only when signed in to Prowl Alerts,
+    "OK to email me back at <address>" (off until ticked). Signed out it says the note goes without a name or email.
+    POST /feedback with `nrH()` (the member's headers), a thank-you ("We'll write back to …" when they asked), and
+    errors that keep the note (429, refused, offline). Nothing is kept on the device; no new localStorage key.
+    `?store=1` opens the Store tab (the update email links there).
+  - **POST /feedback (worker):** `{rating, like, miss, reply, v}`; control and direction characters stripped, 1000
+    characters a box, a rating or a line needed, 16 KB body at most, allowed origins only; 5 a day per IP key
+    (`fbk:`) and 5 per member (`fbkm:`); the owner key is not counted. Kept as `fbk:<13-digit reverse time>-<6 random>`
+    (newest first in a KV list) for **180 days**: `at`, `rating`, `like`, `miss`, `v`, `plan` (pro / free /
+    signed-out) and `reply` (the address) **only** when a signed-in member ticked the box. No IP. A copy is emailed to
+    `FEEDBACK_TO` or hello@owlandtwigvintage.com through Resend (`alSend` has a new `replyTo` argument: the member's
+    address only when they asked, else the shop's as before); a failed copy still keeps the note.
+    Delete my account (`alPurge` → `fbkForget`) takes the address out of any note that kept it.
+    **Review fixes:** also 15 a day per network (`fbkn:<ipNet>`, /24 or IPv6 /48) and 200 a day site-wide (`fbk:all`);
+    past 50 copies a day (`fbkmail:day`) a note is kept but not emailed. Addresses and phone numbers typed into the
+    boxes are masked before the note is kept or emailed (`fbkScrub`, the admin's looksPersonal rule) and again in the
+    admin view (`clean()`). A note that keeps a reply address is listed in `fbkr:<address>` (at most 20; past that the
+    oldest note's address comes out at once), and `alPurge` clears every address still the member's (current and
+    `sub.prev`) from those lists alone, after the member's own keys, so an address change leaves nothing and a big store
+    cannot break a delete. The count line says the true total (listing up to 10 pages, then "N+").
+  - **Admin › Feedback** (new tab): the notes newest first with stars, plan, date, page version, the two texts
+    (textContent), a count line, filters All / Rating 2 or less / Wants a reply, and Delete (confirm). The list never
+    carries an address (CLAUDE.md: no PII in the admin views): an entry says "Wants a reply", and **Reply by email**
+    asks the worker for that one address (`POST /admin/api/feedback/reply`, audited) and opens the mail app with it.
+    The emailed copy's Reply works too.
+  - **The update email** (`news.js`): subject "What's new in Prowl", a short intro, then one line and one link each:
+    Facebook Marketplace finds (Pro, `?daily=1`), Estate sales this week (Pro, `?wk=1`), Estate sales in Road trip
+    (Pro, `?wk=1`), Photo Check rebuilt (`?photo=1`), the Store tab (`?store=1`), the theme switch on the top bar; Free
+    members get one Prowl Pro line with the upgrade link; a "Tell us what you think" button (`?feedback=1`); "Happy
+    hunting, Owl & Twig Vintage"; Open Prowl. Links sign in like every Prowl email (an "m" ticket in the hash). Footer
+    as the alert emails (`alShell`: why, Stop product updates · Unsubscribe from all Prowl emails, reply
+    "unsubscribe", copyright, postal address); List-Unsubscribe one-click is `/alerts/unsub?w=news`, which sets
+    `sub.newsOff` (not a pref: the page's prefs save would reset it). No images, no pixels. Optional personal note
+    (600 characters, escaped, italic) at the top.
+  - **Admin › Updates** (new tab): subject, status, how many would get it / sent of total / failed; the note box;
+    a **preview** in a frame (`GET /admin/api/news/preview?as=free|pro`, its own CSP, `X-Frame-Options: SAMEORIGIN`;
+    the admin CSP gains `frame-src 'self'`) as a Free or Pro member, at phone or desktop width; **Send a test to me**
+    (to `FEEDBACK_TO` or hello@, as Free or Pro, 10 a day); **Send to all members…** with a confirm step naming the
+    count (the worker refuses if the count changed); then a progress bar, **Stop**, **Resume**, and **New update** once
+    stopped or sent (the old one goes to `news:prev`). One campaign at a time in `news:cur` (no member data).
+    **Review fix:** only the admin writes `news:cur`. The clock's counts are `news:cnt:<id>` (sent, failed, lastRun,
+    doneAt) and Stop is `news:stop:<id>`; both are read with KV's shortest cache (30 s) and merged for the view
+    (`newsLoad`/`newsMerge`), so a Stop or a New update pressed during a run is never undone and Stop/Resume/Draft never
+    roll the counts back. The "would go to" count and the sends agree: emails on and at least one saved hunt.
+  - **Sending:** the alert clock (`alTick`), last (after the members' own emails, the estate prep and the Facebook
+    sweep, whose spent calls `fbSweep` now returns as `used`), sends at most `NEWS_PER_RUN` = 10 a run within what the
+    run's 50 outside calls have left (counted in `runUsed()`), to members with emails on and a saved hunt (paused too;
+    not emails off, no hunts or `newsOff`), 600 ms apart. Each member's record is read again (30 s cache) just before
+    their email, so an unsubscribe during the run holds. Each member gets `sub.news = <campaign id>` before the email
+    goes, so no one gets it twice and a stop or a crash resumes with the rest. A send Resend could not take for now (429,
+    5xx, a timeout) takes the marker back (`sub.newsTry`, 3 tries in all) and ends that run's share; a refused one (other
+    4xx) or the last try is counted as failed once. Stop is read between emails. About 120 an hour.
+  - Privacy section: a Feedback block, a Product updates bullet, 180 days in the retention list, notes for v208.
+  - Tests: `worker/__tests__/feedback-news-v208.test.mjs` (28; the 12 review tests each fail on the first version except the
+    unsubscribe one, which ran untested before: network and site caps and the mail budget, masking, Stop/New not undone by a
+    stale run, counts not rolled back, pacing and retries, no-hunt members, the fresh recheck, the bounded forget, the true
+    count, `/alerts/unsub?w=news` run through `alUnsub`, `alPurge` after an address change, and `alTick` itself running the
+    news after the Facebook sweep; plus the first 16: cleaning, signed out / member / reply, limits, owner,
+    storage without address or IP, newest first, delete, forget; the email's sections, links, escaping, footer,
+    List-Unsubscribe, no images; who gets it; batching, room, marker, stop/resume, failures, crash; the admin routes
+    through `adminFetch` with a session: list without addresses, reply mailto, delete, preview CSP, note, test, confirmed
+    count, one at a time, stop, resume, new); `__tests__/page/feedback-v835.test.mjs` (9: Settings row, footer link,
+    `?feedback=1`, send and thank-you, rating toggle and empty, signed-in reply box and headers, errors, `?store=1`,
+    scoped CSS and ES5; review: 10, reopening the sheet while a send is pending keeps the old answer out of the new form
+    (`FBK.seq`) and holds a second send until the first answers). Screens at 390x844: `/home/user/shots/feedback-*.png`, `/home/user/shots/news-*.png`.
 - **v8.34 / v207: estate sales on the Road trip map** (Matt, 2026-10-31: "part of estate sale was to fold it into road
   trip map that will take you to each one"; he chose both A and B). Branch `estate-roadtrip`, on top of v8.33.
   - **A. Plan my week › a day › Open in Road trip** (page only, `wpTrip`): NEAR ME › Road trip opens with that day's
@@ -2130,7 +2201,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.35, worker v208** (v8.35 / v208: feedback form + update email, in a worktree; v8.34 / v207: estate sales on the Road trip map; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.36, worker v209** (v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 
