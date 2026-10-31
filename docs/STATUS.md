@@ -1,15 +1,39 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.21 / v196).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.24 / v199).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.21** | 375,773 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v196** | |
+| Page | **v8.24** | 375,572 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v199** | |
 
 Recently shipped, newest first:
+
+- **v8.24 / v199: Cockpit's header is a blood moon** (Matt, 2026-10-31: "fix the mushroom and panther illustration,
+  make it look more professional", then his blood moon photo).
+  - **What was wrong:**
+    - The red glowworm cave (a 5:2 drawing) was cropped by the 560×120 desktop strip, so only mushroom cap tops
+      showed.
+    - The panther PNG has 25% empty space under its feet, so it floated.
+    - The QR square sat on the tail tip and, on desktop, off the scene.
+    - The soft 18 px glow blurred the panther.
+  - **Cockpit now:** the scene is Matt's photo, a red moon rising behind a forest over a mossy floor.
+    - Worker `/art/bloodmoon.webp` (1600 px) and `/art/bloodmoon-sm.webp` (800 px, phones) are WebP files in
+      `worker/art/`, carried as base64 in `worker/art-photos.js` (`node scripts/build-hero-photos.mjs`, checked by a
+      test).
+    - The photo is cropped to the moon over the treeline, with shaded edges.
+    - The panther stands on the floor: 104 px with a 10 px margin on desktop, 84 px with 30 px on phones.
+  - **Both night themes:** the panther is centred on the scene with a crisp shadow, and the QR square is a small glass
+    button in the scene's top-right corner. It stays inside the panther button, so a tap still opens the QR code.
+  - **Uranium** keeps its fireflies scene (Matt chose Cockpit only).
+  - **`heroScene`** fills every `<source>` (a wide and a phone one).
+  - **The current photo** is the first one Matt sent, with its baked-in panther silhouette filled in behind the
+    panther. His clean original didn't reach the session as a file. To swap it in: replace the two WebP files,
+    rebuild, and bump `HERO_V`.
+  - **Tests:** `__tests__/page/cockpit-hero-v822.test.mjs`, `worker/__tests__/art.test.mjs`, plus the updated
+    Uranium and Cockpit tests.
 
 - **v8.21: the Store tab icon is written so Shopify keeps it byte for byte.** v8.20's deploy saved the page but failed
   the md5 check: its icon used self-closing `<path …/>`, which the rest of the page never does (Shopify rewrites them).
@@ -1748,7 +1772,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.22, worker v197**. Claim one here when you start.
+Next free numbers: **page v8.25, worker v200** (open PRs hold page v8.22 and worker v198 (Hark's #281 draft), and page v8.23 and worker v197 (#287, Facebook through Apify)). Claim one here when you start.
 
 ## What's next
 

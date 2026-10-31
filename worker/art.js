@@ -10,7 +10,13 @@
                           cave roof hung with glowworm threads whose beads pulse red, glowing red mushrooms on the floor,
                           sparks drifting up. Exactly worker/art/prowl-hero-glowworms.svg; drawn in the same SMIL forms
                           as the fireflies, so stillSvg makes its phone frame.
-     glowworms-still.svg  its first frame. */
+     glowworms-still.svg  its first frame.
+     bloodmoon.webp       Cockpit mode's hero since v199 (Matt, 2026-10-31: "fix the mushroom and panther illustration, make
+                          it look more professional", then his blood moon photo): a red moon rising behind a forest, a
+                          mossy floor for the panther to stand on. 1600 px wide, for screens over 480 px.
+     bloodmoon-sm.webp    the same photo 800 px wide, for phones.
+   The photos are worker/art/prowl-hero-bloodmoon*.webp, carried as base64 in art-photos.js (scripts/build-hero-photos.mjs). */
+import { PHOTOS_B64 } from "./art-photos.js";
 const FIREFLIES = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120"><defs>
 <radialGradient id="pmSky" cx="50%" cy="70%" r="70%"><stop offset="0" stop-color="#123a2a"/><stop offset=".5" stop-color="#0b1a2e"/><stop offset="1" stop-color="#050816"/></radialGradient>
 <radialGradient id="pmBloom" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#b8ff9a" stop-opacity=".9"/><stop offset=".18" stop-color="#39ff14" stop-opacity=".55"/><stop offset=".45" stop-color="#39ff14" stop-opacity=".28"/><stop offset=".75" stop-color="#1aff8c" stop-opacity=".1"/><stop offset="1" stop-color="#1aff8c" stop-opacity="0"/></radialGradient>
@@ -233,6 +239,9 @@ export function stillSvg(svg) {
     .replace(/<g><animateTransform attributeName="transform" type="translate" [^>]*?values="([-\d.]+) ([-\d.]+);[^"]*"\/>/g, '<g transform="translate($1 $2)">')
     .replace(/<g(?: opacity="[^"]*")?><animate attributeName="opacity" [^>]*?values="([\d.]+);[^"]*"\/>/g, '<g opacity="$1">');
 }
+/* v199: the photos, decoded once per isolate */
+const b64bytes = (s) => { const bin = atob(s), out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; };
+export const PHOTOS = Object.fromEntries(Object.entries(PHOTOS_B64).map(([k, v]) => [k, b64bytes(v)]));
 export const ART = { "fireflies.svg": FIREFLIES, "fireflies-still.svg": stillSvg(FIREFLIES), "glowworms.svg": GLOWWORMS, "glowworms-still.svg": stillSvg(GLOWWORMS) };
 
 const ART_HEADERS = {
@@ -247,7 +256,9 @@ const ART_HEADERS = {
 export function artResponse(name, method) {
   const m = String(method || "GET").toUpperCase();
   if (m !== "GET" && m !== "HEAD") return new Response("method not allowed", { status: 405, headers: { "Allow": "GET, HEAD", "Content-Type": "text/plain; charset=utf-8" } });
-  const body = Object.prototype.hasOwnProperty.call(ART, name) ? ART[name] : null;
+  const own = (o) => Object.prototype.hasOwnProperty.call(o, name);
+  if (own(PHOTOS)) return new Response(m === "HEAD" ? null : PHOTOS[name], { status: 200, headers: Object.assign({}, ART_HEADERS, { "Content-Type": "image/webp" }) });   /* v199 */
+  const body = own(ART) ? ART[name] : null;
   if (body === null) return new Response("not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=300" } });
   return new Response(m === "HEAD" ? null : body, { status: 200, headers: ART_HEADERS });
 }
