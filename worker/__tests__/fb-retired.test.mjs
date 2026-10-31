@@ -21,7 +21,7 @@ test("the old sweep's code and settings stay gone", () => {
   for (const name of ["fbIngest", "fbMode"]) assert.doesNotMatch(INDEX, new RegExp("function " + name + "\\("), name);
   assert.doesNotMatch(INDEX, /env\.FB_INGEST_KEY|env\.FB_FINDS\b|"fb:" \+/);
   assert.doesNotMatch(TOML, /FB_FINDS|FB_LIVE\s*=/, "FB_LIVE is a dashboard variable (keep_vars), not set here");
-  assert.ok(Number(/const WORKER_VERSION = "v(\d+)"/.exec(INDEX)[1]) >= 197);
+  assert.ok(Number(/const WORKER_VERSION = "v(\d+)"/.exec(INDEX)[1]) >= 200);
 });
 
 test("no session cookies: the Facebook source never sends a cookie, never logs in, never takes anyone's account", () => {
