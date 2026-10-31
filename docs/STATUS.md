@@ -23,6 +23,9 @@ Recently shipped, newest first:
     The paragraph that said so before sits in the Classic look only, hidden in the default one.
   - "Near Me … It's in the Den, under Local" (stale since v7.36) now points at Near me at the bottom.
   - A 1200×630 share image was made for Matt to upload as the store's social sharing image (Shopify has one per store).
+  - v8.29's page deploy failed its md5 check (the page did go live): Shopify adds a line break between
+    `<div id="otp-aprTrayPh">` and its empty `<i>` icon. The file now carries that line break, so v8.30's check matches;
+    a test in `photo-rebuild-v829` keeps it.
   - Tests: `__tests__/page/seo-v830.test.mjs`; `panther-qr` follows the www address.
 - **v8.29: Photo Check rebuilt for the field** (Matt, 2026-10-31: the PHOTO_CHECK_REBUILD brief and his two mockups,
   capture and results). Page only; `/appraise` is unchanged and every `#otp-apr*` id is kept.
