@@ -33,11 +33,13 @@ async function check(p) {
   await tick(60);
 }
 
-test('Google Lens found: first of the results; an eBay match opens the popup, another shop links out; kept with the check', async () => {
+test('Google Lens found: after the comps (v8.29); an eBay match opens the popup, another shop links out; kept with the check', async () => {
   const p = setup(LENS);
   await check(p);
-  const rows = [...p.$$('#otp-aprOut .apr-looks')];
-  assert.ok(rows[0].classList.contains('apr-lens'), 'before eBay\'s look-alikes');
+  const all = [...p.$$('#otp-aprOut .apr-looks')];
+  const li = all.findIndex((e) => e.classList.contains('apr-lens'));
+  assert.ok(li > 0 && all.slice(0, li).every((e) => !e.classList.contains('apr-web')), 'v8.29 (the owner\'s brief): after eBay\'s look-alikes and Poshmark, before the web');
+  const rows = all.slice(li);
   assert.equal(rows[0].querySelector('.apr-lkh').textContent, 'Google Lens found');
   const cards = [...rows[0].querySelectorAll('a.apr-lk')];
   assert.equal(cards.length, 2);
@@ -63,7 +65,7 @@ test('Check with Google Lens is a main button next to Hunt it on Prowl, with how
   assert.equal(lb.textContent, 'Check with Google Lens');
   assert.ok(/(^|\s)p(\s|$)/.test(lb.className), 'a main button');
   assert.ok(!lb.closest('details'), 'not under More');
-  assert.equal(links.children[0].textContent, 'Hunt it on Prowl');
+  assert.equal(links.children[0].textContent, 'Hunt this on Prowl');
   assert.equal(links.children[1], lb, 'right after it');
   assert.equal(p.$('#otp-aprOut .apr-lensn').textContent, 'Lens names it? Type that in Maker or words and tap Check again: the same photos are checked again free for 30 minutes.');
   await p.close();

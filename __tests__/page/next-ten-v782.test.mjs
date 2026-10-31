@@ -186,7 +186,7 @@ test('photo check: the answer has one main button, Hunt it on Prowl, and the res
   const L = await waitFor(() => p.$('#otp-aprOut .apr-links'), { timeout: 8000 });
   const top = [...L.children];
   assert.equal(top.length, 3, 'the main buttons and More');   /* v8.01: Check with Google Lens is a main button too (Matt) */
-  assert.equal(top[0].textContent, 'Hunt it on Prowl');
+  assert.equal(top[0].textContent, 'Hunt this on Prowl');
   assert.ok(top[0].classList.contains('p'));
   assert.equal(top[1].textContent, 'Check with Google Lens');
   assert.ok(top[1].classList.contains('p'));

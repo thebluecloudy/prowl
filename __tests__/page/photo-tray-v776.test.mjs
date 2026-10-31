@@ -44,7 +44,8 @@ test('a photo waits in the tray; words and more photos can be added; nothing is 
   assert.equal(p.$('#otp-aprRun').hidden, false);
   assert.equal(p.$('#otp-aprRun').textContent, 'Check it');
   assert.equal(p.$('#otp-aprB').textContent, 'Add another photo');
-  assert.equal(p.$('#otp-aprTray .apr-trayn').textContent, '1 of 3 photos. Add a close-up of the mark or the back for a better answer.');
+  assert.equal(p.$('#otp-aprTray .apr-trayn').textContent, '1 of 3 photos');   /* v8.29: the tip moved to #otp-aprTrayNote */
+  assert.equal(p.$('#otp-aprTrayNote').hidden, false);
   await add(p, 'mark.jpg');
   await add(p, 'back.jpg');
   await add(p, 'fourth.jpg');

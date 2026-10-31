@@ -127,9 +127,9 @@ test('a click with a modifier key still opens the marketplace', async () => {
 test('the answer reads plainly: no "(maker you entered)", the call in sentence case, and an asking-price range says so', async () => {
   const { p } = setup({ item: 'Haeger (maker you entered), Royal Haeger mid-century sitting panther sculpture', verdict: 'WORTH A LOOK', basis: 'listed', why: 'No matching eBay sold found, asking $65 to $140 for same sitting panther.' });
   await check(p);
-  const row = (t) => { const dt = p.$$('#otp-aprOut .apr-card dt').find((d) => d.textContent === t); return dt && dt.nextElementSibling.textContent; };
-  assert.equal(row('Item'), 'Haeger, Royal Haeger mid-century sitting panther sculpture');
-  assert.equal(row('Call'), 'Worth a look');
+  /* v8.29: the name and the call are their own lines in the answer, no longer a dt/dd grid */
+  assert.equal(p.$('#otp-aprOut .apr-card .apr-nm').textContent, 'Haeger, Royal Haeger mid-century sitting panther sculpture');
+  assert.equal(p.$('#otp-aprOut .apr-card .apr-call').textContent, 'Worth a look');
   const notes = p.$$('#otp-aprOut > .apr-note').map((n) => n.textContent);
   assert.ok(notes.includes('No recent sales found, so this range comes from asking prices, which usually run higher than what pieces sell for.'), notes.join(' | '));
   assert.ok(!notes.some((n) => /could not be checked/.test(n)), 'not "sold prices could not be checked": they were, and none were found');
