@@ -9,6 +9,11 @@ Cloudflare Workers Builds watches this repo. Every push to `main` runs
 `npx wrangler deploy` from this `worker/` folder and the new code goes live in
 about a minute. No dashboard paste needed.
 
+GitHub confirms it (v196). After each merge that touches `worker/`, `.github/workflows/verify-worker.yml` waits up to 8
+minutes for the live `GET /version` (`{"worker":"vNNN"}`) to name the `WORKER_VERSION` in `index.js`. A red run
+means Workers Builds did not deploy it: look in Cloudflare under Workers & Pages › prowl › Deployments. The workflow
+can also be run by hand from the Actions tab.
+
 - `index.js` is the worker (ES module, no dependencies). Since v78 it imports three sibling files, which
   wrangler bundles with it on deploy: `admin.js` (the /admin sign-in and API), `admin-page.js` (the admin
   page itself), `metrics.js` (speed, error and uptime records for the admin dashboard) and, since v193, `spend.js`

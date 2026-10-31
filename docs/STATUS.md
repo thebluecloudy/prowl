@@ -69,6 +69,13 @@ Recently shipped, newest first:
   first, in hunt order, as they land; the quiet ones fold into one line of chips (#otp-olNone, "Nothing on <site> right
   now"), lookups that failed into another (#otp-olErr); the summary counts what is still being checked. No new keys.
   Test `__tests__/page/one-site-live-v819.test.mjs` (was v818).
+- **v196: GitHub confirms each worker deploy** (Matt kept Cloudflare Workers Builds as the deployer).
+  - `GET /version` answers `{"worker":"vNNN"}`: no-store, nothing else, and not counted in the admin's traffic.
+  - After each merge touching `worker/`, `.github/workflows/verify-worker.yml` waits up to 8 minutes for the live
+    worker to name the merged `WORKER_VERSION`.
+  - A red run (GitHub emails Matt) means Workers Builds did not deploy it: look in Cloudflare › Workers & Pages ›
+    prowl › Deployments.
+  - Test: `worker/__tests__/version-route.test.mjs`.
 - **v195: Muse's prices fitted to Matt's own Meta bill.**
   - **His Oct 24–30 export:** $1.65 for 263 requests, 1.13M input tokens, 128k output tokens and 114 web searches.
   - **What the old defaults said:** v193's third-party $1.25 / $4.25 per 1M plus $2.50 per 1,000 searches came to
@@ -1769,7 +1776,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.24, worker v198** (Hark's open PR #281 holds page v8.22 and worker v196). Claim one here when you start.
+Next free numbers: **page v8.24, worker v199** (Hark's open PR #281 holds page v8.22; its worker version must move to v198, since v196 and v197 are taken). Claim one here when you start.
 
 ## What's next
 

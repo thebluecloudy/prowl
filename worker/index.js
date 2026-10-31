@@ -27,6 +27,9 @@
          Caps before Apify is asked (op addlim, atomic) and Apify is told maxTotalChargeUsd; each hunt and cell's try is
          taken in Caps first (a killed run's try counts); no Caps, no call; /fb-finds asks Google nothing while FB_LIVE is
          off; only a ZERO_RESULTS ZIP is kept as a miss; geocoding counts in the run's outside calls.
+ *   v196: 2026-10-31. GET /version answers {"worker":"v196"} (no-store, nothing else), so .github/workflows/verify-worker.yml
+ *         can confirm after each merge that Cloudflare Workers Builds really deployed the merged version (Matt keeps
+ *         Workers Builds as the deployer). Not counted in the admin's traffic (metrics.js routeKey).
  *   v195: 2026-10-31. Muse's default prices in the Spending tab fitted to Matt's own Meta bill (Oct 24-30: $1.65 for 1.13M input,
  *         128k output, 114 web searches): $0.98 per 1M input (list $1.25, cached reads cheaper), $4.25 output, no separate
  *         search charge. v193's third-party $1.25 / $4.25 / $2.50 would have said $2.25 for that week.
@@ -8259,6 +8262,12 @@ function jsResponse(name, method) {
     "Access-Control-Allow-Origin": "*", "Access-Control-Expose-Headers": "X-Prowl-Js",
     "Cross-Origin-Resource-Policy": "cross-origin", "X-Content-Type-Options": "nosniff", "X-Prowl-Js": PAGE_JS_HASH } });
 }
+/* v196: which worker version is live, for verify-worker.yml after each merge. The version only: no env, no counts. */
+function versionResponse(method) {
+  if (method !== "GET" && method !== "HEAD") return new Response("Not allowed.", { status: 405, headers: { "Allow": "GET, HEAD", "Content-Type": "text/plain; charset=utf-8" } });
+  return new Response(method === "HEAD" ? null : JSON.stringify({ worker: WORKER_VERSION }), { status: 200,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", "Access-Control-Allow-Origin": "*", "X-Content-Type-Options": "nosniff" } });
+}
 async function handleFetch(request, env, ctx) {
     G_ENV = env;
     const url = new URL(request.url);
@@ -8268,6 +8277,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname.startsWith("/css/")) return cssResponse(url.pathname.slice(5), request.method);
     if (url.pathname.startsWith("/js/")) return jsResponse(url.pathname.slice(4), request.method);   /* v124: its main script */
     try { await affLoad(env); } catch (e) {}   /* v89: affiliate switches for every link built below */
+    if (url.pathname === "/version") return versionResponse(request.method);   /* v196: the deploy check */
     const origin = request.headers.get("Origin") || "";
 
     /* v78: the owner's admin area. Its own sign-in, same-origin only, no CORS. */
