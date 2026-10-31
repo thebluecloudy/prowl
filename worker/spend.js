@@ -20,8 +20,9 @@ const PRICES_CHECKED = "2026-10-30";   /* Google: Matt's billing account price l
    Nearby Search ask for editorialSummary (Atmosphere) and opening hours (Enterprise). */
 export const SPEND_SERVICES = [
   { key: "muse", name: "Muse (Meta Muse Spark): Fair price, Research, Field Guides, Pounce, shop picks", uses: ["tin", "tout", "ws"],
-    price: { tin: 1.25, tout: 4.25, ws: 2.5 }, src: "https://openrouter.ai/meta/muse-spark-1.1",
-    srcNote: "third-party listing; Meta prints no price. Reasoning tokens bill as output.", bill: "https://developers.meta.ai" },
+    price: { tin: 0.98, tout: 4.25, ws: 0 }, src: "https://developers.meta.ai",
+    srcNote: "fitted to Matt's Meta bill, Oct 24-30 2026 ($1.65 for 1.13M in, 128k out, 114 searches): list input is $1.25, cached reads are cheaper, so it averages about $0.98; searches carry no separate charge. Reasoning tokens bill as output.",
+    bill: "https://developers.meta.ai" },
   { key: "jev", name: "Jev (TypeSafe): AI sorting, hunt checks, photo looks", uses: ["tin"],
     price: { tin: 0.04 }, src: "https://typesafe.ai",
     srcNote: "TypeSafe's own model page (\"From $0.04 per 1M\" input, v194); output is free. Input tokens are estimated (4 characters a token) unless TypeSafe reports them; picture calls count as calls only.",
