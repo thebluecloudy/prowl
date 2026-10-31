@@ -1007,15 +1007,17 @@ async function apiFbTest(c) {
   if (!(await c.H.vCount("admfbtest", 40))) return jerr(429, "That is a lot of Facebook tests today. Try again tomorrow.");
   if (typeof c.H.fbTestRun !== "function") return jerr(503, "The Facebook test is not available.");
   const b = c.body, term = String(b.term == null ? "" : b.term).replace(/\s+/g, " ").trim().slice(0, 200), zip = String(b.zip == null ? "" : b.zip).replace(/\D/g, "").slice(0, 5);
-  const r = (await c.H.fbTestRun(c.env, term, zip)) || {};
-  const items = arr(r.items).slice(0, 60).map(x => ({ title: clean(x && x.title, 160), price: clean(x && x.price, 24), city: clean(x && x.location, 60), url: https(x && x.url), image: https(x && x.image) }));
+  const mode = ["25", "50", "100", "usa", "ship"].indexOf(String(b.mode)) !== -1 ? String(b.mode) : "50";   /* v203 */
+  const r = (await c.H.fbTestRun(c.env, term, zip, mode)) || {};
+  const items = arr(r.items).slice(0, 60).map(x => ({ title: clean(x && x.title, 160), price: clean(x && x.price, 24), city: clean(x && x.location, 60), url: https(x && x.url), image: https(x && x.image),
+    miles: x && x.miles != null && Number.isFinite(Number(x.miles)) ? Math.round(Number(x.miles)) : null, ships: !!(x && x.ships) }));   /* v203 */
   await audit(c, { action: "fbtest", ok: !!r.ok, note: r.ok ? items.length + " listings" : clean(r.error, 60) });
   if (!r.ok && !r.capped && !items.length && !r.cost) return jerr(400, clean(r.error, 160) || "The Facebook test failed.");
   const n2 = v => Math.round((Number(v) || 0) * 100000) / 100000;
   /* v202: field names and types only, no values. Not clean(): it hides any 24+ character run, and many names are that long */
   const fields = arr(r.fields).slice(0, 80).map(f => String(f == null ? "" : f).replace(/[^A-Za-z0-9_.\[\] ()]/g, "").slice(0, 80)).filter(Boolean);
   return jres({ ok: !!r.ok, error: clean(r.error, 160), capped: !!r.capped, live: !!r.live, items: items, count: items.length, raw: num(r.raw), cost: n2(r.cost), estimate: n2(r.estimate), used: n2(r.used), cap: n2(r.cap),
-    fields: fields, kept: !!r.kept, term: clean(r.term, 60), zip: /^\d{5}$/.test(zip) ? zip : "" });   /* v202: the term as kept (cut at a whole word) */
+    fields: fields, kept: !!r.kept, term: clean(r.term, 60), mode: clean(r.mode, 8), zip: /^\d{5}$/.test(zip) ? zip : "" });   /* v202: the term as kept (cut at a whole word) */
 }
 
 async function apiErrors(c) {

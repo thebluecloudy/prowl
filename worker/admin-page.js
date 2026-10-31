@@ -378,7 +378,7 @@ const S = { tab: "", aData: null, ov: null, ovAt: 0, ovSeq: 0, out: false, healt
   late: null, diag: null, dSel: null, diagRes: null, diagShow: "all", diagSeq: 0, errSeq: 0, sDays: 7, sSeq: 0, uSeq: 0, uAt: 0, toastT: 0,
   gData: null, gAt: 0, gSeq: 0, giftsAll: false, glen: null };
 Object.assign(S, { spData: null, spSeq: 0 });   /* v193: Spending */
-Object.assign(S, { fbt: null, fbTerm: "", fbZip: "" });   /* v200: the Facebook test */
+Object.assign(S, { fbt: null, fbTerm: "", fbZip: "", fbMode: "50" });   /* v200: the Facebook test */
 
 /* ---------- DOM: API data only ever lands in textContent or vetted https attributes ---------- */
 function h(tag, a, kids) {
@@ -840,17 +840,21 @@ function fbTestBox() {
   const fbox = h("div", { class: "hbox" }, fbTestView());
   const ti = h("input", { id: "fbt-term", type: "text", maxlength: "200", autocomplete: "off", value: S.fbTerm, placeholder: "a hunt, e.g. pyrex butterprint", "aria-label": "Hunt to test on Facebook" });
   const zi = h("input", { id: "fbt-zip", type: "text", inputmode: "numeric", maxlength: "5", autocomplete: "off", value: S.fbZip, placeholder: "ZIP, e.g. 48375", "aria-label": "ZIP to search around" });
+  /* v203: what to search: pickup within a radius, All USA (500 miles) or the listings that ship */
+  const mi = h("select", { id: "fbt-mode", "aria-label": "What to search" }, [["25", "Pickup within 25 mi"], ["50", "Pickup within 50 mi"], ["100", "Pickup within 100 mi"], ["usa", "All USA (500 mi)"], ["ship", "Ships nationwide"]]
+    .map(o => h("option", { value: o[0], selected: S.fbMode === o[0], text: o[1] })));
+  mi.addEventListener("change", () => { S.fbMode = mi.value; });
   ti.addEventListener("input", () => { S.fbTerm = ti.value; });
   zi.addEventListener("input", () => { S.fbZip = zi.value; });
   const fbtn = h("button", { class: "btn btn-s", type: "button", text: "Facebook test", disabled: !!(S.fbt && S.fbt.busy) });
   fbtn.addEventListener("click", async () => {
     if (S.fbt && S.fbt.busy) return;
     fbtn.disabled = true; S.fbt = { busy: true }; fill(fbox, fbTestView());
-    try { const j = await api("/admin/api/fbtest", { term: S.fbTerm, zip: S.fbZip }); S.fbt = Object.assign({ at: Date.now() }, j); }
+    try { const j = await api("/admin/api/fbtest", { term: S.fbTerm, zip: S.fbZip, mode: S.fbMode }); S.fbt = Object.assign({ at: Date.now() }, j); }
     catch (e) { S.fbt = e.status === 401 ? null : { error: e.message }; }
     fbtn.disabled = false; fill(fbox, fbTestView());
   });
-  return h("div", [h("div", { class: "fbt" }, [ti, zi, fbtn]),
+  return h("div", [h("div", { class: "fbt" }, [ti, zi, mi, fbtn]),
     h("p", { class: "hint", text: "Runs one search now around that ZIP and shows what comes back. It counts against today\u2019s Facebook budget (FB_DAY_USD, $1 unless set) and works while FB_LIVE is off." }), fbox]);
 }
 function fbTestView() {
@@ -866,7 +870,7 @@ function fbTestView() {
   if (!X.items || !X.items.length) return h("div", { class: "more" }, [head, flds]);
   return h("div", { class: "more" }, [head, kept, tableOf([{ t: "Photo", bare: 1 }, { t: "Listing", cls: "wide" }, { t: "Price", num: 1 }, { t: "Town" }],
     X.items.map(x => [x.image ? h("img", { src: x.image, alt: "", width: "56", height: "56", loading: "lazy", referrerpolicy: "no-referrer", class: "fbt-img" }) : "\u2014",
-      x.url ? h("a", { href: x.url, target: "_blank", rel: "noopener noreferrer", text: x.title }) : x.title, x.price || "\u2014", x.city || "\u2014"]), "Facebook test results", true), flds]);
+      x.url ? h("a", { href: x.url, target: "_blank", rel: "noopener noreferrer", text: x.title }) : x.title, x.price || "\u2014", (x.city || "\u2014") + (x.ships ? " \u00b7 ships" : x.miles != null ? " \u00b7 " + x.miles + " mi" : "")]), "Facebook test results", true), flds]);
 }
 /* lastAt = when the latest test search ran (ms); older data only has the hour it last worked */
 function lastCheck(u) { const at = u.lastAt || u.lastOkAt; return at ? fmtWhen(at) : "\u2014"; }
