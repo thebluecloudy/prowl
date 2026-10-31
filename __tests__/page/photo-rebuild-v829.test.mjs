@@ -215,3 +215,132 @@ test('the owner\'s mockups: an empty dashed tray until a photo is in; the header
   assert.deepEqual(p.errors, []);
   await p.close();
 });
+
+/* v8.29 review fixes */
+const req = (o) => { try { return JSON.parse(o && o.body); } catch (e) { return {}; } };
+
+test('focus follows the state: analyzing, the answer\'s heading, the back chevron to Check again, Check another piece to Take a photo', async () => {
+  let answer;
+  const p = setup(() => new Promise((r) => { answer = r; }));
+  await tick(30); await open(p); await addPhoto(p);
+  p.$('#otp-aprRun').focus();
+  p.$('#otp-aprRun').click();
+  assert.equal(p.doc.activeElement, p.$('#otp-photoAnalyzing'), 'the analyzing block');
+  assert.equal(p.$('#otp-photoAnalyzing').getAttribute('tabindex'), '-1');
+  answer(res(200, ANSWER));
+  await waitFor(() => p.$('#otp-aprOut .apr-nm'));
+  assert.equal(p.doc.activeElement, p.$('#otp-aprOut .apr-nm'), 'the answer\'s heading');
+  p.$('#otp-photoBack').click();
+  assert.equal(p.doc.activeElement, p.$('#otp-aprRun'), 'Check again');
+  await p.close();
+  const q = setup(() => res(200, ANSWER));
+  await tick(30); await open(q); await addPhoto(q);
+  q.$('#otp-aprRun').click();
+  await waitFor(() => q.$('#otp-aprOut .apr-again'));
+  q.$('#otp-aprOut .apr-again button').click();
+  assert.equal(q.doc.activeElement, q.$('#otp-aprB'), 'Take a photo');
+  await q.close();
+});
+
+test('an error hands the focus to its alert; a late answer with the drawer closed takes no focus', async () => {
+  const p = setup(() => res(500, { error: 'ai 500' }));
+  await tick(30); await open(p); await addPhoto(p);
+  p.$('#otp-aprRun').click();
+  const w = await waitFor(() => p.$('#otp-aprOut .apr-warn'));
+  assert.equal(p.doc.activeElement, w);
+  await p.close();
+  let answer;
+  const q = setup(() => new Promise((r) => { answer = r; }));
+  await tick(30); await open(q); await addPhoto(q);
+  q.$('#otp-aprRun').click();
+  q.$('#otp-photoClose').click();
+  const before = q.doc.activeElement;
+  answer(res(200, ANSWER));
+  await waitFor(() => q.$('#otp-aprOut .apr-nm'));
+  assert.notEqual(q.doc.activeElement, q.$('#otp-aprOut .apr-nm'));
+  assert.equal(q.doc.activeElement, before);
+  await q.close();
+});
+
+test('analyzing: shown first, then its words; their own photo under the scan line', async () => {
+  const p = setup(() => new Promise(() => {}));
+  await tick(30); await open(p); await addPhoto(p);
+  p.$('#otp-aprRun').click();
+  assert.equal(p.$('#otp-photoAnalyzing').hidden, false);
+  assert.equal(p.$('#otp-aprStatus').textContent, '', 'not yet: set once it is on screen');
+  await tick(100);
+  assert.equal(p.$('#otp-aprStatus').textContent, 'Identifying · looking up sales · estimating a fair range');
+  const img = p.$('#otp-photoAnalyzing .photo-analyzing-visual img');
+  assert.ok(img);
+  assert.equal(img.getAttribute('src'), p.$('#otp-aprTray .apr-th img').getAttribute('src'));
+  assert.equal(img.getAttribute('alt'), '');
+  assert.match(CSS, /\.scout-app-wrapper \.photo-ana-img\{[^}]*object-fit:cover/);
+  await p.close();
+});
+
+test('a recent check opened while new photos wait: no Fix it, and Check another piece keeps those photos', async () => {
+  const kept = [{ at: Date.now(), th: 'data:image/jpeg;base64,/9j/old', r: { item: 'McCoy owl cookie jar', fair: '$40-60', basis: 'sold', sure: 'HIGH', search: 'McCoy owl', looks: [] } }];
+  const p = loadPage({ storage: Object.assign({ 'prowl.photoChecks': kept }, DEN), fetchImpl: () => res(200, { items: [] }), beforeLoad: (win) => {
+    win.HTMLCanvasElement.prototype.getContext = () => ({ drawImage() {} });
+    win.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/jpeg;base64,/9j/new';
+    win.Image = class { constructor() { this.width = 1000; this.height = 800; } set src(v) { this._src = v; setTimeout(() => this.onload && this.onload(), 0); } get src() { return this._src; } };
+  } });
+  await tick(30); await open(p); await addPhoto(p);
+  p.$('#otp-aprRecent .apr-rc').click();
+  assert.equal(p.$('#otp-aprOut .apr-nm').textContent, 'McCoy owl cookie jar');
+  assert.equal(p.doc.activeElement, p.$('#otp-aprOut .apr-nm'));
+  assert.deepEqual(p.$$('#otp-aprOut .apr-again button').map((b) => b.textContent), ['Check another piece']);
+  assert.ok(!p.$$('#otp-aprOut button').some((b) => /Fix/.test(b.textContent)), 'no Fix button anywhere');
+  assert.equal(p.$('#otp-aprOut .apr-lensn'), null, 'no hint pointing at Fix it');
+  p.$('#otp-aprOut .apr-again button').click();
+  assert.ok(shown(p, '#otp-photoCapture'));
+  assert.equal(p.$$('#otp-aprTray .apr-th').length, 1, 'the waiting photo stays');
+  assert.equal(p.$('#otp-aprRun').hidden, false);
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test('leaving while the price is still coming: not shown, but kept in Your last photo checks', async () => {
+  let price;
+  const fetchImpl = (u, o) => {
+    if (!/\/appraise$/.test(String(u))) return res(200, { items: [] });
+    if (req(o).mode === 'price') return new Promise((r) => { price = r; });
+    return res(200, { item: 'Hull Little Red Riding Hood cookie jar, 1940s', basis: 'estimate', sure: 'MEDIUM', condition: 'good', flaws: 'none visible', search: 'Hull Little Red Riding Hood' });
+  };
+  const p = loadPage({ storage: DEN, fetchImpl, beforeLoad: (win) => {
+    win.HTMLCanvasElement.prototype.getContext = () => ({ drawImage() {} });
+    win.HTMLCanvasElement.prototype.toDataURL = () => 'data:image/jpeg;base64,/9j/1';
+    win.Image = class { constructor() { this.width = 1000; this.height = 800; } set src(v) { this._src = v; setTimeout(() => this.onload && this.onload(), 0); } get src() { return this._src; } };
+  } });
+  await tick(30); await open(p); await addPhoto(p);
+  p.$('#otp-aprRun').click();
+  await waitFor(() => p.$('#otp-aprOut .apr-fv.apr-pend') && price);
+  p.$('#otp-photoBack').click();
+  assert.ok(shown(p, '#otp-photoCapture'));
+  price(res(200, { fair: '$150-250', basis: 'sold', why: 'eBay sold $180.', verdict: 'WORTH A LOOK' }));
+  await waitFor(() => (JSON.parse(p.win.localStorage.getItem('prowl.photoChecks') || '[]')[0] || {}).r);
+  const k = JSON.parse(p.win.localStorage.getItem('prowl.photoChecks'))[0].r;
+  assert.equal(k.fair, '$150-250');
+  assert.ok(shown(p, '#otp-photoCapture'), 'the answer did not come back over the form');
+  assert.equal(p.$('#otp-aprOut .apr-nm'), null);
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test('Save says Saved, to a screen reader too', async () => {
+  const p = setup(() => res(200, ANSWER));
+  await tick(30); await open(p); await addPhoto(p);
+  p.$('#otp-aprRun').click();
+  const sv = await waitFor(() => p.$('#otp-aprOut .apr-sv'));
+  assert.equal(sv.getAttribute('aria-label'), 'Save to your favorite hunts');
+  sv.click();
+  assert.equal(sv.textContent, 'Saved');
+  assert.equal(sv.getAttribute('aria-label'), 'Saved to your favorite hunts');
+  await p.close();
+});
+
+test('the low-confidence advice and the Lens hint name the button on screen', () => {
+  assert.ok(PAGE.includes("fj.why='Not sure? Tap Fix it and check again, type the maker, and add a close-up of the mark. Or try Check with Google Lens.'"));
+  assert.ok(!PAGE.includes('Type the maker or what it is above'));
+  assert.ok(!PAGE.includes('Type that in Maker or words and tap Check again'));
+});

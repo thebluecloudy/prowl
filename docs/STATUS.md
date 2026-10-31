@@ -6,7 +6,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.29 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.29** | 370582 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.29** | 369,153 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v203** | |
 
 Recently shipped, newest first:
@@ -26,7 +26,12 @@ Recently shipped, newest first:
     and Share (the existing favorites and share actions), Check with Google Lens, condition notes as bullets, the eBay
     look-alikes and Poshmark sold as sideways cards, then web matches. "Check another piece" and "Fix it and check again"
     end the results. No "N comps" count: the worker does not send one.
-  - Tests: `__tests__/page/photo-rebuild-v829.test.mjs`; seven photo tests follow the new labels and order.
+  - Review fixes: focus follows each state (analyzing block, the answer's heading, the alert, Check it / Take a photo),
+    never moved while the drawer is closed; the analyzing status is set after it shows; a reopened recent check has no
+    Fix buttons and keeps unsent tray photos; the "type the maker above" copy points at Fix it and check again; a price
+    that lands after leaving still reaches Your last photo checks; Save's label says Saved. The scan line passes over the
+    first photo.
+  - Tests: `__tests__/page/photo-rebuild-v829.test.mjs` (19); seven photo tests follow the new labels and order.
 - **v8.28: the theme switch is always on the bar** (Matt, 2026-10-31: "move the theme switcher so that it is always
   visible"). `#otp-themeBtn` left the ☰ menu (v7.03 had put it there) and sits on the top bar between the account dot
   and ☰, a round icon like the dot (`.bar-th`). It still cycles the five themes; the Den's Appearance button follows.

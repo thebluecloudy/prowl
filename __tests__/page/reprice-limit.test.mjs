@@ -25,7 +25,7 @@ function card(answer) {
   const w = dom.window;
   w.ANSWER = answer;
   w.eval(`var O=document.getElementById('O'),H=document.getElementById('H'),P={value:''},API='x',RESEARCH_ON=true,TRAY=['data:image/jpeg;base64,AAAA'];
-    function OH(){return {}} function lsG(){return ''} var GEN=0;function photoShow(){} function againRow(){} function fixIt(){} window.prowlAff=function(u){return u}; function guideLink(){} function researchIt(){} function pckKeep(){}
+    function OH(){return {}} function lsG(){return ''} var GEN=0;function photoShow(){} function againRow(){} function fixIt(){} function resFocus(){} window.prowlAff=function(u){return u}; function guideLink(){} function researchIt(){} function pckKeep(){}
     function poshBox(){return document.createElement('div')} function shareCard(r){window.SHARED=r.fair}
     window.fetch=function(){var a=window.ANSWER;return Promise.resolve({ok:a.status===200,status:a.status,json:function(){return Promise.resolve(a.body)}})};
     ` + grab('shortQ') + grab('priceIt') + grab('show'));
