@@ -1545,7 +1545,7 @@ const AI_STATUS = { "no key": "AI sorting is not set up (no AI key), so the AI d
   "jev failed": "The AI check did not answer, so the AI did not check these listings.",
   "AI check failed": "The AI check failed, so the AI did not check these listings.",
   off: "AI sorting is switched off, so the AI did not check these listings." };
-/* v197: "jev failed: <reason>" carries what TypeSafe said */
+/* v200: "jev failed: <reason>" carries what TypeSafe said */
 function aiStatusText(s) {
   const m = /^jev failed: (.+)$/.exec(String(s));
   if (m) return "The AI check did not answer (" + m[1] + "), so the AI did not check these listings.";

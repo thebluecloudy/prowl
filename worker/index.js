@@ -19,7 +19,7 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
- *   v197: 2026-10-31. Diagnose says why the AI check did not answer (Matt's eBay test: "The AI check did not answer"):
+ *   v200: 2026-10-31. Diagnose says why the AI check did not answer (Matt's eBay test: "The AI check did not answer"):
  *         jevClassify keeps TypeSafe's status and error message, or "timed out", in info.status ("jev failed: ...") and
  *         logs it; the admin shows it under the warning. Nothing else changes.
  *   v196: 2026-10-31. GET /version answers {"worker":"v196"} (no-store, nothing else), so .github/workflows/verify-worker.yml
@@ -674,7 +674,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v197";
+const WORKER_VERSION = "v200";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -3651,7 +3651,7 @@ const JEV_RESULTS_MAX = 40;
 const JEV_RESULTS_PER_DAY = 3000;   // site-wide cache misses per day
 const JEV_DROP_P = 0.7;
 function jevResultsMode(env) { const m = String((env && env.JEV_RESULTS) || "off").toLowerCase(); return (m === "on" || m === "shadow") ? m : "off"; }
-/* v197: why (optional object) gets why.err, a short reason, whenever this returns null, so the admin's Diagnose can say
+/* v200: why (optional object) gets why.err, a short reason, whenever this returns null, so the admin's Diagnose can say
    what TypeSafe answered instead of only "did not answer" */
 async function jevClassify(env, term, items, why) {
   const fail = (e) => { if (why) why.err = String(e).replace(/[^A-Za-z0-9 ._:\/+-]/g, " ").replace(/\s+/g, " ").trim().slice(0, 90); return null; };
