@@ -1,16 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.33 / v205).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.33 / v206).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.33** | 368,327 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v205** | |
+| Worker | **v206** | |
 
 Recently shipped, newest first:
 
+- **v206: Diagnose says why the AI check did not answer.** Matt's eBay test in the admin showed "The AI check did
+  not answer" with no reason: `jevClassify` dropped TypeSafe's reply on any failure. Now it keeps the HTTP status and
+  TypeSafe's error message (or "timed out after 6 s", "could not reach TypeSafe", "answered with no answers") in
+  `info.status` as `jev failed: <reason>`, logs it, and the admin shows it inside the warning. Sorting itself is
+  unchanged. Test: `worker/__tests__/jev-why-v206.test.mjs`.
 - **v8.33: estate sale photos in NEAR ME › Estate sales** (Matt, 2026-10-31: "the estate sale pictures aren't
   working"). The worker already sent each sale's cover photo (`img`, the sale page's og:image on
   `picturescdn.estatesales.net`, checked against a live page and fetched with the shop as referrer: 200), and the daily
@@ -2060,7 +2065,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.34, worker v206** (page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.34, worker v207** (page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 is held by #289, `claude/jev-why-v197`, which claimed v200 before #287 shipped it).
 Claim one here when you start.
 

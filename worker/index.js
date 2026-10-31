@@ -19,6 +19,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v206: 2026-10-31. Diagnose says why the AI check did not answer (Matt's eBay test: "The AI check did not answer"):
+ *         jevClassify keeps TypeSafe's status and error message, or "timed out", in info.status ("jev failed: ...") and
+ *         logs it; the admin shows it under the warning. Nothing else changes.
  *   v205: 2026-10-31. Estate sales for every Pro member (Hark's PR #281, Matt's calls of 2026-10-31): GET /weekend?lat&lng[&r=25&tz&h]
  *         lists the estate sales open in the next 7 days (today through today+6 in tz; Matt: "Estate sales are all week")
  *         within r miles (EstateSales.net's map JSON plus each sale's own page, KV wk1:/wkd2:/wkz:), Top picks where a
@@ -706,7 +709,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v205";
+const WORKER_VERSION = "v206";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -3690,7 +3693,10 @@ const JEV_RESULTS_MAX = 40;
 const JEV_RESULTS_PER_DAY = 3000;   // site-wide cache misses per day
 const JEV_DROP_P = 0.7;
 function jevResultsMode(env) { const m = String((env && env.JEV_RESULTS) || "off").toLowerCase(); return (m === "on" || m === "shadow") ? m : "off"; }
-async function jevClassify(env, term, items) {
+/* v206: why (optional object) gets why.err, a short reason, whenever this returns null, so the admin's Diagnose can say
+   what TypeSafe answered instead of only "did not answer" */
+async function jevClassify(env, term, items, why) {
+  const fail = (e) => { if (why) why.err = String(e).replace(/[^A-Za-z0-9 ._:\/+-]/g, " ").replace(/\s+/g, " ").trim().slice(0, 90); return null; };
   if (!env || !env.TYPESAFE_API_KEY || !items || !items.length) return null;
   const list = items.slice(0, JEV_RESULTS_MAX);
   const questions = {};
@@ -3715,12 +3721,20 @@ async function jevClassify(env, term, items) {
       headers: { "Authorization": "Bearer " + env.TYPESAFE_API_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({ model: "jev-latest", state: { search: term, listings: list.map(x => ({ title: scrubListingText(x.title, 140), price: vClean(x.price, 20) || "not shown" })) }, questions: questions })
     });
-    if (r.status !== 200) return null;
-    const j = await r.json();
+    if (r.status !== 200) {
+      let t = ""; try { t = String(await r.text()); } catch (e) {}
+      let msg = t; try { const ej = JSON.parse(t); msg = (ej && (ej.error && (ej.error.message || ej.error) || ej.message || ej.detail)) || t; } catch (e) {}
+      console.error("jev results", r.status, t.slice(0, 200));
+      return fail("TypeSafe answered " + r.status + (msg ? " " + (typeof msg === "string" ? msg : JSON.stringify(msg)).slice(0, 70) : ""));
+    }
+    let j = null; try { j = await r.json(); } catch (e) { return fail("TypeSafe sent an answer that is not JSON"); }
     const ans = j && j.answers;
-    if (!ans) return null;
+    if (!ans) return fail("TypeSafe answered with no answers");
     return list.map((x, i) => { const a = ans["r" + i] || {}; return { tag: String(a.choice || ""), p: Math.round((Number(a.confidence) || 0) * 100) / 100 }; });
-  } catch (e) { return null; }
+  } catch (e) {
+    console.error("jev results", String(e && e.message || e));
+    return fail(ctl.signal.aborted ? "timed out after " + (JEV_TIMEOUT_MS / 1000) + " s" : "could not reach TypeSafe " + String(e && e.message || e).slice(0, 50));
+  }
   finally { clearTimeout(timer); }
 }
 /* Returns { items, dropped } . Tags items in shadow and on; drops only in on. */
@@ -3734,8 +3748,9 @@ async function jevClean(env, term, items, force) {
   if (!items || !items.length) return { items: items, dropped: [], info: info("empty") };
   if (!env || !env.TYPESAFE_API_KEY) return { items: items, dropped: [], info: info("no key") };
   if (!force && !(await vCount("jr:all", JEV_RESULTS_PER_DAY))) return { items: items, dropped: [], info: info("daily cap") };
-  const tags = await jevClassify(env, term, items);
-  if (!tags) return { items: items, dropped: [], info: info("jev failed") };
+  const why = {};
+  const tags = await jevClassify(env, term, items, why);
+  if (!tags) return { items: items, dropped: [], info: info(why.err ? "jev failed: " + why.err : "jev failed") };
   const tagged = items.map((x, i) => tags[i] ? Object.assign({}, x, { jev: tags[i].tag, jevp: tags[i].p }) : x);
   if (mode !== "on") return { items: tagged, dropped: [], info: info("tagged", tags.length) };
   const bad = jevWouldDrop;

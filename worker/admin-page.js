@@ -1591,6 +1591,12 @@ const AI_STATUS = { "no key": "AI sorting is not set up (no AI key), so the AI d
   "jev failed": "The AI check did not answer, so the AI did not check these listings.",
   "AI check failed": "The AI check failed, so the AI did not check these listings.",
   off: "AI sorting is switched off, so the AI did not check these listings." };
+/* v206: "jev failed: <reason>" carries what TypeSafe said */
+function aiStatusText(s) {
+  const m = /^jev failed: (.+)$/.exec(String(s));
+  if (m) return "The AI check did not answer (" + m[1] + "), so the AI did not check these listings.";
+  return AI_STATUS[s] || "AI: " + s;
+}
 function leftOut(it) { return !!(it.aiDrop || it.memberDrop || it.notExact || it.alreadySent); }
 /* the server says whether the AI really hides listings right now (JEV_RESULTS "on", and for a member's emails ALERT_JEV
    and their own switch); older answers without it are read as on */
@@ -1666,7 +1672,7 @@ function sourceCard(r) {
     h("p", { class: "cnt", text: [num(r.count != null ? r.count : items.length) + " found", ai + (live ? " AI hides" : " AI would hide (not on)"), mine + " their filters hide", sent + " already emailed"].concat(wait ? [wait + " waiting for their next email"] : [],
       [num(r.kept != null ? r.kept : items.length - items.filter(leftOut).length) + " kept"]).join(" \u00b7 ") }),
     !ok ? note("bad", r.err || ("Answered " + (r.status || "nothing"))) : null,
-    r.ai && !AI_FINE.test(r.ai) && items.length ? note("warn", AI_STATUS[r.ai] || "AI: " + r.ai) : null,
+    r.ai && !AI_FINE.test(r.ai) && items.length ? note("warn", aiStatusText(r.ai)) : null,
     r.aiAllFlagged ? note("info", "The AI flagged every listing here, so it hides none of them (it never empties a list).") : null,
     ok && !items.length ? h("p", { class: "empty", text: "No listings came back for this search." }) : null,
     items.length && !shown.length ? h("p", { class: "empty", text: "None in this view." }) : null,

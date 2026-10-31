@@ -933,7 +933,7 @@ async function apiDiagnose(c) {
     r = r || {};
     let items = arr(r.items), ai = aiOff ? "off for this member" : "";
     if (items.length && !aiOff) {
-      try { const j = await H.jevClean(env, term, items, "shadow"); if (j && Array.isArray(j.items)) items = j.items; ai = word(j && j.info && j.info.status, 40); }
+      try { const j = await H.jevClean(env, term, items, "shadow"); if (j && Array.isArray(j.items)) items = j.items; ai = word(j && j.info && j.info.status, 140); }
       catch (e) { ai = "AI check failed"; }
     }
     const out = items.slice(0, 40).map(x => {
