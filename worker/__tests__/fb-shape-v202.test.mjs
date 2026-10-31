@@ -118,7 +118,7 @@ test("the admin's test keeps its finds where the hunt page reads them (v203: fb3
   assert.deepEqual(v.items.map((x) => x.id), ["1111111", "2222222", "3333333"], "merged by id, the old ones kept");
   assert.equal(T.kv.ttl.get(k), FB.FB_TTL);
   assert.deepEqual(JSON.parse(T.kv.m.get("fb3day:" + DAY)), { ["p|ceramic panther|" + T.cell.key + "|50"]: 1 }, "review fix: the day's sweep does not pay again for it");
-  assert.equal(JSON.parse(T.kv.m.get("fbownzip")), "48375", "the owner key's hunt page reads this area");
+  assert.deepEqual(JSON.parse(T.kv.m.get("fbownzip")), { zip: "48375", mi: 50 }, "the owner key's hunt page reads this area and distance");
 });
 
 test("a test does not undo a capped day or touch the other hunts the sweep did", async () => {
@@ -126,13 +126,15 @@ test("a test does not undo a capped day or touch the other hunts the sweep did",
   await T.kv.put("fb3day:" + DAY, JSON.stringify({ "p|pyrex|42.5,-83.5|50": -1, _cap: 1 }));
   await T.run("panther", "02134");
   assert.deepEqual(JSON.parse(T.kv.m.get("fb3day:" + DAY)), { "p|pyrex|42.5,-83.5|50": -1, _cap: 1 });
-  assert.equal(JSON.parse(T.kv.m.get("fbownzip")), "02134", "a leading zero survives");
+  assert.equal(JSON.parse(T.kv.m.get("fbownzip")).zip, "02134", "a leading zero survives");
 });
 
 test("/fb-finds: the owner key reads the last test's ZIP first, a member only their own", () => {
   const f = indexFn("fbAreaFor");   /* v203: fbFinds and fbSearch both read the area here */
   assert.match(indexFn("fbFinds"), /const o = await fbAreaFor\(env, w, url\);/);
-  assert.match(f, /let zip = w\.owner && \/\^\\d\{5\}\$\/\.test\(oz\) \? oz : "";\n  if \(!zip && w\.owner\) \{ const z = await kvGet\(env, FB_OWN_ZIP, null\)/);
+  assert.match(f, /let zip = w\.owner && \/\^\\d\{5\}\$\/\.test\(oz\) \? oz : "";\n  if \(!zip && w\.owner\) \{/);
+  assert.match(f, /const z = await kvGet\(env, FB_OWN_ZIP, null\)/);
+  assert.match(f, /if \(zip && !w\.sub && z && typeof z === "object"\) o\.mi = /, "v203 review fix: the owner key alone reads the test's distance");
   assert.match(f, /if \(!zip\) zip = o\.zip;/);
   assert.ok(f.indexOf("FB_OWN_ZIP") < f.indexOf("zip = o.zip"));
 });

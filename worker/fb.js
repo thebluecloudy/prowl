@@ -151,10 +151,10 @@ export function fbClean(raw, day, ctx) {
     seen[id] = 1;
     if (ctx && ctx.term && !fbMatch(ctx.term, title)) continue;
     let miles = null;
-    if (ctx && Number.isFinite(Number(ctx.lat))) {
+    if (ctx && !ctx.ship && Number.isFinite(Number(ctx.lat))) {   /* review fix: shipping finds are shared by everyone, so no distance from one member's ZIP */
       const loc = x.location && typeof x.location === "object" ? x.location : {}, la = Number(loc.latitude), lo = Number(loc.longitude);
       miles = Number.isFinite(la) && Number.isFinite(lo) && la !== 0 && Math.abs(la) <= 90 && Math.abs(lo) <= 180 ? fbMiles(Number(ctx.lat), Number(ctx.lng), la, lo) : null;
-      if (!ctx.ship && (miles == null || miles > fbMi(ctx.mi) + 5)) continue;   /* +5: the area is a 10 km cell's centre */
+      if (miles == null || miles > fbMi(ctx.mi) + 5) continue;   /* +5: the area is a 10 km cell's centre */
     }
     const pr = fbPrice(x), img = fbPhoto(x);
     const rg = x.location && typeof x.location === "object" && x.location.reverse_geocode && typeof x.location.reverse_geocode === "object" ? x.location.reverse_geocode : {};

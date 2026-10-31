@@ -5117,7 +5117,7 @@ function fbOneGo(t){
   }).then(function(v){
     if(typeof v.j.left==='number'&&v.j.left>=0)FBS.left=Math.floor(v.j.left);
     if(v.ok&&v.j.ok)FBS.one={items:fbClean(v.j.items)};
-    else FBS.one={e:v.s===429?'That\u2019s today\u2019s 5 Facebook searches. More tomorrow.':v.s===401||v.s===403?'Facebook search is for signed-in Prowl Pro members.':v.s===400?'Try a shorter search, a few words.':'Facebook search did not answer. Try again in a minute.'};
+    else FBS.one={e:v.s===401||v.s===403?'Facebook search is for signed-in Prowl Pro members.':v.s===429?'That\u2019s today\u2019s 5 Facebook searches. More tomorrow.':(typeof v.j.error==='string'&&v.j.error)?v.j.error.slice(0,160):v.s===400?'Try a shorter search, a few words.':'Facebook search did not answer. Try again in a minute.'};   /* review fix: the worker's own reason (no ZIP, the day's searches used) */
     if(fbScr())fbOneDraw();
   },function(){FBS.one={e:'Could not reach Prowl. Check your connection.'};if(fbScr())fbOneDraw()});
 }
@@ -6966,13 +6966,17 @@ function fbMode(t){
   var u=fbUsa(t),b=function(v,on,x){return '<button type="button" class="sgw-fbm-b" data-fbm="'+v+'" data-h="'+esc(t)+'" aria-pressed="'+(on?'true':'false')+'">'+x+'</button>'};
   return '<span class="sgw-fbm" role="group" aria-label="Where Facebook looks for this hunt">'+b('near',!u,'Near me \u00b7 '+prefs().radius+' mi')+b('usa',u,'All USA')+'</span>';
 }
-function fbSaved(t){return FB.saved===String(t||'').toLowerCase()?'<p class="sgw-note" role="status">Saved. Facebook searches this hunt that way from its next turn.</p>':''}
+function fbSaved(t){return FB.saved===String(t||'').toLowerCase()?'<p class="sgw-note sgw-fbm-ok" role="status">Saved. Facebook searches this hunt that way from its next turn.</p>':''}
 document.addEventListener('click',function(e){
   var b=e.target&&e.target.closest&&e.target.closest('button[data-fbm]');if(!b||!b.closest('.scout-app-wrapper')||!mailPro())return;
   var h=String(b.getAttribute('data-h')||'').toLowerCase(),u=b.getAttribute('data-fbm')==='usa',l=prefs().fbusa.slice(),i=l.indexOf(h);
   if(!h)return;
   if(u&&i===-1)l.push(h);else if(!u&&i!==-1)l.splice(i,1);else return;
   prefsSet({fbusa:l});FB.saved=h;rSGW();
+  /* review fix: keep keyboard focus on the choice just made, and let the note go after a few seconds */
+  var nb=document.querySelectorAll('.scout-app-wrapper button[data-fbm="'+(u?'usa':'near')+'"]'),k;
+  for(k=0;k<nb.length;k++)if(String(nb[k].getAttribute('data-h')||'').toLowerCase()===h){try{nb[k].focus()}catch(x){}break}
+  setTimeout(function(){if(FB.saved!==h)return;FB.saved='';var n=document.querySelectorAll('.scout-app-wrapper .sgw-fbm-ok'),j;for(j=0;j<n.length;j++)n[j].parentNode.removeChild(n[j])},6000);
 });
 /* v6.74: the panel shows only the live listings; the full hunt (every marketplace) was a button up in the left
    column, easy to miss under a long list of hunts. It is offered again where the live listings end. */

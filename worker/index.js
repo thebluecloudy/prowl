@@ -6467,6 +6467,7 @@ async function alPurge(env, email, sub) {
   }
   const svNow = await kvGet(env, "saved:" + email, null);
   await savedHpPurge(env, svNow);   /* v181: photos kept under an earlier address */
+  try { await kv.delete(await ctrName("fbrot:" + email)); gone.push("fbrot:"); } catch (e) {}   /* v203: the member's place in their Facebook hunts */
   for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "saved:", "code:", "pj:", "gm:", "pq:", "pp:", "wk:", "lt:"]) { await kv.delete(p + email); gone.push(p); }   /* v152: wk: lt: */   /* v85: likes:, v86: conf:, v108: code:, v112: pj: gm: pq: pp: (Pounce) */
   await savedPurge(env, email, svNow); gone.push("saved/");   /* v168: the saved finds' photos */
   if (await pushPurge(env, email)) gone.push("push:");   /* v114 */
@@ -6817,8 +6818,8 @@ async function alPrefsSave(request, env, origin) {
   const have = sub.hunts.map(h => h.toLowerCase());
   p.mute = p.mute.filter(h => have.indexOf(h) !== -1);
   p.local = p.local.filter(h => have.indexOf(h) !== -1);   /* v56 */
-  const haveFb = sub.hunts.map(h => fbTerm(h));
-  p.fbusa = p.fbusa.filter(h => haveFb.indexOf(h) !== -1);   /* v203 */
+  /* v203: fbusa is kept as sent (at most AL_MAX_HUNTS): the page can save it before a new hunt reaches the worker, and
+     the sweep only reads it for hunts the member has */
   if (p.pause) {
     const far = new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10);
     if (p.pause > far) p.pause = far;
@@ -7353,8 +7354,8 @@ async function fbSpendAdd(units) {
 /* one Apify call under the day's cap: { ok, items, raw, cost, used, cap } or { ok:false, capped | error } */
 async function fbCall(env, term, cell, n, opt) {
   const cap = fbCapUnits(env), est = fbUnits(fbEstimate(fbItems(n))), res = await fbReserve(est, cap);
-  if (!res) return { ok: false, error: "the spend counter did not answer", used: 0, cap: cap };
-  if (!res.ok) return { ok: false, capped: true, used: res.n, cap: cap };
+  if (!res) return { ok: false, noCall: true, error: "the spend counter did not answer", used: 0, cap: cap };   /* v203: noCall = nothing went to Apify */
+  if (!res.ok) return { ok: false, capped: true, noCall: true, used: res.n, cap: cap };
   const r = await fbRun(env, term, cell, n, undefined, opt);
   const units = fbUnits(r.cost || 0), extra = Math.max(0, units - est);   /* a cheaper run stays counted at the estimate: errs safe */
   if (extra) await fbSpendAdd(extra);
@@ -7384,7 +7385,14 @@ function fbHuntMi(o, term) { return o.usa.indexOf(term) !== -1 ? FB_USA_MI : o.m
 /* a hunt's finds for one member (no outside call): { items, updated, pending } (pending = never searched yet) */
 async function fbHunt(env, o, cell, term) {
   const mi = fbHuntMi(o, term);
-  const [pick, ship] = await Promise.all([kvGet(env, fbPickKey(term, cell, mi), null), kvGet(env, fbShipKey(term), null)]);
+  let [pick, ship] = await Promise.all([kvGet(env, fbPickKey(term, cell, mi), null), kvGet(env, fbShipKey(term), null)]);
+  if (!pick) {   /* review fix: a radius or All USA change keeps showing what an earlier search found, within the new distance */
+    for (const m of [FB_USA_MI, 100, 50, 25]) {
+      if (m === mi) continue;
+      const o2 = await kvGet(env, fbPickKey(term, cell, m), null);
+      if (o2 && Array.isArray(o2.items)) { pick = { updated: o2.updated, items: o2.items.filter(x => x && x.miles != null && x.miles <= mi + 5) }; break; }
+    }
+  }
   const j = fbJoin(pick, ship);
   return { items: j.items, updated: j.updated, pending: !pick && !ship, usa: mi === FB_USA_MI };
 }
@@ -7436,6 +7444,7 @@ async function fbSweep(env, subs, room) {
         out.calls++;
         const r = await fbCall(env, term, cell, FB_RUN_ITEMS, jb.opt);
         if (r.capped) { done._cap = 1; wrote = true; left = 0; await fbGive("fbm:" + sub.email); continue; }
+        if (!r.ok && r.noCall) { await fbGive("fbm:" + sub.email); left = 0; continue; }   /* Caps did not answer: nothing spent, try next run */
         if (!r.ok) { done[jb.k] = -n; wrote = true; if (out.errors.length < 2) out.errors.push(scrubPII("facebook: " + String(r.error || "failed")).slice(0, 120)); continue; }
         const old = await kvGet(env, jb.key, null);
         await env.PROWL_ALERTS.put(jb.key, JSON.stringify(fbMerge(old, r.items, day)), { expirationTtl: FB_TTL });
@@ -7464,6 +7473,7 @@ async function fbAlertItems(env, sub, h) {
   const o = fbOf(sub), cell = await fbArea(env, o.zip, false), term = fbTerm(h);
   if (!cell || !term) return [];
   const v = await fbHunt(env, o, cell, term);
+  v.items.sort((a, b) => (String(a.found || "") < String(b.found || "") ? 1 : String(a.found || "") > String(b.found || "") ? -1 : 0));   /* review fix: the newest, not the nearest (stable) */
   return v.items.filter(x => x && /^https:\/\/www\.facebook\.com\/marketplace\/item\/\d{5,20}\/$/.test(String(x.url || ""))).slice(0, AL_PER_SITE)
     .map(x => ({ title: String(x.title || "").slice(0, 140), price: String(x.price || ""), url: x.url, image: /^https:\/\//.test(x.image || "") ? x.image : "", src: "facebook", time_left: "", bids: 0, dist: "" }));
 }
@@ -7484,7 +7494,11 @@ async function fbWho(request, env, origin, hdr) {
 async function fbAreaFor(env, w, url) {
   const o = fbOf(w.sub), oz = String((url && url.searchParams.get("zip")) || "");
   let zip = w.owner && /^\d{5}$/.test(oz) ? oz : "";
-  if (!zip && w.owner) { const z = await kvGet(env, FB_OWN_ZIP, null); zip = /^\d{5}$/.test(String(z || "")) ? String(z) : ""; }   /* v202: the owner's last test's area first */
+  if (!zip && w.owner) {   /* v202: the owner's last test's area first (v203: and its distance, for the owner key alone) */
+    const z = await kvGet(env, FB_OWN_ZIP, null), zz = z && typeof z === "object" ? String(z.zip || "") : String(z || "");
+    zip = /^\d{5}$/.test(zz) ? zz : "";
+    if (zip && !w.sub && z && typeof z === "object") o.mi = Number(z.mi) === FB_USA_MI ? FB_USA_MI : fbMi(z.mi);
+  }
   if (!zip) zip = o.zip;
   o.zip = zip;
   return o;
@@ -7534,10 +7548,15 @@ async function fbSearch(request, env, origin) {
   if (!(await vCount(name, lim))) return json({ error: "That's today's " + lim + " Facebook searches. More tomorrow.", left: 0 }, 429, origin, hdr);
   const r = await fbCall(env, q, cell, FB_RUN_ITEMS, { mi: o.mi });
   if (!r.ok) {
-    await fbGive(name);   /* a failed or capped search does not use one of the day's */
+    if (r.noCall) await fbGive(name);   /* review fix: only a search that never reached Apify is given back; a failed one may still have cost */
     return json({ error: r.capped ? "Prowl's Facebook searches are used up for today. More tomorrow." : "Facebook did not answer. Try again in a minute.", left: await fbLeft(name, lim) }, 503, origin, hdr);
   }
-  try { const k = fbPickKey(q, cell, o.mi), old = await kvGet(env, k, null); await env.PROWL_ALERTS.put(k, JSON.stringify(fbMerge(old, r.items, new Date().toISOString().slice(0, 10))), { expirationTtl: FB_TTL }); } catch (e) {}
+  try {
+    const day = new Date().toISOString().slice(0, 10), k = fbPickKey(q, cell, o.mi), old = await kvGet(env, k, null);
+    await env.PROWL_ALERTS.put(k, JSON.stringify(fbMerge(old, r.items, day)), { expirationTtl: FB_TTL });
+    const dk = "fb3day:" + day, done = (await kvGet(env, dk, null)) || {}, jk = "p|" + q + "|" + cell.key + "|" + o.mi;   /* review fix: the sweep need not pay again */
+    if (!done._cap && done[jk] !== 1 && Object.keys(done).length < FB_DAY_LIST_MAX) { done[jk] = 1; await env.PROWL_ALERTS.put(dk, JSON.stringify(done), { expirationTtl: 2 * 86400 }); }
+  } catch (e) {}
   return json({ ok: true, q: q, radius: o.mi, items: r.items, left: await fbLeft(name, lim) }, 200, origin, hdr);
 }
 /* the admin's Facebook test: one call now, cap counted, the finds kept for the hunt page (v202).
@@ -7565,7 +7584,7 @@ async function fbTestRun(env, term, zip, mode) {
       const old = await kvGet(env, key, null);
       await env.PROWL_ALERTS.put(key, JSON.stringify(fbMerge(old, r.items, day)), { expirationTtl: FB_TTL });
       kept = true;
-      await env.PROWL_ALERTS.put(FB_OWN_ZIP, JSON.stringify(String(zip)), { expirationTtl: 30 * 86400 });   /* the owner key's hunt page reads this area */
+      await env.PROWL_ALERTS.put(FB_OWN_ZIP, JSON.stringify(ship ? String(zip) : { zip: String(zip), mi: mi }), { expirationTtl: 30 * 86400 });   /* the owner key's hunt page reads this area (and distance) */
       const dk = "fb3day:" + day, done = (await kvGet(env, dk, null)) || {}, jk = ship ? "s|" + term : "p|" + term + "|" + cell.key + "|" + mi;
       if (!done._cap && done[jk] !== 1 && Object.keys(done).length < FB_DAY_LIST_MAX) {
         done[jk] = 1;

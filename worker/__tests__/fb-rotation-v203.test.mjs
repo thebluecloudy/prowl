@@ -82,8 +82,8 @@ test("fbClean with a hunt: off-topic, far and placeless pickup listings dropped,
   const usa = FB.fbClean(raw, TODAY, { term: "panther", lat: 42.5, lng: -83.5, mi: 500 });
   assert.deepEqual(usa.map((x) => x.id), ["1111111", "2222222", "5555555"]);
   const ship = FB.fbClean(raw, TODAY, { term: "panther", lat: 42.5, lng: -83.5, ship: true });
-  assert.deepEqual(ship.map((x) => [x.id, x.miles, x.ships]), [["1111111", 0, true], ["2222222", 69, true], ["3333333", undefined, true], ["5555555", 31, true], ["6666666", undefined, true]],
-    "shipping does not depend on distance; the Land Rover still goes");
+  assert.deepEqual(ship.map((x) => [x.id, x.miles, x.ships]), [["1111111", undefined, true], ["2222222", undefined, true], ["3333333", undefined, true], ["5555555", undefined, true], ["6666666", undefined, true]],
+    "shipping does not depend on distance and carries none (review fix: shared by every member, so no miles from one ZIP); the Land Rover still goes");
   const plain = FB.fbClean(raw, TODAY);
   assert.equal(plain.length, 6, "without a hunt: v200's behaviour");
   assert.ok(plain.every((x) => !("miles" in x) && !("ships" in x)));
@@ -272,12 +272,15 @@ test("/fb-search: 5 a day for a Pro member, kept where the hunt page reads it; t
   assert.equal(R.calls.length, 5);
 });
 
-test("/fb-search: a failed or capped call gives the search back; bad input, no ZIP, FB_LIVE off and free members ask nothing", async () => {
+test("/fb-search: a capped or unreserved call gives the search back, a failed paid one does not; bad input, no ZIP, FB_LIVE off and free members ask nothing", async () => {
   let R = routes({ call: () => ({ ok: false, error: "apify 502" }) });
   let r = await R.search(R.PRO, { q: "panther" });
-  assert.deepEqual([r.status, r.body.left], [503, 5], "given back");
+  assert.deepEqual([r.status, r.body.left], [503, 4], "review fix: a failed Apify call may still have cost, so it stays counted");
   assert.equal(R.kv.json("fb3:panther|42.5,-83.5|25").items.length, 2, "nothing kept");
-  R = routes({ call: () => ({ ok: false, capped: true }) });
+  R = routes({ call: () => ({ ok: false, noCall: true, error: "the spend counter did not answer" }) });
+  r = await R.search(R.PRO, { q: "panther" });
+  assert.deepEqual([r.status, r.body.left], [503, 5], "nothing reached Apify: given back");
+  R = routes({ call: () => ({ ok: false, capped: true, noCall: true }) });
   r = await R.search(R.PRO, { q: "panther" });
   assert.deepEqual([r.status, r.body.left], [503, 5]);
   assert.match(r.body.error, /used up for today/);
@@ -333,7 +336,7 @@ test("alPrefs: fbusa is a list of hunt terms, lowercased, single-spaced, dedupli
   assert.equal(alPrefs({ prefs: { fbusa: Array.from({ length: 150 }, (_, i) => "h" + i) } }).fbusa.length, 100);
 });
 
-test("alPrefsSave keeps only the All USA hunts the member has", async () => {
+test("alPrefsSave keeps the All USA hunts as sent (a new hunt may not have reached the worker yet)", async () => {
   const kv = new FakeKV(), alPrefs = build("alPrefs", AL);
   kv.set("sub:m@example.com", { email: "m@example.com", tok: "T".repeat(24), pro: true, hunts: ["Ceramic  Panther", "Hull"] });
   const fn = build("alPrefsSave", { alReady: () => true, readJson: async (r) => r.json(), json: (b, st) => ({ b, st }), alEmail: (e) => String(e || "").toLowerCase(), kvGet,
@@ -342,8 +345,8 @@ test("alPrefsSave keeps only the All USA hunts the member has", async () => {
   const req = new Request("https://w/alerts/prefs", { method: "POST", body: JSON.stringify({ email: "m@example.com", tok: "T".repeat(24), prefs: { fbusa: ["ceramic panther", "Rookwood", "hull"] } }) });
   const r = await fn(req, { PROWL_ALERTS: kv }, "o");
   assert.equal(r.st, 200);
-  assert.deepEqual(r.b.prefs.fbusa, ["ceramic panther", "hull"]);
-  assert.deepEqual(kv.json("sub:m@example.com").prefs.fbusa, ["ceramic panther", "hull"]);
+  assert.deepEqual(r.b.prefs.fbusa, ["ceramic panther", "rookwood", "hull"], "review fix: not filtered by the hunts the worker has");
+  assert.deepEqual(kv.json("sub:m@example.com").prefs.fbusa, ["ceramic panther", "rookwood", "hull"]);
 });
 
 /* ---- 5. wiring ---- */
@@ -362,4 +365,29 @@ test("fbMatch: -sses plurals and words written together or apart", () => {
   assert.equal(FB.fbMatch("fire king", "King size fire pit"), true, "both words present still match (word order is not checked)");
   assert.equal(FB.fbMatch("fire-king", "Outdoor fire pit"), false);
   assert.equal(FB.fbMatch("ceramic panther", "2023 Land Rover discovery"), false);
+});
+
+/* ---- 6. review fixes ---- */
+test("review fix: a radius or All USA change still shows an earlier search's finds, within the new distance", async () => {
+  const { fbHunt } = parts(), kv = new FakeKV(), env = { PROWL_ALERTS: kv }, cell = FB.fbCell(42.5, -83.5);
+  kv.set(FB.fbPickKey("panther", cell, 100), { updated: "2026-10-30T10:00:00Z", items: [{ id: "1", miles: 12 }, { id: "2", miles: 80 }] });
+  const v = await fbHunt(env, { mi: 25, usa: [] }, cell, "panther");
+  assert.deepEqual(v.items.map((x) => x.id), ["1"], "80 mi is past 25 + 5");
+  assert.equal(v.pending, false);
+  const u = await fbHunt(env, { mi: 25, usa: ["panther"] }, cell, "panther");
+  assert.deepEqual(u.items.map((x) => x.id), ["1", "2"], "All USA keeps both");
+  const none = await fbHunt(env, { mi: 25, usa: [] }, cell, "hull");
+  assert.equal(none.pending, true);
+});
+
+test("review fixes, wired: the newest finds go to the email; only an unreserved or capped call is given back; Store searches mark the sweep's job; delete removes fbrot", () => {
+  const f = (n) => { const m = new RegExp("^(async )?function " + n + "\\(", "m").exec(INDEX); return INDEX.slice(m.index, INDEX.indexOf("\n}\n", m.index) + 2); };
+  assert.match(f("fbAlertItems"), /v\.items\.sort\(\(a, b\) => \(String\(a\.found/);
+  assert.match(f("fbSearch"), /if \(r\.noCall\) await fbGive\(name\);/);
+  assert.doesNotMatch(f("fbSearch"), /^\s*await fbGive\(name\);/m, "a failed paid search stays counted");
+  assert.match(f("fbSearch"), /jk = "p\|" \+ q \+ "\|" \+ cell\.key \+ "\|" \+ o\.mi/);
+  assert.match(f("fbSweep"), /if \(!r\.ok && r\.noCall\) \{ await fbGive\("fbm:" \+ sub\.email\);/);
+  assert.match(f("fbCall"), /noCall: true, error: "the spend counter did not answer"/);
+  assert.match(f("fbCall"), /capped: true, noCall: true/);
+  assert.match(f("alPurge"), /kv\.delete\(await ctrName\("fbrot:" \+ email\)\)/);
 });

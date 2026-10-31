@@ -37,7 +37,15 @@ Recently shipped, newest first:
   - Privacy section updated (search distance, shipping searches, miles kept, the choice and counters).
   - Tests: `__tests__/page/fb-store-v827.test.mjs`, `worker/__tests__/fb-rotation-v203.test.mjs`; the v200/v202
     Facebook tests follow the new keys (`fb3:`, `fb3s:`, `fb3day:`).
-  - Review fix: `POST /fb-search` routed above the GET-only guard (it was 405).
+  - Review fixes: `POST /fb-search` routed above the GET-only guard (it was 405); a Store search that reached Apify and
+    failed stays counted (it may have cost: before, repeated failures could drain the site cap), only an unreserved or
+    capped one is given back (`noCall`), in the sweep too; a Store search marks the sweep's job done; shipping finds
+    carry no miles (shared, so not from one member's ZIP); the email takes a hunt's newest finds, not its nearest; a
+    radius or All USA change shows the earlier finds within the new distance until the next turn; `fbusa` is kept as
+    sent (a new hunt can reach the worker after the setting); the owner key alone reads the last test's distance
+    (`fbownzip` = {zip, mi}); Delete removes `fbrot:`; the Store box shows the worker's reason (no ZIP, the site's
+    searches used); the switch keeps keyboard focus and its "Saved" note goes after 6 s; rotation pointer and
+    refused-try refund (tests); `fbMatch` handles "glasses" and "fire-king"/"Fireking".
 - **v202: Facebook finds show prices and photos, and the admin's test fills the hunt page** (Matt, 2026-10-31: his
   first Diagnose › Facebook test listed 15 panthers with every price "—", and he asked to see them on the hunt pages
   with photos). Worker only; the page's Facebook strip already draws each find as a photo card (`sgwCard`).
