@@ -73,7 +73,7 @@ test('the help text names all five modes', () => {
   assert.match(PAGE, /Cycles through all five\./);
 });
 
-test('v8.05 (worker v177; v8.22: the blood moon photo): a saved Cockpit asks for its own scene at once, not the fireflies', async () => {
+test('v8.05 (worker v177; v8.24: the blood moon photo): a saved Cockpit asks for its own scene at once, not the fireflies', async () => {
   const p = loadPage({ storage: { ...DEN, 'prowl.theme': 'cockpit' } });
   try {
     await tick(20);

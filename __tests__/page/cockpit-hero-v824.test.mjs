@@ -1,4 +1,4 @@
-// Page v8.22 (Matt: "fix the mushroom and panther illustration, make it look more professional", then his blood moon
+// Page v8.24 (Matt: "fix the mushroom and panther illustration, make it look more professional", then his blood moon
 // photo). Cockpit's scene is the photo, cropped to the moon over the treeline, with the panther standing on its floor.
 // In both night themes the panther is centred on the scene with a crisp shadow, and the QR square sits in the scene's
 // top corner instead of on the tail.
@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
 
 const PAGE = readFileSync(fileURLToPath(new URL('../../page/prowl.html', import.meta.url)), 'utf8');
-const V822 = PAGE.slice(PAGE.indexOf('/* v8.22 (Matt: "fix the mushroom'), PAGE.indexOf('[data-hud=cockpit] .scout-app-wrapper .pmark img{height:84px'));   /* the v8.22 block */
+const V822 = PAGE.slice(PAGE.indexOf('/* v8.24 (Matt: "fix the mushroom'), PAGE.indexOf('[data-hud=cockpit] .scout-app-wrapper .pmark img{height:84px'));   /* the v8.24 block */
 const rule = (sel) => { const i = V822.indexOf('\n' + sel + '{'); assert.ok(i > -1, sel); return V822.slice(i + sel.length + 2, V822.indexOf('}', i)); };
 
 test('Cockpit: the photo fills the strip from its treeline down, darkened at the edges, and the panther stands on its floor', () => {
@@ -39,7 +39,7 @@ test('the QR square is still inside the panther button, so a tap still shows the
   } finally { await p.close(); }
 });
 
-test('the page says v8.22 or later', () => {
+test('the page says v8.24 or later', () => {
   const m = /var PROWL_VERSION='v(\d+)\.(\d+)';/.exec(PAGE);
-  assert.ok(m && Number(m[1]) * 100 + Number(m[2]) >= 822);
+  assert.ok(m && Number(m[1]) * 100 + Number(m[2]) >= 824);
 });

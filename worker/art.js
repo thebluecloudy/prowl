@@ -11,7 +11,7 @@
                           sparks drifting up. Exactly worker/art/prowl-hero-glowworms.svg; drawn in the same SMIL forms
                           as the fireflies, so stillSvg makes its phone frame.
      glowworms-still.svg  its first frame.
-     bloodmoon.webp       Cockpit mode's hero since v197 (Matt, 2026-10-31: "fix the mushroom and panther illustration, make
+     bloodmoon.webp       Cockpit mode's hero since v199 (Matt, 2026-10-31: "fix the mushroom and panther illustration, make
                           it look more professional", then his blood moon photo): a red moon rising behind a forest, a
                           mossy floor for the panther to stand on. 1600 px wide, for screens over 480 px.
      bloodmoon-sm.webp    the same photo 800 px wide, for phones.
@@ -239,7 +239,7 @@ export function stillSvg(svg) {
     .replace(/<g><animateTransform attributeName="transform" type="translate" [^>]*?values="([-\d.]+) ([-\d.]+);[^"]*"\/>/g, '<g transform="translate($1 $2)">')
     .replace(/<g(?: opacity="[^"]*")?><animate attributeName="opacity" [^>]*?values="([\d.]+);[^"]*"\/>/g, '<g opacity="$1">');
 }
-/* v197: the photos, decoded once per isolate */
+/* v199: the photos, decoded once per isolate */
 const b64bytes = (s) => { const bin = atob(s), out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; };
 export const PHOTOS = Object.fromEntries(Object.entries(PHOTOS_B64).map(([k, v]) => [k, b64bytes(v)]));
 export const ART = { "fireflies.svg": FIREFLIES, "fireflies-still.svg": stillSvg(FIREFLIES), "glowworms.svg": GLOWWORMS, "glowworms-still.svg": stillSvg(GLOWWORMS) };
@@ -257,7 +257,7 @@ export function artResponse(name, method) {
   const m = String(method || "GET").toUpperCase();
   if (m !== "GET" && m !== "HEAD") return new Response("method not allowed", { status: 405, headers: { "Allow": "GET, HEAD", "Content-Type": "text/plain; charset=utf-8" } });
   const own = (o) => Object.prototype.hasOwnProperty.call(o, name);
-  if (own(PHOTOS)) return new Response(m === "HEAD" ? null : PHOTOS[name], { status: 200, headers: Object.assign({}, ART_HEADERS, { "Content-Type": "image/webp" }) });   /* v197 */
+  if (own(PHOTOS)) return new Response(m === "HEAD" ? null : PHOTOS[name], { status: 200, headers: Object.assign({}, ART_HEADERS, { "Content-Type": "image/webp" }) });   /* v199 */
   const body = own(ART) ? ART[name] : null;
   if (body === null) return new Response("not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=300" } });
   return new Response(m === "HEAD" ? null : body, { status: 200, headers: ART_HEADERS });

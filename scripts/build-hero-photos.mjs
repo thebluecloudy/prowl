@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Worker v197: the hero photos the Prowl page shows (Cockpit's blood moon) are served by the worker like its drawings
+/* Worker v199: the hero photos the Prowl page shows (Cockpit's blood moon) are served by the worker like its drawings
    (GET /art/<name>), so they cost the Shopify page nothing. Workers bundle text, not loose files, so this writes the
    WebP files in worker/art/ as base64 into worker/art-photos.js. Run it after changing any of them; a test fails while
    the two differ. Usage: node scripts/build-hero-photos.mjs */

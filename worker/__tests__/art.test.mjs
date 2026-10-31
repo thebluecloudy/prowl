@@ -79,7 +79,7 @@ test('the route answers /art/ before anything else, and its hits are counted as 
   assert.equal(routeKey('/artful'), 'other');
 });
 
-test('v197: Cockpit\'s blood moon photos are served as WebP, built from worker/art/*.webp, with the same year-long cache', async () => {
+test('v199: Cockpit\'s blood moon photos are served as WebP, built from worker/art/*.webp, with the same year-long cache', async () => {
   const { photosSource, PHOTO_FILES } = await import('../../scripts/build-hero-photos.mjs');
   assert.equal(read('art-photos.js'), photosSource(), 'worker/art-photos.js is rebuilt from the WebP files (node scripts/build-hero-photos.mjs)');
   for (const [name, file] of Object.entries(PHOTO_FILES)) {

@@ -1,17 +1,17 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.22 / v197).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.24 / v199).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.22** | 375,572 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v197** | |
+| Page | **v8.24** | 375,572 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v199** | |
 
 Recently shipped, newest first:
 
-- **v8.22 / v197: Cockpit's header is a blood moon** (Matt, 2026-10-31: "fix the mushroom and panther illustration,
+- **v8.24 / v199: Cockpit's header is a blood moon** (Matt, 2026-10-31: "fix the mushroom and panther illustration,
   make it look more professional", then his blood moon photo).
   - **What was wrong:**
     - The red glowworm cave (a 5:2 drawing) was cropped by the 560×120 desktop strip, so only mushroom cap tops
@@ -1772,7 +1772,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.23, worker v198**. Claim one here when you start.
+Next free numbers: **page v8.25, worker v200** (open PRs hold page v8.22 and worker v198 (Hark's #281 draft), and page v8.23 and worker v197 (#287, Facebook through Apify)). Claim one here when you start.
 
 ## What's next
 

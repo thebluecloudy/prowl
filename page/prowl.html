@@ -651,7 +651,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 [data-theme=uranium] .scout-app-wrapper .heromark .hm-mark{display:none}
 [data-theme=uranium] .scout-app-wrapper .heromark .hm-scene{object-fit:cover}
 .scout-app-wrapper .heromark+.eb{margin-top:0}
-/* v8.22 (Matt: "fix the mushroom and panther illustration, make it look more professional", then his blood moon photo):
+/* v8.24 (Matt: "fix the mushroom and panther illustration, make it look more professional", then his blood moon photo):
    Cockpit's scene is the photo (worker /art/bloodmoon*.webp), cropped to the moon over the treeline, and the panther
    stands on its mossy floor (its feet are 75% down the PNG). In both night themes the panther is centred on the scene with
    a crisp shadow instead of the soft glow, and the QR square sits in the scene's top corner instead of on the tail. */
@@ -3918,7 +3918,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.22';
+var PROWL_VERSION='v8.24';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -3951,7 +3951,7 @@ function heroScene(t){
   hm.classList.remove('has-scene');
   img.onload=function(){hm.classList.add('has-scene')};
   img.onerror=function(){hm.classList.remove('has-scene')};
-  for(i=0;i<srcs.length;i++)if(srcs[i].getAttribute(k))srcs[i].setAttribute('srcset',HERO_ART+srcs[i].getAttribute(k)+HERO_V);   /* v8.22: every source (wide and phone) */
+  for(i=0;i<srcs.length;i++)if(srcs[i].getAttribute(k))srcs[i].setAttribute('srcset',HERO_ART+srcs[i].getAttribute(k)+HERO_V);   /* v8.24: every source (wide and phone) */
   img.setAttribute('src',HERO_ART+img.getAttribute(k)+HERO_V);
 }
 function applyTheme(t){
