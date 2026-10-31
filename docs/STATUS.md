@@ -1,12 +1,12 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.24 / v200).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.25 / v200).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.24** | 375,572 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.25** | 375,639 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v200** | |
 
 Recently shipped, newest first:
@@ -16,6 +16,15 @@ Recently shipped, newest first:
   TypeSafe's error message (or "timed out after 6 s", "could not reach TypeSafe", "answered with no answers") in
   `info.status` as `jev failed: <reason>`, logs it, and the admin shows it inside the warning. Sorting itself is
   unchanged. Test: `worker/__tests__/jev-why-v200.test.mjs`.
+- **v8.25: the blood moon header goes live.**
+  - **What went wrong:** v8.24's page deploy failed its md5 check, and the workflow put the v8.21 page back. The header's
+    `<picture>` had three `<source>` tags, and Shopify rewrote that markup (it added a `</source>`).
+  - **The fix:** one `<source>` again, the shape that has always survived. The photo's two widths are a `srcset` list
+    (`bloodmoon-sm.webp 800w, bloodmoon.webp 1600w`, `sizes="(min-width:481px) 560px, 100vw"`), so the browser picks
+    the size.
+  - **Code:** `heroSet` turns that list into worker addresses. `heroScene` sets the img's `srcset` for Cockpit and
+    removes it for a plain drawing.
+  - **Guard:** `__tests__/page/uranium-hero.test.mjs` asserts there is exactly one `<source>`.
 - **v8.24 / v199: Cockpit's header is a blood moon** (Matt, 2026-10-31: "fix the mushroom and panther illustration,
   make it look more professional", then his blood moon photo).
   - **What was wrong:**
@@ -1777,7 +1786,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.25, worker v201** (open PRs hold page v8.22 and worker v198 (Hark's #281 draft), and page v8.23 and worker v197 (#287, Facebook through Apify)). Claim one here when you start.
+Next free numbers: **page v8.26, worker v201** (open PRs hold page v8.22 and worker v198 (Hark's #281 draft), and page v8.23 and worker v197 (#287, Facebook through Apify)). Claim one here when you start.
 
 ## What's next
 
