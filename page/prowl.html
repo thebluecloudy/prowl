@@ -1326,6 +1326,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .es-form{flex-wrap:wrap}.scout-app-wrapper .es-form input{flex:1 1 220px;min-width:0}.scout-app-wrapper .es-form .b{flex:1 0 auto}   /* v8.32: the place box keeps its hint; the button wraps under it on a phone */
 .scout-app-wrapper .wk-row{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--cd);color:var(--mu);font-size:14px;text-decoration:none;min-width:0}
 .scout-app-wrapper .wk-row b{font-size:15px;color:var(--ink);overflow-wrap:anywhere}
+.scout-app-wrapper .wk-row.wk-ri{flex-direction:row;align-items:flex-start;gap:12px}.scout-app-wrapper .wk-tx{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto}.scout-app-wrapper .wk-img{flex:0 0 72px;width:72px;height:72px;border-radius:10px;object-fit:cover;background:var(--cd2);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--mu)}   /* v8.33 */
 .scout-app-wrapper .wk-pick{border-color:var(--ac)}
 .scout-app-wrapper .wk-m{align-self:flex-start;margin-bottom:3px;padding:2px 8px;border-radius:99px;background:var(--cd2);color:var(--ac);font-size:12.5px;font-weight:800}
 .scout-app-wrapper .wk-hr{color:var(--i2)}
@@ -4140,7 +4141,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.32';
+var PROWL_VERSION='v8.33';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -4875,9 +4876,11 @@ function wkHunts(){return st.hunts.filter(function(h){return !huntSample(h)}).sl
 function wkUrlOk(u){return /^https:\/\/www\.estatesales\.net\/[A-Za-z0-9\/._%-]+$/.test(String(u||''))}
 function wkRow(x,pick){
   var meta=[x.city&&x.st?x.city+', '+x.st:x.city,x.co,typeof x.dist==='number'?(Math.round(x.dist*10)/10)+' mi':''].filter(function(v){return !!v}).join(' \u00b7 ');
-  return '<a class="wk-row'+(pick?' wk-pick':'')+'" href="'+esc(x.url)+'" target=_blank rel="noopener noreferrer">'+
+  /* v8.33 (Matt: "the estate sale pictures aren't working"): each sale's own cover photo, as the email shows it */
+  var im=/^https:\/\/picturescdn\.estatesales\.net\/[^\s"'<>]+$/.test(String(x.img||''))?'<img class="wk-img" src="'+esc(x.img)+'" alt="" loading="lazy" decoding="async">':'<span class="wk-img wk-noimg" aria-hidden="true">\u2302</span>';
+  return '<a class="wk-row wk-ri'+(pick?' wk-pick':'')+'" href="'+esc(x.url)+'" target=_blank rel="noopener noreferrer">'+im+'<span class="wk-tx">'+
     (pick&&x.match?'<span class="wk-m">\uD83D\uDC3E '+esc(x.match.hunt)+' \u00b7 in '+esc(x.match.where)+'</span>':'')+
-    '<b>'+esc(x.name)+'</b><span>'+esc(meta)+'</span><span class="wk-hr">'+esc(x.hours)+'</span>'+(x.standout?'<span class="wk-so">'+esc(x.standout)+'</span>':'')+'</a>';
+    '<b>'+esc(x.name)+'</b><span>'+esc(meta)+'</span><span class="wk-hr">'+esc(x.hours)+'</span>'+(x.standout?'<span class="wk-so">'+esc(x.standout)+'</span>':'')+'</span></a>';
 }
 function wkHtml(v){
   var d=WK.data,h='<div class="wk-box" id="otp-wk"><h3 class="nearh">Estate sales this week <span class="es-own">next 7 days \u00b7 25 mi</span></h3>'+
