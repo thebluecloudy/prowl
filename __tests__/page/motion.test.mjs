@@ -634,7 +634,7 @@ test("the photo check limits in the copy are the worker's, everywhere they are q
   const free = Number(/const PHOTO_FREE_PER_DAY = (\d+);/.exec(WORKER)[1]), pro = Number(/const PHOTO_PRO_PER_DAY = (\d+);/.exec(WORKER)[1]);
   const words = ['zero', 'One', 'Two', 'Three'], s = (n) => (n === 1 ? '' : 's');
   const quotes = [
-    'Free: ' + free + ' photo check' + s(free) + ' a day. Prowl Pro: unlimited.',
+    'Free: ' + free + ' photo check' + s(free) + ' a day. <b>Prowl Pro:</b> unlimited.',   /* v8.29: Prowl Pro in bold (the owner's mockup) */
     words[free] + ' free check' + s(free) + ' a day, unlimited with Prowl Pro.',
     "'Prowl Pro: unlimited photo checks.'",
     "'Unlimited with Prowl Pro'",

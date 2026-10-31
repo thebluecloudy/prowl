@@ -44,8 +44,9 @@ test('the buttons and the Lens hint come right after the answer, before the look
   const k = kids(p);
   assert.ok(k[0].classList.contains('apr-card'), 'the answer first');
   assert.ok(k[1].classList.contains('apr-links'), 'then the buttons');
-  assert.equal(k[1].children[0].textContent, 'Hunt it on Prowl');
-  assert.equal(k[1].children[1].textContent, 'Check with Google Lens');
+  assert.equal(k[1].children[0].textContent, 'Hunt this on Prowl');
+  assert.deepEqual([...k[1].children[1].children].map((b) => b.textContent), ['Save', 'Share'], 'v8.29: Save and Share under it');
+  assert.equal(k[1].children[2].textContent, 'Check with Google Lens');
   assert.ok(k[2].classList.contains('apr-lensn'), 'then how to use what Lens says');
   const looks = k.findIndex((e) => e.classList.contains('apr-looks') && !e.classList.contains('apr-web'));
   const web = k.findIndex((e) => e.classList.contains('apr-web'));

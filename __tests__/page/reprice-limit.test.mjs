@@ -25,7 +25,7 @@ function card(answer) {
   const w = dom.window;
   w.ANSWER = answer;
   w.eval(`var O=document.getElementById('O'),H=document.getElementById('H'),P={value:''},API='x',RESEARCH_ON=true,TRAY=['data:image/jpeg;base64,AAAA'];
-    function OH(){return {}} function lsG(){return ''} window.prowlAff=function(u){return u}; function guideLink(){} function researchIt(){} function pckKeep(){}
+    function OH(){return {}} function lsG(){return ''} var GEN=0;function photoShow(){} function againRow(){} function fixIt(){} function resFocus(){} window.prowlAff=function(u){return u}; function guideLink(){} function researchIt(){} function pckKeep(){}
     function poshBox(){return document.createElement('div')} function shareCard(r){window.SHARED=r.fair}
     window.fetch=function(){var a=window.ANSWER;return Promise.resolve({ok:a.status===200,status:a.status,json:function(){return Promise.resolve(a.body)}})};
     ` + grab('shortQ') + grab('priceIt') + grab('show'));
@@ -35,7 +35,7 @@ function card(answer) {
 }
 const text = (w) => w.document.getElementById('O').textContent;
 const note = (w) => [...w.document.querySelectorAll('.apr-note')].map((n) => n.textContent).join(' / ');
-const shareBtn = (w) => [...w.document.querySelectorAll('button')].find((b) => b.textContent === 'Share this find');
+const shareBtn = (w) => [...w.document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === 'Share this find');   /* v8.29: the button reads Share */
 
 test('a daily limit: no stand-in price, no Share, and the note says why', async () => {
   const w = await card({ status: 429, body: { error: 'daily limit' } });
@@ -60,7 +60,7 @@ test('an answer that failed: no stand-in price, and no "estimate" when there is 
 
 test('a price comes back: shown, and Share carries it', async () => {
   const w = await card({ status: 200, body: { fair: '$70-90', basis: 'sold', why: 'Sold at $75 and $85.' } });
-  assert.match(text(w), /\$70-90/);
+  assert.match(text(w), /\$70 – \$90/);   /* v8.29: shown as a range with a dash */
   shareBtn(w).click();
   assert.equal(w.SHARED, '$70-90');
 });

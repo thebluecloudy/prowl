@@ -44,7 +44,8 @@ test('a photo waits in the tray; words and more photos can be added; nothing is 
   assert.equal(p.$('#otp-aprRun').hidden, false);
   assert.equal(p.$('#otp-aprRun').textContent, 'Check it');
   assert.equal(p.$('#otp-aprB').textContent, 'Add another photo');
-  assert.equal(p.$('#otp-aprTray .apr-trayn').textContent, '1 of 3 photos. Add a close-up of the mark or the back for a better answer.');
+  assert.equal(p.$('#otp-aprTray .apr-trayn').textContent, '1 of 3 photos');   /* v8.29: the tip moved to #otp-aprTrayNote */
+  assert.equal(p.$('#otp-aprTrayNote').hidden, false);
   await add(p, 'mark.jpg');
   await add(p, 'back.jpg');
   await add(p, 'fourth.jpg');
@@ -105,7 +106,7 @@ test('the AI got it wrong: fix the words, Check again sends the same photos; Sta
 test('the labels and the markup Shopify keeps', async () => {
   const { readFileSync } = await import('node:fs');
   const html = readFileSync(new URL('../../page/prowl.html', import.meta.url), 'utf8');
-  assert.ok(html.includes('<span>Maker or words</span><input id="otp-aprH"'));
+  assert.ok(html.includes('<span class="apr-sr">Maker or words</span><input id="otp-aprH"'), 'v8.29: the label is for screen readers, the box shows the placeholder');
   assert.ok(html.includes('<input id="otp-aprF2" type="file" accept="image/*" multiple hidden>'), 'several photos from the library at once');
   assert.ok(html.includes('\n        <button class="b p apr-go" id="otp-aprRun" type="button" hidden>Check it</button>\n'), 'its own line');
   assert.doesNotMatch(html, /Wrong item\? Re-price/);
