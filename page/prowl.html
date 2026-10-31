@@ -10960,7 +10960,9 @@ try{if(/[?&]daily=1(&|$)/.test(location.search)){
    at the foot of the page and ?feedback=1 (the update email's button) open a short sheet: a rating (optional), what you
    like, what is missing or broken (1000 characters each) and, signed in to Prowl Alerts, "OK to email me back". POST
    /feedback with the member's headers (nrH), so the worker knows the plan; nothing is kept on this device. */
-var FBK={busy:false,r:0};
+/* v8.35 review: seq tags each open of the sheet, so a send still on its way when the sheet is reopened never writes into
+   the new form; busy stays until that send answers (no second note while the first is pending) */
+var FBK={busy:false,r:0,seq:0};
 function fbkSigned(){return !!(mGet('alertEmail')&&mGet('alertTok'))}
 function fbkHtml(){
   var em=mGet('alertEmail'),i,st='';
@@ -10977,22 +10979,23 @@ function fbkHtml(){
     '<p class="fbk-fine">Kept for 180 days. Your email address is kept only if you tick the box above. <a href="/policies/privacy-policy">Privacy</a></p>'+
   '</form>';
 }
-function fbkOpen(){FBK.r=0;FBK.busy=false;openSheet('Send feedback',fbkHtml());var b=$('#otp-sheetB');if(b)b.scrollTop=0}
+function fbkOpen(){FBK.r=0;FBK.seq++;openSheet('Send feedback',fbkHtml());var b=$('#otp-sheetB');if(b)b.scrollTop=0}
 function fbkPaint(){var s=$$('#otp-fbk .fbk-st'),i,n;for(i=0;i<s.length;i++){n=Number(s[i].getAttribute('data-fbkr'));s[i].classList.toggle('on',n<=FBK.r);s[i].setAttribute('aria-pressed',n===FBK.r?'true':'false')}}
 function fbkErr(t){var e=$('#otp-fbkErr');if(!e)return;e.textContent=t||'';e.hidden=!t}
 function fbkSend(){
-  if(FBK.busy)return;
+  if(FBK.busy){fbkErr('Your last note is still sending. One moment, then try again.');return}
   var like=($('#otp-fbkLike')||{}).value||'',miss=($('#otp-fbkMiss')||{}).value||'',rp=$('#otp-fbkReply'),go=$('#otp-fbkGo');
   like=String(like).replace(/^\s+|\s+$/g,'');miss=String(miss).replace(/^\s+|\s+$/g,'');
   if(!FBK.r&&!like&&!miss){fbkErr('Pick a rating or write a line first.');return}
   fbkErr('');FBK.busy=true;if(go){go.disabled=true;go.textContent='Sending…'}
+  var seq=FBK.seq;
   var h=nrH();h['Content-Type']='application/json';
   var reply=!!(rp&&rp.checked&&fbkSigned());
   fetch(SGW_API+'feedback',{method:'POST',headers:h,cache:'no-store',body:JSON.stringify({rating:FBK.r,like:like.slice(0,1000),miss:miss.slice(0,1000),reply:reply,v:PROWL_VERSION})}).then(function(r){
     return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j}},function(){return {ok:false,status:r.status,j:null}});
   }).then(function(x){
     FBK.busy=false;
-    if(!$('#otp-fbk'))return;
+    if(seq!==FBK.seq||!$('#otp-fbk'))return;
     if(x.ok&&x.j&&x.j.ok){
       var b=$('#otp-sheetB');if(!b)return;
       b.innerHTML='<div class="fbk-done" role="status"><b class="fbk-ok" aria-hidden="true">✓</b><h3>Thank you!</h3><p>'+(x.j.reply?'Got it. We’ll write back to <b>'+esc(mGet('alertEmail'))+'</b>.':'Got it. Every note helps us decide what to build next.')+'</p><button type="button" class="b p" data-fbkx="1">Close</button></div>';
@@ -11002,7 +11005,7 @@ function fbkSend(){
     if(go){go.disabled=false;go.textContent='Send feedback'}
     fbkErr(x.status===429?((x.j&&x.j.error)||'That is a lot of feedback for one day. Try again tomorrow.'):x.status===400||x.status===413?((x.j&&x.j.error)||'Something in that could not be sent. Shorten it and try again.'):'Prowl could not save that just now. Try again in a minute; your note is still here.');
   })['catch'](function(){
-    FBK.busy=false;if(go){go.disabled=false;go.textContent='Send feedback'}
+    FBK.busy=false;if(seq!==FBK.seq)return;if(go){go.disabled=false;go.textContent='Send feedback'}
     fbkErr('Prowl could not be reached. Check your connection and try again; your note is still here.');
   });
 }

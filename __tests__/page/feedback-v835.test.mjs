@@ -154,6 +154,37 @@ test('errors keep the note and say what to do: too many, refused, offline; it ca
   await off.p.close();
 });
 
+test('review: reopening the sheet while a send is on its way: the old answer never writes into the new form, and no second note goes meanwhile', async () => {
+  for (const outcome of ['ok', 'fail']) {
+    let release;
+    const { p } = open();
+    const fetch0 = p.win.fetch, sent = [];
+    const answer = outcome === 'ok' ? { ok: true, status: 200, json: () => Promise.resolve({ ok: true }) } : { ok: false, status: 503, json: () => Promise.resolve({ error: 'x' }) };
+    p.win.fetch = (u, o) => (/\/feedback$/.test(String(u)) ? new Promise((res) => { sent.push({ u, o }); release = () => res(answer); }) : fetch0(u, o));
+    await tick(60);
+    p.$('#otp-fbkBtn').click(); await tick(20);
+    p.$('#otp-fbkLike').value = 'first note';
+    p.$('#otp-fbkGo').click();
+    await tick(20);
+    assert.equal(sent.length, 1);
+    p.$('#otp-fbkBtn').click(); await tick(20);   /* reopened: a fresh, empty form */
+    assert.equal(p.$('#otp-fbkLike').value, '');
+    p.$('#otp-fbkLike').value = 'second, half typed';
+    p.$('#otp-fbkGo').click(); await tick(20);
+    assert.equal(sent.length, 1, 'no second note while the first is pending');
+    assert.match(p.$('#otp-fbkErr').textContent, /still sending/);
+    release();
+    await tick(80);
+    assert.ok(p.$('#otp-fbk'), outcome + ': the new form is still there');
+    assert.equal(p.$('.fbk-done'), null, outcome + ': no thank-you over it');
+    assert.equal(p.$('#otp-fbkLike').value, 'second, half typed', outcome + ': what they typed stays');
+    assert.doesNotMatch(p.$('#otp-fbkErr').textContent, /could not save/, outcome + ': no error from the old send');
+    p.$('#otp-fbkGo').click(); await tick(20);
+    assert.equal(sent.length, 2, outcome + ': it can send once the first has answered');
+    await p.close();
+  }
+});
+
 test('?store=1 opens the Store tab (the update email links there)', async () => {
   const { p } = open({ url: 'https://www.owlandtwigvintage.com/pages/prowl?store=1' });
   await waitFor(() => { const b = p.$('#otp-dock .db[data-m="store"]'); return b && b.classList.contains('on'); }, { timeout: 4000 });

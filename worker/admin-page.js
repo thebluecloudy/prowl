@@ -1786,7 +1786,7 @@ function renderFeedback() {
   const j = S.fbData || { entries: [] }, E = Array.isArray(j.entries) ? j.entries : [], L = fbShown(E);
   D.querySelectorAll("[data-ff]").forEach(x => x.setAttribute("aria-pressed", x.getAttribute("data-ff") === S.fbFilter ? "true" : "false"));
   const low = E.filter(e => e.rating >= 1 && e.rating <= 2).length, rep = E.filter(e => e.reply).length;
-  $("#fbkcnt").textContent = plural(E.length, "note", "notes") + " in the last " + (j.keepDays || 180) + " days" + (j.more ? " (the newest " + E.length + " of " + num(j.total) + ")" : "") +
+  $("#fbkcnt").textContent = plural(E.length, "note", "notes") + " in the last " + (j.keepDays || 180) + " days" + (j.more ? " (the newest " + E.length + " of " + num(j.total) + (j.totalMore ? "+" : "") + ")" : "") +
     " \u00b7 " + num(low) + " rated 2 or less \u00b7 " + num(rep) + " want a reply" + (S.fbFilter !== "all" ? " \u00b7 showing " + num(L.length) : "");
   if (!E.length) { fill($("#fbkbox"), h("p", { class: "muted", text: "No feedback yet. It shows here as soon as someone sends some from Den, Settings, Send feedback, or the link at the foot of the Prowl page." })); return; }
   if (!L.length) { fill($("#fbkbox"), h("p", { class: "muted", text: "Nothing matches this filter." })); return; }
@@ -1836,7 +1836,7 @@ function renderNews() {
   const total = Number(c.total) || 0, sent = Number(c.sent) || 0, failed = Number(c.failed) || 0;
   out.push(h("dl", { class: "dsum nws" }, [fact("Subject", c.subject || "What\u2019s new in Prowl"), fact("Status", NW_STATE[st] || st),
     fact(st === "draft" ? "Would go to" : "Sent", st === "draft" ? (n.eligible == null ? "\u2014" : plural(n.eligible, "member", "members")) : num(sent) + " of " + num(total)),
-    fact("Failed", num(failed)), fact("Members", n.members == null ? "\u2014" : num(n.members)), fact("Emails off or updates stopped", n.members == null ? "\u2014" : num(Math.max(0, (n.members || 0) - (n.eligible || 0))))]));
+    fact("Failed", num(failed)), fact("Members", n.members == null ? "\u2014" : num(n.members)), fact("Not getting it (emails off, no hunts or updates stopped)", n.members == null ? "\u2014" : num(Math.max(0, (n.members || 0) - (n.eligible || 0))))]));
   if (st !== "draft") {
     const pct = total ? Math.min(100, Math.round((sent + failed) / total * 100)) : 0;
     out.push(h("div", { class: "nwbar", role: "progressbar", "aria-label": "Sent", "aria-valuemin": "0", "aria-valuemax": String(total), "aria-valuenow": String(sent + failed) }, h("i", { class: "nwbar-" + pct })));
@@ -1891,7 +1891,7 @@ function renderNews() {
         catch (err) { if (err.status === 401) return; if (err.status === 409) { S.nwConfirm = 0; loadNews(true); } toast(err.message, true); yes.disabled = false; no.disabled = false; }
       });
       fill(conf, [h("h3", { id: "nw-conf-h", text: "Send \u201c" + (c.subject || "What\u2019s new in Prowl") + "\u201d to " + plural(S.nwConfirm, "member", "members") + "?" }),
-        h("p", { text: "Everyone with Prowl emails on, paused members too (not those with emails off or product updates stopped). It goes out " + per + " every 5 minutes, " + nwHours(S.nwConfirm, per) + " in all, and nobody gets it twice. You can stop it any time." }),
+        h("p", { text: "Everyone with Prowl emails on and a saved hunt, paused members too (not those with emails off, no hunts or product updates stopped). It goes out " + per + " every 5 minutes, " + nwHours(S.nwConfirm, per) + " in all, and nobody gets it twice. You can stop it any time." }),
         h("div", { class: "nwacts" }, [yes, no])]);
     }
   } else if (st === "sending") {
@@ -1969,7 +1969,7 @@ function appBody() {
       '<p class="cnt" id="fbkcnt" aria-live="polite"></p><div id="fbkbox"></div></section>') +
     panel("updates",
       '<section class="card"><div class="ch"><h2>Update email</h2></div>' +
-      '<p class="sub">The &ldquo;What&rsquo;s new in Prowl&rdquo; email. Its sections are written in the worker (news.js); you can add a short personal note, look at it as a Free or a Pro member, send yourself a test, then send it to everyone with Prowl emails on. Each email has the usual footer, a Stop product updates link (one-click in mail apps too) and the address.</p>' +
+      '<p class="sub">The &ldquo;What&rsquo;s new in Prowl&rdquo; email. Its sections are written in the worker (news.js); you can add a short personal note, look at it as a Free or a Pro member, send yourself a test, then send it to everyone with Prowl emails on and a saved hunt. Each email has the usual footer, a Stop product updates link (one-click in mail apps too) and the address.</p>' +
       '<div id="nwbox"></div></section>') +
     panel("diagnose",
       '<section class="card"><div class="ch"><h2>Why am I seeing wrong results?</h2></div>' +

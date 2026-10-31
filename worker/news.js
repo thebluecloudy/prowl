@@ -8,21 +8,35 @@
    the plan (pro / free / signed-out) and, only when the member ticked "OK to email me back", their email address.
    No IP address and no address without that tick. A copy goes to the owner's inbox through Resend (reply-to the member
    only when they asked). 5 a day per IP key and 5 a day per member (the counters are the usual daily vCount ones).
+   v208 review: also 15 a day per network (ipNet, as share and sign-in codes) and FBK_PER_DAY for the whole site; past
+   FBK_MAIL_PER_DAY a note is still kept but no copy is emailed. Email addresses and phone numbers typed into the boxes
+   are masked before the note is kept (fbkScrub), so neither the admin, the copy nor the 180-day record carries them.
+   A note that keeps a reply address is listed in fbkr:<address> (at most FBK_REPLY_MAX), so Delete my account clears
+   the address from those few notes alone, for every address the member had (alPurge), however big the store gets.
 
    The update email: one campaign at a time in KV (news:cur): id, subject, the optional personal note, the edition,
    status (draft, sending, stopped, done), counts. The content is the template below (newsBuild); the admin previews it,
    sends a test to the owner, then sends it to every member with emails on (paused members too; emails off or "Stop
    product updates" no). The alert clock sends at most NEWS_PER_RUN a run within its outside-call budget; each member
    gets sub.news = <campaign id> before their email goes, so nobody gets it twice and a stopped or crashed run picks up
-   where it left off. A failed send is counted and not retried.
+   where it left off. v208 review: the clock never writes news:cur. Its counts go in news:cnt:<id> (sent, failed,
+   lastRun, doneAt) and Stop is its own key, news:stop:<id>, both read with the shortest KV cache (30 s), so a Stop or a
+   New update can never be undone by a run, and the admin's Stop/Resume/Draft never roll the counts back (newsLoad merges
+   them for the view). Sends are paced (NEWS_GAP_MS); a send Resend could not take for now (429, 5xx, a timeout) puts
+   the member back for a later run, NEWS_TRIES tries in all, and stops this run's share; a refused one counts as failed
+   once. Each member's record is read again just before their email, so an unsubscribe made during the run holds.
+   Only members with a saved hunt get it (Prowl told the rest it only emails once they save a hunt).
 
    Everything here takes D, the helpers index.js hands in (newsDeps there), so the module never imports index.js and
    the tests can run it with fakes. */
 
 export const FBK_PREFIX = "fbk:", FBK_TTL = 180 * 86400, FBK_TEXT_MAX = 1000, FBK_PER_IP = 5, FBK_PER_MEMBER = 5, FBK_LIST_MAX = 300, FBK_BODY_MAX = 16384;
+export const FBK_PER_NET = 15, FBK_PER_DAY = 200, FBK_MAIL_PER_DAY = 50, FBK_REPLY_PREFIX = "fbkr:", FBK_REPLY_MAX = 20, FBK_COUNT_PAGES = 10;   /* v208 review */
 export const NEWS_KEY = "news:cur", NEWS_PER_RUN = 10, NEWS_NOTE_MAX = 600, NEWS_TESTS_PER_DAY = 10;
+export const NEWS_CNT = "news:cnt:", NEWS_STOP = "news:stop:", NEWS_TRIES = 3, NEWS_GAP_MS = 600, NEWS_KEEP = 400 * 86400, KV_FRESH_TTL = 30;   /* v208 review */
 export const NEWS_SUBJECT = "What’s new in Prowl", NEWS_EDITION = "2026-11";
 const FBK_ID_RE = /^\d{13}-[0-9a-z]{6}$/;
+const YEARS = /^(?:1[89]\d\d|20\d\d)(?:[\s.\/_-]+(?:1[89]\d\d|20\d\d))*$/;   /* the admin's looksPersonal rule: a run of years is not a phone number */
 
 /* ---------- feedback ---------- */
 /* one text box: strip control and direction characters (keep line breaks), at most two blank lines in a row, trimmed, capped */
@@ -31,10 +45,18 @@ export function fbkText(v, n) {
     .replace(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩﻿]/g, "")
     .replace(/[  ]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, n || FBK_TEXT_MAX).trim();
 }
+/* v208 review: an email address or a phone number typed into a box is masked (the admin's clean()/looksPersonal rules:
+   an address; a run of 7 or more digits that is not a run of years) */
+export function fbkScrub(t) {
+  return String(t == null ? "" : t)
+    .replace(/[^\s@<>"',;:=&?\/]+(@|%40)[^\s@<>"',;:&?\/]+/gi, "[email]")
+    .replace(/\+?\d[\d\s.\/_()-]*\d/g, run => (run.replace(/\D/g, "").length >= 7 && !YEARS.test(run.trim()) ? "[number]" : run));
+}
+const fbkBox = v => fbkText(fbkScrub(fbkText(v)));
 export function fbkClean(b) {
   b = b && typeof b === "object" ? b : {};
   const r = Math.round(Number(b.rating));
-  const out = { rating: r >= 1 && r <= 5 ? r : 0, like: fbkText(b.like), miss: fbkText(b.miss), reply: b.reply === true || b.reply === 1 || b.reply === "1",
+  const out = { rating: r >= 1 && r <= 5 ? r : 0, like: fbkBox(b.like), miss: fbkBox(b.miss), reply: b.reply === true || b.reply === 1 || b.reply === "1",
     v: /^v\d{1,2}\.\d{2}[a-z]?$/.test(String(b.v || "")) ? String(b.v) : "" };
   if (!out.rating && !out.like && !out.miss) return { error: "Pick a rating or write a line first." };
   return out;
@@ -77,17 +99,24 @@ export async function fbkPost(request, env, origin, D) {
   let sub = null;
   try { sub = await D.memberOf(request, env); } catch (e) { sub = null; }
   if (!owner) {
-    if (!(await D.vCount("fbk:" + D.ipKey(request.headers.get("CF-Connecting-IP")), FBK_PER_IP))) return D.json({ error: "That is a lot of feedback for one day. Thank you! Try again tomorrow, or email " + D.AL_UNSUB_MAIL + "." }, 429, origin);
-    if (sub && !(await D.vCount("fbkm:" + sub.email, FBK_PER_MEMBER))) return D.json({ error: "That is a lot of feedback for one day. Thank you! Try again tomorrow, or email " + D.AL_UNSUB_MAIL + "." }, 429, origin);
+    const ip = D.ipKey(request.headers.get("CF-Connecting-IP")), lot = () => D.json({ error: "That is a lot of feedback for one day. Thank you! Try again tomorrow, or email " + D.AL_UNSUB_MAIL + "." }, 429, origin);
+    if (!(await D.vCount("fbk:" + ip, FBK_PER_IP))) return lot();
+    if (!(await D.vCount("fbkn:" + D.ipNet(ip), FBK_PER_NET))) return lot();   /* v208 review: a /24 or an IPv6 /48 */
+    if (sub && !(await D.vCount("fbkm:" + sub.email, FBK_PER_MEMBER))) return lot();
+    if (!(await D.vCount("fbk:all", FBK_PER_DAY))) return D.json({ error: "Feedback is busy today. Try again tomorrow, or email " + D.AL_UNSUB_MAIL + "." }, 429, origin);   /* v208 review: the whole site */
   }
   const now = Date.now();
   const e = { at: new Date(now).toISOString(), rating: c.rating, like: c.like, miss: c.miss, v: c.v, plan: fbkPlan(sub) };
   const reply = c.reply && sub && sub.email ? String(sub.email) : "";
   if (reply) e.reply = reply;
   const key = fbkKey(now, fbkRand());
-  try { await env.PROWL_ALERTS.put(key, JSON.stringify(e), { expirationTtl: FBK_TTL }); }
-  catch (err) { return D.json({ error: "Prowl could not save that just now. Try again in a minute." }, 503, origin); }
+  try {
+    if (reply) await fbkIndex(env, reply, key.slice(FBK_PREFIX.length));   /* v208 review: first, so a kept address is always listed */
+    await env.PROWL_ALERTS.put(key, JSON.stringify(e), { expirationTtl: FBK_TTL });
+  } catch (err) { return D.json({ error: "Prowl could not save that just now. Try again in a minute." }, 503, origin); }
   let mailed = false;
+  /* v208 review: past the day's mail budget the note is kept, with no copy */
+  if (!owner && !(await D.vCount("fbkmail:day", FBK_MAIL_PER_DAY))) return D.json({ ok: true, reply: !!reply, mailed: false }, 200, origin);
   try {
     const m = fbkMail(D, env, Object.assign({}, e, { reply: !!reply }));
     const r = await D.alSend(env, fbkTo(env, D), m.subject, m.html, m.text, "", null, reply || "");
@@ -100,24 +129,25 @@ export async function fbkPost(request, env, origin, D) {
 /* the entries for the admin, newest first (the key order); the address never leaves here, only that one is there */
 export async function fbkList(env, max) {
   const kv = env.PROWL_ALERTS, keys = [];
-  let cursor;
+  let cursor, pages = 0;
+  /* v208 review: list on to count them all (a list only, FBK_COUNT_PAGES pages at most: past that the total is "at least") */
   do {
     const l = await kv.list({ prefix: FBK_PREFIX, cursor: cursor, limit: 1000 });
     for (const k of (l && l.keys) || []) keys.push(k.name);
     cursor = l && !l.list_complete ? l.cursor : undefined;
-  } while (cursor && keys.length < (max || FBK_LIST_MAX));
+  } while (cursor && ++pages < FBK_COUNT_PAGES);
   keys.sort();
   const take = keys.slice(0, max || FBK_LIST_MAX), out = [];
   for (let i = 0; i < take.length; i += 50) {
     const part = take.slice(i, i + 50), got = await Promise.all(part.map(k => kv.get(k, "json").catch(() => null)));
     part.forEach((k, j) => { const g = got[j]; if (g && typeof g === "object") out.push(fbkView(k, g)); });
   }
-  return { entries: out, total: keys.length, more: keys.length > take.length };
+  return { entries: out, total: keys.length, totalMore: !!cursor, more: keys.length > take.length || !!cursor };
 }
 export function fbkView(key, g) {
   const r = Math.round(Number(g.rating));
   return { id: String(key).slice(FBK_PREFIX.length), at: String(g.at || "").slice(0, 25), rating: r >= 1 && r <= 5 ? r : 0,
-    like: fbkText(g.like), miss: fbkText(g.miss), v: /^v\d{1,2}\.\d{2}[a-z]?$/.test(String(g.v || "")) ? String(g.v) : "",
+    like: fbkBox(g.like), miss: fbkBox(g.miss), v: /^v\d{1,2}\.\d{2}[a-z]?$/.test(String(g.v || "")) ? String(g.v) : "",
     plan: PLAN_NAME[g.plan] ? String(g.plan) : "signed-out", reply: typeof g.reply === "string" && g.reply.indexOf("@") > 0 };
 }
 export function fbkIdOk(id) { return FBK_ID_RE.test(String(id || "")); }
@@ -134,38 +164,74 @@ export async function fbkReplyTo(env, id) {
   const g = await env.PROWL_ALERTS.get(FBK_PREFIX + id, "json").catch(() => null);
   return g && typeof g.reply === "string" && g.reply.indexOf("@") > 0 ? g.reply : "";
 }
-/* Delete my Prowl Alerts account: the address comes out of any feedback that kept it (the note stays, anonymous) */
-export async function fbkForget(env, email) {
-  email = String(email || "").toLowerCase();
-  if (!email) return 0;
+/* v208 review: the notes that kept this address, newest last, at most FBK_REPLY_MAX: past that the oldest one's address
+   comes out at once, so the list always covers every note that has it */
+async function fbkIndex(env, email, id) {
+  const kv = env.PROWL_ALERTS, k = FBK_REPLY_PREFIX + String(email).toLowerCase();
+  let ids = [];
+  try { const g = await kv.get(k, "json"); if (Array.isArray(g)) ids = g.filter(fbkIdOk); } catch (e) { ids = []; }
+  ids = ids.filter(x => x !== id).concat([id]);
+  while (ids.length > FBK_REPLY_MAX) await fbkStrip(env, ids.shift(), [String(email).toLowerCase()]);
+  await kv.put(k, JSON.stringify(ids), { expirationTtl: FBK_TTL });
+}
+/* one note: its reply address out when it is one of these (the note stays, anonymous, for the rest of its 180 days) */
+async function fbkStrip(env, id, emails) {
+  if (!fbkIdOk(id)) return false;
+  const kv = env.PROWL_ALERTS, k = FBK_PREFIX + id, g = await kv.get(k, "json").catch(() => null);
+  if (!g || typeof g.reply !== "string" || emails.indexOf(g.reply.toLowerCase()) === -1) return false;
+  delete g.reply;
+  const left = Math.max(60, Math.floor(((Date.parse(g.at) || Date.now()) + FBK_TTL * 1000 - Date.now()) / 1000));
+  await kv.put(k, JSON.stringify(g), { expirationTtl: left });
+  return true;
+}
+/* Delete my Prowl Alerts account: the address comes out of any feedback that kept it (the note stays, anonymous).
+   v208 review: every address the member had (alPurge hands in the current one and the earlier ones still theirs), and
+   only the notes listed for them, so the work is a few reads however many notes there are. */
+export async function fbkForget(env, emails) {
+  const list = [...new Set((Array.isArray(emails) ? emails : [emails]).map(x => String(x || "").toLowerCase()).filter(x => x.indexOf("@") > 0))].slice(0, 6);
   const kv = env.PROWL_ALERTS;
-  let cursor, n = 0;
-  do {
-    const l = await kv.list({ prefix: FBK_PREFIX, cursor: cursor, limit: 1000 });
-    for (const k of (l && l.keys) || []) {
-      const g = await kv.get(k.name, "json").catch(() => null);
-      if (g && typeof g.reply === "string" && g.reply.toLowerCase() === email) {
-        delete g.reply;
-        const left = Math.max(60, Math.floor(((Date.parse(g.at) || Date.now()) + FBK_TTL * 1000 - Date.now()) / 1000));
-        await kv.put(k.name, JSON.stringify(g), { expirationTtl: left });
-        n++;
-      }
-    }
-    cursor = l && !l.list_complete ? l.cursor : undefined;
-  } while (cursor);
+  let n = 0;
+  for (const a of list) {
+    const k = FBK_REPLY_PREFIX + a, g = await kv.get(k, "json").catch(() => null);
+    for (const id of (Array.isArray(g) ? g : []).slice(-FBK_REPLY_MAX)) if (await fbkStrip(env, String(id), list)) n++;
+    await kv.delete(k);
+  }
   return n;
 }
 
 /* ---------- the update email ---------- */
 export function newsEligible(sub) {
-  return !!sub && typeof sub === "object" && typeof sub.email === "string" && sub.email.indexOf("@") > 0 && sub.mail !== "off" && !sub.newsOff;
+  return !!sub && typeof sub === "object" && typeof sub.email === "string" && sub.email.indexOf("@") > 0 && sub.mail !== "off" && !sub.newsOff &&
+    Array.isArray(sub.hunts) && sub.hunts.length > 0;   /* v208 review: a saved hunt, as the alert emails (the gift gate says Prowl only emails once you save one) */
 }
 export function newsDue(sub, cur) { return !!cur && newsEligible(sub) && String(sub.news || "") !== String(cur.id); }
 export function newsId(nowMs) { return "n" + new Date(nowMs).toISOString().replace(/[^0-9]/g, "").slice(0, 14) + fbkRand().slice(0, 3); }
 export function newsNote(v) { return fbkText(v, NEWS_NOTE_MAX); }
 export function newsFresh(nowMs, note) {
   return { id: newsId(nowMs), subject: NEWS_SUBJECT, edition: NEWS_EDITION, note: newsNote(note), status: "draft", created: new Date(nowMs).toISOString(),
-    total: 0, sent: 0, failed: 0, tests: 0, startedAt: "", stoppedAt: "", doneAt: "", lastRun: "" };
+    total: 0, tests: 0, startedAt: "", stoppedAt: "", doneAt: "", lastRun: "" };
+}
+/* v208 review: a read with the shortest KV cache, for what another location may just have changed (Stop, a new update,
+   an unsubscribe). undefined when the read failed. */
+export async function newsRead(env, k) {
+  try { const v = await env.PROWL_ALERTS.get(k, { type: "json", cacheTtl: KV_FRESH_TTL }); return v == null ? null : v; } catch (e) { return undefined; }
+}
+/* Stop is its own key; a read that failed counts as stopped (the safe side) */
+export async function newsStopped(env, id) { const v = await newsRead(env, NEWS_STOP + id); return v !== null; }
+/* the campaign as the admin sees it: news:cur (the admin's) with the clock's counts and the Stop key merged in */
+export function newsMerge(cur, cnt, stop) {
+  if (!cur || typeof cur !== "object") return null;
+  const o = Object.assign({}, cur), c = cnt && typeof cnt === "object" ? cnt : {};
+  o.sent = Number(c.sent) || 0; o.failed = Number(c.failed) || 0; o.lastRun = String(c.lastRun || "");
+  if (c.doneAt && (o.status === "sending" || o.status === "stopped")) { o.status = "done"; o.doneAt = String(c.doneAt); }
+  else if (stop && o.status === "sending") { o.status = "stopped"; o.stoppedAt = String((stop && stop.at) || o.stoppedAt || ""); }
+  return o;
+}
+export async function newsLoad(env) {
+  const cur = await newsRead(env, NEWS_KEY);
+  if (!cur || typeof cur !== "object" || !cur.id) return { cur: null, state: null };
+  const cnt = await newsRead(env, NEWS_CNT + cur.id), stop = await newsRead(env, NEWS_STOP + cur.id);
+  return { cur: cur, state: newsMerge(cur, cnt, stop) };
 }
 /* what the admin is shown: no member data in a campaign, only counts */
 export function newsView(cur) {
@@ -240,34 +306,66 @@ function newsMonth(cur) {
 /* a stand-in member for the admin's preview and test (no address of anyone, no ticket) */
 export function newsSample(email, pro) { return { email: String(email || "member@example.com"), utok: "preview", pro: !!pro, preview: true }; }
 
-/* one member: the marker first (a crash after it can never send twice), then the email */
+/* a send Resend could not take for now (429, a 5xx, a timeout or a network error) is worth another try; a refusal is not */
+export function newsRetryable(r) {
+  const m = /^resend (\d{3})\b/.exec(String((r && r.error) || ""));
+  if (!m) return true;
+  const st = Number(m[1]);
+  return st === 429 || st >= 500;
+}
+function newsTries(sub, cur) { const t = sub && sub.newsTry; return t && typeof t === "object" && t.id === cur.id ? Math.max(0, Number(t.n) || 0) : 0; }
+/* one member: their record read again (an unsubscribe made during the run holds), the marker first (a crash after it can
+   never send twice), then the email. "retry": Resend could not take it now, the marker is taken back for a later run. */
 export async function newsSendOne(D, env, sub, cur) {
-  sub.news = cur.id;
-  if (!(await D.alMerge(env, sub, ["news"]))) return "gone";
+  const fresh = await newsRead(env, "sub:" + sub.email);
+  if (fresh === null) return "gone";
+  if (!fresh || !newsDue(fresh, cur)) return "skipped";
+  const was = fresh.news == null ? "" : String(fresh.news), tries = newsTries(fresh, cur);
+  sub.news = cur.id; sub.newsTry = { id: cur.id, n: tries + 1 };
+  if (!(await D.alMerge(env, sub, ["news", "newsTry"]))) return "gone";
+  if (!newsEligible(sub)) return "skipped";   /* the merged record, as it is now */
   const ms = await D.alMailSub(env, sub);
   const m = newsBuild(D, env, ms, cur);
   const r = await D.alSend(env, sub.email, m.subject, m.html, m.text, m.unsub);
-  return r && r.ok ? "sent" : "failed";
+  if (r && r.ok) return "sent";
+  if (newsRetryable(r) && tries + 1 < NEWS_TRIES) {
+    sub.news = was;
+    try { if (await D.alMerge(env, sub, ["news"])) return "retry"; } catch (e) {}
+  }
+  return "failed";
 }
-/* the alert clock's share: subs = every member record this run read; room = outside calls the run can still spend */
+const nap = ms => new Promise(r => setTimeout(r, ms));
+/* the alert clock's share: subs = every member record this run read; room = outside calls the run can still spend.
+   It reads news:cur and the Stop key, and writes only news:cnt:<id> (and each member's marker). */
 export async function newsTick(D, env, subs, room, nowMs) {
-  const res = { sent: 0, failed: 0, done: false };
-  let cur = await D.kvGet(env, NEWS_KEY, null);
-  if (!cur || cur.status !== "sending") return res;
+  const res = { sent: 0, failed: 0, retry: 0, done: false };
+  const cur = await newsRead(env, NEWS_KEY);
+  if (!cur || cur.status !== "sending" || !cur.id) return res;
+  if (await newsStopped(env, cur.id)) return res;
+  const cnt0 = await newsRead(env, NEWS_CNT + cur.id);
+  if (cnt0 === undefined || (cnt0 && cnt0.doneAt)) return res;
   const due = (subs || []).filter(s => newsDue(s, cur));
   const n = Math.max(0, Math.min(NEWS_PER_RUN, Math.floor(Number(room) || 0), due.length));
+  const sleep = typeof D.sleep === "function" ? D.sleep : nap;
+  let halted = false;
   for (let i = 0; i < n; i++) {
-    if (i) { const c = await D.kvGet(env, NEWS_KEY, null); if (!c || c.id !== cur.id || c.status !== "sending") break; }   /* Stop takes effect between emails */
+    if (i) {   /* paced (Resend takes a few a second), and Stop or a new update takes effect between emails */
+      await sleep(NEWS_GAP_MS);
+      const c = await newsRead(env, NEWS_KEY);
+      if (!c || c.id !== cur.id || c.status !== "sending" || (await newsStopped(env, cur.id))) { halted = true; break; }
+    }
     let r = "failed";
     try { r = await newsSendOne(D, env, due[i], cur); } catch (e) { r = "failed"; }
     if (r === "sent") res.sent++; else if (r === "failed") res.failed++;
+    else if (r === "retry") { res.retry++; halted = true; break; }   /* Resend is busy: the rest wait for the next run */
   }
-  const fresh = await D.kvGet(env, NEWS_KEY, null);
-  if (!fresh || fresh.id !== cur.id) return res;
-  fresh.sent = (Number(fresh.sent) || 0) + res.sent;
-  fresh.failed = (Number(fresh.failed) || 0) + res.failed;
-  fresh.lastRun = new Date(nowMs || Date.now()).toISOString();
-  if (fresh.status === "sending" && due.length <= n) { fresh.status = "done"; fresh.doneAt = fresh.lastRun; res.done = true; }
-  await D.kvPut(env, NEWS_KEY, fresh);
+  const finished = !halted && due.length <= n;
+  if (!res.sent && !res.failed && !res.retry && !finished) return res;
+  const cnt = (await newsRead(env, NEWS_CNT + cur.id)) || {};
+  cnt.sent = (Number(cnt.sent) || 0) + res.sent;
+  cnt.failed = (Number(cnt.failed) || 0) + res.failed;
+  cnt.lastRun = new Date(nowMs || Date.now()).toISOString();
+  if (finished) { cnt.doneAt = cnt.lastRun; res.done = true; }
+  await env.PROWL_ALERTS.put(NEWS_CNT + cur.id, JSON.stringify(cnt), { expirationTtl: NEWS_KEEP });
   return res;
 }

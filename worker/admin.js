@@ -1146,8 +1146,8 @@ async function apiFeedback(c) {
   if (typeof c.H.fbkList !== "function") return jerr(503, "Feedback is not available.");
   const r = await c.H.fbkList(c.env);
   const E = arr(r.entries).map(e => ({ id: word(e.id, 24), at: String(e.at || "").slice(0, 25), rating: Math.max(0, Math.min(5, Math.round(num(e.rating)))),
-    like: String(e.like || "").slice(0, 1000), miss: String(e.miss || "").slice(0, 1000), v: word(e.v, 8), plan: word(e.plan, 12), reply: !!e.reply }));
-  return jres({ entries: E, total: num(r.total), more: !!r.more, keepDays: 180 });
+    like: clean(e.like, 1000), miss: clean(e.miss, 1000), v: word(e.v, 8), plan: word(e.plan, 12), reply: !!e.reply }));   /* v208 review: no address or phone number, as other member text */
+  return jres({ entries: E, total: num(r.total), totalMore: !!r.totalMore, more: !!r.more, keepDays: 180 });
 }
 async function apiFeedbackDelete(c) {
   const id = String(c.body.id == null ? "" : c.body.id);
@@ -1166,8 +1166,11 @@ async function apiFeedbackReply(c) {
 /* ---------- v208: the "What's new" update email ----------
    One campaign at a time (news:cur, built by news.js). The content is a template in code: the owner adds an optional
    note, previews it as a Free or a Pro member, sends a test to the owner's inbox, then sends it to everyone with emails
-   on (the count is confirmed first); the alert clock sends it a few a run. Stop and Resume pick up where it left off. */
-async function newsCur(c) { return await c.H.kvGet(c.env, c.H.NEWS_KEY, null); }
+   on (the count is confirmed first); the alert clock sends it a few a run. Stop and Resume pick up where it left off.
+   v208 review: only the admin writes news:cur; the clock's counts (news:cnt:<id>) and Stop (news:stop:<id>) are their
+   own keys, merged in by newsLoad, so Stop, Resume and Draft never roll the counts back and a run never undoes a Stop. */
+async function newsCur(c) { return (await c.H.newsLoad(c.env)).cur; }
+async function newsState(c) { return await c.H.newsLoad(c.env); }
 async function newsCounts(c, cur) {
   const R = await roster(c, true);
   let all = 0, eligible = 0, marked = 0;
@@ -1175,10 +1178,10 @@ async function newsCounts(c, cur) {
   return { members: all, eligible: eligible, marked: marked, truncated: !!R.truncated };
 }
 async function apiNews(c) {
-  const cur = await newsCur(c);
+  const L = await newsState(c);
   let counts = null;
-  try { counts = await newsCounts(c, cur); } catch (e) { counts = null; }
-  return jres({ campaign: c.H.newsView(cur), counts: counts, perRun: c.H.NEWS_PER_RUN, everyMin: 5, owner: String(c.env.FEEDBACK_TO || c.H.AL_UNSUB_MAIL) });
+  try { counts = await newsCounts(c, L.cur); } catch (e) { counts = null; }
+  return jres({ campaign: c.H.newsView(L.state), counts: counts, perRun: c.H.NEWS_PER_RUN, everyMin: 5, owner: String(c.env.FEEDBACK_TO || c.H.AL_UNSUB_MAIL) });
 }
 function newsPreviewHtml(c, as, cur) {
   const D = c.H.newsDeps(), C = cur || c.H.newsFresh(c.nowMs, "");
@@ -1193,14 +1196,14 @@ async function apiNewsPreview(c) {
 }
 const newsBusy = cur => !!cur && (cur.status === "sending" || cur.status === "stopped");
 async function apiNewsDraft(c) {
-  let cur = await newsCur(c);
-  if (newsBusy(cur)) return jerr(409, "This update is already going out. Its note cannot change now.");
-  if (cur && cur.status === "done") return jerr(409, "This update has gone out. Press New update to start another.");
+  let { cur, state } = await newsState(c);
+  if (newsBusy(state)) return jerr(409, "This update is already going out. Its note cannot change now.");
+  if (state && state.status === "done") return jerr(409, "This update has gone out. Press New update to start another.");
   if (!cur) cur = c.H.newsFresh(c.nowMs, "");
   cur.note = c.H.newsNote(c.body.note);
   await c.H.kvPut(c.env, c.H.NEWS_KEY, cur);
   await audit(c, { action: "news-draft", ok: true, note: cur.note ? "with a note" : "no note" });
-  return jres({ ok: true, message: "Saved. The preview shows it now.", campaign: c.H.newsView(cur) });
+  return jres({ ok: true, message: "Saved. The preview shows it now.", campaign: c.H.newsView(c.H.newsMerge(cur, null, null)) });
 }
 async function apiNewsTest(c) {
   if (!(await c.H.vCount("admnewstest", c.H.NEWS_TESTS_PER_DAY))) return jerr(429, "That is a lot of test emails today. Try again tomorrow.");
@@ -1212,39 +1215,46 @@ async function apiNewsTest(c) {
   return r && r.ok ? jres({ ok: true, message: "Test sent to " + to + " (as a " + (as === "pro" ? "Pro" : "Free") + " member)." }) : jerr(502, "The test did not send: " + clean(r && r.error, 120));
 }
 async function apiNewsSend(c) {
-  let cur = await newsCur(c);
-  if (newsBusy(cur)) return jerr(409, "This update is already going out.");
-  if (cur && cur.status === "done") return jerr(409, "This update has gone out. Press New update to start another.");
+  let { cur, state } = await newsState(c);
+  if (newsBusy(state)) return jerr(409, "This update is already going out.");
+  if (state && state.status === "done") return jerr(409, "This update has gone out. Press New update to start another.");
   if (!cur) cur = c.H.newsFresh(c.nowMs, "");
   const n = await newsCounts(c, cur);
   if (num(c.body.count) !== n.eligible) return jerr(409, "The number of members changed: it is " + n.eligible + " now. Check it and confirm again.", { count: n.eligible });
-  if (!n.eligible) return jerr(400, "No member has emails on, so there is no one to send it to.");
-  cur.status = "sending"; cur.total = n.eligible; cur.sent = 0; cur.failed = 0; cur.startedAt = new Date(c.nowMs).toISOString(); cur.stoppedAt = ""; cur.doneAt = "";
+  if (!n.eligible) return jerr(400, "No member has emails on and a saved hunt, so there is no one to send it to.");
+  cur.status = "sending"; cur.total = n.eligible; cur.startedAt = new Date(c.nowMs).toISOString(); cur.stoppedAt = ""; cur.doneAt = "";
+  delete cur.sent; delete cur.failed;
+  try { await c.env.PROWL_ALERTS.delete(c.H.NEWS_STOP + cur.id); } catch (e) {}
   await c.H.kvPut(c.env, c.H.NEWS_KEY, cur);
   await audit(c, { action: "news-send", ok: true, note: n.eligible + " members" });
-  return jres({ ok: true, message: "Sending to " + n.eligible + " members, " + c.H.NEWS_PER_RUN + " every 5 minutes or so.", campaign: c.H.newsView(cur) });
+  return jres({ ok: true, message: "Sending to " + n.eligible + " members, " + c.H.NEWS_PER_RUN + " every 5 minutes or so.", campaign: c.H.newsView(c.H.newsMerge(cur, null, null)) });
 }
+/* Stop: its own key, which the clock reads before every email; news:cur changes only its status (never the counts) */
 async function apiNewsStop(c) {
-  const cur = await newsCur(c);
-  if (!cur || cur.status !== "sending") return jerr(409, "Nothing is going out right now.");
-  cur.status = "stopped"; cur.stoppedAt = new Date(c.nowMs).toISOString();
+  const { cur, state } = await newsState(c);
+  if (!cur || !state || state.status !== "sending") return jerr(409, "Nothing is going out right now.");
+  const at = new Date(c.nowMs).toISOString();
+  await c.env.PROWL_ALERTS.put(c.H.NEWS_STOP + cur.id, JSON.stringify({ at: at }), { expirationTtl: c.H.NEWS_KEEP });
+  cur.status = "stopped"; cur.stoppedAt = at;
   await c.H.kvPut(c.env, c.H.NEWS_KEY, cur);
-  await audit(c, { action: "news-stop", ok: true, note: num(cur.sent) + " sent" });
-  return jres({ ok: true, message: "Stopped. " + num(cur.sent) + " sent so far; Resume carries on with the rest.", campaign: c.H.newsView(cur) });
+  const v = Object.assign({}, state, { status: "stopped", stoppedAt: at });
+  await audit(c, { action: "news-stop", ok: true, note: num(v.sent) + " sent" });
+  return jres({ ok: true, message: "Stopped. " + num(v.sent) + " sent so far; Resume carries on with the rest.", campaign: c.H.newsView(v) });
 }
 async function apiNewsResume(c) {
-  const cur = await newsCur(c);
-  if (!cur || cur.status !== "stopped") return jerr(409, "There is no stopped update to resume.");
+  const { cur, state } = await newsState(c);
+  if (!cur || !state || state.status !== "stopped") return jerr(409, "There is no stopped update to resume.");
   cur.status = "sending"; cur.stoppedAt = "";
   await c.H.kvPut(c.env, c.H.NEWS_KEY, cur);
+  await c.env.PROWL_ALERTS.delete(c.H.NEWS_STOP + cur.id);
   await audit(c, { action: "news-resume", ok: true });
-  return jres({ ok: true, message: "Resumed. Members who already have it are skipped.", campaign: c.H.newsView(cur) });
+  return jres({ ok: true, message: "Resumed. Members who already have it are skipped.", campaign: c.H.newsView(Object.assign({}, state, { status: "sending", stoppedAt: "" })) });
 }
 /* a finished or stopped update is put aside for a new one (its markers stay with the old id, so the new one reaches everyone) */
 async function apiNewsNew(c) {
-  const cur = await newsCur(c);
-  if (cur && cur.status === "sending") return jerr(409, "Stop the update going out first.");
-  if (cur) { try { await c.env.PROWL_ALERTS.put("news:prev", JSON.stringify(c.H.newsView(cur)), { expirationTtl: 400 * 86400 }); } catch (e) {} }
+  const { state } = await newsState(c);
+  if (state && state.status === "sending") return jerr(409, "Stop the update going out first.");
+  if (state) { try { await c.env.PROWL_ALERTS.put("news:prev", JSON.stringify(c.H.newsView(state)), { expirationTtl: 400 * 86400 }); } catch (e) {} }
   const fresh = c.H.newsFresh(c.nowMs, "");
   await c.H.kvPut(c.env, c.H.NEWS_KEY, fresh);
   await audit(c, { action: "news-new", ok: true });

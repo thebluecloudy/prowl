@@ -25,7 +25,12 @@
  *         an IP) and emails the owner a copy (reply-to the member only then); 5 a day per IP and per member. The admin's
  *         Feedback tab lists, filters and deletes them. The update email (news.js, news:cur) is previewed, tested and sent
  *         from the admin's Updates tab; the alert clock sends NEWS_PER_RUN a run within its budget, sub.news marks each
- *         member first; /alerts/unsub?w=news (sub.newsOff) stops product updates alone.
+ *         member first; /alerts/unsub?w=news (sub.newsOff) stops product updates alone. Review: /feedback also caps a
+ *         network (ipNet) and the whole site a day, emails at most FBK_MAIL_PER_DAY copies and masks addresses and phone
+ *         numbers in the text; Delete my account clears the reply address of every address the member had (fbkr: index);
+ *         the clock never writes news:cur (counts in news:cnt:<id>, Stop in news:stop:<id>), paces its sends, retries a
+ *         busy Resend, rechecks each member just before their email, skips members with no hunts and runs after the
+ *         estate prep and the Facebook sweep.
  *   v207: 2026-10-31. Estate sales on the way (Matt: "fold it into road trip map"): GET /trip/sales?p=lat,lng|...&day&tz[&h]
  *         lists the estate sales open on a Road trip's day within 3 miles of its route (the page sends the route /trip
  *         answered, or a loop's start and stops), nearest to the road first, at most 12, from the wk1: lists around at most
@@ -710,7 +715,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
-import { fbkPost, fbkList, fbkDelete, fbkReplyTo, fbkForget, newsTick, newsBuild, newsSample, newsFresh, newsView, newsNote, newsEligible, NEWS_KEY, NEWS_PER_RUN, NEWS_TESTS_PER_DAY } from "./news.js";   /* v208 */
+import { fbkPost, fbkList, fbkDelete, fbkReplyTo, fbkForget, newsTick, newsBuild, newsSample, newsFresh, newsView, newsNote, newsEligible, newsLoad, newsMerge, NEWS_KEY, NEWS_STOP, NEWS_KEEP, NEWS_PER_RUN, NEWS_TESTS_PER_DAY } from "./news.js";   /* v208 */
 import { SpendBuffer, spendOp, spendWrap } from "./spend.js";   /* v193 */
 import { FB_UNIT, FB_RUN_ITEMS, FB_TTL, FB_PER_RUN, FB_ZIP_TTL, FB_ZIP_MISS_TTL, FB_TRIES, fbLive, fbCapUnits, fbTerm, fbCell, fbKey, fbUnits, fbEstimate, fbItems, fbMerge, fbRun, FB_MEMBER_DAY, FB_SEARCH_DAY, FB_USA_MI, fbPickKey, fbShipKey, fbMi, fbJoin, fbWhy } from "./fb.js";   /* v200 */
 import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb64u } from "./push.js";   /* v114 */
@@ -5880,7 +5885,7 @@ async function alTick(env) {
   PJ_RUN = { left: POUNCE_PER_RUN, m: {}, down: !!(await kvGet(env, "pjdown", null)) };   /* v112: Pounce's share of this run's outside calls; v112 review: none while Muse is down */
   let budget = alBatch(env), proLeft = AL_PRO_REFRESH_PER_RUN, lettersLeft = AL_LETTERS_PER_RUN;   /* v152 */
   const wkRun = { calls: 0, max: 0 };   /* v205 review: the estate fetches' outside calls this run */
-  const newsRun = { sent: 0, failed: 0 };   /* v208: the update email's sends this run */
+  const newsRun = { sent: 0, failed: 0, retry: 0 }, fbRun = { used: 0 };   /* v208: the update email's sends this run; review: the Facebook sweep's calls */
   /* v51: every member key (KV lists 1000 at a time), and each run starts at a
      different member, so the top of the alphabet never starves the bottom. */
   const names = [];
@@ -5908,7 +5913,7 @@ async function alTick(env) {
   const note = m => { if (tally.errors.length < 5) tally.errors.push(scrubPII(m).slice(0, 160)); };
   /* v200: the outside calls this run has made so far (a hunt is about AL_CALLS_PER_HUNT, a Shopify check, a Pounce
      judgement and an email one each); v205 review: and the estate fetches' own count */
-  const runUsed = () => (tally.checked + AL_LETTERS_PER_RUN - lettersLeft) * AL_CALLS_PER_HUNT + (AL_PRO_REFRESH_PER_RUN - proLeft) + (POUNCE_PER_RUN - Math.max(0, PJ_RUN.left)) + tally.sent + tally.failed + wkRun.calls + newsRun.sent + newsRun.failed;
+  const runUsed = () => (tally.checked + AL_LETTERS_PER_RUN - lettersLeft) * AL_CALLS_PER_HUNT + (AL_PRO_REFRESH_PER_RUN - proLeft) + (POUNCE_PER_RUN - Math.max(0, PJ_RUN.left)) + tally.sent + tally.failed + wkRun.calls + newsRun.sent + newsRun.failed + newsRun.retry + fbRun.used;
   /* v205: today's estate sales near a Pro member's ZIP, fetched ahead of their digest (alEstatePrep). v205 review 3+4:
      after the member loop and before the Facebook sweep, so it never holds back a hunt check and sees every call the
      run has made (Pounce, Pro checks, emails): one fetch a run with the calls left (at most AL_ESTATE_CALLS, none under
@@ -5988,21 +5993,23 @@ async function alTick(env) {
       if (r.sent) tally.sent++; else if (r.reason !== "nothing new") { tally.failed++; note("email not sent: " + (r.reason || r.error || "unknown")); }
     }
   }
-  /* v208: the "What's new" email, NEWS_PER_RUN a run at most, after the members' own emails and within what is left */
-  try {
-    const nr = await newsTick(newsDeps(), env, subs.map(x => x.sub), Math.min(NEWS_PER_RUN, FB_RUN_CALLS - runUsed() - AL_ESTATE_MIN_CALLS), Date.now());
-    newsRun.sent = nr.sent; newsRun.failed = nr.failed;
-    if (nr.sent || nr.failed || nr.done) log.push("news: " + nr.sent + " sent, " + nr.failed + " failed" + (nr.done ? ", done" : ""));
-    if (nr.failed) note("news: " + nr.failed + " not sent");
-  } catch (e) { note("news failed: " + String(e && e.message || e)); }
   try { await estatePrep(); } catch (e) { note("estate prep failed: " + String(e && e.message || e)); }   /* v205 review 3+4 */
   /* v200: Facebook finds, with the outside calls this run has left (runUsed; v205 review: the estate fetches' too) */
   try {
     const used = runUsed();
     const fr = await fbSweep(env, subs.map(x => x.sub), FB_RUN_CALLS - used);
+    fbRun.used = Math.max(0, Number(fr.used) || 0);   /* v208 review: what the sweep spent, for the update email's share */
     if (fr.calls) log.push("facebook: " + fr.swept + " of " + fr.calls + " swept");
     fr.errors.forEach(note);
   } catch (e) { note("facebook sweep failed: " + String(e && e.message || e)); }
+  /* v208: the "What's new" email, NEWS_PER_RUN a run at most. v208 review: last, after the estate prep and the Facebook
+     sweep, with only the calls they left (members first) */
+  try {
+    const nr = await newsTick(newsDeps(), env, subs.map(x => x.sub), Math.min(NEWS_PER_RUN, FB_RUN_CALLS - runUsed()), Date.now());
+    newsRun.sent = nr.sent; newsRun.failed = nr.failed; newsRun.retry = nr.retry || 0;
+    if (nr.sent || nr.failed || nr.retry || nr.done) log.push("news: " + nr.sent + " sent, " + nr.failed + " failed" + (nr.retry ? ", " + nr.retry + " for a later run" : "") + (nr.done ? ", done" : ""));
+    if (nr.failed) note("news: " + nr.failed + " not sent");
+  } catch (e) { note("news failed: " + String(e && e.message || e)); }
   console.log(JSON.stringify({ alTick: now.day + " " + now.hour + "h", members: names.length, from: off, log: log }));   /* v51: visible in Workers Logs */
   /* v78: the admin overview's member counts (numbers only), worked out from the records this run already holds,
      so the dashboard does not read every member from KV each time it refreshes */
@@ -6737,7 +6744,6 @@ async function alPurge(env, email, sub) {
   const svNow = await kvGet(env, "saved:" + email, null);
   await savedHpPurge(env, svNow);   /* v181: photos kept under an earlier address */
   try { await kv.delete(await ctrName("fbrot:" + email)); gone.push("fbrot:"); } catch (e) {}   /* v203: the member's place in their Facebook hunts */
-  try { if (await fbkForget(env, email)) gone.push("fbk:"); } catch (e) {}   /* v208: their address out of any feedback that kept it */
   for (const p of ["sub:", "pend:", "seen:", "mvf:", "in:", "conf:", "pro:", "last:", "likes:", "saved:", "code:", "pj:", "gm:", "pq:", "pp:", "wk:", "lt:"]) { await kv.delete(p + email); gone.push(p); }   /* v152: wk: lt: */   /* v85: likes:, v86: conf:, v108: code:, v112: pj: gm: pq: pp: (Pounce) */
   await savedPurge(env, email, svNow); gone.push("saved/");   /* v168: the saved finds' photos */
   if (await pushPurge(env, email)) gone.push("push:");   /* v114 */
@@ -6766,6 +6772,9 @@ async function alPurge(env, email, sub) {
   await tripsForget(env, tids);
   for (const t of tids) await kv.delete("tripoffer:" + t);   /* v183: the trips they were invited to */
   gone.push("acct:", "tripinv:", "trips:", "tripoffer:");
+  /* v208: their address out of any feedback that kept it. v208 review: every address that is still theirs (an address
+     change since does not leave the old one behind), from the fbkr: list alone, and after the member's own keys are gone */
+  try { if (await fbkForget(env, addrs)) gone.push("fbk:"); } catch (e) {}
   console.log("purge " + gone.join(" "));
   return gone;
 }
@@ -7712,7 +7721,7 @@ const ADMIN_H = {
   cfReferrers,   /* v127: Visitors in the admin */
   WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, AL_PEND_CAP, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE,
   fbTestRun   /* v200: the admin's Facebook test */,
-  fbkList, fbkDelete, fbkReplyTo, newsTick, newsBuild, newsSample, newsFresh, newsView, newsNote, newsEligible, NEWS_KEY, NEWS_PER_RUN, NEWS_TESTS_PER_DAY, newsDeps, AL_UNSUB_MAIL   /* v208 */
+  fbkList, fbkDelete, fbkReplyTo, newsTick, newsBuild, newsSample, newsFresh, newsView, newsNote, newsEligible, newsLoad, newsMerge, NEWS_KEY, NEWS_STOP, NEWS_KEEP, NEWS_PER_RUN, NEWS_TESTS_PER_DAY, newsDeps, AL_UNSUB_MAIL   /* v208 */
 };
 /* v208: what news.js needs from here (feedback and the update email) */
 async function newsMember(request, env) {
@@ -7725,7 +7734,7 @@ async function newsMember(request, env) {
   return sub;
 }
 function newsDeps() {
-  return { json, readJson, kvGet, kvPut, ipKey, vCount, isOwner, alSend, alEsc, alShell, alAddr, alMerge, alMailSub, alLinkHash, alUnsubUrl, alUpgradeUrl, scrubPII,
+  return { json, readJson, kvGet, kvPut, ipKey, ipNet, vCount, isOwner, alSend, alEsc, alShell, alAddr, alMerge, alMailSub, alLinkHash, alUnsubUrl, alUpgradeUrl, scrubPII,
     memberOf: newsMember, ALLOW_ORIGINS, PROWL_APP, AL_UNSUB_MAIL };
 }
 
@@ -7940,6 +7949,7 @@ async function fbSweep(env, subs, room) {
     if (ni !== Number(rot.i)) { try { await env.PROWL_ALERTS.put(rk, JSON.stringify({ i: ni }), { expirationTtl: 60 * 86400 }); } catch (e) {} }
   }
   if (wrote) await save();
+  out.used = Math.max(0, Number(room) || 0) - room2;   /* v208 review: the run's calls this sweep spent (geocoding included) */
   return out;
 }
 /* give back one of a counter's takes (a search the cap refused) */
