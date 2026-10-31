@@ -1,16 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.21 / v196).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.21 / v197).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.21** | 375,773 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v196** | |
+| Worker | **v197** | |
 
 Recently shipped, newest first:
 
+- **v197: Diagnose says why the AI check did not answer.** Matt's eBay test in the admin showed "The AI check did
+  not answer" with no reason: `jevClassify` dropped TypeSafe's reply on any failure. Now it keeps the HTTP status and
+  TypeSafe's error message (or "timed out after 6 s", "could not reach TypeSafe", "answered with no answers") in
+  `info.status` as `jev failed: <reason>`, logs it, and the admin shows it inside the warning. Sorting itself is
+  unchanged. Test: `worker/__tests__/jev-why-v197.test.mjs`.
 - **v8.21: the Store tab icon is written so Shopify keeps it byte for byte.** v8.20's deploy saved the page but failed
   the md5 check: its icon used self-closing `<path …/>`, which the rest of the page never does (Shopify rewrites them).
   Now `<path …></path>` like every other icon. Nothing visible changes. Test in `__tests__/page/store-tab-v820.test.mjs`.
@@ -1748,7 +1753,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.22, worker v197**. Claim one here when you start.
+Next free numbers: **page v8.22, worker v198**. Claim one here when you start.
 
 ## What's next
 
