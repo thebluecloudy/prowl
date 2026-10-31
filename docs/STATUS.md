@@ -1,16 +1,43 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.26 / v202).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.27 / v203).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.26** | 375,639 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v202** | |
+| Page | **v8.27** | 375,639 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v203** | |
 
 Recently shipped, newest first:
 
+- **v8.27 / v203: Facebook finds, Matt's way: 10 searches a member a day, near me or All USA, plus ships, in the Store**
+  (Matt, 2026-10-31: "10 a day is fine, build it"; "User should pick. Local plus ship with a radius. All USA."; "Should
+  we add Facebook to the store section. Pro only.").
+  - **Per member, in turn:** each Pro member gets `FB_MEMBER_DAY` (10) Facebook searches a day (Caps `fbm:`), taken in
+    turn through their hunts from where yesterday stopped (`fbrot:<keyed hash>` in KV, 60 days). A search another member
+    already did today is free. The site cap (`FB_DAY_USD`, $1) stays the backstop; a capped search gives the member's
+    count back.
+  - **A hunt is two searches:** pickup within the member's local-pickup radius (`prefs.radius` 25/50/100 miles, or 500
+    for a hunt in `prefs.fbusa`, "All USA"), kept at `fb3:<hunt>|<cell>|<miles>`; and the listings that ship
+    (`deliveryMethod: "shipping"`, 805 km), kept by hunt words alone at `fb3s:<hunt>` and shared by every member.
+  - **Junk dropped:** Facebook pads a thin local search with far-away "similar items" (Cleveland in a Novi search), strict
+    filtering or not. `fbClean` now drops pickup listings with no coordinates or more than radius + 5 miles from the area
+    point (each listing's own `location.latitude/longitude`, haversine `fbMiles`), and any listing whose title lacks a
+    hunt word (`fbMatch`: each word, de-pluralised, starts a title word; stop words skipped). Each keeps `miles`;
+    shipping ones `ships: true`.
+  - **Store (page):** "Facebook Marketplace · LIVE" in the Store drop-down for a Pro member or the owner key (`fbOn()`).
+    One screen with every hunt's saved finds (`GET /fb-finds?all=1`, no Apify call), freshness, "Checks soon" for a hunt
+    not reached yet, and **Search Facebook for one thing** (`POST /fb-search`, 5 a day per member as Caps `fbq:`, a
+    failed search not counted; owner 40).
+  - **Hunt page (page):** cards say "12 mi" or "Ships"; the strip says "Facebook checks this hunt soon" for a hunt not
+    searched yet; a signed-in Pro member gets a **Near me · N mi / All USA** switch on the strip (saved in
+    `prefs.fbusa` through `/alerts/prefs`).
+  - **Admin:** the Facebook test picks Pickup 25/50/100 mi, All USA (500 mi) or Ships nationwide, and shows miles.
+  - Privacy section updated (search distance, shipping searches, miles kept, the choice and counters).
+  - Tests: `__tests__/page/fb-store-v827.test.mjs`, `worker/__tests__/fb-rotation-v203.test.mjs`; the v200/v202
+    Facebook tests follow the new keys (`fb3:`, `fb3s:`, `fb3day:`).
+  - Review fix: `POST /fb-search` routed above the GET-only guard (it was 405).
 - **v202: Facebook finds show prices and photos, and the admin's test fills the hunt page** (Matt, 2026-10-31: his
   first Diagnose › Facebook test listed 15 panthers with every price "—", and he asked to see them on the hunt pages
   with photos). Worker only; the page's Facebook strip already draws each find as a photo card (`sgwCard`).
@@ -1848,7 +1875,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.27, worker v203** (open PRs hold page v8.22 and worker v198 (Hark's #281), and worker v201 for #289 (`claude/jev-why-v197`, which claimed v200 before #287 shipped it)). Claim one here when you start.
+Next free numbers: **page v8.28, worker v204** (open PRs hold page v8.22 and worker v198 (Hark's #281), and worker v201 for #289 (`claude/jev-why-v197`, which claimed v200 before #287 shipped it)). Claim one here when you start.
 
 ## What's next
 

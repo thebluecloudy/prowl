@@ -7425,16 +7425,14 @@ async function fbSweep(env, subs, room) {
     for (let s = 0; s < terms.length; s++) {
       const ix = (i0 + s) % terms.length, term = terms[ix], mi = fbHuntMi(o, term);
       const jobs = [{ k: "p|" + term + "|" + cell.key + "|" + mi, key: fbPickKey(term, cell, mi), opt: { mi: mi } }, { k: "s|" + term, key: fbShipKey(term), opt: { ship: true } }];
-      let open = false;
       for (const jb of jobs) {
         if (done[jb.k] === 1 || (done[jb.k] || 0) <= -FB_TRIES) continue;
-        open = true;
         if (spent || left <= 0 || room2 < FB_CALLS_EACH || done._cap) continue;
         if (Object.keys(done).length >= FB_DAY_LIST_MAX) { left = 0; continue; }
         if (!(await vCount("fbm:" + sub.email, FB_MEMBER_DAY))) { spent = true; continue; }   /* this member's 10 are used */
         left--; room2 -= FB_CALLS_EACH;
         const n = await fbTry(jb.k);   /* taken before the call: a run killed mid-call still used its try */
-        if (!n) { done[jb.k] = -FB_TRIES; wrote = true; continue; }
+        if (!n) { done[jb.k] = -FB_TRIES; wrote = true; await fbGive("fbm:" + sub.email); continue; }   /* no call made: the member keeps that search */
         out.calls++;
         const r = await fbCall(env, term, cell, FB_RUN_ITEMS, jb.opt);
         if (r.capped) { done._cap = 1; wrote = true; left = 0; await fbGive("fbm:" + sub.email); continue; }
@@ -7446,7 +7444,7 @@ async function fbSweep(env, subs, room) {
       }
       const still = jobs.some(jb => done[jb.k] !== 1 && (done[jb.k] || 0) > -FB_TRIES);
       if (still && next === -1) next = ix;
-      if (open && (spent || left <= 0)) break;
+      if (still && (spent || left <= 0)) break;   /* a hunt finished just as the run ran out: look on for the next one with a job left */
     }
     const ni = next === -1 ? i0 : next;
     if (ni !== Number(rot.i)) { try { await env.PROWL_ALERTS.put(rk, JSON.stringify({ i: ni }), { expirationTtl: 60 * 86400 }); } catch (e) {} }
@@ -8523,6 +8521,7 @@ async function handleFetch(request, env, ctx) {
     if ((url.pathname === "/trips" || url.pathname.startsWith("/trips/")) && request.method === "POST") return tripsRoute(request, env, url, origin);
     /* v175: the Lens photo POST was below the guard below, so it was 405 and Check with Google Lens fell back to Lens's intro page */
     if (url.pathname === "/lens/up" && request.method === "POST") return lensUp(request, env, origin);
+    if (url.pathname === "/fb-search" && request.method === "POST") return fbSearch(request, env, origin);   /* v203: the Store's one-off Facebook search, above the GET-only guard */
     if (request.method !== "GET") {
       return json({ error: "GET only" }, 405, origin);
     }
@@ -8532,7 +8531,6 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/item") {   /* v81: listing popup */
       return itemRoute(env, url, origin, request);
     }
-    if (url.pathname === "/fb-search" && request.method === "POST") return fbSearch(request, env, origin);   /* v203: the Store's one-off Facebook search */
     if (url.pathname === "/fb-finds" && request.method === "GET") return fbFinds(request, env, url, origin);   /* v200: Facebook finds through Apify (410 in v178-v196) */
     if (url.pathname === "/near" && request.method === "GET") return nearRoute(request, env, url, origin);   /* v132: Around You */
     if (url.pathname === "/trip" && request.method === "GET") return tripRoute(request, env, url, origin, ctx);   /* v132: Road Trip */

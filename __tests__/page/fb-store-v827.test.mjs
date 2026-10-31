@@ -81,15 +81,17 @@ test('v8.27: Near me / All USA toggles the hunt in prefs().fbusa and saves throu
   assert.equal(btn('near').getAttribute('aria-pressed'), 'true');
   assert.equal(btn('usa').getAttribute('aria-pressed'), 'false');
   const n0 = f.asked.length;
+  await tick(800);   /* the time-zone sync after /alerts/status may save prefs first */
+  const k0 = f.prefs.length;
   btn('usa').click();
-  await waitFor(() => f.prefs.length === 1, { timeout: 3000 });
-  assert.deepEqual(f.prefs[0].fbusa, ['ceramic panther']);
+  await waitFor(() => f.prefs.length === k0 + 1, { timeout: 3000 });
+  assert.deepEqual(f.prefs[k0].fbusa, ['ceramic panther']);
   assert.equal(btn('usa').getAttribute('aria-pressed'), 'true');
   assert.match(p.$('#otp-sgw').textContent, /Saved\. Facebook searches this hunt that way from its next turn\./);
   assert.equal(f.asked.length, n0, 'not fetched again');
   btn('near').click();
-  await waitFor(() => f.prefs.length === 2, { timeout: 3000 });
-  assert.deepEqual(f.prefs[1].fbusa, []);
+  await waitFor(() => f.prefs.length === k0 + 2, { timeout: 3000 });
+  assert.deepEqual(f.prefs[k0 + 1].fbusa, []);
   assert.deepEqual(p.errors, []);
   await p.close();
 });
