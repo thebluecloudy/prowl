@@ -47,14 +47,14 @@ export const SPEND_SERVICES = [
     src: "https://cloud.google.com/vision/pricing", srcNote: "matches Matt's Google billing price list (SKU D89F-B380-AE61)", bill: "https://console.cloud.google.com/billing" },
   { key: "lens", name: "Google Lens through SerpApi", uses: ["call"], price: { call: null },
     src: "https://serpapi.com/pricing", srcNote: "billed by monthly plan (free plan: 250 a month); add a paid plan under monthly bills", bill: "https://serpapi.com/dashboard" },
-  /* v197: Facebook Marketplace finds, the actor curious_coder~facebook-marketplace, pay per event */
+  /* v200: Facebook Marketplace finds, the actor curious_coder~facebook-marketplace, pay per event */
   { key: "apify", name: "Apify: Facebook Marketplace finds (Pro)", uses: ["call", "item"], price: { call: 0.05, item: 0.5 },
     src: "https://apify.com/curious_coder/facebook-marketplace", srcNote: "the actor's pay-per-event price: $0.00005 an actor start, $0.0005 a listing (listing details, $0.001, stay off); the day's spend is also capped by FB_DAY_USD",
     bill: "https://console.apify.com/billing" }
 ];
 export const SPEND_KEYS = SPEND_SERVICES.map(s => s.key);
 const KNOWN = new Set(SPEND_KEYS);
-const FIELDS = ["n", "ti", "to", "ws", "it"];   /* v197: it, listings (Apify) */
+const FIELDS = ["n", "ti", "to", "ws", "it"];   /* v200: it, listings (Apify) */
 const PRICE_FIELDS = ["call", "tin", "tout", "ws", "item"];
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -117,7 +117,7 @@ export function paidKey(url, init) {
   if (h === "api.typesafe.ai") return "jev";
   if (h === "serpapi.com" && u.pathname === "/search.json") return "lens";
   if (h === "vision.googleapis.com") return "g_vision";
-  if (h === "api.apify.com" && /^\/v2\/acts\/[^/]+\/run-sync/.test(u.pathname)) return "apify";   /* v197 */
+  if (h === "api.apify.com" && /^\/v2\/acts\/[^/]+\/run-sync/.test(u.pathname)) return "apify";   /* v200 */
   if (h === "places.googleapis.com" || h === "routes.googleapis.com" || (h === "maps.googleapis.com" && u.pathname.indexOf("/maps/api/geocode/") === 0)) {
     const hd = init && init.headers, mask = !hd ? "" : typeof hd.get === "function" ? hd.get("X-Goog-FieldMask") : (hd["X-Goog-FieldMask"] || hd["x-goog-fieldmask"] || "");
     return googleSku(u.href, mask || "");
@@ -139,7 +139,7 @@ export function spendWrap(f, buf) {
       if (key === "muse" || key === "jev" || key === "apify") {
         let j = null;
         try { if (r.ok && typeof r.clone === "function") j = await r.clone().json(); } catch (e) {}
-        fields = key === "muse" ? museUsage(j) : key === "jev" ? jevUsage(j, init && init.body) : { it: Array.isArray(j) ? j.length : 0 };   /* v197: the listings an Apify run pushed */
+        fields = key === "muse" ? museUsage(j) : key === "jev" ? jevUsage(j, init && init.body) : { it: Array.isArray(j) ? j.length : 0 };   /* v200: the listings an Apify run pushed */
       }
       buf.tick(key, fields);
     } catch (e) {}

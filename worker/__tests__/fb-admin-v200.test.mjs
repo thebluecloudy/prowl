@@ -1,6 +1,6 @@
-/* v197 review fix: the admin's Facebook test sits on the Diagnose tab, built once, so the Overview's minute-by-minute
+/* v200 review fix: the admin's Facebook test sits on the Diagnose tab, built once, so the Overview's minute-by-minute
    redraw can never leave a running test's answer in a box that is no longer on the page. jsdom against stubbed
-   /admin/api answers. Run: node --test worker/__tests__/fb-admin-v197.test.mjs */
+   /admin/api answers. Run: node --test worker/__tests__/fb-admin-v200.test.mjs */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
@@ -9,7 +9,7 @@ import { adminPage } from "../admin-page.js";
 test("the Facebook test is on Diagnose, not in the Overview's Marketplaces card, and its answer lands in the box on the page", async (t) => {
   let release;
   const gate = new Promise((r) => { release = r; }), sent = [];
-  const dom = new JSDOM(adminPage("n0nce", "v197"), { url: "https://prowl.example.workers.dev/admin#diagnose", runScripts: "dangerously", pretendToBeVisual: true,
+  const dom = new JSDOM(adminPage("n0nce", "v200"), { url: "https://prowl.example.workers.dev/admin#diagnose", runScripts: "dangerously", pretendToBeVisual: true,
     beforeParse(w) {
       w.fetch = async (path, o) => {
         const p = String(path), body = o && o.body ? JSON.parse(o.body) : undefined;

@@ -231,10 +231,10 @@ test("index.js wraps the global fetch once, flushes after each request and cron 
 });
 
 test("every paid host index.js calls is a counted service (a new paid host needs a row in spend.js)", () => {
-  const SRC = INDEX + readFileSync(new URL("../fb.js", import.meta.url), "utf8");   /* v197: the Apify call is built in fb.js */
+  const SRC = INDEX + readFileSync(new URL("../fb.js", import.meta.url), "utf8");   /* v200: the Apify call is built in fb.js */
   const hosts = new Set([...SRC.matchAll(/https:\/\/([a-z0-9.-]+)\//g)].map((m) => m[1]));
   const paidHosts = [...hosts].filter((h) => /(^|\.)(meta\.ai|typesafe\.ai|serpapi\.com|googleapis\.com|apify\.com)$/.test(h));
-  assert.ok(paidHosts.indexOf("api.apify.com") !== -1, "v197: Apify is called");
+  assert.ok(paidHosts.indexOf("api.apify.com") !== -1, "v200: Apify is called");
   assert.ok(paidHosts.length >= 6, paidHosts.join(" "));
   for (const h of paidHosts) {
     if (/^(fcm|android)\.googleapis\.com$/.test(h)) continue;   /* Web Push (push.js), free */

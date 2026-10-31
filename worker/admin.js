@@ -515,7 +515,7 @@ async function apiOverview(c) {
   if (lib && M2) uptime = await grab("Uptime numbers could not be worked out.", async () => arr(lib.uptimeFrom(arr(M2.probes), nowMs)).map(upView));
   const values = (peek && peek.values) || {};
   const ai = peek ? { pools: pools.map(p => {
-    /* v197: a pool kept in fractions of a dollar (usd = units a dollar) whose limit follows a variable (FB_DAY_USD) */
+    /* v200: a pool kept in fractions of a dollar (usd = units a dollar) whose limit follows a variable (FB_DAY_USD) */
     const used = num(values[p.key]), lv = p.limitVar && env ? Number(env[p.limitVar]) : 0, limit = p.usd && lv > 0 && lv <= 20 ? Math.round(lv * num(p.usd)) : num(p.limit);
     return Object.assign({ name: String(p.name || p.key), used: used, limit: limit, pct: limit ? Math.round(used * 100 / limit) : 0 }, p.usd ? { usd: num(p.usd) } : {}); }) } : null;
   let live = [];
@@ -1000,7 +1000,7 @@ async function apiSalesCheck(c) {
   return jres({ results: results });
 }
 
-/* v197: the Facebook test (owner only, like every admin route): one Apify call now for a hunt and a ZIP, counted against
+/* v200: the Facebook test (owner only, like every admin route): one Apify call now for a hunt and a ZIP, counted against
    the day's cap, FB_LIVE or not. Nothing is kept; the hunt and ZIP are not logged. */
 async function apiFbTest(c) {
   if (!(await c.H.vCount("admfbtest", 40))) return jerr(429, "That is a lot of Facebook tests today. Try again tomorrow.");

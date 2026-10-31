@@ -377,7 +377,7 @@ const S = { tab: "", aData: null, ov: null, ovAt: 0, ovSeq: 0, out: false, healt
   late: null, diag: null, dSel: null, diagRes: null, diagShow: "all", diagSeq: 0, errSeq: 0, sDays: 7, sSeq: 0, uSeq: 0, uAt: 0, toastT: 0,
   gData: null, gAt: 0, gSeq: 0, giftsAll: false, glen: null };
 Object.assign(S, { spData: null, spSeq: 0 });   /* v193: Spending */
-Object.assign(S, { fbt: null, fbTerm: "", fbZip: "" });   /* v197: the Facebook test */
+Object.assign(S, { fbt: null, fbTerm: "", fbZip: "" });   /* v200: the Facebook test */
 
 /* ---------- DOM: API data only ever lands in textContent or vetted https attributes ---------- */
 function h(tag, a, kids) {
@@ -832,7 +832,7 @@ function marketsCard(ov) {
   });
   return card("markets", "Marketplaces", btn, [body, hbox, h("div", { class: "more" }, [sbtn]), sbox], "A small test search runs on each marketplace every hour.");
 }
-/* v197: the Facebook test. One Apify call now for a hunt and a ZIP (it counts against the day's Facebook budget, and works
+/* v200: the Facebook test. One Apify call now for a hunt and a ZIP (it counts against the day's Facebook budget, and works
    while FB_LIVE is off). What came back is shown, not kept. Built once on the Diagnose tab (review fix): the Overview
    redraws every minute and a run can take 90 seconds, which left the answer in a box no longer on the page. */
 function fbTestBox() {
@@ -935,7 +935,7 @@ function lateView() {
     h("span", { class: "muted", text: " due " + clock(m.slotHour) + (m.tz ? " " + m.tz.replace(/^.*\//, "").replace(/_/g, " ") + " time" : "") })]))),
     L.length > 12 ? h("p", { class: "hint", text: "and " + (L.length - 12) + " more on the Members tab (Late email)." }) : null];
 }
-/* v197: a pool kept in fractions of a dollar (the Facebook finds' Apify spend) */
+/* v200: a pool kept in fractions of a dollar (the Facebook finds' Apify spend) */
 function poolUsd(v, per) { const d = (Number(v) || 0) / (Number(per) || 1); return "$" + (d > 0 && d < 0.01 ? d.toFixed(4) : d.toFixed(2)); }
 function aiCard(ov) {
   const P = pools(ov);
@@ -1096,7 +1096,7 @@ async function setAff(p, btn) {
 
 /* ---------- Spending (v193): what Prowl's paid calls cost, estimated, plus the monthly bills ---------- */
 const SP_PER = [["today", "Today"], ["d7", "7 days"], ["month", "This month"], ["last", "Last month"]];
-const SP_UNIT = { call: "$ per 1,000 calls", tin: "$ per 1M input tokens", tout: "$ per 1M output tokens", ws: "$ per 1,000 web searches", item: "$ per 1,000 listings" };   /* v197: item, Apify */
+const SP_UNIT = { call: "$ per 1,000 calls", tin: "$ per 1M input tokens", tout: "$ per 1M output tokens", ws: "$ per 1,000 web searches", item: "$ per 1,000 listings" };   /* v200: item, Apify */
 async function loadSpend() {
   const box = $("#spbox"), seq = ++S.spSeq;
   if (!S.spData) fill(box, loading("Loading spending\u2026"));
@@ -1535,7 +1535,7 @@ function startDiag(ctx) {
   runDiag();
 }
 $("#dform").addEventListener("submit", e => { e.preventDefault(); runDiag(); });
-fill($("#fbtbox"), fbTestBox());   /* v197: once; nothing redraws it */
+fill($("#fbtbox"), fbTestBox());   /* v200: once; nothing redraws it */
 async function runDiag() {
   const out = $("#dout"), msg = $("#dmsg");
   const term = $("#dterm").value.trim(), typed = $("#dmember").value.trim(), mid = normId(typed) || typed;

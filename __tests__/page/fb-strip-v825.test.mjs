@@ -1,4 +1,4 @@
-// Page v8.23 (worker v197, Matt 2026-10-31: Facebook finds through Apify, for Pro members): the Facebook strip is back
+// Page v8.25 (worker v200, Matt 2026-10-31: Facebook finds through Apify, for Pro members): the Facebook strip is back
 // under the Goodwill block for a signed-in Pro member (and the owner key), from GET /fb-finds with the member's
 // sign-in. The worker decides Pro: a 401 or 403 shows nothing. A Pro member without a ZIP is told to add one. Plain
 // Facebook links; photos only from fbcdn. Den > Settings says the ZIP is used once Facebook finds are live.

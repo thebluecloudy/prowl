@@ -19,7 +19,7 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
- *   v197: 2026-10-31. Facebook Marketplace finds again, through Apify (Matt: Apify, Pro members, a hard cap of $1 a day): never a
+ *   v200: 2026-10-31. Facebook Marketplace finds again, through Apify (Matt: Apify, Pro members, a hard cap of $1 a day): never a
  *         login or a cookie. The cron searches each Pro member's active hunts once a day around their ZIP's ~10 km cell
  *         (fb2:<term>|<cell>, the week's finds, 8 days) while FB_LIVE is "on"; the alert email adds them as "facebook";
  *         GET /fb-finds answers a signed-in Pro member (or the owner key) again; the admin's Facebook test runs one now.
@@ -27,6 +27,9 @@
          Caps before Apify is asked (op addlim, atomic) and Apify is told maxTotalChargeUsd; each hunt and cell's try is
          taken in Caps first (a killed run's try counts); no Caps, no call; /fb-finds asks Google nothing while FB_LIVE is
          off; only a ZERO_RESULTS ZIP is kept as a miss; geocoding counts in the run's outside calls.
+ *   v199: 2026-10-31. Cockpit's hero is Matt's blood moon photo (he asked for a more professional mushroom-and-panther header):
+ *         GET /art/bloodmoon.webp (1600 px) and /art/bloodmoon-sm.webp (800 px, phones), served from art.js like the
+ *         drawings (image/webp, a year's immutable cache). Built into worker/art-photos.js by scripts/build-hero-photos.mjs.
  *   v196: 2026-10-31. GET /version answers {"worker":"v196"} (no-store, nothing else), so .github/workflows/verify-worker.yml
  *         can confirm after each merge that Cloudflare Workers Builds really deployed the merged version (Matt keeps
  *         Workers Builds as the deployer). Not counted in the admin's traffic (metrics.js routeKey).
@@ -668,7 +671,7 @@ import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
 import { SpendBuffer, spendOp, spendWrap } from "./spend.js";   /* v193 */
-import { FB_UNIT, FB_RUN_ITEMS, FB_TTL, FB_PER_RUN, FB_ZIP_TTL, FB_ZIP_MISS_TTL, FB_TRIES, fbLive, fbCapUnits, fbTerm, fbCell, fbKey, fbUnits, fbEstimate, fbItems, fbMerge, fbRun } from "./fb.js";   /* v197 */
+import { FB_UNIT, FB_RUN_ITEMS, FB_TTL, FB_PER_RUN, FB_ZIP_TTL, FB_ZIP_MISS_TTL, FB_TRIES, fbLive, fbCapUnits, fbTerm, fbCell, fbKey, fbUnits, fbEstimate, fbItems, fbMerge, fbRun } from "./fb.js";   /* v200 */
 import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb64u } from "./push.js";   /* v114 */
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
@@ -680,7 +683,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v197";
+const WORKER_VERSION = "v200";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -2661,7 +2664,7 @@ export class Caps {
       await this.arm(2 * 86400000);
       return J({ n: n + by });
     }
-    if (op === "addlim") {   /* v197: add n only while the total stays within lim (the Facebook budget's reservation) */
+    if (op === "addlim") {   /* v200: add n only while the total stays within lim (the Facebook budget's reservation) */
       const k = "c:" + String(q.k || ""), n = (await this.s.get(k)) || 0, by = Math.max(0, Math.min(1000000, Math.floor(Number(q.n) || 0))), lim = Number(q.lim) || 0;
       if (n + by > lim) return J({ ok: false, n: n });
       await this.s.put(k, n + by);
@@ -4217,7 +4220,7 @@ const AL_SUB_PER_IP = 12;
 const AL_CONFIRM_PER_EMAIL = 3;
 const AL_TZ = "America/Detroit";
 const AL_SOURCES = ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark", "depop", "vinted", "grailed"];   /* v58: poshmark, v59: depop, v61: vinted, v66: grailed */
-const AL_SRC_NAME = { shopgoodwill: "ShopGoodwill", ebay: "eBay", etsy: "Etsy", chairish: "Chairish", poshmark: "Poshmark", depop: "Depop", vinted: "Vinted", grailed: "Grailed", facebook: "Facebook Marketplace" };   /* v197: facebook */
+const AL_SRC_NAME = { shopgoodwill: "ShopGoodwill", ebay: "eBay", etsy: "Etsy", chairish: "Chairish", poshmark: "Poshmark", depop: "Depop", vinted: "Vinted", grailed: "Grailed", facebook: "Facebook Marketplace" };   /* v200: facebook */
 /* v50: the member's email settings, sub.prefs = { freq, sources, mute, max, skip, pause }.
    freq: "daily" (default), "mwf" (Mon/Wed/Fri) or "weekly" (Monday), Detroit days.
    sources: which of AL_SOURCES to search. mute: hunts kept in the list but left out
@@ -4675,7 +4678,7 @@ async function alSend(env, to, subject, html, text, unsub, attachments) {
    subrequests"). Alerts now use a lean eBay search (phrase, then plain words:
    2 calls at most), keep 10 listings per site and ask Jev once per hunt, so a
    hunt costs about 9 calls. Runs check ALERT_BATCH hunts (default 2). */
-const AL_PER_SITE = 10, AL_CALLS_PER_HUNT = 9;   /* v197: AL_CALLS_PER_HUNT, the outside calls a hunt costs, for the Facebook sweep's share */
+const AL_PER_SITE = 10, AL_CALLS_PER_HUNT = 9;   /* v200: AL_CALLS_PER_HUNT, the outside calls a hunt costs, for the Facebook sweep's share */
 async function ebayLean(term, env, filter) {
   return ebayPhraseFirst(term, env, filter);   /* v79: same rule as the live strip */
 }
@@ -5328,7 +5331,7 @@ async function alCheck(env, sub, limit, now, only) {
   const found = {}, newKeys = [], checked = [], carry = {};
   for (const h of todo) {
     let all = await alHunt(env, h, sub);
-    if (!only) { try { all = all.concat(alFilter(sub, await fbAlertItems(env, sub, h), true)); } catch (e) { console.error("fb alert", String(e && e.message || e)); } }   /* v197: the day's Facebook finds, cached; the member's price and skip-words apply */
+    if (!only) { try { all = all.concat(alFilter(sub, await fbAlertItems(env, sub, h), true)); } catch (e) { console.error("fb alert", String(e && e.message || e)); } }   /* v200: the day's Facebook finds, cached; the member's price and skip-words apply */
     const items = alExact(all, h);   /* v98: exact matches only, unless there are none */
     if (!only) {
       /* v50: remembered by URL and by title, so a relisted piece is not new again */
@@ -5716,7 +5719,7 @@ async function alTick(env) {
       if (r.sent) tally.sent++; else if (r.reason !== "nothing new") { tally.failed++; note("email not sent: " + (r.reason || r.error || "unknown")); }
     }
   }
-  /* v197: Facebook finds, with the outside calls this run has left (a hunt is about AL_CALLS_PER_HUNT, a Shopify check,
+  /* v200: Facebook finds, with the outside calls this run has left (a hunt is about AL_CALLS_PER_HUNT, a Shopify check,
      a Pounce judgement and an email one each) */
   try {
     const used = (tally.checked + AL_LETTERS_PER_RUN - lettersLeft) * AL_CALLS_PER_HUNT + (AL_PRO_REFRESH_PER_RUN - proLeft) + (POUNCE_PER_RUN - Math.max(0, PJ_RUN.left)) + tally.sent + tally.failed;
@@ -6789,7 +6792,7 @@ async function alStatus(request, env, url, origin) {
     price: "7.00", plan: pl, manageUrl: "https://www.owlandtwigvintage.com/account", prefs: alPrefs(sub), email: sub.email,
     moving: (await kvGet(env, "mvf:" + email, null) || {}).to || "",   /* v54 */
     quarries: (sub.quarries && typeof sub.quarries === "object") ? sub.quarries : {}, quarryMax: pounceMax(sub), quarryMatches: await kvGet(env, "gm:" + email, []),
-    fb: fbLive(env) && !!sub.pro,   /* v197: Facebook finds are on for this member */
+    fb: fbLive(env) && !!sub.pro,   /* v200: Facebook finds are on for this member */
     phone: sub.phone || "", wpush: pushReady(env) ? { key: String(env.VAPID_PUBLIC), n: (await pushList(env, await pushId(env, email))).length } : null }, 200, origin);   /* v114 */   /* v112 */
 }
 
@@ -6854,7 +6857,7 @@ const AI_POOLS = [
   { key: "gpp:all", name: "Google place photos (Near me)", limit: 3000 },   /* v180: G_PHOTOS_PER_DAY */
   { key: "gsg:all", name: "Google place suggestions (typing a place)", limit: 2000 },   /* v180: G_SUGGEST_PER_DAY */
   { key: "ggeo:all", name: "Google town lookups (Geocoding)", limit: 1000 },   /* v180: G_GEO_PER_DAY */
-  { key: "fbusd:all", name: "Facebook finds (Apify), $ today", limit: FB_UNIT, usd: FB_UNIT, limitVar: "FB_DAY_USD" }   /* v197: in 1/100,000 of a dollar; the limit follows FB_DAY_USD */
+  { key: "fbusd:all", name: "Facebook finds (Apify), $ today", limit: FB_UNIT, usd: FB_UNIT, limitVar: "FB_DAY_USD" }   /* v200: in 1/100,000 of a dollar; the limit follows FB_DAY_USD */
 ];
 function liveSources() { return ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark"].concat(DEPOP_LIVE ? ["depop"] : [], ["vinted", "grailed", "salvation"]); }
 /* v91: a marketplace that says "slow down" (429, or Vinted's 403 block) cools down: nothing goes out to it until the
@@ -7236,7 +7239,7 @@ const ADMIN_H = {
   affLoad, AFF_PROGRAMS, AFF_KEY, AFF_IDS_KEY, affIdsClean, affReady,   /* v89: affiliate switches; v90: their IDs */
   cfReferrers,   /* v127: Visitors in the admin */
   WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, AL_PEND_CAP, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE,
-  fbTestRun   /* v197: the admin's Facebook test */
+  fbTestRun   /* v200: the admin's Facebook test */
 };
 
 /* v78: speed, cache hits and errors per route, batched so most requests add no extra call. A server error is sent
@@ -7300,7 +7303,7 @@ export default {
    Facebook account, against the security and trust plan's "no session-cookie storage or replay of anyone's account".
    /fb-ingest still answers 410. Old fb:<term> entries have expired (8 days).
 
-   ---------- v197: Facebook Marketplace finds through Apify ----------
+   ---------- v200: Facebook Marketplace finds through Apify ----------
    Matt (2026-10-31): Apify, for Pro members, a hard cap of $1 a day. Never a login or a cookie (fb.js).
      Area: a Pro member's local-pickup ZIP (prefs.zip), geocoded once (ggeo:all) and kept as its 0.1 degree cell in
        fbz:<zip> for 90 days (a ZIP Google does not know, 7 days). Members nearby share one search; no ZIP, nothing.
@@ -8399,7 +8402,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/item") {   /* v81: listing popup */
       return itemRoute(env, url, origin, request);
     }
-    if (url.pathname === "/fb-finds" && request.method === "GET") return fbFinds(request, env, url, origin);   /* v197: Facebook finds through Apify (410 in v178-v196) */
+    if (url.pathname === "/fb-finds" && request.method === "GET") return fbFinds(request, env, url, origin);   /* v200: Facebook finds through Apify (410 in v178-v196) */
     if (url.pathname === "/near" && request.method === "GET") return nearRoute(request, env, url, origin);   /* v132: Around You */
     if (url.pathname === "/trip" && request.method === "GET") return tripRoute(request, env, url, origin, ctx);   /* v132: Road Trip */
     if (url.pathname === "/geo" && request.method === "GET") return geoRoute(request, env, url, origin);   /* v157: In a location */

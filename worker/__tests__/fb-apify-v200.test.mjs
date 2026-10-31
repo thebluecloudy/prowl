@@ -1,6 +1,6 @@
-/* v197 (Matt, 2026-10-31: Apify, Pro members, a hard cap of $1 a day): Facebook Marketplace finds through Apify's
+/* v200 (Matt, 2026-10-31: Apify, Pro members, a hard cap of $1 a day): Facebook Marketplace finds through Apify's
    curious_coder~facebook-marketplace, never a login or a cookie. fb.js is pure and imported; the index.js parts are
-   taken out with fakes for KV, Caps and Apify. Run: node --test worker/__tests__/fb-apify-v197.test.mjs */
+   taken out with fakes for KV, Caps and Apify. Run: node --test worker/__tests__/fb-apify-v200.test.mjs */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -452,7 +452,7 @@ test("the admin's Facebook test: owner (admin session) only; shows the listings,
   const bad = await admin({ ok: false, error: "Type a 5-digit US ZIP." }).call({ term: "pyrex", zip: "" });
   assert.equal(bad.status, 400);
   assert.match(bad.j.error, /ZIP/);
-  assert.match(INDEX, /fbTestRun   \/\* v197/);
+  assert.match(INDEX, /fbTestRun   \/\* v200/);
   const run = indexFn("fbTestRun");
   assert.doesNotMatch(run, /fbLive\(env\)\)? return/, "works while FB_LIVE is off");
   assert.doesNotMatch(run, /PROWL_ALERTS\.put|fb2:/, "nothing is kept");

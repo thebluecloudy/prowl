@@ -1,5 +1,5 @@
-// Page v8.08 (Matt, 2026-10-28): the morning Facebook sweep through Matt's own account is retired. Page v8.23 (worker
-// v197) brings the strip back through Apify for Pro members (fb-strip-v823.test.mjs). What stays from v8.08: no session
+// Page v8.08 (Matt, 2026-10-28): the morning Facebook sweep through Matt's own account is retired. Page v8.25 (worker
+// v200) brings the strip back through Apify for Pro members (fb-strip-v825.test.mjs). What stays from v8.08: no session
 // cookies, nothing on anyone's account, and Facebook is still a link-out search under More places to look.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

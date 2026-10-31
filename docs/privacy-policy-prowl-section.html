@@ -9,7 +9,7 @@
   Every statement below was checked against how Prowl actually works: checked against worker v186 / page v8.12 on
   2026-10-28 (worker/index.js, worker/saved.js, worker/trip.js, worker/push.js, worker/metrics.js, page/prowl.html,
   extension/). Re-check it if Prowl's data handling changes. The Facebook Marketplace finds bullets (Prowl Alerts, Who
-  else, How long, What it does not remove) were added against worker v197 / page v8.23 on 2026-10-31 (worker/fb.js).
+  else, How long, What it does not remove) were added against worker v200 / page v8.25 on 2026-10-31 (worker/fb.js).
   Notes for the next check:
   - Delete my Prowl Alerts account runs alPurge (worker/index.js). Since v181 it also covers every earlier address
     (prev: saved finds and photos, acct:, tripinv:) and the trips (tripsForget: the member leaves each trip, a trip they
@@ -32,7 +32,7 @@
     link (sharenomail:<keyed code>) and the postal address.
   - Google Lens through SerpApi needs the SERPAPI_KEY secret and Cloud Vision needs GOOGLE_VISION_KEY; the text says
     "when switched on" for both.
-  - v197: Facebook finds through Apify (worker/fb.js). Sent to Apify: the hunt words (fbTerm) and the ZIP's point
+  - v200: Facebook finds through Apify (worker/fb.js). Sent to Apify: the hunt words (fbTerm) and the ZIP's point
     rounded to a 0.1 degree cell (fbCell), radiusKm 40, getListingDetails false, no cookies; the token is ours. Kept:
     fb2:<term>|<cell> {id, title, price, image (fbcdn only), location (city, state), url, found}, FB_TTL 8 days, shared
     by everyone with that hunt in that cell, so alPurge does not touch it (it expires). fbz:<zip> = the cell, 90 days (a

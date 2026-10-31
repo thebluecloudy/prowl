@@ -1,17 +1,17 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.23 / v197).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.25 / v200).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.23** | 375,773 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v197** | |
+| Page | **v8.25** | 375,572 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v200** | |
 
 Recently shipped, newest first:
 
-- **v8.23 / v197: Facebook Marketplace finds again, through Apify, for Pro members** (Matt, 2026-10-31: use Apify, he
+- **v8.25 / v200: Facebook Marketplace finds again, through Apify, for Pro members** (Matt, 2026-10-31: use Apify, he
   set the secret `APIFY_TOKEN`; Pro members get it; a hard cap of $1 a day). The v94-v177 sweep ran through Matt's own
   account and was retired in v178; this one never logs in and never sends a cookie (`worker/fb.js`).
   - **How:** Apify's actor `curious_coder~facebook-marketplace` (`APIFY_FB_ACTOR`, env `FB_ACTOR` overrides), one
@@ -47,12 +47,36 @@ Recently shipped, newest first:
   - **Admin:** Diagnose tab, **Facebook test** (built once there, so the Overview's minute redraw cannot strand a running
     test): a hunt and a ZIP, one Apify call now (counts against the cap,
     works while FB_LIVE is off), shows the listings (title, price, town, link), the count, the cost and today's spend.
-  - Privacy section updated. Tests: `worker/__tests__/fb-apify-v197.test.mjs`, `__tests__/page/fb-strip-v823.test.mjs`;
-    `worker/__tests__/fb-admin-v197.test.mjs`; `fb-retired.test.mjs` and `fb-retired-v808.test.mjs` now assert no
+  - Privacy section updated. Tests: `worker/__tests__/fb-apify-v200.test.mjs`, `__tests__/page/fb-strip-v825.test.mjs`;
+    `worker/__tests__/fb-admin-v200.test.mjs`; `fb-retired.test.mjs` and `fb-retired-v808.test.mjs` now assert no
     session cookies; `spend.test.mjs` scans fb.js. A review pass fixed: the cap reserved before the call (overlap, a
     killed run), `maxTotalChargeUsd`, no Caps = no call, FB_LIVE off asks nothing, Google errors not kept as misses,
     geocoding in the run's budget, the admin test's stale box, the page's key for long hunts.
-    v8.22 / v196 are Hark's (#281).
+    Numbered v8.25 / v200 because v8.23 / v197 were overtaken while it waited (v8.24 / v199 shipped first).
+- **v8.24 / v199: Cockpit's header is a blood moon** (Matt, 2026-10-31: "fix the mushroom and panther illustration,
+  make it look more professional", then his blood moon photo).
+  - **What was wrong:**
+    - The red glowworm cave (a 5:2 drawing) was cropped by the 560×120 desktop strip, so only mushroom cap tops
+      showed.
+    - The panther PNG has 25% empty space under its feet, so it floated.
+    - The QR square sat on the tail tip and, on desktop, off the scene.
+    - The soft 18 px glow blurred the panther.
+  - **Cockpit now:** the scene is Matt's photo, a red moon rising behind a forest over a mossy floor.
+    - Worker `/art/bloodmoon.webp` (1600 px) and `/art/bloodmoon-sm.webp` (800 px, phones) are WebP files in
+      `worker/art/`, carried as base64 in `worker/art-photos.js` (`node scripts/build-hero-photos.mjs`, checked by a
+      test).
+    - The photo is cropped to the moon over the treeline, with shaded edges.
+    - The panther stands on the floor: 104 px with a 10 px margin on desktop, 84 px with 30 px on phones.
+  - **Both night themes:** the panther is centred on the scene with a crisp shadow, and the QR square is a small glass
+    button in the scene's top-right corner. It stays inside the panther button, so a tap still opens the QR code.
+  - **Uranium** keeps its fireflies scene (Matt chose Cockpit only).
+  - **`heroScene`** fills every `<source>` (a wide and a phone one).
+  - **The current photo** is the first one Matt sent, with its baked-in panther silhouette filled in behind the
+    panther. His clean original didn't reach the session as a file. To swap it in: replace the two WebP files,
+    rebuild, and bump `HERO_V`.
+  - **Tests:** `__tests__/page/cockpit-hero-v822.test.mjs`, `worker/__tests__/art.test.mjs`, plus the updated
+    Uranium and Cockpit tests.
+
 - **v8.21: the Store tab icon is written so Shopify keeps it byte for byte.** v8.20's deploy saved the page but failed
   the md5 check: its icon used self-closing `<path …/>`, which the rest of the page never does (Shopify rewrites them).
   Now `<path …></path>` like every other icon. Nothing visible changes. Test in `__tests__/page/store-tab-v820.test.mjs`.
@@ -1790,7 +1814,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.24, worker v199** (Hark's open PR #281 holds page v8.22; its worker version must move to v198, since v196 and v197 are taken). Claim one here when you start.
+Next free numbers: **page v8.26, worker v201** (Hark's open PR #281 holds page v8.22 and worker v198). Claim one here when you start.
 
 ## What's next
 
@@ -1805,12 +1829,12 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 ## Waiting on Matt
 
-- **Facebook finds through Apify (worker v197 / page v8.23), in this order:**
+- **Facebook finds through Apify (worker v200 / page v8.25), in this order:**
   1. In the admin, **Diagnose** tab, run **Facebook test** for about 5 of your hunts with the Novi ZIP (48375): check
      the listings are right and the cost (about $0.012 a test at most) and today's spend line.
   2. In Apify Billing, set a **monthly spending limit** (the worker's own cap is $1 a day, about $30 a month at most).
   3. Done (Matt, 2026-10-31): the Cloudflare variable **`FB_LIVE` = `on`** is set (not in wrangler.toml; keep_vars keeps
-     it), so Pro members' daily searches start as soon as v197 is live. **`FB_DAY_USD`** is optional (default 1).
+     it), so Pro members' daily searches start as soon as v200 is live. **`FB_DAY_USD`** is optional (default 1).
   4. Paste the updated `docs/privacy-policy-prowl-section.html` (Facebook finds bullets; Last updated October 31,
      2026) before turning it on.
 - **Optional: let GitHub publish the extension.** Add the four repository secrets `CWS_EXTENSION_ID`,
