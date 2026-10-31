@@ -123,12 +123,15 @@ export function fbShape(x) {
 /* v203: a hunt's words, each found at the start of a title word (plurals and longer forms count: "panther" finds
    "Panthers"), so Facebook's "similar items" (a Land Rover for "panther") are dropped, as the email's exact match does */
 const FB_STOP = { a: 1, an: 1, and: 1, the: 1, of: 1, for: 1, with: 1, in: 1, on: 1, or: 1 };
-function fbStem(w) { return w.length > 4 && /es$/.test(w) && !/ses$/.test(w) ? w.slice(0, -2) : w.length > 3 && /s$/.test(w) && !/ss$/.test(w) ? w.slice(0, -1) : w; }
+function fbStem(w) { return w.length > 5 && /sses$/.test(w) ? w.slice(0, -2) : w.length > 4 && /es$/.test(w) && !/ses$/.test(w) ? w.slice(0, -2) : w.length > 3 && /s$/.test(w) && !/ss$/.test(w) ? w.slice(0, -1) : w; }
 export function fbMatch(term, title) {
   const tw = String(title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean);
   const hw = String(term || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(w => w && !FB_STOP[w]);
   if (!hw.length) return true;
-  return hw.every(w => { const st = fbStem(w); return tw.some(t => t.indexOf(st) === 0); });
+  if (hw.every(w => { const st = fbStem(w); return tw.some(t => t.indexOf(st) === 0); })) return true;
+  /* written together or apart ("fire-king" / "Fireking", "butter print" / "butterprint"): the words run together */
+  const run = hw.slice(0, -1).join("") + fbStem(hw[hw.length - 1]);
+  return hw.length > 1 && run.length >= 6 && tw.join("").indexOf(run) !== -1;
 }
 /* miles between two points (haversine), rounded */
 export function fbMiles(lat1, lng1, lat2, lng2) {

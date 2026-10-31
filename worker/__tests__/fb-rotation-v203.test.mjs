@@ -352,3 +352,14 @@ test("the routes and the alert email read v203's finds", () => {
   assert.match(indexFn("fbAlertItems"), /const v = await fbHunt\(env, o, cell, term\);/, "the email has pickup and shipping finds");
   assert.match(INDEX, /const WORKER_VERSION = "v203";/);
 });
+
+test("fbMatch: -sses plurals and words written together or apart", () => {
+  assert.equal(FB.fbMatch("glasses", "Vintage glass set"), true, "glasses -> glass");
+  assert.equal(FB.fbMatch("dresses", "Prom dress"), true);
+  assert.equal(FB.fbMatch("fire-king", "FIREKING jadeite mug"), true, "a hyphenated hunt finds the run-together title");
+  assert.equal(FB.fbMatch("fire king", "Fire-King bowl"), true);
+  assert.equal(FB.fbMatch("pyrex butterprint", "Pyrex butter print bowl"), true, "each hunt word starts a title word");
+  assert.equal(FB.fbMatch("fire king", "King size fire pit"), true, "both words present still match (word order is not checked)");
+  assert.equal(FB.fbMatch("fire-king", "Outdoor fire pit"), false);
+  assert.equal(FB.fbMatch("ceramic panther", "2023 Land Rover discovery"), false);
+});
