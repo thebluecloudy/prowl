@@ -26,6 +26,15 @@ class FakeKV {
   json(k) { return this.m.has(k) ? JSON.parse(this.m.get(k)) : null; }
 }
 const kvGet = async (env, k, d) => { const v = await env.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; };
+/* v203: a member's Facebook setup and a hunt's finds, built from index.js too (alPrefs as the test's subs carry it) */
+const alPrefsT = (s) => ({ zip: (s && s.prefs && s.prefs.zip) || "", radius: (s && s.prefs && s.prefs.radius) || 50, fbusa: (s && s.prefs && s.prefs.fbusa) || [] });
+function fbParts(alActive = (env, s) => s.hunts.slice(0, s.pro ? 100 : 3)) {
+  const fbOf = build("fbOf", { alPrefs: alPrefsT, fbMi: FB.fbMi });
+  const fbHuntMi = build("fbHuntMi", { FB_USA_MI: FB.FB_USA_MI });
+  const fbHunt = build("fbHunt", { fbHuntMi, kvGet, fbPickKey: FB.fbPickKey, fbShipKey: FB.fbShipKey, fbJoin: FB.fbJoin, FB_USA_MI: FB.FB_USA_MI });
+  const fbTerms = build("fbTerms", { alActive, fbTerm: FB.fbTerm });
+  return { fbOf, fbHuntMi, fbHunt, fbTerms };
+}
 const TODAY = new Date().toISOString().slice(0, 10);
 /* an item as the actor answers it (trimmed from its sample), seller and all */
 const raw = (id, extra = {}) => ({
@@ -199,8 +208,8 @@ test("no Caps (the binding missing, or it errors): no Apify call, from the sweep
   const fbTry = build("fbTry", { capsCall: async () => null, capsDay: () => "x", FB_TRIES: 2, console });
   assert.equal(await fbTry("pyrex|42.5,-83.5"), 0, "no try without Caps either");
   const fbTestRun = build("fbTestRun", { fbTerm: FB.fbTerm, fbArea: async () => cell, fbCall: H.fbCall, FB_RUN_ITEMS: 24, FB_UNIT: FB.FB_UNIT, fbEstimate: FB.fbEstimate,
-    fbCapUnits: FB.fbCapUnits, fbLive: FB.fbLive, scrubPII: (x) => x });
-  const t = await fbTestRun({ APIFY_TOKEN: "t" }, "pyrex", "48375");
+    fbCapUnits: FB.fbCapUnits, fbLive: FB.fbLive, scrubPII: (x) => x, fbMi: FB.fbMi, FB_USA_MI: FB.FB_USA_MI });
+  const t = await fbTestRun({ APIFY_TOKEN: "t" }, "pyrex", "48375", "50");
   assert.equal(t.ok, false);
   assert.match(t.error, /spend counter/);
   assert.equal(H.ran(), 0);
@@ -249,37 +258,50 @@ test("fbArea: a quota, key or passing Google error (each a 200) keeps nothing; Z
 });
 
 /* ---- 4. the sweep ---- */
-function sweepHarness({ live = "on", subs, done = null, call, area } = {}) {
-  const kv = new FakeKV(), calls = [], geo = [], tries = new Map();
-  if (done) kv.set("fb2day:" + TODAY, done);
+/* v203: the sweep's counters (the member's 10 a day, its give-back) run on a Map, as Caps would; ctrName is the name itself */
+function sweepHarness({ live = "on", subs, done = null, call, area, counts = new Map(), tries = new Map(), kv = new FakeKV() } = {}) {
+  const calls = [], geo = [];
+  if (done) kv.set("fb3day:" + TODAY, done);
   kv.set("fbz:48375", { lat: 42.5, lng: -83.5 });
   const env = { PROWL_ALERTS: kv, APIFY_TOKEN: "t", FB_LIVE: live };
+  const P = fbParts();
   const fbSweep = build("fbSweep", {
     fbLive: FB.fbLive, kvGet, FB_PER_RUN: FB.FB_PER_RUN, FB_CALLS_EACH: 4, FB_GEO_CALLS: 2, FB_GEO_PER_RUN: 2,
     fbTry: async (k) => { const n = (tries.get(k) || 0) + 1; if (n > FB.FB_TRIES) return 0; tries.set(k, n); return n; }, FB_TRIES: FB.FB_TRIES, FB_DAY_LIST_MAX: 2000, FB_RUN_ITEMS: FB.FB_RUN_ITEMS, FB_TTL: FB.FB_TTL,
-    alPrefs: (s) => ({ zip: (s.prefs && s.prefs.zip) || "" }), alActive: (env, s) => s.hunts.slice(0, s.pro ? 100 : 3),
+    fbOf: P.fbOf, fbTerms: P.fbTerms, fbHuntMi: P.fbHuntMi, fbPickKey: FB.fbPickKey, fbShipKey: FB.fbShipKey, FB_MEMBER_DAY: FB.FB_MEMBER_DAY,
+    ctrName: async (n) => n,
+    vCount: async (n, lim) => { const c = counts.get(n) || 0; if (c >= lim) return false; counts.set(n, c + 1); return true; },
+    fbGive: async (n) => { counts.set(n, Math.max(0, (counts.get(n) || 0) - 1)); },
     fbArea: area ? async (env, zip, ask) => { if (ask) geo.push(zip); return area(zip, ask); }
       : async (env, zip) => (zip === "48375" || zip === "48377" ? FB.fbCell(42.5, -83.5) : zip === "10001" ? FB.fbCell(40.75, -74.0) : null),
-    fbTerm: FB.fbTerm, fbKey: FB.fbKey, fbMerge: FB.fbMerge, scrubPII: (s) => String(s),
-    fbCall: async (env, term, cell, n) => { calls.push(term + "|" + cell.key); return call ? call(term) : { ok: true, items: [{ id: "123456", title: term, found: TODAY }], raw: 1, cost: 0.00055 }; },
+    fbMerge: FB.fbMerge, scrubPII: (s) => String(s),
+    fbCall: async (env, term, cell, n, opt) => { calls.push(term + "|" + cell.key + "|" + (opt.ship ? "ship" : opt.mi)); return call ? call(term, opt) : { ok: true, items: [{ id: "123456", title: term, found: TODAY }], raw: 1, cost: 0.00055 }; },
   });
-  return { fbSweep, kv, env, calls, geo, tries };
+  return { fbSweep, kv, env, calls, geo, tries, counts };
 }
-const pro = (zip, hunts) => ({ email: "x@example.com", pro: true, hunts, prefs: { zip } });
+let proN = 0;
+const pro = (zip, hunts, more = {}) => ({ email: "x" + (++proN) + "@example.com", pro: true, hunts, prefs: Object.assign({ zip }, more) });
 test("the sweep: at most 2 Apify calls a run, once a day per hunt and cell (neighbours share), Pro members with a ZIP only", async () => {
   const subs = [pro("48375", ["Pyrex Butterprint", "Fire-King jadeite", "Hull vase"]), pro("48377", ["pyrex  butterprint"]), { email: "f@example.com", pro: false, hunts: ["Roseville"], prefs: { zip: "48375" } },
     pro("", ["Rookwood"]), pro("10001", ["Pyrex Butterprint"])];
   const S = sweepHarness({ subs });
   let r = await S.fbSweep(S.env, subs, 50);
   assert.equal(r.calls, 2);
-  assert.deepEqual(S.calls, ["pyrex butterprint|42.5,-83.5", "fire-king jadeite|42.5,-83.5"]);
-  const kept = S.kv.json("fb2:pyrex butterprint|42.5,-83.5");
+  assert.deepEqual(S.calls, ["pyrex butterprint|42.5,-83.5|50", "pyrex butterprint|42.5,-83.5|ship"], "v203: a hunt is a pickup search and a shipping one");
+  const kept = S.kv.json("fb3:pyrex butterprint|42.5,-83.5|50");
   assert.equal(kept.items[0].id, "123456");
-  assert.equal(S.kv.ttl.get("fb2:pyrex butterprint|42.5,-83.5"), 8 * 86400);
+  assert.equal(S.kv.ttl.get("fb3:pyrex butterprint|42.5,-83.5|50"), 8 * 86400);
+  assert.equal(S.kv.json("fb3s:pyrex butterprint").items[0].id, "123456");
+  await S.fbSweep(S.env, subs, 50);
+  await S.fbSweep(S.env, subs, 50);
   r = await S.fbSweep(S.env, subs, 50);
-  assert.deepEqual(S.calls.slice(2), ["hull vase|42.5,-83.5", "pyrex butterprint|40.8,-74"], "the neighbour's same hunt is not searched again; the free member and the ZIP-less one never");
+  assert.deepEqual(S.calls.slice(2), ["fire-king jadeite|42.5,-83.5|50", "fire-king jadeite|42.5,-83.5|ship", "hull vase|42.5,-83.5|50", "hull vase|42.5,-83.5|ship", "pyrex butterprint|40.8,-74|50"],
+    "the neighbour's same hunt is not searched again, the far member's shipping search is shared; the free member and the ZIP-less one never");
   r = await S.fbSweep(S.env, subs, 50);
   assert.equal(r.calls, 0, "everything swept today");
+  assert.equal(S.counts.get("fbm:" + subs[1].email) || 0, 0, "a job done by another member is free");
+  assert.equal(S.counts.get("fbm:" + subs[4].email), 1);
+  assert.equal(S.counts.get("fbm:" + subs[0].email), 6);
   assert.equal((await S.fbSweep(S.env, subs, 3)).calls, 0, "no room left in the run's outside calls");
 });
 
@@ -296,18 +318,19 @@ test("the sweep's geocoding counts in the run's outside calls: room 6 with a new
 });
 
 test("a try is taken before the call: a run killed mid-call is not retried uncounted, and two overlapping runs share FB_TRIES", async () => {
-  const subs = [pro("48375", ["Pyrex"])];
-  const S = sweepHarness({ subs, call: () => new Promise(() => {}) });   /* Apify never answers: the run is killed */
+  const subs = [pro("48375", ["Pyrex"])], pk = "p|pyrex|42.5,-83.5|50";
+  const S = sweepHarness({ subs, call: (term, opt) => (opt.ship ? { ok: true, items: [], raw: 0, cost: 0 } : new Promise(() => {})) });   /* the pickup search never answers: the run is killed */
   S.fbSweep(S.env, subs, 50);
   await new Promise((r) => setTimeout(r, 0));
-  assert.equal(S.tries.get("pyrex|42.5,-83.5"), 1, "the try was taken before Apify was asked");
+  assert.equal(S.tries.get(pk), 1, "the try was taken before Apify was asked");
   S.fbSweep(S.env, subs, 50);
   await new Promise((r) => setTimeout(r, 0));
   assert.equal(S.calls.length, 2);
   const r = await S.fbSweep(S.env, subs, 50);
-  assert.equal(r.calls, 0, "both tries used: no third call, however many runs");
-  assert.equal(S.calls.length, 2);
-  assert.equal(S.kv.json("fb2day:" + TODAY)["pyrex|42.5,-83.5"], -2, "and the day's list remembers it");
+  assert.deepEqual(S.calls.filter((c) => !/ship$/.test(c)).length, 2, "both tries used: no third pickup call, however many runs");
+  assert.equal(r.calls, 1, "only the shipping search");
+  assert.equal(S.kv.json("fb3day:" + TODAY)[pk], -2, "and the day's list remembers it");
+  assert.equal(S.counts.get("fbm:" + subs[0].email), 3, "a job refused its try gives the member's search back (2 killed + 1 ship)");
 });
 
 test("FB_LIVE off (or no token) does nothing at all", async () => {
@@ -316,6 +339,7 @@ test("FB_LIVE off (or no token) does nothing at all", async () => {
     const S = sweepHarness({ live, subs });
     assert.equal((await S.fbSweep(S.env, subs, 50)).calls, 0, live);
     assert.equal(S.kv.m.size, 1, "nothing written");
+    assert.equal(S.counts.size, 0, "nothing counted");
   }
   const S = sweepHarness({ subs });
   delete S.env.APIFY_TOKEN;
@@ -327,16 +351,17 @@ test("the cap stops the sweep for the day; a failure keeps nothing, is noted qui
   let S = sweepHarness({ subs, call: () => ({ ok: false, capped: true }) });
   await S.fbSweep(S.env, subs, 50);
   assert.equal(S.calls.length, 1);
-  assert.equal(S.kv.json("fb2day:" + TODAY)._cap, 1);
+  assert.equal(S.kv.json("fb3day:" + TODAY)._cap, 1);
+  assert.equal(S.counts.get("fbm:" + subs[0].email), 0, "v203: the capped search is given back to the member");
   await S.fbSweep(S.env, subs, 50);
   assert.equal(S.calls.length, 1, "stopped for the day");
   S = sweepHarness({ subs, call: () => ({ ok: false, error: "apify 502" }) });
   const r = await S.fbSweep(S.env, subs, 50);
   assert.deepEqual(r.errors, ["facebook: apify 502", "facebook: apify 502"]);
-  assert.equal(S.kv.json("fb2:pyrex|42.5,-83.5"), null, "no empty cache on a failure");
-  await S.fbSweep(S.env, subs, 50);
-  await S.fbSweep(S.env, subs, 50);
-  assert.equal(S.calls.length, 4, "each hunt tried twice, then left for tomorrow");
+  assert.equal(S.kv.json("fb3:pyrex|42.5,-83.5|50"), null, "no empty cache on a failure");
+  assert.equal(S.kv.json("fb3s:pyrex"), null);
+  for (let i = 0; i < 4; i++) await S.fbSweep(S.env, subs, 50);
+  assert.equal(S.calls.length, 8, "each of the 4 jobs tried twice, then left for tomorrow");
 });
 
 test("the alert clock runs the sweep with what is left of the run's outside calls", () => {
@@ -346,19 +371,25 @@ test("the alert clock runs the sweep with what is left of the run's outside call
 });
 
 /* ---- 5. /fb-finds ---- */
+/* v203: fbFinds with its parts (fbWho, fbAreaFor, fbHunt, fbTerms) built from index.js */
+function findsFn({ kvGet, json: json0, vCount, fbArea, fbLeft = async (n, lim) => lim }) {
+  class Res {}   /* the fake json's answers stand in for Responses (fbWho answers one, or who is asking) */
+  const json = (...a) => Object.assign(new Res(), json0(...a)), P = fbParts();
+  const fbWho = build("fbWho", { isOwner: (req, env) => req.headers.get("X-Prowl-Owner") === env.OWNER_KEY, sessMember: async () => null,
+    alEmail: (e) => String(e || "").trim().toLowerCase(), alSame: (a, b) => a === b, kvGet, json });
+  const fbAreaFor = build("fbAreaFor", { fbOf: P.fbOf, kvGet, FB_OWN_ZIP: "fbownzip" });
+  return build("fbFinds", { fbWho, fbAreaFor, fbLive: FB.fbLive, fbTerm: FB.fbTerm, json, vCount, ipKey: (x) => x, FB_FINDS_PER_IP: 1000, fbArea,
+    fbTerms: P.fbTerms, fbHunt: P.fbHunt, fbLeft, FB_SEARCH_DAY: FB.FB_SEARCH_DAY, Response: Res });
+}
 function findsHarness() {
   const kv = new FakeKV();
   kv.set("sub:pro@example.com", { email: "pro@example.com", tok: "T".repeat(24), pro: true, prefs: { zip: "48375" } });
   kv.set("sub:free@example.com", { email: "free@example.com", tok: "F".repeat(24), pro: false, prefs: { zip: "48375" } });
   kv.set("sub:nozip@example.com", { email: "nozip@example.com", tok: "N".repeat(24), pro: true, prefs: {} });
-  kv.set("fb2:pyrex butterprint|42.5,-83.5", { updated: "2026-10-31T08:00:00.000Z", day: "2026-10-31", items: [{ id: "1234567", title: "Pyrex bowl", url: "https://www.facebook.com/marketplace/item/1234567/" }] });
+  kv.set("fb3:pyrex butterprint|42.5,-83.5|50", { updated: "2026-10-31T08:00:00.000Z", day: "2026-10-31", items: [{ id: "1234567", title: "Pyrex bowl", url: "https://www.facebook.com/marketplace/item/1234567/" }] });
   const env = { PROWL_ALERTS: kv, OWNER_KEY: "owner-key-0123456789", FB_LIVE: "on" };
   const json = (body, status, origin, extra) => ({ status, body, headers: extra });
-  const fbFinds = build("fbFinds", { FB_OWN_ZIP: "fbownzip",
-    isOwner: (req, env) => req.headers.get("X-Prowl-Owner") === env.OWNER_KEY, sessMember: async () => null, alEmail: (e) => String(e || "").trim().toLowerCase(),
-    alSame: (a, b) => a === b, kvGet, json, fbTerm: FB.fbTerm, vCount: async () => true, ipKey: (x) => x, FB_FINDS_PER_IP: 1000,
-    alPrefs: (s) => ({ zip: (s.prefs && s.prefs.zip) || "" }), fbLive: FB.fbLive, fbArea: async (env, zip) => (zip === "48375" ? FB.fbCell(42.5, -83.5) : null), fbKey: FB.fbKey,
-  });
+  const fbFinds = findsFn({ kvGet, json, vCount: async () => true, fbArea: async (env, zip) => (zip === "48375" ? FB.fbCell(42.5, -83.5) : null) });
   const ask = (h, q = "term=Pyrex%20Butterprint") => fbFinds(new Request("https://w/fb-finds?" + q, { headers: h }), env, new URL("https://w/fb-finds?" + q), "o");
   return { ask };
 }
@@ -371,6 +402,7 @@ test("/fb-finds: 401 signed out, 403 not Pro, the member's area's finds for Pro,
   assert.equal(ok.status, 200);
   assert.equal(ok.body.items[0].id, "1234567");
   assert.equal(ok.body.live, true);
+  assert.deepEqual([ok.body.radius, ok.body.usa, ok.body.pending, ok.body.updated], [50, false, false, "2026-10-31T08:00:00.000Z"], "v203: the radius searched, not pending");
   assert.equal(ok.headers["Cache-Control"], "private, no-store");
   const nz = await F.ask({ "X-Prowl-Email": "nozip@example.com", "X-Prowl-Tok": "N".repeat(24) });
   assert.deepEqual(nz.body, { term: "pyrex butterprint", live: true, nozip: true, items: [] });
@@ -384,17 +416,16 @@ test("/fb-finds: 401 signed out, 403 not Pro, the member's area's finds for Pro,
 test("/fb-finds while FB_LIVE is off: a Pro member gets nothing, and nothing is asked of Google or counted", async () => {
   const kv = new FakeKV(), areas = [], counts = [];
   kv.set("sub:pro@example.com", { email: "pro@example.com", tok: "T".repeat(24), pro: true, prefs: { zip: "48375" } });
-  kv.set("fb2:pyrex|42.5,-83.5", { updated: "x", items: [{ id: "1234567" }] });
+  kv.set("fb3:pyrex|42.5,-83.5|50", { updated: "x", items: [{ id: "1234567" }] });
   const json = (body, status) => ({ status, body });
-  const fbFinds = build("fbFinds", { FB_OWN_ZIP: "fbownzip",
-    isOwner: (req, env) => req.headers.get("X-Prowl-Owner") === env.OWNER_KEY, sessMember: async () => null, alEmail: (e) => String(e || "").trim().toLowerCase(),
-    alSame: (a, b) => a === b, kvGet, json, fbTerm: FB.fbTerm, vCount: async (n) => { counts.push(n); return true; }, ipKey: (x) => x, FB_FINDS_PER_IP: 1000,
-    alPrefs: (s) => ({ zip: (s.prefs && s.prefs.zip) || "" }), fbLive: FB.fbLive, fbArea: async (env, zip, ask) => { areas.push(ask); return FB.fbCell(42.5, -83.5); }, fbKey: FB.fbKey,
-  });
+  const fbFinds = findsFn({ kvGet, json, vCount: async (n) => { counts.push(n); return true; }, fbArea: async (env, zip, ask) => { areas.push(ask); return FB.fbCell(42.5, -83.5); },
+    fbLeft: async (n) => { counts.push(n); return 5; } });
   const env = { PROWL_ALERTS: kv, OWNER_KEY: "owner-key-0123456789", FB_LIVE: "off" };
-  const ask = (h) => fbFinds(new Request("https://w/fb-finds?term=pyrex", { headers: h }), env, new URL("https://w/fb-finds?term=pyrex"), "o");
+  const ask = (h, q = "term=pyrex") => fbFinds(new Request("https://w/fb-finds?" + q, { headers: h }), env, new URL("https://w/fb-finds?" + q), "o");
   const r = await ask({ "X-Prowl-Email": "pro@example.com", "X-Prowl-Tok": "T".repeat(24) });
   assert.deepEqual([r.status, r.body], [200, { term: "pyrex", live: false, items: [] }]);
+  const all = await ask({ "X-Prowl-Email": "pro@example.com", "X-Prowl-Tok": "T".repeat(24) }, "all=1");
+  assert.deepEqual([all.status, all.body], [200, { live: false, hunts: [] }], "v203: the Store tab's answer too");
   assert.deepEqual([areas, counts], [[], []], "no fbArea(..., true), no counter");
   const own = await ask({ "X-Prowl-Owner": "owner-key-0123456789" });
   assert.equal(own.body.nozip, true, "the owner still gets the full answer");
@@ -404,10 +435,11 @@ test("/fb-finds while FB_LIVE is off: a Pro member gets nothing, and nothing is 
 test("the daily email: a Pro member's cached Facebook finds join the hunt as source facebook, through the usual filters", async () => {
   const kv = new FakeKV();
   kv.set("fbz:48375", { lat: 42.5, lng: -83.5 });
-  kv.set("fb2:pyrex butterprint|42.5,-83.5", { items: [{ id: "1234567", title: "Pyrex Butterprint bowl", price: "$25", url: "https://www.facebook.com/marketplace/item/1234567/", image: "https://x.fbcdn.net/a.jpg", found: TODAY },
+  kv.set("fb3:pyrex butterprint|42.5,-83.5|50", { items: [{ id: "1234567", title: "Pyrex Butterprint bowl", price: "$25", url: "https://www.facebook.com/marketplace/item/1234567/", image: "https://x.fbcdn.net/a.jpg", found: TODAY },
     { id: "7654321", title: "bad", url: "https://evil.example.com/x" }] });
+  const P = fbParts();
   const fbAlertItems = build("fbAlertItems", {
-    fbLive: FB.fbLive, alPrefs: (s) => ({ zip: s.prefs.zip }), kvGet, fbTerm: FB.fbTerm, fbKey: FB.fbKey, AL_PER_SITE: 10,
+    fbLive: FB.fbLive, fbOf: P.fbOf, fbHunt: P.fbHunt, fbTerm: FB.fbTerm, AL_PER_SITE: 10,
     fbArea: async (env, zip, ask) => { assert.equal(ask, false, "no outside call from the alert check"); const c = await kvGet(env, "fbz:" + zip, null); return c ? FB.fbCell(c.lat, c.lng) : null; },
   });
   const env = { PROWL_ALERTS: kv, FB_LIVE: "on" }, sub = { pro: true, prefs: { zip: "48375" } };
@@ -428,7 +460,7 @@ function admin(result) {
   const kv = new FakeKV(), asked = [];
   const env = { PROWL_ALERTS: kv, ADMIN_KEY: KEY };
   const H = { kvGet, kvPut: async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v)), vCount: async () => true, capsCall: async () => ({}),
-    fbTestRun: async (e, term, zip) => { asked.push([term, zip]); return result; } };
+    fbTestRun: async (e, term, zip, mode) => { asked.push([term, zip, mode]); return result; } };
   const call = async (body, signed = true, headers = {}) => {
     const h = Object.assign({ "Content-Type": "application/json", "X-Prowl-Admin": "1", Origin: ORIGIN }, signed ? { Cookie: "prowl_admin=" + await signSession(KEY, Date.now() + 3600000) } : {}, headers);
     const r = await adminFetch(new Request(ORIGIN + "/admin/api/fbtest", { method: "POST", headers: h, body: JSON.stringify(body) }), env, { waitUntil() {} }, H);
@@ -443,8 +475,11 @@ test("the admin's Facebook test: owner (admin session) only; shows the listings,
   assert.equal(A.asked.length, 0);
   const r = await A.call({ term: "  pyrex   butterprint ", zip: "48375-1234" });
   assert.equal(r.status, 200);
-  assert.deepEqual(A.asked, [["pyrex butterprint", "48375"]]);
-  assert.deepEqual(r.j.items, [{ title: "Pyrex bowl", price: "$25", city: "Novi, MI", url: "https://www.facebook.com/marketplace/item/1234567/", image: "" }]);
+  assert.deepEqual(A.asked, [["pyrex butterprint", "48375", "50"]], "v203: no mode is pickup within 50 miles");
+  assert.deepEqual(r.j.items, [{ title: "Pyrex bowl", price: "$25", city: "Novi, MI", url: "https://www.facebook.com/marketplace/item/1234567/", image: "", miles: null, ships: false }]);
+  await A.call({ term: "pyrex", zip: "48375", mode: "ship" });
+  await A.call({ term: "pyrex", zip: "48375", mode: "evil" });
+  assert.deepEqual(A.asked.slice(1).map((a) => a[2]), ["ship", "50"], "v203: only a known mode is passed on");
   assert.equal(r.j.count, 1);
   assert.equal(r.j.cost, 0.00055);
   assert.equal(r.j.used, 0.0011);
@@ -455,7 +490,8 @@ test("the admin's Facebook test: owner (admin session) only; shows the listings,
   assert.match(INDEX, /fbTestRun   \/\* v200/);
   const run = indexFn("fbTestRun");
   assert.doesNotMatch(run, /fbLive\(env\)\)? return/, "works while FB_LIVE is off");
-  assert.match(run, /PROWL_ALERTS\.put\(fbKey\(term, cell\), JSON\.stringify\(fbMerge\(old, r\.items/, "v202: the finds are kept for the hunt page, as the sweep keeps them");
+  assert.match(run, /key = ship \? fbShipKey\(term\) : fbPickKey\(term, cell, mi\)/, "v203: the mode's key");
+  assert.match(run, /PROWL_ALERTS\.put\(key, JSON\.stringify\(fbMerge\(old, r\.items/, "v202: the finds are kept for the hunt page, as the sweep keeps them");
 });
 
 /* ---- 8. spend.js ---- */

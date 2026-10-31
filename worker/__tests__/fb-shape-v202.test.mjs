@@ -92,43 +92,63 @@ class FakeKV {
 }
 function testRun(callResult) {
   const kv = new FakeKV(), cell = FB.fbCell(42.48, -83.47);
-  const deps = { fbTerm: FB.fbTerm, fbArea: async () => cell, fbCall: async () => callResult, FB_UNIT: FB.FB_UNIT, FB_RUN_ITEMS: FB.FB_RUN_ITEMS, FB_TTL: FB.FB_TTL,
-    fbEstimate: FB.fbEstimate, fbCapUnits: FB.fbCapUnits, fbLive: FB.fbLive, fbKey: FB.fbKey, fbMerge: FB.fbMerge, scrubPII: (s) => s, FB_OWN_ZIP: "fbownzip", FB_DAY_LIST_MAX: 2000,
+  const asked = [];
+  const deps = { fbTerm: FB.fbTerm, fbArea: async () => cell, fbCall: async (env, term, c, n, opt) => { asked.push(opt); return callResult; }, FB_UNIT: FB.FB_UNIT, FB_RUN_ITEMS: FB.FB_RUN_ITEMS, FB_TTL: FB.FB_TTL,
+    fbEstimate: FB.fbEstimate, fbCapUnits: FB.fbCapUnits, fbLive: FB.fbLive, fbMerge: FB.fbMerge,
+    fbMi: FB.fbMi, FB_USA_MI: FB.FB_USA_MI, fbPickKey: FB.fbPickKey, fbShipKey: FB.fbShipKey, scrubPII: (s) => s, FB_OWN_ZIP: "fbownzip", FB_DAY_LIST_MAX: 2000,
     kvGet: async (env, k, d) => { const v = await env.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; } };
   const keys = Object.keys(deps);
   const fn = new Function(...keys, indexFn("fbTestRun") + "\nreturn fbTestRun;")(...keys.map((k) => deps[k]));
-  return { kv, cell, run: (term, zip) => fn({ PROWL_ALERTS: kv, APIFY_TOKEN: "t" }, term, zip) };
+  return { kv, cell, asked, run: (term, zip, mode) => fn({ PROWL_ALERTS: kv, APIFY_TOKEN: "t" }, term, zip, mode) };
 }
 const ITEM = (id) => ({ id: String(id), title: "Ceramic Panther " + id, price: "$40", url: "https://www.facebook.com/marketplace/item/" + id + "/", image: PHOTO, location: "Novi, MI", found: DAY });
 
-test("the admin's test keeps its finds where the hunt page reads them (fb2:<hunt>|<cell>, merged, 8 days)", async () => {
+test("the admin's test keeps its finds where the hunt page reads them (v203: fb3:<hunt>|<cell>|<miles>, merged, 8 days)", async () => {
   const T = testRun({ ok: true, items: [ITEM(1111111), ITEM(2222222)], raw: 2, units: 1100, used: 1205, cap: 100000, fields: ["id (string)"] });
-  await T.kv.put(FB.fbKey("ceramic panther", T.cell), JSON.stringify({ updated: "x", day: DAY, items: [ITEM(2222222), ITEM(3333333)] }));
+  await T.kv.put(FB.fbPickKey("ceramic panther", T.cell, 50), JSON.stringify({ updated: "x", day: DAY, items: [ITEM(2222222), ITEM(3333333)] }));
   const r = await T.run("  Ceramic   Panther ", "48375");
   assert.equal(r.ok, true);
   assert.equal(r.kept, true);
   assert.equal(r.term, "ceramic panther");
   assert.deepEqual(r.fields, ["id (string)"]);
-  const k = FB.fbKey("ceramic panther", T.cell), v = JSON.parse(T.kv.m.get(k));
+  assert.equal(r.mode, "50", "no mode: pickup within 50 miles");
+  assert.deepEqual(T.asked, [{ mi: 50 }]);
+  const k = FB.fbPickKey("ceramic panther", T.cell, 50), v = JSON.parse(T.kv.m.get(k));
+  assert.equal(k, "fb3:ceramic panther|42.5,-83.5|50");
   assert.deepEqual(v.items.map((x) => x.id), ["1111111", "2222222", "3333333"], "merged by id, the old ones kept");
   assert.equal(T.kv.ttl.get(k), FB.FB_TTL);
-  assert.deepEqual(JSON.parse(T.kv.m.get("fb2day:" + DAY)), { ["ceramic panther|" + T.cell.key]: 1 }, "review fix: the day's sweep does not pay again for it");
-  assert.equal(JSON.parse(T.kv.m.get("fbownzip")), "48375", "the owner key's hunt page reads this area");
+  assert.deepEqual(JSON.parse(T.kv.m.get("fb3day:" + DAY)), { ["p|ceramic panther|" + T.cell.key + "|50"]: 1 }, "review fix: the day's sweep does not pay again for it");
+  assert.deepEqual(JSON.parse(T.kv.m.get("fbownzip")), { zip: "48375", mi: 50 }, "the owner key's hunt page reads this area and distance");
 });
 
 test("a test does not undo a capped day or touch the other hunts the sweep did", async () => {
   const T = testRun({ ok: true, items: [ITEM(1111111)], units: 600, used: 600, cap: 100000 });
-  await T.kv.put("fb2day:" + DAY, JSON.stringify({ "pyrex|42.5,-83.5": -1, _cap: 1 }));
+  await T.kv.put("fb3day:" + DAY, JSON.stringify({ "p|pyrex|42.5,-83.5|50": -1, _cap: 1 }));
   await T.run("panther", "02134");
-  assert.deepEqual(JSON.parse(T.kv.m.get("fb2day:" + DAY)), { "pyrex|42.5,-83.5": -1, _cap: 1 });
-  assert.equal(JSON.parse(T.kv.m.get("fbownzip")), "02134", "a leading zero survives");
+  assert.deepEqual(JSON.parse(T.kv.m.get("fb3day:" + DAY)), { "p|pyrex|42.5,-83.5|50": -1, _cap: 1 });
+  assert.equal(JSON.parse(T.kv.m.get("fbownzip")).zip, "02134", "a leading zero survives");
 });
 
 test("/fb-finds: the owner key reads the last test's ZIP first, a member only their own", () => {
-  const f = indexFn("fbFinds");
-  assert.match(f, /let zip = owner && \/\^\\d\{5\}\$\/\.test\(oz\) \? oz : "";\n  if \(!zip && owner\) \{ const z = await kvGet\(env, FB_OWN_ZIP, null\)/);
-  assert.match(f, /if \(!zip && sub\) zip = alPrefs\(sub\)\.zip;/);
-  assert.ok(f.indexOf("FB_OWN_ZIP") < f.indexOf("alPrefs(sub)"));
+  const f = indexFn("fbAreaFor");   /* v203: fbFinds and fbSearch both read the area here */
+  assert.match(indexFn("fbFinds"), /const o = await fbAreaFor\(env, w, url\);/);
+  assert.match(f, /let zip = w\.owner && \/\^\\d\{5\}\$\/\.test\(oz\) \? oz : "";\n  if \(!zip && w\.owner\) \{/);
+  assert.match(f, /const z = await kvGet\(env, FB_OWN_ZIP, null\)/);
+  assert.match(f, /if \(zip && !w\.sub && z && typeof z === "object"\) o\.mi = /, "v203 review fix: the owner key alone reads the test's distance");
+  assert.match(f, /if \(!zip\) zip = o\.zip;/);
+  assert.ok(f.indexOf("FB_OWN_ZIP") < f.indexOf("zip = o.zip"));
+});
+
+test("v203: a test in each mode keeps its finds in that mode's key and marks that job done", async () => {
+  for (const [mode, opt, key, jk, out] of [["25", { mi: 25 }, "fb3:panther|42.5,-83.5|25", "p|panther|42.5,-83.5|25", "25"], ["100", { mi: 100 }, "fb3:panther|42.5,-83.5|100", "p|panther|42.5,-83.5|100", "100"],
+    ["usa", { mi: 500 }, "fb3:panther|42.5,-83.5|500", "p|panther|42.5,-83.5|500", "usa"], ["ship", { ship: true }, "fb3s:panther", "s|panther", "ship"], ["junk", { mi: 50 }, "fb3:panther|42.5,-83.5|50", "p|panther|42.5,-83.5|50", "50"]]) {
+    const T = testRun({ ok: true, items: [ITEM(1111111)], units: 600, used: 600, cap: 100000 });
+    const r = await T.run("panther", "48375", mode);
+    assert.deepEqual(T.asked, [opt], mode);
+    assert.equal(r.mode, out, mode);
+    assert.equal(JSON.parse(T.kv.m.get(key)).items[0].id, "1111111", mode);
+    assert.deepEqual(JSON.parse(T.kv.m.get("fb3day:" + DAY)), { [jk]: 1 }, mode);
+  }
 });
 
 test("a failed, empty or capped test keeps nothing", async () => {

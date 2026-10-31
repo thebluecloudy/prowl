@@ -30,7 +30,7 @@ test("the Facebook test is on Diagnose, not in the Overview's Marketplaces card,
   zip.value = "48375"; zip.dispatchEvent(new w.Event("input"));
   btn.click();
   await wait(() => sent.some(([p]) => p === "/admin/api/fbtest"));
-  assert.deepEqual(sent.find(([p]) => p === "/admin/api/fbtest")[1], { term: "pyrex", zip: "48375" });
+  assert.deepEqual(sent.find(([p]) => p === "/admin/api/fbtest")[1], { term: "pyrex", zip: "48375", mode: "50" }, "v203: the mode, pickup within 50 miles unless chosen");
   assert.equal(btn.disabled, true);
   assert.match(d.querySelector("#fbtbox").textContent, /Asking Apify/);
   w.location.hash = "#overview"; w.dispatchEvent(new w.HashChangeEvent("hashchange"));

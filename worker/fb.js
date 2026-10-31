@@ -11,6 +11,12 @@ export const FB_UNIT = 100000;   /* the spend counter's unit, 1/100,000 of a dol
 export const FB_ITEM_USD = 0.0005, FB_DETAIL_USD = 0.001, FB_START_USD = 0.00005;
 export const FB_RUN_ITEMS = 24, FB_ITEMS_MAX = 60, FB_DAYS = 7, FB_TTL = 8 * 86400, FB_RADIUS_KM = 40, FB_PER_RUN = 2, FB_TIMEOUT_S = 75;
 export const FB_ZIP_TTL = 90 * 86400, FB_ZIP_MISS_TTL = 7 * 86400, FB_CELL_DEG = 0.1, FB_TRIES = 2;
+/* v203 (Matt, 2026-10-31: "10 a day is fine"; "local plus ship with a radius. All USA."): each Pro member's hunts get up
+   to FB_MEMBER_DAY Facebook searches a day, taken in turn; a hunt is two: pickup within the member's radius (or
+   FB_USA_MI for an All USA hunt) and the listings that ship (one search a hunt for everyone, FB_SHIP_KM wide). A member's
+   one-off searches (the Store's search box) are FB_SEARCH_DAY a day. */
+export const FB_MEMBER_DAY = 10, FB_SEARCH_DAY = 5, FB_USA_MI = 500, FB_RADII_MI = [25, 50, 100], FB_SHIP_KM = 805;
+const KM_PER_MI = 1.609344;
 const FB_IMG = /^https:\/\/([a-z0-9-]+\.)*fbcdn\.net\//i;
 const EMAILISH = /[^\s@<>"',;:]+@[^\s@<>"',;:]+/g;
 
@@ -31,7 +37,12 @@ export function fbCell(lat, lng) {
   const la = (Math.round(a / FB_CELL_DEG) * FB_CELL_DEG).toFixed(1), lo = (Math.round(b / FB_CELL_DEG) * FB_CELL_DEG).toFixed(1);
   return { lat: Number(la), lng: Number(lo), key: String(Number(la)) + "," + String(Number(lo)) };
 }
-export function fbKey(term, cell) { return "fb2:" + term + "|" + (cell && cell.key ? cell.key : String(cell || "")); }
+export function fbKey(term, cell) { return "fb2:" + term + "|" + (cell && cell.key ? cell.key : String(cell || "")); }   /* v200's, read no more */
+/* v203: pickup finds within mi miles of a cell, and the hunt's shipping finds (shared by every member: shipping does not
+   depend on where you are) */
+export function fbPickKey(term, cell, mi) { return "fb3:" + term + "|" + (cell && cell.key ? cell.key : String(cell || "")) + "|" + fbMi(mi); }
+export function fbShipKey(term) { return "fb3s:" + term; }
+export function fbMi(mi) { const n = Number(mi); return n === FB_USA_MI || FB_RADII_MI.indexOf(n) !== -1 ? n : 50; }
 export function fbUnits(usd) { return Math.max(0, Math.round(Number(usd) * FB_UNIT)); }
 export function fbItems(n) { return Math.max(1, Math.min(FB_ITEMS_MAX, n | 0)); }   /* maxItems as sent */
 export function fbEstimate(n) { return Math.max(0, Number(n) || 0) * FB_ITEM_USD + FB_START_USD; }
@@ -41,17 +52,21 @@ export function fbCost(raw) {
   for (const x of Array.isArray(raw) ? raw : []) { const ci = x && typeof x.apify_charge_info === "object" ? x.apify_charge_info : null; c += FB_ITEM_USD + (ci && ci.listing_item_details ? FB_DETAIL_USD : 0); }
   return Math.round(c * 1e6) / 1e6;
 }
-export function fbInput(term, cell) {
-  return { searchKeyword: term, latitude: cell.lat, longitude: cell.lng, radiusKm: FB_RADIUS_KM, getListingDetails: false, getAllListingPhotos: false,
-    strictFiltering: true, maxPagesPerUrl: 1, proxy: { useApifyProxy: true, apifyProxyCountry: "US" } };
+/* opt (v203): { mi } pickup within mi miles (Facebook's radius is always km), or { ship: true } the listings that ship */
+export function fbInput(term, cell, opt) {
+  opt = opt || {};
+  const o = { searchKeyword: term, latitude: cell.lat, longitude: cell.lng, radiusKm: opt.ship ? FB_SHIP_KM : opt.mi ? Math.round(fbMi(opt.mi) * KM_PER_MI) : FB_RADIUS_KM,
+    getListingDetails: false, getAllListingPhotos: false, strictFiltering: true, maxPagesPerUrl: 1, proxy: { useApifyProxy: true, apifyProxyCountry: "US" } };
+  if (opt.ship) o.deliveryMethod = "shipping";
+  return o;
 }
 /* one synchronous run: the listings come back in the answer. The token rides in the header only; no cookies, ever.
    maxTotalChargeUsd (review fix): a pay-per-event actor is held to it, not to maxItems, so Apify itself stops at the
    estimate fbCall reserved. */
-export function fbRequest(env, token, term, cell, n) {
+export function fbRequest(env, token, term, cell, n, opt) {
   const m = fbItems(n);
   return { url: "https://api.apify.com/v2/acts/" + fbActor(env) + "/run-sync-get-dataset-items?timeout=" + FB_TIMEOUT_S + "&maxItems=" + m + "&maxTotalChargeUsd=" + fbEstimate(m).toFixed(5),
-    init: { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(fbInput(term, cell)) } };
+    init: { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(fbInput(term, cell, opt)) } };
 }
 function fbText(v, max) { return String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max); }
 /* v202: the price and the photo in each shape the actor may send them. v200 read one guessed shape (listing_price with
@@ -105,7 +120,28 @@ export function fbShape(x) {
   return out;
 }
 /* the fields kept of each listing; sold, pending and hidden ones are dropped; seller fields are never read */
-export function fbClean(raw, day) {
+/* v203: a hunt's words, each found at the start of a title word (plurals and longer forms count: "panther" finds
+   "Panthers"), so Facebook's "similar items" (a Land Rover for "panther") are dropped, as the email's exact match does */
+const FB_STOP = { a: 1, an: 1, and: 1, the: 1, of: 1, for: 1, with: 1, in: 1, on: 1, or: 1 };
+function fbStem(w) { return w.length > 5 && /sses$/.test(w) ? w.slice(0, -2) : w.length > 4 && /es$/.test(w) && !/ses$/.test(w) ? w.slice(0, -2) : w.length > 3 && /s$/.test(w) && !/ss$/.test(w) ? w.slice(0, -1) : w; }
+export function fbMatch(term, title) {
+  const tw = String(title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean);
+  const hw = String(term || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(w => w && !FB_STOP[w]);
+  if (!hw.length) return true;
+  if (hw.every(w => { const st = fbStem(w); return tw.some(t => t.indexOf(st) === 0); })) return true;
+  /* written together or apart ("fire-king" / "Fireking", "butter print" / "butterprint"): the words run together */
+  const run = hw.slice(0, -1).join("") + fbStem(hw[hw.length - 1]);
+  return hw.length > 1 && run.length >= 6 && tw.join("").indexOf(run) !== -1;
+}
+/* miles between two points (haversine), rounded */
+export function fbMiles(lat1, lng1, lat2, lng2) {
+  const r = Math.PI / 180, a = Math.sin((lat2 - lat1) * r / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin((lng2 - lng1) * r / 2) ** 2;
+  return Math.round(3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+/* ctx (v203): { term, lat, lng, mi, ship }: only listings matching the hunt; pickup ones only within mi miles of the
+   point (Facebook pads a thin local search with far-away "similar" ones, strict filtering or not), each with its miles;
+   shipping ones marked ships. Without ctx, v200's behaviour. */
+export function fbClean(raw, day, ctx) {
   const out = [], seen = Object.create(null);
   for (const x of Array.isArray(raw) ? raw : []) {
     if (out.length >= FB_ITEMS_MAX) break;
@@ -113,10 +149,20 @@ export function fbClean(raw, day) {
     const id = String(x.id == null ? "" : x.id).trim(), title = fbText(x.marketplace_listing_title || x.custom_title, 160).replace(EMAILISH, "[email]");
     if (!/^\d{5,20}$/.test(id) || seen[id] || !title) continue;
     seen[id] = 1;
+    if (ctx && ctx.term && !fbMatch(ctx.term, title)) continue;
+    let miles = null;
+    if (ctx && !ctx.ship && Number.isFinite(Number(ctx.lat))) {   /* review fix: shipping finds are shared by everyone, so no distance from one member's ZIP */
+      const loc = x.location && typeof x.location === "object" ? x.location : {}, la = Number(loc.latitude), lo = Number(loc.longitude);
+      miles = Number.isFinite(la) && Number.isFinite(lo) && la !== 0 && Math.abs(la) <= 90 && Math.abs(lo) <= 180 ? fbMiles(Number(ctx.lat), Number(ctx.lng), la, lo) : null;
+      if (miles == null || miles > fbMi(ctx.mi) + 5) continue;   /* +5: the area is a 10 km cell's centre */
+    }
     const pr = fbPrice(x), img = fbPhoto(x);
     const rg = x.location && typeof x.location === "object" && x.location.reverse_geocode && typeof x.location.reverse_geocode === "object" ? x.location.reverse_geocode : {};
     const town = [fbText(rg.city, 40), fbText(rg.state, 20)].filter(Boolean).join(", ").replace(EMAILISH, "").replace(/\d[\d\s().-]{4,}\d/g, "").trim();
-    out.push({ id: id, title: title, price: pr, url: "https://www.facebook.com/marketplace/item/" + id + "/", image: img, location: town, found: day });
+    const it = { id: id, title: title, price: pr, url: "https://www.facebook.com/marketplace/item/" + id + "/", image: img, location: town, found: day };
+    if (miles != null) it.miles = miles;
+    if (ctx && ctx.ship) it.ships = true;
+    out.push(it);
   }
   return out;
 }
@@ -133,15 +179,24 @@ export function fbMerge(old, fresh, day, updated) {
 }
 /* one Apify call: { ok, items, raw, cost } or { ok:false, error, cost } (a failed run may still have pushed listings,
    so it is charged at the estimate: the cap errs on the safe side). Errors never carry the token. */
-export async function fbRun(env, term, cell, n, f) {
+export async function fbRun(env, term, cell, n, f, opt) {
   const tok = String((env && env.APIFY_TOKEN) || "");
   if (!tok) return { ok: false, error: "APIFY_TOKEN not set", cost: 0 };
-  const rq = fbRequest(env, tok, term, cell, n), ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), (FB_TIMEOUT_S + 15) * 1000);
+  const rq = fbRequest(env, tok, term, cell, n, opt), ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), (FB_TIMEOUT_S + 15) * 1000);
   try {
     const r = await (f || fetch)(rq.url, Object.assign({ signal: ctl.signal }, rq.init));
     let j = null; try { j = await r.json(); } catch (e) {}
     if (!r.ok || !Array.isArray(j)) return { ok: false, status: r.status, error: "apify " + r.status + (j && j.error && j.error.type ? " " + fbText(j.error.type, 40) : ""), cost: fbEstimate(n) };
-    return { ok: true, raw: j.length, items: fbClean(j, new Date().toISOString().slice(0, 10)), cost: fbCost(j), fields: fbShape(j[0]) };   /* v202: fields */
+    return { ok: true, raw: j.length, items: fbClean(j, new Date().toISOString().slice(0, 10), opt ? { term: term, lat: cell.lat, lng: cell.lng, mi: opt.mi, ship: !!opt.ship } : null), cost: fbCost(j), fields: fbShape(j[0]) };   /* v202: fields */
   } catch (e) { return { ok: false, error: e && e.name === "AbortError" ? "apify timed out" : "apify unreachable", cost: fbEstimate(n) }; }
   finally { clearTimeout(timer); }
+}
+
+/* v203: what a member sees for a hunt: the pickup finds (nearest first), then the ones that ship, one per listing */
+export function fbJoin(pick, ship) {
+  const have = Object.create(null), out = [];
+  const near = (pick && Array.isArray(pick.items) ? pick.items.slice() : []).sort((a, b) => (a.miles == null ? 1e9 : a.miles) - (b.miles == null ? 1e9 : b.miles));
+  for (const x of near.concat(ship && Array.isArray(ship.items) ? ship.items : [])) { if (!x || !x.id || have[x.id]) continue; have[x.id] = 1; out.push(x); }
+  const up = [pick && pick.updated, ship && ship.updated].filter(Boolean).sort().pop() || "";
+  return { items: out.slice(0, FB_ITEMS_MAX), updated: String(up) };
 }

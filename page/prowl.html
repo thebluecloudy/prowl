@@ -834,6 +834,11 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .st-q{display:flex;gap:8px;margin:0 18px 14px}
 .scout-app-wrapper .st-q input{flex:1;min-width:0;min-height:44px;padding:0 12px;border:1px solid var(--l2);border-radius:12px;background:var(--cd);color:var(--i1);font-size:16px;-webkit-appearance:none;appearance:none}
 .scout-app-wrapper .st-q .b{min-height:44px}
+.scout-app-wrapper .st-fb{margin:0 18px 14px}
+.scout-app-wrapper .st-fb h3.sgw-fbh{margin:0}
+.scout-app-wrapper .sgw-fbm{display:inline-flex;gap:4px;margin-left:8px;flex-wrap:wrap}
+.scout-app-wrapper .sgw-fbm-b{min-height:32px;padding:0 10px;border:1px solid var(--l2);border-radius:999px;background:var(--cd);color:var(--i2);font-size:13px;font-weight:700;cursor:pointer}
+.scout-app-wrapper .sgw-fbm-b[aria-pressed=true]{background:var(--ac);border-color:var(--ac);color:#fff}
 .scout-app-wrapper .fz-all{width:100%;min-height:48px;margin:4px 0 14px;font-size:16px}
 .scout-app-wrapper .fz-note{font-size:14px;color:var(--i2);margin:12px 0 0}
 .scout-app-wrapper .rf .fbx{width:100%;height:auto;min-height:48px;padding:12px 16px;margin:0 0 12px;white-space:normal;line-height:1.35;text-align:center;border-color:var(--ac);color:var(--ink);background:var(--ac-soft)}
@@ -3919,7 +3924,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.26';
+var PROWL_VERSION='v8.27';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -5018,13 +5023,15 @@ function oneAll(r){return !!(r&&r.terms&&((r.mode==='one'&&r.terms.length>1)||(r
    the bottom ... to search just one store, everything"): the STORE dock tab runs every hunt on one marketplace at once.
    The marketplace is a drop-down at the top of that screen (st.store, kept apart from the Just … pill's st.one so
    picking a store never turns the pill on), with a box to search that store for one thing. */
-function storeId(){return (st.store&&mb(st.store))?st.store:oneId()}
+function storeId(){return st.store==='facebook'?(fbOn()?'facebook':oneId()):(st.store&&mb(st.store))?st.store:oneId()}   /* v8.27: Facebook only while fbOn() */
 function runSiteName(r){var m=mb(r&&r.scope&&r.scope[0]);return m?m.n:oneName()}
 function storeHunts(){var a=[],b=[];st.hunts.forEach(function(t,j){(st.lock.has(j)?a:b).push(t)});return a.concat(b)}
 var STORE_SKIP={ebaysold:1,owltwig:1,facebook:1};   /* sold prices, our own shop, Facebook's city-by-city search */
 function storeLive(id){return id==='shopgoodwill'||!!lv[id]}
 function storeGo(){
   var T=storeHunts(),m=mb(storeId());
+  st.storeFb=false;
+  if(storeId()==='facebook'){clearTimers();st.run=null;st.focus=false;st.storeEmpty=false;st.storeFb=true;st.mode='store';rRes();rDock();res.hidden=false;fbAllFetch();return}   /* v8.27 */
   if(!T.length){clearTimers();st.run=null;st.focus=false;st.storeEmpty=true;st.mode='store';rRes();rDock();res.hidden=false;return}
   st.storeEmpty=false;
   runProwl('store',T,[storeId()],m?m.n:'');
@@ -5033,6 +5040,10 @@ function storeBar(id){
   /* v8.20 (Matt: "we should mark the ones that are LIVE in the dropdown"): stores whose listings show right here first */
   var live='',other='';
   M.forEach(function(m){if(STORE_SKIP[m.id])return;var o='<option value="'+esc(m.id)+'"'+(m.id===id?' selected':'')+'>'+esc(m.n)+(storeLive(m.id)?' \u00b7 LIVE':'')+'</option>';if(storeLive(m.id))live+=o;else other+=o});
+  if(fbOn())live+='<option value="facebook"'+(id==='facebook'?' selected':'')+'>Facebook Marketplace \u00b7 LIVE</option>';   /* v8.27: worker v203's finds */
+  if(id==='facebook')return '<div class="st-bar"><label class="st-lab" for="otp-stSel">Store</label><select id="otp-stSel"><optgroup label="LIVE: listings show here">'+live+'</optgroup><optgroup label="Opens on their site">'+other+'</optgroup></select></div>'+
+    '<p class="st-note"><b>LIVE</b>: Facebook Marketplace finds for your hunts, from Prowl\u2019s daily Facebook searches.</p>'+
+    '<form class="st-q" id="otp-fbF"><input id="otp-fbQ" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search Facebook for one thing" aria-label="Search Facebook for one thing" maxlength="80"><button class="b" type="submit">Search</button></form>';
   var opts='<optgroup label="LIVE: listings show here">'+live+'</optgroup><optgroup label="Opens on their site">'+other+'</optgroup>';
   var n=(mb(id)||{}).n||'';
   return '<div class="st-bar"><label class="st-lab" for="otp-stSel">Store</label><select id="otp-stSel">'+opts+'</select></div>'+
@@ -5041,7 +5052,7 @@ function storeBar(id){
 }
 function storeWire(){
   var sel=$('#otp-stSel');
-  if(sel)sel.addEventListener('change',function(){if(!mb(this.value))return;st.store=this.value;save();storeGo()});
+  if(sel)sel.addEventListener('change',function(){if(!mb(this.value)&&this.value!=='facebook')return;st.store=this.value;save();storeGo()});
   var f=$('#otp-stF');
   if(f)f.addEventListener('submit',function(e){e.preventDefault();var t=(($('#otp-stQ')||{}).value||'').trim();if(!t)return;var id=storeId();runProwl('one',[t],[id],(mb(id)||{}).n)});
 }
@@ -5052,6 +5063,72 @@ function rStoreEmpty(){
     '<p class="dg-tip">Keep a few hunts (search for something, then tap <b>Keep this hunt</b>) and this tab checks all of them on '+esc(n)+' at once.</p></div>';
   storeWire();
   var cr=$('#otp-cr');if(cr)cr.addEventListener('click',clearRun);
+}
+/* v8.27 (worker v203): the Store tab on Facebook Marketplace. No per-site run: the screen shows each active hunt's
+   finds from GET /fb-finds?all=1 and a box for a live one-off search (POST /fb-search, 5 a day per Pro member). */
+var FBS={all:null,busy:0,err:'',one:null,q:'',left:-1};
+function rStoreFb(){
+  res.innerHTML='<div class="rc ol-rc"><div class="rh dg-rh"><div><p class=eb>One store</p><h2>Your hunts on Facebook Marketplace</h2></div>'+
+    '<div class=rh-acts><button class="gh dg-x" id=otp-cr type=button aria-label="Close">\u2715</button></div></div>'+storeBar('facebook')+
+    '<div class="st-fb"><div id="otp-fbOne"></div><div id="otp-fbAll"></div></div></div>';
+  storeWire();fbOneDraw();fbAllDraw();
+  var cr=$('#otp-cr');if(cr)cr.addEventListener('click',clearRun);
+  var f=$('#otp-fbF');
+  if(f)f.addEventListener('submit',function(e){e.preventDefault();var t=(($('#otp-fbQ')||{}).value||'').replace(/\s+/g,' ').trim().slice(0,80);if(t)fbOneGo(t)});
+}
+function fbScr(){return !!(st.storeFb&&!st.run&&$('#otp-fbAll'))}
+function fbLeftTxt(){return FBS.left>=0?'<p class="sgw-note">'+esc(String(FBS.left))+' search'+(FBS.left===1?'':'es')+' left today.</p>':''}
+function fbGrid(a){var h='',i;for(i=0;i<a.length;i++)h+=sgwCard(a[i],'');return h?'<div class="sgw-grid">'+h+'</div>':''}
+function fbAllFetch(){
+  if(typeof fetch!=='function'||FBS.busy)return;
+  FBS.busy=1;FBS.err='';if(fbScr())fbAllDraw();
+  fetch(SGW_API+'fb-finds?all=1',{headers:nrH(),cache:'no-store'}).then(function(r){
+    if(r.status===401||r.status===403)return {e:'Facebook finds are for signed-in Prowl Pro members.'};
+    return r.ok?r.json():{e:'Could not load Facebook finds. Try again in a minute.'};
+  }).then(function(j){
+    FBS.busy=0;j=j||{};
+    if(j.e)FBS.err=j.e;else{FBS.all=j;if(typeof j.left==='number'&&j.left>=0)FBS.left=Math.floor(j.left)}
+    if(fbScr()){fbAllDraw();fbOneDraw()}
+  },function(){FBS.busy=0;FBS.err='Could not reach Prowl. Check your connection.';if(fbScr())fbAllDraw()});
+}
+function fbAllDraw(){
+  var el=$('#otp-fbAll');if(!el)return;
+  var j=FBS.all,h='',i,x,w,a;
+  if(FBS.err&&!j){el.innerHTML='<p class="sgw-note">'+esc(FBS.err)+'</p>';return}
+  if(!j){el.innerHTML='<p class="sgw-note">Loading your hunts on Facebook\u2026</p>';return}
+  if(j.nozip)h+='<p class="sgw-note">Add your local-pickup ZIP in Den \u203a Settings (Prowl Alerts, Only what fits) and Prowl looks for your hunts on Facebook Marketplace near you every day.</p>';
+  a=Array.isArray(j.hunts)?j.hunts:[];
+  for(i=0;i<a.length&&i<100;i++){
+    x=a[i]||{};if(typeof x.term!=='string'||!x.term)continue;
+    w=x.pending&&!x.updated?'Checks soon':fbWhen(x.updated);
+    var it=fbClean(x.items).slice(0,12);
+    h+='<div class="sgw-sub"><h3 class="sgw-fbh">'+esc(x.term)+'</h3>'+(w?'<span class="sgw-upd">'+esc(w)+'</span>':'')+'</div>'+
+      (it.length?fbGrid(it):(x.pending&&!x.updated)?'':'<p class="sgw-note">Nothing on Facebook for this hunt lately.</p>');
+  }
+  if(!a.length&&!j.nozip)h+='<p class="sgw-note">No hunts to show on Facebook yet. Keep a few hunts and Prowl searches Facebook for them every day.</p>';
+  el.innerHTML=h;
+}
+function fbOneGo(t){
+  if(typeof fetch!=='function'||FBS.one==='busy')return;
+  FBS.q=t;FBS.one='busy';fbOneDraw();
+  var hd=nrH();hd['Content-Type']='application/json';
+  fetch(SGW_API+'fb-search',{method:'POST',headers:hd,body:JSON.stringify({q:t}),cache:'no-store'}).then(function(r){
+    return r.json()['catch'](function(){return {}}).then(function(j){return {s:r.status,ok:r.ok,j:j||{}}});
+  }).then(function(v){
+    if(typeof v.j.left==='number'&&v.j.left>=0)FBS.left=Math.floor(v.j.left);
+    if(v.ok&&v.j.ok)FBS.one={items:fbClean(v.j.items)};
+    else FBS.one={e:v.s===401||v.s===403?'Facebook search is for signed-in Prowl Pro members.':v.s===429?'That\u2019s today\u2019s 5 Facebook searches. More tomorrow.':(typeof v.j.error==='string'&&v.j.error)?v.j.error.slice(0,160):v.s===400?'Try a shorter search, a few words.':'Facebook search did not answer. Try again in a minute.'};   /* review fix: the worker's own reason (no ZIP, the day's searches used) */
+    if(fbScr())fbOneDraw();
+  },function(){FBS.one={e:'Could not reach Prowl. Check your connection.'};if(fbScr())fbOneDraw()});
+}
+function fbOneDraw(){
+  var el=$('#otp-fbOne');if(!el)return;
+  var o=FBS.one,h='';
+  if(o==='busy')h='<p class="sgw-note">Searching Facebook for \u201c'+esc(FBS.q)+'\u201d\u2026</p>';
+  else if(o&&o.e)h='<p class="sgw-note">'+esc(o.e)+'</p>';
+  else if(o&&o.items)h='<div class="sgw-sub"><h3 class="sgw-fbh">\u201c'+esc(FBS.q)+'\u201d on Facebook</h3></div>'+(o.items.length?fbGrid(o.items):'<p class="sgw-note">Nothing on Facebook near you for that right now.</p>')+fbLeftTxt();
+  else h=fbLeftTxt();
+  el.innerHTML=h;
 }
 /* v8.18 (Matt: "i want to see all hunts in goodwill. i don't like the way it is layed out", picked Grouped by hunt): on a
    site with live listings (ShopGoodwill and the LIVE_SRC sites) the all-hunts screen shows each hunt's listings right in
@@ -5551,6 +5628,7 @@ function rRes(){
   var sgm=$('#otp-sgw');if(sgm&&sgm.innerHTML)sgm.hidden=!!r;
   startSync();   /* v7.31 */
   rRq();   /* v7.82 */
+  if(!r&&st.storeFb){rStoreFb();return;}   /* v8.27 */
   if(!r&&st.storeEmpty){rStoreEmpty();return;}   /* v8.20 */
   if(!r&&st.focus){rFocus();return;}
   if(!r){res.hidden=true;res.innerHTML='';return;}
@@ -5692,7 +5770,7 @@ function clearRun(){
      box goes back to the favorite showing, so the box and the panel always agree */
   var runT=(st.run&&st.run.terms&&st.run.terms.length===1)?sgwClean(st.run.terms[0]).toLowerCase():'';
   var typed=q?sgwClean(q.value).toLowerCase():'',lt=runT||typed;
-  clearTimers();st.run=null;st.focus=false;st.storeEmpty=false;st.mode='prowl';
+  clearTimers();st.run=null;st.focus=false;st.storeEmpty=false;st.storeFb=false;st.mode='prowl';
   try{
     var i,hit=-1;
     if(lt)for(i=0;i<sgw.terms.length;i++)if(sgw.terms[i].t.toLowerCase()===lt){hit=i;break}
@@ -5747,6 +5825,7 @@ function dockGo(m){
   /* v6.38: Flock is a tab; every other mode closes it */
   if(m==='flock'){if(flockOpen())flTop();else openFlock();return;}
   closeFlock();
+  if(m!=='store')st.storeFb=false;   /* v8.27 */
   if(m==='prowl'){clearRun();window.scrollTo({top:0,behavior:'smooth'});return;}
   if(m==='store'){storeGo();return;}   /* v8.20 */
   if(m==='one'){if(q.value.trim()){runProwl('one',chips(),[oneId()],oneName())}else{openFocus()}return;}
@@ -6163,7 +6242,9 @@ function sgwCard(it,hunt,bare){
   var m=LIVE_NAME[it.src]||'ShopGoodwill';
   if(typeof it.bids==='number')m+=' · '+esc(String(it.bids))+' bid'+(it.bids===1?'':'s');
   if(it.time_left)m+=' · '+esc(it.time_left)+' left';
+  if(it.src==='facebook'&&it.ships)m+=' · Ships';   /* v8.27 */
   if(it.location)m+=' · '+esc(it.location);   /* v6.65: Facebook finds say where */
+  if(it.src==='facebook'&&typeof it.miles==='number')m+=' · '+esc(String(it.miles))+' mi';
   /* v5.63: worker v21 Jev tags likely reproductions; turning JEV_RESULTS off removes the tag */
   if(it.repro)m+='<br><span class="sgw-repro" title="The title reads like a reproduction, reissue or a lookalike from another maker">Possible reproduction</span>';
   var al=typeof alsoLine==='function'?alsoLine(it.url):'';if(al)m+='<br>'+al;   /* v7.34 */
@@ -6829,6 +6910,8 @@ function fbClean(a){
     out.push({title:x.title.slice(0,160),price:typeof x.price==='string'?x.price.slice(0,24):'',url:'https://www.facebook.com/marketplace/item/'+id[1]+'/',
       image:typeof x.image==='string'&&/^https:\/\/([a-z0-9-]+\.)*fbcdn\.net\//i.test(x.image)?x.image:'',src:'facebook',location:typeof x.location==='string'?x.location.slice(0,60):'',
       found:/^\d{4}-\d{2}-\d{2}$/.test(String(x.found||''))?String(x.found):''});
+    if(typeof x.miles==='number'&&isFinite(x.miles)&&x.miles>=0&&x.miles<=3000)out[out.length-1].miles=Math.round(x.miles);   /* v8.27: from the member's ZIP */
+    if(x.ships===true)out[out.length-1].ships=true;
   }
   return out;
 }
@@ -6839,12 +6922,12 @@ function fbFetch(t){
   FB.busy[k]=1;
   fetch(SGW_API+'fb-finds?term='+encodeURIComponent(k),{headers:nrH(),cache:'no-store'}).then(function(r){
     if(r.status===401||r.status===403)return {swept:false};
-    return r.ok?r.json().then(function(j){j=j||{};return {swept:!!j.updated,nozip:!!(j.nozip&&j.live),items:fbClean(j.items),updated:typeof j.updated==='string'?j.updated:''}}):null;
+    return r.ok?r.json().then(function(j){j=j||{};return {swept:!!j.updated,nozip:!!(j.nozip&&j.live),pending:!!j.pending&&!j.updated,items:fbClean(j.items),updated:typeof j.updated==='string'?j.updated:''}}):null;
   }).then(function(v){
     FB.busy[k]=0;
     if(!v){fbKeep(k);return}
     v.at=Date.now();FB.cache[k]=v;
-    if((v.swept||v.nozip)&&fbKey(sgwCurTerm())===k)rSGW();
+    if((v.swept||v.nozip||v.pending)&&fbKey(sgwCurTerm())===k)rSGW();
   },function(){FB.busy[k]=0;fbKeep(k)});
 }
 /* a failed check is quiet: what was shown stays, and it is asked again in 5 minutes rather than on every draw */
@@ -6865,14 +6948,36 @@ function fbHas(t){var c=FB.cache[fbKey(t)];return !!(c&&c.swept&&c.items.length&
 function fbBlock(t){
   var c=FB.cache[fbKey(t)];
   if(c&&c.nozip)return '<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span></div><p class="sgw-note">Add your local-pickup ZIP in Den \u203a Settings (Prowl Alerts, Only what fits) and Prowl looks for this hunt on Facebook Marketplace near you every day.</p>';
+  if(c&&c.pending&&!c.swept&&fbOn())return '<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span>'+fbMode(t)+'</div>'+fbSaved(t)+'<p class="sgw-note">Facebook checks this hunt soon. Each day Prowl searches Facebook for up to 10 of your hunts, in turn.</p>';   /* v8.27 */
   if(!c||!c.swept)return '';
   var dd=fbDays(c.updated);if(dd<0||dd>2)return '';
-  var w=fbWhen(c.updated),head='<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span>'+(w?'<span class="sgw-upd">'+esc(w)+'</span>':'')+'</div>';
+  var w=fbWhen(c.updated),head='<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span>'+(w?'<span class="sgw-upd">'+esc(w)+'</span>':'')+fbMode(t)+'</div>'+fbSaved(t);
   var sday=String(c.updated||'').slice(0,10),fresh=0,rows='',i;
   for(i=0;i<c.items.length;i++){if(c.items[i].found===sday)fresh++;rows+=sgwCard(c.items[i],t)}
   var note=fresh?'':'<p class="sgw-note">Nothing new on Facebook for this hunt '+(dd===0?'today':dd===1?'yesterday':'lately')+(rows?'. Earlier this week:':'.')+'</p>';
   return head+note+(rows?'<div class="sgw-grid">'+rows+'</div>':'');
 }
+/* v8.27 (worker v203): a Pro member picks, per hunt, where Facebook looks: near their ZIP (the local-pickup radius plus
+   listings that ship) or all of the USA (prefs().fbusa, lowercased hunt names, saved with the other email prefs). It
+   takes effect from that hunt's next Facebook turn, so nothing is fetched again. The owner key alone gets no control. */
+function fbUsa(t){return prefs().fbusa.indexOf(String(t||'').toLowerCase())!==-1}
+function fbMode(t){
+  if(!mailPro()||!t)return '';
+  var u=fbUsa(t),b=function(v,on,x){return '<button type="button" class="sgw-fbm-b" data-fbm="'+v+'" data-h="'+esc(t)+'" aria-pressed="'+(on?'true':'false')+'">'+x+'</button>'};
+  return '<span class="sgw-fbm" role="group" aria-label="Where Facebook looks for this hunt">'+b('near',!u,'Near me \u00b7 '+prefs().radius+' mi')+b('usa',u,'All USA')+'</span>';
+}
+function fbSaved(t){return FB.saved===String(t||'').toLowerCase()?'<p class="sgw-note sgw-fbm-ok" role="status">Saved. Facebook searches this hunt that way from its next turn.</p>':''}
+document.addEventListener('click',function(e){
+  var b=e.target&&e.target.closest&&e.target.closest('button[data-fbm]');if(!b||!b.closest('.scout-app-wrapper')||!mailPro())return;
+  var h=String(b.getAttribute('data-h')||'').toLowerCase(),u=b.getAttribute('data-fbm')==='usa',l=prefs().fbusa.slice(),i=l.indexOf(h);
+  if(!h)return;
+  if(u&&i===-1)l.push(h);else if(!u&&i!==-1)l.splice(i,1);else return;
+  prefsSet({fbusa:l});FB.saved=h;rSGW();
+  /* review fix: keep keyboard focus on the choice just made, and let the note go after a few seconds */
+  var nb=document.querySelectorAll('.scout-app-wrapper button[data-fbm="'+(u?'usa':'near')+'"]'),k;
+  for(k=0;k<nb.length;k++)if(String(nb[k].getAttribute('data-h')||'').toLowerCase()===h){try{nb[k].focus()}catch(x){}break}
+  setTimeout(function(){if(FB.saved!==h)return;FB.saved='';var n=document.querySelectorAll('.scout-app-wrapper .sgw-fbm-ok'),j;for(j=0;j<n.length;j++)n[j].parentNode.removeChild(n[j])},6000);
+});
 /* v6.74: the panel shows only the live listings; the full hunt (every marketplace) was a button up in the left
    column, easy to miss under a long list of hunts. It is offered again where the live listings end. */
 function sgwCont(t){
@@ -7244,6 +7349,7 @@ function prefs(){
   o.zip=/^\d{5}$/.test(String(p.zip||''))?String(p.zip):'';   /* v6.06: local pickup */
   o.radius=PREF_RADII.indexOf(parseInt(p.radius,10))!==-1?parseInt(p.radius,10):50;
   o.local=(p.local||[]).map(function(h){return String(h).toLowerCase()});
+  o.fbusa=(Array.isArray(p.fbusa)?p.fbusa:[]).map(function(h){return String(h).toLowerCase()});   /* v8.27: hunts Facebook searches across the USA */
   o.noai=mGet('aiOff')==='1'?1:0;   /* v6.33 */
   o.letter=p.letter==='off'?'off':'';   /* v7.46: the Sunday letter */
   return o;
