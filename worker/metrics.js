@@ -20,7 +20,7 @@ const ALERTS = new Set(["subscribe", "confirm", "signin", "in", "status", "prefs
 export function routeKey(pathname) {
   const p = String(pathname == null ? "" : pathname) || "/";
   /* the admin area and the diagnostics pages would only measure the owner looking at them */
-  if (p.startsWith("/admin") || p.startsWith("/__") || p === "/favicon.ico" || p === "/robots.txt") return null;
+  if (p.startsWith("/admin") || p.startsWith("/__") || p === "/favicon.ico" || p === "/robots.txt" || p === "/version") return null;   /* v196: /version is the deploy check */
   if (LIVE[p]) return "live:" + LIVE[p];
   if (NAMED[p]) return NAMED[p];
   if (p === "/alerts" || p.startsWith("/alerts/")) { const n = p.slice(8); return "alerts:" + (ALERTS.has(n) ? n : "other"); }
