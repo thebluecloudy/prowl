@@ -354,7 +354,7 @@ function findsHarness() {
   kv.set("fb2:pyrex butterprint|42.5,-83.5", { updated: "2026-10-31T08:00:00.000Z", day: "2026-10-31", items: [{ id: "1234567", title: "Pyrex bowl", url: "https://www.facebook.com/marketplace/item/1234567/" }] });
   const env = { PROWL_ALERTS: kv, OWNER_KEY: "owner-key-0123456789", FB_LIVE: "on" };
   const json = (body, status, origin, extra) => ({ status, body, headers: extra });
-  const fbFinds = build("fbFinds", {
+  const fbFinds = build("fbFinds", { FB_OWN_ZIP: "fbownzip",
     isOwner: (req, env) => req.headers.get("X-Prowl-Owner") === env.OWNER_KEY, sessMember: async () => null, alEmail: (e) => String(e || "").trim().toLowerCase(),
     alSame: (a, b) => a === b, kvGet, json, fbTerm: FB.fbTerm, vCount: async () => true, ipKey: (x) => x, FB_FINDS_PER_IP: 1000,
     alPrefs: (s) => ({ zip: (s.prefs && s.prefs.zip) || "" }), fbLive: FB.fbLive, fbArea: async (env, zip) => (zip === "48375" ? FB.fbCell(42.5, -83.5) : null), fbKey: FB.fbKey,
@@ -386,7 +386,7 @@ test("/fb-finds while FB_LIVE is off: a Pro member gets nothing, and nothing is 
   kv.set("sub:pro@example.com", { email: "pro@example.com", tok: "T".repeat(24), pro: true, prefs: { zip: "48375" } });
   kv.set("fb2:pyrex|42.5,-83.5", { updated: "x", items: [{ id: "1234567" }] });
   const json = (body, status) => ({ status, body });
-  const fbFinds = build("fbFinds", {
+  const fbFinds = build("fbFinds", { FB_OWN_ZIP: "fbownzip",
     isOwner: (req, env) => req.headers.get("X-Prowl-Owner") === env.OWNER_KEY, sessMember: async () => null, alEmail: (e) => String(e || "").trim().toLowerCase(),
     alSame: (a, b) => a === b, kvGet, json, fbTerm: FB.fbTerm, vCount: async (n) => { counts.push(n); return true; }, ipKey: (x) => x, FB_FINDS_PER_IP: 1000,
     alPrefs: (s) => ({ zip: (s.prefs && s.prefs.zip) || "" }), fbLive: FB.fbLive, fbArea: async (env, zip, ask) => { areas.push(ask); return FB.fbCell(42.5, -83.5); }, fbKey: FB.fbKey,
@@ -455,7 +455,7 @@ test("the admin's Facebook test: owner (admin session) only; shows the listings,
   assert.match(INDEX, /fbTestRun   \/\* v200/);
   const run = indexFn("fbTestRun");
   assert.doesNotMatch(run, /fbLive\(env\)\)? return/, "works while FB_LIVE is off");
-  assert.doesNotMatch(run, /PROWL_ALERTS\.put|fb2:/, "nothing is kept");
+  assert.match(run, /PROWL_ALERTS\.put\(fbKey\(term, cell\), JSON\.stringify\(fbMerge\(old, r\.items/, "v202: the finds are kept for the hunt page, as the sweep keeps them");
 });
 
 /* ---- 8. spend.js ---- */
