@@ -651,6 +651,21 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 [data-theme=uranium] .scout-app-wrapper .heromark .hm-mark{display:none}
 [data-theme=uranium] .scout-app-wrapper .heromark .hm-scene{object-fit:cover}
 .scout-app-wrapper .heromark+.eb{margin-top:0}
+/* v8.22 (Matt: "fix the mushroom and panther illustration, make it look more professional", then his blood moon photo):
+   Cockpit's scene is the photo (worker /art/bloodmoon*.webp), cropped to the moon over the treeline, and the panther
+   stands on its mossy floor (its feet are 75% down the PNG). In both night themes the panther is centred on the scene with
+   a crisp shadow instead of the soft glow, and the QR square sits in the scene's top corner instead of on the tail. */
+[data-theme=uranium] .scout-app-wrapper .pmark{max-width:560px;margin-left:auto;margin-right:auto}
+[data-theme=uranium] .scout-app-wrapper .pm-btn{position:static}
+[data-theme=uranium] .scout-app-wrapper .pmark img{filter:drop-shadow(0 3px 2px rgba(0,0,0,.85)) drop-shadow(0 0 8px rgba(var(--u-rgb),.22))}
+[data-theme=uranium] .scout-app-wrapper .pm-qr{top:8px;right:8px;bottom:auto;width:26px;height:26px;background:rgba(0,0,0,.4);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);border-color:rgba(var(--u-rgb),.35);box-shadow:none;z-index:3}
+[data-theme=uranium] .scout-app-wrapper .pm-qr svg{width:15px;height:15px}
+[data-hud=cockpit] .scout-app-wrapper .heromark{position:relative;background:#0a0303}
+[data-hud=cockpit] .scout-app-wrapper .heromark .hm-scene{object-fit:cover;object-position:50% 40%}
+[data-hud=cockpit] .scout-app-wrapper .heromark::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 40px 10px rgba(0,0,0,.65)}
+[data-hud=cockpit] .scout-app-wrapper .pmark{align-items:flex-start}
+[data-hud=cockpit] .scout-app-wrapper .pmark img{max-height:none;height:104px;margin-top:10px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.9)) drop-shadow(0 0 6px rgba(255,60,40,.25))}
+@media(max-width:480px){[data-hud=cockpit] .scout-app-wrapper .heromark .hm-scene{object-position:50% 30%}[data-hud=cockpit] .scout-app-wrapper .pmark img{height:84px;margin-top:30px;max-width:none}}
 /* v6.77: the panther is a button that shows the QR code, so showing someone Prowl is one tap from the top of the app.
    The little square on its corner says so. Theme resets, as for any button in the page body. */
 .scout-app-wrapper .pm-btn{position:relative;display:block;margin:0;padding:0;border:0;background:none;-webkit-appearance:none;appearance:none;text-transform:none;letter-spacing:normal;min-height:0;cursor:pointer;border-radius:14px;color:var(--ink);-webkit-tap-highlight-color:transparent}
@@ -2653,7 +2668,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 
   <div class="heromark">
     <img class="hm-mark" src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Cdefs%3E%3CradialGradient%20id='pmSky'%20cx='50%25'%20cy='62%25'%20r='75%25'%3E%3Cstop%20offset='0'%20stop-color='%23123a2a'/%3E%3Cstop%20offset='.45'%20stop-color='%230b1a2e'/%3E%3Cstop%20offset='1'%20stop-color='%23050816'/%3E%3C/radialGradient%3E%3CradialGradient%20id='pmBloom'%20cx='50%25'%20cy='50%25'%20r='50%25'%3E%3Cstop%20offset='0'%20stop-color='%23b8ff9a'%20stop-opacity='.95'/%3E%3Cstop%20offset='.18'%20stop-color='%2339ff14'%20stop-opacity='.6'/%3E%3Cstop%20offset='.45'%20stop-color='%2339ff14'%20stop-opacity='.32'/%3E%3Cstop%20offset='.75'%20stop-color='%231aff8c'%20stop-opacity='.12'/%3E%3Cstop%20offset='1'%20stop-color='%231aff8c'%20stop-opacity='0'/%3E%3C/radialGradient%3E%3CradialGradient%20id='pmPool'%20cx='50%25'%20cy='50%25'%20r='50%25'%3E%3Cstop%20offset='0'%20stop-color='%237dff4f'%20stop-opacity='.7'/%3E%3Cstop%20offset='.5'%20stop-color='%2339ff14'%20stop-opacity='.2'/%3E%3Cstop%20offset='1'%20stop-color='%2339ff14'%20stop-opacity='0'/%3E%3C/radialGradient%3E%3CradialGradient%20id='pmCap'%20cx='45%25'%20cy='30%25'%20r='75%25'%3E%3Cstop%20offset='0'%20stop-color='%23ffffff'/%3E%3Cstop%20offset='.22'%20stop-color='%23d4ffb8'/%3E%3Cstop%20offset='.55'%20stop-color='%235dff2e'/%3E%3Cstop%20offset='1'%20stop-color='%232bd60f'/%3E%3C/radialGradient%3E%3ClinearGradient%20id='pmStem'%20x1='0'%20x2='1'%3E%3Cstop%20offset='0'%20stop-color='%235df2b4'/%3E%3Cstop%20offset='.5'%20stop-color='%23f0fff8'/%3E%3Cstop%20offset='1'%20stop-color='%235df2b4'/%3E%3C/linearGradient%3E%3CradialGradient%20id='pmFly'%20cx='50%25'%20cy='50%25'%20r='50%25'%3E%3Cstop%20offset='0'%20stop-color='%23f4ffd0'/%3E%3Cstop%20offset='.35'%20stop-color='%23d4ff6a'%20stop-opacity='.7'/%3E%3Cstop%20offset='1'%20stop-color='%23d4ff6a'%20stop-opacity='0'/%3E%3C/radialGradient%3E%3CclipPath%20id='pmClip'%3E%3Crect%20width='100'%20height='100'%20rx='22'/%3E%3C/clipPath%3E%3C/defs%3E%3Cg%20clip-path='url(%23pmClip)'%3E%3Crect%20width='100'%20height='100'%20fill='url(%23pmSky)'/%3E%3Cg%20fill='%23cfe9ff'%20opacity='.7'%3E%3Ccircle%20cx='18'%20cy='9'%20r='.6'/%3E%3Ccircle%20cx='42'%20cy='6'%20r='.5'/%3E%3Ccircle%20cx='66'%20cy='10'%20r='.6'/%3E%3Ccircle%20cx='83'%20cy='5'%20r='.5'/%3E%3Ccircle%20cx='8'%20cy='20'%20r='.4'/%3E%3C/g%3E%3Ccircle%20cx='84'%20cy='15'%20r='5'%20fill='%23e8f3ff'%20opacity='.9'/%3E%3Ccircle%20cx='86.2'%20cy='13.6'%20r='4.4'%20fill='%23081226'/%3E%3Cg%20fill='%2315384a'%3E%3Cpath%20d='M-2%2078%20L6%2034%20L14%2078%20Z'/%3E%3Cpath%20d='M12%2080%20L22%2028%20L32%2080%20Z'/%3E%3Cpath%20d='M70%2080%20L79%2030%20L88%2080%20Z'/%3E%3Cpath%20d='M84%2078%20L93%2038%20L102%2078%20Z'/%3E%3C/g%3E%3Cg%20fill='%23081522'%3E%3Cpath%20d='M-6%20100%20L4%2022%20L16%20100%20Z'/%3E%3Cpath%20d='M84%20100%20L96%2018%20L108%20100%20Z'/%3E%3C/g%3E%3Ccircle%20cx='50'%20cy='50'%20r='62'%20fill='url(%23pmBloom)'/%3E%3Ccircle%20cx='50'%20cy='44'%20r='44'%20fill='url(%23pmBloom)'/%3E%3Cpath%20d='M0%2084%20Q50%2076%20100%2084%20L100%20100%20L0%20100%20Z'%20fill='%23071a14'/%3E%3Cellipse%20cx='50'%20cy='86'%20rx='44'%20ry='8'%20fill='url(%23pmPool)'/%3E%3Cg%20stroke='%232ee86a'%20stroke-width='1'%20stroke-linecap='round'%20fill='none'%20opacity='.8'%3E%3Cpath%20d='M28%2086%20l-2%20-5%20M30%2086%20l0%20-6%20M32%2086%20l2%20-4'/%3E%3Cpath%20d='M66%2086%20l-2%20-4%20M68%2086%20l0%20-6%20M70%2086%20l2%20-5'/%3E%3C/g%3E%3Cellipse%20cx='76'%20cy='80'%20rx='9'%20ry='6'%20fill='url(%23pmBloom)'/%3E%3Cpath%20d='M74.6%2077%20L74%2084%20L78%2084%20L77.4%2077%20Z'%20fill='url(%23pmStem)'/%3E%3Cpath%20d='M70%2078%20Q70%2071%2076%2071%20Q82%2071%2082%2078%20Z'%20fill='url(%23pmCap)'/%3E%3Cpath%20d='M42%2058%20Q40%2076%2038.5%2084%20Q38.5%2088%2050%2088%20Q61.5%2088%2061.5%2084%20Q60%2076%2058%2058%20Z'%20fill='url(%23pmStem)'/%3E%3Cpath%20d='M14%2056%20Q14%2022%2050%2020%20Q86%2022%2086%2056%20Q86%2061%2079%2061%20L21%2061%20Q14%2061%2014%2056%20Z'%20fill='url(%23pmCap)'/%3E%3Cpath%20d='M21%2061%20Q50%2069%2079%2061%20Z'%20fill='%2322b84a'/%3E%3Cpath%20d='M28%2062.5%20Q50%2068%2072%2062.5'%20fill='none'%20stroke='%23e6fff2'%20stroke-width='1.3'%20stroke-linecap='round'%20opacity='.85'/%3E%3Cpath%20d='M26%2038%20Q35%2026%2049%2025'%20fill='none'%20stroke='%23fff'%20stroke-width='2.6'%20stroke-linecap='round'%20opacity='.7'/%3E%3Cg%20fill='%230a1a3a'%20opacity='.78'%3E%3Ccircle%20cx='35'%20cy='45'%20r='5'/%3E%3Ccircle%20cx='61'%20cy='34'%20r='6'/%3E%3Ccircle%20cx='72'%20cy='50'%20r='3.6'/%3E%3Ccircle%20cx='50'%20cy='51'%20r='2.9'/%3E%3C/g%3E%3Cg%3E%3Ccircle%20cx='20'%20cy='66'%20r='3.2'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='20'%20cy='66'%20r='.8'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='82'%20cy='58'%20r='2.8'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='82'%20cy='58'%20r='.7'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='30'%20cy='16'%20r='2.4'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='30'%20cy='16'%20r='.6'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='66'%20cy='14'%20r='2'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='66'%20cy='14'%20r='.5'%20fill='%23fbffe0'/%3E%3Ccircle%20cx='12'%20cy='44'%20r='1.8'%20fill='url(%23pmFly)'/%3E%3Ccircle%20cx='90'%20cy='40'%20r='1.8'%20fill='url(%23pmFly)'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E" alt="" decoding="async">
-    <picture><source media="(hover:none)" data-art="fireflies-still.svg" data-art-ck="glowworms-still.svg"><img class="hm-scene" alt="" decoding="async" loading="lazy" width="300" height="120" data-art="fireflies.svg" data-art-ck="glowworms.svg"></picture>
+    <picture><source media="(hover:none) and (min-width:481px)" data-art="fireflies-still.svg" data-art-ck="bloodmoon.webp"><source media="(hover:none)" data-art="fireflies-still.svg" data-art-ck="bloodmoon-sm.webp"><source media="(min-width:481px)" data-art="fireflies.svg" data-art-ck="bloodmoon.webp"><img class="hm-scene" alt="" decoding="async" loading="lazy" width="300" height="120" data-art="fireflies.svg" data-art-ck="bloodmoon-sm.webp"></picture>
   </div>
   <p class="eb" id="otp-verEb"></p>   <!-- v8.06: under the scene, so the panther can sit in it -->
   <div class="proban" id="otp-proBan" hidden></div>
@@ -3903,7 +3918,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.21';
+var PROWL_VERSION='v8.22';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -3930,13 +3945,13 @@ var THEME_LABEL={light:'Light',dark:'Blue hour',midnight:'Midnight',uranium:'Ura
 var HERO_ART='https://prowl.thebluecloud.workers.dev/art/',HERO_V='?v=1';
 /* v8.05 (worker v177): Cockpit has its own scene, a red glowworm cave (data-art-ck); switching between the two swaps it */
 function heroScene(t){
-  var hm=document.querySelector('.scout-app-wrapper .heromark'),img=hm&&hm.querySelector('.hm-scene'),src=hm&&hm.querySelector('source');
+  var hm=document.querySelector('.scout-app-wrapper .heromark'),img=hm&&hm.querySelector('.hm-scene'),srcs=hm?hm.querySelectorAll('source'):[],i;
   var k=t==='cockpit'?'data-art-ck':'data-art';
   if(!img||!img.getAttribute(k)||img.getAttribute('src')===HERO_ART+img.getAttribute(k)+HERO_V)return;
   hm.classList.remove('has-scene');
   img.onload=function(){hm.classList.add('has-scene')};
   img.onerror=function(){hm.classList.remove('has-scene')};
-  if(src&&src.getAttribute(k))src.setAttribute('srcset',HERO_ART+src.getAttribute(k)+HERO_V);
+  for(i=0;i<srcs.length;i++)if(srcs[i].getAttribute(k))srcs[i].setAttribute('srcset',HERO_ART+srcs[i].getAttribute(k)+HERO_V);   /* v8.22: every source (wide and phone) */
   img.setAttribute('src',HERO_ART+img.getAttribute(k)+HERO_V);
 }
 function applyTheme(t){
