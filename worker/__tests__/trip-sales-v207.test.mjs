@@ -1,9 +1,9 @@
-/* v206 estate sales on the way (Matt, 2026-10-31: "part of estate sale was to fold it into road trip map that will take
+/* v207 estate sales on the way (Matt, 2026-10-31: "part of estate sale was to fold it into road trip map that will take
    you to each one"): GET /trip/sales?p=<route points>&day&tz&h lists the estate sales open on a Road trip's day within 3
    miles of its route, nearest to the road first, at most 12, for Pro members and the owner key only; the lists come from
    at most 5 points along the route (snapped to 0.1 degree, shared wk1: KV), the pages from wkd2:, 16 outside calls a
    request at most.
-   Run: node --test worker/__tests__/trip-sales-v206.test.mjs */
+   Run: node --test worker/__tests__/trip-sales-v207.test.mjs */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

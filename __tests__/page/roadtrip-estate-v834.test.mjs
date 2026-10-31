@@ -1,4 +1,4 @@
-// Page v8.34 / worker v206 (Matt, 2026-10-31: "part of estate sale was to fold it into road trip map that will take you
+// Page v8.34 / worker v207 (Matt, 2026-10-31: "part of estate sale was to fold it into road trip map that will take you
 // to each one"; he chose both):
 // A) Plan my week › a day › Open in Road trip: NEAR ME › Road trip with that day's sales as fixed stops, in the planner's
 //    drive order, on Road trip's own map, timed, with Road trip's Google Maps and Apple Maps links (street addresses), a

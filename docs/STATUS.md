@@ -1,17 +1,17 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.34 / v206).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.34 / v207).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.34** | 368,327 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v206** | |
+| Worker | **v207** | |
 
 Recently shipped, newest first:
 
-- **v8.34 / v206: estate sales on the Road trip map** (Matt, 2026-10-31: "part of estate sale was to fold it into road
+- **v8.34 / v207: estate sales on the Road trip map** (Matt, 2026-10-31: "part of estate sale was to fold it into road
   trip map that will take you to each one"; he chose both A and B). Branch `estate-roadtrip`, on top of v8.33.
   - **A. Plan my week › a day › Open in Road trip** (page only, `wpTrip`): NEAR ME › Road trip opens with that day's
     sales as fixed stops (`nrEsStop`: `est`, `pin`, labelled "Estate sale", the sale's photo, street address as `about`,
@@ -49,8 +49,8 @@ Recently shipped, newest first:
     loaded (two queued draws, the second cleared the first): `nrMap` removes the earlier map first.
   - Privacy section: the estate sales bullet and "Who else" say what goes to EstateSales.net for a trip (a few points
     along the route rounded to about 7 miles and a distance), that nothing about the trip is kept, and that an added
-    sale stays on the device; notes for v206 in the comment block.
-  - Tests: `worker/__tests__/trip-sales-v206.test.mjs` (points and day parsing, DST day, circles and coverage, the
+    sale stays on the device; notes for v207 in the comment block.
+  - Tests: `worker/__tests__/trip-sales-v207.test.mjs` (points and day parsing, DST day, circles and coverage, the
     gate, day filter, miles off and nearest-first, picks, address pending, dead links, cap 12, 16 calls, KV reuse, the
     day's count and stale lists); `__tests__/page/roadtrip-estate-v834.test.mjs` (Open in Road trip: order, Estate sale
     stops, note, times, map pins, Maps links, Directions, Remove, Rebuild from here; on the way: the request, the
@@ -71,6 +71,11 @@ Recently shipped, newest first:
     `prowl.nearBeen` is unchanged, and no `e:` marks were live yet); (5) `nrEsPut` orders every stop, skipped ones
     too (`nrOrderAll`), so a stop unskipped later comes back in its place. Tests in the same two files. Room left after:
     368,327 bytes (`node scripts/slim-page.mjs`).
+- **v206: Diagnose says why the AI check did not answer.** Matt's eBay test in the admin showed "The AI check did
+  not answer" with no reason: `jevClassify` dropped TypeSafe's reply on any failure. Now it keeps the HTTP status and
+  TypeSafe's error message (or "timed out after 6 s", "could not reach TypeSafe", "answered with no answers") in
+  `info.status` as `jev failed: <reason>`, logs it, and the admin shows it inside the warning. Sorting itself is
+  unchanged. Test: `worker/__tests__/jev-why-v206.test.mjs`.
 - **v8.33: estate sale photos in NEAR ME › Estate sales** (Matt, 2026-10-31: "the estate sale pictures aren't
   working"). The worker already sent each sale's cover photo (`img`, the sale page's og:image on
   `picturescdn.estatesales.net`, checked against a live page and fetched with the shop as referrer: 200), and the daily
@@ -2120,8 +2125,8 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.35, worker v207** (v8.34 / v206: estate sales on the Road trip map, branch `estate-roadtrip`; page v8.31 / worker v204 go to the release just before Estate sales,
-which took v8.32 / v205; worker v201 is held by #289, `claude/jev-why-v197`, which claimed v200 before #287 shipped it).
+Next free numbers: **page v8.35, worker v208** (v8.35 / v208: feedback form + update email, in a worktree; v8.34 / v207: estate sales on the Road trip map; page v8.31 / worker v204 go to the release just before Estate sales,
+which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 
 ## What's next
