@@ -73,14 +73,16 @@ test('the help text names all five modes', () => {
   assert.match(PAGE, /Cycles through all five\./);
 });
 
-test('v8.05 (worker v177; v8.24: the blood moon photo): a saved Cockpit asks for its own scene at once, not the fireflies', async () => {
+test('v8.05 (worker v177; v8.25: the blood moon photo): a saved Cockpit asks for its own scene at once, not the fireflies', async () => {
   const p = loadPage({ storage: { ...DEN, 'prowl.theme': 'cockpit' } });
   try {
     await tick(20);
     const A = 'https://prowl.thebluecloud.workers.dev/art/';
     assert.match(p.$('.heromark .hm-scene').getAttribute('src'), new RegExp('^' + A + 'bloodmoon-sm\\.webp\\?v=\\d+$'));
-    assert.deepEqual(p.$$('.heromark source').map((s) => s.getAttribute('srcset').replace(/\?v=\d+$/, '').slice(A.length)),
-      ['bloodmoon.webp', 'bloodmoon-sm.webp', 'bloodmoon.webp'], 'every source: the 1600 px photo over 480 px, the 800 px one on phones');
+    const V = /HERO_V='([^']+)'/.exec(PAGE)[1], SET = A + 'bloodmoon-sm.webp' + V + ' 800w, ' + A + 'bloodmoon.webp' + V + ' 1600w';
+    assert.equal(p.$('.heromark .hm-scene').getAttribute('srcset'), SET, 'the browser picks 800 px or 1600 px by width');
+    assert.equal(p.$('.heromark source').getAttribute('srcset'), p.$('.heromark .hm-scene').getAttribute('srcset'), 'phones too');
+    assert.equal(p.$('.heromark .hm-scene').getAttribute('sizes'), '(min-width:481px) 560px, 100vw');
     assert.match(PAGE, /\[data-theme=uranium\]\[data-hud=cockpit\] \.scout-app-wrapper \.heromark \.hm-mark\{filter:hue-rotate/, 'only the mark is turned red; the scene is red already');
     assert.deepEqual(p.errors, []);
   } finally { await p.close(); }
