@@ -1,16 +1,32 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.29 / v203).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.30 / v203).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.29** | 369,153 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.30** | 368,743 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v203** | |
 
 Recently shipped, newest first:
 
+- **v8.30: SEO, from the PROWL_SEO_BRIEF** (Matt, 2026-10-31). Most of the brief was already live (title, canonical,
+  `/prowl` 301, sitemap, one H1, schema, the count of 29; `/pages/prowl-app` is noindex with a canonical to
+  `/pages/prowl`). Matt set the Shopify search listing the same day: title "Prowl — Search 29 Vintage Marketplaces at
+  Once" (Shopify adds the store name once, 69 characters; it was doubled, 90) and a 152-character description naming
+  ShopGoodwill, eBay, Etsy and Facebook Marketplace. In the page:
+  - The canonical `https://www.owlandtwigvintage.com` everywhere: the WebApplication schema `url`, Share Prowl, the
+    Facebook share link and the share/QR addresses (5 were without `www`).
+  - A first visit (what Google sees) shows, under "29 vintage marketplaces, one search. Free.", one line in the static
+    HTML: what Prowl is and ShopGoodwill, eBay, Etsy, Chairish, Poshmark and Facebook Marketplace (`p.lede.lede-more`).
+    The paragraph that said so before sits in the Classic look only, hidden in the default one.
+  - "Near Me … It's in the Den, under Local" (stale since v7.36) now points at Near me at the bottom.
+  - A 1200×630 share image was made for Matt to upload as the store's social sharing image (Shopify has one per store).
+  - v8.29's page deploy failed its md5 check (the page did go live): Shopify adds a line break between
+    `<div id="otp-aprTrayPh">` and its empty `<i>` icon. The file now carries that line break, so v8.30's check matches;
+    a test in `photo-rebuild-v829` keeps it.
+  - Tests: `__tests__/page/seo-v830.test.mjs`; `panther-qr` follows the www address.
 - **v8.29: Photo Check rebuilt for the field** (Matt, 2026-10-31: the PHOTO_CHECK_REBUILD brief and his two mockups,
   capture and results). Page only; `/appraise` is unchanged and every `#otp-apr*` id is kept.
   - **Three states** (`photoShow`): capture (`#otp-photoCapture`), analyzing (`#otp-photoAnalyzing`, "Checking this
@@ -1909,7 +1925,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.30, worker v204** (open PRs hold page v8.22 and worker v198 (Hark's #281), and worker v201 for #289 (`claude/jev-why-v197`, which claimed v200 before #287 shipped it)). Claim one here when you start.
+Next free numbers: **page v8.31, worker v204** (open PRs hold page v8.22 and worker v198 (Hark's #281), and worker v201 for #289 (`claude/jev-why-v197`, which claimed v200 before #287 shipped it)). Claim one here when you start.
 
 ## What's next
 

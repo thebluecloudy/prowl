@@ -199,7 +199,7 @@ test('the owner\'s mockups: an empty dashed tray until a photo is in; the header
   const p = setup(() => res(200, ANSWER));
   await tick(30); await open(p);
   assert.equal(p.$('#otp-aprTrayPh').hidden, false, 'Photos will appear here.');
-  assert.equal(p.$('#otp-aprTrayPh').textContent, 'Photos will appear here.');
+  assert.equal(p.$('#otp-aprTrayPh').textContent.trim(), 'Photos will appear here.');
   assert.equal(p.$('#otp-photoBack').hidden, true);
   await addPhoto(p);
   assert.equal(p.$('#otp-aprTrayPh').hidden, true);
@@ -343,4 +343,10 @@ test('the low-confidence advice and the Lens hint name the button on screen', ()
   assert.ok(PAGE.includes("fj.why='Not sure? Tap Fix it and check again, type the maker, and add a close-up of the mark. Or try Check with Google Lens.'"));
   assert.ok(!PAGE.includes('Type the maker or what it is above'));
   assert.ok(!PAGE.includes('Type that in Maker or words and tap Check again'));
+});
+
+test('v8.30: the empty-tray box is written the way Shopify stores it (a line break before its icon), so the deploy check matches', () => {
+  /* v8.29's deploy failed its md5 check: Shopify put a line break between <div id="otp-aprTrayPh"> and its empty <i> icon */
+  const src = readFileSync(new URL('../../page/prowl.html', import.meta.url), 'utf8');
+  assert.ok(src.includes('<div class="apr-trayph" id="otp-aprTrayPh">\n<i class="apr-ico apr-i-img"'));
 });
