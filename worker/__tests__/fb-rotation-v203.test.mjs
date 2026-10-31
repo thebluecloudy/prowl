@@ -353,7 +353,7 @@ test("alPrefsSave keeps the All USA hunts as sent (a new hunt may not have reach
 test("the routes and the alert email read v203's finds", () => {
   assert.match(INDEX, /if \(url\.pathname === "\/fb-search" && request\.method === "POST"\) return fbSearch\(request, env, origin\);/);
   assert.match(indexFn("fbAlertItems"), /const v = await fbHunt\(env, o, cell, term\);/, "the email has pickup and shipping finds");
-  assert.match(INDEX, /const WORKER_VERSION = "v203";/);
+  assert.ok(Number(/const WORKER_VERSION = "v(\d+)";/.exec(INDEX)[1]) >= 203, "v203 or later");
 });
 
 test("fbMatch: -sses plurals and words written together or apart", () => {

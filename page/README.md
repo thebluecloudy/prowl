@@ -157,6 +157,36 @@ list on the page, yet every sale the extractor gave back had no distance or map 
 list by its name wherever it sits in a data block, as the check does. The check's extract now has `fromList`, the
 number of sales that came from that list: it should equal `count`. Lists are kept under `es3:`.
 
+## Weekend sweep (page v8.32, worker v205; Hark's PR #281)
+
+In **NEAR ME › Estate sales**, NEAR ME's fourth tab, right after Trips (`#otp-nrT4`, pane `#otp-nrWkPane`, drawn by
+`rWk`; shown for a signed-in Prowl Pro member (`mailPro()`) or the owner's key (`nrWkSweep`), hidden for free visitors;
+the worker's `GET /weekend` decides Pro itself (`wkWho`: session or `X-Prowl-Email`/`X-Prowl-Tok` member with `sub.pro`,
+the owner key, or everyone while `SALES_PUBLIC=on`; 401 signed out, 403 not Pro), and the page sends `nrH()`), **This weekend** lists the
+estate sales open from the coming Friday to Sunday within 25 miles of the place typed in the tab's box (`#otp-wkIn`, or
+the phone's position). It moved there from Around you › More ways to look › Estate sales near you (the old Den › Local
+block) on Matt's word (2026-10-30: "it shouldn't be put into den, it needs to be in the new near me section beside
+trips"); that block keeps only its EstateSales.net city list. With four tabs a phone lays them two by two (`.tabs.nr-4`). The page sends the point (2 decimals), its time zone and the Den's own hunts (`h=a|b|c`, sample hunts left
+out) to worker `GET /weekend`; the worker reads EstateSales.net's list near the point and each nearby sale's page, and
+answers `picks` (a hunt's every word is in the sale's title, description or a photo caption: `match {hunt, where}`) and
+`rest`, at most 12, each with `url` (the sale's own page), `city`, `st`, `co`, `dist`, `hours` (already in the device's
+zone) and `standout`. The page shows only links on www.estatesales.net. Nothing is stored on the device.
+
+The same sweep goes to every Pro member by email on Thursday mornings around their local-pickup ZIP (`prefs.estate`, Den ›
+Settings › Thursday estate sales, shown when `/alerts/status` answers `estate: true`, which it now does for every member;
+a free member sees it locked with the Pro link). Matt's EstateSales.net permission covers the map JSON and each sale's
+page (2026-10-31).
+
+**Plan my weekend** (same versions): "Plan my weekend" under the Sweep results, or the Thursday email's button
+(`?wkplan=<ids>&wkp=<picks>&wkzip=ZIP&wkx&wks`, signed by the worker, read at load and then taken out of the address bar;
+the page asks `GET /weekend/plan` for the sales) opens the planner in the same NEAR ME › Estate sales tab, in place of
+the Sweep (`#otp-wpHost`; "‹ This weekend's sales" returns to it, owner only). The email link opens NEAR ME on that tab
+(`nrWkShow`) and shows the tab for that visit even for a free visitor (the link works for anyone until it runs out). `wpSplit` splits the checked sales
+into days (each sale on its first open day, else its next open day when that one is full or its hours do not fit; 5 a day; 45 min a stop; never before opening or within 30 min of closing), each day
+is ordered with Road Trip's `/order` (kept in the split's order when the optimizer's would break a sale's hours), and
+each day has one Google Maps and one Apple Maps link and Rebuild from here. Address-pending sales stay off the route.
+Constants `WP_STAY`, `WP_CAP`, `WP_LAST_IN` (v8.32 dropped `WP_DAY_PREF`, the old Saturday-Sunday-Friday order). Nothing is stored on the device.
+
 ## Main stylesheet on the worker (page v6.92, worker v111)
 
 At v6.91 the page body sent to Shopify was 886 bytes under its 512 KB cap. The main stylesheet (about 141 KB, no logic)
