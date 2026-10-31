@@ -27,6 +27,20 @@ Recently shipped, newest first:
   first, in hunt order, as they land; the quiet ones fold into one line of chips (#otp-olNone, "Nothing on <site> right
   now"), lookups that failed into another (#otp-olErr); the summary counts what is still being checked. No new keys.
   Test `__tests__/page/one-site-live-v819.test.mjs` (was v818).
+- **CI: secret scan and an optional Chrome Web Store upload** (Matt's CI/CD prompt, 2026-10-31; no page or worker
+  version: scripts and workflows only).
+  - **What was already in place:** the PR `build` check (lint and every test), the extension's version check and
+    GitHub release, and the worker deploy check. So only the two gaps were filled.
+  - **Secret scan:** `scripts/scan-secrets.mjs` (no dependencies) fails on anything shaped like a real credential:
+    Google, Shopify, Stripe, Resend, GitHub, Slack, AWS, SerpApi, Cloudflare, private keys and JWT bearer tokens. It
+    names the file and line, never the value. It runs first in `npm run lint` (tracked files and new unignored ones)
+    and as a step in the PR `build` job. The repo scans clean.
+  - **Chrome Web Store upload:** `extension.yml` uploads the zip and submits it for review with plain curl (Chrome
+    Web Store API v1.1), but only once the four `CWS_*` secrets are set. Until then it prints "upload by hand" and
+    passes. How to make them: `extension/README.md`.
+  - **Folders unchanged:** the prompt's layout (`worker/src/`, a root `manifest.json`) would break Workers Builds and
+    `extension.yml`.
+  - **Tests:** `__tests__/scan-secrets.test.mjs`.
 - **v196: GitHub confirms each worker deploy** (Matt kept Cloudflare Workers Builds as the deployer).
   - `GET /version` answers `{"worker":"vNNN"}`: no-store, nothing else, and not counted in the admin's traffic.
   - After each merge touching `worker/`, `.github/workflows/verify-worker.yml` waits up to 8 minutes for the live
@@ -1749,6 +1763,9 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 ## Waiting on Matt
 
+- **Optional: let GitHub publish the extension.** Add the four repository secrets `CWS_EXTENSION_ID`,
+  `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET` and `CWS_REFRESH_TOKEN` (steps in `extension/README.md`). After that, a
+  merged version bump goes to Chrome Web Store review by itself.
 - **Spending tab (worker v193):** open admin › Spending, then:
   - add your monthly bills (Shopify plan, Cloudflare Workers, a SerpApi plan if you pay for one, your Claude plan);
   - type 0 as the SerpApi Lens price (free plan; a paid plan goes under monthly bills);
