@@ -169,8 +169,9 @@ test('photo check: the tips and the free-check note fold once a photo is in; Sta
   await tick(30);
   const sec = p.$('#otp-apr');
   assert.ok(!sec.classList.contains('apr-has'));
-  p.win.prowlPhotoFile(new p.win.File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1])], 'a.jpg', { type: 'image/jpeg' })); await tick(40);
-  assert.ok(sec.classList.contains('apr-has'));
+  p.win.prowlPhotoFile(new p.win.File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1])], 'a.jpg', { type: 'image/jpeg' }));
+  /* wait for the photo to load rather than a fixed 40 ms: a slow CI runner took longer (PR #292's build) */
+  assert.ok(await waitFor(() => sec.classList.contains('apr-has'), { timeout: 8000 }));
   assert.ok(PAGE.includes('.scout-app-wrapper .apr.apr-has .apr-tips,.scout-app-wrapper .apr.apr-has .apr-left{display:none}'));
   p.$('#otp-aprTray .apr-clr').click();
   assert.ok(!sec.classList.contains('apr-has'));
