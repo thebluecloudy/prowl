@@ -1,16 +1,32 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.26 / v200).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.26 / v202).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.26** | 375,639 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v200** | |
+| Worker | **v202** | |
 
 Recently shipped, newest first:
 
+- **v202: Facebook finds show prices and photos, and the admin's test fills the hunt page** (Matt, 2026-10-31: his
+  first Diagnose › Facebook test listed 15 panthers with every price "—", and he asked to see them on the hunt pages
+  with photos). Worker only; the page's Facebook strip already draws each find as a photo card (`sgwCard`).
+  - **Price and photo:** v200 read one guessed shape (`listing_price.formatted_amount` with `currency` "USD", and
+    `primary_listing_photo_url`), so a listing without a currency field lost its price. `fbPrice` and `fbPhoto` in
+    `worker/fb.js` now read each likely shape: a "$" formatted amount, a plain amount ("1250.5" → "$1,250.50", 0 → "Free"),
+    `price`/`formatted_price`; a photo from `primary_listing_photo_url`, `primary_listing_photo.image.uri`,
+    `listing_photos[0].image.uri` and a few more. Still kept only: dollar prices (another named currency gives none) and
+    https photos on `*.fbcdn.net`.
+  - **The shape, seen:** the admin's test lists the field names and types of the first listing Apify sent (`fbShape`,
+    names only, never a value, 80 at most), under "Fields Apify sent", so a wrong guess shows at once.
+  - **The test fills the hunt page:** its finds are kept as the sweep keeps them (`fb2:<hunt>|<cell>`, merged by id, 8
+    days), so the hunt shows them at once for a signed-in Pro member (or the owner key) whose local-pickup ZIP is in that
+    cell. Before, a test kept nothing. The test box shows a photo per listing and says where the finds went.
+  - Tests: `worker/__tests__/fb-shape-v202.test.mjs`; `fb-apify-v200.test.mjs` now expects the test to keep its finds.
+  - Numbered v202: open PR #289 (`claude/jev-why-v197`) holds worker v200, which #287 shipped first, so it moves to v201.
 - **v8.26 / v200: Facebook Marketplace finds again, through Apify, for Pro members** (Matt, 2026-10-31: use Apify, he
   set the secret `APIFY_TOKEN`; Pro members get it; a hard cap of $1 a day). The v94-v177 sweep ran through Matt's own
   account and was retired in v178; this one never logs in and never sends a cookie (`worker/fb.js`).
@@ -1823,7 +1839,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.27, worker v201** (Hark's open PR #281 holds page v8.22 and worker v198). Claim one here when you start.
+Next free numbers: **page v8.27, worker v203** (open PRs hold page v8.22 and worker v198 (Hark's #281), and worker v201 for #289 (`claude/jev-why-v197`, which claimed v200 before #287 shipped it)). Claim one here when you start.
 
 ## What's next
 

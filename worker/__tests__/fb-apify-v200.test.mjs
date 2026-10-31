@@ -455,7 +455,7 @@ test("the admin's Facebook test: owner (admin session) only; shows the listings,
   assert.match(INDEX, /fbTestRun   \/\* v200/);
   const run = indexFn("fbTestRun");
   assert.doesNotMatch(run, /fbLive\(env\)\)? return/, "works while FB_LIVE is off");
-  assert.doesNotMatch(run, /PROWL_ALERTS\.put|fb2:/, "nothing is kept");
+  assert.match(run, /PROWL_ALERTS\.put\(fbKey\(term, cell\), JSON\.stringify\(fbMerge\(old, r\.items/, "v202: the finds are kept for the hunt page, as the sweep keeps them");
 });
 
 /* ---- 8. spend.js ---- */

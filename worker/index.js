@@ -19,6 +19,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v202: 2026-10-31. Facebook finds show prices and photos: fb.js reads every shape the actor may send (v200 guessed one);
+ *         the admin's Facebook test lists the field names Apify sent and keeps its finds for the hunt page (fb2:).
  *   v200: 2026-10-31. Facebook Marketplace finds again, through Apify (Matt: Apify, Pro members, a hard cap of $1 a day): never a
  *         login or a cookie. The cron searches each Pro member's active hunts once a day around their ZIP's ~10 km cell
  *         (fb2:<term>|<cell>, the week's finds, 8 days) while FB_LIVE is "on"; the alert email adds them as "facebook";
@@ -683,7 +685,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v200";
+const WORKER_VERSION = "v202";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -7435,7 +7437,7 @@ async function fbFinds(request, env, url, origin) {
   const v = cell ? await kvGet(env, fbKey(term, cell), null) : null;
   return json({ term: term, live: live, updated: v && v.updated ? String(v.updated) : "", items: v && Array.isArray(v.items) ? v.items : [] }, 200, origin, hdr);
 }
-/* the admin's Facebook test: one call now, cap counted, nothing kept. { ok, items, count, cost, used, cap } */
+/* the admin's Facebook test: one call now, cap counted, the finds kept for the hunt page (v202). { ok, items, count, cost, used, cap, fields, kept } */
 async function fbTestRun(env, term, zip) {
   term = fbTerm(term);
   if (!term || /@/.test(term)) return { ok: false, error: "Type a hunt (no email addresses)." };
@@ -7446,8 +7448,19 @@ async function fbTestRun(env, term, zip) {
   const r = await fbCall(env, term, cell, FB_RUN_ITEMS);
   const usd = (u) => Math.round(u) / FB_UNIT;
   if (r.capped) return { ok: false, capped: true, error: "Today's Facebook budget is used up.", used: usd(r.used), cap: usd(r.cap) };
+  /* v202: the finds are kept as the sweep keeps them (fb2:<hunt>|<cell>, merged by id), so the hunt page shows them at once
+     for anyone whose ZIP falls in that cell; before, a test kept nothing and the page waited for the next sweep */
+  let kept = false;
+  if (r.ok && r.items.length && env.PROWL_ALERTS) {
+    try {
+      const old = await kvGet(env, fbKey(term, cell), null);
+      await env.PROWL_ALERTS.put(fbKey(term, cell), JSON.stringify(fbMerge(old, r.items, new Date().toISOString().slice(0, 10))), { expirationTtl: FB_TTL });
+      kept = true;
+    } catch (e) {}
+  }
   return { ok: !!r.ok, error: r.ok ? "" : scrubPII(String(r.error || "failed")).slice(0, 120), items: r.ok ? r.items : [], count: r.ok ? r.items.length : 0, raw: r.raw || 0,
-    cost: usd(r.units || 0), estimate: fbEstimate(FB_RUN_ITEMS), used: usd(r.used || 0), cap: usd(r.cap || fbCapUnits(env)), live: fbLive(env) };
+    cost: usd(r.units || 0), estimate: fbEstimate(FB_RUN_ITEMS), used: usd(r.used || 0), cap: usd(r.cap || fbCapUnits(env)), live: fbLive(env),
+    fields: r.ok && Array.isArray(r.fields) ? r.fields : [], kept: kept, term: term };
 }
 
 /* ---------- v132: NEAR ME ----------

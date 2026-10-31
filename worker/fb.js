@@ -1,4 +1,4 @@
-/* ---------- v200: Facebook Marketplace finds through Apify ----------
+/* ---------- v200: Facebook Marketplace finds through Apify (v202: prices and photos in every shape, fbShape) ----------
    Matt (2026-10-31): "use Apify", for Prowl Pro members, a hard cap of $1 a day. The v94-v177 sweep ran through Matt's
    own Facebook account and was retired in v178 (the security plan: "no session-cookie storage or replay of anyone's
    account"). This one never logs in and never sends a cookie. Apify's actor curious_coder~facebook-marketplace searches
@@ -54,6 +54,52 @@ export function fbRequest(env, token, term, cell, n) {
     init: { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(fbInput(term, cell)) } };
 }
 function fbText(v, max) { return String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max); }
+/* v202: the price and the photo in each shape the actor may send them. v200 read one guessed shape (listing_price with
+   currency "USD", primary_listing_photo_url) and Matt's first test (2026-10-31) came back with no prices. Kept only: a
+   dollar price ("$40", "Free", or a plain amount when no other currency is named) and a photo on Facebook's image hosts. */
+const FB_PRICE = /^\$\s?\d[\d,]*(\.\d{1,2})?$|^free$/i;
+function fbObj(v) { return v && typeof v === "object" && !Array.isArray(v) ? v : {}; }
+export function fbPrice(x) {
+  x = fbObj(x);
+  const lp = fbObj(x.listing_price), cur = String(lp.currency || lp.currency_code || x.currency || "").trim().toUpperCase();
+  if (cur && cur !== "USD") return "";
+  for (const c of [lp.formatted_amount, lp.formatted_amount_zeros_stripped, typeof x.listing_price === "string" ? x.listing_price : "", x.formatted_price, typeof x.price === "string" ? x.price : ""]) {
+    const p = fbText(c, 24);
+    if (FB_PRICE.test(p)) return p;
+  }
+  const raw = lp.amount != null ? lp.amount : typeof x.price === "number" ? x.price : null, a = raw == null || raw === "" ? NaN : Number(raw);
+  if (!Number.isFinite(a) || a < 0 || a >= 1e7) return "";
+  if (a === 0) return "Free";
+  const s = a % 1 ? a.toFixed(2) : String(a), i = s.indexOf(".");
+  return "$" + (i < 0 ? s : s.slice(0, i)).replace(/\B(?=(\d{3})+$)/g, ",") + (i < 0 ? "" : s.slice(i));
+}
+export function fbPhoto(x) {
+  x = fbObj(x);
+  const p = fbObj(x.primary_listing_photo), l0 = fbObj(Array.isArray(x.listing_photos) ? x.listing_photos[0] : null), uri = o => fbObj(o.image).uri;
+  for (const c of [x.primary_listing_photo_url, uri(p), p.photo_image_url, p.uri, p.url, uri(l0), l0.uri, l0.url,
+    typeof x.primary_listing_photo === "string" ? x.primary_listing_photo : "", x.image, x.image_url, x.photo_url, x.photo]) {
+    if (typeof c === "string" && c.length < 2000 && FB_IMG.test(c)) return c;
+  }
+  return "";
+}
+/* v202, for the admin's Facebook test only: the field names of one raw listing (names and types, never a value), so the
+   shape the actor sends can be seen without reading anyone's data. Seller fields show by name only. */
+export function fbShape(x) {
+  const out = [];
+  const walk = (o, pre, d) => {
+    if (!o || typeof o !== "object" || d > 3) return;
+    if (Array.isArray(o)) { walk(o[0], pre + "[]", d + 1); return; }
+    for (const k of Object.keys(o).slice(0, 50)) {
+      if (out.length >= 80) return;
+      if (!/^[A-Za-z0-9_]{1,40}$/.test(k)) continue;
+      const v = o[k], p = pre ? pre + "." + k : k;
+      out.push(p + (v && typeof v === "object" ? (Array.isArray(v) ? " (list)" : "") : " (" + (v === null ? "null" : typeof v) + ")"));
+      walk(v, p, d + 1);
+    }
+  };
+  walk(x, "", 0);
+  return out;
+}
 /* the fields kept of each listing; sold, pending and hidden ones are dropped; seller fields are never read */
 export function fbClean(raw, day) {
   const out = [], seen = Object.create(null);
@@ -63,12 +109,10 @@ export function fbClean(raw, day) {
     const id = String(x.id == null ? "" : x.id).trim(), title = fbText(x.marketplace_listing_title || x.custom_title, 160).replace(EMAILISH, "[email]");
     if (!/^\d{5,20}$/.test(id) || seen[id] || !title) continue;
     seen[id] = 1;
-    const lp = x.listing_price && typeof x.listing_price === "object" ? x.listing_price : {}, pr = fbText(lp.formatted_amount, 24);
-    const img = typeof x.primary_listing_photo_url === "string" ? x.primary_listing_photo_url : "";
+    const pr = fbPrice(x), img = fbPhoto(x);
     const rg = x.location && typeof x.location === "object" && x.location.reverse_geocode && typeof x.location.reverse_geocode === "object" ? x.location.reverse_geocode : {};
     const town = [fbText(rg.city, 40), fbText(rg.state, 20)].filter(Boolean).join(", ").replace(EMAILISH, "").replace(/\d[\d\s().-]{4,}\d/g, "").trim();
-    out.push({ id: id, title: title, price: String(lp.currency || "").toUpperCase() === "USD" && /^\$\s?\d[\d,]*(\.\d{1,2})?$|^free$/i.test(pr) ? pr : "",
-      url: "https://www.facebook.com/marketplace/item/" + id + "/", image: img.length < 2000 && FB_IMG.test(img) ? img : "", location: town, found: day });
+    out.push({ id: id, title: title, price: pr, url: "https://www.facebook.com/marketplace/item/" + id + "/", image: img, location: town, found: day });
   }
   return out;
 }
@@ -93,7 +137,7 @@ export async function fbRun(env, term, cell, n, f) {
     const r = await (f || fetch)(rq.url, Object.assign({ signal: ctl.signal }, rq.init));
     let j = null; try { j = await r.json(); } catch (e) {}
     if (!r.ok || !Array.isArray(j)) return { ok: false, status: r.status, error: "apify " + r.status + (j && j.error && j.error.type ? " " + fbText(j.error.type, 40) : ""), cost: fbEstimate(n) };
-    return { ok: true, raw: j.length, items: fbClean(j, new Date().toISOString().slice(0, 10)), cost: fbCost(j) };
+    return { ok: true, raw: j.length, items: fbClean(j, new Date().toISOString().slice(0, 10)), cost: fbCost(j), fields: fbShape(j[0]) };   /* v202: fields */
   } catch (e) { return { ok: false, error: e && e.name === "AbortError" ? "apify timed out" : "apify unreachable", cost: fbEstimate(n) }; }
   finally { clearTimeout(timer); }
 }

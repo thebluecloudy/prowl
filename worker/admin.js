@@ -1011,7 +1011,10 @@ async function apiFbTest(c) {
   await audit(c, { action: "fbtest", ok: !!r.ok, note: r.ok ? items.length + " listings" : clean(r.error, 60) });
   if (!r.ok && !r.capped && !items.length && !r.cost) return jerr(400, clean(r.error, 160) || "The Facebook test failed.");
   const n2 = v => Math.round((Number(v) || 0) * 100000) / 100000;
-  return jres({ ok: !!r.ok, error: clean(r.error, 160), capped: !!r.capped, live: !!r.live, items: items, count: items.length, raw: num(r.raw), cost: n2(r.cost), estimate: n2(r.estimate), used: n2(r.used), cap: n2(r.cap) });
+  /* v202: field names and types only, no values. Not clean(): it hides any 24+ character run, and many names are that long */
+  const fields = arr(r.fields).slice(0, 80).map(f => String(f == null ? "" : f).replace(/[^A-Za-z0-9_.\[\] ()]/g, "").slice(0, 80)).filter(Boolean);
+  return jres({ ok: !!r.ok, error: clean(r.error, 160), capped: !!r.capped, live: !!r.live, items: items, count: items.length, raw: num(r.raw), cost: n2(r.cost), estimate: n2(r.estimate), used: n2(r.used), cap: n2(r.cap),
+    fields: fields, kept: !!r.kept, term: clean(r.term, 60) });
 }
 
 async function apiErrors(c) {

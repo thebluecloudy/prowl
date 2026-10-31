@@ -345,6 +345,7 @@ fieldset{border:0;padding:0;margin:0;min-width:0}
 .io{font-size:13px}
 .more{margin-top:10px}
 .fbt{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.fbt input{flex:1 1 180px;min-width:0}.fbt input#fbt-zip{flex:0 1 110px}
+.fbt-img{display:block;width:56px;height:56px;object-fit:cover;border-radius:6px;background:#0002}   /* v202 */
 .out-ov{position:fixed;inset:0;z-index:20;background:rgba(11,20,48,.55);display:flex;align-items:center;justify-content:center;padding:16px}
 .out-ov[hidden]{display:none}
 .out-ov .card{max-width:400px;width:100%;display:flex;flex-direction:column;gap:10px}
@@ -859,9 +860,13 @@ function fbTestView() {
   if (X.error && !X.items) return note("bad", "Facebook test failed. " + X.error);
   const spent = "Cost about $" + (Number(X.cost) || 0).toFixed(4) + " (estimate $" + (Number(X.estimate) || 0).toFixed(4) + "). Today: $" + (Number(X.used) || 0).toFixed(4) + " of $" + (Number(X.cap) || 0).toFixed(2) + "." + (X.live ? "" : " FB_LIVE is off, so members get nothing yet.");
   const head = h("h3", { class: "small", text: (X.capped ? "Today\u2019s Facebook budget is used up. " : X.ok ? X.count + " listing" + (X.count === 1 ? "" : "s") + " at " + fmtTime(new Date(X.at)) + ". " : "The search failed (" + (X.error || "no answer") + "). ") + spent });
-  if (!X.items || !X.items.length) return h("div", { class: "more" }, [head]);
-  return h("div", { class: "more" }, [head, tableOf([{ t: "Listing", cls: "wide" }, { t: "Price", num: 1 }, { t: "Town" }],
-    X.items.map(x => [x.url ? h("a", { href: x.url, target: "_blank", rel: "noopener noreferrer", text: x.title }) : x.title, x.price || "\u2014", x.city || "\u2014"]), "Facebook test results", true)]);
+  /* v202: where the finds went, the photo of each, and the field names Apify sent (names only), to check the shape */
+  const kept = X.kept ? h("p", { class: "hint", text: "Kept for the hunt page: open the hunt \u201c" + (X.term || "") + "\u201d in Prowl, signed in with a local-pickup ZIP near " + (S.fbZip || "this ZIP") + " (or with the owner key), and the Facebook strip shows these with photos." }) : null;
+  const flds = X.fields && X.fields.length ? h("details", [h("summary", { text: "Fields Apify sent (" + X.fields.length + ", names only)" }), h("p", { class: "hint", text: X.fields.join(" \u00b7 ") })]) : null;
+  if (!X.items || !X.items.length) return h("div", { class: "more" }, [head, flds]);
+  return h("div", { class: "more" }, [head, kept, tableOf([{ t: "Photo", bare: 1 }, { t: "Listing", cls: "wide" }, { t: "Price", num: 1 }, { t: "Town" }],
+    X.items.map(x => [x.image ? h("img", { src: x.image, alt: "", width: "56", height: "56", loading: "lazy", referrerpolicy: "no-referrer", class: "fbt-img" }) : "\u2014",
+      x.url ? h("a", { href: x.url, target: "_blank", rel: "noopener noreferrer", text: x.title }) : x.title, x.price || "\u2014", x.city || "\u2014"]), "Facebook test results", true), flds]);
 }
 /* lastAt = when the latest test search ran (ms); older data only has the hour it last worked */
 function lastCheck(u) { const at = u.lastAt || u.lastOkAt; return at ? fmtWhen(at) : "\u2014"; }
