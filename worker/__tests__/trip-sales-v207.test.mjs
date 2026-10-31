@@ -22,12 +22,15 @@ function indexFn(name) {
 }
 const CONSTS = [/^const WK_LIST_TTL = .*$/m, /^const WK_PENDING_TTL = .*$/m, /^const WK_TRIP_CALLS = .*$/m].map((re) => re.exec(INDEX)[0]).join("\n");
 class FakeKV {
-  constructor() { this.m = new Map(); }
-  async get(k, type) { if (!this.m.has(k)) return null; const v = this.m.get(k); return type === "json" ? JSON.parse(v) : v; }
+  constructor(o = {}) { this.m = new Map(); this.late = !!o.late; this.n = 0; }
+  async get(k, type) {
+    /* late: the sale-page reads (wkd2:) resolve out of order, the first asked last, as real KV reads may */
+    if (this.late && k.startsWith("wkd2:")) { const n = this.n++; await new Promise((r) => setTimeout(r, Math.max(0, 60 - n * 5))); }
+    if (!this.m.has(k)) return null; const v = this.m.get(k); return type === "json" ? JSON.parse(v) : v; }
   async put(k, v) { this.m.set(k, String(v)); }
 }
-function rig({ apiBody = "[]", pages = {}, owner = false, env: envExtra = {}, count = () => true, calls = 0 } = {}) {
-  const kv = new FakeKV(), fetched = [], counted = [];
+function rig({ apiBody = "[]", pages = {}, owner = false, env: envExtra = {}, count = () => true, calls = 0, late = false } = {}) {
+  const kv = new FakeKV({ late }), fetched = [], counted = [];
   const env = { PROWL_ALERTS: kv, ...envExtra };
   const deps = {
     ...W,
@@ -198,7 +201,7 @@ test("a day that is over, or more than two weeks off, asks nothing", async () =>
 test("a sale whose page the budget did not reach is left out, never shown as address-less; the nearest pages are read first", async () => {
   const list = Array.from({ length: 10 }, (_, i) => sale(5300000 + i, 42.4 - i * 0.05, lngAt(42.4 - i * 0.05) + (9 - i) * 0.004));
   const pages = {}; list.forEach((s) => { pages[URL_OF(s.id)] = { html: page(s.id) }; });
-  const R = rig({ owner: true, apiBody: JSON.stringify(list), pages, calls: 8 });
+  const R = rig({ owner: true, apiBody: JSON.stringify(list), pages, calls: 8, late: true });   /* the KV reads come back out of order */
   const r = await R.X.wkTripRoute(req(), R.env, u(Q), "o");
   assert.equal(r.status, 200);
   const lists = R.fetched.filter((x) => /sale-details/.test(x)).length, read = 8 - lists;

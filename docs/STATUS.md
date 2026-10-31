@@ -71,6 +71,11 @@ Recently shipped, newest first:
     `prowl.nearBeen` is unchanged, and no `e:` marks were live yet); (5) `nrEsPut` orders every stop, skipped ones
     too (`nrOrderAll`), so a stop unskipped later comes back in its place. Tests in the same two files. Room left after:
     368,327 bytes (`node scripts/slim-page.mjs`).
+    **Second review fixes (same versions):** the out-of-order KV test now really fails without the nearest-first fix;
+    a loop built again carries an added sale only after Optimize sets the drive order, and `nrEsOff` measures against
+    the stops as shown; every Plan my week replan (`wpPlan`: checkbox taps, the planner's Rebuild from here) leaves out
+    sales marked Been on any day they are open (`wpLive`); the missing / long-drive note shows on its own when no
+    sales came back. Room left unchanged: 368,327 bytes.
 - **v206: Diagnose says why the AI check did not answer.** Matt's eBay test in the admin showed "The AI check did
   not answer" with no reason: `jevClassify` dropped TypeSafe's reply on any failure. Now it keeps the HTTP status and
   TypeSafe's error message (or "timed out after 6 s", "could not reach TypeSafe", "answered with no answers") in
