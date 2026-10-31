@@ -64,9 +64,9 @@ test("the wrapped fetch answers exactly as fetch, and counts each paid call; Mus
   await f(new Request("https://vision.googleapis.com/v1/images:annotate?key=k", { method: "POST", body: "{}" }));
   assert.equal(seen.length, 6);
   const d = buf.drain(), day = SP.dayOf(Date.now());
-  assert.deepEqual(d.rows[day + "|muse"], { n: 1, ti: 1200, to: 340, ws: 2 });
-  assert.deepEqual(d.rows[day + "|jev"], { n: 1, ti: 100, to: 0, ws: 0 }, "Jev: about 4 characters a token of what was sent");
-  assert.deepEqual(d.rows[day + "|g_vision"], { n: 1, ti: 0, to: 0, ws: 0 }, "a Request object is read for its address");
+  assert.deepEqual(d.rows[day + "|muse"], { n: 1, ti: 1200, to: 340, ws: 2, it: 0 });
+  assert.deepEqual(d.rows[day + "|jev"], { n: 1, ti: 100, to: 0, ws: 0, it: 0 }, "Jev: about 4 characters a token of what was sent");
+  assert.deepEqual(d.rows[day + "|g_vision"], { n: 1, ti: 0, to: 0, ws: 0, it: 0 }, "a Request object is read for its address");
   assert.equal(d.rows[day + "|g_photo"], undefined, "a cache hit is free");
   assert.equal(d.rows[day + "|g_text"], undefined, "a call that threw before any answer is not counted");
   assert.equal(Object.keys(d.rows).length, 3, "eBay is not a paid service");
@@ -80,9 +80,9 @@ test("a counting failure never breaks the call: an odd answer, unreadable JSON, 
   assert.equal((await f("https://api.typesafe.ai/v1/systemone", { body: "abcd" })).status, 500);
   assert.equal((await f("https://serpapi.com/search.json?q=1")).status, 200, "a bare object without headers or clone");
   const d = buf.drain(), day = SP.dayOf(Date.now());
-  assert.deepEqual(d.rows[day + "|muse"], { n: 1, ti: 0, to: 0, ws: 0 }, "Muse that answered still costs a call");
-  assert.deepEqual(d.rows[day + "|jev"], { n: 1, ti: 1, to: 0, ws: 0 }, "Jev that failed was still sent");
-  assert.deepEqual(d.rows[day + "|lens"], { n: 1, ti: 0, to: 0, ws: 0 });
+  assert.deepEqual(d.rows[day + "|muse"], { n: 1, ti: 0, to: 0, ws: 0, it: 0 }, "Muse that answered still costs a call");
+  assert.deepEqual(d.rows[day + "|jev"], { n: 1, ti: 1, to: 0, ws: 0, it: 0 }, "Jev that failed was still sent");
+  assert.deepEqual(d.rows[day + "|lens"], { n: 1, ti: 0, to: 0, ws: 0, it: 0 });
 });
 
 test("museUsage reads both Muse APIs; jevUsage prefers TypeSafe's own count; odd values count 0", () => {
@@ -103,7 +103,7 @@ test("the buffer: one row per UTC day and service; unknown keys and odd numbers 
   b.tick("nope", null, NOW);
   b.tick("constructor", null, NOW);
   assert.deepEqual(b.drain().rows, {
-    "2026-10-30|muse": { n: 2, ti: 20, to: 5, ws: 1 }, "2026-10-31|muse": { n: 1, ti: 0, to: 0, ws: 0 }, "2026-10-30|g_text": { n: 3, ti: 0, to: 0, ws: 0 } });
+    "2026-10-30|muse": { n: 2, ti: 20, to: 5, ws: 1, it: 0 }, "2026-10-31|muse": { n: 1, ti: 0, to: 0, ws: 0, it: 0 }, "2026-10-30|g_text": { n: 3, ti: 0, to: 0, ws: 0, it: 0 } });
 });
 
 test("the spend object: sadd merges per day and service, refuses unknown keys and bad days, sget lists a range", async () => {
@@ -112,11 +112,11 @@ test("the spend object: sadd merges per day and service, refuses unknown keys an
     "bad|muse": { n: 1 }, "2026-10-29|muse": { n: -4, ti: "x" }, "__proto__": { n: 1 } } }, NOW);
   assert.equal(r.added, 3);
   await SP.spendOp(st, "sadd", { rows: { "2026-10-30|muse": { n: 1, ti: 1e15 } } }, NOW);
-  assert.deepEqual(await st.get("w:2026-10-30|muse"), { n: 3, ti: 1e9 + 100, to: 50, ws: 1 }, "one add is capped");
-  assert.deepEqual(await st.get("w:2026-10-29|muse"), { n: 0, ti: 0, to: 0, ws: 0 });
+  assert.deepEqual(await st.get("w:2026-10-30|muse"), { n: 3, ti: 1e9 + 100, to: 50, ws: 1, it: 0 }, "one add is capped");
+  assert.deepEqual(await st.get("w:2026-10-29|muse"), { n: 0, ti: 0, to: 0, ws: 0, it: 0 });
   r = await SP.spendOp(st, "sget", { from: "2026-10-30", to: "2026-10-30" }, NOW);
   assert.deepEqual(r.rows.map((x) => x.key).sort(), ["g_text", "muse"]);
-  assert.deepEqual(r.rows.find((x) => x.key === "muse"), { day: "2026-10-30", key: "muse", n: 3, ti: 1e9 + 100, to: 50, ws: 1 });
+  assert.deepEqual(r.rows.find((x) => x.key === "muse"), { day: "2026-10-30", key: "muse", n: 3, ti: 1e9 + 100, to: 50, ws: 1, it: 0 });
   assert.deepEqual(await SP.spendOp(st, "sget", { from: "x", to: "2026-10-30" }, NOW), { error: "bad days" });
   assert.deepEqual(await SP.spendOp(st, "nope", {}, NOW), { error: "bad op" });
 });
@@ -231,14 +231,16 @@ test("index.js wraps the global fetch once, flushes after each request and cron 
 });
 
 test("every paid host index.js calls is a counted service (a new paid host needs a row in spend.js)", () => {
-  const hosts = new Set([...INDEX.matchAll(/https:\/\/([a-z0-9.-]+)\//g)].map((m) => m[1]));
-  const paidHosts = [...hosts].filter((h) => /(^|\.)(meta\.ai|typesafe\.ai|serpapi\.com|googleapis\.com)$/.test(h));
+  const SRC = INDEX + readFileSync(new URL("../fb.js", import.meta.url), "utf8");   /* v197: the Apify call is built in fb.js */
+  const hosts = new Set([...SRC.matchAll(/https:\/\/([a-z0-9.-]+)\//g)].map((m) => m[1]));
+  const paidHosts = [...hosts].filter((h) => /(^|\.)(meta\.ai|typesafe\.ai|serpapi\.com|googleapis\.com|apify\.com)$/.test(h));
+  assert.ok(paidHosts.indexOf("api.apify.com") !== -1, "v197: Apify is called");
   assert.ok(paidHosts.length >= 6, paidHosts.join(" "));
   for (const h of paidHosts) {
     if (/^(fcm|android)\.googleapis\.com$/.test(h)) continue;   /* Web Push (push.js), free */
-    const urls = [...INDEX.matchAll(new RegExp("https://" + h.replace(/\./g, "\\.") + "/[^\"'`\\s)]*", "g"))].map((m) => m[0]);
+    const urls = [...SRC.matchAll(new RegExp("https://" + h.replace(/\./g, "\\.") + "/[^\"'`\\s)]*", "g"))].map((m) => m[0]);
     /* a literal may be only the start of an address built from parts ("https://places.googleapis.com/v1/" + n + "/media") */
-    for (const u of urls) assert.ok(["", "abc", "places/a/photos/b/media", "json"].some((tail) => SP.paidKey(u + tail) !== ""), "counted: " + u);
+    for (const u of urls) assert.ok(["", "abc", "places/a/photos/b/media", "json", "curious_coder~facebook-marketplace/run-sync-get-dataset-items"].some((tail) => SP.paidKey(u + tail) !== ""), "counted: " + u);
   }
 });
 

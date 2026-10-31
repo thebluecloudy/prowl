@@ -1,16 +1,48 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.21 / v195).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.23 / v197).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.21** | 375,773 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v195** | |
+| Page | **v8.23** | 375,773 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v197** | |
 
 Recently shipped, newest first:
 
+- **v8.23 / v197: Facebook Marketplace finds again, through Apify, for Pro members** (Matt, 2026-10-31: use Apify, he
+  set the secret `APIFY_TOKEN`; Pro members get it; a hard cap of $1 a day). The v94-v177 sweep ran through Matt's own
+  account and was retired in v178; this one never logs in and never sends a cookie (`worker/fb.js`).
+  - **How:** Apify's actor `curious_coder~facebook-marketplace` (`APIFY_FB_ACTOR`, env `FB_ACTOR` overrides), one
+    `POST /v2/acts/<actor>/run-sync-get-dataset-items?timeout=75&maxItems=24` per hunt and area, the token in the
+    Bearer header only; input: hunt words, the area point, `radiusKm` 40, listing details and all photos off, strict
+    filtering, one page, US proxy. Kept of each listing: id, title (emails removed), price (USD only), photo (only
+    https `*.fbcdn.net`), town, the link built from the id, the day found. Sold, pending and hidden ones are dropped;
+    seller fields are never read.
+  - **Area:** a Pro member's local-pickup ZIP (prefs.zip), geocoded once (counted in `ggeo:all`), kept as its 0.1
+    degree cell (about 10 km) in `fbz:<zip>` for 90 days (a miss 7). Members nearby share one search. No ZIP, no finds.
+  - **Sweep:** on the alert clock, only while the Cloudflare var `FB_LIVE` is "on": each Pro member's active hunts
+    once a day per hunt and cell, at most `FB_PER_RUN` (2) Apify calls a run and only with room left in the run's
+    outside calls. `fb2:<term>|<cell>` = the week's finds merged by id, newest first, 60 at most, 8 days. `fb2day:<day>`
+    remembers what was swept, failures (2 tries) and that the cap was reached. A failure keeps nothing new and leaves a
+    short scrubbed note in the admin's errors.
+  - **Cost cap:** `fbusd:all` in the day's Caps, in 1/100,000 of a dollar. Before a call the estimate (24 listings at
+    $0.0005 + $0.00005 start = $0.01205) must fit under `FB_DAY_USD` (default 1); after it the actual cost is added
+    (a failed call at the estimate). An admin AI pool row shows it in dollars. `worker/spend.js` counts api.apify.com
+    (calls and listings, $0.05 per 1,000 starts and $0.50 per 1,000 listings) on the Spending tab.
+  - **Delivery:** the daily email adds a Pro member's cached Facebook finds as source "facebook" through the same
+    exact-match, seen and price/skip-word rules (no outside call). GET `/fb-finds?term=` answers again (410 since
+    v178): a store session or X-Prowl-Email / X-Prowl-Tok of a Pro member, or the owner key (which may pass `&zip=`);
+    401 signed out, 403 not Pro. `/fb-ingest` stays 410. `/alerts/status` says `fb: true` for a Pro member while live.
+  - **Page:** the Facebook strip (v6.65's `fbFetch`/`fbBlock`/`fbHas`, `.sgw-fbh`) is back under the Goodwill block
+    for a signed-in Pro member or the owner key, plain links; a Pro member without a ZIP is told to add one (while
+    live). Den > Settings, by the local-pickup ZIP, says Facebook finds use it (only when status says fb). No new keys.
+  - **Admin:** Marketplaces card, **Facebook test**: a hunt and a ZIP, one Apify call now (counts against the cap,
+    works while FB_LIVE is off), shows the listings (title, price, town, link), the count, the cost and today's spend.
+  - Privacy section updated. Tests: `worker/__tests__/fb-apify-v197.test.mjs`, `__tests__/page/fb-strip-v823.test.mjs`;
+    `fb-retired.test.mjs` and `fb-retired-v808.test.mjs` now assert no session cookies; `spend.test.mjs` scans fb.js.
+    v8.22 / v196 are Hark's (#281).
 - **v8.21: the Store tab icon is written so Shopify keeps it byte for byte.** v8.20's deploy saved the page but failed
   the md5 check: its icon used self-closing `<path …/>`, which the rest of the page never does (Shopify rewrites them).
   Now `<path …></path>` like every other icon. Nothing visible changes. Test in `__tests__/page/store-tab-v820.test.mjs`.
@@ -1727,7 +1759,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.22, worker v196**. Claim one here when you start.
+Next free numbers: **page v8.24, worker v198** (Hark's open PR #281 holds page v8.22 and worker v196). Claim one here when you start.
 
 ## What's next
 
@@ -1742,6 +1774,14 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 ## Waiting on Matt
 
+- **Facebook finds through Apify (worker v197 / page v8.23), in this order:**
+  1. In the admin, Marketplaces card, run **Facebook test** for about 5 of your hunts with the Novi ZIP (48375): check
+     the listings are right and the cost (about $0.012 a test at most) and today's spend line.
+  2. In Apify Billing, set a **monthly spending limit** (the worker's own cap is $1 a day, about $30 a month at most).
+  3. Then set the Cloudflare variable **`FB_LIVE` = `on`** (Workers > prowl > Settings > Variables; not in wrangler.toml,
+     keep_vars keeps it) to start it for Pro members. **`FB_DAY_USD`** is optional (default 1).
+  4. Paste the updated `docs/privacy-policy-prowl-section.html` (Facebook finds bullets; Last updated October 31,
+     2026) before turning it on.
 - **Spending tab (worker v193):** open admin › Spending, then:
   - add your monthly bills (Shopify plan, Cloudflare Workers, a SerpApi plan if you pay for one, your Claude plan);
   - type 0 as the SerpApi Lens price (free plan; a paid plan goes under monthly bills);

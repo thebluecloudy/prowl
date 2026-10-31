@@ -46,12 +46,16 @@ export const SPEND_SERVICES = [
   { key: "g_vision", name: "Google Cloud Vision web detection (Photo check)", uses: ["call"], price: { call: 3.5 }, free: 1000,
     src: "https://cloud.google.com/vision/pricing", srcNote: "matches Matt's Google billing price list (SKU D89F-B380-AE61)", bill: "https://console.cloud.google.com/billing" },
   { key: "lens", name: "Google Lens through SerpApi", uses: ["call"], price: { call: null },
-    src: "https://serpapi.com/pricing", srcNote: "billed by monthly plan (free plan: 250 a month); add a paid plan under monthly bills", bill: "https://serpapi.com/dashboard" }
+    src: "https://serpapi.com/pricing", srcNote: "billed by monthly plan (free plan: 250 a month); add a paid plan under monthly bills", bill: "https://serpapi.com/dashboard" },
+  /* v197: Facebook Marketplace finds, the actor curious_coder~facebook-marketplace, pay per event */
+  { key: "apify", name: "Apify: Facebook Marketplace finds (Pro)", uses: ["call", "item"], price: { call: 0.05, item: 0.5 },
+    src: "https://apify.com/curious_coder/facebook-marketplace", srcNote: "the actor's pay-per-event price: $0.00005 an actor start, $0.0005 a listing (listing details, $0.001, stay off); the day's spend is also capped by FB_DAY_USD",
+    bill: "https://console.apify.com/billing" }
 ];
 export const SPEND_KEYS = SPEND_SERVICES.map(s => s.key);
 const KNOWN = new Set(SPEND_KEYS);
-const FIELDS = ["n", "ti", "to", "ws"];
-const PRICE_FIELDS = ["call", "tin", "tout", "ws"];
+const FIELDS = ["n", "ti", "to", "ws", "it"];   /* v197: it, listings (Apify) */
+const PRICE_FIELDS = ["call", "tin", "tout", "ws", "item"];
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const int = (v, hi) => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n > 0 ? Math.min(n, hi) : 0; };
@@ -60,12 +64,12 @@ export function dayOf(ms) { return new Date(ms).toISOString().slice(0, 10); }
 /* ---------- worker-side buffer ---------- */
 export class SpendBuffer {
   constructor() { this.b = {}; this.count = 0; }
-  /* f: { n, ti, to, ws }; n defaults to 1 call */
+  /* f: { n, ti, to, ws, it }; n defaults to 1 call */
   tick(key, f, nowMs) {
     if (!KNOWN.has(key)) return;
-    const o = f || {}, k = dayOf(nowMs || Date.now()) + "|" + key, row = this.b[k] || (this.b[k] = { n: 0, ti: 0, to: 0, ws: 0 });
+    const o = f || {}, k = dayOf(nowMs || Date.now()) + "|" + key, row = this.b[k] || (this.b[k] = { n: 0, ti: 0, to: 0, ws: 0, it: 0 });
     row.n += o.n == null ? 1 : int(o.n, 1e6);
-    row.ti += int(o.ti, 1e9); row.to += int(o.to, 1e9); row.ws += int(o.ws, 1e6);
+    row.ti += int(o.ti, 1e9); row.to += int(o.to, 1e9); row.ws += int(o.ws, 1e6); row.it += int(o.it, 1e6);
     this.count++;
   }
   drain() {
@@ -113,6 +117,7 @@ export function paidKey(url, init) {
   if (h === "api.typesafe.ai") return "jev";
   if (h === "serpapi.com" && u.pathname === "/search.json") return "lens";
   if (h === "vision.googleapis.com") return "g_vision";
+  if (h === "api.apify.com" && /^\/v2\/acts\/[^/]+\/run-sync/.test(u.pathname)) return "apify";   /* v197 */
   if (h === "places.googleapis.com" || h === "routes.googleapis.com" || (h === "maps.googleapis.com" && u.pathname.indexOf("/maps/api/geocode/") === 0)) {
     const hd = init && init.headers, mask = !hd ? "" : typeof hd.get === "function" ? hd.get("X-Goog-FieldMask") : (hd["X-Goog-FieldMask"] || hd["x-goog-fieldmask"] || "");
     return googleSku(u.href, mask || "");
@@ -131,10 +136,10 @@ export function spendWrap(f, buf) {
     try {
       if (String((r && r.headers && r.headers.get && r.headers.get("cf-cache-status")) || "").toUpperCase() === "HIT") return r;
       let fields = null;
-      if (key === "muse" || key === "jev") {
+      if (key === "muse" || key === "jev" || key === "apify") {
         let j = null;
         try { if (r.ok && typeof r.clone === "function") j = await r.clone().json(); } catch (e) {}
-        fields = key === "muse" ? museUsage(j) : jevUsage(j, init && init.body);
+        fields = key === "muse" ? museUsage(j) : key === "jev" ? jevUsage(j, init && init.body) : { it: Array.isArray(j) ? j.length : 0 };   /* v197: the listings an Apify run pushed */
       }
       buf.tick(key, fields);
     } catch (e) {}
@@ -227,7 +232,7 @@ export function spendCfgClean(raw) {
 export function spendCost(s, u, p, free) {
   let c = 0;
   const billed = Math.max(0, (u.n || 0) - (Number(free) || 0));   /* free: calls a month Google charges nothing for */
-  const parts = { call: [billed, 1000], tin: [u.ti, 1e6], tout: [u.to, 1e6], ws: [u.ws, 1000] };
+  const parts = { call: [billed, 1000], tin: [u.ti, 1e6], tout: [u.to, 1e6], ws: [u.ws, 1000], item: [u.it, 1000] };
   for (const f of s.uses) {
     const used = parts[f][0] || 0, price = p ? p[f] : null;
     if (!used) continue;
@@ -254,7 +259,7 @@ export function spendSummary(rows, cfg, nowMs) {
   const services = SPEND_SERVICES.map(s => {
     const o = { key: s.key };
     for (const pk of PERIODS) {
-      const P = per[pk], u = { n: 0, ti: 0, to: 0, ws: 0 };
+      const P = per[pk], u = { n: 0, ti: 0, to: 0, ws: 0, it: 0 };
       for (const r of list) if (r && r.key === s.key && r.day >= P.from && r.day <= P.to) for (const f of FIELDS) u[f] += Number(r[f]) || 0;
       /* a calendar month takes off the free monthly allowance; Today and 7 days are at the list price */
       o[pk] = Object.assign(u, { cost: spendCost(s, u, c.prices[s.key], pk === "month" || pk === "last" ? s.free : 0) });

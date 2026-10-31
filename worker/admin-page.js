@@ -344,6 +344,7 @@ fieldset{border:0;padding:0;margin:0;min-width:0}
 .item.out img{opacity:.55}
 .io{font-size:13px}
 .more{margin-top:10px}
+.fbt{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.fbt input{flex:1 1 180px;min-width:0}.fbt input#fbt-zip{flex:0 1 110px}
 .out-ov{position:fixed;inset:0;z-index:20;background:rgba(11,20,48,.55);display:flex;align-items:center;justify-content:center;padding:16px}
 .out-ov[hidden]{display:none}
 .out-ov .card{max-width:400px;width:100%;display:flex;flex-direction:column;gap:10px}
@@ -376,6 +377,7 @@ const S = { tab: "", aData: null, ov: null, ovAt: 0, ovSeq: 0, out: false, healt
   late: null, diag: null, dSel: null, diagRes: null, diagShow: "all", diagSeq: 0, errSeq: 0, sDays: 7, sSeq: 0, uSeq: 0, uAt: 0, toastT: 0,
   gData: null, gAt: 0, gSeq: 0, giftsAll: false, glen: null };
 Object.assign(S, { spData: null, spSeq: 0 });   /* v193: Spending */
+Object.assign(S, { fbt: null, fbTerm: "", fbZip: "" });   /* v197: the Facebook test */
 
 /* ---------- DOM: API data only ever lands in textContent or vetted https attributes ---------- */
 function h(tag, a, kids) {
@@ -529,7 +531,7 @@ const AI = { match: "Match", lot: "Lot or set", reproduction: "Reproduction", pa
 const AUDIT = { login: "Admin sign-in", logout: "Admin sign-out", "signin-link": "Sent a sign-in link", "refresh-pro": "Re-checked Pro",
   "recheck-today": "Re-check hunts today", "resend-today": "Send today's email again", "mail-on": "Turned emails on", "mail-off": "Turned emails off",
   unpause: "Unpaused", "signout-all": "Signed out all devices", "clear-seen": "Cleared already-sent memory", delete: "Deleted a member",
-  find: "Looked up a member", diagnose: "Ran Diagnose", healthcheck: "Ran a health check", salescheck: "Checked the garage-sale sites",
+  find: "Looked up a member", diagnose: "Ran Diagnose", healthcheck: "Ran a health check", salescheck: "Checked the garage-sale sites", fbtest: "Ran a Facebook test",
   "aff-on": "Turned an affiliate on", "aff-off": "Turned an affiliate off", "aff-ids": "Saved affiliate IDs", "spend-prices": "Saved spending prices and bills", "gift-add": "Gifted Pro", "gift-remove": "Turned off a gift", "gift-on": "Gifted Pro to a member", "gift-off": "Turned off free Pro" };
 const ISSUES = { members: "member counts", alerts: "alert emails", metrics: "speed, errors and uptime", traffic: "speed and errors", uptime: "uptime",
   ai: "AI usage", pools: "AI usage", searches: "top searches", audit: "admin activity", errors: "recent errors" };
@@ -672,7 +674,7 @@ function problems(ov) {
   }
   (pools(ov) || []).forEach(x => {
     const v = poolPct(x);
-    if (v >= 90) p.push({ lv: v >= 100 ? "critical" : "warning", go: "ai", text: (x.name || x.key) + (v >= 100 ? " has used all of today's limit (" : " has used " + pc(v) + " of today's limit (") + num(x.used) + " of " + num(x.limit) + ")." });
+    if (v >= 90) p.push({ lv: v >= 100 ? "critical" : "warning", go: "ai", text: (x.name || x.key) + (v >= 100 ? " has used all of today's limit (" : " has used " + pc(v) + " of today's limit (") + (x.usd ? poolUsd(x.used, x.usd) + " of " + poolUsd(x.limit, x.usd) : num(x.used) + " of " + num(x.limit)) + ")." });
   });
   return p;
 }
@@ -828,7 +830,37 @@ function marketsCard(ov) {
     catch (e) { S.sales = e.status === 401 ? null : { error: e.message }; }
     sbtn.disabled = false; fill(sbox, salesView());
   });
-  return card("markets", "Marketplaces", btn, [body, hbox, h("div", { class: "more" }, [sbtn]), sbox], "A small test search runs on each marketplace every hour.");
+  return card("markets", "Marketplaces", btn, [body, hbox, h("div", { class: "more" }, [sbtn]), sbox, fbTestBox()], "A small test search runs on each marketplace every hour.");
+}
+/* v197: the Facebook test. One Apify call now for a hunt and a ZIP (it counts against the day's Facebook budget, and works
+   while FB_LIVE is off). What came back is shown, not kept. */
+function fbTestBox() {
+  const fbox = h("div", { class: "hbox" }, fbTestView());
+  const ti = h("input", { id: "fbt-term", type: "text", maxlength: "60", autocomplete: "off", value: S.fbTerm, placeholder: "a hunt, e.g. pyrex butterprint", "aria-label": "Hunt to test on Facebook" });
+  const zi = h("input", { id: "fbt-zip", type: "text", inputmode: "numeric", maxlength: "5", autocomplete: "off", value: S.fbZip, placeholder: "ZIP, e.g. 48375", "aria-label": "ZIP to search around" });
+  ti.addEventListener("input", () => { S.fbTerm = ti.value; });
+  zi.addEventListener("input", () => { S.fbZip = zi.value; });
+  const fbtn = h("button", { class: "btn btn-s", type: "button", text: "Facebook test", disabled: !!(S.fbt && S.fbt.busy) });
+  fbtn.addEventListener("click", async () => {
+    if (S.fbt && S.fbt.busy) return;
+    fbtn.disabled = true; S.fbt = { busy: true }; fill(fbox, fbTestView());
+    try { const j = await api("/admin/api/fbtest", { term: S.fbTerm, zip: S.fbZip }); S.fbt = Object.assign({ at: Date.now() }, j); }
+    catch (e) { S.fbt = e.status === 401 ? null : { error: e.message }; }
+    fbtn.disabled = false; fill(fbox, fbTestView());
+  });
+  return h("div", { class: "more" }, [h("h3", { class: "small", text: "Facebook Marketplace (Apify)" }), h("div", { class: "fbt" }, [ti, zi, fbtn]),
+    h("p", { class: "hint", text: "Runs one search now around that ZIP and shows what comes back. It counts against today\u2019s Facebook budget (FB_DAY_USD, $1 unless set) and works while FB_LIVE is off." }), fbox]);
+}
+function fbTestView() {
+  const X = S.fbt;
+  if (!X) return null;
+  if (X.busy) return loading("Asking Apify to search Facebook Marketplace\u2026 this can take a minute.");
+  if (X.error && !X.items) return note("bad", "Facebook test failed. " + X.error);
+  const spent = "Cost about $" + (Number(X.cost) || 0).toFixed(4) + " (estimate $" + (Number(X.estimate) || 0).toFixed(4) + "). Today: $" + (Number(X.used) || 0).toFixed(4) + " of $" + (Number(X.cap) || 0).toFixed(2) + "." + (X.live ? "" : " FB_LIVE is off, so members get nothing yet.");
+  const head = h("h3", { class: "small", text: (X.capped ? "Today\u2019s Facebook budget is used up. " : X.ok ? X.count + " listing" + (X.count === 1 ? "" : "s") + " at " + fmtTime(new Date(X.at)) + ". " : "The search failed (" + (X.error || "no answer") + "). ") + spent });
+  if (!X.items || !X.items.length) return h("div", { class: "more" }, [head]);
+  return h("div", { class: "more" }, [head, tableOf([{ t: "Listing", cls: "wide" }, { t: "Price", num: 1 }, { t: "Town" }],
+    X.items.map(x => [x.url ? h("a", { href: x.url, target: "_blank", rel: "noopener noreferrer", text: x.title }) : x.title, x.price || "\u2014", x.city || "\u2014"]), "Facebook test results", true)]);
 }
 /* lastAt = when the latest test search ran (ms); older data only has the hour it last worked */
 function lastCheck(u) { const at = u.lastAt || u.lastOkAt; return at ? fmtWhen(at) : "\u2014"; }
@@ -902,6 +934,8 @@ function lateView() {
     h("span", { class: "muted", text: " due " + clock(m.slotHour) + (m.tz ? " " + m.tz.replace(/^.*\//, "").replace(/_/g, " ") + " time" : "") })]))),
     L.length > 12 ? h("p", { class: "hint", text: "and " + (L.length - 12) + " more on the Members tab (Late email)." }) : null];
 }
+/* v197: a pool kept in fractions of a dollar (the Facebook finds' Apify spend) */
+function poolUsd(v, per) { const d = (Number(v) || 0) / (Number(per) || 1); return "$" + (d > 0 && d < 0.01 ? d.toFixed(4) : d.toFixed(2)); }
 function aiCard(ov) {
   const P = pools(ov);
   if (!P) return card("ai", "AI usage today", null, note("warn", "AI usage could not be loaded right now."));
@@ -911,7 +945,7 @@ function aiCard(ov) {
     const bar = h("i");
     bar.style.width = (v > 0 ? Math.min(100, Math.max(1, v)) : 0) + "%";
     return h("li", [h("div", { class: "mh" }, [h("span", { text: p.name || p.key }), h("span", { class: "v" }, [
-      v >= 100 ? st("critical", "Full") : v >= 90 ? st("warning", "Nearly full") : null, num(p.used) + " of " + num(p.limit)])]),
+      v >= 100 ? st("critical", "Full") : v >= 90 ? st("warning", "Nearly full") : null, p.usd ? poolUsd(p.used, p.usd) + " of " + poolUsd(p.limit, p.usd) : num(p.used) + " of " + num(p.limit)])]),
       h("div", { class: "meter" + cls, role: "meter", "aria-valuemin": "0", "aria-valuemax": String(p.limit || 0), "aria-valuenow": String(Number(p.used) || 0), "aria-label": (p.name || p.key) + " used today" }, bar)]);
   })), "Daily limits reset at " + utcMidnight().time + " your time (midnight UTC).");
 }
@@ -1061,7 +1095,7 @@ async function setAff(p, btn) {
 
 /* ---------- Spending (v193): what Prowl's paid calls cost, estimated, plus the monthly bills ---------- */
 const SP_PER = [["today", "Today"], ["d7", "7 days"], ["month", "This month"], ["last", "Last month"]];
-const SP_UNIT = { call: "$ per 1,000 calls", tin: "$ per 1M input tokens", tout: "$ per 1M output tokens", ws: "$ per 1,000 web searches" };
+const SP_UNIT = { call: "$ per 1,000 calls", tin: "$ per 1M input tokens", tout: "$ per 1M output tokens", ws: "$ per 1,000 web searches", item: "$ per 1,000 listings" };   /* v197: item, Apify */
 async function loadSpend() {
   const box = $("#spbox"), seq = ++S.spSeq;
   if (!S.spData) fill(box, loading("Loading spending\u2026"));
@@ -1078,7 +1112,8 @@ function spCell(m, u) {
   const bits = [num(u.n) + (u.n === 1 ? " call" : " calls")];
   if (m.uses.indexOf("tin") >= 0 && (u.ti || u.to)) bits.push(kfmt(u.ti) + " in" + (m.uses.indexOf("tout") >= 0 ? " / " + kfmt(u.to) + " out" : "") + " tokens");
   if (m.uses.indexOf("ws") >= 0 && u.ws) bits.push(num(u.ws) + " web searches");
-  if (!u.n && !u.ti && !u.to && !u.ws) return h("span", { class: "muted", text: "\u2014" });
+  if (m.uses.indexOf("item") >= 0 && u.it) bits.push(num(u.it) + " listings");
+  if (!u.n && !u.ti && !u.to && !u.ws && !u.it) return h("span", { class: "muted", text: "\u2014" });
   return h("span", null, [h("b", { text: usd(u.cost) }), h("br"), h("span", { class: "muted small", text: bits.join(", ") })]);
 }
 function renderSpend(j) {

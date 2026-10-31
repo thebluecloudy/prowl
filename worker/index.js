@@ -19,6 +19,11 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v197: 2026-10-31. Facebook Marketplace finds again, through Apify (Matt: Apify, Pro members, a hard cap of $1 a day): never a
+ *         login or a cookie. The cron searches each Pro member's active hunts once a day around their ZIP's ~10 km cell
+ *         (fb2:<term>|<cell>, the week's finds, 8 days) while FB_LIVE is "on"; the alert email adds them as "facebook";
+ *         GET /fb-finds answers a signed-in Pro member (or the owner key) again; the admin's Facebook test runs one now.
+ *         FB_DAY_USD (default 1) caps the day's Apify spend (fbusd:all); worker/fb.js.
  *   v195: 2026-10-31. Muse's default prices in the Spending tab fitted to Matt's own Meta bill (Oct 24-30: $1.65 for 1.13M input,
  *         128k output, 114 web searches): $0.98 per 1M input (list $1.25, cached reads cheaper), $4.25 output, no separate
  *         search charge. v193's third-party $1.25 / $4.25 / $2.50 would have said $2.25 for that week.
@@ -657,6 +662,7 @@ import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
 import { SpendBuffer, spendOp, spendWrap } from "./spend.js";   /* v193 */
+import { FB_UNIT, FB_RUN_ITEMS, FB_TTL, FB_PER_RUN, FB_ZIP_TTL, FB_ZIP_MISS_TTL, FB_TRIES, fbLive, fbCapUnits, fbTerm, fbCell, fbKey, fbUnits, fbEstimate, fbMerge, fbRun } from "./fb.js";   /* v197 */
 import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb64u } from "./push.js";   /* v114 */
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
@@ -668,7 +674,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v195";
+const WORKER_VERSION = "v197";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4198,7 +4204,7 @@ const AL_SUB_PER_IP = 12;
 const AL_CONFIRM_PER_EMAIL = 3;
 const AL_TZ = "America/Detroit";
 const AL_SOURCES = ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark", "depop", "vinted", "grailed"];   /* v58: poshmark, v59: depop, v61: vinted, v66: grailed */
-const AL_SRC_NAME = { shopgoodwill: "ShopGoodwill", ebay: "eBay", etsy: "Etsy", chairish: "Chairish", poshmark: "Poshmark", depop: "Depop", vinted: "Vinted", grailed: "Grailed" };
+const AL_SRC_NAME = { shopgoodwill: "ShopGoodwill", ebay: "eBay", etsy: "Etsy", chairish: "Chairish", poshmark: "Poshmark", depop: "Depop", vinted: "Vinted", grailed: "Grailed", facebook: "Facebook Marketplace" };   /* v197: facebook */
 /* v50: the member's email settings, sub.prefs = { freq, sources, mute, max, skip, pause }.
    freq: "daily" (default), "mwf" (Mon/Wed/Fri) or "weekly" (Monday), Detroit days.
    sources: which of AL_SOURCES to search. mute: hunts kept in the list but left out
@@ -4656,7 +4662,7 @@ async function alSend(env, to, subject, html, text, unsub, attachments) {
    subrequests"). Alerts now use a lean eBay search (phrase, then plain words:
    2 calls at most), keep 10 listings per site and ask Jev once per hunt, so a
    hunt costs about 9 calls. Runs check ALERT_BATCH hunts (default 2). */
-const AL_PER_SITE = 10;
+const AL_PER_SITE = 10, AL_CALLS_PER_HUNT = 9;   /* v197: AL_CALLS_PER_HUNT, the outside calls a hunt costs, for the Facebook sweep's share */
 async function ebayLean(term, env, filter) {
   return ebayPhraseFirst(term, env, filter);   /* v79: same rule as the live strip */
 }
@@ -5308,7 +5314,9 @@ async function alCheck(env, sub, limit, now, only) {
   const seen = {}; seenArr.forEach(u => { seen[u] = 1; });
   const found = {}, newKeys = [], checked = [], carry = {};
   for (const h of todo) {
-    const all = await alHunt(env, h, sub), items = alExact(all, h);   /* v98: exact matches only, unless there are none */
+    let all = await alHunt(env, h, sub);
+    if (!only) { try { all = all.concat(alFilter(sub, await fbAlertItems(env, sub, h), true)); } catch (e) { console.error("fb alert", String(e && e.message || e)); } }   /* v197: the day's Facebook finds, cached; the member's price and skip-words apply */
+    const items = alExact(all, h);   /* v98: exact matches only, unless there are none */
     if (!only) {
       /* v50: remembered by URL and by title, so a relisted piece is not new again */
       const unseen = x => !seen[x.url] && !seen[alTitleKey(x)];
@@ -5695,6 +5703,14 @@ async function alTick(env) {
       if (r.sent) tally.sent++; else if (r.reason !== "nothing new") { tally.failed++; note("email not sent: " + (r.reason || r.error || "unknown")); }
     }
   }
+  /* v197: Facebook finds, with the outside calls this run has left (a hunt is about AL_CALLS_PER_HUNT, a Shopify check,
+     a Pounce judgement and an email one each) */
+  try {
+    const used = (tally.checked + AL_LETTERS_PER_RUN - lettersLeft) * AL_CALLS_PER_HUNT + (AL_PRO_REFRESH_PER_RUN - proLeft) + (POUNCE_PER_RUN - Math.max(0, PJ_RUN.left)) + tally.sent + tally.failed;
+    const fr = await fbSweep(env, subs.map(x => x.sub), FB_RUN_CALLS - used);
+    if (fr.calls) log.push("facebook: " + fr.swept + " of " + fr.calls + " swept");
+    fr.errors.forEach(note);
+  } catch (e) { note("facebook sweep failed: " + String(e && e.message || e)); }
   console.log(JSON.stringify({ alTick: now.day + " " + now.hour + "h", members: names.length, from: off, log: log }));   /* v51: visible in Workers Logs */
   /* v78: the admin overview's member counts (numbers only), worked out from the records this run already holds,
      so the dashboard does not read every member from KV each time it refreshes */
@@ -6760,6 +6776,7 @@ async function alStatus(request, env, url, origin) {
     price: "7.00", plan: pl, manageUrl: "https://www.owlandtwigvintage.com/account", prefs: alPrefs(sub), email: sub.email,
     moving: (await kvGet(env, "mvf:" + email, null) || {}).to || "",   /* v54 */
     quarries: (sub.quarries && typeof sub.quarries === "object") ? sub.quarries : {}, quarryMax: pounceMax(sub), quarryMatches: await kvGet(env, "gm:" + email, []),
+    fb: fbLive(env) && !!sub.pro,   /* v197: Facebook finds are on for this member */
     phone: sub.phone || "", wpush: pushReady(env) ? { key: String(env.VAPID_PUBLIC), n: (await pushList(env, await pushId(env, email))).length } : null }, 200, origin);   /* v114 */   /* v112 */
 }
 
@@ -6823,7 +6840,8 @@ const AI_POOLS = [
   { key: "grv:all", name: "Google place reviews (Near me)", limit: 300 },   /* v180: G_REVIEWS_PER_DAY */
   { key: "gpp:all", name: "Google place photos (Near me)", limit: 3000 },   /* v180: G_PHOTOS_PER_DAY */
   { key: "gsg:all", name: "Google place suggestions (typing a place)", limit: 2000 },   /* v180: G_SUGGEST_PER_DAY */
-  { key: "ggeo:all", name: "Google town lookups (Geocoding)", limit: 1000 }   /* v180: G_GEO_PER_DAY */
+  { key: "ggeo:all", name: "Google town lookups (Geocoding)", limit: 1000 },   /* v180: G_GEO_PER_DAY */
+  { key: "fbusd:all", name: "Facebook finds (Apify), $ today", limit: FB_UNIT, usd: FB_UNIT, limitVar: "FB_DAY_USD" }   /* v197: in 1/100,000 of a dollar; the limit follows FB_DAY_USD */
 ];
 function liveSources() { return ["shopgoodwill", "ebay", "etsy", "chairish", "poshmark"].concat(DEPOP_LIVE ? ["depop"] : [], ["vinted", "grailed", "salvation"]); }
 /* v91: a marketplace that says "slow down" (429, or Vinted's 403 block) cools down: nothing goes out to it until the
@@ -7204,7 +7222,8 @@ const ADMIN_H = {
   jevResultsMode, liveFetchLocal, alTitleKey,   /* v78: Diagnose follows what alerts really do */
   affLoad, AFF_PROGRAMS, AFF_KEY, AFF_IDS_KEY, affIdsClean, affReady,   /* v89: affiliate switches; v90: their IDs */
   cfReferrers,   /* v127: Visitors in the admin */
-  WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, AL_PEND_CAP, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE
+  WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, AL_PEND_CAP, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE,
+  fbTestRun   /* v197: the admin's Facebook test */
 };
 
 /* v78: speed, cache hits and errors per route, batched so most requests add no extra call. A server error is sent
@@ -7266,7 +7285,139 @@ export default {
 
 /* v94's Facebook Marketplace sweep (POST /fb-ingest, GET /fb-finds) was retired in v178: it ran through Matthew's own
    Facebook account, against the security and trust plan's "no session-cookie storage or replay of anyone's account".
-   Both paths now answer 410. Old fb:<term> entries expire on their own (8 days). */
+   /fb-ingest still answers 410. Old fb:<term> entries have expired (8 days).
+
+   ---------- v197: Facebook Marketplace finds through Apify ----------
+   Matt (2026-10-31): Apify, for Pro members, a hard cap of $1 a day. Never a login or a cookie (fb.js).
+     Area: a Pro member's local-pickup ZIP (prefs.zip), geocoded once (ggeo:all) and kept as its 0.1 degree cell in
+       fbz:<zip> for 90 days (a ZIP Google does not know, 7 days). Members nearby share one search; no ZIP, nothing.
+     Sweep: on the alert clock while FB_LIVE is "on", each Pro member's active hunts (alActive) once a day per hunt and
+       cell, at most FB_PER_RUN Apify calls a run and only with room in the run's outside calls. fb2:<term>|<cell> =
+       { updated, day, items } holds the week's finds (FB_TTL). fb2day:<UTC day> remembers what was swept or tried
+       (FB_TRIES), and that the cap was reached ("stop for the day"). A failed call keeps nothing new.
+     Cost: fbusd:all in the day's Caps (FB_UNIT, 1/100,000 of a dollar). Before a call, the estimate (maxItems at
+       $0.0005 + $0.00005) must fit under FB_DAY_USD (default 1); after it, the actual cost is added (a failed call at
+       the estimate). The admin's AI pools show it in dollars.
+     Delivery: alCheck adds a hunt's cached finds as source "facebook" (no outside call); GET /fb-finds?term= answers a
+       signed-in Pro member (store session, or X-Prowl-Email / X-Prowl-Tok) or the owner key (who may pass &zip=).
+     Owner test: the admin's Facebook test (admin.js apiFbTest) runs one call now for a term and a ZIP, cap counted,
+       FB_LIVE or not; nothing is kept. */
+const FB_RUN_CALLS = 50, FB_CALLS_EACH = 3, FB_GEO_PER_RUN = 2, FB_FINDS_PER_IP = 1000, FB_DAY_LIST_MAX = 2000;
+async function fbSpent() {
+  let j;
+  try { j = await capsCall(capsDay(), "peek", { keys: ["fbusd:all"] }); } catch (e) { console.error("caps", String(e && e.message || e)); return null; }   /* money: fail closed */
+  return Number(j && j.values && j.values["fbusd:all"]) || 0;
+}
+async function fbSpendAdd(units) {
+  for (let left = units; left > 0; left -= 10000) {   /* Caps "add" takes at most 10,000 at a time */
+    try { await capsCall(capsDay(), "add", { k: "fbusd:all", n: Math.min(10000, left) }); } catch (e) { console.error("caps", String(e && e.message || e)); return; }
+  }
+}
+/* one Apify call under the day's cap: { ok, items, raw, cost, used, cap } or { ok:false, capped | error } */
+async function fbCall(env, term, cell, n) {
+  const cap = fbCapUnits(env), est = fbUnits(fbEstimate(n)), used = await fbSpent();
+  if (used === null) return { ok: false, error: "the spend counter did not answer", used: 0, cap: cap };
+  if (used + est > cap) return { ok: false, capped: true, used: used, cap: cap };
+  const r = await fbRun(env, term, cell, n);
+  const units = r.ok ? fbUnits(r.cost) : fbUnits(r.cost || 0);
+  if (units) await fbSpendAdd(units);
+  return Object.assign(r, { units: units, used: used + units, cap: cap });
+}
+/* a ZIP's cell: kept 90 days (a miss 7); ask = Google may be asked (counted in ggeo:all), else KV only */
+async function fbArea(env, zip, ask) {
+  if (!/^\d{5}$/.test(String(zip || "")) || !env || !env.PROWL_ALERTS) return null;
+  const c = await kvGet(env, "fbz:" + zip, null);
+  if (c) return c.miss ? null : fbCell(c.lat, c.lng);
+  if (!ask || !gKey(env) || !(await vCount("ggeo:all", G_GEO_PER_DAY))) return null;
+  const j = await gFetch("https://maps.googleapis.com/maps/api/geocode/json?address=" + zip + "&components=country:US|postal_code:" + zip + "&region=us&key=" + encodeURIComponent(gKey(env)), { method: "GET" }, "", env);
+  if (!j) return null;   /* Google did not answer: nothing kept, asked again later */
+  let p = null;
+  for (const r of (Array.isArray(j.results) ? j.results : []).slice(0, 3)) { p = geoPlace(r); if (p) break; }
+  const cell = p ? fbCell(p.lat, p.lng) : null;
+  try { await env.PROWL_ALERTS.put("fbz:" + zip, JSON.stringify(cell ? { lat: cell.lat, lng: cell.lng } : { miss: 1 }), { expirationTtl: cell ? FB_ZIP_TTL : FB_ZIP_MISS_TTL }); } catch (e) {}
+  return cell;
+}
+/* the alert clock's part: room = outside calls the run has left. Returns { calls, swept, errors } */
+async function fbSweep(env, subs, room) {
+  const out = { calls: 0, swept: 0, errors: [] };
+  if (!fbLive(env) || !env || !env.PROWL_ALERTS || !env.APIFY_TOKEN) return out;
+  let left = Math.min(FB_PER_RUN, Math.floor(Math.max(0, room) / FB_CALLS_EACH));
+  if (left <= 0) return out;
+  const day = new Date().toISOString().slice(0, 10), dk = "fb2day:" + day;
+  const done = (await kvGet(env, dk, null)) || {};
+  if (done._cap) return out;
+  let geo = FB_GEO_PER_RUN, wrote = false;
+  const save = async () => { try { await env.PROWL_ALERTS.put(dk, JSON.stringify(done), { expirationTtl: 2 * 86400 }); } catch (e) {} };
+  for (const sub of Array.isArray(subs) ? subs : []) {
+    if (left <= 0) break;
+    if (!sub || !sub.pro || !Array.isArray(sub.hunts) || !sub.hunts.length) continue;
+    const zip = alPrefs(sub).zip;
+    if (!zip) continue;
+    const cached = await fbArea(env, zip, false);
+    const cell = cached || (geo > 0 ? (geo--, await fbArea(env, zip, true)) : null);
+    if (!cell) continue;
+    for (const h of alActive(env, sub)) {
+      if (left <= 0) break;
+      const term = fbTerm(h), k = term + "|" + cell.key;
+      if (!term || /@/.test(term) || done[k] === 1 || (done[k] || 0) <= -FB_TRIES) continue;
+      if (Object.keys(done).length >= FB_DAY_LIST_MAX) { left = 0; break; }
+      left--; out.calls++;
+      const r = await fbCall(env, term, cell, FB_RUN_ITEMS);
+      if (r.capped) { done._cap = 1; wrote = true; left = 0; break; }
+      if (!r.ok) { done[k] = (done[k] || 0) - 1; wrote = true; if (out.errors.length < 2) out.errors.push(scrubPII("facebook: " + String(r.error || "failed")).slice(0, 120)); continue; }
+      const old = await kvGet(env, fbKey(term, cell), null);
+      await env.PROWL_ALERTS.put(fbKey(term, cell), JSON.stringify(fbMerge(old, r.items, day)), { expirationTtl: FB_TTL });
+      done[k] = 1; wrote = true; out.swept++;
+      await save(); wrote = false;   /* a call can take a minute: what is done is kept at once */
+    }
+  }
+  if (wrote) await save();
+  return out;
+}
+/* alCheck's part: a Pro member's cached finds for one hunt, as listings (no outside call) */
+async function fbAlertItems(env, sub, h) {
+  if (!fbLive(env) || !sub || !sub.pro || !env.PROWL_ALERTS) return [];
+  const cell = await fbArea(env, alPrefs(sub).zip, false);
+  if (!cell) return [];
+  const v = await kvGet(env, fbKey(fbTerm(h), cell), null);
+  return (v && Array.isArray(v.items) ? v.items : []).filter(x => x && /^https:\/\/www\.facebook\.com\/marketplace\/item\/\d{5,20}\/$/.test(String(x.url || ""))).slice(0, AL_PER_SITE)
+    .map(x => ({ title: String(x.title || "").slice(0, 140), price: String(x.price || ""), url: x.url, image: /^https:\/\//.test(x.image || "") ? x.image : "", src: "facebook", time_left: "", bids: 0, dist: "" }));
+}
+/* GET /fb-finds?term=<hunt>[&zip=, owner only] -> { term, live, updated, items } or { nozip:true }. 401 signed out,
+   403 not Pro. Pro is decided here, never on the page. */
+async function fbFinds(request, env, url, origin) {
+  const hdr = { "Cache-Control": "private, no-store" }, owner = isOwner(request, env);
+  let sub = await sessMember(request, env);
+  if (!sub && env && env.PROWL_ALERTS) {
+    const email = alEmail(request.headers.get("X-Prowl-Email") || ""), t = String(request.headers.get("X-Prowl-Tok") || "");
+    const s = email && t ? await kvGet(env, "sub:" + email, null) : null;
+    if (s && alSame(t, s.tok)) sub = s;
+  }
+  if (!sub && !owner) return json({ error: "sign in" }, 401, origin, hdr);
+  if (!owner && !sub.pro) return json({ error: "Prowl Pro" }, 403, origin, hdr);
+  const term = fbTerm(url.searchParams.get("term"));
+  if (!term) return json({ error: "need term" }, 400, origin, hdr);
+  if (!owner && !(await vCount("fbf:" + ipKey(request.headers.get("CF-Connecting-IP")), FB_FINDS_PER_IP))) return json({ error: "slow down" }, 429, origin, hdr);
+  const oz = String(url.searchParams.get("zip") || ""), zip = owner && /^\d{5}$/.test(oz) ? oz : sub ? alPrefs(sub).zip : "", live = fbLive(env);
+  if (!zip) return json({ term: term, live: live, nozip: true, items: [] }, 200, origin, hdr);
+  const cell = await fbArea(env, zip, true);
+  const v = cell ? await kvGet(env, fbKey(term, cell), null) : null;
+  return json({ term: term, live: live, updated: v && v.updated ? String(v.updated) : "", items: v && Array.isArray(v.items) ? v.items : [] }, 200, origin, hdr);
+}
+/* the admin's Facebook test: one call now, cap counted, nothing kept. { ok, items, count, cost, used, cap } */
+async function fbTestRun(env, term, zip) {
+  term = fbTerm(term);
+  if (!term || /@/.test(term)) return { ok: false, error: "Type a hunt (no email addresses)." };
+  if (!/^\d{5}$/.test(String(zip || ""))) return { ok: false, error: "Type a 5-digit US ZIP." };
+  if (!env || !env.APIFY_TOKEN) return { ok: false, error: "APIFY_TOKEN is not set in Cloudflare." };
+  const cell = await fbArea(env, zip, true);
+  if (!cell) return { ok: false, error: "That ZIP could not be placed (or the Google lookups are at their daily limit)." };
+  const r = await fbCall(env, term, cell, FB_RUN_ITEMS);
+  const usd = (u) => Math.round(u) / FB_UNIT;
+  if (r.capped) return { ok: false, capped: true, error: "Today's Facebook budget is used up.", used: usd(r.used), cap: usd(r.cap) };
+  return { ok: !!r.ok, error: r.ok ? "" : scrubPII(String(r.error || "failed")).slice(0, 120), items: r.ok ? r.items : [], count: r.ok ? r.items.length : 0, raw: r.raw || 0,
+    cost: usd(r.units || 0), estimate: fbEstimate(FB_RUN_ITEMS), used: usd(r.used || 0), cap: usd(r.cap || fbCapUnits(env)), live: fbLive(env) };
+}
 
 /* ---------- v132: NEAR ME ----------
    The in-person prowl (the spec of 2026-10-20: NEAR ME section, Road Trip, Trip Finds). The logic is in trip.js (pure);
@@ -8213,7 +8364,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/item") {   /* v81: listing popup */
       return itemRoute(env, url, origin, request);
     }
-    if (url.pathname === "/fb-finds") return json({ error: "gone" }, 410, origin);   /* v178: the Facebook sweep is retired */
+    if (url.pathname === "/fb-finds" && request.method === "GET") return fbFinds(request, env, url, origin);   /* v197: Facebook finds through Apify (410 in v178-v196) */
     if (url.pathname === "/near" && request.method === "GET") return nearRoute(request, env, url, origin);   /* v132: Around You */
     if (url.pathname === "/trip" && request.method === "GET") return tripRoute(request, env, url, origin, ctx);   /* v132: Road Trip */
     if (url.pathname === "/geo" && request.method === "GET") return geoRoute(request, env, url, origin);   /* v157: In a location */
