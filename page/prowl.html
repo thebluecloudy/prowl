@@ -2781,6 +2781,35 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 .scout-app-wrapper .b:active{transform:scale(.97)}
 .scout-app-wrapper .pm-sw{margin:8px 0 0;font-size:13px;font-weight:600;color:var(--mu);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;animation:rise .3s ease-out}
 .scout-app-wrapper .pm-sw b{color:var(--ac)}
+/* v8.35: Send feedback (the sheet) */
+.scout-app-wrapper .fbk{display:flex;flex-direction:column;gap:8px}
+.scout-app-wrapper .fbk-sub{margin:0 0 4px;font-size:15px;color:var(--i2);line-height:1.5}
+.scout-app-wrapper .fbk-l{display:block;margin-top:6px;font-size:14px;font-weight:700;color:var(--ink)}
+.scout-app-wrapper .fbk-l i{font-style:normal;font-weight:500;color:var(--mu)}
+.scout-app-wrapper .fbk-stars{display:flex;gap:6px;margin-top:6px}
+.scout-app-wrapper .fbk-st{width:44px;height:44px;border-radius:12px;border:1px solid var(--l2);background:var(--cd);color:var(--l2);font-size:24px;line-height:1;cursor:pointer;padding:0}
+.scout-app-wrapper .fbk-st.on{color:#E0A100;border-color:#E0A100;background:var(--ac-soft)}
+.scout-app-wrapper .fbk-st:focus-visible{outline:none;box-shadow:0 0 0 3px var(--ac-ring)}
+.scout-app-wrapper .fbk textarea{width:100%;box-sizing:border-box;resize:vertical;min-height:84px;padding:11px 13px;border:1px solid var(--l2);border-radius:11px;background:var(--cd);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.5}
+.scout-app-wrapper .fbk textarea:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-ring)}
+.scout-app-wrapper .fbk-ck{display:flex;gap:10px;align-items:flex-start;margin-top:6px;font-size:14px;color:var(--i2);line-height:1.45;cursor:pointer}
+.scout-app-wrapper .fbk-ck{position:relative}
+.scout-app-wrapper .fbk-ck input{position:absolute;left:0;top:0;width:22px;height:22px;margin:0;opacity:0}
+.scout-app-wrapper .fbk-ck .cbx{position:relative;flex:0 0 22px;width:22px;height:22px;border:2px solid var(--l2);border-radius:6px;background:var(--cd);box-sizing:border-box}
+.scout-app-wrapper .fbk-ck .cbx:after{content:'';position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid var(--bg);border-width:0 2.5px 2.5px 0;transform:rotate(45deg);opacity:0}
+.scout-app-wrapper .fbk-ck input:checked+.cbx{background:var(--ac);border-color:var(--ac)}
+.scout-app-wrapper .fbk-ck input:checked+.cbx:after{opacity:1}
+.scout-app-wrapper .fbk-ck input:focus-visible+.cbx{outline:2px solid var(--ac);outline-offset:2px}
+.scout-app-wrapper .fbk-ck b{color:var(--ink);overflow-wrap:anywhere}
+.scout-app-wrapper .fbk-note,.scout-app-wrapper .fbk-fine{margin:4px 0 0;font-size:13px;color:var(--mu);line-height:1.5}
+.scout-app-wrapper .fbk-note a,.scout-app-wrapper .fbk-fine a{color:var(--ac)}
+.scout-app-wrapper .fbk-err{margin:4px 0 0;padding:9px 12px;border-radius:10px;background:var(--ac-tint);color:var(--ink);font-size:14px}
+.scout-app-wrapper .fbk-go{margin-top:8px;width:100%;min-height:48px;font-size:16px}
+.scout-app-wrapper .fbk-done{text-align:center;padding:10px 4px 6px}
+.scout-app-wrapper .fbk-ok{display:inline-flex;width:52px;height:52px;border-radius:50%;align-items:center;justify-content:center;background:var(--ac);color:var(--onink);font-size:26px}
+.scout-app-wrapper .fbk-done h3{margin:12px 0 4px;font-size:20px}
+.scout-app-wrapper .fbk-done p{margin:0 0 16px;color:var(--i2);font-size:15px}
+.scout-app-wrapper .fbk-done .b{min-width:140px}
 /* v6.89: Uranium only, a swarm of fireflies crosses the screen when a hunt starts */
 .pm-ff{position:fixed;left:0;width:5px;height:5px;margin:-2px;border-radius:50%;background:var(--u-ff);box-shadow:0 0 6px 2px var(--u-hi),0 0 14px 4px rgba(var(--u-rgb),.45);pointer-events:none;z-index:2147482990;opacity:0;animation:pmFF var(--t) cubic-bezier(.45,.1,.55,.9) var(--d) forwards}
 @keyframes pmFF{0%{opacity:0;transform:translate3d(-4vw,0,0)}10%{opacity:1}30%{opacity:.35;transform:translate3d(28vw,var(--y),0)}45%{opacity:1}60%{opacity:.5;transform:translate3d(60vw,calc(var(--y)*-1),0)}80%{opacity:1}100%{opacity:0;transform:translate3d(106vw,var(--y),0)}}
@@ -2927,7 +2956,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <p class="appnote" id="otp-appnote" hidden></p>
   </div>
 
-  <p class="copyr">Prowl © 2026 Owl &amp; Twig Vintage. All rights reserved. <span class="aff-say">Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</span> <a href="/policies/privacy-policy">Privacy</a> · <a href="/pages/contact">Contact</a></p>
+  <p class="copyr">Prowl © 2026 Owl &amp; Twig Vintage. All rights reserved. <span class="aff-say">Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</span> <a href="/policies/privacy-policy">Privacy</a> · <a href="/pages/contact">Contact</a> · <a href="?feedback=1" id="otp-fbkFoot" data-fbkopen="1">Send feedback</a></p>
 
 </main>
 <aside class="drawer" id="otp-photo" role="dialog" aria-modal="true" aria-labelledby="otp-photoT" hidden>
@@ -3844,6 +3873,13 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 </div>
         <button class="gh" id="otp-detailBtn" type="button">Swipe</button>
       </div>
+      <div class="setrow" id="otp-fbkRow">
+        <div>
+<h3>Send feedback</h3>
+<p>Tell us what you like and what is missing or broken. A person reads every note.</p>
+</div>
+        <button class="gh" id="otp-fbkBtn" type="button" data-fbkopen="1">Send feedback</button>
+      </div>
       <details class="set-more"><summary>More settings</summary>
       <div class="setrow">
         <div>
@@ -4149,7 +4185,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.34';
+var PROWL_VERSION='v8.35';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -10919,6 +10955,76 @@ try{if(/[?&]daily=1(&|$)/.test(location.search)){
     if((mGet('alertTok')&&!MAIL.ready||MAIL.busy)&&dTries<12){setTimeout(dGo,400);return}   /* v8.10: or a link still signing in */
     var db=document.querySelector('.scout-app-wrapper .db[data-m=daily]');if(db)db.click();
   },900);
+} }catch(e){}
+/* v8.35: Send feedback (Matt, 2026-10-31: "i would like to see it in the admin"). Den > Settings > Send feedback, the link
+   at the foot of the page and ?feedback=1 (the update email's button) open a short sheet: a rating (optional), what you
+   like, what is missing or broken (1000 characters each) and, signed in to Prowl Alerts, "OK to email me back". POST
+   /feedback with the member's headers (nrH), so the worker knows the plan; nothing is kept on this device. */
+var FBK={busy:false,r:0};
+function fbkSigned(){return !!(mGet('alertEmail')&&mGet('alertTok'))}
+function fbkHtml(){
+  var em=mGet('alertEmail'),i,st='';
+  for(i=1;i<=5;i++)st+='<button type="button" class="fbk-st" data-fbkr="'+i+'" aria-pressed="false" aria-label="'+i+' out of 5">★</button>';
+  return '<form class="fbk" id="otp-fbk" novalidate>'+
+    '<p class="fbk-sub">What works for you, and what doesn’t? A person at Owl &amp; Twig reads every note.</p>'+
+    '<div class="fbk-rate" role="group" aria-labelledby="otp-fbkRl"><span class="fbk-l" id="otp-fbkRl">How is Prowl for you? <i>(optional)</i></span><div class="fbk-stars">'+st+'</div></div>'+
+    '<label class="fbk-l" for="otp-fbkLike">What do you like?</label><textarea id="otp-fbkLike" rows="3" maxlength="1000"></textarea>'+
+    '<label class="fbk-l" for="otp-fbkMiss">What’s missing or broken?</label><textarea id="otp-fbkMiss" rows="3" maxlength="1000"></textarea>'+
+    (fbkSigned()?'<label class="fbk-ck"><input type="checkbox" id="otp-fbkReply"><span class="cbx" aria-hidden="true"></span><span>OK to email me back at <b>'+esc(em)+'</b></span></label>':
+      '<p class="fbk-note">Sent without your name or email. Want a reply? Sign in to Prowl Alerts in Den › Settings first, or write to <a href="mailto:hello@owlandtwigvintage.com">hello@owlandtwigvintage.com</a>.</p>')+
+    '<p class="fbk-err" id="otp-fbkErr" role="alert" hidden></p>'+
+    '<button class="b p fbk-go" id="otp-fbkGo" type="submit">Send feedback</button>'+
+    '<p class="fbk-fine">Kept for 180 days. Your email address is kept only if you tick the box above. <a href="/policies/privacy-policy">Privacy</a></p>'+
+  '</form>';
+}
+function fbkOpen(){FBK.r=0;FBK.busy=false;openSheet('Send feedback',fbkHtml());var b=$('#otp-sheetB');if(b)b.scrollTop=0}
+function fbkPaint(){var s=$$('#otp-fbk .fbk-st'),i,n;for(i=0;i<s.length;i++){n=Number(s[i].getAttribute('data-fbkr'));s[i].classList.toggle('on',n<=FBK.r);s[i].setAttribute('aria-pressed',n===FBK.r?'true':'false')}}
+function fbkErr(t){var e=$('#otp-fbkErr');if(!e)return;e.textContent=t||'';e.hidden=!t}
+function fbkSend(){
+  if(FBK.busy)return;
+  var like=($('#otp-fbkLike')||{}).value||'',miss=($('#otp-fbkMiss')||{}).value||'',rp=$('#otp-fbkReply'),go=$('#otp-fbkGo');
+  like=String(like).replace(/^\s+|\s+$/g,'');miss=String(miss).replace(/^\s+|\s+$/g,'');
+  if(!FBK.r&&!like&&!miss){fbkErr('Pick a rating or write a line first.');return}
+  fbkErr('');FBK.busy=true;if(go){go.disabled=true;go.textContent='Sending…'}
+  var h=nrH();h['Content-Type']='application/json';
+  var reply=!!(rp&&rp.checked&&fbkSigned());
+  fetch(SGW_API+'feedback',{method:'POST',headers:h,cache:'no-store',body:JSON.stringify({rating:FBK.r,like:like.slice(0,1000),miss:miss.slice(0,1000),reply:reply,v:PROWL_VERSION})}).then(function(r){
+    return r.json().then(function(j){return {ok:r.ok,status:r.status,j:j}},function(){return {ok:false,status:r.status,j:null}});
+  }).then(function(x){
+    FBK.busy=false;
+    if(!$('#otp-fbk'))return;
+    if(x.ok&&x.j&&x.j.ok){
+      var b=$('#otp-sheetB');if(!b)return;
+      b.innerHTML='<div class="fbk-done" role="status"><b class="fbk-ok" aria-hidden="true">✓</b><h3>Thank you!</h3><p>'+(x.j.reply?'Got it. We’ll write back to <b>'+esc(mGet('alertEmail'))+'</b>.':'Got it. Every note helps us decide what to build next.')+'</p><button type="button" class="b p" data-fbkx="1">Close</button></div>';
+      var c=b.querySelector('[data-fbkx]');if(c)try{c.focus()}catch(e){}
+      return;
+    }
+    if(go){go.disabled=false;go.textContent='Send feedback'}
+    fbkErr(x.status===429?((x.j&&x.j.error)||'That is a lot of feedback for one day. Try again tomorrow.'):x.status===400||x.status===413?((x.j&&x.j.error)||'Something in that could not be sent. Shorten it and try again.'):'Prowl could not save that just now. Try again in a minute; your note is still here.');
+  })['catch'](function(){
+    FBK.busy=false;if(go){go.disabled=false;go.textContent='Send feedback'}
+    fbkErr('Prowl could not be reached. Check your connection and try again; your note is still here.');
+  });
+}
+document.addEventListener('click',function(e){
+  var t=e.target&&e.target.closest?e.target:null;if(!t)return;
+  var o=t.closest('[data-fbkopen]');if(o){e.preventDefault();fbkOpen();return}
+  var s=t.closest('#otp-fbk [data-fbkr]');if(s){var n=Number(s.getAttribute('data-fbkr'))||0;FBK.r=FBK.r===n?0:n;fbkPaint();return}
+  if(t.closest('[data-fbkx]')){closeSheet();return}
+});
+document.addEventListener('submit',function(e){if(e.target&&e.target.id==='otp-fbk'){e.preventDefault();fbkSend()}});
+/* ?feedback=1 (the update email's Tell us what you think) opens it, after a sign-in from the link has had its moment */
+try{if(/[?&]feedback=1(&|$)/.test(location.search)){
+  try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])feedback=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
+  var fbkTries=0;setTimeout(function fbkGo(){fbkTries++;
+    if((mGet('alertTok')&&!MAIL.ready||MAIL.busy||/[#&]k=/.test(location.hash))&&fbkTries<12){setTimeout(fbkGo,400);return}
+    fbkOpen();
+  },900);
+} }catch(e){}
+/* ?store=1 (the update email's Store tab line) opens the Store tab */
+try{if(/[?&]store=1(&|$)/.test(location.search)){
+  try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])store=1(&|$)/,function(m,a,b){return b?a:''}).replace(/[?&]$/,'')+location.hash)}catch(e){}
+  setTimeout(function(){var sb=document.querySelector('.scout-app-wrapper .db[data-m=store]');if(sb)sb.click()},700);
 } }catch(e){}
 /* v5.93: ?photo=1 opens the Photo check screen */
 try{if(/[?&]photo=1(&|$)/.test(location.search)){

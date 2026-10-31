@@ -27,7 +27,7 @@ test('the footer links Privacy and Contact next to the affiliate line', async ()
   await tick(30);
   const c = p.$('.copyr');
   assert.match(c.textContent, /small commission/);
-  assert.deepEqual([...c.querySelectorAll('a')].map((a) => [a.textContent, a.getAttribute('href')]), [['Privacy', '/policies/privacy-policy'], ['Contact', '/pages/contact']]);
+  assert.deepEqual([...c.querySelectorAll('a')].map((a) => [a.textContent, a.getAttribute('href')]), [['Privacy', '/policies/privacy-policy'], ['Contact', '/pages/contact'], ['Send feedback', '?feedback=1']]);   // v8.35: Send feedback
   await p.close();
 });
 
