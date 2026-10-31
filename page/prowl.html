@@ -838,6 +838,17 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .st-q .b{min-height:44px}
 .scout-app-wrapper .st-fb{margin:0 18px 14px}
 .scout-app-wrapper .st-fb h3.sgw-fbh{margin:0}
+.scout-app-wrapper .fb-rest{border-top:1px solid var(--ln);margin:16px 15px 0;padding-top:6px}
+.scout-app-wrapper .fb-rest>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;min-height:44px;font-size:15px;font-weight:700;color:var(--ac)}
+.scout-app-wrapper .fb-rest>summary::-webkit-details-marker{display:none}
+.scout-app-wrapper .fb-rest>summary::after{content:'\203A';font-size:18px;margin-left:auto;transition:transform .2s}
+.scout-app-wrapper .fb-rest[open]>summary::after{transform:rotate(90deg)}
+.scout-app-wrapper .fb-rl{list-style:none;margin:0 0 8px;padding:0}
+.scout-app-wrapper .fb-rl li{display:flex;flex-direction:column;gap:2px;padding:9px 0;border-top:1px solid var(--ln);min-width:0}
+.scout-app-wrapper .fb-rl b{font-size:15px;color:var(--ink);overflow-wrap:anywhere}
+.scout-app-wrapper .fb-rl span{font-size:13px;color:var(--mu);line-height:1.45}
+.scout-app-wrapper .fb-rl i{font-style:normal;opacity:.8;white-space:nowrap}
+.scout-app-wrapper .fb-rest .sgw-note{padding:0 0 8px}
 .scout-app-wrapper .sgw-fbm{display:inline-flex;gap:4px;margin-left:8px;flex-wrap:wrap}
 .scout-app-wrapper .sgw-fbm-b{min-height:32px;padding:0 10px;border:1px solid var(--l2);border-radius:999px;background:var(--cd);color:var(--i2);font-size:13px;font-weight:700;cursor:pointer}
 .scout-app-wrapper .sgw-fbm-b[aria-pressed=true]{background:var(--ac);border-color:var(--ac);color:#fff}
@@ -4088,7 +4099,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.30';
+var PROWL_VERSION='v8.31';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -5257,20 +5268,48 @@ function fbAllFetch(){
 }
 function fbAllDraw(){
   var el=$('#otp-fbAll');if(!el)return;
-  var j=FBS.all,h='',i,x,w,a;
+  var j=FBS.all,h='',i,x,w,a,it,got=[],none=[],soon=[],r;
   if(FBS.err&&!j){el.innerHTML='<p class="sgw-note">'+esc(FBS.err)+'</p>';return}
-  if(!j){el.innerHTML='<p class="sgw-note">Loading your hunts on Facebook\u2026</p>';return}
-  if(j.nozip)h+='<p class="sgw-note">Add your local-pickup ZIP in Den \u203a Settings (Prowl Alerts, Only what fits) and Prowl looks for your hunts on Facebook Marketplace near you every day.</p>';
+  if(!j){el.innerHTML='<p class="sgw-note">Loading your hunts on Facebook…</p>';return}
+  if(j.nozip)h+='<p class="sgw-note">Add your local-pickup ZIP in Den › Settings (Prowl Alerts, Only what fits) and Prowl looks for your hunts on Facebook Marketplace near you every day.</p>';
   a=Array.isArray(j.hunts)?j.hunts:[];
+  /* v8.31 (worker v204, Matt: most rows said "Checks soon" or nothing): hunts with finds first, newest first; the rest
+     fold into one line that opens to each hunt's reason */
   for(i=0;i<a.length&&i<100;i++){
     x=a[i]||{};if(typeof x.term!=='string'||!x.term)continue;
-    w=x.pending&&!x.updated?'Checks soon':fbWhen(x.updated);
-    var it=fbClean(x.items).slice(0,12);
-    h+='<div class="sgw-sub"><h3 class="sgw-fbh">'+esc(x.term)+'</h3>'+(w?'<span class="sgw-upd">'+esc(w)+'</span>':'')+'</div>'+
-      (it.length?fbGrid(it):(x.pending&&!x.updated)?'':'<p class="sgw-note">Nothing on Facebook for this hunt lately.</p>');
+    it=fbClean(x.items).slice(0,12);
+    if(it.length)got.push({x:x,it:it,t:Date.parse(x.updated||'')||0,i:i});
+    else if(x.pending&&!x.updated)soon.push(x);
+    else none.push(x);
+  }
+  got.sort(function(p,q){return q.t-p.t||p.i-q.i});
+  for(i=0;i<got.length;i++){
+    x=got[i].x;w=fbWhen(x.updated);
+    h+='<div class="sgw-sub"><h3 class="sgw-fbh">'+esc(x.term)+'</h3>'+(w?'<span class="sgw-upd">'+esc(w)+'</span>':'')+'</div>'+fbGrid(got[i].it);
+  }
+  if(none.length||soon.length){
+    var sm=[],li='';
+    if(none.length)sm.push(none.length+' hunt'+(none.length===1?'':'s')+' with nothing yet');
+    if(soon.length)sm.push(soon.length+(none.length?'':' hunt'+(soon.length===1?'':'s'))+' checking soon');
+    for(i=0;i<none.length;i++){x=none[i];r=fbWhyTxt(x.term,x.why,x.usa)||'Nothing on Facebook for this hunt lately.';w=fbWhen(x.updated);
+      li+='<li><b>'+esc(x.term)+'</b><span>'+esc(r)+(w?' <i>'+esc(w)+'</i>':'')+'</span></li>'}
+    for(i=0;i<soon.length;i++)li+='<li><b>'+esc(soon[i].term)+'</b><span>Checks soon</span></li>';
+    h+='<details class="fb-rest"'+(got.length?'':' open')+'><summary>'+esc(sm.join(' · '))+'</summary><ul class="fb-rl">'+li+'</ul>'+
+      (soon.length?'<p class="sgw-note">Each day Prowl searches Facebook for up to 10 of your hunts, in turn.</p>':'')+'</details>';
   }
   if(!a.length&&!j.nozip)h+='<p class="sgw-note">No hunts to show on Facebook yet. Keep a few hunts and Prowl searches Facebook for them every day.</p>';
   el.innerHTML=h;
+}
+/* v8.31 (worker v204): why a searched hunt shows nothing, from the worker's counts {raw, far, words, mi}: '' when there
+   are none (a search from before v204) or they do not say */
+function fbWhyTxt(t,y,usa){
+  if(!y||typeof y!=='object')return '';
+  var n=function(v){v=Math.floor(Number(v));return isFinite(v)&&v>0?v:0},raw=n(y.raw),far=n(y.far),wd=n(y.words),mi=usa?500:n(y.mi)||50,p=[];
+  if(!raw)return 'Facebook had nothing for “'+t+'” near you this week.';
+  if(far>=raw)return 'Facebook had '+raw+', none within '+mi+' mi.';
+  if(wd>=raw)return 'Facebook had '+raw+', none with all your words. Try fewer words.';
+  if(far)p.push(far+' too far');if(wd)p.push(wd+' without all your words');
+  return p.length?'Facebook had '+raw+': '+p.join(', ')+'.':'';
 }
 function fbOneGo(t){
   if(typeof fetch!=='function'||FBS.one==='busy')return;
@@ -7086,7 +7125,7 @@ function fbFetch(t){
   FB.busy[k]=1;
   fetch(SGW_API+'fb-finds?term='+encodeURIComponent(k),{headers:nrH(),cache:'no-store'}).then(function(r){
     if(r.status===401||r.status===403)return {swept:false};
-    return r.ok?r.json().then(function(j){j=j||{};return {swept:!!j.updated,nozip:!!(j.nozip&&j.live),pending:!!j.pending&&!j.updated,items:fbClean(j.items),updated:typeof j.updated==='string'?j.updated:''}}):null;
+    return r.ok?r.json().then(function(j){j=j||{};return {swept:!!j.updated,nozip:!!(j.nozip&&j.live),pending:!!j.pending&&!j.updated,items:fbClean(j.items),updated:typeof j.updated==='string'?j.updated:'',why:j.why&&typeof j.why==='object'?j.why:null,usa:j.usa===true}}):null;
   }).then(function(v){
     FB.busy[k]=0;
     if(!v){fbKeep(k);return}
@@ -7118,11 +7157,12 @@ function fbBlock(t){
   var w=fbWhen(c.updated),head='<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span>'+(w?'<span class="sgw-upd">'+esc(w)+'</span>':'')+fbMode(t)+'</div>'+fbSaved(t);
   var sday=String(c.updated||'').slice(0,10),fresh=0,rows='',i;
   for(i=0;i<c.items.length;i++){if(c.items[i].found===sday)fresh++;rows+=sgwCard(c.items[i],t)}
-  var note=fresh?'':'<p class="sgw-note">Nothing new on Facebook for this hunt '+(dd===0?'today':dd===1?'yesterday':'lately')+(rows?'. Earlier this week:':'.')+'</p>';
+  var why=rows?'':fbWhyTxt(t,c.why,c.usa);   /* v8.31: an empty strip says why */
+  var note=fresh?'':'<p class="sgw-note">'+(why?esc(why):'Nothing new on Facebook for this hunt '+(dd===0?'today':dd===1?'yesterday':'lately')+(rows?'. Earlier this week:':'.'))+'</p>';
   return head+note+(rows?'<div class="sgw-grid">'+rows+'</div>':'');
 }
-/* v8.27 (worker v203): a Pro member picks, per hunt, where Facebook looks: near their ZIP (the local-pickup radius plus
-   listings that ship) or all of the USA (prefs().fbusa, lowercased hunt names, saved with the other email prefs). It
+/* v8.27 (worker v203): a Pro member picks, per hunt, where Facebook looks: near their ZIP (the local-pickup radius;
+   v8.31 / worker v204: pickup only) or all of the USA plus listings that ship (prefs().fbusa, lowercased hunt names, saved with the other email prefs). It
    takes effect from that hunt's next Facebook turn, so nothing is fetched again. The owner key alone gets no control. */
 function fbUsa(t){return prefs().fbusa.indexOf(String(t||'').toLowerCase())!==-1}
 function fbMode(t){

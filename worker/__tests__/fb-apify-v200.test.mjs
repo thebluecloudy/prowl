@@ -31,7 +31,7 @@ const alPrefsT = (s) => ({ zip: (s && s.prefs && s.prefs.zip) || "", radius: (s 
 function fbParts(alActive = (env, s) => s.hunts.slice(0, s.pro ? 100 : 3)) {
   const fbOf = build("fbOf", { alPrefs: alPrefsT, fbMi: FB.fbMi });
   const fbHuntMi = build("fbHuntMi", { FB_USA_MI: FB.FB_USA_MI });
-  const fbHunt = build("fbHunt", { fbHuntMi, kvGet, fbPickKey: FB.fbPickKey, fbShipKey: FB.fbShipKey, fbJoin: FB.fbJoin, FB_USA_MI: FB.FB_USA_MI });
+  const fbHunt = build("fbHunt", { fbHuntMi, kvGet, fbPickKey: FB.fbPickKey, fbShipKey: FB.fbShipKey, fbJoin: FB.fbJoin, fbWhy: FB.fbWhy, FB_USA_MI: FB.FB_USA_MI });
   const fbTerms = build("fbTerms", { alActive, fbTerm: FB.fbTerm });
   return { fbOf, fbHuntMi, fbHunt, fbTerms };
 }
@@ -268,7 +268,7 @@ function sweepHarness({ live = "on", subs, done = null, call, area, counts = new
   const fbSweep = build("fbSweep", {
     fbLive: FB.fbLive, kvGet, FB_PER_RUN: FB.FB_PER_RUN, FB_CALLS_EACH: 4, FB_GEO_CALLS: 2, FB_GEO_PER_RUN: 2,
     fbTry: async (k) => { const n = (tries.get(k) || 0) + 1; if (n > FB.FB_TRIES) return 0; tries.set(k, n); return n; }, FB_TRIES: FB.FB_TRIES, FB_DAY_LIST_MAX: 2000, FB_RUN_ITEMS: FB.FB_RUN_ITEMS, FB_TTL: FB.FB_TTL,
-    fbOf: P.fbOf, fbTerms: P.fbTerms, fbHuntMi: P.fbHuntMi, fbPickKey: FB.fbPickKey, fbShipKey: FB.fbShipKey, FB_MEMBER_DAY: FB.FB_MEMBER_DAY,
+    fbOf: P.fbOf, fbTerms: P.fbTerms, fbHuntMi: P.fbHuntMi, fbPickKey: FB.fbPickKey, fbShipKey: FB.fbShipKey, FB_MEMBER_DAY: FB.FB_MEMBER_DAY, FB_USA_MI: FB.FB_USA_MI,
     ctrName: async (n) => n,
     vCount: async (n, lim) => { const c = counts.get(n) || 0; if (c >= lim) return false; counts.set(n, c + 1); return true; },
     fbGive: async (n) => { counts.set(n, Math.max(0, (counts.get(n) || 0) - 1)); },
@@ -287,21 +287,21 @@ test("the sweep: at most 2 Apify calls a run, once a day per hunt and cell (neig
   const S = sweepHarness({ subs });
   let r = await S.fbSweep(S.env, subs, 50);
   assert.equal(r.calls, 2);
-  assert.deepEqual(S.calls, ["pyrex butterprint|42.5,-83.5|50", "pyrex butterprint|42.5,-83.5|ship"], "v203: a hunt is a pickup search and a shipping one");
+  assert.deepEqual(S.calls, ["pyrex butterprint|42.5,-83.5|50", "fire-king jadeite|42.5,-83.5|50"], "v204: a near-me hunt is one search, pickup only");
   const kept = S.kv.json("fb3:pyrex butterprint|42.5,-83.5|50");
   assert.equal(kept.items[0].id, "123456");
   assert.equal(S.kv.ttl.get("fb3:pyrex butterprint|42.5,-83.5|50"), 8 * 86400);
-  assert.equal(S.kv.json("fb3s:pyrex butterprint").items[0].id, "123456");
+  assert.equal(S.kv.json("fb3s:pyrex butterprint"), null, "v204: no shipping search for a near-me hunt");
   await S.fbSweep(S.env, subs, 50);
   await S.fbSweep(S.env, subs, 50);
   r = await S.fbSweep(S.env, subs, 50);
-  assert.deepEqual(S.calls.slice(2), ["fire-king jadeite|42.5,-83.5|50", "fire-king jadeite|42.5,-83.5|ship", "hull vase|42.5,-83.5|50", "hull vase|42.5,-83.5|ship", "pyrex butterprint|40.8,-74|50"],
-    "the neighbour's same hunt is not searched again, the far member's shipping search is shared; the free member and the ZIP-less one never");
+  assert.deepEqual(S.calls.slice(2), ["hull vase|42.5,-83.5|50", "pyrex butterprint|40.8,-74|50"],
+    "the neighbour's same hunt is not searched again; the free member and the ZIP-less one never");
   r = await S.fbSweep(S.env, subs, 50);
   assert.equal(r.calls, 0, "everything swept today");
   assert.equal(S.counts.get("fbm:" + subs[1].email) || 0, 0, "a job done by another member is free");
   assert.equal(S.counts.get("fbm:" + subs[4].email), 1);
-  assert.equal(S.counts.get("fbm:" + subs[0].email), 6);
+  assert.equal(S.counts.get("fbm:" + subs[0].email), 3);
   assert.equal((await S.fbSweep(S.env, subs, 3)).calls, 0, "no room left in the run's outside calls");
 });
 
@@ -319,7 +319,7 @@ test("the sweep's geocoding counts in the run's outside calls: room 6 with a new
 
 test("a try is taken before the call: a run killed mid-call is not retried uncounted, and two overlapping runs share FB_TRIES", async () => {
   const subs = [pro("48375", ["Pyrex"])], pk = "p|pyrex|42.5,-83.5|50";
-  const S = sweepHarness({ subs, call: (term, opt) => (opt.ship ? { ok: true, items: [], raw: 0, cost: 0 } : new Promise(() => {})) });   /* the pickup search never answers: the run is killed */
+  const S = sweepHarness({ subs, call: () => new Promise(() => {}) });   /* the pickup search never answers: the run is killed */
   S.fbSweep(S.env, subs, 50);
   await new Promise((r) => setTimeout(r, 0));
   assert.equal(S.tries.get(pk), 1, "the try was taken before Apify was asked");
@@ -327,10 +327,10 @@ test("a try is taken before the call: a run killed mid-call is not retried uncou
   await new Promise((r) => setTimeout(r, 0));
   assert.equal(S.calls.length, 2);
   const r = await S.fbSweep(S.env, subs, 50);
-  assert.deepEqual(S.calls.filter((c) => !/ship$/.test(c)).length, 2, "both tries used: no third pickup call, however many runs");
-  assert.equal(r.calls, 1, "only the shipping search");
+  assert.deepEqual(S.calls.length, 2, "both tries used: no third pickup call, however many runs");
+  assert.equal(r.calls, 0, "v204: a near-me hunt has no shipping search");
   assert.equal(S.kv.json("fb3day:" + TODAY)[pk], -2, "and the day's list remembers it");
-  assert.equal(S.counts.get("fbm:" + subs[0].email), 3, "a job refused its try gives the member's search back (2 killed + 1 ship)");
+  assert.equal(S.counts.get("fbm:" + subs[0].email), 2, "a job refused its try gives the member's search back (2 killed)");
 });
 
 test("FB_LIVE off (or no token) does nothing at all", async () => {
@@ -361,7 +361,7 @@ test("the cap stops the sweep for the day; a failure keeps nothing, is noted qui
   assert.equal(S.kv.json("fb3:pyrex|42.5,-83.5|50"), null, "no empty cache on a failure");
   assert.equal(S.kv.json("fb3s:pyrex"), null);
   for (let i = 0; i < 4; i++) await S.fbSweep(S.env, subs, 50);
-  assert.equal(S.calls.length, 8, "each of the 4 jobs tried twice, then left for tomorrow");
+  assert.equal(S.calls.length, 4, "each of the 2 jobs (v204: pickup only, near me) tried twice, then left for tomorrow");
 });
 
 test("the alert clock runs the sweep with what is left of the run's outside calls", () => {

@@ -42,7 +42,7 @@ const alPrefsT = (s) => ({ zip: (s && s.prefs && s.prefs.zip) || "", radius: (s 
 function parts() {
   const fbOf = build("fbOf", { alPrefs: alPrefsT, fbMi: FB.fbMi });
   const fbHuntMi = build("fbHuntMi", { FB_USA_MI: FB.FB_USA_MI });
-  const fbHunt = build("fbHunt", { fbHuntMi, kvGet, fbPickKey: FB.fbPickKey, fbShipKey: FB.fbShipKey, fbJoin: FB.fbJoin, FB_USA_MI: FB.FB_USA_MI });
+  const fbHunt = build("fbHunt", { fbHuntMi, kvGet, fbPickKey: FB.fbPickKey, fbShipKey: FB.fbShipKey, fbJoin: FB.fbJoin, fbWhy: FB.fbWhy, FB_USA_MI: FB.FB_USA_MI });
   const fbTerms = build("fbTerms", { alActive: (env, s) => s.hunts.slice(0, 100), fbTerm: FB.fbTerm });
   return { fbOf, fbHuntMi, fbHunt, fbTerms };
 }
@@ -134,7 +134,7 @@ function sweep({ kv = new FakeKV(), C = caps(), tries = new Map(), call } = {}) 
     fbLive: FB.fbLive, kvGet, FB_PER_RUN: FB.FB_PER_RUN, FB_CALLS_EACH: 4, FB_GEO_CALLS: 2, FB_GEO_PER_RUN: 2,
     fbTry: async (k) => { const n = (tries.get(k) || 0) + 1; if (n > FB.FB_TRIES) return 0; tries.set(k, n); return n; }, FB_TRIES: FB.FB_TRIES, FB_DAY_LIST_MAX: 2000,
     FB_RUN_ITEMS: FB.FB_RUN_ITEMS, FB_TTL: FB.FB_TTL, fbOf: P.fbOf, fbTerms: P.fbTerms, fbHuntMi: P.fbHuntMi, fbPickKey: FB.fbPickKey, fbShipKey: FB.fbShipKey,
-    FB_MEMBER_DAY: FB.FB_MEMBER_DAY, ctrName: async (n) => n, vCount: C.vCount, fbGive: C.fbGive,
+    FB_MEMBER_DAY: FB.FB_MEMBER_DAY, FB_USA_MI: FB.FB_USA_MI, ctrName: async (n) => n, vCount: C.vCount, fbGive: C.fbGive,
     fbArea: async (env, zip) => (zip === "48375" || zip === "48377" ? CELL : zip === "10001" ? FB.fbCell(40.75, -74.0) : null),
     fbMerge: FB.fbMerge, scrubPII: (s) => String(s),
     fbCall: async (env, term, cell, n, opt) => { calls.push(term + "|" + cell.key + "|" + (opt.ship ? "ship" : opt.mi)); return call ? call(term, opt) : { ok: true, items: [{ id: "123456", title: term, found: TODAY }], raw: 1, cost: 0.00055 }; },
@@ -151,43 +151,47 @@ test("30 hunts: at most 10 counted searches a day however many runs, and the nex
   for (let i = 0; i < 12; i++) await S.run([sub]);
   assert.equal(S.calls.length, 10, "10 a day");
   assert.equal(S.C.m.get("fbm:m@example.com"), 10);
-  assert.deepEqual([...new Set(S.calls.map((c) => c.split("|")[0]))], ["hunt00", "hunt01", "hunt02", "hunt03", "hunt04"], "in turn, pickup and shipping each");
-  assert.deepEqual(S.kv.json("fbrot:m@example.com"), { i: 5 });
+  assert.deepEqual(S.calls.map((c) => c.split("|")[0]), H30.slice(0, 10), "in turn; v204: a near-me hunt is one (pickup) search, so 10 hunts a day");
+  assert.ok(S.calls.every((c) => /\|50$/.test(c)), "no shipping search for a near-me hunt");
+  assert.deepEqual(S.kv.json("fbrot:m@example.com"), { i: 10 });
   nextDay(S);
   for (let i = 0; i < 12; i++) await S.run([sub]);
-  assert.deepEqual([...new Set(S.calls.map((c) => c.split("|")[0]))], ["hunt05", "hunt06", "hunt07", "hunt08", "hunt09"], "resumed where it stopped");
-  assert.deepEqual(S.kv.json("fbrot:m@example.com"), { i: 10 });
-  for (let d = 0; d < 5; d++) { nextDay(S); for (let i = 0; i < 6; i++) await S.run([sub]); }
-  assert.deepEqual(S.calls.slice(0, 2), ["hunt00|42.5,-83.5|50", "hunt00|42.5,-83.5|ship"], "after the last hunt, round to the first");
+  assert.deepEqual(S.calls.map((c) => c.split("|")[0]), H30.slice(10, 20), "resumed where it stopped");
+  assert.deepEqual(S.kv.json("fbrot:m@example.com"), { i: 20 });
+  nextDay(S); for (let i = 0; i < 6; i++) await S.run([sub]);
+  assert.deepEqual(S.calls.map((c) => c.split("|")[0]), H30.slice(20, 30));
+  nextDay(S); await S.run([sub]);
+  assert.deepEqual(S.calls, ["hunt00|42.5,-83.5|50", "hunt01|42.5,-83.5|50"], "after the last hunt, round to the first");
 });
 
 test("a day that ends with the run budget, not the member's 10, still moves the pointer on (bug fix)", async () => {
   const sub = member("m@example.com", "48375", H30), S = sweep();
-  for (let i = 0; i < 5; i++) await S.run([sub]);   /* exactly 10 calls, never an 11th try */
-  assert.equal(S.calls.length, 10);
-  assert.deepEqual(S.kv.json("fbrot:m@example.com"), { i: 5 }, "the first hunt with a job left");
+  for (let i = 0; i < 3; i++) await S.run([sub]);   /* 6 calls: the runs end before the member's 10 */
+  assert.equal(S.calls.length, 6);
+  assert.deepEqual(S.kv.json("fbrot:m@example.com"), { i: 6 }, "the first hunt with a job left");
   nextDay(S);
   await S.run([sub]);
-  assert.deepEqual(S.calls, ["hunt05|42.5,-83.5|50", "hunt05|42.5,-83.5|ship"]);
+  assert.deepEqual(S.calls, ["hunt06|42.5,-83.5|50", "hunt07|42.5,-83.5|50"]);
 });
 
-test("a job another member did today is free; the shipping search is shared across areas", async () => {
-  const a = member("a@example.com", "48375", ["Panther"]), b = member("b@example.com", "48377", ["panther"]), c = member("c@example.com", "10001", ["Panther"]);
+test("a job another member did today is free; the shipping search (All USA hunts, v204) is shared across areas", async () => {
+  const a = member("a@example.com", "48375", ["Panther"]), b = member("b@example.com", "48377", ["panther"]);
+  const c = member("c@example.com", "10001", ["Panther"], { fbusa: ["panther"] }), d = member("d@example.com", "48375", ["Panther"], { fbusa: ["panther"] });
   const S = sweep();
-  await S.run([a, b, c]);
-  await S.run([a, b, c]);
-  assert.deepEqual(S.calls, ["panther|42.5,-83.5|50", "panther|42.5,-83.5|ship", "panther|40.8,-74|50"], "b's area and radius are a's; c only needs the pickup search");
-  assert.deepEqual([S.C.m.get("fbm:a@example.com"), S.C.m.get("fbm:b@example.com") || 0, S.C.m.get("fbm:c@example.com")], [2, 0, 1]);
-  const d = member("d@example.com", "48375", ["panther"], { radius: 100 });
-  await S.run([d]);
-  assert.deepEqual(S.calls.slice(3), ["panther|42.5,-83.5|100"], "another radius is another pickup search");
+  for (let i = 0; i < 3; i++) await S.run([a, b, c, d]);
+  assert.deepEqual(S.calls, ["panther|42.5,-83.5|50", "panther|40.8,-74|500", "panther|40.8,-74|ship", "panther|42.5,-83.5|500"],
+    "b's area and radius are a's; d only needs its 500-mile pickup search, c's shipping one is shared");
+  assert.deepEqual(["a", "b", "c", "d"].map((x) => S.C.m.get("fbm:" + x + "@example.com") || 0), [1, 0, 2, 1]);
+  const e = member("e@example.com", "48375", ["panther"], { radius: 100 });
+  await S.run([e]);
+  assert.deepEqual(S.calls.slice(4), ["panther|42.5,-83.5|100"], "another radius is another pickup search");
 });
 
 test("an All USA hunt (prefs.fbusa) searches 500 miles and keeps its finds apart", async () => {
   const sub = member("m@example.com", "48375", ["Panther", "Hull"], { radius: 25, fbusa: ["panther"] }), S = sweep();
   await S.run([sub]);
   await S.run([sub]);
-  assert.deepEqual(S.calls, ["panther|42.5,-83.5|500", "panther|42.5,-83.5|ship", "hull|42.5,-83.5|25", "hull|42.5,-83.5|ship"]);
+  assert.deepEqual(S.calls, ["panther|42.5,-83.5|500", "panther|42.5,-83.5|ship", "hull|42.5,-83.5|25"], "v204: ships only for the All USA hunt");
   assert.ok(S.kv.json("fb3:panther|42.5,-83.5|500"));
   assert.ok(S.kv.json("fb3:hull|42.5,-83.5|25"));
 });
@@ -237,7 +241,7 @@ function routes({ live = "on", C = caps(), call } = {}) {
   return { kv, env, C, calls, finds, search, PRO, OWN };
 }
 
-test("/fb-finds?all=1: each hunt with its pickup and shipping finds (12 at most), All USA marked, and the searches left today", async () => {
+test("/fb-finds?all=1: each hunt with its finds (12 at most; v204: shipping ones for All USA hunts only), All USA marked, and the searches left today", async () => {
   const R = routes();
   R.C.m.set("fbq:pro@example.com", 2);
   const r = await R.finds(R.PRO, "all=1");
@@ -245,9 +249,9 @@ test("/fb-finds?all=1: each hunt with its pickup and shipping finds (12 at most)
   assert.deepEqual(Object.keys(r.body).sort(), ["hunts", "left", "live"]);
   assert.equal(r.body.live, true);
   assert.equal(r.body.left, 3);
-  assert.deepEqual(r.body.hunts.map((h) => [h.term, h.usa, h.pending, h.items.length]), [["panther", false, false, 3], ["hull", true, false, 12], ["rookwood", false, true, 0]]);
-  assert.deepEqual(r.body.hunts[0].items.map((x) => x.id), ["2222222", "1111111", "3333333"], "nearest first, then the ones that ship");
-  assert.equal(r.body.hunts[0].updated, "2026-10-31T09:00:00.000Z");
+  assert.deepEqual(r.body.hunts.map((h) => [h.term, h.usa, h.pending, h.items.length]), [["panther", false, false, 2], ["hull", true, false, 12], ["rookwood", false, true, 0]]);
+  assert.deepEqual(r.body.hunts[0].items.map((x) => x.id), ["2222222", "1111111"], "nearest first; v204: a near-me hunt leaves out the shipping finds");
+  assert.equal(r.body.hunts[0].updated, "2026-10-31T08:00:00.000Z");
   assert.equal(r.headers["Cache-Control"], "private, no-store");
   const one = await R.finds(R.PRO, "term=Hull");
   assert.deepEqual([one.body.usa, one.body.radius, one.body.items.length], [true, 25, 20], "one hunt: all its finds, and the member's radius");
@@ -353,7 +357,7 @@ test("alPrefsSave keeps the All USA hunts as sent (a new hunt may not have reach
 test("the routes and the alert email read v203's finds", () => {
   assert.match(INDEX, /if \(url\.pathname === "\/fb-search" && request\.method === "POST"\) return fbSearch\(request, env, origin\);/);
   assert.match(indexFn("fbAlertItems"), /const v = await fbHunt\(env, o, cell, term\);/, "the email has pickup and shipping finds");
-  assert.match(INDEX, /const WORKER_VERSION = "v203";/);
+  assert.ok(Number(/const WORKER_VERSION = "v(\d+)";/.exec(INDEX)[1]) >= 203, "v203 or later");
 });
 
 test("fbMatch: -sses plurals and words written together or apart", () => {
