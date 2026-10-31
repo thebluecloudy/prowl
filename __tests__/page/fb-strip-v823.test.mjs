@@ -80,9 +80,12 @@ test('the worker says not Pro (403) or signed out (401): nothing shows', async (
 });
 
 test('not Pro on this device: /fb-finds is never asked', async () => {
-  const f = fbFetch(FOUND);
+  /* the status answer says not Pro too: on a slow runner a Pro answer could land first and rightly switch the strip on */
+  let statusDone = false;
+  const f0 = fbFetch(FOUND, { pro: false }), f = { asked: f0.asked, impl: (u, o) => { const r = f0.impl(u, o); if (/\/alerts\/status/.test(String(u))) r.then(() => { statusDone = true; }); return r; } };
   const p = await home(f, { 'prowl.alertTok': 'F'.repeat(24), 'prowl.alertEmail': 'free@example.com' });
-  await tick(300);
+  await waitFor(() => statusDone, { timeout: 8000 });
+  await tick(400);
   assert.equal(f.asked.length, 0);
   assert.equal(strip(p), undefined);
   await p.close();
