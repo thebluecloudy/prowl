@@ -22,6 +22,9 @@
  *   v200: 2026-10-31. Diagnose says why the AI check did not answer (Matt's eBay test: "The AI check did not answer"):
  *         jevClassify keeps TypeSafe's status and error message, or "timed out", in info.status ("jev failed: ...") and
  *         logs it; the admin shows it under the warning. Nothing else changes.
+ *   v199: 2026-10-31. Cockpit's hero is Matt's blood moon photo (he asked for a more professional mushroom-and-panther header):
+ *         GET /art/bloodmoon.webp (1600 px) and /art/bloodmoon-sm.webp (800 px, phones), served from art.js like the
+ *         drawings (image/webp, a year's immutable cache). Built into worker/art-photos.js by scripts/build-hero-photos.mjs.
  *   v196: 2026-10-31. GET /version answers {"worker":"v196"} (no-store, nothing else), so .github/workflows/verify-worker.yml
  *         can confirm after each merge that Cloudflare Workers Builds really deployed the merged version (Matt keeps
  *         Workers Builds as the deployer). Not counted in the admin's traffic (metrics.js routeKey).

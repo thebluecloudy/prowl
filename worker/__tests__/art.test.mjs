@@ -78,3 +78,25 @@ test('the route answers /art/ before anything else, and its hits are counted as 
   assert.equal(routeKey('/art/fireflies.svg'), 'art');
   assert.equal(routeKey('/artful'), 'other');
 });
+
+test('v199: Cockpit\'s blood moon photos are served as WebP, built from worker/art/*.webp, with the same year-long cache', async () => {
+  const { photosSource, PHOTO_FILES } = await import('../../scripts/build-hero-photos.mjs');
+  assert.equal(read('art-photos.js'), photosSource(), 'worker/art-photos.js is rebuilt from the WebP files (node scripts/build-hero-photos.mjs)');
+  for (const [name, file] of Object.entries(PHOTO_FILES)) {
+    const want = readFileSync(fileURLToPath(new URL('../art/' + file, import.meta.url)));
+    assert.equal(want.subarray(0, 4).toString(), 'RIFF');
+    assert.equal(want.subarray(8, 12).toString(), 'WEBP', file + ' is a WebP');
+    const r = artResponse(name, 'GET');
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get('content-type'), 'image/webp');
+    assert.equal(r.headers.get('cache-control'), 'public, max-age=31536000, immutable');
+    assert.equal(r.headers.get('cross-origin-resource-policy'), 'cross-origin');
+    assert.deepEqual(Buffer.from(await r.arrayBuffer()), want, name + ' is the file, byte for byte');
+    const h = artResponse(name, 'HEAD');
+    assert.equal(h.status, 200);
+    assert.equal(await h.text(), '');
+    assert.ok(want.length < 120000, name + ' stays small: ' + want.length);
+  }
+  assert.equal(artResponse('bloodmoon.webp', 'POST').status, 405);
+  assert.equal(artResponse('bloodmoon.png', 'GET').status, 404);
+});
