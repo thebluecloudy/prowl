@@ -15,12 +15,13 @@ test('one search button: Search All is hidden, Hunt and a chip remain (v7.30: Ju
   await p.close();
 });
 
-test('the header has the account button and a menu; the menu holds App, text size, theme and help', async () => {
+test('the header has the account button, the theme switch (v8.28) and a menu; the menu holds App, text size and help', async () => {
   const p = setup();
   await tick(60);
   const menu = p.$('#otp-barMenu');
   assert.equal(menu.hidden, true);
-  for (const id of ['otp-sizeTop', 'otp-themeBtn', 'otp-how', 'otp-appHdr']) assert.ok(menu.contains(p.$('#' + id)), id + ' is in the menu');
+  for (const id of ['otp-sizeTop', 'otp-how', 'otp-appHdr']) assert.ok(menu.contains(p.$('#' + id)), id + ' is in the menu');
+  assert.ok(!menu.contains(p.$('#otp-themeBtn')), 'v8.28: the theme switch is on the bar, not in the menu');
   p.$('#otp-menuTop').click();
   assert.equal(menu.hidden, false);
   assert.equal(p.$('#otp-menuTop').getAttribute('aria-expanded'), 'true');

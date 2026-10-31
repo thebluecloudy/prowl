@@ -385,6 +385,7 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 /* v6.85: the account chip, on every screen: the first letter of who is signed in (a ring when Pro), or a person when
    nobody is. The installed app has no store header to show it. On a phone the ... link home makes way for it */
 .scout-app-wrapper .bar .acct{flex:none;min-width:0;align-self:stretch;aspect-ratio:1/1;padding:0;border-radius:50%;font-weight:800;font-size:15px;text-transform:uppercase}
+.scout-app-wrapper .bar .bar-th{flex:none;min-width:0;align-self:stretch;aspect-ratio:1/1;padding:0;border-radius:50%;font-size:17px;line-height:1}   /* v8.28: the theme switch, always on the bar */
 .scout-app-wrapper.is-pro .bar .acct{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}
 @media (max-width:479px){.scout-app-wrapper .bar .brand .homedots{display:none}}
 .scout-app-wrapper .bar .brand{flex-shrink:0}
@@ -2658,11 +2659,11 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
   </span>
   <div class="bar-actions">
     <button class="gh acct" id="otp-acct" type="button" aria-label="Sign in">•</button>
+    <button class="gh bar-th" id="otp-themeBtn" type="button" aria-label="Cycle theme" title="Dark mode">☾</button>   <!-- v8.28 (Matt: "move the theme switcher so that it is always visible"): out of the menu, always on the bar -->
     <button class="gh bar-mb" id="otp-menuTop" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="otp-barMenu" aria-label="Menu">☰</button>
     <div class="bar-menu" id="otp-barMenu" role="menu" hidden>
     <button class="gh apphdr" id="otp-appHdr" type="button" role="menuitem" hidden>App</button>
     <button class="gh" id="otp-sizeTop" type="button" role="menuitem" data-l="Text size" aria-label="Text size: Standard. Tap for bigger." title="Text size">Aa</button>
-    <button class="gh" id="otp-themeBtn" type="button" role="menuitem" data-l="Theme" aria-label="Cycle theme" title="Dark mode">☾</button>
     <button class="gh" id="otp-how" type="button" role="menuitem" data-l="How Prowl works" aria-label="How Prowl works">?</button>
     </div>
   </div>
@@ -3924,7 +3925,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.27';
+var PROWL_VERSION='v8.28';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */

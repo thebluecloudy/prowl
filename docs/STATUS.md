@@ -1,16 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.27 / v203).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.28 / v203).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.27** | 375,639 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.28** | 375,547 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v203** | |
 
 Recently shipped, newest first:
 
+- **v8.28: the theme switch is always on the bar** (Matt, 2026-10-31: "move the theme switcher so that it is always
+  visible"). `#otp-themeBtn` left the ☰ menu (v7.03 had put it there) and sits on the top bar between the account dot
+  and ☰, a round icon like the dot (`.bar-th`). It still cycles the five themes; the Den's Appearance button follows.
+  Checked in Chromium at 320 px (standard and large text), 390 px and 1280 px: no overflow. Tests:
+  `__tests__/page/theme-visible-v828.test.mjs`; `declutter-v703` and `flock-steady` follow the move.
 - **v8.27 / v203: Facebook finds, Matt's way: 10 searches a member a day, near me or All USA, plus ships, in the Store**
   (Matt, 2026-10-31: "10 a day is fine, build it"; "User should pick. Local plus ship with a radius. All USA."; "Should
   we add Facebook to the store section. Pro only.").
@@ -1883,7 +1888,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.28, worker v204** (open PRs hold page v8.22 and worker v198 (Hark's #281), and worker v201 for #289 (`claude/jev-why-v197`, which claimed v200 before #287 shipped it)). Claim one here when you start.
+Next free numbers: **page v8.29, worker v204** (open PRs hold page v8.22 and worker v198 (Hark's #281), and worker v201 for #289 (`claude/jev-why-v197`, which claimed v200 before #287 shipped it)). Claim one here when you start.
 
 ## What's next
 
