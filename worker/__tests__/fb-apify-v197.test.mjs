@@ -45,6 +45,8 @@ test("the Apify request: POST to run-sync-get-dataset-items, the token in a Bear
   const u = new URL(rq.url);
   assert.equal(u.origin + u.pathname, "https://api.apify.com/v2/acts/curious_coder~facebook-marketplace/run-sync-get-dataset-items");
   assert.equal(u.searchParams.get("maxItems"), "24");
+  assert.equal(u.searchParams.get("maxTotalChargeUsd"), "0.01205", "review fix: Apify itself stops at the estimate fbCall reserved");
+  assert.equal(new URL(FB.fbRequest({}, "t", "x", cell, 500).url).searchParams.get("maxTotalChargeUsd"), FB.fbEstimate(60).toFixed(5), "the same clamp as maxItems");
   assert.ok(Number(u.searchParams.get("timeout")) >= 60 && Number(u.searchParams.get("timeout")) <= 90);
   assert.doesNotMatch(rq.url, /SECRET|token/i, "never in the address");
   assert.equal(rq.init.method, "POST");
@@ -114,62 +116,154 @@ test("an area is the ZIP's point rounded to 0.1 degree, shared by neighbours", (
 });
 
 /* ---- 3. the cap ---- */
-function capHarness({ spent = 0, run } = {}) {
-  const adds = [];
+/* the Caps object's take and addlim taken out of index.js and run on a Map, as the Durable Object runs them */
+function capsDO() {
+  const blk = (name) => { const i = INDEX.indexOf('    if (op === "' + name + '")'); assert.ok(i > 0, name); return INDEX.slice(i, INDEX.indexOf("\n    }\n", i) + 7); };
+  const op = new Function("return async function (op, q) { const J = (o, st) => new Response(JSON.stringify(o), { status: st || 200 });\n" + blk("take") + blk("addlim") + "return J({ error: op }, 400); };")();
+  const store = new Map(), self = { s: { get: async (k) => store.get(k), put: async (k, v) => { store.set(k, v); } }, arm: async () => {} };
+  let q0 = Promise.resolve();   /* a Durable Object handles one request at a time (its storage calls hold its input gate) */
+  return { obj: { op: (o, q) => (q0 = q0.then(() => op.call(self, o, q))) }, store };
+}
+function capHarness({ spent = 0, run, caps = true } = {}) {
+  const adds = [], reserves = [];
   let ran = 0;
+  const capsCall = async (name, op, q) => {
+    if (!caps) return null;
+    assert.equal(op, "addlim");
+    reserves.push(q.n);
+    if (spent + q.n > q.lim) return { ok: false, n: spent };
+    spent += q.n; return { ok: true, n: spent };
+  };
+  const fbReserve = build("fbReserve", { capsCall, capsDay: () => "caps:" + TODAY, console });
   const fbCall = build("fbCall", {
-    fbCapUnits: FB.fbCapUnits, fbUnits: FB.fbUnits, fbEstimate: FB.fbEstimate,
-    fbSpent: async () => spent, fbSpendAdd: async (u) => { adds.push(u); spent += u; },
+    fbCapUnits: FB.fbCapUnits, fbUnits: FB.fbUnits, fbEstimate: FB.fbEstimate, fbItems: FB.fbItems, fbReserve,
+    fbSpendAdd: async (u) => { adds.push(u); spent += u; },
     fbRun: async (env, term, cell, n) => { ran++; return run ? run(n) : { ok: true, items: [], raw: n, cost: FB.fbEstimate(n) }; },
   });
-  return { fbCall, adds, ran: () => ran, spent: () => spent };
+  return { fbCall, adds, reserves, ran: () => ran, spent: () => spent };
 }
-test("the cap: a call that would pass $1 today is refused before Apify is asked; after a call the actual cost is added", async () => {
+test("the cap: the estimate is reserved in Caps before Apify is asked (refused if it would pass $1); only a cost above it is added after", async () => {
   const cell = FB.fbCell(42.48, -83.47);
   let H = capHarness({ spent: 0, run: () => ({ ok: true, items: [{ id: "1" }], raw: 3, cost: 0.00155 }) });
   let r = await H.fbCall({}, "pyrex", cell, 24);
   assert.equal(r.ok, true);
-  assert.deepEqual(H.adds, [155], "the actual cost (3 listings and a start), not the estimate");
-  assert.equal(r.used, 155);
+  assert.deepEqual(H.reserves, [1205], "reserved before the call");
+  assert.deepEqual(H.adds, [], "a cheaper run stays counted at the estimate");
+  assert.equal(r.used, 1205);
   assert.equal(r.cap, 100000);
+  H = capHarness({ run: () => ({ ok: true, items: [], raw: 30, cost: 0.01555 }) });
+  r = await H.fbCall({}, "pyrex", cell, 24);
+  assert.deepEqual(H.adds, [350], "a dearer one adds only the difference");
+  assert.equal(r.used, 1555);
   H = capHarness({ spent: 100000 - 1204 });
   r = await H.fbCall({}, "pyrex", cell, 24);
   assert.equal(r.capped, true, "24 listings ($0.01205) would pass $1");
   assert.equal(H.ran(), 0);
-  assert.deepEqual(H.adds, []);
+  assert.equal(H.spent(), 100000 - 1204, "nothing reserved");
   H = capHarness({ spent: 100000 - 1205 });
   assert.equal((await H.fbCall({}, "pyrex", cell, 24)).ok, true, "exactly at the cap is allowed");
   H = capHarness({ spent: 150000 });
   assert.equal((await H.fbCall({ FB_DAY_USD: "2" }, "pyrex", cell, 24)).ok, true, "FB_DAY_USD raises it");
-  H = capHarness({ spent: null });
-  r = await H.fbCall({}, "pyrex", cell, 24);
-  assert.equal(r.ok, false, "a spend counter that does not answer refuses (money fails closed)");
-  assert.equal(H.ran(), 0);
   H = capHarness({ run: () => ({ ok: false, error: "apify timed out", cost: FB.fbEstimate(24) }) });
   await H.fbCall({}, "pyrex", cell, 24);
-  assert.deepEqual(H.adds, [1205], "a failed run is charged at the estimate");
+  assert.deepEqual([H.spent(), H.adds], [1205, []], "a failed run stays counted at the estimate");
+});
+
+test("two runs at once both see the same spend, yet only one fits: the reservation is one Caps step", async () => {
+  const D = capsDO(), cell = FB.fbCell(42.48, -83.47);
+  const capsCall = async (name, op, q) => JSON.parse(await (await D.obj.op(op, q)).text());
+  const fbReserve = build("fbReserve", { capsCall, capsDay: () => "caps:" + TODAY, console });
+  D.store.set("c:fbusd:all", 100000 - 2000);
+  let release, ran = 0;
+  const gate = new Promise((r) => { release = r; });
+  const fbCall = build("fbCall", { fbCapUnits: FB.fbCapUnits, fbUnits: FB.fbUnits, fbEstimate: FB.fbEstimate, fbItems: FB.fbItems, fbReserve, fbSpendAdd: async () => {},
+    fbRun: async () => { ran++; await gate; return { ok: true, items: [], raw: 24, cost: FB.fbEstimate(24) }; } });
+  const both = Promise.all([fbCall({}, "a", cell, 24), fbCall({}, "b", cell, 24)]);
+  await new Promise((r) => setTimeout(r, 0));
+  release();
+  const [a, b] = await both;
+  assert.equal(ran, 1, "the second call is refused while the first is still running");
+  assert.deepEqual([!!a.ok, !!b.capped], [true, true]);
+  assert.equal(D.store.get("c:fbusd:all"), 100000 - 2000 + 1205);
+});
+
+test("no Caps (the binding missing, or it errors): no Apify call, from the sweep or the admin's test", async () => {
+  const cell = FB.fbCell(42.48, -83.47);
+  const H = capHarness({ caps: false });
+  const r = await H.fbCall({}, "pyrex", cell, 24);
+  assert.equal(r.ok, false);
+  assert.match(r.error, /spend counter/);
+  assert.equal(H.ran(), 0);
+  const boom = build("fbReserve", { capsCall: async () => { throw new Error("caps 500"); }, capsDay: () => "x", console: { error() {} } });
+  assert.equal(await boom(1205, 100000), null);
+  const fbTry = build("fbTry", { capsCall: async () => null, capsDay: () => "x", FB_TRIES: 2, console });
+  assert.equal(await fbTry("pyrex|42.5,-83.5"), 0, "no try without Caps either");
+  const fbTestRun = build("fbTestRun", { fbTerm: FB.fbTerm, fbArea: async () => cell, fbCall: H.fbCall, FB_RUN_ITEMS: 24, FB_UNIT: FB.FB_UNIT, fbEstimate: FB.fbEstimate,
+    fbCapUnits: FB.fbCapUnits, fbLive: FB.fbLive, scrubPII: (x) => x });
+  const t = await fbTestRun({ APIFY_TOKEN: "t" }, "pyrex", "48375");
+  assert.equal(t.ok, false);
+  assert.match(t.error, /spend counter/);
+  assert.equal(H.ran(), 0);
+});
+
+test("a try is taken in Caps before the call: FB_TRIES a day per hunt and cell, so a killed run's try still counts", async () => {
+  const D = capsDO();
+  const capsCall = async (name, op, q) => JSON.parse(await (await D.obj.op(op, q)).text());
+  const fbTry = build("fbTry", { capsCall, capsDay: () => "x", FB_TRIES: FB.FB_TRIES, console });
+  assert.deepEqual([await fbTry("pyrex|42.5,-83.5"), await fbTry("pyrex|42.5,-83.5"), await fbTry("pyrex|42.5,-83.5")], [1, 2, 0]);
+  assert.equal(await fbTry("hull|42.5,-83.5"), 1);
 });
 
 test("the day's spend shows as an admin pool in dollars, its limit following FB_DAY_USD", () => {
   assert.match(INDEX, /\{ key: "fbusd:all", name: "Facebook finds \(Apify\), \$ today", limit: FB_UNIT, usd: FB_UNIT, limitVar: "FB_DAY_USD" \}/);
-  assert.match(indexFn("fbSpent"), /capsCall\(capsDay\(\), "peek", \{ keys: \["fbusd:all"\] \}\)/);
+  assert.match(indexFn("fbReserve"), /capsCall\(capsDay\(\), "addlim", \{ k: "fbusd:all", n: units, lim: cap \}\)/);
   assert.match(indexFn("fbSpendAdd"), /capsCall\(capsDay\(\), "add", \{ k: "fbusd:all"/);
+  assert.doesNotMatch(INDEX, /function fbSpent\(/, "no peek-then-call");
+});
+
+/* fbArea: only an answer that says the ZIP is unknown is kept as a miss */
+function areaHarness(answer) {
+  const kv = new FakeKV(), asked = [];
+  const fbArea = build("fbArea", { kvGet, gKey: () => "k", vCount: async (n) => { asked.push(n); return true; }, G_GEO_PER_DAY: 1000,
+    gFetch: async () => answer, geoPlace: (r) => (r && r.geometry ? { lat: r.geometry.location.lat, lng: r.geometry.location.lng } : null), fbCell: FB.fbCell,
+    FB_ZIP_TTL: FB.FB_ZIP_TTL, FB_ZIP_MISS_TTL: FB.FB_ZIP_MISS_TTL });
+  return { fbArea, kv, env: { PROWL_ALERTS: kv }, asked };
+}
+test("fbArea: a quota, key or passing Google error (each a 200) keeps nothing; ZERO_RESULTS is kept as a miss for 7 days", async () => {
+  for (const status of ["OVER_QUERY_LIMIT", "REQUEST_DENIED", "UNKNOWN_ERROR", "INVALID_REQUEST"]) {
+    const A = areaHarness({ status, results: [] });
+    assert.equal(await A.fbArea(A.env, "48375", true), null, status);
+    assert.equal(A.kv.m.size, 0, status + ": nothing kept, asked again later");
+  }
+  let A = areaHarness({ status: "OK", results: [{}] });
+  assert.equal(await A.fbArea(A.env, "48375", true), null);
+  assert.equal(A.kv.m.size, 0, "OK without a usable point keeps nothing either");
+  A = areaHarness({ status: "ZERO_RESULTS", results: [] });
+  assert.equal(await A.fbArea(A.env, "00000", true), null);
+  assert.deepEqual(A.kv.json("fbz:00000"), { miss: 1 });
+  assert.equal(A.kv.ttl.get("fbz:00000"), 7 * 86400);
+  A = areaHarness({ status: "OK", results: [{ geometry: { location: { lat: 42.48, lng: -83.47 } } }] });
+  assert.equal((await A.fbArea(A.env, "48375", true)).key, "42.5,-83.5");
+  assert.deepEqual(A.kv.json("fbz:48375"), { lat: 42.5, lng: -83.5 });
+  assert.equal(A.kv.ttl.get("fbz:48375"), 90 * 86400);
 });
 
 /* ---- 4. the sweep ---- */
-function sweepHarness({ live = "on", subs, done = null, call } = {}) {
-  const kv = new FakeKV(), calls = [];
+function sweepHarness({ live = "on", subs, done = null, call, area } = {}) {
+  const kv = new FakeKV(), calls = [], geo = [], tries = new Map();
   if (done) kv.set("fb2day:" + TODAY, done);
   kv.set("fbz:48375", { lat: 42.5, lng: -83.5 });
   const env = { PROWL_ALERTS: kv, APIFY_TOKEN: "t", FB_LIVE: live };
   const fbSweep = build("fbSweep", {
-    fbLive: FB.fbLive, kvGet, FB_PER_RUN: FB.FB_PER_RUN, FB_CALLS_EACH: 3, FB_GEO_PER_RUN: 2, FB_TRIES: FB.FB_TRIES, FB_DAY_LIST_MAX: 2000, FB_RUN_ITEMS: FB.FB_RUN_ITEMS, FB_TTL: FB.FB_TTL,
+    fbLive: FB.fbLive, kvGet, FB_PER_RUN: FB.FB_PER_RUN, FB_CALLS_EACH: 4, FB_GEO_CALLS: 2, FB_GEO_PER_RUN: 2,
+    fbTry: async (k) => { const n = (tries.get(k) || 0) + 1; if (n > FB.FB_TRIES) return 0; tries.set(k, n); return n; }, FB_TRIES: FB.FB_TRIES, FB_DAY_LIST_MAX: 2000, FB_RUN_ITEMS: FB.FB_RUN_ITEMS, FB_TTL: FB.FB_TTL,
     alPrefs: (s) => ({ zip: (s.prefs && s.prefs.zip) || "" }), alActive: (env, s) => s.hunts.slice(0, s.pro ? 100 : 3),
-    fbArea: async (env, zip) => (zip === "48375" || zip === "48377" ? FB.fbCell(42.5, -83.5) : zip === "10001" ? FB.fbCell(40.75, -74.0) : null),
+    fbArea: area ? async (env, zip, ask) => { if (ask) geo.push(zip); return area(zip, ask); }
+      : async (env, zip) => (zip === "48375" || zip === "48377" ? FB.fbCell(42.5, -83.5) : zip === "10001" ? FB.fbCell(40.75, -74.0) : null),
     fbTerm: FB.fbTerm, fbKey: FB.fbKey, fbMerge: FB.fbMerge, scrubPII: (s) => String(s),
     fbCall: async (env, term, cell, n) => { calls.push(term + "|" + cell.key); return call ? call(term) : { ok: true, items: [{ id: "123456", title: term, found: TODAY }], raw: 1, cost: 0.00055 }; },
   });
-  return { fbSweep, kv, env, calls };
+  return { fbSweep, kv, env, calls, geo, tries };
 }
 const pro = (zip, hunts) => ({ email: "x@example.com", pro: true, hunts, prefs: { zip } });
 test("the sweep: at most 2 Apify calls a run, once a day per hunt and cell (neighbours share), Pro members with a ZIP only", async () => {
@@ -186,7 +280,34 @@ test("the sweep: at most 2 Apify calls a run, once a day per hunt and cell (neig
   assert.deepEqual(S.calls.slice(2), ["hull vase|42.5,-83.5", "pyrex butterprint|40.8,-74"], "the neighbour's same hunt is not searched again; the free member and the ZIP-less one never");
   r = await S.fbSweep(S.env, subs, 50);
   assert.equal(r.calls, 0, "everything swept today");
-  assert.equal((await S.fbSweep(S.env, subs, 4)).calls, 0, "no room left in the run's outside calls");
+  assert.equal((await S.fbSweep(S.env, subs, 3)).calls, 0, "no room left in the run's outside calls");
+});
+
+test("the sweep's geocoding counts in the run's outside calls: room 6 with a new ZIP makes at most 1 Apify call", async () => {
+  const subs = [pro("48375", ["Pyrex", "Hull", "Roseville"])];
+  let S = sweepHarness({ subs, area: (zip, ask) => (ask ? FB.fbCell(42.5, -83.5) : null) });
+  let r = await S.fbSweep(S.env, subs, 6);
+  assert.deepEqual([S.geo.length, r.calls], [1, 1], "2 for Google and its counter, 4 for the call");
+  S = sweepHarness({ subs, area: (zip, ask) => (ask ? FB.fbCell(42.5, -83.5) : null) });
+  r = await S.fbSweep(S.env, subs, 5);
+  assert.deepEqual([S.geo.length, r.calls], [0, 0], "not enough room for both: Google is not asked for nothing");
+  S = sweepHarness({ subs });
+  assert.equal((await S.fbSweep(S.env, subs, 7)).calls, 1, "a cached ZIP: 4 a call");
+});
+
+test("a try is taken before the call: a run killed mid-call is not retried uncounted, and two overlapping runs share FB_TRIES", async () => {
+  const subs = [pro("48375", ["Pyrex"])];
+  const S = sweepHarness({ subs, call: () => new Promise(() => {}) });   /* Apify never answers: the run is killed */
+  S.fbSweep(S.env, subs, 50);
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(S.tries.get("pyrex|42.5,-83.5"), 1, "the try was taken before Apify was asked");
+  S.fbSweep(S.env, subs, 50);
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(S.calls.length, 2);
+  const r = await S.fbSweep(S.env, subs, 50);
+  assert.equal(r.calls, 0, "both tries used: no third call, however many runs");
+  assert.equal(S.calls.length, 2);
+  assert.equal(S.kv.json("fb2day:" + TODAY)["pyrex|42.5,-83.5"], -2, "and the day's list remembers it");
 });
 
 test("FB_LIVE off (or no token) does nothing at all", async () => {
@@ -258,6 +379,25 @@ test("/fb-finds: 401 signed out, 403 not Pro, the member's area's finds for Pro,
   assert.equal(own.body.items.length, 1);
   assert.equal((await F.ask({ "X-Prowl-Owner": "owner-key-0123456789" })).body.nozip, true);
   assert.equal((await F.ask({ "X-Prowl-Email": "pro@example.com", "X-Prowl-Tok": "T".repeat(24) }, "term=")).status, 400);
+});
+
+test("/fb-finds while FB_LIVE is off: a Pro member gets nothing, and nothing is asked of Google or counted", async () => {
+  const kv = new FakeKV(), areas = [], counts = [];
+  kv.set("sub:pro@example.com", { email: "pro@example.com", tok: "T".repeat(24), pro: true, prefs: { zip: "48375" } });
+  kv.set("fb2:pyrex|42.5,-83.5", { updated: "x", items: [{ id: "1234567" }] });
+  const json = (body, status) => ({ status, body });
+  const fbFinds = build("fbFinds", {
+    isOwner: (req, env) => req.headers.get("X-Prowl-Owner") === env.OWNER_KEY, sessMember: async () => null, alEmail: (e) => String(e || "").trim().toLowerCase(),
+    alSame: (a, b) => a === b, kvGet, json, fbTerm: FB.fbTerm, vCount: async (n) => { counts.push(n); return true; }, ipKey: (x) => x, FB_FINDS_PER_IP: 1000,
+    alPrefs: (s) => ({ zip: (s.prefs && s.prefs.zip) || "" }), fbLive: FB.fbLive, fbArea: async (env, zip, ask) => { areas.push(ask); return FB.fbCell(42.5, -83.5); }, fbKey: FB.fbKey,
+  });
+  const env = { PROWL_ALERTS: kv, OWNER_KEY: "owner-key-0123456789", FB_LIVE: "off" };
+  const ask = (h) => fbFinds(new Request("https://w/fb-finds?term=pyrex", { headers: h }), env, new URL("https://w/fb-finds?term=pyrex"), "o");
+  const r = await ask({ "X-Prowl-Email": "pro@example.com", "X-Prowl-Tok": "T".repeat(24) });
+  assert.deepEqual([r.status, r.body], [200, { term: "pyrex", live: false, items: [] }]);
+  assert.deepEqual([areas, counts], [[], []], "no fbArea(..., true), no counter");
+  const own = await ask({ "X-Prowl-Owner": "owner-key-0123456789" });
+  assert.equal(own.body.nozip, true, "the owner still gets the full answer");
 });
 
 /* ---- 6. the alert email ---- */

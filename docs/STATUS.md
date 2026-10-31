@@ -21,27 +21,37 @@ Recently shipped, newest first:
     https `*.fbcdn.net`), town, the link built from the id, the day found. Sold, pending and hidden ones are dropped;
     seller fields are never read.
   - **Area:** a Pro member's local-pickup ZIP (prefs.zip), geocoded once (counted in `ggeo:all`), kept as its 0.1
-    degree cell (about 10 km) in `fbz:<zip>` for 90 days (a miss 7). Members nearby share one search. No ZIP, no finds.
+    degree cell (about 10 km) in `fbz:<zip>` for 90 days (a miss 7, kept only when Google says `ZERO_RESULTS`; a quota or
+    key error keeps nothing). Members nearby share one search. No ZIP, no finds.
   - **Sweep:** on the alert clock, only while the Cloudflare var `FB_LIVE` is "on": each Pro member's active hunts
     once a day per hunt and cell, at most `FB_PER_RUN` (2) Apify calls a run and only with room left in the run's
-    outside calls. `fb2:<term>|<cell>` = the week's finds merged by id, newest first, 60 at most, 8 days. `fb2day:<day>`
-    remembers what was swept, failures (2 tries) and that the cap was reached. A failure keeps nothing new and leaves a
+    outside calls (4 a call, 2 more for a new ZIP's geocoding). `fb2:<term>|<cell>` = the week's finds merged by id,
+    newest first, 60 at most, 8 days. Each try is taken in Caps first (`fbtry:<term>|<cell>`, 2 a day, atomic), so a run
+    killed mid-call or two overlapping runs never retry uncounted. `fb2day:<day>` remembers what was swept, tries used
+    and that the cap was reached. A failure keeps nothing new and leaves a
     short scrubbed note in the admin's errors.
   - **Cost cap:** `fbusd:all` in the day's Caps, in 1/100,000 of a dollar. Before a call the estimate (24 listings at
-    $0.0005 + $0.00005 start = $0.01205) must fit under `FB_DAY_USD` (default 1); after it the actual cost is added
-    (a failed call at the estimate). An admin AI pool row shows it in dollars. `worker/spend.js` counts api.apify.com
+    $0.0005 + $0.00005 start = $0.01205) is reserved in one Caps step (op `addlim`, refused if it would pass
+    `FB_DAY_USD`, default 1), and Apify is told `maxTotalChargeUsd` of the same amount; only a cost above the estimate is
+    added after. No Caps answer (binding missing or erroring), no call. An admin AI pool row shows it in dollars. `worker/spend.js` counts api.apify.com
     (calls and listings, $0.05 per 1,000 starts and $0.50 per 1,000 listings) on the Spending tab.
   - **Delivery:** the daily email adds a Pro member's cached Facebook finds as source "facebook" through the same
     exact-match, seen and price/skip-word rules (no outside call). GET `/fb-finds?term=` answers again (410 since
     v178): a store session or X-Prowl-Email / X-Prowl-Tok of a Pro member, or the owner key (which may pass `&zip=`);
-    401 signed out, 403 not Pro. `/fb-ingest` stays 410. `/alerts/status` says `fb: true` for a Pro member while live.
+    401 signed out, 403 not Pro; while FB_LIVE is off a member gets `{ live: false, items: [] }` with no counter, no
+    Google lookup and nothing kept. `/fb-ingest` stays 410. `/alerts/status` says `fb: true` for a Pro member while live.
   - **Page:** the Facebook strip (v6.65's `fbFetch`/`fbBlock`/`fbHas`, `.sgw-fbh`) is back under the Goodwill block
-    for a signed-in Pro member or the owner key, plain links; a Pro member without a ZIP is told to add one (while
+    for the owner key, or a signed-in Pro member once `/alerts/status` says `fb` (the page asks nothing before), keyed
+    by the worker's own cut (`cutWords(t,60)`, a whole word, so a hunt over 60 characters finds its finds), plain links; a Pro member without a ZIP is told to add one (while
     live). Den > Settings, by the local-pickup ZIP, says Facebook finds use it (only when status says fb). No new keys.
-  - **Admin:** Marketplaces card, **Facebook test**: a hunt and a ZIP, one Apify call now (counts against the cap,
+  - **Admin:** Diagnose tab, **Facebook test** (built once there, so the Overview's minute redraw cannot strand a running
+    test): a hunt and a ZIP, one Apify call now (counts against the cap,
     works while FB_LIVE is off), shows the listings (title, price, town, link), the count, the cost and today's spend.
   - Privacy section updated. Tests: `worker/__tests__/fb-apify-v197.test.mjs`, `__tests__/page/fb-strip-v823.test.mjs`;
-    `fb-retired.test.mjs` and `fb-retired-v808.test.mjs` now assert no session cookies; `spend.test.mjs` scans fb.js.
+    `worker/__tests__/fb-admin-v197.test.mjs`; `fb-retired.test.mjs` and `fb-retired-v808.test.mjs` now assert no
+    session cookies; `spend.test.mjs` scans fb.js. A review pass fixed: the cap reserved before the call (overlap, a
+    killed run), `maxTotalChargeUsd`, no Caps = no call, FB_LIVE off asks nothing, Google errors not kept as misses,
+    geocoding in the run's budget, the admin test's stale box, the page's key for long hunts.
     v8.22 / v196 are Hark's (#281).
 - **v8.21: the Store tab icon is written so Shopify keeps it byte for byte.** v8.20's deploy saved the page but failed
   the md5 check: its icon used self-closing `<path …/>`, which the rest of the page never does (Shopify rewrites them).

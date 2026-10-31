@@ -830,10 +830,11 @@ function marketsCard(ov) {
     catch (e) { S.sales = e.status === 401 ? null : { error: e.message }; }
     sbtn.disabled = false; fill(sbox, salesView());
   });
-  return card("markets", "Marketplaces", btn, [body, hbox, h("div", { class: "more" }, [sbtn]), sbox, fbTestBox()], "A small test search runs on each marketplace every hour.");
+  return card("markets", "Marketplaces", btn, [body, hbox, h("div", { class: "more" }, [sbtn]), sbox], "A small test search runs on each marketplace every hour.");
 }
 /* v197: the Facebook test. One Apify call now for a hunt and a ZIP (it counts against the day's Facebook budget, and works
-   while FB_LIVE is off). What came back is shown, not kept. */
+   while FB_LIVE is off). What came back is shown, not kept. Built once on the Diagnose tab (review fix): the Overview
+   redraws every minute and a run can take 90 seconds, which left the answer in a box no longer on the page. */
 function fbTestBox() {
   const fbox = h("div", { class: "hbox" }, fbTestView());
   const ti = h("input", { id: "fbt-term", type: "text", maxlength: "60", autocomplete: "off", value: S.fbTerm, placeholder: "a hunt, e.g. pyrex butterprint", "aria-label": "Hunt to test on Facebook" });
@@ -848,7 +849,7 @@ function fbTestBox() {
     catch (e) { S.fbt = e.status === 401 ? null : { error: e.message }; }
     fbtn.disabled = false; fill(fbox, fbTestView());
   });
-  return h("div", { class: "more" }, [h("h3", { class: "small", text: "Facebook Marketplace (Apify)" }), h("div", { class: "fbt" }, [ti, zi, fbtn]),
+  return h("div", [h("div", { class: "fbt" }, [ti, zi, fbtn]),
     h("p", { class: "hint", text: "Runs one search now around that ZIP and shows what comes back. It counts against today\u2019s Facebook budget (FB_DAY_USD, $1 unless set) and works while FB_LIVE is off." }), fbox]);
 }
 function fbTestView() {
@@ -1534,6 +1535,7 @@ function startDiag(ctx) {
   runDiag();
 }
 $("#dform").addEventListener("submit", e => { e.preventDefault(); runDiag(); });
+fill($("#fbtbox"), fbTestBox());   /* v197: once; nothing redraws it */
 async function runDiag() {
   const out = $("#dout"), msg = $("#dmsg");
   const term = $("#dterm").value.trim(), typed = $("#dmember").value.trim(), mid = normId(typed) || typed;
@@ -1785,7 +1787,8 @@ function appBody() {
       '<div><label for="dmember">Member id <span class="opt">(optional: applies their filters)</span></label><input id="dmember" type="text" maxlength="12" spellcheck="false" placeholder="M-1a2b3c4d"></div></div>' +
       '<fieldset><legend>Marketplaces <button class="lnk small" id="dall" type="button">All / none</button></legend><div class="checks" id="dsrc"></div></fieldset>' +
       '<div class="drun"><button class="btn btn-p" id="drun" type="submit">Run</button><p class="msg" id="dmsg" role="alert"></p></div></form></section>' +
-      '<p class="sr" id="dstatus" role="status"></p><div class="view" id="dout"></div>') +
+      '<p class="sr" id="dstatus" role="status"></p><div class="view" id="dout"></div>' +
+      '<section class="card" id="fbtcard"><div class="ch"><h2>Facebook Marketplace (Apify)</h2></div><div id="fbtbox"></div></section>') +
     panel("errors",
       '<section class="card"><div class="ch"><h2>Errors</h2></div><p class="sub">Server errors from the last 30 days, newest first. Email addresses and long numbers are removed from the messages.</p>' +
       '<div id="errbox"></div></section>') +

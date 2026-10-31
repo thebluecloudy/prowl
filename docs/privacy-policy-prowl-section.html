@@ -36,7 +36,8 @@
     rounded to a 0.1 degree cell (fbCell), radiusKm 40, getListingDetails false, no cookies; the token is ours. Kept:
     fb2:<term>|<cell> {id, title, price, image (fbcdn only), location (city, state), url, found}, FB_TTL 8 days, shared
     by everyone with that hunt in that cell, so alPurge does not touch it (it expires). fbz:<zip> = the cell, 90 days (a
-    miss 7). Only while FB_LIVE is "on", Pro members with prefs.zip only. The ZIP goes to Google Geocoding once.
+    miss 7, only on Google's ZERO_RESULTS). Only while FB_LIVE is "on", Pro members with prefs.zip only: with it off,
+    /fb-finds sends nothing to Google and keeps nothing, and the page does not ask. The ZIP goes to Google Geocoding once.
     The v94-v177 sweep through Matt's own account stays retired and is not described. Depop live search is off
     (DEPOP_LIVE); put Depop in the server-search list if that is ever turned on.
   - v181: saved finds move on an email change (alMoveConfirm copies saved:, the photos stay under the old address's

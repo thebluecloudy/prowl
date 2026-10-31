@@ -33,6 +33,7 @@ export function fbCell(lat, lng) {
 }
 export function fbKey(term, cell) { return "fb2:" + term + "|" + (cell && cell.key ? cell.key : String(cell || "")); }
 export function fbUnits(usd) { return Math.max(0, Math.round(Number(usd) * FB_UNIT)); }
+export function fbItems(n) { return Math.max(1, Math.min(FB_ITEMS_MAX, n | 0)); }   /* maxItems as sent */
 export function fbEstimate(n) { return Math.max(0, Number(n) || 0) * FB_ITEM_USD + FB_START_USD; }
 /* what a run cost: a start, and each listing it pushed (with details when its charge info says so) */
 export function fbCost(raw) {
@@ -44,9 +45,12 @@ export function fbInput(term, cell) {
   return { searchKeyword: term, latitude: cell.lat, longitude: cell.lng, radiusKm: FB_RADIUS_KM, getListingDetails: false, getAllListingPhotos: false,
     strictFiltering: true, maxPagesPerUrl: 1, proxy: { useApifyProxy: true, apifyProxyCountry: "US" } };
 }
-/* one synchronous run: the listings come back in the answer. The token rides in the header only; no cookies, ever. */
+/* one synchronous run: the listings come back in the answer. The token rides in the header only; no cookies, ever.
+   maxTotalChargeUsd (review fix): a pay-per-event actor is held to it, not to maxItems, so Apify itself stops at the
+   estimate fbCall reserved. */
 export function fbRequest(env, token, term, cell, n) {
-  return { url: "https://api.apify.com/v2/acts/" + fbActor(env) + "/run-sync-get-dataset-items?timeout=" + FB_TIMEOUT_S + "&maxItems=" + Math.max(1, Math.min(FB_ITEMS_MAX, n | 0)),
+  const m = fbItems(n);
+  return { url: "https://api.apify.com/v2/acts/" + fbActor(env) + "/run-sync-get-dataset-items?timeout=" + FB_TIMEOUT_S + "&maxItems=" + m + "&maxTotalChargeUsd=" + fbEstimate(m).toFixed(5),
     init: { method: "POST", headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(fbInput(term, cell)) } };
 }
 function fbText(v, max) { return String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max); }

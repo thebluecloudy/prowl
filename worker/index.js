@@ -23,7 +23,10 @@
  *         login or a cookie. The cron searches each Pro member's active hunts once a day around their ZIP's ~10 km cell
  *         (fb2:<term>|<cell>, the week's finds, 8 days) while FB_LIVE is "on"; the alert email adds them as "facebook";
  *         GET /fb-finds answers a signed-in Pro member (or the owner key) again; the admin's Facebook test runs one now.
- *         FB_DAY_USD (default 1) caps the day's Apify spend (fbusd:all); worker/fb.js.
+ *         FB_DAY_USD (default 1) caps the day's Apify spend (fbusd:all); worker/fb.js. Review fixes: the estimate is reserved in
+         Caps before Apify is asked (op addlim, atomic) and Apify is told maxTotalChargeUsd; each hunt and cell's try is
+         taken in Caps first (a killed run's try counts); no Caps, no call; /fb-finds asks Google nothing while FB_LIVE is
+         off; only a ZERO_RESULTS ZIP is kept as a miss; geocoding counts in the run's outside calls.
  *   v195: 2026-10-31. Muse's default prices in the Spending tab fitted to Matt's own Meta bill (Oct 24-30: $1.65 for 1.13M input,
  *         128k output, 114 web searches): $0.98 per 1M input (list $1.25, cached reads cheaper), $4.25 output, no separate
  *         search charge. v193's third-party $1.25 / $4.25 / $2.50 would have said $2.25 for that week.
@@ -662,7 +665,7 @@ import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
 import { SpendBuffer, spendOp, spendWrap } from "./spend.js";   /* v193 */
-import { FB_UNIT, FB_RUN_ITEMS, FB_TTL, FB_PER_RUN, FB_ZIP_TTL, FB_ZIP_MISS_TTL, FB_TRIES, fbLive, fbCapUnits, fbTerm, fbCell, fbKey, fbUnits, fbEstimate, fbMerge, fbRun } from "./fb.js";   /* v197 */
+import { FB_UNIT, FB_RUN_ITEMS, FB_TTL, FB_PER_RUN, FB_ZIP_TTL, FB_ZIP_MISS_TTL, FB_TRIES, fbLive, fbCapUnits, fbTerm, fbCell, fbKey, fbUnits, fbEstimate, fbItems, fbMerge, fbRun } from "./fb.js";   /* v197 */
 import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb64u } from "./push.js";   /* v114 */
 import { SW_SRC } from "./sw-src.js";   /* v114 */
 import { PAGE_CSS, PAGE_CSS_HASH } from "./page-css.js";   /* v111 */
@@ -2654,6 +2657,13 @@ export class Caps {
       await this.s.put(k, n + by);
       await this.arm(2 * 86400000);
       return J({ n: n + by });
+    }
+    if (op === "addlim") {   /* v197: add n only while the total stays within lim (the Facebook budget's reservation) */
+      const k = "c:" + String(q.k || ""), n = (await this.s.get(k)) || 0, by = Math.max(0, Math.min(1000000, Math.floor(Number(q.n) || 0))), lim = Number(q.lim) || 0;
+      if (n + by > lim) return J({ ok: false, n: n });
+      await this.s.put(k, n + by);
+      await this.arm(2 * 86400000);
+      return J({ ok: true, n: n + by });
     }
     if (op === "give") {   /* v93: undo a take, never below 0 */
       const k = "c:" + String(q.k || ""), n = (await this.s.get(k)) || 0;
@@ -7296,17 +7306,26 @@ export default {
        { updated, day, items } holds the week's finds (FB_TTL). fb2day:<UTC day> remembers what was swept or tried
        (FB_TRIES), and that the cap was reached ("stop for the day"). A failed call keeps nothing new.
      Cost: fbusd:all in the day's Caps (FB_UNIT, 1/100,000 of a dollar). Before a call, the estimate (maxItems at
-       $0.0005 + $0.00005) must fit under FB_DAY_USD (default 1); after it, the actual cost is added (a failed call at
-       the estimate). The admin's AI pools show it in dollars.
+       $0.0005 + $0.00005) is reserved there in one step (op addlim: refused if it would pass FB_DAY_USD, default 1), so
+       overlapping runs and a run killed mid-call are still counted; Apify is told the same amount as maxTotalChargeUsd.
+       Only a cost above the estimate is added after. No Caps answer, no call. Each try at a hunt and cell is taken in
+       Caps first (fbtry:, FB_TRIES a day), so a killed try is never retried uncounted. The admin's AI pools show $.
      Delivery: alCheck adds a hunt's cached finds as source "facebook" (no outside call); GET /fb-finds?term= answers a
        signed-in Pro member (store session, or X-Prowl-Email / X-Prowl-Tok) or the owner key (who may pass &zip=).
      Owner test: the admin's Facebook test (admin.js apiFbTest) runs one call now for a term and a ZIP, cap counted,
        FB_LIVE or not; nothing is kept. */
-const FB_RUN_CALLS = 50, FB_CALLS_EACH = 3, FB_GEO_PER_RUN = 2, FB_FINDS_PER_IP = 1000, FB_DAY_LIST_MAX = 2000;
-async function fbSpent() {
+const FB_RUN_CALLS = 50, FB_CALLS_EACH = 4, FB_GEO_CALLS = 2, FB_GEO_PER_RUN = 2, FB_FINDS_PER_IP = 1000, FB_DAY_LIST_MAX = 2000;   /* each: try, reserve, Apify, a rare top-up */
+/* reserve units under the cap in one Caps step: { ok, n } (n = the day's total), or null when Caps does not answer (money: fail closed) */
+async function fbReserve(units, cap) {
   let j;
-  try { j = await capsCall(capsDay(), "peek", { keys: ["fbusd:all"] }); } catch (e) { console.error("caps", String(e && e.message || e)); return null; }   /* money: fail closed */
-  return Number(j && j.values && j.values["fbusd:all"]) || 0;
+  try { j = await capsCall(capsDay(), "addlim", { k: "fbusd:all", n: units, lim: cap }); } catch (e) { console.error("caps", String(e && e.message || e)); return null; }
+  return j && typeof j.n === "number" ? { ok: !!j.ok, n: j.n } : null;
+}
+/* this hunt and cell's try today, taken in Caps before the call: 1..FB_TRIES, or 0 (tries used, or no Caps answer) */
+async function fbTry(k) {
+  let j;
+  try { j = await capsCall(capsDay(), "take", { k: "fbtry:" + k, lim: FB_TRIES }); } catch (e) { console.error("caps", String(e && e.message || e)); return 0; }
+  return j && j.left >= 0 ? j.n : 0;
 }
 async function fbSpendAdd(units) {
   for (let left = units; left > 0; left -= 10000) {   /* Caps "add" takes at most 10,000 at a time */
@@ -7315,13 +7334,13 @@ async function fbSpendAdd(units) {
 }
 /* one Apify call under the day's cap: { ok, items, raw, cost, used, cap } or { ok:false, capped | error } */
 async function fbCall(env, term, cell, n) {
-  const cap = fbCapUnits(env), est = fbUnits(fbEstimate(n)), used = await fbSpent();
-  if (used === null) return { ok: false, error: "the spend counter did not answer", used: 0, cap: cap };
-  if (used + est > cap) return { ok: false, capped: true, used: used, cap: cap };
+  const cap = fbCapUnits(env), est = fbUnits(fbEstimate(fbItems(n))), res = await fbReserve(est, cap);
+  if (!res) return { ok: false, error: "the spend counter did not answer", used: 0, cap: cap };
+  if (!res.ok) return { ok: false, capped: true, used: res.n, cap: cap };
   const r = await fbRun(env, term, cell, n);
-  const units = r.ok ? fbUnits(r.cost) : fbUnits(r.cost || 0);
-  if (units) await fbSpendAdd(units);
-  return Object.assign(r, { units: units, used: used + units, cap: cap });
+  const units = fbUnits(r.cost || 0), extra = Math.max(0, units - est);   /* a cheaper run stays counted at the estimate: errs safe */
+  if (extra) await fbSpendAdd(extra);
+  return Object.assign(r, { units: units, used: res.n + extra, cap: cap });
 }
 /* a ZIP's cell: kept 90 days (a miss 7); ask = Google may be asked (counted in ggeo:all), else KV only */
 async function fbArea(env, zip, ask) {
@@ -7332,8 +7351,9 @@ async function fbArea(env, zip, ask) {
   const j = await gFetch("https://maps.googleapis.com/maps/api/geocode/json?address=" + zip + "&components=country:US|postal_code:" + zip + "&region=us&key=" + encodeURIComponent(gKey(env)), { method: "GET" }, "", env);
   if (!j) return null;   /* Google did not answer: nothing kept, asked again later */
   let p = null;
-  for (const r of (Array.isArray(j.results) ? j.results : []).slice(0, 3)) { p = geoPlace(r); if (p) break; }
+  if (j.status === "OK") for (const r of (Array.isArray(j.results) ? j.results : []).slice(0, 3)) { p = geoPlace(r); if (p) break; }
   const cell = p ? fbCell(p.lat, p.lng) : null;
+  if (!cell && j.status !== "ZERO_RESULTS") return null;   /* quota, key or a passing error (all 200s): nothing kept */
   try { await env.PROWL_ALERTS.put("fbz:" + zip, JSON.stringify(cell ? { lat: cell.lat, lng: cell.lng } : { miss: 1 }), { expirationTtl: cell ? FB_ZIP_TTL : FB_ZIP_MISS_TTL }); } catch (e) {}
   return cell;
 }
@@ -7341,30 +7361,33 @@ async function fbArea(env, zip, ask) {
 async function fbSweep(env, subs, room) {
   const out = { calls: 0, swept: 0, errors: [] };
   if (!fbLive(env) || !env || !env.PROWL_ALERTS || !env.APIFY_TOKEN) return out;
-  let left = Math.min(FB_PER_RUN, Math.floor(Math.max(0, room) / FB_CALLS_EACH));
-  if (left <= 0) return out;
+  let left = FB_PER_RUN, room2 = Math.max(0, Number(room) || 0);   /* room2: the run's outside calls left, geocoding included */
+  if (room2 < FB_CALLS_EACH) return out;
   const day = new Date().toISOString().slice(0, 10), dk = "fb2day:" + day;
   const done = (await kvGet(env, dk, null)) || {};
   if (done._cap) return out;
   let geo = FB_GEO_PER_RUN, wrote = false;
   const save = async () => { try { await env.PROWL_ALERTS.put(dk, JSON.stringify(done), { expirationTtl: 2 * 86400 }); } catch (e) {} };
   for (const sub of Array.isArray(subs) ? subs : []) {
-    if (left <= 0) break;
+    if (left <= 0 || room2 < FB_CALLS_EACH) break;
     if (!sub || !sub.pro || !Array.isArray(sub.hunts) || !sub.hunts.length) continue;
     const zip = alPrefs(sub).zip;
     if (!zip) continue;
-    const cached = await fbArea(env, zip, false);
-    const cell = cached || (geo > 0 ? (geo--, await fbArea(env, zip, true)) : null);
+    let cell = await fbArea(env, zip, false);
+    if (!cell && geo > 0 && room2 >= FB_GEO_CALLS + FB_CALLS_EACH) { geo--; room2 -= FB_GEO_CALLS; cell = await fbArea(env, zip, true); }   /* a counter and Google */
     if (!cell) continue;
     for (const h of alActive(env, sub)) {
-      if (left <= 0) break;
+      if (left <= 0 || room2 < FB_CALLS_EACH) break;
       const term = fbTerm(h), k = term + "|" + cell.key;
       if (!term || /@/.test(term) || done[k] === 1 || (done[k] || 0) <= -FB_TRIES) continue;
       if (Object.keys(done).length >= FB_DAY_LIST_MAX) { left = 0; break; }
-      left--; out.calls++;
+      left--; room2 -= FB_CALLS_EACH;
+      const n = await fbTry(k);   /* taken before the call: a run killed mid-call still used its try */
+      if (!n) { done[k] = -FB_TRIES; wrote = true; continue; }
+      out.calls++;
       const r = await fbCall(env, term, cell, FB_RUN_ITEMS);
       if (r.capped) { done._cap = 1; wrote = true; left = 0; break; }
-      if (!r.ok) { done[k] = (done[k] || 0) - 1; wrote = true; if (out.errors.length < 2) out.errors.push(scrubPII("facebook: " + String(r.error || "failed")).slice(0, 120)); continue; }
+      if (!r.ok) { done[k] = -n; wrote = true; if (out.errors.length < 2) out.errors.push(scrubPII("facebook: " + String(r.error || "failed")).slice(0, 120)); continue; }
       const old = await kvGet(env, fbKey(term, cell), null);
       await env.PROWL_ALERTS.put(fbKey(term, cell), JSON.stringify(fbMerge(old, r.items, day)), { expirationTtl: FB_TTL });
       done[k] = 1; wrote = true; out.swept++;
@@ -7397,8 +7420,10 @@ async function fbFinds(request, env, url, origin) {
   if (!owner && !sub.pro) return json({ error: "Prowl Pro" }, 403, origin, hdr);
   const term = fbTerm(url.searchParams.get("term"));
   if (!term) return json({ error: "need term" }, 400, origin, hdr);
+  const live = fbLive(env);
+  if (!live && !owner) return json({ term: term, live: false, items: [] }, 200, origin, hdr);   /* off: no counter, no Google, nothing kept */
   if (!owner && !(await vCount("fbf:" + ipKey(request.headers.get("CF-Connecting-IP")), FB_FINDS_PER_IP))) return json({ error: "slow down" }, 429, origin, hdr);
-  const oz = String(url.searchParams.get("zip") || ""), zip = owner && /^\d{5}$/.test(oz) ? oz : sub ? alPrefs(sub).zip : "", live = fbLive(env);
+  const oz = String(url.searchParams.get("zip") || ""), zip = owner && /^\d{5}$/.test(oz) ? oz : sub ? alPrefs(sub).zip : "";
   if (!zip) return json({ term: term, live: live, nozip: true, items: [] }, 200, origin, hdr);
   const cell = await fbArea(env, zip, true);
   const v = cell ? await kvGet(env, fbKey(term, cell), null) : null;

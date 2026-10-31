@@ -115,3 +115,21 @@ test('Den > Settings: one line says Facebook finds use the local-pickup ZIP, onl
     await p.close();
   }
 });
+
+test('review fix: a Pro member whose status says fb:false (FB_LIVE off) never asks /fb-finds', async () => {
+  const f = fbFetch(FOUND, { fb: false });
+  const p = await home(f, PRO);
+  await tick(800);
+  assert.equal(f.asked.length, 0);
+  assert.equal(strip(p), undefined);
+  await p.close();
+});
+
+test('review fix: a hunt over 60 characters asks for the key the worker wrote (cut at a whole word, as fbTerm)', async () => {
+  const long = 'mid century modern teak sideboard credenza danish vintage walnut cabinet';
+  const f = fbFetch({ ...FOUND, term: 'x' }, { hunts: [long] });
+  const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.v36': { seen: true, hunts: [long], lock: [0] }, owlTwigSgwTerms: [], ...PRO } });
+  await waitFor(() => f.asked.length > 0, { timeout: 8000 });
+  assert.equal(f.asked[0].term, 'mid century modern teak sideboard credenza danish vintage');
+  await p.close();
+});

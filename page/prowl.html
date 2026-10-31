@@ -6795,8 +6795,8 @@ function liveBlock(name,t,c,busy){
    plain (Facebook has no affiliate program) and open the listing on Facebook. fbOwnerKey is the owner key. */
 var FB={cache:Object.create(null),busy:Object.create(null)},FB_FRESH=30*60000;
 function fbOwnerKey(){try{var k=localStorage.getItem('prowl.owner');return k&&/^[A-Za-z0-9_-]{12,80}$/.test(k)?k:''}catch(e){return ''}}
-function fbKey(t){return String(t||'').replace(/\s+/g,' ').replace(/^\s+|\s+$/g,'').toLowerCase().slice(0,60)}
-function fbOn(){return !!fbOwnerKey()||mailPro()}
+function fbKey(t){return cutWords(t,60).toLowerCase()}   /* the worker's fbTerm: cut at a whole word, so a long hunt asks for the key the sweep wrote */
+function fbOn(){return !!fbOwnerKey()||(mailPro()&&!!MAIL.fb)}   /* a member asks only once /alerts/status says Facebook finds are on */
 function fbClean(a){
   var out=[],i,x,id;
   if(!Array.isArray(a))return out;
@@ -7658,7 +7658,7 @@ function mailStatus(fresh,cb){
       /* v6.04: the membership moved to a new address (same token): follow it once */
       if(j&&j.on===false&&j.moved&&!MAIL.movedHop){MAIL.movedHop=1;var mv=String(j.moved).toLowerCase();mSet('alertEmail',mv);mSet('alertSig','');MAIL.moving='';MAIL.msg='Your Prowl Alerts now go to '+mv+'. This device switched over.';setTimeout(function(){mailStatus(true,cb)},0);return}
       if(j&&j.on){MAIL.moving=j.moving||'';mailStoreLook();}
-      if(j&&j.on){mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;if(typeof j.defHour==='number')MAIL.defHour=j.defHour;MAIL.mail=j.mail==='off'?'off':'on';MAIL.hadPro=!!j.hadPro;MAIL.freeWeekly=!!j.freeWeekly;MAIL.plan=j.plan||null;if(j.prefs&&!MAIL.pending&&!MAIL.saving){MAIL.prefs=j.prefs;setTimeout(prefsTzSync,0)}if(j.hunts&&j.hunts.length!==undefined)mailMerge(j.hunts);MAIL.quarries=j.quarries||{};MAIL.quarryMax=j.quarryMax||1;MAIL.wpush=j.wpush||null;MAIL.phone=j.phone||'';MAIL.fb=!!j.fb;pncSeen(j.quarryMatches);}
+      if(j&&j.on){mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;if(typeof j.defHour==='number')MAIL.defHour=j.defHour;MAIL.mail=j.mail==='off'?'off':'on';MAIL.hadPro=!!j.hadPro;MAIL.freeWeekly=!!j.freeWeekly;MAIL.plan=j.plan||null;if(j.prefs&&!MAIL.pending&&!MAIL.saving){MAIL.prefs=j.prefs;setTimeout(prefsTzSync,0)}if(j.hunts&&j.hunts.length!==undefined)mailMerge(j.hunts);MAIL.quarries=j.quarries||{};MAIL.quarryMax=j.quarryMax||1;MAIL.wpush=j.wpush||null;MAIL.phone=j.phone||'';var fb0=MAIL.fb;MAIL.fb=!!j.fb;if(MAIL.fb&&!fb0)setTimeout(rSGW,0);pncSeen(j.quarryMatches);}
       else if(j&&j.on===false){mSet('alertTok','');mSet('alertSig','');mSet('alertNoAuto','1');sessSet('')}   /* v8.11: signed out elsewhere (Sign out every other device): no store auto sign-in straight back in, as Sign out */
       /* v6.00: this device may push its list only after a real pull merged the
          member's list in; a bad or missing answer leaves sync off until the next status */
