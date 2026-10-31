@@ -1,16 +1,43 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.30 / v203).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.31 / v204).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.30** | 368,743 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v203** | |
+| Page | **v8.31** | 368,728 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v204** | |
 
 Recently shipped, newest first:
 
+- **v8.31 / v204: Facebook says why a hunt shows nothing, and ships only for All USA** (Matt, 2026-10-31, after Store ›
+  Facebook showed most hunts "Checks soon" and several "Nothing on Facebook for this hunt lately"; he approved all three).
+  - **Ships only for All USA hunts:** in `fbSweep` a near-me hunt is one job (pickup within the member's radius); an All
+    USA hunt (`prefs.fbusa`) keeps two (pickup within 500 mi and the shared `fb3s:` shipping search). A member's 10 a
+    day now cover ~10 near-me hunts instead of ~5. `fbHunt` (so `/fb-finds`, `?all=1` and the alert email through
+    `fbAlertItems`) reads `fb3s:` only for an All USA hunt: a near-me hunt shows pickup finds only. Old `fb3s:` records
+    of near-me hunts are simply no longer read (they expire in 8 days).
+  - **Why it is empty:** `fbClean(raw, day, ctx, stat)` counts what it drops (`far` = past radius + 5 mi or no point,
+    `words` = a hunt word missing); `fbRun` returns `stat: { raw, far, words, at }` (raw = Apify's listing count);
+    `fbMerge(old, fresh, day, updated, stat)` keeps the latest search's `stat` on the `fb3:`/`fb3s:` record (an old one
+    stays when none is given; `fbStat` cleans it). The sweep, `/fb-search` and the admin test all pass it. `fbHunt`
+    returns `why: { raw, far, words, mi }` (`fbWhy`: the pickup search, plus ships for All USA; null for a record from
+    before v204 or one borrowed from another radius), in `/fb-finds` and each hunt of `?all=1`.
+  - **Page:** `fbWhyTxt` turns `why` into: raw 0 "Facebook had nothing for “<hunt>” near you this week."; all far
+    "Facebook had N, none within R mi." (500 for All USA); all words "Facebook had N, none with all your words. Try fewer
+    words."; mixed "Facebook had N: X too far, Y without all your words."; no counts (or nothing dropped) keeps the old
+    sentence. Used in the Store's list and on the hunt page's empty Facebook strip; everything through `esc()`.
+  - **Store › Facebook layout:** the search box on top, then hunts with finds (newest update first), then one folded
+    line, `details.fb-rest` ("5 hunts with nothing yet · 4 checking soon"), that opens to each hunt with its reason or
+    "Checks soon" (`.fb-rl`). It starts open when no hunt has finds. Checked in Chromium at 320 and 390 px, light and
+    cockpit (no overflow).
+  - Privacy section: shipping searches are for hunts set to All USA; each search's counts are kept with the finds.
+  - Tests: `worker/__tests__/fb-why-v204.test.mjs`, `__tests__/page/fb-why-v831.test.mjs`; `fb-rotation-v203`,
+    `fb-apify-v200` and `fb-store-v827` follow the one-job near-me hunt and the folded line.
+  - Review fixes: a hunt switched to All USA shows no reason until its own pickup search has run; an empty All USA hunt
+    says "across the USA" and the reason names the last search, not the week; listings dropped as sold or pending are
+    counted ("all sold or not usable"); long hunt names wrap at 320 px.
 - **v8.30: SEO, from the PROWL_SEO_BRIEF** (Matt, 2026-10-31). Most of the brief was already live (title, canonical,
   `/prowl` 301, sitemap, one H1, schema, the count of 29; `/pages/prowl-app` is noindex with a canonical to
   `/pages/prowl`). Matt set the Shopify search listing the same day: title "Prowl — Search 29 Vintage Marketplaces at
@@ -1925,7 +1952,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.31, worker v204** (open PRs hold page v8.22 and worker v198 (Hark's #281), and worker v201 for #289 (`claude/jev-why-v197`, which claimed v200 before #287 shipped it)). Claim one here when you start.
+Next free numbers: **page v8.32, worker v205** (open PRs hold page v8.22 and worker v198 (Hark's #281), and worker v201 for #289 (`claude/jev-why-v197`, which claimed v200 before #287 shipped it)). Claim one here when you start.
 
 ## What's next
 

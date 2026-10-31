@@ -13,7 +13,8 @@ export const FB_RUN_ITEMS = 24, FB_ITEMS_MAX = 60, FB_DAYS = 7, FB_TTL = 8 * 864
 export const FB_ZIP_TTL = 90 * 86400, FB_ZIP_MISS_TTL = 7 * 86400, FB_CELL_DEG = 0.1, FB_TRIES = 2;
 /* v203 (Matt, 2026-10-31: "10 a day is fine"; "local plus ship with a radius. All USA."): each Pro member's hunts get up
    to FB_MEMBER_DAY Facebook searches a day, taken in turn; a hunt is two: pickup within the member's radius (or
-   FB_USA_MI for an All USA hunt) and the listings that ship (one search a hunt for everyone, FB_SHIP_KM wide). A member's
+   FB_USA_MI for an All USA hunt) and the listings that ship (one search a hunt for everyone, FB_SHIP_KM wide; v204: for
+   an All USA hunt only, so a near-me hunt is one search and 10 cover ten near-me hunts). A member's
    one-off searches (the Store's search box) are FB_SEARCH_DAY a day. */
 export const FB_MEMBER_DAY = 10, FB_SEARCH_DAY = 5, FB_USA_MI = 500, FB_RADII_MI = [25, 50, 100], FB_SHIP_KM = 805;
 const KM_PER_MI = 1.609344;
@@ -140,8 +141,11 @@ export function fbMiles(lat1, lng1, lat2, lng2) {
 }
 /* ctx (v203): { term, lat, lng, mi, ship }: only listings matching the hunt; pickup ones only within mi miles of the
    point (Facebook pads a thin local search with far-away "similar" ones, strict filtering or not), each with its miles;
-   shipping ones marked ships. Without ctx, v200's behaviour. */
-export function fbClean(raw, day, ctx) {
+   shipping ones marked ships. Without ctx, v200's behaviour.
+   stat (v204, optional): an object counted into: far = pickup listings dropped for distance (or no point), words =
+   listings dropped for a missing hunt word, so a hunt with nothing can say why. */
+export function fbClean(raw, day, ctx, stat) {
+  if (stat) { stat.far = stat.far | 0; stat.words = stat.words | 0; }
   const out = [], seen = Object.create(null);
   for (const x of Array.isArray(raw) ? raw : []) {
     if (out.length >= FB_ITEMS_MAX) break;
@@ -149,12 +153,12 @@ export function fbClean(raw, day, ctx) {
     const id = String(x.id == null ? "" : x.id).trim(), title = fbText(x.marketplace_listing_title || x.custom_title, 160).replace(EMAILISH, "[email]");
     if (!/^\d{5,20}$/.test(id) || seen[id] || !title) continue;
     seen[id] = 1;
-    if (ctx && ctx.term && !fbMatch(ctx.term, title)) continue;
+    if (ctx && ctx.term && !fbMatch(ctx.term, title)) { if (stat) stat.words++; continue; }
     let miles = null;
     if (ctx && !ctx.ship && Number.isFinite(Number(ctx.lat))) {   /* review fix: shipping finds are shared by everyone, so no distance from one member's ZIP */
       const loc = x.location && typeof x.location === "object" ? x.location : {}, la = Number(loc.latitude), lo = Number(loc.longitude);
       miles = Number.isFinite(la) && Number.isFinite(lo) && la !== 0 && Math.abs(la) <= 90 && Math.abs(lo) <= 180 ? fbMiles(Number(ctx.lat), Number(ctx.lng), la, lo) : null;
-      if (miles == null || miles > fbMi(ctx.mi) + 5) continue;   /* +5: the area is a 10 km cell's centre */
+      if (miles == null || miles > fbMi(ctx.mi) + 5) { if (stat) stat.far++; continue; }   /* +5: the area is a 10 km cell's centre */
     }
     const pr = fbPrice(x), img = fbPhoto(x);
     const rg = x.location && typeof x.location === "object" && x.location.reverse_geocode && typeof x.location.reverse_geocode === "object" ? x.location.reverse_geocode : {};
@@ -166,8 +170,10 @@ export function fbClean(raw, day, ctx) {
   }
   return out;
 }
-/* the week so far (as v94's fbIngest): today's finds first, then the earlier ones still inside FB_DAYS, one per listing */
-export function fbMerge(old, fresh, day, updated) {
+/* the week so far (as v94's fbIngest): today's finds first, then the earlier ones still inside FB_DAYS, one per listing.
+   stat (v204): the latest search's counts ({ raw, far, words, at }, fbStat), kept with the record; without one the old
+   record's stays. */
+export function fbMerge(old, fresh, day, updated, stat) {
   const cut = new Date(Date.parse(day) - FB_DAYS * 86400000).toISOString().slice(0, 10), have = Object.create(null), items = [];
   for (const x of (Array.isArray(fresh) ? fresh : []).concat(old && Array.isArray(old.items) ? old.items : [])) {
     if (!x || !x.id || have[x.id] || !(String(x.found || "") > cut)) continue;
@@ -175,7 +181,28 @@ export function fbMerge(old, fresh, day, updated) {
   }
   items.sort((a, b) => (a.found < b.found ? 1 : a.found > b.found ? -1 : 0));   /* stable: today's order kept */
   items.length = Math.min(items.length, FB_ITEMS_MAX);
-  return { updated: updated || new Date().toISOString(), day: day, items: items };
+  const rec = { updated: updated || new Date().toISOString(), day: day, items: items };
+  const st = fbStat(stat) || fbStat(old && old.stat);
+  if (st) rec.stat = st;
+  return rec;
+}
+/* v204: a search's counts as kept: Apify's listings (raw), dropped for distance (far) and for a missing word (words), when */
+export function fbStat(s) {
+  if (!s || typeof s !== "object") return null;
+  const n = v => { const x = Math.floor(Number(v)); return Number.isFinite(x) && x > 0 ? Math.min(x, 1000) : 0; };
+  const at = typeof s.at === "string" && /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(s.at) ? s.at : new Date().toISOString();
+  return { raw: n(s.raw), far: n(s.far), words: n(s.words), at: at };
+}
+/* v204: why a hunt shows what it shows, from its kept records' counts (pickup, and shipping for an All USA hunt): null
+   when none carries counts (a record from before v204) */
+export function fbWhy(recs, mi) {
+  let raw = 0, far = 0, words = 0, any = false;
+  for (const r of Array.isArray(recs) ? recs : []) {
+    const s = r && r.stat ? fbStat(r.stat) : null;
+    if (!s) continue;
+    any = true; raw += s.raw; far += s.far; words += s.words;
+  }
+  return any ? { raw: raw, far: far, words: words, mi: fbMi(mi) } : null;
 }
 /* one Apify call: { ok, items, raw, cost } or { ok:false, error, cost } (a failed run may still have pushed listings,
    so it is charged at the estimate: the cap errs on the safe side). Errors never carry the token. */
@@ -187,7 +214,9 @@ export async function fbRun(env, term, cell, n, f, opt) {
     const r = await (f || fetch)(rq.url, Object.assign({ signal: ctl.signal }, rq.init));
     let j = null; try { j = await r.json(); } catch (e) {}
     if (!r.ok || !Array.isArray(j)) return { ok: false, status: r.status, error: "apify " + r.status + (j && j.error && j.error.type ? " " + fbText(j.error.type, 40) : ""), cost: fbEstimate(n) };
-    return { ok: true, raw: j.length, items: fbClean(j, new Date().toISOString().slice(0, 10), opt ? { term: term, lat: cell.lat, lng: cell.lng, mi: opt.mi, ship: !!opt.ship } : null), cost: fbCost(j), fields: fbShape(j[0]) };   /* v202: fields */
+    const stat = { raw: j.length, far: 0, words: 0, at: new Date().toISOString() };   /* v204: what the search found and set aside */
+    const items = fbClean(j, stat.at.slice(0, 10), opt ? { term: term, lat: cell.lat, lng: cell.lng, mi: opt.mi, ship: !!opt.ship } : null, stat);
+    return { ok: true, raw: j.length, items: items, stat: stat, cost: fbCost(j), fields: fbShape(j[0]) };   /* v202: fields */
   } catch (e) { return { ok: false, error: e && e.name === "AbortError" ? "apify timed out" : "apify unreachable", cost: fbEstimate(n) }; }
   finally { clearTimeout(timer); }
 }
