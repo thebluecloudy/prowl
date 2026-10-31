@@ -417,12 +417,13 @@ export function wkAlong(items, line, win, nowMs, maxMi) {
   return out.sort((a, b) => a.off - b.off || a.days[0].s - b.days[0].s);
 }
 /* those sales as the page draws them: wkRowOf plus off (miles off the road), prog (how far along it) and pick (every
-   word of a hunt is there, as Top picks); a sale whose page is gone is dropped; at most cap */
+   word of a hunt is there, as Top picks); a sale whose page is gone is dropped, and so is one whose page was not read
+   (the request's budget ran out), so a sale is never shown without its address, photo and dead-link check; at most cap */
 export function wkAlongRows(cands, details, hunts, tz, cap) {
-  const out = [];
+  const out = [], by = (details && details.by) || {}, gone = (details && details.gone) || {};
   for (const c of cands) {
-    if (details && details.gone && details.gone[c.s.id]) continue;
-    const det = details && details.by ? details.by[c.s.id] || null : null, match = wkMatch(c.s, det, hunts);
+    if (gone[c.s.id] || !by[c.s.id]) continue;
+    const det = by[c.s.id], match = wkMatch(c.s, det, hunts);
     const row = wkRowOf(c.s, det, match, c.days, tz);
     row.dist = c.off; row.off = c.off; row.prog = c.prog; row.pick = !!match;
     out.push(row);

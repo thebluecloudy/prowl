@@ -26,7 +26,7 @@ class FakeKV {
   async get(k, type) { if (!this.m.has(k)) return null; const v = this.m.get(k); return type === "json" ? JSON.parse(v) : v; }
   async put(k, v) { this.m.set(k, String(v)); }
 }
-function rig({ apiBody = "[]", pages = {}, owner = false, env: envExtra = {}, count = () => true } = {}) {
+function rig({ apiBody = "[]", pages = {}, owner = false, env: envExtra = {}, count = () => true, calls = 0 } = {}) {
   const kv = new FakeKV(), fetched = [], counted = [];
   const env = { PROWL_ALERTS: kv, ...envExtra };
   const deps = {
@@ -48,7 +48,8 @@ function rig({ apiBody = "[]", pages = {}, owner = false, env: envExtra = {}, co
   };
   const names = ["wkOpen", "wkWho", "fbWho", "wkGet", "wkList", "wkDetails", "wkTripRoute", "alSame"];
   const keys = Object.keys(deps);
-  const X = new Function(...keys, CONSTS + "\n" + names.map(indexFn).join("\n") + "\nreturn { " + names.join(", ") + " };")(...keys.map((k) => deps[k]));
+  const C = calls ? CONSTS.replace(/WK_TRIP_CALLS = \d+/, "WK_TRIP_CALLS = " + calls) : CONSTS;
+  const X = new Function(...keys, C + "\n" + names.map(indexFn).join("\n") + "\nreturn { " + names.join(", ") + " };")(...keys.map((k) => deps[k]));
   return { X, env, kv, fetched, counted };
 }
 const req = (h = {}, sess = null) => ({ sess, headers: { get: (k) => (k in h ? h[k] : k === "CF-Connecting-IP" ? "1.2.3.4" : null) } });
@@ -181,7 +182,9 @@ test("at most 12, at most 16 outside calls; a second look reads KV only; a new l
   shut.kv.m.set(key, JSON.stringify({ ...JSON.parse(R.kv.m.get(key)), at: Date.now() - 4 * 3600000 }));
   const r4 = await shut.X.wkTripRoute(req(), shut.env, u(Q), "o");
   assert.equal(r4.status, 200);
-  assert.equal(r4.body.stale, 1); assert.equal(r4.body.partial, 1);
+  assert.equal(r4.body.stale, 1);
+  assert.equal(r4.body.missing, 1, "some circles were not checked"); assert.equal(r4.body.partial, 0, "not a long drive");
+  assert.equal(r.body.missing, 0); assert.equal(r.body.partial, 0);
 });
 
 test("a day that is over, or more than two weeks off, asks nothing", async () => {
@@ -189,4 +192,28 @@ test("a day that is over, or more than two weeks off, asks nothing", async () =>
   const r = await R.X.wkTripRoute(req(), R.env, u("p=" + encodeURIComponent(P) + "&day=2020-01-01&tz=" + TZ), "o");
   assert.equal(r.status, 200); assert.deepEqual(r.body.sales, []);
   assert.equal(R.fetched.length, 0);
+});
+
+/* review fixes (2026-10-31) */
+test("a sale whose page the budget did not reach is left out, never shown as address-less; the nearest pages are read first", async () => {
+  const list = Array.from({ length: 10 }, (_, i) => sale(5300000 + i, 42.4 - i * 0.05, lngAt(42.4 - i * 0.05) + (9 - i) * 0.004));
+  const pages = {}; list.forEach((s) => { pages[URL_OF(s.id)] = { html: page(s.id) }; });
+  const R = rig({ owner: true, apiBody: JSON.stringify(list), pages, calls: 8 });
+  const r = await R.X.wkTripRoute(req(), R.env, u(Q), "o");
+  assert.equal(r.status, 200);
+  const lists = R.fetched.filter((x) => /sale-details/.test(x)).length, read = 8 - lists;
+  assert.ok(read > 0 && read < 10, "the lists left room for only some pages: " + read);
+  assert.equal(r.body.sales.length, read, "only the sales whose pages were read");
+  for (const x of r.body.sales) { assert.ok(x.addr, "every sale shown has its address: " + x.id); assert.ok(x.img); }
+  const byOff = list.map((s) => ({ id: String(s.id), off: haversineMi({ lat: s.latitude, lng: s.longitude }, { lat: s.latitude, lng: lngAt(s.latitude) }) })).sort((a, b) => a.off - b.off);
+  assert.deepEqual(r.body.sales.map((x) => x.id).sort(), byOff.slice(0, read).map((x) => x.id).sort(), "the nearest to the road");
+  assert.equal(r.body.total, 10);
+});
+
+test("wkAlongRows drops a sale with no page read and one whose page is gone", () => {
+  const s1 = { id: 1, name: "A", url: "/MI/x/1", cityName: "x", stateCode: "MI" }, s2 = { ...s1, id: 2 }, s3 = { ...s1, id: 3 };
+  const c = (s) => ({ s, days: [{ s: WIN.from + 9 * 3600000, e: WIN.from + 16 * 3600000 }], off: 1, prog: 0 });
+  const rows = W.wkAlongRows([c(s1), c(s2), c(s3)], { by: { 1: { desc: "", caps: [], img: "", addr: "1 Main St" } }, gone: { 2: 1 } }, [], TZ, 12);
+  assert.deepEqual(rows.map((x) => String(x.id)), ["1"]);
+  assert.deepEqual(W.wkAlongRows([c(s1)], null, [], TZ, 12), []);
 });

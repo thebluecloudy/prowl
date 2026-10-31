@@ -136,7 +136,7 @@ function rigB(o = {}) {
   const fetchImpl = (u) => {
     const url = String(u); calls.push(url);
     if (/\/trip\/sales\?/.test(url)) return okJ(o.sales || ON_WAY);
-    if (/\/trip\?/.test(url)) return okJ(trip());
+    if (/\/trip\?/.test(url)) { o.trips = (o.trips || 0) + 1; return okJ(o.tripFn ? o.tripFn(o.trips) : trip()); }
     if (/\/order\?/.test(url)) { const n = new URL(url).searchParams.get('p').split('|').length; return okJ({ order: Array.from({ length: n }, (_, i) => i), legs: Array.from({ length: n }, () => ({ min: 15, mi: 10 })), src: 'osrm' }); }
     if (/\/trips$/.test(url)) return okJ({ trips: [] });
     return okJ({ items: [] });
@@ -215,6 +215,74 @@ test('B: free and signed-out visitors ask for no estate sales on the way', async
   assert.ok(calls.some((c) => /\/trip\?/.test(c)));
   assert.ok(!calls.some((c) => /\/trip\/sales/.test(c)));
   assert.equal(p.$('#otp-nrSales').textContent, '');
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+/* ---- review fixes (2026-10-31) ---- */
+const wayDay = () => { const d = new Date(satH(9)); return ymd(d); };
+
+test('review: Rebuild from here on a planned day leaves out the sales marked Been, and the marks do not hang on the start\'s name', async () => {
+  const k = 'e:|' + wayDay();
+  const { p, calls } = rigA({ storage: { 'prowl.nearBeen': { o: [k], s: { [k]: { es5200001: 1 } } } } });
+  await planDay(p, calls);
+  p.$('#otp-wp .wp-day [data-wp="trip"]').click(); await tick(80);
+  assert.ok(p.$('#otp-nrOut [data-nrbeen="es5200001"].on'), 'Pyrex house shows as Been on the day opened from Novi, MI');
+  p.$('#otp-nrHere').click();
+  await waitFor(() => /^Here → /.test((p.$('#otp-nrOut .nr-route') || {}).textContent || ''));
+  await tick(80);
+  assert.deepEqual(anchors(p), ['Tool barn'], 'the sale you have been to does not come back');
+  assert.deepEqual(p.errors, []);
+  await p.close();
+});
+
+test('review: the estate sales on the way say when some of the route could not be checked, apart from a long drive', async () => {
+  let r = rigB({ storage: { 'prowl.owner': OWNER }, sales: { ...ON_WAY, missing: 1, partial: 0 } });
+  await toTrip(r.p, 'Toledo'); await waitFor(() => r.p.$('#otp-nrSales .nr-es'));
+  assert.match(r.p.$('#otp-nrSales').textContent, /Some of the route could not be checked just now\./);
+  assert.doesNotMatch(r.p.$('#otp-nrSales').textContent, /long drive/);
+  await r.p.close();
+  r = rigB({ storage: { 'prowl.owner': OWNER }, sales: { ...ON_WAY, missing: 0, partial: 1 } });
+  await toTrip(r.p, 'Toledo'); await waitFor(() => r.p.$('#otp-nrSales .nr-es'));
+  assert.match(r.p.$('#otp-nrSales').textContent, /Only the first stretch of a long drive is checked\./);
+  assert.doesNotMatch(r.p.$('#otp-nrSales').textContent, /could not be checked/);
+  assert.deepEqual(r.p.errors, []);
+  await r.p.close();
+});
+
+test('review: an added sale does not follow you to a trip somewhere else, nor onto a rebuilt road it is now far from', async () => {
+  let r = rigB({ storage: { 'prowl.owner': OWNER } });
+  await toTrip(r.p, 'Toledo'); await waitFor(() => r.p.$('#otp-nrSales .nr-es'));
+  r.p.$('#otp-nrSales [data-nresadd="5300001"]').click(); await tick(60);
+  assert.deepEqual(anchors(r.p), ['Taylor Pyrex sale', 'Monroe Mall']);
+  r.p.$('#otp-nrTo').value = 'Ann Arbor';
+  r.p.$('#otp-nrForm').dispatchEvent(new r.p.win.Event('submit', { bubbles: true, cancelable: true }));
+  await tick(250);
+  assert.deepEqual(anchors(r.p), ['Monroe Mall'], 'a new destination is a new trip');
+  assert.deepEqual(r.p.errors, []);
+  await r.p.close();
+  /* Rebuild from here, and the road now runs ~15 mi east of the sale */
+  const far = () => { const t = trip(); t.line = t.line.map(([a, b]) => [a, b + 0.3]); return t; };
+  r = rigB({ storage: { 'prowl.owner': OWNER }, tripFn: (n) => (n === 1 ? trip() : far()) });
+  await toTrip(r.p, 'Toledo'); await waitFor(() => r.p.$('#otp-nrSales .nr-es'));
+  r.p.$('#otp-nrSales [data-nresadd="5300001"]').click(); await tick(60);
+  r.p.$('#otp-nrHere').click(); await tick(300);
+  assert.deepEqual(anchors(r.p), ['Monroe Mall'], 'more than ~3 mi off the new road: left behind');
+  assert.deepEqual(r.p.errors, []);
+  await r.p.close();
+});
+
+test('review: a stop you skipped keeps its place in the order when an estate sale is added, and comes back there', async () => {
+  const two = () => { const t = trip(); t.stops = [shop('S0', 'Romulus Mall', 'Romulus, MI', 42.3, -83.43), shop('S1', 'Monroe Mall', 'Monroe, MI', 41.92, -83.4)]; return t; };
+  const { p } = rigB({ storage: { 'prowl.owner': OWNER }, tripFn: two });
+  await toTrip(p, 'Toledo'); await waitFor(() => p.$('#otp-nrSales .nr-es'));
+  assert.deepEqual(anchors(p), ['Romulus Mall', 'Monroe Mall']);
+  p.$('#otp-nrOut [data-nrskip="S0"]').click(); await tick(40);
+  assert.deepEqual(anchors(p), ['Monroe Mall']);
+  p.$('#otp-nrSales [data-nresadd="5300003"]').click(); await tick(60);
+  assert.deepEqual(anchors(p), ['Flat Rock barn', 'Monroe Mall']);
+  p.$('#otp-nrUnskip').click(); await tick(40);
+  assert.deepEqual(anchors(p), ['Romulus Mall', 'Flat Rock barn', 'Monroe Mall'], 'Romulus back first, not at the end');
   assert.deepEqual(p.errors, []);
   await p.close();
 });

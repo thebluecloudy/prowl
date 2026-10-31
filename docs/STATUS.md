@@ -58,6 +58,19 @@ Recently shipped, newest first:
     `road-upgrades-v762`'s owner-only estate test is retired. Screens at 390x844, light and cockpit, with stubbed
     worker routes and real OSM tiles: `/home/user/shots/roadtrip-estate-*.png` (plan, day, day-stops, onway-map,
     onway-list, added, added-map).
+  - **Review fixes (same versions, 2026-10-31):** (1) a sale whose page the 16-call budget did not reach is left out
+    (`wkAlongRows` keeps only sales with a page read), and `wkDetails` reads the missing pages nearest first, so the
+    budget drops the farthest, never shows a sale as "Address not posted yet" with no photo or dead-link check;
+    (2) `/trip/sales` answers `partial` (the route is longer than the circles read) apart from `missing` (a circle's
+    list could not be had: it failed, or the IP is past its count with nothing kept); the page says "Some of the route
+    could not be checked just now" for `missing`, the long-drive line for `partial`; (3) added sales come along only
+    when the same trip is built again (`nrBuild(to, again)` / `nrLoop(from, again)` from Rebuild from here, new
+    options and + Stop, same destination or a loop again), and not one now more than ~3.5 mi off the new road
+    (`nrEsOff`); (4) Rebuild from here on a Plan my week day leaves out the sales marked ✓ Been, and a planned day's Been
+    marks are kept by day alone (`nrBeenSig`: `e:|<day>`, so a new start's name no longer loses them; the key
+    `prowl.nearBeen` is unchanged, and no `e:` marks were live yet); (5) `nrEsPut` orders every stop, skipped ones
+    too (`nrOrderAll`), so a stop unskipped later comes back in its place. Tests in the same two files. Room left after:
+    368,327 bytes (`node scripts/slim-page.mjs`).
 - **v8.33: estate sale photos in NEAR ME › Estate sales** (Matt, 2026-10-31: "the estate sale pictures aren't
   working"). The worker already sent each sale's cover photo (`img`, the sale page's og:image on
   `picturescdn.estatesales.net`, checked against a live page and fetched with the shop as referrer: 200), and the daily

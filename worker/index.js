@@ -24,7 +24,9 @@
  *         answered, or a loop's start and stops), nearest to the road first, at most 12, from the wk1: lists around at most
  *         5 points along it (snapped to 0.1 degree, 25 or 50 miles) and the sales' own pages (wkd2:); 16 outside calls a
  *         request at most, WK_TRIP_PER_IP a day for new lists; Pro members and the owner only (wkWho). Plan my week's days
- *         open in Road trip on the page alone (a loop of fixed stops, /order as before).
+ *         open in Road trip on the page alone (a loop of fixed stops, /order as before). A sale whose page the budget did
+ *         not reach is left out (never shown without its address); partial=1 is a route longer than the circles read,
+ *         missing=1 a circle whose list could not be had just now.
  *   v205: 2026-10-31. Estate sales for every Pro member (Hark's PR #281, Matt's calls of 2026-10-31): GET /weekend?lat&lng[&r=25&tz&h]
  *         lists the estate sales open in the next 7 days (today through today+6 in tz; Matt: "Estate sales are all week")
  *         within r miles (EstateSales.net's map JSON plus each sale's own page, KV wk1:/wkd2:/wkz:), Top picks where a
@@ -7527,11 +7529,12 @@ async function wkList(env, pt, r, place, run) {
    is still hidden is read again after WK_PENDING_TTL, so the address shows up soon after the company posts it. */
 const WK_PENDING_TTL = 3 * 3600;
 async function wkDetails(env, sales, run) {
-  const by = Object.create(null), gone = Object.create(null), todo = [];
-  await Promise.all(sales.map(async s => {
+  const by = Object.create(null), gone = Object.create(null), miss = [];
+  await Promise.all(sales.map(async (s, i) => {
     const d = await kvGet(env, "wkd2:" + s.id, null);
-    if (d && d.gone) gone[s.id] = 1; else if (d) by[s.id] = d; else todo.push(s);
+    if (d && d.gone) gone[s.id] = 1; else if (d) by[s.id] = d; else miss[i] = s;
   }));
+  const todo = miss.filter(Boolean);   /* v206: in the order asked (nearest first), so a spent budget drops the last ones */
   for (let i = 0; i < todo.length; i += 4) {
     await Promise.all(todo.slice(i, i + 4).map(async s => {
       const g = await wkGet(s.url, "text/html,application/xhtml+xml", run);
@@ -7641,9 +7644,13 @@ async function wkTripRoute(request, env, url, origin) {
   lists.forEach((L) => { if (L) { got++; if (L.stale) stale = 1; L.items.forEach((s) => items.push(s)); } });
   if (!got && C.pts.length) return ask ? json({ error: "EstateSales.net did not answer just now" }, 502, origin, hdr) : json({ error: "slow down" }, 429, origin, hdr);
   const cands = wkAlong(items, line, win, now, WK_TRIP_MI);
+  /* the pages of the nearest WK_TRIP_CAP + 2: those kept in wkd2: cost nothing; of the rest, wkDetails reads the nearest
+     first, only as many as the calls the lists left (run); a sale whose page was not read is left out, not shown bare */
   const det = await wkDetails(env, cands.slice(0, WK_TRIP_CAP + 2).map((c) => c.s), run);
   const sales = wkAlongRows(cands, det, hunts, tz, WK_TRIP_CAP);
-  return json({ day: day, tz: tz, r: C.r, mi: WK_TRIP_MI, lists: C.pts.length, partial: C.partial || got < C.pts.length ? 1 : 0, stale: stale, calls: run.calls, total: cands.length, sales: sales }, 200, origin, hdr);
+  /* partial: the route is longer than the circles read; missing: a circle's list could not be had just now (it failed,
+     or this IP is past its count and nothing was kept) */
+  return json({ day: day, tz: tz, r: C.r, mi: WK_TRIP_MI, lists: C.pts.length, partial: C.partial ? 1 : 0, missing: got < C.pts.length ? 1 : 0, stale: stale, calls: run.calls, total: cands.length, sales: sales }, 200, origin, hdr);
 }
 async function runProbes(env) {
   const srcs = [], resting = [];
