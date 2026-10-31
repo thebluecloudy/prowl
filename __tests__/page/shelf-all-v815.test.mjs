@@ -19,7 +19,7 @@ test('shelfShow renders 5 picks plus Buy the whole shelf, with money-only pay li
   const i = HTML.indexOf('function shelfShow(j){'), body = HTML.slice(i, HTML.indexOf('\n  O.addEventListener', i));
   const doc = new (require_jsdom())('<div id="o"></div>').window.document;
   const O = doc.getElementById('o');
-  new Function('document', 'O', body + '; shelfShow(arguments[2]);')(doc, O, SHELF);
+  new Function('document', 'O', 'function photoShow(){} function againRow(){}   /* v8.29: the photo check\'s states, not under test here */\n' + body + '; shelfShow(arguments[2]);')(doc, O, SHELF);
   const cards = O.querySelectorAll('.sh-card');
   assert.equal(cards.length, 6);
   assert.ok(cards[0].classList.contains('sh-all'));
