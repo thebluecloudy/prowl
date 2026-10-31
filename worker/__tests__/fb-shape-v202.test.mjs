@@ -29,6 +29,10 @@ test("the price: a dollar amount in every shape; another currency or a bad value
   assert.equal(FB.fbPrice({ listing_price: { formatted_amount: "€40" } }), "");
   assert.equal(FB.fbPrice({ listing_price: { amount: "call me" } }), "");
   assert.equal(FB.fbPrice({ listing_price: { amount: "-5" } }), "");
+  assert.equal(FB.fbPrice({ listing_price: { formatted_amount: "CA$40", amount: "40" } }), "", "review fix: a formatted price naming another currency, no currency field");
+  assert.equal(FB.fbPrice({ listing_price: { formatted_amount: "40 CAD", amount: "40" } }), "");
+  assert.equal(FB.fbPrice({ listing_price: { formatted_amount: "40 USD", amount: "40" } }), "$40");
+  for (const blank of [" ", "\t", false, true, [], {}, "1e3", "0x10"]) assert.equal(FB.fbPrice({ listing_price: { amount: blank } }), "", "review fix: not a price: " + JSON.stringify(blank));
   assert.equal(FB.fbPrice({ listing_price: { amount: "" } }), "");
   assert.equal(FB.fbPrice({}), "");
   assert.equal(FB.fbPrice(null), "");
@@ -89,7 +93,7 @@ class FakeKV {
 function testRun(callResult) {
   const kv = new FakeKV(), cell = FB.fbCell(42.48, -83.47);
   const deps = { fbTerm: FB.fbTerm, fbArea: async () => cell, fbCall: async () => callResult, FB_UNIT: FB.FB_UNIT, FB_RUN_ITEMS: FB.FB_RUN_ITEMS, FB_TTL: FB.FB_TTL,
-    fbEstimate: FB.fbEstimate, fbCapUnits: FB.fbCapUnits, fbLive: FB.fbLive, fbKey: FB.fbKey, fbMerge: FB.fbMerge, scrubPII: (s) => s,
+    fbEstimate: FB.fbEstimate, fbCapUnits: FB.fbCapUnits, fbLive: FB.fbLive, fbKey: FB.fbKey, fbMerge: FB.fbMerge, scrubPII: (s) => s, FB_OWN_ZIP: "fbownzip", FB_DAY_LIST_MAX: 2000,
     kvGet: async (env, k, d) => { const v = await env.PROWL_ALERTS.get(k, "json"); return v == null ? d : v; } };
   const keys = Object.keys(deps);
   const fn = new Function(...keys, indexFn("fbTestRun") + "\nreturn fbTestRun;")(...keys.map((k) => deps[k]));
@@ -108,6 +112,23 @@ test("the admin's test keeps its finds where the hunt page reads them (fb2:<hunt
   const k = FB.fbKey("ceramic panther", T.cell), v = JSON.parse(T.kv.m.get(k));
   assert.deepEqual(v.items.map((x) => x.id), ["1111111", "2222222", "3333333"], "merged by id, the old ones kept");
   assert.equal(T.kv.ttl.get(k), FB.FB_TTL);
+  assert.deepEqual(JSON.parse(T.kv.m.get("fb2day:" + DAY)), { ["ceramic panther|" + T.cell.key]: 1 }, "review fix: the day's sweep does not pay again for it");
+  assert.equal(JSON.parse(T.kv.m.get("fbownzip")), "48375", "the owner key's hunt page reads this area");
+});
+
+test("a test does not undo a capped day or touch the other hunts the sweep did", async () => {
+  const T = testRun({ ok: true, items: [ITEM(1111111)], units: 600, used: 600, cap: 100000 });
+  await T.kv.put("fb2day:" + DAY, JSON.stringify({ "pyrex|42.5,-83.5": -1, _cap: 1 }));
+  await T.run("panther", "02134");
+  assert.deepEqual(JSON.parse(T.kv.m.get("fb2day:" + DAY)), { "pyrex|42.5,-83.5": -1, _cap: 1 });
+  assert.equal(JSON.parse(T.kv.m.get("fbownzip")), "02134", "a leading zero survives");
+});
+
+test("/fb-finds: the owner key reads the last test's ZIP first, a member only their own", () => {
+  const f = indexFn("fbFinds");
+  assert.match(f, /let zip = owner && \/\^\\d\{5\}\$\/\.test\(oz\) \? oz : "";\n  if \(!zip && owner\) \{ const z = await kvGet\(env, FB_OWN_ZIP, null\)/);
+  assert.match(f, /if \(!zip && sub\) zip = alPrefs\(sub\)\.zip;/);
+  assert.ok(f.indexOf("FB_OWN_ZIP") < f.indexOf("alPrefs(sub)"));
 });
 
 test("a failed, empty or capped test keeps nothing", async () => {
@@ -140,7 +161,7 @@ test("the Diagnose test box shows each photo, where the finds went and the field
       w.fetch = async (u) => {
         const p = String(u);
         const body = p === "/admin/api/fbtest" ? { ok: true, count: 1, items: [{ title: "Ceramic Panther", price: "$40", city: "Novi, MI", url: "https://www.facebook.com/marketplace/item/1111111/", image: PHOTO }],
-          cost: 0.0005, estimate: 0.012, used: 0.2, cap: 1, live: true, kept: true, term: "ceramic panther", fields: ["id (string)", "listing_price.amount (string)"] } : {};
+          cost: 0.0005, estimate: 0.012, used: 0.2, cap: 1, live: true, kept: true, term: "ceramic panther", zip: "48375", fields: ["id (string)", "listing_price.amount (string)"] } : {};
         return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
       };
     } });
@@ -156,7 +177,8 @@ test("the Diagnose test box shows each photo, where the finds went and the field
   assert.ok(img, "a photo per listing");
   assert.equal(img.getAttribute("src"), PHOTO);
   assert.equal(img.getAttribute("referrerpolicy"), "no-referrer");
-  assert.match(d.body.textContent, /Kept for the hunt page: open the hunt “ceramic panther”/);
+  assert.ok(!img.closest("td").classList.contains("nil"), "review fix: a photo cell is not empty, so phones show it");
+  assert.match(d.body.textContent, /Kept for the hunt page \(8 days\): open the hunt “ceramic panther” in Prowl with the owner key, or signed in as a Pro member whose local-pickup ZIP is in the same area as 48375/);
   assert.match(d.body.textContent, /Fields Apify sent \(2, names only\)/);
   assert.match(d.body.textContent, /listing_price\.amount \(string\)/);
 });

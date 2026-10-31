@@ -25,6 +25,15 @@ Recently shipped, newest first:
   - **The test fills the hunt page:** its finds are kept as the sweep keeps them (`fb2:<hunt>|<cell>`, merged by id, 8
     days), so the hunt shows them at once for a signed-in Pro member (or the owner key) whose local-pickup ZIP is in that
     cell. Before, a test kept nothing. The test box shows a photo per listing and says where the finds went.
+  - **The owner key's hunt page:** the page never sends a ZIP, so the owner key alone used to get "add your ZIP". The
+    test's ZIP is now kept (`fbownzip`, 30 days) and `/fb-finds` uses it for the owner key (before a signed-in member's
+    own ZIP); members still get only their own ZIP's area. A test also marks its hunt and cell done in the day's
+    `fb2day:`, so the sweep does not pay again for it.
+  - Review fixes: photos showed on phones only once the admin table stopped counting an image cell as empty; a formatted
+    price in another currency ("CA$40", "40 CAD") gives no price even without a currency field; a blank, true/false or
+    list amount is no price (it was "Free"); the test takes a hunt over 60 characters and cuts it at a whole word as the
+    page does; the hint says where the finds show (owner key, or a Pro member in the same ~10 km area, once FB_LIVE is
+    on; reload an open hunt page).
   - Tests: `worker/__tests__/fb-shape-v202.test.mjs`; `fb-apify-v200.test.mjs` now expects the test to keep its finds.
   - Numbered v202: open PR #289 (`claude/jev-why-v197`) holds worker v200, which #287 shipped first, so it moves to v201.
 - **v8.26 / v200: Facebook Marketplace finds again, through Apify, for Pro members** (Matt, 2026-10-31: use Apify, he

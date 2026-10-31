@@ -789,7 +789,7 @@ function tableOf(cols, rows, caption, stack) {
   return h("div", { class: "tw" + (stack ? " stack-on" : "") }, h("table", { class: stack ? "stk" : null, role: R && "table" }, [caption ? h("caption", { class: "sr", text: caption }) : null,
     h("thead", { role: R && "rowgroup" }, h("tr", { role: R && "row" }, cols.map(c => h("th", { class: c.num ? "num" : null, scope: "col", role: R && "columnheader", text: c.t })))),
     h("tbody", { role: R && "rowgroup" }, rows.map(r => h("tr", { role: R && "row" }, r.map((x, i) => {
-      const nil = x == null || x === "" || (x.nodeType && !x.textContent);
+      const nil = x == null || x === "" || (x.nodeType && !x.textContent && x.tagName !== "IMG");   /* v202: a photo is content */
       return h("td", { class: [cols[i].num ? "num" : cols[i].cls || "", nil ? "nil" : "", cols[i].bare ? "bare" : ""].join(" ").trim() || null, role: R && "cell", "data-label": stack ? cols[i].t : null }, x);
     }))))]));
 }
@@ -838,7 +838,7 @@ function marketsCard(ov) {
    redraws every minute and a run can take 90 seconds, which left the answer in a box no longer on the page. */
 function fbTestBox() {
   const fbox = h("div", { class: "hbox" }, fbTestView());
-  const ti = h("input", { id: "fbt-term", type: "text", maxlength: "60", autocomplete: "off", value: S.fbTerm, placeholder: "a hunt, e.g. pyrex butterprint", "aria-label": "Hunt to test on Facebook" });
+  const ti = h("input", { id: "fbt-term", type: "text", maxlength: "200", autocomplete: "off", value: S.fbTerm, placeholder: "a hunt, e.g. pyrex butterprint", "aria-label": "Hunt to test on Facebook" });
   const zi = h("input", { id: "fbt-zip", type: "text", inputmode: "numeric", maxlength: "5", autocomplete: "off", value: S.fbZip, placeholder: "ZIP, e.g. 48375", "aria-label": "ZIP to search around" });
   ti.addEventListener("input", () => { S.fbTerm = ti.value; });
   zi.addEventListener("input", () => { S.fbZip = zi.value; });
@@ -861,7 +861,7 @@ function fbTestView() {
   const spent = "Cost about $" + (Number(X.cost) || 0).toFixed(4) + " (estimate $" + (Number(X.estimate) || 0).toFixed(4) + "). Today: $" + (Number(X.used) || 0).toFixed(4) + " of $" + (Number(X.cap) || 0).toFixed(2) + "." + (X.live ? "" : " FB_LIVE is off, so members get nothing yet.");
   const head = h("h3", { class: "small", text: (X.capped ? "Today\u2019s Facebook budget is used up. " : X.ok ? X.count + " listing" + (X.count === 1 ? "" : "s") + " at " + fmtTime(new Date(X.at)) + ". " : "The search failed (" + (X.error || "no answer") + "). ") + spent });
   /* v202: where the finds went, the photo of each, and the field names Apify sent (names only), to check the shape */
-  const kept = X.kept ? h("p", { class: "hint", text: "Kept for the hunt page: open the hunt \u201c" + (X.term || "") + "\u201d in Prowl, signed in with a local-pickup ZIP near " + (S.fbZip || "this ZIP") + " (or with the owner key), and the Facebook strip shows these with photos." }) : null;
+  const kept = X.kept ? h("p", { class: "hint", text: "Kept for the hunt page (8 days): open the hunt \u201c" + (X.term || "") + "\u201d in Prowl with the owner key, or signed in as a Pro member whose local-pickup ZIP is in the same area as " + (X.zip || "this ZIP") + " (about 10 km)" + (X.live ? "" : ", once FB_LIVE is on") + ", and the Facebook strip shows these with photos. A hunt page already open shows them after a reload." }) : null;
   const flds = X.fields && X.fields.length ? h("details", [h("summary", { text: "Fields Apify sent (" + X.fields.length + ", names only)" }), h("p", { class: "hint", text: X.fields.join(" \u00b7 ") })]) : null;
   if (!X.items || !X.items.length) return h("div", { class: "more" }, [head, flds]);
   return h("div", { class: "more" }, [head, kept, tableOf([{ t: "Photo", bare: 1 }, { t: "Listing", cls: "wide" }, { t: "Price", num: 1 }, { t: "Town" }],

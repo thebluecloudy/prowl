@@ -63,11 +63,15 @@ export function fbPrice(x) {
   x = fbObj(x);
   const lp = fbObj(x.listing_price), cur = String(lp.currency || lp.currency_code || x.currency || "").trim().toUpperCase();
   if (cur && cur !== "USD") return "";
+  let named = false;   /* a formatted price in another currency ("CA$40", "€40"): the plain amount is not dollars either */
   for (const c of [lp.formatted_amount, lp.formatted_amount_zeros_stripped, typeof x.listing_price === "string" ? x.listing_price : "", x.formatted_price, typeof x.price === "string" ? x.price : ""]) {
     const p = fbText(c, 24);
     if (FB_PRICE.test(p)) return p;
+    if (/[A-Za-z]{1,3}\$|[€£¥₹₩]|\b(?!USD\b)[A-Z]{3}\b/.test(p)) named = true;
   }
-  const raw = lp.amount != null ? lp.amount : typeof x.price === "number" ? x.price : null, a = raw == null || raw === "" ? NaN : Number(raw);
+  if (named) return "";
+  const raw = lp.amount != null ? lp.amount : typeof x.price === "number" ? x.price : null;
+  const a = typeof raw === "number" ? raw : typeof raw === "string" && /^\s*\d+(\.\d+)?\s*$/.test(raw) ? Number(raw) : NaN;
   if (!Number.isFinite(a) || a < 0 || a >= 1e7) return "";
   if (a === 0) return "Free";
   const s = a % 1 ? a.toFixed(2) : String(a), i = s.indexOf(".");

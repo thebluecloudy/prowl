@@ -7319,9 +7319,12 @@ export default {
        Only a cost above the estimate is added after. No Caps answer, no call. Each try at a hunt and cell is taken in
        Caps first (fbtry:, FB_TRIES a day), so a killed try is never retried uncounted. The admin's AI pools show $.
      Delivery: alCheck adds a hunt's cached finds as source "facebook" (no outside call); GET /fb-finds?term= answers a
-       signed-in Pro member (store session, or X-Prowl-Email / X-Prowl-Tok) or the owner key (who may pass &zip=).
+       signed-in Pro member (store session, or X-Prowl-Email / X-Prowl-Tok) or the owner key (who may pass &zip=; else
+       the last test's ZIP, v202).
      Owner test: the admin's Facebook test (admin.js apiFbTest) runs one call now for a term and a ZIP, cap counted,
-       FB_LIVE or not; nothing is kept. */
+       FB_LIVE or not. v202: its finds are kept as the sweep keeps them (and the day's sweep skips that hunt and cell), and
+       its ZIP is remembered for the owner key's /fb-finds (fbownzip, 30 days), so the owner's hunt page shows them. */
+const FB_OWN_ZIP = "fbownzip";   /* v202: the ZIP of the owner's last Facebook test, for the owner key's /fb-finds */
 const FB_RUN_CALLS = 50, FB_CALLS_EACH = 4, FB_GEO_CALLS = 2, FB_GEO_PER_RUN = 2, FB_FINDS_PER_IP = 1000, FB_DAY_LIST_MAX = 2000;   /* each: try, reserve, Apify, a rare top-up */
 /* reserve units under the cap in one Caps step: { ok, n } (n = the day's total), or null when Caps does not answer (money: fail closed) */
 async function fbReserve(units, cap) {
@@ -7431,7 +7434,10 @@ async function fbFinds(request, env, url, origin) {
   const live = fbLive(env);
   if (!live && !owner) return json({ term: term, live: false, items: [] }, 200, origin, hdr);   /* off: no counter, no Google, nothing kept */
   if (!owner && !(await vCount("fbf:" + ipKey(request.headers.get("CF-Connecting-IP")), FB_FINDS_PER_IP))) return json({ error: "slow down" }, 429, origin, hdr);
-  const oz = String(url.searchParams.get("zip") || ""), zip = owner && /^\d{5}$/.test(oz) ? oz : sub ? alPrefs(sub).zip : "";
+  const oz = String(url.searchParams.get("zip") || "");
+  let zip = owner && /^\d{5}$/.test(oz) ? oz : "";
+  if (!zip && owner) { const z = await kvGet(env, FB_OWN_ZIP, null); zip = /^\d{5}$/.test(String(z || "")) ? String(z) : ""; }   /* v202: the owner's last test's area first */
+  if (!zip && sub) zip = alPrefs(sub).zip;
   if (!zip) return json({ term: term, live: live, nozip: true, items: [] }, 200, origin, hdr);
   const cell = await fbArea(env, zip, true);
   const v = cell ? await kvGet(env, fbKey(term, cell), null) : null;
@@ -7454,8 +7460,15 @@ async function fbTestRun(env, term, zip) {
   if (r.ok && r.items.length && env.PROWL_ALERTS) {
     try {
       const old = await kvGet(env, fbKey(term, cell), null);
-      await env.PROWL_ALERTS.put(fbKey(term, cell), JSON.stringify(fbMerge(old, r.items, new Date().toISOString().slice(0, 10))), { expirationTtl: FB_TTL });
+      const day = new Date().toISOString().slice(0, 10);
+      await env.PROWL_ALERTS.put(fbKey(term, cell), JSON.stringify(fbMerge(old, r.items, day)), { expirationTtl: FB_TTL });
       kept = true;
+      await env.PROWL_ALERTS.put(FB_OWN_ZIP, JSON.stringify(String(zip)), { expirationTtl: 30 * 86400 });   /* the owner key's hunt page reads this area */
+      const dk = "fb2day:" + day, done = (await kvGet(env, dk, null)) || {};   /* the day's sweep need not pay again for it */
+      if (!done._cap && done[term + "|" + cell.key] !== 1 && Object.keys(done).length < FB_DAY_LIST_MAX) {
+        done[term + "|" + cell.key] = 1;
+        await env.PROWL_ALERTS.put(dk, JSON.stringify(done), { expirationTtl: 2 * 86400 });
+      }
     } catch (e) {}
   }
   return { ok: !!r.ok, error: r.ok ? "" : scrubPII(String(r.error || "failed")).slice(0, 120), items: r.ok ? r.items : [], count: r.ok ? r.items.length : 0, raw: r.raw || 0,
