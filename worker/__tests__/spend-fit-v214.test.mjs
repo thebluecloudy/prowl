@@ -58,6 +58,14 @@ function admin(rows) {
   return { kv, env, call, audits, calls };
 }
 
+test("review fix: an impossible date is refused before the 400-day span check (NaN skipped it)", () => {
+  for (const [from, to] of [["2024-99-99", "2026-10-31"], ["2026-10-00", "2026-10-31"], ["2025-01-01", "2026-13-01"], ["2026-02-30", "2026-03-01"], ["2026-10-01", "2026-10-32"]]) {
+    const f = SP.spendFit(OCT, "muse", from, to, BILL);
+    assert.equal(f.error, "Pick the bill's first and last day.", from + " to " + to);
+  }
+  assert.equal(SP.spendFit(OCT, "muse", "2024-02-29", "2024-03-01", BILL).error, undefined, "a real leap day is fine");
+});
+
 test("POST /admin/api/spend/fit saves the fitted prices to spend:cfg, keeps the rest, says what it counted; audited", async () => {
   const A = admin(OCT);
   await A.kv.put("spend:cfg", JSON.stringify({ prices: { g_text: { call: 35 }, muse: { ws: 0 } }, fixed: [{ name: "Shopify plan", perMonth: 39 }] }));

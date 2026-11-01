@@ -361,7 +361,10 @@ export function shopcatItem(p, env) {
     img: photo, shop: name || domain, domain: domain, url: String(v.url).slice(0, 800) };
   if (sh(v)) out.secondhand = true;
   if (ext(v)) out.offShopify = true;
-  if (SHOPCAT_GID_RE.test(String(p.id || ""))) out.pid = String(p.id);   /* v214: the popup's get_product asks for it */
+  if (SHOPCAT_GID_RE.test(String(p.id || ""))) {
+    out.pid = String(p.id);   /* v214: the popup's get_product asks for it */
+    if (SHOPCAT_VID_RE.test(String(v.id || ""))) out.vid = String(v.id);   /* v214 review fix: and the card's own variant, so the popup shows that one */
+  }
   /* review fix: the same listing from two searches differs in _gsid (and shclid / shcgid), so it is matched by product and
      variant, or by the link without its query, never by the full URL; the URL itself is returned as Shopify gave it */
   Object.defineProperty(out, "key", { value: (p.id && v.id ? String(p.id) + "|" + String(v.id) : String(v.url).split(/[?#]/)[0]), enumerable: false });
@@ -500,6 +503,7 @@ export async function shopLive(request, env, url, origin, D, nowMs) {
    /item cache in index.js, never KV; the photos load in the browser straight from their hosts. Counted like a search: the IP's
    SHOPCAT_PER_IP, the site's SHOPCAT_PER_DAY (shopcat:all), and as a shopcat call in spend.js (the global fetch wrap). */
 export const SHOPCAT_GID_RE = /^gid:\/\/shopify\/(?:p\/[A-Za-z0-9]{6,40}|ProductVariant\/\d{1,20})$/;
+export const SHOPCAT_VID_RE = /^gid:\/\/shopify\/ProductVariant\/\d{1,20}$/;
 export const SHOPCAT_ITEM_IMAGES = 12;
 export function shopcatProductBody(gid, profile) {
   return { jsonrpc: "2.0", method: "tools/call", id: 1, params: { name: "get_product", arguments: {
@@ -522,12 +526,16 @@ function photos(lists) {
 }
 const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const txt = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
-/* the card's link against an offer's: the same host and path (the query differs per search: _gsid), else the same host */
+/* the card's link against an offer's: the same variant (review fix: one store's sizes share a path and differ only in
+   ?variant=), else the same host and path (the query differs per search: _gsid), else the same host */
 function linkKey(u) { try { const x = new URL(String(u || "")); return x.hostname.toLowerCase().replace(/^www\./, "") + x.pathname.replace(/\/+$/, ""); } catch (e) { return ""; } }
+function linkVariant(u) { try { const n = new URL(String(u || "")).searchParams.get("variant") || ""; return /^\d{1,20}$/.test(n) ? n : ""; } catch (e) { return ""; } }
+const vidNum = (id) => { const m = /^gid:\/\/shopify\/ProductVariant\/(\d{1,20})$/.exec(String(id || "")); return m ? m[1] : ""; };
 /* get_product's structuredContent -> the popup's item: { title, price, was?, images, description, condition, aspects,
-   shop, domain, offShopify?, gone? } or { gone } / { error }. D.itemDesc (index.js) strips seller HTML to the popup's tags.
-   The link is never rewritten: the page keeps the card's own. */
-export function shopcatProduct(sc, cardUrl, env, D) {
+   shop, domain, offShopify?, gone?, elsewhere? } or { gone } / { error }. D.itemDesc (index.js) strips seller HTML to the
+   popup's tags. The link is never rewritten: the page keeps the card's own. vid = the card's variant gid (/shop-live's
+   vid), else the card link's ?variant= is used. */
+export function shopcatProduct(sc, cardUrl, env, D, vid) {
   const p = sc && sc.product;
   const msgs = sc && Array.isArray(sc.messages) ? sc.messages : [];
   if (!p || typeof p !== "object") {
@@ -538,7 +546,9 @@ export function shopcatProduct(sc, cardUrl, env, D) {
   if (!title) return { error: "shopify no title" };
   const vs = (Array.isArray(p.variants) ? p.variants : []).filter((v) => v && hostOf(v.url) && !shopcatOwn([v.url, v.seller && v.seller.url, v.seller && v.seller.domain], env));
   const want = linkKey(cardUrl), wh = hostOf(cardUrl);
-  const v = vs.filter((x) => want && linkKey(x.url) === want)[0] || vs.filter((x) => wh && hostOf(x.url) === wh)[0] || null;
+  const wv = vidNum(vid) || linkVariant(cardUrl);
+  const v = (wv && vs.filter((x) => vidNum(x.id) === wv || linkVariant(x.url) === wv)[0]) || vs.filter((x) => want && linkKey(x.url) === want)[0] ||
+    vs.filter((x) => wh && hostOf(x.url) === wh)[0] || null;
   const ext = v && v.source === "external";
   const out = { title: title, price: "", images: photos([p.media, v && v.media]), description: "", condition: "", aspects: [], shop: "", domain: "" };
   if (v) {
@@ -555,7 +565,9 @@ export function shopcatProduct(sc, cardUrl, env, D) {
     if (ext) out.offShopify = true;
     if (v.availability && v.availability.available === false) out.gone = true;
   } else if (!vs.length && want) out.gone = true;   /* nothing left for sale from anyone */
-  if (!out.price && !out.gone) out.price = fmtMoney(p.price_range && p.price_range.min);   /* the card's store no longer in the cluster: Shopify's lowest */
+  /* review fix: the card's store no longer in the cluster: no price from another store (the page keeps the card's own);
+     Shopify's lowest goes out as elsewhere, which the page labels "from $X elsewhere" */
+  if (!v && vs.length) { const e = fmtMoney(p.price_range && p.price_range.min); if (e) out.elsewhere = e; }
   const d = p.description || {}, raw = typeof d.html === "string" ? d.html : typeof d.plain === "string" ? d.plain : "";
   const html = /<[a-z][^>]*>/i.test(raw) ? raw : esc(raw).replace(/\r?\n/g, "<br>");   /* "plain" can carry the seller's HTML */
   out.description = D && typeof D.itemDesc === "function" ? D.itemDesc(html) : esc(raw.replace(/<[^>]*>/g, " ")).slice(0, 20000);
@@ -576,8 +588,8 @@ export function shopcatProduct(sc, cardUrl, env, D) {
 }
 export async function shopItem(request, env, url, origin, D) {
   const NS = { "Cache-Control": "no-store" }, out = (b, st) => D.json(b, st || 200, origin, NS);
-  const gid = String(url.searchParams.get("shop") || ""), cardUrl = String(url.searchParams.get("url") || "");
-  if (!SHOPCAT_GID_RE.test(gid)) return out({ error: "not a listing Prowl can open" }, 400);
+  const gid = String(url.searchParams.get("shop") || ""), cardUrl = String(url.searchParams.get("url") || ""), vid = String(url.searchParams.get("vid") || "");
+  if (!SHOPCAT_GID_RE.test(gid) || (vid && !SHOPCAT_VID_RE.test(vid))) return out({ error: "not a listing Prowl can open" }, 400);
   if (cardUrl && (!hostOf(cardUrl) || cardUrl.length > 800)) return out({ error: "not a listing Prowl can open" }, 400);
   if (S.busyUntil > Date.now()) return out({ error: "busy", src: "shopify" }, 429);
   if (!(await D.vCount("shopcat:" + D.ipKey(request.headers.get("CF-Connecting-IP")), SHOPCAT_PER_IP))) return out({ error: "slow down", src: "shopify" }, 429);
@@ -589,7 +601,7 @@ export async function shopItem(request, env, url, origin, D) {
     console.error("item shopify", r.err);
     return out({ error: r.limit ? "daily limit" : r.status === 429 ? "busy" : r.err, src: "shopify" }, r.status === 429 ? 429 : 502);
   }
-  const it = shopcatProduct(r.sc, cardUrl, env, D);
+  const it = shopcatProduct(r.sc, cardUrl, env, D, vid);
   if (it.error) { console.error("item shopify", it.error); return out({ error: it.error, src: "shopify" }, 502); }
   return out(Object.assign({ src: "shopify", id: gid, mode: r.mode }, it), 200);
 }

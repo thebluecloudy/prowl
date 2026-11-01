@@ -183,7 +183,9 @@ test("the estimate: per 1,000 calls and per 1M tokens; a used service without a 
 test("v195: the Muse defaults price Matt's Oct 24-30 Meta week at his bill's $1.65, day by day within 3 cents", () => {
   /* v214: the search price is now left for the bill (null); this week was fitted with searches at no charge */
   const S = SP.SPEND_SERVICES.find((s) => s.key === "muse"), p = Object.assign({}, SP.spendDefaults().prices.muse, { ws: 0 });
-  assert.equal(SP.spendCost(S, { n: 1, ti: 1000, to: 10, ws: 3 }, SP.spendDefaults().prices.muse), null, "v214: a day with searches has no price until one is fitted");
+  /* v214 review fix: the searches wait for a price, the token dollars stay */
+  assert.equal(SP.spendCost(S, { n: 1, ti: 1e6, to: 1e6, ws: 3 }, SP.spendDefaults().prices.muse), 0.98 + 4.25, "v214 review fix: a day with searches keeps its token cost");
+  assert.deepEqual(SP.spendMissing(S, { n: 1, ti: 1e6, to: 1e6, ws: 3 }, SP.spendDefaults().prices.muse), ["ws"], "and names the searches as not priced yet");
   assert.equal(SP.spendCost(S, { n: 1, ti: 1e6, to: 0, ws: 0 }, SP.spendDefaults().prices.muse), 0.98, "a day without searches still prices");
   /* his export: date, input tokens, output tokens, web searches, spend */
   const week = [["10-24", 271547, 24079, 31, 0.38], ["10-25", 497504, 32244, 47, 0.6], ["10-26", 114354, 10672, 10, 0.15], ["10-27", 5553, 5133, 0, 0.02],
@@ -218,6 +220,18 @@ test("the summary adds each service per period and the monthly bills to the mont
   assert.equal(s.totals.monthAll, Math.round((12 + 5.23 + 44) * 100) / 100);
   assert.equal(s.totals.lastAll, 2 + 44);
   assert.equal(s.services.length, SP.SPEND_SERVICES.length, "every service has a row, used or not");
+});
+
+test("review fix (v214): a part without a price drops only that part; Muse's tokens stay in the totals, its searches are not priced yet", () => {
+  const today = SP.dayOf(NOW);
+  const rows = [{ day: today, key: "muse", n: 10, ti: 1e6, to: 1e5, ws: 20 }, { day: today, key: "g_text", n: 100 }];
+  const s = SP.spendSummary(rows, SP.spendDefaults(), NOW), m = s.services.find((x) => x.key === "muse");
+  assert.equal(m.today.cost, Math.round((0.98 + 0.425) * 10000) / 10000, "$0.98 input + $0.425 output, the searches left out");
+  assert.deepEqual(m.today.unpriced, ["ws"], "the searches are named as not priced yet");
+  assert.deepEqual(s.totals.today, { calls: Math.round((4 + 1.405) * 100) / 100, unpriced: 0, partial: 1 }, "the total keeps Muse's token dollars");
+  const p = Object.assign({}, SP.spendDefaults().prices.muse, { ws: 5 });
+  const c = SP.spendCfgClean({ prices: { muse: p } }).cfg, s2 = SP.spendSummary(rows, c, NOW);
+  assert.equal(s2.services.find((x) => x.key === "muse").today.unpriced, undefined, "a searches price: fully priced");
 });
 
 /* ---------- index.js: where the counting is wired ---------- */

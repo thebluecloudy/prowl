@@ -112,9 +112,10 @@ test("a cluster: the card's store's offer, matched by host and path; plain text 
   assert.equal(r.body.description, "{Line one<br>A &lt; B &amp; C}");
   r = await ask(fake(() => ok(P)).f, null, "shop=" + encodeURIComponent(GID) + "&url=" + encodeURIComponent("https://www.etsy.com/listing/1234567890/pyrex"));
   assert.equal(r.body.offShopify, true); assert.equal(r.body.shop, "etsy.com"); assert.equal(r.body.domain, "etsy.com", "never the catalog's unchecked seller");
-  /* the card's store has left the cluster: Shopify's lowest price, no store named */
+  /* the card's store has left the cluster: review fix, no price from another store (the page keeps the card's own);
+     Shopify's lowest only as elsewhere, no store named, not gone */
   r = await ask(fake(() => ok(product({ variants: [other] }))).f);
-  assert.equal(r.body.price, "$24.99"); assert.equal(r.body.shop, ""); assert.equal(r.body.gone, undefined);
+  assert.equal(r.body.price, ""); assert.equal(r.body.elsewhere, "$24.99"); assert.equal(r.body.shop, ""); assert.equal(r.body.gone, undefined);
   /* Owl & Twig's own offer is never the one shown */
   r = await ask(fake(() => ok(product({ variants: [variant({ url: "https://owlandtwigvintage.com/products/pyrex", seller: { name: "Owl & Twig", url: "https://owlandtwigvintage.com", domain: "owlandtwigvintage.com" } })] }))).f,
     null, "shop=" + encodeURIComponent(GID) + "&url=" + encodeURIComponent("https://owlandtwigvintage.com/products/pyrex"));
@@ -184,4 +185,46 @@ test("never cached: /item?shop= is routed before the item cache, and nothing in 
   assert.match(INDEX, /function shopDeps\(\) \{ return \{ vCount, ipKey, json, sgwExact, itemDesc \}; \}/);
   const body = SHOPCAT.slice(SHOPCAT.indexOf("export function shopcatProductBody"), SHOPCAT.indexOf("/* ---------- v211: the admin's Diagnose card"));
   assert.doesNotMatch(body, /PCACHE|caches\.|\.put\(|PROWL_ALERTS|max-age/, "no Cache API, no KV, no max-age");
+});
+
+/* ---------- review fixes (v214) ---------- */
+test("review fix: one store's sizes share a path, so the offer is matched by the card's variant (?variant= or vid)", async () => {
+  const S = variant({ vid: "1", url: "https://shopa.example/products/coat?variant=1&_gsid=x", price: { amount: 2000, currency: "USD" }, available: false,
+    seller: { name: "Shop A", url: "https://shopa.example", domain: "shopa.myshopify.com" }, options: [{ name: "Size", label: "S" }] });
+  const M = variant({ vid: "2", url: "https://shopa.example/products/coat?variant=2&_gsid=x", price: { amount: 4000, currency: "USD" },
+    seller: { name: "Shop A", url: "https://shopa.example", domain: "shopa.myshopify.com" }, options: [{ name: "Size", label: "M" }] });
+  const P = product({ variants: [S, M] });
+  /* the card is the M, which shopcatItem chose (the S is sold out), and the card carries its variant gid */
+  const card = SC.shopcatItem(P, {});
+  assert.equal(card.url, M.url); assert.equal(card.vid, "gid://shopify/ProductVariant/2", "/shop-live passes the chosen variant");
+  const q = (u, vid) => "shop=" + encodeURIComponent(GID) + (vid ? "&vid=" + encodeURIComponent(vid) : "") + "&url=" + encodeURIComponent(u);
+  let r = await ask(fake(() => ok(P)).f, null, q("https://shopa.example/products/coat?variant=2&_gsid=NEW"));
+  assert.equal(r.body.price, "$40", "the M's price, not the sold-out S's");
+  assert.equal(r.body.gone, undefined, "the card's M is still for sale: not got away (the page would add it to AWAY)");
+  assert.deepEqual(r.body.aspects.find((a) => a.n === "This one"), { n: "This one", v: "Size M" });
+  /* vid wins over the link (a link without ?variant=) */
+  r = await ask(fake(() => ok(P)).f, null, q("https://shopa.example/products/coat", "gid://shopify/ProductVariant/2"));
+  assert.equal(r.body.price, "$40"); assert.equal(r.body.gone, undefined);
+  /* the S itself, sold out since: gone */
+  r = await ask(fake(() => ok(P)).f, null, q("https://shopa.example/products/coat?variant=1"));
+  assert.equal(r.body.price, "$20"); assert.equal(r.body.gone, true);
+  /* a variant no longer in the cluster: host and path, then host, as before */
+  r = await ask(fake(() => ok(P)).f, null, q("https://shopa.example/products/coat?variant=9"));
+  assert.equal(r.body.price, "$20");
+  /* a bad vid asks nothing */
+  const never = fake(() => { throw new Error("must not call"); });
+  r = await ask(never.f, null, q(M.url, "gid://shopify/p/abcdefgh"));
+  assert.equal(r.status, 400); assert.equal(never.calls.length, 0);
+});
+
+test("review fix: the card's store not in the cluster keeps the card's own price on the page, another store's only as elsewhere", async () => {
+  const B = variant({ vid: "5", url: "https://shopb.example/products/lamp?variant=5", price: { amount: 1500, currency: "USD" },
+    seller: { name: "Shop B", url: "https://shopb.example", domain: "shopb.myshopify.com" } });
+  const P = product({ variants: [B] });
+  P.price_range = { min: { amount: 1500, currency: "USD" }, max: { amount: 1500, currency: "USD" } };
+  const r = await ask(fake(() => ok(P)).f, null, "shop=" + encodeURIComponent(GID) + "&url=" + encodeURIComponent("https://shopa.example/products/lamp?_gsid=x"));
+  assert.equal(r.body.price, "", "never Shop B's $15 in place of the card's $40");
+  assert.equal(r.body.elsewhere, "$15");
+  assert.equal(r.body.gone, undefined, "not got away: Shop A's card was simply not found in the cluster");
+  assert.equal(r.body.shop, "");
 });

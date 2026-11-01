@@ -25,13 +25,14 @@ const ITEM = { src: 'shopify', id: GID, mode: 'keyless', title: 'Ceramic panther
   description: '<p>Glossy black glaze.</p>', condition: 'Used', shop: 'Main Street Estate Sales', domain: 'mainstreetestatesales.com',
   aspects: [{ n: 'Color', v: 'Black, Green (White sold out)' }, { n: 'Shop', v: 'Main Street Estate Sales' }, { n: 'Website', v: 'mainstreetestatesales.com' }] };
 
-function setup(item) {
+function setup(item, live) {
   const base = liveFetch({ perSource: 3 }), calls = [];
   const impl = (url, opts = {}) => {
     const u = new URL(String(url), 'https://www.owlandtwigvintage.com/');
-    if (u.pathname === '/shop-live') return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(LIVE) });
+    if (u.pathname === '/shop-live') return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(live || LIVE) });
     if (u.pathname === '/item') {
       calls.push({ shop: u.searchParams.get('shop'), url: u.searchParams.get('url'), cache: opts.cache });
+      if (u.searchParams.has('vid')) calls[calls.length - 1].vid = u.searchParams.get('vid');
       const j = u.searchParams.get('shop') ? item : { src: 'etsy', title: 'Ceramic panther vase', price: '$60.00', images: ['https://i.etsystatic.com/x/1.jpg', 'https://i.etsystatic.com/x/2.jpg'] };
       return Promise.resolve({ ok: !j.error, status: j.error ? 502 : 200, json: () => Promise.resolve(j) });
     }
@@ -102,6 +103,23 @@ test('off-Shopify on Etsy uses the Etsy reader; Poshmark and a card with no id o
   assert.equal(p.$('#otp-sheetB .pp-t').textContent, 'Ceramic panther planter', 'a failed get_product leaves the card’s own data');
   assert.equal(p.$('#otp-sheetB .pp-go').getAttribute('href'), SHOP_URL);
   assert.equal(p.calls.length, 2, 'Poshmark and the no-id card never asked /item');
+  assert.equal(p.errors.length, 0, String(p.errors[0] || ''));
+  await p.close();
+});
+
+test('review fix: the card\u2019s variant goes along (vid); another store\u2019s price never replaces the card\u2019s, it shows as elsewhere', async () => {
+  const VID = 'gid://shopify/ProductVariant/1';
+  const live = Object.assign({}, LIVE, { items: [Object.assign({}, LIVE.items[0], { vid: VID }), Object.assign({}, LIVE.items[3], { vid: 'gid://shopify/p/notavariant' })] });
+  const p = setup(Object.assign({}, ITEM, { price: '', elsewhere: '$15', shop: '', domain: '' }), live);
+  const cells = await strip(p);
+  assert.equal(cells[0].getAttribute('data-vid'), VID);
+  assert.equal(cells[1].getAttribute('data-vid'), null, 'only a variant gid is kept');
+  tap(p, cells[0]);
+  await waitFor(() => p.$$('#otp-sheetB .pp-gal img').length === 5);
+  assert.deepEqual(p.calls[0], { shop: GID, url: SHOP_URL, cache: 'no-store', vid: VID });
+  assert.equal(p.$('#otp-sheetB .pp-p').textContent, '$45', 'the card\u2019s own price stays');
+  assert.match(p.$('#otp-sheetB .pp-m').textContent, /from \$15 elsewhere/, 'the other store\u2019s price, plainly labeled');
+  assert.equal(p.$('#otp-sheetB .pp-end'), null, 'not got away');
   assert.equal(p.errors.length, 0, String(p.errors[0] || ''));
   await p.close();
 });

@@ -64,6 +64,7 @@ const FIELDS = ["n", "ti", "to", "ws", "it"];   /* v200: it, listings (Apify) */
 const PRICE_FIELDS = ["call", "tin", "tout", "ws", "item"];
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const realDay = (d) => DAY_RE.test(String(d)) && Number.isFinite(Date.parse(d + "T00:00:00Z")) && new Date(d + "T00:00:00Z").toISOString().slice(0, 10) === d;
 const int = (v, hi) => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n > 0 ? Math.min(n, hi) : 0; };
 export function dayOf(ms) { return new Date(ms).toISOString().slice(0, 10); }
 
@@ -248,7 +249,8 @@ export const SPEND_FIT_KEYS = SPEND_SERVICES.filter(s => s.uses.some(f => FIT_SC
 export function spendFit(rows, key, from, to, bill) {
   const s = SPEND_SERVICES.find(x => x.key === key);
   if (!s || SPEND_FIT_KEYS.indexOf(key) === -1) return { error: "That service has no token or search prices to fit." };
-  if (!DAY_RE.test(String(from)) || !DAY_RE.test(String(to)) || from > to) return { error: "Pick the bill's first and last day." };
+  /* review fix: a real calendar day each (2024-99-99 parsed as NaN and skipped the span check below) */
+  if (!realDay(from) || !realDay(to) || from > to) return { error: "Pick the bill's first and last day." };
   if (Date.parse(to + "T00:00:00Z") - Date.parse(from + "T00:00:00Z") > SPEND_KEEP_DAYS * 86400000) return { error: "At most " + SPEND_KEEP_DAYS + " days." };
   const b = bill && typeof bill === "object" ? bill : {}, dollars = {}, notes = [], skipped = [];
   let any = false;
@@ -284,17 +286,25 @@ export function spendFit(rows, key, from, to, bill) {
 }
 
 /* ---------- the estimate ---------- */
-/* Cost of usage u under price p for service s: null when a price it needs is missing and that part was used. */
+/* Cost of usage u under price p for service s. Review fix (v214): a part used without a price drops only that part
+   (spendMissing names it), so Muse's token dollars stay in the totals while its searches wait for a price; null only
+   when every part used lacks a price. */
+export function spendMissing(s, u, p) {
+  const use = { call: u.n, tin: u.ti, tout: u.to, ws: u.ws, item: u.it };
+  return s.uses.filter((f) => (use[f] || 0) > 0 && (p ? p[f] : null) == null);
+}
 export function spendCost(s, u, p, free) {
-  let c = 0;
+  let c = 0, priced = 0, missing = 0;
   const billed = Math.max(0, (u.n || 0) - (Number(free) || 0));   /* free: calls a month Google charges nothing for */
   const parts = { call: [billed, 1000], tin: [u.ti, 1e6], tout: [u.to, 1e6], ws: [u.ws, 1000], item: [u.it, 1000] };
   for (const f of s.uses) {
     const used = parts[f][0] || 0, price = p ? p[f] : null;
     if (!used) continue;
-    if (price == null) return null;
+    if (price == null) { missing++; continue; }
+    priced++;
     c += used / parts[f][1] * price;
   }
+  if (missing && !priced) return null;
   return Math.round(c * 10000) / 10000;
 }
 /* UTC periods for "now": today, the last 7 days (today included), this month so far, last month */
@@ -319,15 +329,18 @@ export function spendSummary(rows, cfg, nowMs) {
       for (const r of list) if (r && r.key === s.key && r.day >= P.from && r.day <= P.to) for (const f of FIELDS) u[f] += Number(r[f]) || 0;
       /* a calendar month takes off the free monthly allowance; Today and 7 days are at the list price */
       o[pk] = Object.assign(u, { cost: spendCost(s, u, c.prices[s.key], pk === "month" || pk === "last" ? s.free : 0) });
+      const miss = spendMissing(s, u, c.prices[s.key]);
+      if (miss.length && o[pk].cost != null) o[pk].unpriced = miss;   /* priced in part: these units are "not priced yet" */
     }
     return o;
   });
   const fixed = (c.fixed || []).reduce((a, x) => a + (Number(x.perMonth) || 0), 0);
   const totals = {};
   for (const pk of PERIODS) {
-    let sum = 0, unpriced = 0;
-    for (const s of services) { if (s[pk].cost == null) unpriced++; else sum += s[pk].cost; }
+    let sum = 0, unpriced = 0, partial = 0;
+    for (const s of services) { if (s[pk].cost == null) unpriced++; else { sum += s[pk].cost; if (s[pk].unpriced) partial++; } }
     totals[pk] = { calls: Math.round(sum * 100) / 100, unpriced: unpriced };
+    if (partial) totals[pk].partial = partial;   /* services counted without some of their units */
   }
   totals.fixed = Math.round(fixed * 100) / 100;
   totals.monthAll = Math.round((totals.month.calls + fixed) * 100) / 100;

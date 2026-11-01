@@ -1272,10 +1272,11 @@ function usd(n) {
 }
 function kfmt(n) { n = Number(n) || 0; return n >= 1e6 ? (Math.round(n / 1e5) / 10) + "M" : n >= 1e3 ? (Math.round(n / 100) / 10) + "k" : String(n); }
 function spCell(m, u) {
-  const bits = [num(u.n) + (u.n === 1 ? " call" : " calls")];
-  if (m.uses.indexOf("tin") >= 0 && (u.ti || u.to)) bits.push(kfmt(u.ti) + " in" + (m.uses.indexOf("tout") >= 0 ? " / " + kfmt(u.to) + " out" : "") + " tokens");
-  if (m.uses.indexOf("ws") >= 0 && u.ws) bits.push(num(u.ws) + " web searches");
-  if (m.uses.indexOf("item") >= 0 && u.it) bits.push(num(u.it) + " listings");
+  const np = Array.isArray(u.unpriced) ? u.unpriced : [], npy = (...f) => f.some(x => np.indexOf(x) >= 0) ? " (not priced yet)" : "";   /* v214 review fix: priced in part */
+  const bits = [num(u.n) + (u.n === 1 ? " call" : " calls") + npy("call")];
+  if (m.uses.indexOf("tin") >= 0 && (u.ti || u.to)) bits.push(kfmt(u.ti) + " in" + (m.uses.indexOf("tout") >= 0 ? " / " + kfmt(u.to) + " out" : "") + " tokens" + npy("tin", "tout"));
+  if (m.uses.indexOf("ws") >= 0 && u.ws) bits.push(num(u.ws) + " web searches" + npy("ws"));
+  if (m.uses.indexOf("item") >= 0 && u.it) bits.push(num(u.it) + " listings" + npy("item"));
   if (!u.n && !u.ti && !u.to && !u.ws && !u.it) return h("span", { class: "muted", text: "\u2014" });
   return h("span", null, [h("b", { text: usd(u.cost) }), h("br"), h("span", { class: "muted small", text: bits.join(", ") })]);
 }
@@ -1284,7 +1285,11 @@ function renderSpend(j) {
   const by = {}; SV.forEach(x => { by[x.key] = x; });
   const out = [];
   if (!j.ok) out.push(note("warn", "The call counts could not be loaded right now. The prices and bills below still work.", loadSpend));
-  const unp = T.month && T.month.unpriced ? " (" + T.month.unpriced + " service" + (T.month.unpriced === 1 ? "" : "s") + " used without a price)" : "";
+  const nu = T.month && T.month.unpriced, np = T.month && T.month.partial;
+  const ub = [];
+  if (nu) ub.push(nu + " service" + (nu === 1 ? "" : "s") + " used without a price");
+  if (np) ub.push(np + " service" + (np === 1 ? "" : "s") + " with some use not priced yet");
+  const unp = ub.length ? " (" + ub.join(", ") + ")" : "";
   out.push(h("p", { class: "ukpi", text: "About " + usd(T.monthAll) + " so far this month" + unp + ", " + usd(T.lastAll) + " last month. Calls today: " + usd(T.today && T.today.calls) + "." }));
   const cols = [{ t: "Service" }].concat(SP_PER.map(p => ({ t: p[1], num: 1 })));
   const rows = M.map(m => { const x = by[m.key] || {}; return [m.name].concat(SP_PER.map(p => spCell(m, x[p[0]] || {}))); });

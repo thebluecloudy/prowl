@@ -6993,7 +6993,7 @@ function sgwCard(it,hunt,bare){
   var sv=svBtn(it,hunt);   /* v6.02: save this find */
   /* v6.54: a heart on every result, as in Flock; the cell carries what a like keeps (title, price, site, link, hunt) */
   var lk=lkBtn(it),dh=' data-h="'+esc(hunt||'')+'"';
-  if(it.src==='shopify')dh+=(it.pid?' data-gid="'+esc(it.pid)+'"':'')+' data-shop="'+esc(it.shop||'')+'" data-dom="'+esc(it.dom||'')+'"'+(it.off?' data-off="1"':'');   /* v8.43: the popup */
+  if(it.src==='shopify')dh+=(it.pid?' data-gid="'+esc(it.pid)+'"'+(it.vid?' data-vid="'+esc(it.vid)+'"':''):'')+' data-shop="'+esc(it.shop||'')+'" data-dom="'+esc(it.dom||'')+'"'+(it.off?' data-off="1"':'');   /* v8.43: the popup */
   /* v6.63: the star, the heart and Fair price? share one row under the card, so the photo is clear (bare: as before,
      for Flock, which places its own buttons) */
   /* v7.31 (one button per card): results keep only the heart; Save and Fair price? are in the listing popup (tap the
@@ -7745,7 +7745,7 @@ function shpPrice(p,c){
 }
 /* v8.43 (worker v214, Matt: "when i open a shopify shop, is it possible to do the pop up like the others?"): a Global
    Catalog product id, as search_catalog gives it */
-var SHP_GID=/^gid:\/\/shopify\/(p\/[A-Za-z0-9]{6,40}|ProductVariant\/\d{1,20})$/;
+var SHP_GID=/^gid:\/\/shopify\/(p\/[A-Za-z0-9]{6,40}|ProductVariant\/\d{1,20})$/,SHP_VID=/^gid:\/\/shopify\/ProductVariant\/\d{1,20}$/;
 function shpClean(a){
   var out=[],i,x,u;
   if(!Array.isArray(a))return out;
@@ -7755,7 +7755,7 @@ function shpClean(a){
     out.push({title:x.title.slice(0,160),price:shpPrice(x.price,x.currency),url:u,src:'shopify',shop:typeof x.shop==='string'?x.shop.slice(0,60):'',
       dom:typeof x.domain==='string'&&/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(x.domain)?x.domain.slice(0,80).toLowerCase():'',off:x.offShopify===true,
       image:typeof x.img==='string'&&/^https:\/\/[^\s"'<>\\]+$/.test(x.img)?x.img.slice(0,600):'',
-      pid:typeof x.pid==='string'&&SHP_GID.test(x.pid)?x.pid:''});   /* v8.43: the listing popup asks the worker's get_product for it */
+      pid:typeof x.pid==='string'&&SHP_GID.test(x.pid)?x.pid:'',vid:typeof x.vid==='string'&&SHP_VID.test(x.vid)?x.vid:''});   /* v8.43: the listing popup asks the worker's get_product for it (vid: the card's variant) */
   }
   return out;
 }
@@ -9816,7 +9816,7 @@ function popOpen(card,lite){
   POP={u:u,src:src,t:card.getAttribute('data-t')||card.getAttribute('aria-label')||'',p:card.getAttribute('data-p')||'',
     s:card.getAttribute('data-s')||src,h:card.getAttribute('data-h')||'',img:img?img.getAttribute('src')||'':'',auc:((card.querySelector('.fl-auc')||{}).textContent)||popAuc(card)||card.getAttribute('data-m')||'',repro:!!card.querySelector('.sgw-repro')};   /* v7.29 */
   POP.lite=lt;POP.sold=!!card.getAttribute('data-sold');   /* v7.96 */
-  if(src==='shopify'){POP.shop=card.getAttribute('data-shop')||'';POP.dom=card.getAttribute('data-dom')||'';POP.gid=gid;POP.d=null}
+  if(src==='shopify'){POP.shop=card.getAttribute('data-shop')||'';POP.dom=card.getAttribute('data-dom')||'';POP.gid=gid;POP.vid=SHP_VID.test(card.getAttribute('data-vid')||'')?card.getAttribute('data-vid'):'';POP.d=null}
   openSheet(src==='shopify'?(POP.shop||POP.dom||'Shopify'):POP_NAME[src]||LIVE_NAME[src],'');
   if(sh)sh.classList.add('pop');
   popPaint(popData(u));
@@ -9824,7 +9824,7 @@ function popOpen(card,lite){
      on POP, for the open popup (never ITEMC); the worker answers no-store */
   if(gid&&typeof fetch==='function'){
     var wp=POP;
-    fetch(SGW_API+'item?shop='+encodeURIComponent(gid)+'&url='+encodeURIComponent(u),{cache:'no-store'}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+    fetch(SGW_API+'item?shop='+encodeURIComponent(gid)+(POP.vid?'&vid='+encodeURIComponent(POP.vid):'')+'&url='+encodeURIComponent(u),{cache:'no-store'}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
       .then(function(x){if(POP!==wp)return;wp.d=x.ok&&x.j&&!x.j.error?x.j:{failed:1};if(popShown())popPaint(wp.d)})
       ['catch'](function(){if(POP!==wp)return;wp.d={failed:1};if(popShown())popPaint(wp.d)});
   }
@@ -9925,6 +9925,7 @@ function popPaint(d){
   if(typeof d.bids==='number'){meta.push(d.time_left?d.time_left+' left':'');meta.push(d.bids+' bid'+(d.bids===1?'':'s'))}
   else if(P.auc&&!d.title)meta.push(P.auc);
   if(d.condition)meta.push(d.condition);
+  if(d.elsewhere)meta.push('from '+d.elsewhere+' elsewhere');   /* v8.43 review fix: another store's price, labeled, never in place of the card's */
   var sv=SVI[P.u]||{};meta.push(popAge(d.listed||sv.ls,d.relisted||sv.rl));   /* v7.20: eBay listing age */
   meta=meta.filter(Boolean);
   if(imgs.length){

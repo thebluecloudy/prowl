@@ -44,8 +44,17 @@ Recently shipped, newest first:
     $4.10, search grounding requests $2.05, total $8.78. Counting began with worker v193 (30 Oct 2026), so a fit of
     October warns and its prices come out high; a November fit will be the true one.
   - **Muse's default search price** is now empty (`ws: null`, "billed ... fit from your Meta bill"), not 0 ("searches
-    carry no separate charge" was wrong: the bill has a search grounding line). Until Matt fits or types one, Muse shows
-    "no price" on days with searches. A `ws: 0` Matt saved earlier in `spend:cfg` stays until he fits or edits it.
+    carry no separate charge" was wrong: the bill has a search grounding line). Until Matt fits or types one, Muse's
+    searches show "not priced yet" (its tokens still count; review fix). A `ws: 0` Matt saved earlier in `spend:cfg` stays until he fits or edits it.
+  - **Review fixes:** (1) the popup's offer is matched by the card's variant first (`/shop-live` cards carry `vid`, the
+    chosen variant's gid, sent as `&vid=`; else the link's `?variant=`), then host + path, then host, so a sold-out
+    sibling size no longer shows its price, "got away" or lands in the AWAY list; (2) when the card's store is not in
+    the cluster, `price` stays empty (the page keeps the card's own) and Shopify's lowest comes back as `elsewhere`,
+    shown "from $X elsewhere", never gone; (3) `spendFit` refuses impossible dates (2024-99-99, 2026-02-30) before the
+    400-day check; (4) a part used without a price drops only that part (`spendMissing`): Muse's token dollars stay in
+    every total, its searches read "(not priced yet)" with the count, and the month line names the service as having
+    some use not priced yet. Tests: two in `shop-product-v214`, one each in `spend-fit-v214`, `spend.test.mjs` and
+    `shop-popup-v843`; `spend-ui` and `spend.test.mjs` updated.
   - Tests: `worker/__tests__/shop-product-v214.test.mjs` (7), `worker/__tests__/spend-fit-v214.test.mjs` (4),
     `__tests__/page/shop-popup-v843.test.mjs` (2); `spend.test.mjs`, `spend-ui.test.mjs` and `shop-catalog-v210` updated
     for `ws: null`, `shopItem` and `itemDesc`. Privacy section: a note and one sentence (tapping a listing asks Shopify for
