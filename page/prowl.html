@@ -7728,7 +7728,7 @@ function fbBlock(t){
    strip for the visit; a failed ask shows nothing (a 429 says busy) and is asked again SHP_RETRY later on a timer
    (shpRetry). Shopify's rule is no caching of results: an answer is kept in memory only SHP_FRESH (a minute), just so
    the redraws of one view do not ask again. Everyone, no Pro.
-   v8.41 (worker v212, Matt: "i was interested in what is off of shopify too"): the worker searches keyless when the key is
+   v8.41 (worker v213, Matt: "i was interested in what is off of shopify too"): the worker searches keyless when the key is
    missing or refused, and Matt's saved catalog adds stores off Shopify. Those cards say "Other store" (offShopify), and
    every card names the shop and its domain. Photos from any https host, loaded straight from it (never proxied or kept). */
 var SHP={cache:Object.create(null),busy:Object.create(null),rt:Object.create(null),rn:Object.create(null),off:false},SHP_FRESH=60000,SHP_RETRY=2*60000;   /* review fix: SHP_FRESH was 10 minutes */

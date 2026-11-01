@@ -11,7 +11,7 @@
   extension/). Re-check it if Prowl's data handling changes. The Facebook Marketplace finds bullets (Prowl Alerts, Who
   else, How long, What it does not remove) were added against worker v200 / page v8.26 on 2026-10-31 (worker/fb.js).
   The "Shopify stores" bullet (Searching) was added against worker v210 / page v8.38 on 2026-11-01 (worker/shopcat.js),
-  and reworded for worker v212 / page v8.41 (stores off Shopify too, photos from their own hosts).
+  and reworded for worker v213 / page v8.41 (stores off Shopify too, photos from their own hosts).
   Notes for the next check:
   - v210: live Shopify listings (worker/shopcat.js, GET /shop-live). Sent to Shopify's Global Catalog
     (catalog.shopify.com): the hunt words (shopcatTerm), "US", available, ships_to US, condition secondhand (then none),
@@ -19,9 +19,9 @@
     buyer signals). Nothing kept: no KV, no cache, Cache-Control no-store; the token is in isolate memory only. Images
     load from cdn.shopify.com in the browser. Per-IP daily counter as the other usage limits (shopcat:<ip key>). Off
     (nothing sent) without SHOPIFY_CATALOG_CLIENT_ID and SHOPIFY_CATALOG_CLIENT_SECRET.
-  - v212: no longer off without the key: the same request goes keyless (no token at all), so the hunt words still go to
+  - v213: no longer off without the key: the same request goes keyless (no token at all), so the hunt words still go to
     Shopify. The saved catalog's id (SHOPIFY_CATALOG_ID) goes with it. The worker sends its own User-Agent
-    ("Prowl/212 ..."), never the member's. The catalog now returns stores off Shopify too: their photos load in the
+    ("Prowl/213 ..."), never the member's. The catalog now returns stores off Shopify too: their photos load in the
     browser from those stores' own hosts (any https host), never through the worker. Then (Matt, 2026-11-01, "Known
     stores only") an off-Shopify offer is shown only when its link is on a trusted marketplace list (SHOPCAT_OFF_TRUSTED
     in worker/shopcat.js, plus SHOPCAT_OFF_ALLOW), so photos load only from those and from Shopify stores. Nothing new

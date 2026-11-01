@@ -12,7 +12,7 @@ import { adminFetch } from "../admin.js";
 import { adminPage } from "../admin-page.js";
 
 const ID = "0123456789abcdef0123456789abcdef", SECRET = "shpss_5ecretValueThatMustNeverLeak_42";
-const ENV = { SHOPIFY_CATALOG_CLIENT_ID: ID, SHOPIFY_CATALOG_CLIENT_SECRET: SECRET, SHOPIFY_CATALOG_ID: "none" };   /* v212: no saved catalog here (shop-catalog-keyless-v212 covers it) */
+const ENV = { SHOPIFY_CATALOG_CLIENT_ID: ID, SHOPIFY_CATALOG_CLIENT_SECRET: SECRET, SHOPIFY_CATALOG_ID: "none" };   /* v213: no saved catalog here (shop-catalog-keyless-v213 covers it) */
 const ORIGIN = "https://www.owlandtwigvintage.com";
 const json = (body, status, origin, extra) => ({ status: status || 200, body, headers: Object.assign({}, extra || {}) });
 function res(status, body, headers = {}) { return { status, ok: status >= 200 && status < 300, headers: { get: (k) => headers[k] ?? null }, json: async () => body }; }
@@ -39,7 +39,7 @@ beforeEach(() => SC.shopcatReset());
 test("a refused exchange keeps Shopify's error code and a trimmed description, without the id or the secret", async () => {
   const store = kv(), env = Object.assign({ PROWL_ALERTS: store }, ENV);
   const s = fake(() => res(400, { error: "application_cannot_be_found", error_description: "Could not find Shopify API application with client_id \"" + ID + "\". Secret " + SECRET + " " + "x".repeat(400) }));
-  const logs = await quiet(async () => { const r = await ask(D(s.f), env); assert.equal(r.status, 200); assert.equal(r.body.mode, "keyless", "v212: a refused key searches keyless"); });
+  const logs = await quiet(async () => { const r = await ask(D(s.f), env); assert.equal(r.status, 200); assert.equal(r.body.mode, "keyless", "v213: a refused key searches keyless"); });
   assert.equal(s.tokens().length, 1, "application_cannot_be_found: the id is unknown, so no Basic retry");
   const last = SC.shopcatLast();
   assert.equal(last.ok, false); assert.equal(last.status, 400); assert.equal(last.error, "application_cannot_be_found");
@@ -48,7 +48,7 @@ test("a refused exchange keeps Shopify's error code and a trimmed description, w
   const saved = store.m.get(SC.SHOPCAT_LAST_KEY);
   assert.ok(saved, "a KV record shopcat:last");
   const rec = JSON.parse(saved);
-  assert.deepEqual(Object.keys(rec).sort(), ["at", "attempts", "desc", "error", "method", "ok", "search", "status", "tried"]);   /* v212: + the search's mode */
+  assert.deepEqual(Object.keys(rec).sort(), ["at", "attempts", "desc", "error", "method", "ok", "search", "status", "tried"]);   /* v213: + the search's mode */
   for (const blob of [saved, JSON.stringify(last), logs.join("\n")]) {
     assert.ok(!blob.includes(ID), "no client id"); assert.ok(!blob.includes(SECRET), "no secret"); assert.ok(!blob.includes("5ecretValue"), "no part of the secret");
   }
@@ -88,7 +88,7 @@ test("the 5-minute wait belongs to the credentials: a new secret is tried at onc
   let good = false;
   const s = fake((init) => good ? res(200, { access_token: "tok-new", expires_in: 3600 }) : res(400, { error: "application_cannot_be_found" }));
   await quiet(async () => {
-    assert.equal((await ask(D(s.f), ENV)).body.mode, "keyless");   /* v212: keyless meanwhile, not 503 */
+    assert.equal((await ask(D(s.f), ENV)).body.mode, "keyless");   /* v213: keyless meanwhile, not 503 */
     assert.equal((await ask(D(s.f), ENV)).body.mode, "keyless");
   });
   assert.equal(s.tokens().length, 1, "same key: it waits");
@@ -117,7 +117,7 @@ test("shopcatTest: one fresh exchange (past the wait) and one search; the count 
   assert.equal(e.term, "pyrex", "pyrex unless given");
   assert.deepEqual(e.search.rpc, { code: -32602, message: "Invalid params: meta.ucp-agent.profile unreachable", data: "" });
   assert.equal(s.tokens().length, 2, "a fresh exchange each test");
-  const k = await SC.shopcatTest({}, D(s.f), "pyrex", "");   /* v212: no key: off, and the search runs keyless */
+  const k = await SC.shopcatTest({}, D(s.f), "pyrex", "");   /* v213: no key: off, and the search runs keyless */
   assert.equal(k.on, false); assert.equal(k.exchange, null); assert.equal(k.search.mode, "keyless");
 });
 
@@ -193,12 +193,12 @@ test("Basic's refusal does not replace Shopify's answer to the JSON body: both a
   const store = kv(), env = Object.assign({ PROWL_ALERTS: store }, ENV);
   const s = fake((init) => init.headers.Authorization ? res(400, { error: "unsupported_grant_type", error_description: "Basic not accepted here" })
     : res(401, { error: "invalid_client", error_description: "Client secret is wrong" }));
-  const logs = await quiet(async () => { assert.equal((await ask(D(s.f), env)).body.mode, "keyless"); });   /* v212: keyless, not 503 */
+  const logs = await quiet(async () => { assert.equal((await ask(D(s.f), env)).body.mode, "keyless"); });   /* v213: keyless, not 503 */
   assert.equal(s.tokens().length, 2);
   const last = SC.shopcatLast();
   assert.equal(last.status, 401); assert.equal(last.error, "invalid_client"); assert.equal(last.desc, "Client secret is wrong"); assert.equal(last.method, "post");
   assert.deepEqual(last.attempts, [{ method: "post", status: 401, error: "invalid_client", desc: "Client secret is wrong", server: "", ray: false },
-    { method: "basic", status: 400, error: "unsupported_grant_type", desc: "Basic not accepted here", server: "", ray: false }]);   /* v212: + who answered */
+    { method: "basic", status: 400, error: "unsupported_grant_type", desc: "Basic not accepted here", server: "", ray: false }]);   /* v213: + who answered */
   assert.match(logs.join("\n"), /shopcat token post 401 invalid_client \+ basic 400 unsupported_grant_type/);
   const st = await SC.shopcatStatus(env);
   assert.equal(st.last.error, "invalid_client"); assert.equal(st.last.attempts.length, 2);
@@ -256,10 +256,10 @@ test("the admin route passes the attempts through, scrubbed of markup", async ()
   const p = await adminFetch(new Request("https://prowl.example.workers.dev/admin/api/shopcat/test", { method: "POST", body: "{}",
     headers: { "Content-Type": "application/json", Origin: "https://prowl.example.workers.dev", Cookie: cookie, "X-Prowl-Admin": "1" } }), env, {}, h);
   const j = await p.json();
-  assert.deepEqual(j.exchange.attempts, [{ method: "post", status: 401, error: "invalid_client", desc: " b no /b ", server: "", ray: false }, { method: "basic", status: 0, error: "timeout", desc: "", server: "", ray: false }]);   /* v212: + server, ray */
+  assert.deepEqual(j.exchange.attempts, [{ method: "post", status: 401, error: "invalid_client", desc: " b no /b ", server: "", ray: false }, { method: "basic", status: 0, error: "timeout", desc: "", server: "", ray: false }]);   /* v213: + server, ray */
 });
 
-test("v212 known stores only: the admin route passes the hidden count and domains through, cleaned", async () => {
+test("v213 known stores only: the admin route passes the hidden count and domains through, cleaned", async () => {
   const env = Object.assign({ ADMIN_KEY, PROWL_ALERTS: kv() }, ENV);
   const h = H({ shopcatTestRun: async () => ({ on: false, term: "mug", exchange: null,
     search: { ok: true, mode: "keyless", status: 200, count: 4, titles: ["Mug"], hidden: { count: 3, domains: ["Info.VetMeNow.gr", "<b>astromemo.com</b>"] } } }) });

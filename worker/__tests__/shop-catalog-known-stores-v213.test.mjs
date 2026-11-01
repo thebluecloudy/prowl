@@ -1,8 +1,8 @@
-/* v212 (Matt, 2026-11-01: "Known stores only"): the live Shopify strip keeps every Shopify store's offer, and an
+/* v213 (Matt, 2026-11-01: "Known stores only"): the live Shopify strip keeps every Shopify store's offer, and an
    off-Shopify offer only when its link's host is on the trusted list (SHOPCAT_OFF_TRUSTED) or a subdomain of one, by an
    exact host-suffix match (etsy.com.fake.ru and notetsy.com are not etsy.com). SHOPCAT_OFF_ALLOW adds domains. The
    Diagnose test search says how many were hidden and from which domains.
-   Run: node --test worker/__tests__/shop-catalog-known-stores-v212.test.mjs */
+   Run: node --test worker/__tests__/shop-catalog-known-stores-v213.test.mjs */
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
@@ -91,7 +91,7 @@ test("Diagnose test search: the hidden count and their domains, titles only from
 });
 
 test("the Diagnose card says how many other-store items were hidden and from which domains", async (t) => {
-  const dom = new JSDOM(adminPage("n0nce", "v212"), { url: "https://prowl.example.workers.dev/admin#diagnose", runScripts: "dangerously", pretendToBeVisual: true,
+  const dom = new JSDOM(adminPage("n0nce", "v213"), { url: "https://prowl.example.workers.dev/admin#diagnose", runScripts: "dangerously", pretendToBeVisual: true,
     beforeParse(w) {
       w.fetch = async (path) => {
         const p = String(path);

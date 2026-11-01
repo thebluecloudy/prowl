@@ -1,4 +1,4 @@
-// Page v8.41 (worker v212): the Shopify strip shows off-Shopify offers too (Matt: "i was interested in what is off of
+// Page v8.41 (worker v213): the Shopify strip shows off-Shopify offers too (Matt: "i was interested in what is off of
 // shopify too"). The strip reads "Live from Shopify and other stores"; an offShopify card says "Other store", every card
 // names the shop and its domain; photos from any https host (never http or javascript:). Owl & Twig stays hidden.
 import { test } from 'node:test';

@@ -23,7 +23,7 @@ function build(name, deps) {
 const alExWords = build("alExWords", {});
 const sgwExact = build("sgwExact", { alExWords });
 
-const ENV = { SHOPIFY_CATALOG_CLIENT_ID: "cid-test-0001", SHOPIFY_CATALOG_CLIENT_SECRET: "csecret-test-0001", SHOPIFY_CATALOG_ID: "none" };   /* v212: no saved catalog here (shop-catalog-keyless-v212 covers it) */
+const ENV = { SHOPIFY_CATALOG_CLIENT_ID: "cid-test-0001", SHOPIFY_CATALOG_CLIENT_SECRET: "csecret-test-0001", SHOPIFY_CATALOG_ID: "none" };   /* v213: no saved catalog here (shop-catalog-keyless-v213 covers it) */
 const ORIGIN = "https://www.owlandtwigvintage.com";
 const json = (body, status, origin, extra) => ({ status: status || 200, body, headers: Object.assign({}, extra || {}) });
 
@@ -68,7 +68,7 @@ function ask(D, q, env = ENV, ip = "203.0.113.9") {
 
 beforeEach(() => SC.shopcatReset());
 
-test("v212: without the two secrets it is not off: it searches keyless (no token exchange, no Authorization header)", async () => {
+test("v213: without the two secrets it is not off: it searches keyless (no token exchange, no Authorization header)", async () => {
   for (const env of [{ SHOPIFY_CATALOG_ID: "none" }, { SHOPIFY_CATALOG_CLIENT_ID: "x", SHOPIFY_CATALOG_ID: "none" }, { SHOPIFY_CATALOG_CLIENT_SECRET: "y", SHOPIFY_CATALOG_ID: "none" }, { SHOPIFY_CATALOG_CLIENT_ID: " ", SHOPIFY_CATALOG_CLIENT_SECRET: " ", SHOPIFY_CATALOG_ID: "none" }]) {
     SC.shopcatReset();
     const s = shopify({ answers: [res(200, catalogAnswer([product(1, "Ceramic panther")]))] }), { D } = deps(s.f);
@@ -136,7 +136,7 @@ test("the search: one search_catalog tools/call with the bearer token, the profi
   }
   assert.equal(r.headers["Cache-Control"], "no-store", "Shopify: don't cache search results");
   assert.deepEqual(r.body.items, [{ title: "Black Ceramic Panther TV Lamp", price: 59, currency: "USD", img: "https://cdn.shopify.com/s/files/1/0001/1.jpg",
-    shop: "Shop 1", domain: "shop1.myshopify.com", url: "https://shop1.example/products/p?variant=1&_gsid=x", secondhand: true }], "the variant URL as Shopify gave it");   /* v212: + domain */
+    shop: "Shop 1", domain: "shop1.myshopify.com", url: "https://shop1.example/products/p?variant=1&_gsid=x", secondhand: true }], "the variant URL as Shopify gave it");   /* v213: + domain */
   assert.equal(r.body.on, true);
   /* an owner override of the profile URL */
   SC.shopcatReset();
@@ -166,7 +166,7 @@ test("word match, secondhand first, then a search without the condition filter; 
   assert.deepEqual(t, ["Ceramic panther planter", "Ceramic Panthers pair", "Ceramic Panther lamp, new", "Ceramic panther"]);
   assert.equal(r.body.items[0].secondhand, true);
   assert.equal(r.body.items[2].secondhand, undefined);
-  assert.equal(r.body.items[1].img, "https://evil.example/x.jpg", "v212: any https photo is passed on (the page loads it from its host)");
+  assert.equal(r.body.items[1].img, "https://evil.example/x.jpg", "v213: any https photo is passed on (the page loads it from its host)");
   assert.equal(r.body.items[2].price, 125.5);
   assert.deepEqual([r.body.items[3].price, r.body.items[3].currency], [4800, "JPY"]);
   /* max caps the list */
@@ -174,8 +174,8 @@ test("word match, secondhand first, then a search without the condition filter; 
   const s2 = shopify({ answers: [res(200, catalogAnswer(used)), res(200, catalogAnswer(any))] });
   const r2 = await ask(deps(s2.f).D, "term=ceramic+panther&max=3");
   assert.equal(r2.body.items.length, 3);
-  assert.equal(SC.shopcatItem(product(9, "x", { source: "external", url: "https://www.etsy.com/listing/9" })).offShopify, true, "v212: off-Shopify offers from a known store are kept, marked");
-  assert.equal(SC.shopcatItem(product(9, "x", { source: "external" })).hidden, true, "v212: an unknown store off Shopify is hidden");
+  assert.equal(SC.shopcatItem(product(9, "x", { source: "external", url: "https://www.etsy.com/listing/9" })).offShopify, true, "v213: off-Shopify offers from a known store are kept, marked");
+  assert.equal(SC.shopcatItem(product(9, "x", { source: "external" })).hidden, true, "v213: an unknown store off Shopify is hidden");
 });
 
 test("Owl & Twig's own products are hidden, by its domain or its myshopify name", async () => {
@@ -198,7 +198,7 @@ test("Owl & Twig's own products are hidden, by its domain or its myshopify name"
 test("an empty answer says why: how many Shopify had, how many had every word", async () => {
   const s = shopify({ answers: [res(200, catalogAnswer([product(1, "Panther shirt"), product(2, "Lamp")])), res(200, catalogAnswer([product(3, "Ceramic dish")]))] }), { D } = deps(s.f);
   const r = await ask(D, "term=ceramic+panther");
-  assert.deepEqual(r.body, { on: true, term: "ceramic panther", mode: "token", items: [], why: { raw: 3, words: 0, own: 0 } });   /* v212: + mode */
+  assert.deepEqual(r.body, { on: true, term: "ceramic panther", mode: "token", items: [], why: { raw: 3, words: 0, own: 0 } });   /* v213: + mode */
 });
 
 test("caps: a day per IP and catalog calls a day for the site; a refusal never reaches Shopify", async () => {
@@ -247,7 +247,7 @@ test("a stale token (401) is renewed once; a refused token exchange, a 500, an e
   assert.equal(r.status, 200);
   assert.equal(s.tokens().length, 2);
   assert.equal(s.searches()[1].init.headers.Authorization, "Bearer tok-2");
-  /* v212: a refused token exchange searches keyless */
+  /* v213: a refused token exchange searches keyless */
   SC.shopcatReset();
   const quietErr = console.error; console.error = () => {};
   try {
@@ -355,7 +355,7 @@ test("review: a failed token exchange is remembered for SHOPCAT_TOKEN_FAIL_MS: n
     const a = await ask(D, "term=ceramic+panther");
     const b = await ask(D, "term=ceramic+panther");
     const c = await ask(D, "term=fire+king");
-    /* v212: meanwhile it searches keyless (the mocked catalog answers nothing for these) */
+    /* v213: meanwhile it searches keyless (the mocked catalog answers nothing for these) */
     assert.deepEqual([a.status, b.status, c.status], [200, 200, 200]);
     assert.deepEqual([a.body.mode, b.body.mode, c.body.mode], ["keyless", "keyless", "keyless"]);
     assert.equal(s.tokens().length, 2, "one exchange (v211: the JSON body, then once with HTTP Basic), then it waits");

@@ -60,7 +60,7 @@ can also be run by hand from the Actions tab.
   (`/shop-live`, `worker/shopcat.js`, Shopify's Global Catalog). Matt creates them in the **Shopify Dev Dashboard
   (dev.shopify.com) › Catalogs › create a Catalogs API key**; the key shows a Client ID and a Client secret. Set each
   with `wrangler secret put SHOPIFY_CATALOG_CLIENT_ID` and `wrangler secret put SHOPIFY_CATALOG_CLIENT_SECRET` (or the
-  Cloudflare dashboard, as encrypted secrets). Never paste them into a chat, an issue, the repo or the page. v212: without
+  Cloudflare dashboard, as encrypted secrets). Never paste them into a chat, an issue, the repo or the page. v213: without
   them (or when Shopify refuses them) `/shop-live` searches **keyless**: no Authorization header, only the agent profile
   (Shopify's Anonymous tier, shopify.dev/docs/agents/profiles/auth-and-rate-limiting: catalog tools work, at the lowest
   rate limits, which cannot be raised). The strip works either way; the key only buys higher limits. The worker trades them for a token at
@@ -72,12 +72,12 @@ can also be run by hand from the Actions tab.
   v211: when `/shop-live` says `unavailable`, open the admin › Diagnose › **Shopify stores (Global Catalog)**: it shows
   Shopify's own error code and description for the last token exchange (the id and secret cut out), which auth method
   worked, the lengths of the two secrets and whether they look swapped or carry spaces, and runs one test search.
-  v212: the card also shows whether the last search went with the key or keyless, the saved catalog in use, and for a
+  v213: the card also shows whether the last search went with the key or keyless, the saved catalog in use, and for a
   refusal that is not JSON a short snippet and who answered (the `server` header, a `cf-ray`): a bare 403 from
   Cloudflare's edge is a block of the Worker's request, not a refused key. Every Shopify call sends
-  `User-Agent: Prowl/212 (+https://www.owlandtwigvintage.com/pages/prowl)`: api.shopify.com answers a request with no
+  `User-Agent: Prowl/213 (+https://www.owlandtwigvintage.com/pages/prowl)`: api.shopify.com answers a request with no
   User-Agent (a Worker's fetch sends none) with `403` and an HTML "Access denied" page (seen 2026-11-01).
-- `SHOPIFY_CATALOG_ID` (v212, plain variable, not a secret): the saved catalog sent as `catalog.catalog_id`
+- `SHOPIFY_CATALOG_ID` (v213, plain variable, not a secret): the saved catalog sent as `catalog.catalog_id`
   (shopify.dev/docs/apps/build/dev-dashboard/catalogs; `saved_catalog_slug` is the deprecated alias and is not sent).
   Unset, Matt's "Prowl_catalogsearch_shopify" (`01m6bnevzyfcxd7e3s8g125vca`: All products, Shopify + Off-Shopify,
   region Anywhere) is used; `none` sends no catalog. The catalog search goes first with Prowl's own filters (in stock,
@@ -92,7 +92,7 @@ can also be run by hand from the Actions tab.
   target.com, wayfair.com) or a subdomain of one, matched by exact host suffix (etsy.com.fake.ru and notetsy.com do not
   match). Every Shopify store's offer stays. Diagnose › Run a test search says how many were hidden and lists their
   domains.
-- `SHOPCAT_OFF_ALLOW` (v212, plain variable, optional): more trusted off-Shopify domains, comma-separated
+- `SHOPCAT_OFF_ALLOW` (v213, plain variable, optional): more trusted off-Shopify domains, comma-separated
   (`example.com, other.org`); each also covers its subdomains.
 
 ## What Prowl spends (admin Spending tab, v193)

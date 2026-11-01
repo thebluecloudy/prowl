@@ -1030,10 +1030,25 @@ function shopEx(x) {
   return { at: num(x.at), ok: !!x.ok, status: num(x.status), error: shopStr(x.error, 60), desc: shopStr(x.desc, 200), method: word(x.method, 8), tried: arr(x.tried).map(m => word(m, 8)).slice(0, 2),
     attempts: arr(x.attempts).slice(0, 2).filter(a => a && typeof a === "object").map(a => ({ method: word(a.method, 8), status: num(a.status), error: shopStr(a.error, 60), desc: shopStr(a.desc, 200), server: shopStr(a.server, 40), ray: !!a.ray })) };
 }
+/* v212: the morning briefing (shop-brief.js through index.js). Numbers and three notes, no customer data. */
+async function apiShopBrief(c) {
+  const H = c.H;
+  if (typeof H.shopBriefFor !== "function") return jerr(503, "The morning briefing is not available.");
+  if (typeof H.shopCanToken === "function" && !H.shopCanToken(c.env)) return jres({ off: true });
+  let b;
+  try { b = await H.shopBriefFor(c.env, c.nowMs, false); } catch (e) { return jerr(502, "Shopify could not be read for the briefing: " + clean(e && e.message, 120)); }
+  const st = (b && b.stats) || {};
+  const cats = arr(st.categories).slice(0, 8).map(x => ({ type: shopStr(x && x.type, 60), sales: num(x && x.sales), items: num(x && x.items) }));
+  return jres({ day: word(b.day, 10), at: shopStr(b.at, 30), ai: !!b.ai,
+    notes: arr(b.notes).slice(0, 3).map(n => ({ kind: shopStr(n && n.kind, 40), text: shopStr(n && n.text, 600) })),
+    stats: { sales30: num(st.sales30), orders30: num(st.orders30), salesPrev: num(st.salesPrev), ordersPrev: num(st.ordersPrev),
+      salesChange: st.salesChange == null ? null : num(st.salesChange), salesYday: num(st.salesYday), ordersYday: num(st.ordersYday),
+      daysSinceOrder: st.daysSinceOrder == null ? null : num(st.daysSinceOrder), typesKnown: st.typesKnown !== false, categories: cats } });
+}
 async function apiShopcat(c) {
   if (typeof c.H.shopcatStatus !== "function") return jerr(503, "The Shopify catalog check is not available.");
   const s = (await c.H.shopcatStatus(c.env, c.nowMs)) || {}, sh = s.shape || {};
-  const sx = s.search && typeof s.search === "object" ? s.search : null;   /* v212: the latest search's mode */
+  const sx = s.search && typeof s.search === "object" ? s.search : null;   /* v213: the latest search's mode */
   return jres({ on: !!s.on, method: word(s.method, 8), waitUntil: num(s.waitUntil), busyUntil: num(s.busyUntil), last: shopEx(s.last),
     catalogId: String(s.catalogId || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64),
     search: sx ? { at: num(sx.at), mode: sx.mode === "token" ? "token" : "keyless", status: num(sx.status), catalog: !!sx.catalog } : null,
@@ -1047,7 +1062,7 @@ async function apiShopcatTest(c) {
   try { r = (await c.H.shopcatTestRun(c.env, term, c.url.origin)) || {}; } catch (e) { return jerr(502, "The Shopify test could not run."); }
   const sr = r.search && typeof r.search === "object" ? r.search : null;
   const search = sr ? { ok: !!sr.ok, mode: sr.mode === "token" ? "token" : "keyless", catalog: !!sr.catalog, status: num(sr.status), server: shopStr(sr.server, 40), ray: !!sr.ray, count: num(sr.count), titles: arr(sr.titles).slice(0, 3).map(t => shopStr(t, 120)), error: shopStr(sr.error, 200),
-    hidden: sr.hidden && typeof sr.hidden === "object" ? { count: num(sr.hidden.count), domains: arr(sr.hidden.domains).slice(0, 20).map(d => shopStr(d, 80).toLowerCase().replace(/[^a-z0-9.-]/g, "")).filter(Boolean) } : null,   /* v212: known stores only */
+    hidden: sr.hidden && typeof sr.hidden === "object" ? { count: num(sr.hidden.count), domains: arr(sr.hidden.domains).slice(0, 20).map(d => shopStr(d, 80).toLowerCase().replace(/[^a-z0-9.-]/g, "")).filter(Boolean) } : null,   /* v213: known stores only */
     rpc: sr.rpc ? { code: num(sr.rpc.code), message: shopStr(sr.rpc.message, 300), data: shopStr(sr.rpc.data, 300) } : null } : null;
   await audit(c, { action: "shopcat-test", ok: !!(search && search.ok), note: search ? (search.ok ? search.count + " items (" + search.mode + ")" : "search failed (" + search.mode + ")") : "token failed" });
   return jres({ on: r.on !== false, term: shopStr(r.term, 80), exchange: shopEx(r.exchange), search: search });
@@ -1295,7 +1310,7 @@ async function apiNewsNew(c) {
 }
 
 const GETS = { overview: apiOverview, members: apiMembers, member: apiMember, errors: apiErrors, searches: apiSearches, usage: apiUsage, gifts: apiGifts, affiliates: apiAffiliates, spend: apiSpend,
-  feedback: apiFeedback, news: apiNews, "news/preview": apiNewsPreview, shopcat: apiShopcat };   /* v208; v211: shopcat */
+  feedback: apiFeedback, news: apiNews, "news/preview": apiNewsPreview, shopcat: apiShopcat, shopbrief: apiShopBrief };   /* v212: shopbrief */   /* v208; v211: shopcat */
 const POSTS = { "spend/cfg": apiSpendCfg, find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, salescheck: apiSalesCheck, fbtest: apiFbTest, gift: apiGiftAdd, "gift/remove": apiGiftRemove, affiliate: apiAffiliateSet, "affiliate/ids": apiAffiliateIds,
   "feedback/delete": apiFeedbackDelete, "feedback/reply": apiFeedbackReply, "news/draft": apiNewsDraft, "news/test": apiNewsTest, "news/send": apiNewsSend, "news/stop": apiNewsStop, "news/resume": apiNewsResume, "news/new": apiNewsNew, "shopcat/test": apiShopcatTest };   /* v208; v211: shopcat/test */
 

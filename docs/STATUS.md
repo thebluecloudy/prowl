@@ -1,24 +1,24 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.41 / v212).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.41 / v213).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.41** | 361,670 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v212** | |
+| Worker | **v213** | |
 
 Recently shipped, newest first:
 
-- **v8.41 / v212: the Shopify strip searches keyless, with Matt's saved catalog and stores off Shopify** (Claude,
+- **v8.41 / v213: the Shopify strip searches keyless, with Matt's saved catalog and stores off Shopify** (Claude,
   2026-11-01). Branch `claude/gifted-johnson-wzaqr3`, pushed, no PR yet (in flight below). Page room left: 361,670 bytes.
   - **Why:** live v211 with Matt's key answered `/shop-live` `{"error":"unavailable"}`: the Worker's token exchange got a
     bare **403 with no JSON** (from this sandbox a made-up id gets a JSON 400 `application_cannot_be_found`, so the
     Worker's 403 looks like an edge block of the Worker's request, not a refused key). **Reproduced from the sandbox:**
     the same exchange with an empty User-Agent gets `403`, `server: cloudflare`, an HTML "Access denied" page; with any
     User-Agent it reaches Shopify (`400 application_cannot_be_found` for a made-up id). A Worker's fetch sends no
-    User-Agent, so v212's `User-Agent` header is the likely fix for Matt's key. (The catalog endpoint answers 200 even
+    User-Agent, so v213's `User-Agent` header is the likely fix for Matt's key. (The catalog endpoint answers 200 even
     with no User-Agent.)
   - **Keyless (`worker/shopcat.js` `search`):** with no key, a refused exchange, the 5-minute wait, or a token Shopify
     refuses twice, the search goes with no Authorization header and the agent profile alone (Shopify's Anonymous tier,
@@ -50,7 +50,7 @@ Recently shipped, newest first:
     (domains…)", sample titles only from what a hunt would show (admin.js passes `hidden { count, domains }` through).
     Photos of kept off-Shopify items still load from their own https hosts.
   - **Every Shopify call** (exchange, search, test) sends `Accept`, `Content-Type` and
-    `User-Agent: Prowl/212 (+https://www.owlandtwigvintage.com/pages/prowl)`. A refusal that is not JSON keeps a
+    `User-Agent: Prowl/213 (+https://www.owlandtwigvintage.com/pages/prowl)`. A refusal that is not JSON keeps a
     scrubbed, tag-stripped 200-character snippet and who answered (`server`, `cf-ray` present) per attempt, and a 403
     without JSON is retried with HTTP Basic like a bad-client code.
   - **Diagnose card:** Live listings "On, with the key" / "On, keyless"; Last search (with the key / keyless, status,
@@ -61,14 +61,21 @@ Recently shipped, newest first:
     api.shopify.com/auth/access_token; they say nothing about the Agents page's "Agent identities" key.
   - **Page (`shpClean`, `shpBlock`, `sgwCard`):** "Live from Shopify and other stores"; off-Shopify cards say "Other
     store · <shop>", every card adds the domain when it differs from the shop name; photos from any https host.
-  - Tests: `worker/__tests__/shop-catalog-keyless-v212.test.mjs` (8), `worker/__tests__/shop-catalog-known-stores-v212.test.mjs`
+  - Tests: `worker/__tests__/shop-catalog-keyless-v213.test.mjs` (8), `worker/__tests__/shop-catalog-known-stores-v213.test.mjs`
     (6: allowlist keep/drop, subdomains, lookalikes, `SHOPCAT_OFF_ALLOW`, `/shop-live`, the Diagnose line), one more in
     `shop-catalog-diag-v211` (the admin route passes `hidden` through), `__tests__/page/shop-live-other-v841.test.mjs` (1).
     v210/v211 tests: their ENV sends no catalog (`SHOPIFY_CATALOG_ID: "none"`); the "off without secrets", "token
     refused is 503" and "failed exchange answers unavailable" cases now expect keyless; items carry `domain`; any https
     photo passes; attempts carry `server`/`ray`. Page v8.38 test: the new label and wording.
   - Privacy section (`docs/privacy-policy-prowl-section.html`): "Shopify and other stores"; photos from the store's own
-    host; notes for v212 (keyless, the catalog id, our own User-Agent).
+    host; notes for v213 (keyless, the catalog id, our own User-Agent).
+
+- **Worker v212: morning briefing in the admin** (Matt, 2026-11-01). The Overview tab opens with "Owl & Twig this
+  morning": yesterday's sales, the last 30 days against the 30 before, the top category, sales by category and three
+  notes Muse writes from those numbers (rule-based notes when Muse is off or fails). `worker/shop-brief.js` reads 60
+  days of orders with the existing read_orders token (Prowl Pro, cancelled and test orders left out), once per Detroit
+  day on the first admin open, cached in KV (`shopbrief:<day>`). Product types need read_products; without it
+  categories show as Other and the card says so. Route `GET /admin/api/shopbrief`.
 
 - **v8.40: Store from one hunt, and How Prowl works on the pattern of liinks.co's home page** (live with #303)
   - **Store** (Matt: "I'm searching in hunt with the pills and I just want to find the items in one store but it goes
@@ -2435,9 +2442,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `claude/gifted-johnson-wzaqr3` | Claude | Shopify strip keyless, saved catalog, stores off Shopify (see Live, v8.41 / v212) | Claims **page v8.41 / worker v212** (v8.40 went to #303). Pushed, no PR yet. |
+| `claude/gifted-johnson-wzaqr3` | Claude | Shopify strip keyless, saved catalog, stores off Shopify (see Live, v8.41 / v213) | Claims **page v8.41 / worker v213** (v8.40 went to #303, worker v212 to #308). Pushed, no PR yet. |
 
-Next free numbers: **page v8.42, worker v213** (v8.41 / v212: Shopify keyless and off-Shopify stores from known stores only, branch `claude/gifted-johnson-wzaqr3`; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.42, worker v214** (v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, branch `claude/gifted-johnson-wzaqr3`; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 
@@ -2454,12 +2461,12 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 ## Waiting on Matt
 
-- **Shopify strip (v212, once merged):** it works with no key now (keyless). Open admin › Diagnose › Shopify stores and
+- **Shopify strip (v213, once merged):** it works with no key now (keyless). Open admin › Diagnose › Shopify stores and
   **Run a test search**: it shows the keyless result from the Worker itself (the sandbox probe does not prove the
   Worker is let through). If the token line says 403 "answered by cloudflare, with a cf-ray", Shopify's edge is blocking
   the Worker, not the key. The key is the **Client ID and Client secret of a Catalogs API key** (Dev Dashboard ›
   Catalogs › Get an API key); the docs say nothing about the Agents page's "Agent identities" key.
-- **Off-Shopify stores (v212):** decided 2026-11-01, "Known stores only" (see Live, v8.41 / v212). To show another
+- **Off-Shopify stores (v213):** decided 2026-11-01, "Known stores only" (see Live, v8.41 / v213). To show another
   marketplace, add its domain to the plain Worker variable `SHOPCAT_OFF_ALLOW` (comma-separated); Diagnose › Run a test
   search lists the domains it hid. Paste the updated `docs/privacy-policy-prowl-section.html` ("Shopify and other
   stores" bullet).

@@ -27,7 +27,7 @@
    Vintage first: a secondhand search, then, when it leaves fewer than max listings with the hunt's words, one search
    without the condition filter; secondhand listings stay first. Titles must carry every word of the hunt (sgwExact,
    the ShopGoodwill rule). Owl & Twig's own products are dropped (they already show in Found on the Prowl).
-   v212: off-Shopify offers only from known stores (SHOPCAT_OFF_TRUSTED, SHOPCAT_OFF_ALLOW; see shopcatTrusted).
+   v213: off-Shopify offers only from known stores (SHOPCAT_OFF_TRUSTED, SHOPCAT_OFF_ALLOW; see shopcatTrusted).
    Caps: SHOPCAT_PER_IP asks a day per IP key and SHOPCAT_PER_DAY catalog calls a day for the whole site (vCount).
 
    Everything here takes D, the helpers index.js hands in (shopDeps there): { vCount, ipKey, json, sgwExact, fetch? },
@@ -37,9 +37,9 @@ export const SHOPCAT_TOKEN_URL = "https://api.shopify.com/auth/access_token";
 export const SHOPCAT_MCP_URL = "https://catalog.shopify.com/api/ucp/mcp";
 export const SHOPCAT_UCP_VERSION = "2026-08-25";
 export const SHOPCAT_PROFILE_PATH = "/ucp/profile.json";
-/* v212: every call to Shopify names itself (a Worker's fetch sends no User-Agent of its own; v211's exchange from the
+/* v213: every call to Shopify names itself (a Worker's fetch sends no User-Agent of its own; v211's exchange from the
    Worker got a bare 403 with no JSON, which looks like an edge block rather than a refused key) */
-export const SHOPCAT_UA = "Prowl/212 (+https://www.owlandtwigvintage.com/pages/prowl)";
+export const SHOPCAT_UA = "Prowl/213 (+https://www.owlandtwigvintage.com/pages/prowl)";
 export const SHOPCAT_MAX = 12, SHOPCAT_PAGE = 30, SHOPCAT_TERM_MAX = 80;
 export const SHOPCAT_PER_IP = 200, SHOPCAT_PER_DAY = 10000;
 export const SHOPCAT_TIMEOUT_MS = 8000, SHOPCAT_TOKEN_TTL_MS = 60 * 60000, SHOPCAT_TOKEN_EARLY_MS = 60000, SHOPCAT_BUSY_MAX_S = 300;
@@ -56,7 +56,7 @@ const S = { tok: "", exp: 0, id: "", p: null, busyUntil: 0, failUntil: 0, fp: ""
 export function shopcatReset() { S.tok = ""; S.exp = 0; S.id = ""; S.p = null; S.busyUntil = 0; S.failUntil = 0; S.fp = ""; S.failFp = ""; S.method = ""; S.last = null; S.search = null; S.kvMode = ""; }
 export const SHOPCAT_DEADLINE_MS = 15000, SHOPCAT_SECOND_PASS_MS = 9000;   /* review fix: a whole request's limit; no fallback search past 9 s */
 
-/* v212: a saved catalog (Dev Dashboard › Catalogs) is sent as catalog.catalog_id (shopify.dev/docs/apps/build/dev-dashboard/catalogs;
+/* v213: a saved catalog (Dev Dashboard › Catalogs) is sent as catalog.catalog_id (shopify.dev/docs/apps/build/dev-dashboard/catalogs;
    saved_catalog_slug is deprecated). Matt's "Prowl_catalogsearch_shopify" (All products, Shopify + Off-Shopify, region
    Anywhere) is the default; the plain variable SHOPIFY_CATALOG_ID overrides it, and "none" (or "off") sends no catalog. */
 export const SHOPCAT_CATALOG_ID = "01m6bnevzyfcxd7e3s8g125vca";
@@ -66,7 +66,7 @@ export function shopcatCatalogId(env) {
   return /^[A-Za-z0-9_-]{6,64}$/.test(v) ? v : SHOPCAT_CATALOG_ID;
 }
 
-/* v212: on = the two secrets are set (the token mode is tried). /shop-live works without them too: it searches keyless
+/* v213: on = the two secrets are set (the token mode is tried). /shop-live works without them too: it searches keyless
    (Shopify: Global Catalog auth is "Agent profile (no API key needed)", shopify.dev/docs/agents/catalog; keyless calls
    have rate limits that cannot be raised), and keyless again when the token exchange fails or is in its 5-minute wait. */
 export function shopcatOn(env) { return !!(env && String(env.SHOPIFY_CATALOG_CLIENT_ID || "").trim() && String(env.SHOPIFY_CATALOG_CLIENT_SECRET || "").trim()); }
@@ -117,7 +117,7 @@ async function timed(f, url, init, deadline, all) {
       const r = await f(url, Object.assign({}, init, { signal: ctl.signal }));
       let j = null, text = "";
       if (r && r.status !== 200 && all && typeof r.text === "function") {
-        /* v212: any status: the text, then its JSON, so a non-JSON refusal (an edge or WAF page) still says something */
+        /* v213: any status: the text, then its JSON, so a non-JSON refusal (an edge or WAF page) still says something */
         try { text = String(await r.text()); } catch (e) { if (ctl.signal.aborted) throw e; text = ""; }
         try { j = text ? JSON.parse(text) : null; } catch (e) { j = null; }
       } else if (r && (r.status === 200 || all)) { try { j = await r.json(); } catch (e) { if (ctl.signal.aborted) throw e; j = null; } }
@@ -166,12 +166,12 @@ export function shopcatScrub(v, env, n) {
   for (const k of [c.id, c.secret]) if (k && k.length >= 6) t = hidePieces(t, k.toLowerCase());
   return t.replace(/"[^"]{6,}"/g, "\"[hidden]\"").replace(/(?=[A-Za-z0-9_\-+\/=]*\d)(?=[A-Za-z0-9_\-+\/=]*[A-Za-z])[A-Za-z0-9_\-+\/=]{20,}/g, "[hidden]")   /* key-like: 20+ with a digit and a letter */.replace(/\s+/g, " ").trim().slice(0, n || 200);
 }
-/* v212: a non-JSON body as one short line: tags, scripts and styles out, scrubbed, 200 characters */
+/* v213: a non-JSON body as one short line: tags, scripts and styles out, scrubbed, 200 characters */
 export function shopcatSnippet(text, env) {
   const t = String(text || "").slice(0, 20000).replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&");
   return shopcatScrub(t, env, 200);
 }
-/* v212: who answered: the server header (a word or two) and whether a cf-ray came back (Cloudflare's edge) */
+/* v213: who answered: the server header (a word or two) and whether a cf-ray came back (Cloudflare's edge) */
 function edge(headers) {
   const g = (k) => { try { return headers && headers.get ? String(headers.get(k) || "") : ""; } catch (e) { return ""; } };
   return { server: g("server").replace(/[^A-Za-z0-9 ._\/-]/g, "").slice(0, 40), ray: !!g("cf-ray") };
@@ -180,7 +180,7 @@ export function shopcatTokenDown(nowMs, env) { return S.failUntil > (Number(nowM
 export function shopcatLast() { return S.last ? Object.assign({}, S.last) : null; }
 export function shopcatMethod() { return S.method; }
 async function record(env, rec) {
-  if (S.search) rec = Object.assign({}, rec, { search: S.search });   /* v212: the latest search's mode stays with the exchange */
+  if (S.search) rec = Object.assign({}, rec, { search: S.search });   /* v213: the latest search's mode stays with the exchange */
   S.last = rec;
   try { if (env && env.PROWL_ALERTS) await env.PROWL_ALERTS.put(SHOPCAT_LAST_KEY, JSON.stringify(rec), { expirationTtl: 30 * 86400 }); } catch (e) {}
 }
@@ -221,10 +221,10 @@ export async function shopcatToken(env, D, nowMs, deadline, force) {
       const j = r.j, code = j && typeof j.error === "string" ? j.error : "", eg = edge(r.headers);
       const a = { method: used, status: r.status, error: shopcatScrub(code, env, 60) || (r.status === 200 && !(j && j.access_token) ? "no access_token in the answer" : r.status !== 200 && !j ? "not JSON" : ""),
         desc: r.status === 200 ? "" : j ? shopcatScrub(j.error_description || j.message, env, 200) : shopcatSnippet(r.text, env) };
-      if (r.status !== 200) { a.server = eg.server; a.ray = eg.ray; }   /* v212: an edge block or Shopify's own refusal */
+      if (r.status !== 200) { a.server = eg.server; a.ray = eg.ray; }   /* v213: an edge block or Shopify's own refusal */
       attempts.push(a);
       if (r.status === 200 && j && typeof j.access_token === "string" && j.access_token) break;
-      /* refused as a bad client: once more with the other method (v212: and a 403 with no JSON body) */
+      /* refused as a bad client: once more with the other method (v213: and a 403 with no JSON body) */
       if (i === 0 && (((r.status === 400 || r.status === 401) && RETRY_CODES[code]) || (r.status === 403 && !j))) continue;
       break;
     }
@@ -248,7 +248,7 @@ export async function shopcatToken(env, D, nowMs, deadline, force) {
   try { return await S.p; } finally { S.p = null; }
 }
 
-/* the search_catalog call's body: the hunt's words, the US and the filters, nothing else (v212: and the saved catalog's id) */
+/* the search_catalog call's body: the hunt's words, the US and the filters, nothing else (v213: and the saved catalog's id) */
 export function shopcatBody(term, profile, secondhand, catalogId) {
   const filters = { available: true, ships_to: { country: "US" } };
   if (secondhand) filters.condition = ["secondhand"];
@@ -264,7 +264,7 @@ export function shopcatOwn(urls, env) {
   const own = SHOPCAT_OWN.concat(env && env.SHOPIFY_SHOP ? [String(env.SHOPIFY_SHOP).toLowerCase()] : []);
   return urls.some((u) => { const h = /^[a-z0-9.-]+$/i.test(String(u || "")) ? String(u).toLowerCase().replace(/^www\./, "") : hostOf(u); return !!h && own.some((d) => h === d || h.slice(-(d.length + 1)) === "." + d); });
 }
-/* v212 (Matt, 2026-11-01: "Known stores only"): an off-Shopify offer is kept only when its link's host is one of these
+/* v213 (Matt, 2026-11-01: "Known stores only"): an off-Shopify offer is kept only when its link's host is one of these
    marketplaces or a subdomain of one (an exact host-suffix match, never a substring: etsy.com.fake.ru and notetsy.com
    are not etsy.com). Many off-Shopify offers in the saved catalog are copied listings on unrelated domains. Every
    Shopify store's offer stays. The variable SHOPCAT_OFF_ALLOW (comma-separated domains) adds more. */
@@ -287,7 +287,7 @@ function major(m) {
   if (!Number.isFinite(a) || a < 0 || !/^[A-Z]{3}$/.test(c)) return null;
   return { price: ZERO_DEC[c] ? Math.round(a) : Math.round(a) / 100, currency: c };
 }
-/* v212 (Matt wants the off-Shopify offers too): any https photo the catalog gives, Shopify's CDN first; the page loads it
+/* v213 (Matt wants the off-Shopify offers too): any https photo the catalog gives, Shopify's CDN first; the page loads it
    straight from its host, the worker never fetches, proxies or keeps one */
 function img(list) {
   let any = "";
@@ -300,7 +300,7 @@ function img(list) {
   return any;
 }
 /* one product as a Prowl card: its first sale-ready variant (secondhand first, then a Shopify store's) with an https link.
-   v212: off-Shopify offers (source "external", from a saved catalog with Off-Shopify ticked) are kept too, marked
+   v213: off-Shopify offers (source "external", from a saved catalog with Off-Shopify ticked) are kept too, marked
    offShopify; a card needs a title, a price and an https photo. domain = the seller's domain (or the link's host). */
 export function shopcatItem(p, env) {
   if (!p || typeof p.title !== "string" || !p.title.trim()) return null;
@@ -310,7 +310,7 @@ export function shopcatItem(p, env) {
   let vs = all.filter((v) => { const s = v.seller || {}; return !shopcatOwn([v.url, s.url, s.domain], env); });
   if (!vs.length) return { own: true };
   const ext = (v) => v.source === "external";
-  /* v212 "Known stores only": off-Shopify offers from a domain not on the trusted list are dropped; a product with
+  /* v213 "Known stores only": off-Shopify offers from a domain not on the trusted list are dropped; a product with
      nothing else left is { hidden, domain } (counted for Diagnose, never shown) */
   const known = vs.filter((v) => !ext(v) || shopcatTrusted(v.url, env));
   if (!known.length) return { hidden: true, domain: hostOf(vs[0].url) };
@@ -332,7 +332,7 @@ export function shopcatItem(p, env) {
   return out;
 }
 
-/* v212: the latest search's mode for the Diagnose card (memory), and in KV shopcat:last when this isolate's mode changes
+/* v213: the latest search's mode for the Diagnose card (memory), and in KV shopcat:last when this isolate's mode changes
    (not on every search) */
 async function noteSearch(env, mode, status, catalogId) {
   S.search = { at: Date.now(), mode: mode, status: Number(status) || 0, catalog: !!catalogId };
@@ -346,7 +346,7 @@ async function noteSearch(env, mode, status, catalogId) {
 }
 
 /* one catalog call: { products, mode } or { err, status, wait, mode }.
-   v212: mode "token" (Authorization: Bearer) while the two secrets are set and the exchange works; "keyless" (no
+   v213: mode "token" (Authorization: Bearer) while the two secrets are set and the exchange works; "keyless" (no
    Authorization header, the agent profile alone) when they are missing, the exchange fails or is in its 5-minute wait,
    or Shopify refuses the token twice. */
 async function search(env, D, term, profile, secondhand, deadline, catalogId) {
@@ -388,7 +388,7 @@ export async function shopLive(request, env, url, origin, D, nowMs) {
   const t0 = Date.now(), deadline = t0 + SHOPCAT_DEADLINE_MS;   /* review fix: the whole request, token and both searches */
   const items = [], seen = Object.create(null);
   let raw = 0, words = 0, own = 0, hidden = 0, mode = "";
-  /* v212: with a saved catalog (its own limit, Off-Shopify offers too) first, then the whole Global Catalog when that
+  /* v213: with a saved catalog (its own limit, Off-Shopify offers too) first, then the whole Global Catalog when that
      leaves fewer than max: secondhand, then any condition */
   const cid = shopcatCatalogId(env);
   const passes = (cid ? [{ secondhand: true, cid: cid }] : []).concat([{ secondhand: true, cid: "" }, { secondhand: false, cid: "" }]);
@@ -412,7 +412,7 @@ export async function shopLive(request, env, url, origin, D, nowMs) {
   }
   items.sort((a, b) => (b.secondhand ? 1 : 0) - (a.secondhand ? 1 : 0));   /* stable: secondhand first, Shopify's order within */
   const body = { on: true, term: term, mode: mode, items: items };
-  if (!items.length) { body.why = { raw: raw, words: words, own: own }; if (hidden) body.why.hidden = hidden; }   /* v212: raw leaves out the off-Shopify offers hidden as unknown stores */
+  if (!items.length) { body.why = { raw: raw, words: words, own: own }; if (hidden) body.why.hidden = hidden; }   /* v213: raw leaves out the off-Shopify offers hidden as unknown stores */
   return out(body, 200);
 }
 
@@ -444,10 +444,10 @@ export async function shopcatStatus(env, nowMs) {
   const now = Number(nowMs) || Date.now();
   let last = shopcatLast();
   if (!last && env && env.PROWL_ALERTS) { try { last = await env.PROWL_ALERTS.get(SHOPCAT_LAST_KEY, "json"); } catch (e) { last = null; } }
-  const L0 = last && typeof last === "object" ? last : null, L = L0 && Number(L0.at) > 0 ? L0 : null;   /* v212: a search-only record has no exchange */
+  const L0 = last && typeof last === "object" ? last : null, L = L0 && Number(L0.at) > 0 ? L0 : null;   /* v213: a search-only record has no exchange */
   const sx = S.search || (L0 && L0.search && typeof L0.search === "object" ? L0.search : null);
   return { on: shopcatOn(env), shape: shopcatShape(env), method: S.method || (L && L.ok ? String(L.method || "") : ""),
-    catalogId: shopcatCatalogId(env),   /* v212: not a secret (the Dev Dashboard shows it; it only names a saved search) */
+    catalogId: shopcatCatalogId(env),   /* v213: not a secret (the Dev Dashboard shows it; it only names a saved search) */
     search: sx ? { at: Number(sx.at) || 0, mode: sx.mode === "token" ? "token" : "keyless", status: Number(sx.status) || 0, catalog: !!sx.catalog } : null,
     waitUntil: shopcatTokenDown(now, env) ? S.failUntil : 0, busyUntil: S.busyUntil > now ? S.busyUntil : 0,
     last: L ? { at: Number(L.at) || 0, ok: !!L.ok, status: Number(L.status) || 0, error: shopcatScrub(L.error, env, 60), desc: shopcatScrub(L.desc, env, 200),
@@ -456,7 +456,7 @@ export async function shopcatStatus(env, nowMs) {
 }
 export async function shopcatTest(env, D, term, origin, nowMs) {
   const now = Number(nowMs) || Date.now(), q = shopcatTerm(term) || "pyrex";
-  /* v212: without the secrets, or when the exchange fails, the test search runs keyless (as /shop-live does) */
+  /* v213: without the secrets, or when the exchange fails, the test search runs keyless (as /shop-live does) */
   const on = shopcatOn(env), deadline = Date.now() + SHOPCAT_DEADLINE_MS, f = (D && D.fetch) || fetch, cid = shopcatCatalogId(env);
   let tok = "", exchange = null;
   if (on) {
@@ -478,13 +478,13 @@ export async function shopcatTest(env, D, term, origin, nowMs) {
   else if (j && j.result && j.result.isError) out.rpc = { code: 0, message: shopcatScrub((Array.isArray(j.result.content) ? j.result.content : []).map((x) => x && x.text).filter(Boolean).join(" ") || "tool error", env, 300), data: "" };
   else if (r.status !== 200) {
     out.error = (j ? shopcatScrub(j.error_description || j.message || j.error, env, 200) : shopcatSnippet(r.text, env)) || "answered " + r.status;
-    const eg = edge(r.headers); out.server = eg.server; out.ray = eg.ray;   /* v212 */
+    const eg = edge(r.headers); out.server = eg.server; out.ray = eg.ray;   /* v213 */
   }
   else {
     const sc = j && j.result && j.result.structuredContent, ps = sc && Array.isArray(sc.products) ? sc.products : null;
     if (!ps) out.error = "no products in the answer";
     else {
-      /* v212 "Known stores only": the off-Shopify items hidden as unknown stores, with their domains, so Matt sees what is
+      /* v213 "Known stores only": the off-Shopify items hidden as unknown stores, with their domains, so Matt sees what is
          filtered; the sample titles are from what a hunt would show */
       const shown = [], doms = [];
       let hid = 0;

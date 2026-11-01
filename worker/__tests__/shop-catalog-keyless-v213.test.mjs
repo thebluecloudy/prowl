@@ -1,10 +1,10 @@
-/* v212: the Shopify strip searches keyless (no Authorization header, the agent profile alone: Shopify's Anonymous tier,
+/* v213: the Shopify strip searches keyless (no Authorization header, the agent profile alone: Shopify's Anonymous tier,
    shopify.dev/docs/agents/profiles/auth-and-rate-limiting) when the key is missing, refused or in its 5-minute wait;
    Matt's saved catalog goes as catalog.catalog_id (SHOPIFY_CATALOG_ID overrides, "none" sends none) with a fill from the
    whole Global Catalog; off-Shopify offers are kept and marked; every Shopify call names itself (User-Agent); a non-JSON
    refusal (a bare 403) keeps a scrubbed snippet and who answered, and is retried with HTTP Basic; the Diagnose card shows
    which mode the last search used.
-   Run: node --test worker/__tests__/shop-catalog-keyless-v212.test.mjs */
+   Run: node --test worker/__tests__/shop-catalog-keyless-v213.test.mjs */
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
@@ -59,7 +59,7 @@ test("no secrets: keyless search, no Authorization, the profile in meta, the Use
   assert.equal(q.init.headers.Authorization, undefined);
   assert.equal(q.init.headers["User-Agent"], SC.SHOPCAT_UA);
   assert.equal(q.init.headers.Accept, "application/json");
-  assert.match(SC.SHOPCAT_UA, /^Prowl\/212 \(\+https:\/\/www\.owlandtwigvintage\.com\/pages\/prowl\)$/);
+  assert.match(SC.SHOPCAT_UA, /^Prowl\/213 \(\+https:\/\/www\.owlandtwigvintage\.com\/pages\/prowl\)$/);
   assert.equal(q.body.params.arguments.meta["ucp-agent"].profile, "https://prowl.example.workers.dev/ucp/profile.json");
   assert.ok(counts["shopcat:203.0.113.9"] && counts["shopcat:all"], "per-IP and site caps");
   assert.equal(r.headers["Cache-Control"], "no-store");
@@ -168,7 +168,7 @@ test("shopcatTest runs from the worker keyless when there is no key or it is ref
 });
 
 test("the Diagnose card shows the mode of the last search, the saved catalog, and where the two key values are", async (t) => {
-  const dom = new JSDOM(adminPage("n0nce", "v212"), { url: "https://prowl.example.workers.dev/admin#diagnose", runScripts: "dangerously", pretendToBeVisual: true,
+  const dom = new JSDOM(adminPage("n0nce", "v213"), { url: "https://prowl.example.workers.dev/admin#diagnose", runScripts: "dangerously", pretendToBeVisual: true,
     beforeParse(w) {
       w.fetch = async (path) => {
         const p = String(path);
