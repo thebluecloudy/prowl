@@ -4127,7 +4127,9 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <h2 id="otp-mt">How Prowl works</h2>
       <p class="hw-badge">Free · no account needed to search</p>
       <p class="hw-big">Type it once. Prowl hunts <span data-t>30</span> vintage marketplaces.</p>
-      <form class="hw-try" id="otp-hwTry" autocomplete="off"><input id="otp-hwQ" type="search" placeholder="Try: Pyrex Butterprint" aria-label="Try a search"><button type="submit" aria-label="Hunt it">→</button></form>
+      <form class="hw-try" id="otp-hwTry" autocomplete="off">
+<input id="otp-hwQ" type="search" placeholder="Try: Pyrex Butterprint" aria-label="Try a search"><button type="submit" aria-label="Hunt it">→</button>
+</form>
     </div>
     <div class="hfilm" id="otp-film" data-src="https://cdn.shopify.com/videos/c/o/v/767c569b23fc4eb5b4a3b8ed8c4e6c67.mp4"><button class="hfilm-go" id="otp-filmGo" type="button"><i aria-hidden="true"></i><span><b>Watch Prowl in 20 seconds</b><em>The tour, sound on</em></span></button></div>
     <div class="gapp otp-getapp" data-mode="help" hidden></div>
@@ -4283,7 +4285,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.41';
+var PROWL_VERSION='v8.42';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
