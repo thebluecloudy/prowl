@@ -1,16 +1,32 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.43 / v215).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.45 / v215).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.43** | 361,665 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.45** | 360,395 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v215** | |
 
 Recently shipped, newest first:
 
+- **v8.45: free visitors see what Prowl Pro adds** (Claude, 2026-11-01). Branch `claude/pro-shows-v844`. Worker
+  unchanged (v214). Matt, in an incognito window: "Nothing is showing what we get with pro. Like estate sales and
+  Facebook live." v8.44 is left for #313 (it claimed v8.43, which #307 took).
+  - **Home:** a "What Prowl Pro adds" card under Prowl Alerts (`#otp-proAdds`, `rProAdds` from `rMail`), hidden for Pro
+    and the owner key: Facebook Marketplace live in hunts, estate sales this week, 100 hunts with price ceiling / skip
+    words / local pickup, Pounce on 5, unlimited photo and Fair price checks, saved finds kept a year.
+  - **Near me:** the Estate sales tab shows for everyone (`nrWkTab`); without Pro it shows what the Sweep, Top picks,
+    Plan my week and the email do, with no sweep and nothing asked of the worker.
+  - **Hunts:** a hunt with no Facebook finds shows a "Facebook Marketplace 🔒 Pro" row for non-Pro visitors.
+  - **One way in:** every teaser uses `data-protry` → `proTry()`: signed out → sign-in with "Prowl Pro is on, free for
+    14 days" (a new member's trial, worker v214), and after sign-in a trial member is told Pro is on instead of being
+    sent to checkout; free member → `mailUpgrade`; Pro → a toast. `proCtaTxt()` words the button.
+  - **Copy:** How Prowl works plans, the alerts text and button, and the plan table name Facebook, estate sales,
+    Pounce and saved finds; the free-month wording and links are gone where they meant new visitors.
+  - Tests `__tests__/page/pro-shows-v845.test.mjs`; how-v840, near-section-v736, weekend-sweep-v832, fb-retired-v808
+    and fb-strip-v826 updated for the tab and the Facebook preview row.
 - **Worker v215: site visits in the morning briefing** (Matt, 2026-11-01: people visit but buy on Etsy; which guides do
   they read?). The admin Overview's "Owl & Twig this morning" card adds What people do on the site: visits, people, cart
   adds and checkouts this week; visits by kind of landing page (guides, products, Prowl, home); the guides and products
@@ -2490,7 +2506,7 @@ Recently shipped, newest first:
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 | `claude/gifted-johnson-wzaqr3` | Claude | Deploy check tolerates Shopify's line-break re-flow (scripts only) | No new version (page v8.42 live with #310, worker v213). |
 
-Next free numbers: **page v8.44, worker v216** (v8.43 / v214: 14-day Pro trial, PR #307; v8.42: deploy-check fix for the How Prowl works search box, branch `claude/gifted-johnson-wzaqr3`; v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, live with #309; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.46, worker v216** (v8.45: what Pro adds, branch `claude/pro-shows-v844`; v8.44 left for #313; v8.43 / v214: 14-day Pro trial, PR #307; v8.42: deploy-check fix for the How Prowl works search box, branch `claude/gifted-johnson-wzaqr3`; v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, live with #309; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 

@@ -33,18 +33,17 @@ async function nearWeekend(p) {
   await tick(30);
 }
 
-test('signed out and without the owner key there is no weekend sweep: no Estate sales tab in NEAR ME, nothing asked', async () => {
+test('signed out and without the owner key there is no weekend sweep: the Estate sales tab says what Pro does, nothing asked (v8.45)', async () => {
   const calls = [], p = open({}, calls);
   await tick(50);
   p.$('#otp-dock .db[data-m="local"]').click();
   await tick(50);
-  assert.equal(p.$('#otp-nrT4').hidden, true, 'the tab stays hidden');
-  assert.equal(p.$('#otp-nrT4').parentNode.classList.contains('nr-4'), false);
+  assert.equal(p.$('#otp-nrT4').hidden, false, 'v8.45: the tab shows');
   p.$('#otp-nrT4').click();
   await tick(30);
-  assert.equal(p.$('#otp-nrWkPane').hidden, true, 'a hidden tab cannot be opened');
-  assert.equal(p.$('#otp-nrT1').getAttribute('aria-selected'), 'true');
-  assert.equal(p.$('#otp-wk'), null);
+  assert.equal(p.$('#otp-nrWkPane').hidden, false);
+  assert.match(p.$('#otp-wkHost').textContent, /Estate sales this week.*Try Pro free for 14 days/);
+  assert.equal(p.$('#otp-wkGo'), null, 'no sweep');
   assert.ok(!calls.some((c) => /\/weekend\?/.test(c.u)));
   await p.close();
 });
@@ -184,15 +183,16 @@ test('a signed-in Pro member gets NEAR ME > Estate sales, and the sweep carries 
   await p.close();
 });
 
-test('a signed-in free member does not see the Estate sales tab (the Den row carries the Pro link)', async () => {
+test('a signed-in free member sees the Estate sales tab as a Pro preview, and nothing is asked (v8.45)', async () => {
   const { p, sent } = openMail({ pro: false, estate: true });
   await tick(1600);
   p.$('#otp-dock .db[data-m="local"]').click();
   await tick(50);
-  assert.equal(p.$('#otp-nrT4').hidden, true, 'hidden for free');
+  assert.equal(p.$('#otp-nrT4').hidden, false, 'v8.45: shown for free');
   p.$('#otp-nrT4').click();
   await tick(30);
-  assert.equal(p.$('#otp-nrWkPane').hidden, true);
+  assert.match(p.$('#otp-wkHost').textContent, /Estate sales this week/);
+  assert.equal(p.$('#otp-wkGo'), null);
   assert.ok(!sent.some((c) => /\/weekend\?/.test(c.u)), 'nothing asked');
   p.$('#otp-near .x, #otp-near [data-close]') && p.$('#otp-near .x, #otp-near [data-close]').click();
   p.$('#otp-dock .db[data-m="den"]').click();
@@ -233,10 +233,11 @@ test('?wk=1&wkzip= from the daily email opens NEAR ME on Estate sales for a Pro 
   await p.close();
 });
 
-test('?wk=1 for a free member opens NEAR ME as it is, with no Estate sales tab', async () => {
+test('?wk=1 for a free member opens NEAR ME on the Estate sales preview, with no sweep (v8.45)', async () => {
   const { p, sent } = openMail({ pro: false }, null, 'https://www.owlandtwigvintage.com/pages/prowl-app?wk=1');
   await waitFor(() => p.$('#otp-near') && !p.$('#otp-near').hidden, { timeout: 9000 });
-  assert.equal(p.$('#otp-nrT4').hidden, true);
+  assert.equal(p.$('#otp-nrT4').hidden, false);
+  assert.equal(p.$('#otp-wkGo'), null);
   assert.ok(!sent.some((c) => /\/weekend\?/.test(c.u)));
   await p.close();
 });
