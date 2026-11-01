@@ -627,6 +627,57 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .mi>u{flex:0 0 26px;height:26px;border-radius:50%;background:var(--ac);color:var(--onink);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:13px;font-weight:800;text-decoration:none}
 .scout-app-wrapper .mi h3{margin:3px 0 4px;font-size:15px}
 .scout-app-wrapper .mi p{margin:0;font-size:14px;color:var(--i3);line-height:1.55}
+/* v8.37 (Matt: "use liinks.co's home page as a reference for how Prowl works"): a promise and a box to try it, then
+   each feature as a short title, one line and a small picture of it, the steps folded under How; then Prowl or one site
+   at a time, the two plans, questions, and Start hunting */
+.scout-app-wrapper .hw-hero{text-align:center;padding:6px 0 14px}
+.scout-app-wrapper .hw-badge{display:inline-block;margin:0 0 10px;padding:5px 12px;border:1px solid var(--ln);border-radius:999px;font-size:13px;font-weight:700;color:var(--i2)}
+.scout-app-wrapper .hw-hero h2{margin:0 0 6px;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--mu)}
+.scout-app-wrapper .hw-big{margin:0 auto 14px;max-width:18ch;font-family:var(--display);font-size:30px;font-weight:800;line-height:1.1;color:var(--ink);text-wrap:balance}
+.scout-app-wrapper .hw-try{display:flex;align-items:center;gap:6px;max-width:420px;margin:0 auto;padding:6px 6px 6px 16px;border:1.5px solid var(--l2);border-radius:999px;background:var(--cd)}
+.scout-app-wrapper #otp-ms #otp-hwQ{flex:1 1 auto;min-width:0;margin:0;padding:8px 0;border:0;border-radius:0;box-shadow:none;background:none;font:inherit;font-size:16px;color:var(--ink);outline:none}
+.scout-app-wrapper .hw-try button{flex:none;width:44px;height:44px;border:0;border-radius:50%;background:var(--ac);color:var(--onink);font-size:20px;font-weight:800}
+.scout-app-wrapper .mi .hw-one{color:var(--i2);font-size:15px}
+.scout-app-wrapper .hw-mock{margin:10px 0 2px;padding:12px;border:1px solid var(--ln);border-radius:14px;background:var(--cd2);font-size:13px;line-height:1.4;pointer-events:none}
+.scout-app-wrapper .hw-rows,.scout-app-wrapper .hw-stops,.scout-app-wrapper .hw-card{display:flex;flex-direction:column;gap:6px}
+.scout-app-wrapper .hw-rows span{display:flex;justify-content:space-between;padding:6px 10px;border-radius:9px;background:var(--cd)}
+.scout-app-wrapper .hw-rows b,.scout-app-wrapper .hw-card b{color:var(--ink)}
+.scout-app-wrapper .hw-pills{display:flex;flex-wrap:wrap;gap:6px}
+.scout-app-wrapper .hw-pills span{padding:6px 12px;border:1.5px solid var(--l2);border-radius:999px;background:var(--cd);color:var(--ink);font-weight:700}
+.scout-app-wrapper .hw-pills i,.scout-app-wrapper .hw-stops i{font-style:normal;color:var(--ac);font-weight:800}
+.scout-app-wrapper .hw-num em,.scout-app-wrapper .hw-stops em{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-right:6px;border-radius:50%;background:var(--ac);color:var(--onink);font-style:normal;font-size:13px;font-weight:800}
+.scout-app-wrapper .hw-stops b{color:var(--suc);font-size:13px}
+.scout-app-wrapper .hw-ok{color:var(--suc);font-weight:700}
+.scout-app-wrapper .hw-dim{color:var(--mu)}
+.scout-app-wrapper .hw-btn{align-self:flex-start;padding:5px 12px;border-radius:999px;background:var(--ac);color:var(--onink);font-weight:800}
+.scout-app-wrapper .hw-dots{display:flex;gap:10px}
+.scout-app-wrapper .hw-dots i{width:28px;height:28px;border-radius:50%;border:2px solid var(--l2)}
+.scout-app-wrapper .hw-how{margin-top:6px}
+.scout-app-wrapper .hw-how summary,.scout-app-wrapper .hw-q summary{cursor:pointer;font-weight:700;color:var(--ac);font-size:14px}
+.scout-app-wrapper .hw-how p{margin-top:6px}
+.scout-app-wrapper .hw-sec{margin:18px 0 0;padding-top:16px;border-top:1px solid var(--ln)}
+.scout-app-wrapper .hw-sec h3{margin:0 0 10px;font-family:var(--display);font-size:20px}
+.scout-app-wrapper .hw-cmp{width:100%;border-collapse:collapse;font-size:14px}
+.scout-app-wrapper .hw-cmp th,.scout-app-wrapper .hw-cmp td{padding:8px 6px;border-bottom:1px solid var(--ln);text-align:center}
+.scout-app-wrapper .hw-cmp th:first-child,.scout-app-wrapper .hw-cmp td:first-child{text-align:left}
+.scout-app-wrapper .hw-cmp td:nth-child(2){color:var(--suc);font-weight:800}
+.scout-app-wrapper .hw-cmp td:nth-child(3){color:var(--mu)}
+.scout-app-wrapper .hw-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.scout-app-wrapper .hw-plan{padding:14px;border:1.5px solid var(--ln);border-radius:16px;background:var(--cd2)}
+.scout-app-wrapper .hw-plan.hw-pro{border-color:var(--ac)}
+.scout-app-wrapper .hw-price{margin:4px 0;font-family:var(--display);font-size:28px;font-weight:800;color:var(--ink)}
+.scout-app-wrapper .hw-price small{font-size:14px;color:var(--mu)}
+.scout-app-wrapper .hw-plan ul{margin:8px 0 12px;padding-left:18px;font-size:14px;color:var(--i2)}
+.scout-app-wrapper .hw-q{padding:10px 0;border-bottom:1px solid var(--ln)}
+.scout-app-wrapper .hw-q p{margin:6px 0 0;font-size:14px;color:var(--i3)}
+.scout-app-wrapper .st-one{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 18px 10px;font-size:15px;color:var(--i2)}   /* v8.40 */
+.scout-app-wrapper #otp-res{scroll-margin-top:12px}
+.scout-app-wrapper .st-one b{color:var(--ink)}
+.scout-app-wrapper .st-one .b{min-height:36px;padding:6px 14px;font-size:14px}
+.scout-app-wrapper .hw-end{margin:0 0 10px;text-align:center;font-weight:700;color:var(--i2)}
+.scout-app-wrapper #otp-ms .ma{flex-direction:column;align-items:stretch}
+.scout-app-wrapper #otp-ms .ma .b{width:100%}
+.scout-app-wrapper .hw-plan>b{display:block;font-family:var(--display);font-size:18px}
 .scout-app-wrapper .k{font-weight:800;color:var(--ink);background:var(--cd3);padding:2px 7px;border-radius:5px;font-size:13px}
 .scout-app-wrapper .ma{margin-top:24px;display:flex;justify-content:flex-end}
 .scout-app-wrapper [hidden]{display:none!important}
@@ -4072,64 +4123,111 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 
 <div class="mo" id="otp-ms">
   <div class="md" role="dialog" aria-modal="true" aria-labelledby="otp-mt">
-    <h2 id="otp-mt">How Prowl works</h2>
-    <p>Prowl builds one search for <b><span data-t>30</span> vintage marketplaces</b> and puts them all on one screen. The basics:</p>
+    <div class="hw-hero">
+      <h2 id="otp-mt">How Prowl works</h2>
+      <p class="hw-badge">Free · no account needed to search</p>
+      <p class="hw-big">Type it once. Prowl hunts <span data-t>30</span> vintage marketplaces.</p>
+      <form class="hw-try" id="otp-hwTry" autocomplete="off"><input id="otp-hwQ" type="search" placeholder="Try: Pyrex Butterprint" aria-label="Try a search"><button type="submit" aria-label="Hunt it">→</button></form>
+    </div>
     <div class="hfilm" id="otp-film" data-src="https://cdn.shopify.com/videos/c/o/v/767c569b23fc4eb5b4a3b8ed8c4e6c67.mp4"><button class="hfilm-go" id="otp-filmGo" type="button"><i aria-hidden="true"></i><span><b>Watch Prowl in 20 seconds</b><em>The tour, sound on</em></span></button></div>
     <div class="gapp otp-getapp" data-mode="help" hidden></div>
     <div class="mi">
 <u>1</u><div>
-<h3>Search everywhere at once</h3>
-<p>Type what you are hunting and tap <b style="color:var(--ink)">Hunt</b>. Each marketplace with listings gets a row with its count at the top; tap one to jump to it, or <b style="color:var(--ink)">Open all</b> (allow pop-ups for this site). Marketplaces with nothing right now share one line at the foot. <b style="color:var(--ink)">Just ShopGoodwill</b> under the box searches that one site, and your last few searches wait under the box for one tap.</p>
+<h3>Type it once</h3>
+<p class="hw-one">One search box, <span data-t>30</span> marketplaces, every result on one screen.</p>
+<div class="hw-mock" aria-hidden="true"><div class="hw-rows"><span>eBay <b>128</b></span><span>Etsy <b>64</b></span><span>ShopGoodwill <b>12</b></span><span>Facebook Marketplace <b>9</b></span><span class="hw-dim">+ the rest, one line</span></div></div>
+<details class="hw-how"><summary>How</summary><p>Type what you are hunting and tap <b style="color:var(--ink)">Hunt</b>. Each marketplace with listings gets a row with its count at the top; tap one to jump to it, or <b style="color:var(--ink)">Open all</b> (allow pop-ups for this site). Marketplaces with nothing right now share one line at the foot. <b style="color:var(--ink)">Just ShopGoodwill</b> under the box searches that one site, and your last few searches wait under the box for one tap.</p></details>
 </div>
 </div>
     <div class="mi">
 <u>2</u><div>
-<h3>Your favorite hunts</h3>
-<p>Type into <b style="color:var(--ink)">+ add a hunt</b> on the home screen. Prowl checks ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed and Salvation Army right away, with photos, and marks what is new since you last looked. Each hunt is a pill; tap it to see its finds. The <b style="color:var(--ink)">Den</b> holds every hunt you have saved. Hearts and saved finds live in <b style="color:var(--ink)">Flock</b>, under Saved and Likes.</p>
+<h3>Keep your hunts</h3>
+<p class="hw-one">Save what you are after and Prowl brings back only what is new.</p>
+<div class="hw-mock" aria-hidden="true"><div class="hw-pills"><span>Pyrex Butterprint</span><span>Royal Haeger panther <i>3 new</i></span><span>Blenko glass</span></div></div>
+<details class="hw-how"><summary>How</summary><p>Type into <b style="color:var(--ink)">+ add a hunt</b> on the home screen. Prowl checks ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed and Salvation Army right away, with photos, and marks what is new since you last looked. Each hunt is a pill; tap it to see its finds. The <b style="color:var(--ink)">Den</b> holds every hunt you have saved. Hearts and saved finds live in <b style="color:var(--ink)">Flock</b>, under Saved and Likes.</p></details>
 </div>
 </div>
     <div class="mi">
 <u>3</u><div>
 <h3>Put your hunts in order</h3>
-<p>Tap <b style="color:var(--ink)">Reorder</b> beside All your hunts, tap the hunt you want to move, then tap where it goes; <b style="color:var(--ink)">Done</b> when you are finished. On a phone you can also press and hold a pill, then drag it or tap its new spot. Daily and your alerts go through your hunts in this order, so put the ones you care about most first.</p>
+<p class="hw-one">The hunts you care about most go first, in Daily and in your emails.</p>
+<div class="hw-mock" aria-hidden="true"><div class="hw-pills hw-num"><span><em>1</em> Royal Haeger panther</span><span><em>2</em> Pyrex Butterprint</span><span><em>3</em> Blenko glass</span></div></div>
+<details class="hw-how"><summary>How</summary><p>Tap <b style="color:var(--ink)">Reorder</b> beside All your hunts, tap the hunt you want to move, then tap where it goes; <b style="color:var(--ink)">Done</b> when you are finished. On a phone you can also press and hold a pill, then drag it or tap its new spot. Daily and your alerts go through your hunts in this order, so put the ones you care about most first.</p></details>
 </div>
 </div>
     <div class="mi">
 <u>4</u><div>
-<h3>Near me</h3>
-<p><b style="color:var(--ink)">Near me</b> in the footer is for when you are out in the car. <b style="color:var(--ink)">Around you</b> lists the antique, vintage and thrift shops near where you stand, or near any town or ZIP you type, closest first, with <b style="color:var(--ink)">Open now</b> to hide the closed ones. <b style="color:var(--ink)">+ Stop</b> adds any shop to a trip. <b style="color:var(--ink)">Road trip</b> plans the shops worth a stop on the way somewhere; <b style="color:var(--ink)">↑</b> moves a stop up, and <b style="color:var(--ink)">Share</b> sends the trip to your group, who see it under <b style="color:var(--ink)">Trips</b> with the finds you each check along the way.</p>
+<h3>Shops around you</h3>
+<p class="hw-one">Antique, vintage and thrift shops nearby, open or closed right now.</p>
+<div class="hw-mock" aria-hidden="true"><div class="hw-card"><b>Maumee Antique Mall</b><span class="hw-ok">Open · closes 6 PM</span><span class="hw-dim">2.4 mi</span><span class="hw-btn">Directions</span></div></div>
+<details class="hw-how"><summary>How</summary><p><b style="color:var(--ink)">Near me</b> in the footer is for when you are out in the car. <b style="color:var(--ink)">Around you</b> lists the antique, vintage and thrift shops near where you stand, or near any town or ZIP you type, closest first, with <b style="color:var(--ink)">Open now</b> to hide the closed ones. <b style="color:var(--ink)">+ Stop</b> adds any shop to a trip. <b style="color:var(--ink)">Road trip</b> plans the shops worth a stop on the way somewhere; <b style="color:var(--ink)">↑</b> moves a stop up, and <b style="color:var(--ink)">Share</b> sends the trip to your group, who see it under <b style="color:var(--ink)">Trips</b> with the finds you each check along the way.</p></details>
 </div>
 </div>
     <div class="mi">
 <u>5</u><div>
-<h3>On the road</h3>
-<p>On the day of a trip, tap <b style="color:var(--ink)">✓ Been</b> at each stop; on a group trip everyone sees it. <b style="color:var(--ink)">Next stop</b> at the top says how far it is, about how long, and when you will get there. <b style="color:var(--ink)">Hide the … closed by then</b> drops the stops that will have closed before you arrive, and <b style="color:var(--ink)">Carry on in Maps</b> picks up from where you are. Delete or Leave a trip from its foot.</p>
+<h3>Road trips</h3>
+<p class="hw-one">The stops worth making on the way, shared with your group.</p>
+<div class="hw-mock" aria-hidden="true"><div class="hw-stops"><span><em>A</em> Maumee Antique Mall <i>+4 min</i> <b>✓ Been</b></span><span><em>B</em> Delaware Antique Mall <i>+12 min</i></span><span><em>C</em> Blenko Glass Company</span></div></div>
+<details class="hw-how"><summary>How</summary><p>On the day of a trip, tap <b style="color:var(--ink)">✓ Been</b> at each stop; on a group trip everyone sees it. <b style="color:var(--ink)">Next stop</b> at the top says how far it is, about how long, and when you will get there. <b style="color:var(--ink)">Hide the … closed by then</b> drops the stops that will have closed before you arrive, and <b style="color:var(--ink)">Carry on in Maps</b> picks up from where you are. Delete or Leave a trip from its foot.</p></details>
 </div>
 </div>
     <div class="mi">
 <u>6</u><div>
 <h3>Daily</h3>
-<p><b style="color:var(--ink)">Daily</b> in the footer checks all your locked hunts in one go and shows only what is new since yesterday; its badge counts the new finds. <b style="color:var(--ink)">See all</b> opens a whole hunt.</p>
+<p class="hw-one">One tap shows only what is new since yesterday, across all your hunts.</p>
+<div class="hw-mock" aria-hidden="true"><div class="hw-card"><b>Daily</b><span class="hw-ok">7 new since yesterday</span><span class="hw-dim">Royal Haeger panther · 3   Pyrex Butterprint · 4</span></div></div>
+<details class="hw-how"><summary>How</summary><p><b style="color:var(--ink)">Daily</b> in the footer checks all your locked hunts in one go and shows only what is new since yesterday; its badge counts the new finds. <b style="color:var(--ink)">See all</b> opens a whole hunt.</p></details>
 </div>
 </div>
     <div class="mi">
 <u>7</u><div>
 <h3>Prowl Alerts by email</h3>
-<p>One email with new finds for your hunts, as often as you pick. <b style="color:var(--ink)">Free for 3 hunts.</b> Prowl Pro is <b style="color:var(--ink)">free for the first month</b>, then $7 a month for up to 100 hunts and your Den. Cancel any time. Set it up, see your plan and receipts, or turn emails off in <b style="color:var(--ink)">Den › Settings</b>. Tap <b style="color:var(--ink)">Sign in or sign up</b> to use your Owl &amp; Twig account: we email you a 6-digit code, no password, and the same sign-in works on your phone and computer.</p>
+<p class="hw-one">New finds come to you, as often as you pick.</p>
+<div class="hw-mock" aria-hidden="true"><div class="hw-card"><b>Prowl: 4 new finds for your hunts</b><span class="hw-dim">Royal Haeger panther, Pyrex Butterprint</span></div></div>
+<details class="hw-how"><summary>How</summary><p>One email with new finds for your hunts, as often as you pick. <b style="color:var(--ink)">Free for 3 hunts.</b> Prowl Pro is <b style="color:var(--ink)">free for the first month</b>, then $7 a month for up to 100 hunts and your Den. Cancel any time. Set it up, see your plan and receipts, or turn emails off in <b style="color:var(--ink)">Den › Settings</b>. Tap <b style="color:var(--ink)">Sign in or sign up</b> to use your Owl &amp; Twig account: we email you a 6-digit code, no password, and the same sign-in works on your phone and computer.</p></details>
 </div>
 </div>
     <div class="mi">
 <u>8</u><div>
 <h3>Check a photo</h3>
-<p>At a sale, tap <b style="color:var(--ink)">Photo</b> in the bar at the bottom, then <b style="color:var(--ink)">Take a photo</b>. One free check a day, unlimited with Prowl Pro. Prowl names the piece, notes visible flaws and gives a fair price range, with eBay look-alikes. <b style="color:var(--ink)">Hunt it on Prowl</b> searches it everywhere; on a trip you can share the find with your group.</p>
+<p class="hw-one">Snap a piece at a sale: Prowl names it and gives a fair price.</p>
+<div class="hw-mock" aria-hidden="true"><div class="hw-card"><b>Royal Haeger 616 winking cat</b><span>Fair price <b>$140–190</b></span><span class="hw-dim">How sure: High</span></div></div>
+<details class="hw-how"><summary>How</summary><p>At a sale, tap <b style="color:var(--ink)">Photo</b> in the bar at the bottom, then <b style="color:var(--ink)">Take a photo</b>. One free check a day, unlimited with Prowl Pro. Prowl names the piece, notes visible flaws and gives a fair price range, with eBay look-alikes. <b style="color:var(--ink)">Hunt it on Prowl</b> searches it everywhere; on a trip you can share the find with your group.</p></details>
 </div>
 </div>
     <div class="mi">
 <u>9</u><div>
 <h3>Make it yours</h3>
-<p><b style="color:var(--ink)">Aa</b> makes the text bigger. The icon top-right cycles Light, Blue hour, Midnight, <b style="color:var(--ink)">Uranium</b>, a retro blacklight mode, and <b style="color:var(--ink)">Cockpit</b>, red night lighting. <span class="aff-say">Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</span></p>
+<p class="hw-one">Bigger text and five looks, from Light to Cockpit.</p>
+<div class="hw-mock" aria-hidden="true"><div class="hw-dots"><i style="background:#FAF6EE"></i><i style="background:#0B1430"></i><i style="background:#070706"></i><i style="background:#39ff14"></i><i style="background:#ff2a1a"></i></div></div>
+<details class="hw-how"><summary>How</summary><p><b style="color:var(--ink)">Aa</b> makes the text bigger. The icon top-right cycles Light, Blue hour, Midnight, <b style="color:var(--ink)">Uranium</b>, a retro blacklight mode, and <b style="color:var(--ink)">Cockpit</b>, red night lighting. <span class="aff-say">Some links to <span class="aff-list">eBay</span> earn Owl &amp; Twig a small commission, at no cost to you.</span></p></details>
 </div>
 </div>
+    <section class="hw-sec" aria-labelledby="otp-hwCmp">
+      <h3 id="otp-hwCmp">Prowl or one site at a time</h3>
+      <table class="hw-cmp"><thead><tr><th></th><th>Prowl</th><th>One site at a time</th></tr></thead><tbody>
+        <tr><td>Searches <span data-t>30</span> marketplaces at once</td><td>✓</td><td>—</td></tr>
+        <tr><td>Shows only what is new</td><td>✓</td><td>—</td></tr>
+        <tr><td>Watches your hunts and emails you</td><td>✓</td><td>Some sites</td></tr>
+        <tr><td>Names a piece from a photo</td><td>✓</td><td>—</td></tr>
+        <tr><td>Shops near you and road trips</td><td>✓</td><td>—</td></tr>
+      </tbody></table>
+    </section>
+    <section class="hw-sec" aria-labelledby="otp-hwPlans">
+      <h3 id="otp-hwPlans">Simple plans</h3>
+      <div class="hw-plans">
+        <div class="hw-plan"><b>Free</b><p class="hw-price">$0</p><ul><li>Search all <span data-t>30</span> marketplaces</li><li>5 hunts in your Den</li><li>Email alerts for 3 hunts</li><li>1 photo check a day</li><li>3 Fair price checks a day</li></ul></div>
+        <div class="hw-plan hw-pro"><b>Prowl Pro</b><p class="hw-price">$7<small>/month</small></p><p class="hw-dim">First month free. Cancel any time.</p><ul><li>Up to 100 hunts, all in your alerts</li><li>Unlimited photo checks</li><li>Unlimited Fair price checks</li><li>This week’s estate sales near you</li></ul><a class="b p" href="/products/prowl-pro">Try Prowl Pro free for a month</a></div>
+      </div>
+    </section>
+    <section class="hw-sec" aria-labelledby="otp-hwFaq">
+      <h3 id="otp-hwFaq">Questions</h3>
+      <details class="hw-q"><summary>Is Prowl free?</summary><p>Yes. Searching is free and needs no account, and your search list stays on your device. Your Den keeps 5 hunts for free, or up to 100 with Prowl Pro.</p></details>
+      <details class="hw-q"><summary>Which marketplaces does it search?</summary><p>eBay, Etsy, ShopGoodwill, Facebook Marketplace, Mercari, Poshmark, Chairish, Ruby Lane, 1stDibs, Craigslist, estate sales and auctions: <span data-t>30</span> in all, with eBay Sold for what pieces actually sold for.</p></details>
+      <details class="hw-q"><summary>Does it work on my phone?</summary><p>Yes, it is built for phones. Add it to your home screen. If you use Open all, allow pop-ups for this site.</p></details>
+      <details class="hw-q"><summary>How do I know what a piece is worth?</summary><p>Fair price on a listing, or a photo check at a sale. Both look at what the same piece has sold for, not just asking prices.</p></details>
+      <details class="hw-q"><summary>Can I cancel Prowl Pro?</summary><p>Any time, in your Owl &amp; Twig account under Subscriptions.</p></details>
+    </section>
     <details class="gloss"><summary>Prowl's words</summary>
 <dl>
 <dt>Prowl</dt>
@@ -4166,7 +4264,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <dd>Prowl is still looking.</dd>
 </dl>
 </details>
-    <div class="ma"><button class="b p" id="otp-mok">Got it</button></div>
+    <div class="ma"><p class="hw-end">Ready? Type what you are hunting.</p><button class="b p" id="otp-mok">Start hunting</button></div>
   </div>
 </div>
 </div>
@@ -4185,7 +4283,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.39';
+var PROWL_VERSION='v8.40';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -5612,7 +5710,7 @@ function storeHunts(){var a=[],b=[];st.hunts.forEach(function(t,j){(st.lock.has(
 var STORE_SKIP={ebaysold:1,owltwig:1,facebook:1};   /* sold prices, our own shop, Facebook's city-by-city search */
 function storeLive(id){return id==='shopgoodwill'||!!lv[id]}
 function storeGo(){
-  var T=storeHunts(),m=mb(storeId());
+  var T=st.storeOne?[st.storeOne]:storeHunts(),m=mb(storeId());   /* v8.40: one hunt, or all */
   st.storeFb=false;
   if(storeId()==='facebook'){clearTimers();st.run=null;st.focus=false;st.storeEmpty=false;st.storeFb=true;st.mode='store';rRes();rDock();res.hidden=false;fbAllFetch();return}   /* v8.27 */
   if(!T.length){clearTimers();st.run=null;st.focus=false;st.storeEmpty=true;st.mode='store';rRes();rDock();res.hidden=false;return}
@@ -5629,11 +5727,14 @@ function storeBar(id){
     '<form class="st-q" id="otp-fbF"><input id="otp-fbQ" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search Facebook for one thing" aria-label="Search Facebook for one thing" maxlength="80"><button class="b" type="submit">Search</button></form>';
   var opts='<optgroup label="LIVE: listings show here">'+live+'</optgroup><optgroup label="Opens on their site">'+other+'</optgroup>';
   var n=(mb(id)||{}).n||'';
+  var A=storeHunts().length;   /* v8.40: just the hunt you were on, with the way back to all of them */
   return '<div class="st-bar"><label class="st-lab" for="otp-stSel">Store</label><select id="otp-stSel">'+opts+'</select></div>'+
+    (st.storeOne?'<p class="st-one">Just <b>'+esc(st.storeOne)+'</b>'+(A>1?' <button class="b" id="otp-stAll" type="button">All '+A+' hunts</button>':'')+'</p>':'')+
     '<p class="st-note">'+(storeLive(id)?'<b>LIVE</b>: '+esc(n)+' listings show right here.':esc(n)+' opens on its own site, one tab per hunt. Stores marked LIVE show listings right here.')+'</p>'+
     '<form class="st-q" id="otp-stF"><input id="otp-stQ" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search for one thing" aria-label="Search '+esc(n)+' for one thing"><button class="b" type="submit">Search</button></form>';
 }
 function storeWire(){
+  var sa=$('#otp-stAll');if(sa)sa.addEventListener('click',function(){st.storeOne=null;storeGo()});   /* v8.40 */
   var sel=$('#otp-stSel');
   if(sel)sel.addEventListener('change',function(){if(!mb(this.value)&&this.value!=='facebook')return;st.store=this.value;save();storeGo()});
   var f=$('#otp-stF');
@@ -5773,6 +5874,7 @@ function olChip(r,t,j){var u=olUrl(olSite(r),t);return '<li data-ol="'+j+'"><a h
 function olSum(r){
   var T=olTerms(r),i,c,n=0,live=0,wait=0;
   for(i=0;i<T.length;i++){c=olGet(olSite(r),T[i]);if(!c){wait++;continue}if(c.err)continue;c=fltOnly(c.items).length;if(c){live++;n+=c}}
+  if(r.terms.length===1)return n?'<strong>'+n+'</strong> listing'+(n===1?'':'s')+' live':wait?FLY3+'checking':'nothing live right now';   /* v8.40: one hunt */
   return '<strong>'+r.terms.length+'</strong> hunts · '+(n?'<strong>'+n+'</strong> listing'+(n===1?'':'s')+' on <strong>'+live+'</strong> of them':wait?'checking':'nothing live right now')+
     (wait?' · '+FLY3+'checking '+wait+' more':'');
 }
@@ -5800,7 +5902,7 @@ function olRender(r){
   var nx=$('#otp-next');if(nx)nx.addEventListener('click',function(){launchNext(false)});
   if(!r.olGo){r.olGo=1;olFetchAll(r)}
 }
-function olHead(r){var n=r.terms.length;return (n===1?'Your hunt':'All '+n+' hunts')+' on '+esc(runSiteName(r))}
+function olHead(r){var n=r.terms.length;return (n===1?(r.mode==='store'&&st.storeOne?esc(r.terms[0]):'Your hunt'):'All '+n+' hunts')+' on '+esc(runSiteName(r))}   /* v8.40: Store from one hunt says which */
 function olFeet(r){
   var a=document.getElementById('otp-olNone'),b=document.getElementById('otp-olErr');
   if(a)olFoot(r,a,'none','Nothing on '+esc(runSiteName(r))+' right now');
@@ -6442,7 +6544,9 @@ function dockGo(m){
   closeFlock();
   if(m!=='store')st.storeFb=false;   /* v8.27 */
   if(m==='prowl'){clearRun();window.scrollTo({top:0,behavior:'smooth'});return;}
-  if(m==='store'){storeGo();return;}   /* v8.20 */
+  /* v8.40 (Matt: "I'm searching in hunt with the pills and I just want to find the items in one store"): with one hunt
+     on screen, Store runs just that hunt on the store (st.storeOne, not saved); from anywhere else, every hunt */
+  if(m==='store'){var r0=st.run;st.storeOne=r0&&r0.mode==='store'?st.storeOne:(r0&&r0.mode!=='daily'&&r0.terms&&r0.terms.length===1?r0.terms[0]:null);storeGo();return;}   /* v8.20 */
   if(m==='one'){if(q.value.trim()){runProwl('one',chips(),[oneId()],oneName())}else{openFocus()}return;}
   if(m==='local'){goLocal();return;}
   if(m==='daily'){
@@ -6715,6 +6819,13 @@ function filmPlay(){
 function filmStop(){var v=$('#otp-film video');if(v&&!v.paused){try{v.pause();}catch(e){}}}
 (function(){var g=$('#otp-filmGo');if(g)g.addEventListener('click',filmPlay);})();
 $('#otp-mok').addEventListener('click',closeM);
+/* v8.37: How Prowl works opens with a box to try it: the search runs on the home screen and the help closes */
+(function(){var f=$('#otp-hwTry'),q=$('#otp-hwQ');if(!f||!q)return;
+  f.addEventListener('submit',function(e){e.preventDefault();var t=String(q.value||'').replace(/^\s+|\s+$/g,'')||q.placeholder.replace(/^Try:\s*/,'');
+    var QI=$('#otp-q');closeM();if(!QI||!QI.form)return;QI.value=t;var sub=QI.form.querySelector('[type=submit]');if(sub)sub.click();
+    setTimeout(function(){try{QI.scrollIntoView({behavior:'smooth',block:'start'})}catch(x){} },300);});
+  $('#otp-mok').addEventListener('click',function(){var QI=$('#otp-q');if(QI)try{QI.focus({preventScroll:false})}catch(x){QI.focus()}});
+})();
 $('#otp-how').addEventListener('click',openM);
 var whyB=$('#otp-whyBtn');if(whyB)whyB.addEventListener('click',function(){openDen();setDenTab('about')});
 ms.addEventListener('click',function(e){if(e.target===ms)closeM();});

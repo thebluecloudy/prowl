@@ -1,15 +1,28 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.39 / v211).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.40 / v211).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.39** | 367,954 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.40** | 361,670 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v211** | |
 
 Recently shipped, newest first:
+
+- **v8.40: Store from one hunt, and How Prowl works on the pattern of liinks.co's home page**
+  - **Store** (Matt: "I'm searching in hunt with the pills and I just want to find the items in one store but it goes
+    to the bottom of hunt"; asked, he had tapped Store in the dock): with one hunt on screen, Store runs just that hunt
+    on the store (`st.storeOne`, in memory only), headed "<hunt> on <store>" with "N listings live", a "Just <hunt> ·
+    All N hunts" line, and keeps the hunt when the store changes. From anywhere else Store checks every hunt, as
+    before. `#otp-res` has a scroll margin so the card starts on screen. Tests: `__tests__/page/store-one-v840.test.mjs`.
+  - **How Prowl works** (Matt: "use this home page as a reference for how prowl works"): the title band, "Free · no
+    account needed to search", "Type it once. Prowl hunts 30 vintage marketplaces." and a box to try it (`#otp-hwTry`);
+    each of the nine features a short title, one line and a small picture (`.hw-mock`, `aria-hidden`), every earlier
+    instruction kept under **How**; then Prowl or one site at a time, the two plans (numbers tested against
+    `HUNTS_FREE`, `HUNTS_PRO`, `PHOTO_FREE_PER_DAY`), five questions, Prowl's words and **Start hunting**. No reviews or
+    customer pages: Prowl has none, and none are made up. Tests: `__tests__/page/how-v840.test.mjs`.
 
 - **v8.39 / v211: Shopify catalog diagnose card, Chairish photos in the popup** (Claude, 2026-11-01). Branch
   `claude/gifted-johnson-wzaqr3`. Page room left: 367,954 bytes (the script is on the worker).
@@ -2365,7 +2378,7 @@ Recently shipped, newest first:
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 | `claude/gifted-johnson-wzaqr3` | Claude | Shopify catalog diagnose card, Chairish photos in the popup (see Live, v8.39 / v211) | Claims **page v8.39 / worker v211**. Pushed, no PR yet. |
 
-Next free numbers: **page v8.40, worker v212** (v8.39 / v211: Shopify catalog diagnose and Chairish photos, branch `claude/gifted-johnson-wzaqr3`; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.41, worker v212** (v8.39 / v211: Shopify catalog diagnose and Chairish photos, branch `claude/gifted-johnson-wzaqr3`; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 
