@@ -2491,13 +2491,13 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
   Catalogs › Get an API key); the docs say nothing about the Agents page's "Agent identities" key.
 - **Off-Shopify stores (v213):** decided 2026-11-01, "Known stores only" (see Live, v8.41 / v213). To show another
   marketplace, add its domain to the plain Worker variable `SHOPCAT_OFF_ALLOW` (comma-separated); Diagnose › Run a test
-  search lists the domains it hid. Paste the updated `docs/privacy-policy-prowl-section.html` ("Shopify and other
-  stores" bullet).
+  search lists the domains it hid. Done (Matt, 2026-11-01): the privacy policy with the "Shopify and other stores"
+  bullet (Last updated November 1, 2026) is pasted into Shopify. Copy page: https://claude.ai/artifact/WZiTFDkLgCM2pNHC8fq1r9
 - **Live Shopify listings (worker v210 / page v8.38), once merged:** in the Shopify Dev Dashboard (dev.shopify.com) ›
   Catalogs, create a Catalogs API key, then set its Client ID and Client secret as the Cloudflare Worker secrets
   `SHOPIFY_CATALOG_CLIENT_ID` and `SHOPIFY_CATALOG_CLIENT_SECRET` (`wrangler secret put …` or the dashboard; never in a
-  chat). Open a hunt and check the "Live from Shopify stores" strip. Paste the updated
-  `docs/privacy-policy-prowl-section.html` (the "Shopify stores" bullet; Last updated November 1, 2026).
+  chat). Done (Matt, 2026-11-01): the key works (token mode since v213's User-Agent fix) and the privacy policy is
+  pasted.
 - **Facebook finds through Apify (worker v200 / page v8.25), in this order:**
   1. In the admin, **Diagnose** tab, run **Facebook test** for about 5 of your hunts with the Novi ZIP (48375): check
      the listings are right and the cost (about $0.012 a test at most) and today's spend line.
