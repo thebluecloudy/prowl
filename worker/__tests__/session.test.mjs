@@ -93,8 +93,8 @@ function realPro(env, answer) {
   const fetch = async (u, o) => { const q = JSON.parse(o.body).variables.q; asked.push(q); const nodes = answer(q); if (!nodes) throw new Error("offline"); return { status: 200, json: async () => ({ data: { orders: { nodes } } }) }; };
   const giftHash = async (e) => "h" + e;
   const deps = { kvGet, kvPut: async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v)), giftHash, giftPro, proListHas: (env, e) => false,
-    alNow: () => ({ day: "2026-10-07", hour: 10, wday: 1 }), PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", PRO_NO_CACHE_MS: 10 * 60 * 1000, fetch };
-  return Object.assign(fromIndex(["shopHost", "shopCanToken", "shopToken", "alFreePro", "alProShop", "alProSet"], deps), { asked });
+    alNow: () => ({ day: "2026-10-07", hour: 10, wday: 1 }), PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", PRO_NO_CACHE_MS: 10 * 60 * 1000, PRO_TRIAL_FROM: "2026-11-01", fetch };
+  return Object.assign(fromIndex(["shopHost", "shopCanToken", "shopToken", "alFreePro", "alProShop", "proTrialDays", "proTrialEnds", "proTrialPlan", "alProSet"], deps), { asked });
 }
 const order = (email, attrs = []) => ({ name: "#2001", createdAt: "2026-10-01T10:00:00Z", cancelledAt: null, displayFinancialStatus: "PAID", email, statusPageUrl: "https://store.example/r", discountCodes: [],
   totalPriceSet: { shopMoney: { amount: "7.00", currencyCode: "USD" } }, lineItems: { nodes: [{ sku: "PROWL-PRO-MONTHLY", customAttributes: attrs }] } });
