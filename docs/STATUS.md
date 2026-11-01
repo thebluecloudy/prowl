@@ -6,14 +6,14 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.38 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.38** | 367,966 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.38** | 367,954 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v210** | |
 
 Recently shipped, newest first:
 
 - **v8.38 / v210: live Shopify listings in hunts, through Shopify's Global Catalog** (Claude, 2026-11-01). Branch
-  `shop-catalog`, not pushed yet. Page v8.37 belongs to the parallel Shop link-out release; whichever merges second
-  re-checks the numbers. Page room left: 367,966 bytes (unchanged: the script is on the worker).
+  `shop-catalog`, not pushed yet. On top of v8.37 (Shop as a hunt marketplace, #304), merged in.
+  Page room left: see the Live table (the script is on the worker).
   - **Off until Matt adds the key.** The worker secrets `SHOPIFY_CATALOG_CLIENT_ID` and `SHOPIFY_CATALOG_CLIENT_SECRET`
     (Shopify Dev Dashboard › Catalogs › create a Catalogs API key; see `worker/README.md`). Without both, `/shop-live`
     answers `{ off: true }` and the page shows nothing.
@@ -48,6 +48,19 @@ Recently shipped, newest first:
     carries `expires_in` or a JWT `exp` (both handled); whether vintage shops mark `secondhand` often enough; that the
     Dev Dashboard shows no fee.
 
+- **v8.37 (worker v209 unchanged): Shop (shop.app) as a hunt marketplace** (Matt, 2026-11-01: add Shop, Shopify's Shop
+  app). Branch `claude/gifted-johnson-wzaqr3`. Page room left: 367,954 bytes.
+  - `mk('shopapp','Shop','shop','https://shop.com/search/results?query=')`, in SHOP after Vinted: a link-out (no live
+    strip). `https://shop.app/search/results?query=<words>` answers 301 to the same path on shop.com (checked
+    2026-11-01), so the link goes straight there. Icon, dock short name (SHOP) and result badge (SH) added.
+  - 30 marketplaces now (20 SHOP, 10 BOLO): the static counts, the JSON-LD and FAQ lists name Shop; `data-t` spans
+    still follow `TOTAL`. The not-affiliated line already named Shop App.
+  - Saved marketplace sets (`prowl.v36`, same key): a save from before v8.37 gains `shopapp` once (flag `h837`, as
+    `h68` did for CTBids); unticked afterwards it stays off. A backup import keeps its list as before.
+  - Not changed: the worker's "where to look" list (`/where`, Best bets) and the alert emails' "Also search" links do
+    not name Shop yet (worker unchanged).
+  - Tests: `__tests__/page/shop-app-v837.test.mjs` (4). `ctbids`, `salvation`, `filter-sheet-v740`, `home-v674`,
+    `hunt-ideas-v781` and `seo-copy` follow the new count.
 - **v8.36 / v209: Facebook finds show steadily, own ZIP for the owner, the week's finds, All USA says why** (Matt,
   2026-11-01: Facebook finds for his hunt "mc escher" "sometimes show and sometimes don't"; then on All USA: "I don't
   want to see just shipped. I will reach out to them to see if they would ship."). Branch `claude/gifted-johnson-wzaqr3`.
@@ -2291,10 +2304,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| (parallel Shop link-out) | Claude | Shop link-out release | Claims page v8.37. |
 | `shop-catalog` | Claude | Live Shopify listings in hunts via Shopify's Global Catalog (see Live, v8.38 / v210) | Claims **page v8.38 / worker v210**. Committed, not pushed, no PR yet. Off until Matt adds the two Catalog secrets. |
 
-Next free numbers: **page v8.39, worker v211** (v8.38 / v210: live Shopify listings, branch `shop-catalog`; v8.37: the Shop link-out release; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.39, worker v211** (v8.38 / v210: live Shopify listings, branch `shop-catalog`; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 

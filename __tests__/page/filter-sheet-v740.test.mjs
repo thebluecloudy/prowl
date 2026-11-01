@@ -94,7 +94,7 @@ test('the sheet opens from the button, Show applies a price range to every strip
   const sheet = p.$('#otp-sheetB .flt');
   assert.ok(sheet, 'the sheet body is the filter sheet');
   assert.deepEqual(p.$$('#otp-sheetB .flt-rh .l').map((x) => x.textContent), ['Sort by', 'Price', 'Sites', 'Skip wordsPRO']);
-  assert.deepEqual(p.$$('#otp-sheetB .flt-rh .v').map((x) => x.textContent), ['Best match', 'Any', 'All 29', 'None']);
+  assert.deepEqual(p.$$('#otp-sheetB .flt-rh .v').map((x) => x.textContent), ['Best match', 'Any', 'All 30', 'None']);
   const go = p.$('#otp-fltGo'), all = cells(p);
   assert.ok(all >= 10, 'several strips answered');
   assert.equal(go.textContent, 'Show ' + all + ' listings', 'every live listing on screen counts');
@@ -183,14 +183,14 @@ test('the Sites row is the drawer\'s set: unticking eBay drops its strip, the dr
   await hunt(p);
   click(p, p.$('#otp-flt'));
   await waitFor(() => p.$('#otp-sheet').classList.contains('on'));
-  assert.equal(p.$$('#otp-fltMk input[data-fm]').length, 19, 'the SHOP tab first');
+  assert.equal(p.$$('#otp-fltMk input[data-fm]').length, 20, 'the SHOP tab first');
   click(p, p.$('#otp-sheetB [data-fa="tab"][data-t="bolo"]'));
   assert.equal(p.$$('#otp-fltMk input[data-fm]').length, 10);
   click(p, p.$('#otp-sheetB [data-fa="tab"][data-t="shop"]'));
   const box = p.$('#otp-fltMk input[data-fm="ebay"]');
   box.checked = false;
   box.dispatchEvent(new p.win.Event('change', { bubbles: true }));
-  assert.equal(p.$('#otp-sheetB [data-fv="sites"]').textContent, '28 of 29');
+  assert.equal(p.$('#otp-sheetB [data-fv="sites"]').textContent, '29 of 30');
   assert.equal(p.$('#otp-fltGo').textContent, 'Show ' + (cells(p) - 3) + ' listings');
   assert.ok(p.$('.rlive[data-lv="ebay"]'), 'still on screen until Show');
   click(p, p.$('#otp-fltGo'));
@@ -198,15 +198,15 @@ test('the Sites row is the drawer\'s set: unticking eBay drops its strip, the dr
   await tick(40);
   assert.equal(p.$('.rlive[data-lv="ebay"]'), null);
   assert.ok(p.$('.rlive[data-lv="etsy"]'));
-  assert.deepEqual(p.$$('#otp-fltChips .flt-chip b').map((b) => b.textContent), ['28 of 29 sites']);
+  assert.deepEqual(p.$$('#otp-fltChips .flt-chip b').map((b) => b.textContent), ['29 of 30 sites']);
   const saved = JSON.parse(p.win.localStorage.getItem('prowl.v36'));
-  assert.equal(saved.mkt.length, 28);
+  assert.equal(saved.mkt.length, 29);
   assert.equal(saved.mkt.indexOf('ebay'), -1);
-  assert.equal(p.$('#otp-dc').textContent, '28 of 29 selected', 'the Den\'s marketplace drawer says the same');
+  assert.equal(p.$('#otp-dc').textContent, '29 of 30 selected', 'the Den\'s marketplace drawer says the same');
   /* the sites chip puts every site back */
   click(p, p.$('#otp-fltChips .flt-chip[data-fc="sites"]'));
   await waitFor(() => p.$('.rlive[data-lv="ebay"] .sgw-cell'), { timeout: 8000 });
-  assert.equal(JSON.parse(p.win.localStorage.getItem('prowl.v36')).mkt.length, 29);
+  assert.equal(JSON.parse(p.win.localStorage.getItem('prowl.v36')).mkt.length, 30);
   assert.equal(p.$('#otp-fltChips').hidden, true);
   assert.deepEqual(p.errors, []);
   await p.close();
