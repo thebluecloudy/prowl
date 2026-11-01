@@ -56,6 +56,17 @@ can also be run by hand from the Actions tab.
   page, not OWNER_KEY). Without it the route answers 403 to everyone. The contract (one POST per locked hunt per
   morning, sent even when nothing is new; each adds its finds to the term's last 7 days; kept 8 days after the last
   POST, hidden on the page after 2) is in the comment above `handleFetch`. `FB_FINDS` in `wrangler.toml` says who can read the finds: "owner" (default), "public" or "off".
+- `SHOPIFY_CATALOG_CLIENT_ID` and `SHOPIFY_CATALOG_CLIENT_SECRET` (v210) switch on the live Shopify listings in hunts
+  (`/shop-live`, `worker/shopcat.js`, Shopify's Global Catalog). Matt creates them in the **Shopify Dev Dashboard
+  (dev.shopify.com) › Catalogs › create a Catalogs API key**; the key shows a Client ID and a Client secret. Set each
+  with `wrangler secret put SHOPIFY_CATALOG_CLIENT_ID` and `wrangler secret put SHOPIFY_CATALOG_CLIENT_SECRET` (or the
+  Cloudflare dashboard, as encrypted secrets). Never paste them into a chat, an issue, the repo or the page. Without
+  both, `/shop-live` answers `{ off: true }` and the page shows no Shopify strip. The worker trades them for a token at
+  `https://api.shopify.com/auth/access_token` (kept in memory under an hour) and serves Shopify its agent profile at
+  `/ucp/profile.json`; the optional plain variable `SHOPIFY_CATALOG_PROFILE` points Shopify at another profile URL
+  instead (for example Shopify's hosted example,
+  `https://shopify.dev/ucp/agent-profiles/examples/2026-08-25/valid-with-capabilities.json`) if Shopify will not take
+  ours. No published fee; Shopify's default limit is 5 requests a second. Results are never cached (Shopify's rule).
 
 ## What Prowl spends (admin Spending tab, v193)
 
