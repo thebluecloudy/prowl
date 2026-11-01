@@ -1027,7 +1027,8 @@ const shopStr = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u001f\u00
 function shopShape(x) { x = x || {}; return { len: num(x.len), spaces: !!x.spaces, inner: !!x.inner, quotes: !!x.quotes, set: !!x.set }; }
 function shopEx(x) {
   if (!x || typeof x !== "object") return null;
-  return { at: num(x.at), ok: !!x.ok, status: num(x.status), error: shopStr(x.error, 60), desc: shopStr(x.desc, 200), method: word(x.method, 8), tried: arr(x.tried).map(m => word(m, 8)).slice(0, 2) };
+  return { at: num(x.at), ok: !!x.ok, status: num(x.status), error: shopStr(x.error, 60), desc: shopStr(x.desc, 200), method: word(x.method, 8), tried: arr(x.tried).map(m => word(m, 8)).slice(0, 2),
+    attempts: arr(x.attempts).slice(0, 2).filter(a => a && typeof a === "object").map(a => ({ method: word(a.method, 8), status: num(a.status), error: shopStr(a.error, 60), desc: shopStr(a.desc, 200) })) };
 }
 async function apiShopcat(c) {
   if (typeof c.H.shopcatStatus !== "function") return jerr(503, "The Shopify catalog check is not available.");

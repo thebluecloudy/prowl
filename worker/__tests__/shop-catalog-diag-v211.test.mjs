@@ -48,11 +48,11 @@ test("a refused exchange keeps Shopify's error code and a trimmed description, w
   const saved = store.m.get(SC.SHOPCAT_LAST_KEY);
   assert.ok(saved, "a KV record shopcat:last");
   const rec = JSON.parse(saved);
-  assert.deepEqual(Object.keys(rec).sort(), ["at", "desc", "error", "method", "ok", "status", "tried"]);
+  assert.deepEqual(Object.keys(rec).sort(), ["at", "attempts", "desc", "error", "method", "ok", "status", "tried"]);
   for (const blob of [saved, JSON.stringify(last), logs.join("\n")]) {
     assert.ok(!blob.includes(ID), "no client id"); assert.ok(!blob.includes(SECRET), "no secret"); assert.ok(!blob.includes("5ecretValue"), "no part of the secret");
   }
-  assert.match(logs.join("\n"), /shopcat token 400 application_cannot_be_found/);
+  assert.match(logs.join("\n"), /shopcat token post 400 application_cannot_be_found/);
   const st = await SC.shopcatStatus(Object.assign({ PROWL_ALERTS: store }, ENV));
   assert.equal(st.last.error, "application_cannot_be_found");
   /* a fresh isolate reads the KV record */
@@ -185,4 +185,75 @@ test("the Diagnose card: status, Shopify's error, the hints, and a test search s
   assert.match(card.textContent, /Pyrex lid/);
   assert.match(card.textContent, /HTTP Basic/);
   assert.ok(sent.includes("/admin/api/shopcat/test"));
+});
+
+/* ---------- review fixes: every attempt kept, the JSON-body answer stays the main error; partial echoes hidden ---------- */
+test("Basic's refusal does not replace Shopify's answer to the JSON body: both attempts kept, the first is the main error", async () => {
+  const store = kv(), env = Object.assign({ PROWL_ALERTS: store }, ENV);
+  const s = fake((init) => init.headers.Authorization ? res(400, { error: "unsupported_grant_type", error_description: "Basic not accepted here" })
+    : res(401, { error: "invalid_client", error_description: "Client secret is wrong" }));
+  const logs = await quiet(async () => { assert.equal((await ask(D(s.f), env)).status, 503); });
+  assert.equal(s.tokens().length, 2);
+  const last = SC.shopcatLast();
+  assert.equal(last.status, 401); assert.equal(last.error, "invalid_client"); assert.equal(last.desc, "Client secret is wrong"); assert.equal(last.method, "post");
+  assert.deepEqual(last.attempts, [{ method: "post", status: 401, error: "invalid_client", desc: "Client secret is wrong" },
+    { method: "basic", status: 400, error: "unsupported_grant_type", desc: "Basic not accepted here" }]);
+  assert.match(logs.join("\n"), /shopcat token post 401 invalid_client \+ basic 400 unsupported_grant_type/);
+  const st = await SC.shopcatStatus(env);
+  assert.equal(st.last.error, "invalid_client"); assert.equal(st.last.attempts.length, 2);
+  SC.shopcatReset();
+  const st2 = await SC.shopcatStatus(env);
+  assert.deepEqual(st2.last.attempts.map((a) => a.method + " " + a.status + " " + a.error), ["post 401 invalid_client", "basic 400 unsupported_grant_type"]);
+});
+
+test("a Basic retry that times out still keeps the JSON body's answer as the main error", async () => {
+  const s = fake((init) => { if (init.headers.Authorization) { const e = new Error("The operation was aborted"); e.name = "AbortError"; throw e; } return res(401, { error: "invalid_client", error_description: "Client authentication failed" }); });
+  await quiet(async () => { await assert.rejects(() => SC.shopcatToken(ENV, D(s.f), Date.now(), Date.now() + 5000)); });
+  const last = SC.shopcatLast();
+  assert.equal(last.status, 401); assert.equal(last.error, "invalid_client"); assert.equal(last.desc, "Client authentication failed");
+  assert.deepEqual(last.attempts.map((a) => a.method + " " + a.status + " " + a.error), ["post 401 invalid_client", "basic 0 timeout"]);
+  assert.deepEqual(last.tried, ["post", "basic"]);
+  let r;
+  await quiet(async () => { r = await SC.shopcatTest(ENV, D(s.f), "pyrex", "https://prowl.example.workers.dev"); });
+  assert.equal(r.exchange.error, "invalid_client"); assert.equal(r.exchange.attempts.length, 2);
+});
+
+test("shopcatScrub hides any 6+ character piece of the id or the secret, in any case", () => {
+  const out = SC.shopcatScrub("bad key ecretVALUE and id 89ABCDEF0 near q=" + SECRET.slice(10, 17).toUpperCase() + " ok words", ENV, 200);
+  assert.ok(!/ecretvalue/i.test(out), out); assert.ok(!/89abcdef/i.test(out), out); assert.ok(!out.toLowerCase().includes(SECRET.slice(10, 17).toLowerCase()), out);
+  assert.match(out, /^bad key \[hidden\] and id \[hidden\] near q=\[hidden\] ok words$/);
+  assert.equal(SC.shopcatScrub("Client authentication failed", ENV, 200), "Client authentication failed", "ordinary words stay");
+});
+
+test("the Diagnose card lists each exchange attempt with Shopify's answer", async (t) => {
+  const attempts = [{ method: "post", status: 401, error: "invalid_client", desc: "Client secret is wrong" }, { method: "basic", status: 0, error: "timeout", desc: "" }];
+  const dom = new JSDOM(adminPage("n0nce", "v211"), { url: "https://prowl.example.workers.dev/admin#diagnose", runScripts: "dangerously", pretendToBeVisual: true,
+    beforeParse(w) {
+      w.fetch = async (path) => {
+        const p = String(path);
+        const j = p === "/admin/api/shopcat" ? { on: true, method: "", waitUntil: 0, last: { at: Date.now(), ok: false, status: 401, error: "invalid_client", desc: "Client secret is wrong", method: "post", tried: ["post", "basic"], attempts: attempts }, shape: { id: { len: 32, set: true }, secret: { len: 38, set: true }, swapped: false } }
+          : p === "/admin/api/shopcat/test" ? { on: true, term: "pyrex", exchange: { ok: false, status: 401, error: "invalid_client", desc: "Client secret is wrong", method: "post", tried: ["post", "basic"], attempts: attempts }, search: null } : {};
+        return new Response(JSON.stringify(j), { status: 200, headers: { "Content-Type": "application/json" } });
+      };
+    } });
+  const w = dom.window, d = w.document;
+  t.after(() => w.close());
+  const wait = async (f) => { for (let i = 0; i < 100 && !f(); i++) await new Promise((r) => setTimeout(r, 10)); assert.ok(f()); };
+  const card = d.querySelector("#v-diagnose #shccard");
+  await wait(() => /HTTP Basic \(client_secret_basic\): no answer timeout/.test(card.textContent));
+  assert.match(card.textContent, /Tried client ID and secret in a JSON body: 401 invalid_client \u2014 Client secret is wrong/);
+  d.querySelector("#shc-run").click();
+  await wait(() => /Token: refused \(401\): invalid_client/.test(card.textContent));
+  assert.equal((card.textContent.match(/Then HTTP Basic/g) || []).length, 2, "the status and the test both list the Basic attempt");
+});
+
+test("the admin route passes the attempts through, scrubbed of markup", async () => {
+  const env = Object.assign({ ADMIN_KEY, PROWL_ALERTS: kv() }, ENV);
+  const h = H({ shopcatTestRun: async () => ({ on: true, term: "pyrex", exchange: { ok: false, status: 401, error: "invalid_client", desc: "x", method: "post", tried: ["post", "basic"],
+    attempts: [{ method: "post", status: 401, error: "invalid_client", desc: "<b>no</b>" }, { method: "basic", status: 0, error: "timeout", desc: "" }, { method: "post", status: 1, error: "extra", desc: "" }] }, search: null }) });
+  const cookie = await signIn(env, h);
+  const p = await adminFetch(new Request("https://prowl.example.workers.dev/admin/api/shopcat/test", { method: "POST", body: "{}",
+    headers: { "Content-Type": "application/json", Origin: "https://prowl.example.workers.dev", Cookie: cookie, "X-Prowl-Admin": "1" } }), env, {}, h);
+  const j = await p.json();
+  assert.deepEqual(j.exchange.attempts, [{ method: "post", status: 401, error: "invalid_client", desc: " b no /b " }, { method: "basic", status: 0, error: "timeout", desc: "" }]);
 });

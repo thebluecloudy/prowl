@@ -76,3 +76,29 @@ test("itemChairish asks the product page once, as a browser would; a 404 is gone
   assert.match(asked[0][1], /Mozilla/);
   assert.deepEqual(await itemChairish({ id: "1", slug: "missing" }), { gone: true });
 });
+
+/* review fix: gone only on a 404/410 or a Product offer that is sold out; a page without a readable Product is an error
+   (not cached), whatever words it holds. Array @type, @graph and a broken first block still find the Product. */
+test("no readable Product: an error, never gone, even when the page says sold or not found", async () => {
+  const { chairishItem, itemChairish } = load(async () => ({ status: 200, text: async () => "<html><body><h2>Recently sold</h2><p>Page not found? No longer available items</p></body></html>" }));
+  for (const html of ["<html><body>Sold</body></html>", "<p>This item is no longer available</p>", "<title>Not found</title>",
+    PAGE.replace('"@type": "Product"', '"@type": "Offer"') + "<p>Sold</p>"]) {
+    assert.deepEqual(chairishItem(html, { id: "1", slug: "" }), { error: "chairish unreadable" });
+  }
+  assert.deepEqual(await itemChairish({ id: "1", slug: "x" }), { error: "chairish unreadable" });
+});
+
+test("the Product is found with an array @type, inside @graph, or after a JSON-LD block that does not parse", () => {
+  const { chairishItem } = load();
+  const arrType = PAGE.replace('"@type": "Product"', '"@type": ["Product", "IndividualProduct"]');
+  assert.notEqual(arrType, PAGE);
+  assert.equal(chairishItem(arrType, { id: "1", slug: "" }).title, "Mid-Century Lucite Lamp");
+  const broken = PAGE.replace('"@type": "WebSite",', '"@type": "WebSite",,');
+  assert.notEqual(broken, PAGE);
+  assert.equal(chairishItem(broken, { id: "1", slug: "" }).images.length, 8);
+  const block = /<script type="application\/ld\+json">\s*(\{"@context": "http:\/\/schema.org", "@type": "Product"[\s\S]*?)\s*<\/script>/.exec(PAGE)[1];
+  const graph = '<script type="application/ld+json">{"@context":"http://schema.org","@graph":[{"@type":"WebPage","name":"x"},' + block + ']}</script>';
+  const d = chairishItem(graph, { id: "1", slug: "" });
+  assert.equal(d.title, "Mid-Century Lucite Lamp"); assert.equal(d.gone, undefined);
+  assert.equal(chairishItem(graph.replace("http://schema.org/InStock", "http://schema.org/OutOfStock"), { id: "1", slug: "" }).gone, true);
+});

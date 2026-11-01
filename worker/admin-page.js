@@ -931,6 +931,11 @@ function shcShapeText(name, x) {
   const bad = [x.spaces ? "spaces at an end" : "", x.inner ? "a space inside" : "", x.quotes ? "a quote mark at an end" : ""].filter(Boolean);
   return name + ": " + x.len + " characters" + (bad.length ? ", with " + bad.join(" and ") + "." : ".");
 }
+/* review fix: each exchange attempt (the JSON body, then HTTP Basic), with Shopify's answer to each */
+function shcAttemptsView(list) {
+  return h("ul", { class: "samp" }, list.map((a, i) => h("li", { class: "small", text: (i ? "Then " : "Tried ") + (SHC_METHOD[a.method] || a.method || "?") + ": " +
+    (a.status === 200 && !a.error ? "token received" : (a.status ? a.status : "no answer") + (a.error ? " " + a.error : "") + (a.desc ? " \u2014 " + a.desc : "")) })));
+}
 function shcStatusView() {
   const X = S.shc;
   if (!X) return null;
@@ -944,7 +949,8 @@ function shcStatusView() {
     fact("Auth method that worked", X.method ? (SHC_METHOD[X.method] || X.method) : "\u2014")];
   const out = [h("dl", { class: "facts" }, rows)];
   if (L && !L.ok && L.desc) out.push(h("p", { class: "small", text: "Shopify said: " + L.desc }));
-  if (L && L.tried && L.tried.length) out.push(h("p", { class: "hint", text: "Tried: " + L.tried.map(m => SHC_METHOD[m] || m).join(", then ") + "." }));
+  if (L && L.attempts && L.attempts.length) out.push(shcAttemptsView(L.attempts));
+  else if (L && L.tried && L.tried.length) out.push(h("p", { class: "hint", text: "Tried: " + L.tried.map(m => SHC_METHOD[m] || m).join(", then ") + "." }));
   if (X.waitUntil) out.push(h("p", { class: "hint", text: "Live listings wait until " + fmtWhen(X.waitUntil) + " before the next exchange (a test runs now anyway)." }));
   out.push(h("p", { class: "hint", text: shcShapeText("Client ID", sh.id) + " " + shcShapeText("Secret", sh.secret) + (sh.swapped ? " They look swapped." : "") + (sh.same ? " Both hold the same value." : "") }));
   return h("div", out);
@@ -958,6 +964,7 @@ function shcTestView() {
   const E = X.exchange || {}, R = X.search;
   const out = [h("h3", { class: "small", text: "Token: " + (E.ok ? "received" + (E.method ? " (" + (SHC_METHOD[E.method] || E.method) + ")" : "") : "refused" + (E.status ? " (" + E.status + ")" : "") + (E.error ? ": " + E.error : "")) })];
   if (!E.ok && E.desc) out.push(h("p", { class: "small", text: "Shopify said: " + E.desc }));
+  if (E.attempts && E.attempts.length > 1) out.push(shcAttemptsView(E.attempts));
   if (R) {
     if (R.ok) {
       out.push(h("h3", { class: "small", text: "Search \u201c" + (X.term || "") + "\u201d: " + R.count + " item" + (R.count === 1 ? "" : "s") + " at " + fmtTime(new Date(X.at)) }));

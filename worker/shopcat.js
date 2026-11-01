@@ -125,11 +125,24 @@ const RETRY_CODES = { invalid_client: 1, unauthorized_client: 1, invalid_request
 function fnv(s) { let h = 0x811c9dc5; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16); }
 function creds(env) { return { id: String((env && env.SHOPIFY_CATALOG_CLIENT_ID) || "").trim(), secret: String((env && env.SHOPIFY_CATALOG_CLIENT_SECRET) || "").trim() }; }
 export function shopcatFp(env) { const c = creds(env); return fnv(c.id + "\n" + c.secret) + "." + c.secret.length; }
+/* t with every run of 6+ characters that also appears in k (lower case) replaced by [hidden]; a sliding window */
+function hidePieces(t, k) {
+  const low = t.toLowerCase();
+  let out = "", i = 0;
+  while (i < t.length) {
+    let L = 0;
+    if (i + 6 <= t.length && k.indexOf(low.slice(i, i + 6)) !== -1) { L = 6; while (i + L < t.length && k.indexOf(low.slice(i, i + L + 1)) !== -1) L++; }
+    if (L) { out += "[hidden]"; i += L; } else { out += t[i]; i++; }
+  }
+  return out;
+}
 /* Shopify's own words, without the id, the secret or anything shaped like a key; one line, at most 200 characters */
 export function shopcatScrub(v, env, n) {
   const c = creds(env);
-  let t = String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f]+/g, " ");
+  let t = String(v == null ? "" : v).slice(0, 4000).replace(/[\u0000-\u001f\u007f]+/g, " ");
   for (const k of [c.id, c.secret]) if (k && k.length >= 3) t = t.split(k).join("[hidden]");
+  /* review fix: any 6+ character piece of the id or the secret (any case) goes too, so a partial echo is never kept */
+  for (const k of [c.id, c.secret]) if (k && k.length >= 6) t = hidePieces(t, k.toLowerCase());
   return t.replace(/"[^"]{6,}"/g, "\"[hidden]\"").replace(/(?=[A-Za-z0-9_\-+\/=]*\d)(?=[A-Za-z0-9_\-+\/=]*[A-Za-z])[A-Za-z0-9_\-+\/=]{20,}/g, "[hidden]")   /* key-like: 20+ with a digit and a letter */.replace(/\s+/g, " ").trim().slice(0, n || 200);
 }
 export function shopcatTokenDown(nowMs, env) { return S.failUntil > (Number(nowMs) || Date.now()) && (!env || S.failFp === shopcatFp(env)); }
@@ -161,17 +174,20 @@ export async function shopcatToken(env, D, nowMs, deadline, force) {
   if (S.p && !force) return S.p;
   const run = (async () => {
     const order = S.method === "basic" ? ["basic", "post"] : ["post", "basic"];
-    let r = null, used = order[0], tries = [];
+    /* review fix: every attempt is kept (scrubbed), and the JSON-body ("post") attempt stays the main error, so a
+       refused Basic retry or its timeout no longer hides Shopify's answer to the documented method */
+    let r = null, used = order[0], tries = [], attempts = [], thrown = null;
     for (let i = 0; i < order.length; i++) {
       used = order[i];
+      tries.push(used);
       try { r = await exchange(f, c, used, deadline); }
       catch (e) {
-        S.failUntil = now + SHOPCAT_TOKEN_FAIL_MS; S.failFp = fp;
-        await record(env, { at: now, ok: false, status: 0, error: /abort/i.test(String(e && (e.name || e.message))) ? "timeout" : "unreachable", desc: "", method: used, tried: tries.concat(used) });
-        throw e;
+        attempts.push({ method: used, status: 0, error: /abort/i.test(String(e && (e.name || e.message))) ? "timeout" : "unreachable", desc: "" });
+        r = null; thrown = e;
+        break;
       }
-      tries.push(used);
       const j = r.j, code = j && typeof j.error === "string" ? j.error : "";
+      attempts.push({ method: used, status: r.status, error: shopcatScrub(code, env, 60) || (r.status === 200 && !(j && j.access_token) ? "no access_token in the answer" : ""), desc: r.status === 200 ? "" : shopcatScrub(j && (j.error_description || j.message), env, 200) });
       if (r.status === 200 && j && typeof j.access_token === "string" && j.access_token) break;
       /* refused as a bad client: once more with the other method */
       if (i === 0 && (r.status === 400 || r.status === 401) && RETRY_CODES[code]) continue;
@@ -180,15 +196,16 @@ export async function shopcatToken(env, D, nowMs, deadline, force) {
     const j = r && r.j, t = j && typeof j.access_token === "string" ? j.access_token : "";
     if (!r || r.status !== 200 || !t) {
       S.failUntil = now + SHOPCAT_TOKEN_FAIL_MS; S.failFp = fp;
-      const code = shopcatScrub(j && j.error, env, 60), desc = shopcatScrub(j && (j.error_description || j.message), env, 200);
-      await record(env, { at: now, ok: false, status: r ? r.status : 0, error: code || (r && r.status === 200 ? "no access_token in the answer" : ""), desc: desc, method: used, tried: tries });
-      console.error("shopcat token", r ? r.status : "none", code || "-", tries.join("+"));   /* Shopify's code, never the body's secret parts or the token */
-      throw new Error("token " + (r ? r.status : "none"));
+      const main = attempts.filter((a) => a.method === "post")[0] || attempts[0];
+      await record(env, { at: now, ok: false, status: main.status, error: main.error, desc: main.desc, method: main.method, tried: tries, attempts: attempts });
+      console.error("shopcat token", attempts.map((a) => a.method + " " + (a.status || "none") + " " + (a.error || "-")).join(" + "));   /* Shopify's codes, never the body's secret parts or the token */
+      if (thrown) throw thrown;   /* a timeout still reaches shopLive as one */
+      throw new Error("token " + (main.status || "none"));
     }
     const said = Number(j.expires_in) > 0 ? now + Number(j.expires_in) * 1000 : jwtExp(t);
     S.tok = t; S.id = id; S.fp = fp; S.method = used; S.failUntil = 0; S.failFp = "";
     S.exp = Math.min(said > now ? said : now + SHOPCAT_TOKEN_TTL_MS, now + SHOPCAT_TOKEN_TTL_MS);
-    await record(env, { at: now, ok: true, status: 200, error: "", desc: "", method: used, tried: tries });
+    await record(env, { at: now, ok: true, status: 200, error: "", desc: "", method: used, tried: tries, attempts: attempts });
     return t;
   })();
   if (force) return run;
@@ -322,6 +339,11 @@ export function shopcatShape(env) {
   const swapped = /^(shpss_|shpat_|shpca_|atkn_)/i.test(sid) || (/^[0-9a-f]{32}$/i.test(ssec) && !/^[0-9a-f]{32}$/i.test(sid));
   return { id: id, secret: secret, swapped: swapped, same: !!sid && sid === ssec };
 }
+/* each exchange attempt, scrubbed again on the way out (older KV records have none) */
+export function shopcatAttempts(list, env) {
+  return (Array.isArray(list) ? list : []).slice(0, 2).filter((a) => a && typeof a === "object").map((a) => ({ method: String(a.method || "").replace(/[^a-z]/g, "").slice(0, 8),
+    status: Number(a.status) || 0, error: shopcatScrub(a.error, env, 60), desc: shopcatScrub(a.desc, env, 200) }));
+}
 export async function shopcatStatus(env, nowMs) {
   const now = Number(nowMs) || Date.now();
   let last = shopcatLast();
@@ -330,7 +352,8 @@ export async function shopcatStatus(env, nowMs) {
   return { on: shopcatOn(env), shape: shopcatShape(env), method: S.method || (L && L.ok ? String(L.method || "") : ""),
     waitUntil: shopcatTokenDown(now, env) ? S.failUntil : 0, busyUntil: S.busyUntil > now ? S.busyUntil : 0,
     last: L ? { at: Number(L.at) || 0, ok: !!L.ok, status: Number(L.status) || 0, error: shopcatScrub(L.error, env, 60), desc: shopcatScrub(L.desc, env, 200),
-      method: String(L.method || "").replace(/[^a-z]/g, "").slice(0, 8), tried: (Array.isArray(L.tried) ? L.tried : []).map((m) => String(m).replace(/[^a-z]/g, "").slice(0, 8)).slice(0, 2) } : null };
+      method: String(L.method || "").replace(/[^a-z]/g, "").slice(0, 8), tried: (Array.isArray(L.tried) ? L.tried : []).map((m) => String(m).replace(/[^a-z]/g, "").slice(0, 8)).slice(0, 2),
+      attempts: shopcatAttempts(L.attempts, env) } : null };
 }
 export async function shopcatTest(env, D, term, origin, nowMs) {
   const now = Number(nowMs) || Date.now(), q = shopcatTerm(term) || "pyrex";
@@ -338,8 +361,8 @@ export async function shopcatTest(env, D, term, origin, nowMs) {
   const deadline = Date.now() + SHOPCAT_DEADLINE_MS, f = (D && D.fetch) || fetch;
   let tok = "";
   try { tok = await shopcatToken(env, D, now, deadline, true); } catch (e) {}
-  const ex = shopcatLast() || { ok: !!tok, status: tok ? 200 : 0, error: "", desc: "", method: S.method, tried: [] };
-  const exchange = { ok: !!tok, at: ex.at || now, status: ex.status, error: ex.error, desc: ex.desc, method: ex.method, tried: ex.tried || [] };
+  const ex = shopcatLast() || { ok: !!tok, status: tok ? 200 : 0, error: "", desc: "", method: S.method, tried: [], attempts: [] };
+  const exchange = { ok: !!tok, at: ex.at || now, status: ex.status, error: ex.error, desc: ex.desc, method: ex.method, tried: ex.tried || [], attempts: shopcatAttempts(ex.attempts, env) };
   if (!tok) return { on: true, term: q, exchange: exchange, search: null };
   if (D && typeof D.vCount === "function" && !(await D.vCount("shopcat:all", SHOPCAT_PER_DAY))) return { on: true, term: q, exchange: exchange, search: { ok: false, status: 429, error: "daily limit" } };
   let r;

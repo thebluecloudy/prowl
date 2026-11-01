@@ -17,8 +17,8 @@ Recently shipped, newest first:
     the token exchange failed and only its status was logged.
   - **Token exchange (`worker/shopcat.js` `shopcatToken`):** keeps Shopify's `error` code and a trimmed
     `error_description` (the client id, the secret, quoted strings and key-like runs cut out, 200 characters) in memory
-    and in KV `shopcat:last` (`{ at, ok, status, error, desc, method, tried }`, 30 days; never the secret or the token),
-    and logs `shopcat token <status> <code> <methods>`. When the JSON body is refused with a bad-client code
+    and in KV `shopcat:last` (`{ at, ok, status, error, desc, method, tried, attempts }`, 30 days; never the secret or the token),
+    and logs `shopcat token <method> <status> <code> + ...`, one per attempt. When the JSON body is refused with a bad-client code
     (`invalid_client`, `unauthorized_client`, `invalid_request`, `invalid_grant`, none), one more try goes with HTTP
     Basic and a form body `grant_type=client_credentials` (the metadata lists `client_secret_basic`); the method that
     worked is tried first next time. `application_cannot_be_found` (the id is unknown) is not retried. The 5-minute
@@ -44,11 +44,19 @@ Recently shipped, newest first:
     chairish-prod images belong to similar listings), one photo per image uuid at Chairish's 1600 px fit size, at most
     12; og:image when there is no gallery. Also price, Used/New, the description, Size/Materials/Color/Shop, and
     SoldOut as ended. Other sites' readers are unchanged.
-  - Tests: `worker/__tests__/shop-catalog-diag-v211.test.mjs` (7), `worker/__tests__/chairish-item-v211.test.mjs` (4,
+  - Tests: `worker/__tests__/shop-catalog-diag-v211.test.mjs` (12), `worker/__tests__/chairish-item-v211.test.mjs` (6,
     fixture `worker/__tests__/fixtures/chairish-product-v211.html`, the real page trimmed, the seller renamed),
     `__tests__/page/chairish-popup-v839.test.mjs` (1). The
     v210 test follows the Basic retry and the one KV record; the popup tests that used Chairish as "a site without the
     popup" use Poshmark.
+  - **Review fixes:** every token-exchange attempt is kept, scrubbed (`attempts: [{ method, status, error, desc }]` in
+    `shopcat:last`, the status and the test answer), and the JSON-body ("post") attempt stays the main error, so a
+    refused or timed-out Basic retry no longer hides Shopify's answer to the documented method; the Diagnose card and
+    the console line (`shopcat token post 401 invalid_client + basic 0 timeout`) show each attempt. `shopcatScrub` also
+    hides any 6+ character piece of the id or the secret, any case. Chairish: no readable JSON-LD Product is now
+    `{error:"chairish unreadable"}` (not cached), never gone (a "sold" anywhere on the page used to mark a live
+    listing away for a day); gone only on 404/410 or a SoldOut/OutOfStock offer. An array `@type`, `@graph` and a
+    JSON-LD block that fails to parse are handled.
 
 - **v8.38 / v210: live Shopify listings in hunts, through Shopify's Global Catalog** (Claude, 2026-11-01). Live
   with #305. On top of v8.37 (Shop as a hunt marketplace, #304), merged in.

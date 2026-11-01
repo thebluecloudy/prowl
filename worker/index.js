@@ -2310,11 +2310,14 @@ function chairishItem(html, ref) {
   while ((m = re.exec(html)) !== null) {
     let j = null;
     try { j = JSON.parse(m[1]); } catch (e) { continue; }
-    const list = Array.isArray(j) ? j : j && Array.isArray(j["@graph"]) ? j["@graph"] : [j];
-    p = list.filter((x) => x && x["@type"] === "Product" && x.name)[0] || null;
+    const list = [];
+    for (const x of Array.isArray(j) ? j : [j]) { if (x && Array.isArray(x["@graph"])) list.push.apply(list, x["@graph"]); else list.push(x); }
+    p = list.filter((x) => x && (Array.isArray(x["@type"]) ? x["@type"].indexOf("Product") !== -1 : x["@type"] === "Product") && x.name)[0] || null;
     if (p) break;
   }
-  if (!p) return /sold|no longer available|not found/i.test(html.slice(0, 40000)) ? { gone: true } : { error: "chairish unreadable" };
+  /* review fix: no readable Product is an error (not cached), never gone: a word like "sold" anywhere on the page
+     (a similar listing, the footer) used to mark a live listing away. Gone = a 404/410 or a sold-out Product offer. */
+  if (!p) return { error: "chairish unreadable" };
   let images = chairishPhotos(p.image);
   if (!images.length) { const og = (/<meta[^>]+property="og:image"[^>]+content="(https:[^"]+)"/i.exec(html) || [])[1]; if (og) images = chairishPhotos([chText(og)]); }
   const offer = Array.isArray(p.offers) ? p.offers[0] : p.offers || {};
