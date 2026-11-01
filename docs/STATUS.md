@@ -15,6 +15,11 @@ Recently shipped, newest first:
   check failed: Shopify stores `<form id="otp-hwTry">` (from #303) with a line break after the opening tag and before
   `</form>`. The file now writes it that way, like v8.30 did for the empty-tray box. Test:
   `__tests__/page/deploy-shape-v842.test.mjs`.
+  - **The deploy check tolerates Shopify's re-flow** (scripts/deploy-page.mjs, no page change): v8.42 went live too but
+    failed the same way at `<div class="hw-rows">`. Shopify's editor puts a line break between some tags, so the
+    check now compares both copies with every line break that sits directly between two tags taken out (`sameShape`):
+    a re-flow logs "matches the file apart from line breaks" and passes, a re-run sends nothing, and any change to
+    text, attributes or scripts still fails. Test: `__tests__/page/slim.test.mjs` (v8.43 re-flow test).
 - **v8.41 / v213: the Shopify strip searches keyless, with Matt's saved catalog and stores off Shopify** (Claude,
   2026-11-01). Branch `claude/gifted-johnson-wzaqr3`, PR #309 (in flight below). Page room left: 361,670 bytes.
   - **Why:** live v211 with Matt's key answered `/shop-live` `{"error":"unavailable"}`: the Worker's token exchange got a
@@ -2460,7 +2465,7 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `claude/gifted-johnson-wzaqr3` | Claude | v8.42: the deploy check matches the How Prowl works search box | Claims **page v8.42** (worker unchanged, v213). v8.41 / v213 live with #309. |
+| `claude/gifted-johnson-wzaqr3` | Claude | Deploy check tolerates Shopify's line-break re-flow (scripts only) | No new version (page v8.42 live with #310, worker v213). |
 
 Next free numbers: **page v8.43, worker v214** (v8.42: deploy-check fix for the How Prowl works search box, branch `claude/gifted-johnson-wzaqr3`; v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, live with #309; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).

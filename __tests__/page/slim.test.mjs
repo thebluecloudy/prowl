@@ -140,3 +140,39 @@ test('no list item that Shopify would rewrite (a tag right after <li> or right b
   assert.deepEqual(shell.match(/<li(\s[^>]*)?><[a-z]/gi) || [], [], 'a list item starts with a tag');
 });
 
+
+/* v8.43: Shopify also puts a line break after <form ...> and after <div class="hw-rows"> (and before their closing
+   tags), which failed the v8.41 and v8.42 deploys' md5 check although the page had gone out whole. The check now takes
+   line breaks that sit directly between two tags out of both copies, so a re-flow passes and a real change still fails. */
+test('v8.43: the deploy check passes when Shopify only re-flows line breaks between tags, and fails on a real change', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'prowl-deploy-reflow-'));
+  const SENT = await deployBody(PAGE);
+  const run = async (rewrite, start) => {
+    let live = start;
+    const fetchFn = async (url, o) => {
+      if (/access_token/.test(url)) return new Response(JSON.stringify({ access_token: 'tok' }));
+      if (/\/css\/prowl\./.test(url)) return new Response(null, { headers: { 'X-Prowl-Css': SENT.hash } });
+      if (/\/js\/prowl\./.test(url)) return new Response(null, { headers: { 'X-Prowl-Js': SENT.jsHash } });
+      const b = JSON.parse(o.body);
+      if (/pageUpdate/.test(b.query)) { live = rewrite(b.variables.body); return new Response(JSON.stringify({ data: { pageUpdate: { page: { id: 'p', updatedAt: 'now' }, userErrors: [] } } })); }
+      return new Response(JSON.stringify({ data: { page: { id: 'p', updatedAt: 'before', body: live } } }));
+    };
+    const file = join(dir, 'prowl.html');
+    writeFileSync(file, PAGE);
+    const logs = [];
+    const r = await deploy({ fetchFn, file, id: 'id', secret: 'secret', force: false, backupDir: join(dir, 'backup'), log: (s) => logs.push(s) });
+    return { r, logs, live: () => live };
+  };
+  /* Shopify's re-flow: a line break after an opening <div ...> that is followed straight by a tag */
+  const reflow = (s) => { let n = 0; return s.replace(/(<div class="[^"]*">)(<)/g, (m, a, b) => (n++ < 5 ? a + '\n' + b : m)); };
+  assert.notEqual(reflow(SENT.body.trimEnd()), SENT.body.trimEnd(), 'the fixture page has a spot Shopify re-flows');
+  const ok = await run(reflow, PAGE);
+  assert.equal(ok.r.status, 'updated');
+  assert.equal(ok.r.reflowed, true);
+  assert.ok(ok.logs.some((l) => /apart from line breaks Shopify put between tags/.test(l)));
+  /* a later run sees the re-flowed live page as the same page and sends nothing */
+  const again = await run(reflow, reflow(SENT.body.trimEnd()));
+  assert.equal(again.r.status, 'same');
+  /* a real change (text) still fails the check */
+  await assert.rejects(run((s) => s.replace('scout-app-wrapper', 'scout-app-wrapperX'), PAGE), /does not match after the update/);
+});
