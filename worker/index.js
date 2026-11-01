@@ -21,6 +21,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v214: 2026-11-01. A Shopify find opens the listing popup (Matt): GET /item?shop=<gid>&url=<card link> calls the
+ *         Global Catalog's get_product (shopcat.js shopItem): photos (12), description, options, the card's store, its
+ *         price and condition; no-store, never the item cache (Shopify: no caching). The admin's Spending tab fits
+ *         per-unit prices to a bill (POST /admin/api/spend/fit); Muse web searches are billed (price left for the fit).
  *   v213: 2026-11-01. The Shopify strip searches keyless (no Authorization, the agent profile alone) when the key is
  *         missing, refused or waiting; catalog.catalog_id (SHOPIFY_CATALOG_ID, Matt's saved catalog by default) then a
  *         fill from the whole catalog; off-Shopify offers kept (offShopify, domain); a User-Agent on every Shopify call;
@@ -747,7 +751,7 @@ import { artResponse } from "./art.js";   /* v97 */
 import { shopBrief } from "./shop-brief.js";   /* v212: the admin's morning briefing */
 import { fbkPost, fbkList, fbkDelete, fbkReplyTo, fbkForget, newsTick, newsBuild, newsSample, newsFresh, newsView, newsNote, newsEligible, newsLoad, newsMerge, NEWS_KEY, NEWS_STOP, NEWS_KEEP, NEWS_PER_RUN, NEWS_TESTS_PER_DAY } from "./news.js";   /* v208 */
 import { SpendBuffer, spendOp, spendWrap } from "./spend.js";   /* v193 */
-import { shopLive, shopcatProfile, SHOPCAT_PROFILE_PATH, shopcatStatus, shopcatTest } from "./shopcat.js";   /* v210; v211: the admin's Diagnose card */
+import { shopLive, shopItem, shopcatProfile, SHOPCAT_PROFILE_PATH, shopcatStatus, shopcatTest } from "./shopcat.js";   /* v210; v211: the admin's Diagnose card */
 import { FB_UNIT, FB_RUN_ITEMS, FB_TTL, FB_PER_RUN, FB_ZIP_TTL, FB_ZIP_MISS_TTL, FB_TRIES, fbLive, fbCapUnits, fbTerm, fbCell, fbKey, fbUnits, fbEstimate, fbItems, fbMerge, fbRun, FB_MEMBER_DAY, FB_SEARCH_DAY, FB_USA_MI, fbPickKey, fbShipKey, fbMi, fbJoin, fbWhy } from "./fb.js";   /* v200 */
 import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb64u } from "./push.js";   /* v114 */
 import { SW_SRC } from "./sw-src.js";   /* v114 */
@@ -761,7 +765,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v213";
+const WORKER_VERSION = "v214";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -7861,7 +7865,7 @@ async function newsMember(request, env) {
   return sub;
 }
 /* v210: what shopcat.js needs from here */
-function shopDeps() { return { vCount, ipKey, json, sgwExact }; }
+function shopDeps() { return { vCount, ipKey, json, sgwExact, itemDesc }; }   /* v214: itemDesc for the popup */
 function shopcatTestRun(env, term, origin) { return shopcatTest(env, shopDeps(), term, origin); }   /* v211 */
 function newsDeps() {
   return { json, readJson, kvGet, kvPut, ipKey, ipNet, vCount, isOwner, alSend, alEsc, alShell, alAddr, alMerge, alMailSub, alLinkHash, alUnsubUrl, alUpgradeUrl, scrubPII,
@@ -9184,6 +9188,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/where") {
       return whereToLook(env, url, origin, request);
     }
+    if (url.pathname === "/item" && url.searchParams.has("shop")) return shopItem(request, env, url, origin, shopDeps());   /* v214: a Shopify find (get_product), never cached */
     if (url.pathname === "/item") {   /* v81: listing popup */
       return itemRoute(env, url, origin, request);
     }

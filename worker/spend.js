@@ -20,8 +20,10 @@ const PRICES_CHECKED = "2026-10-30";   /* Google: Matt's billing account price l
    Nearby Search ask for editorialSummary (Atmosphere) and opening hours (Enterprise). */
 export const SPEND_SERVICES = [
   { key: "muse", name: "Muse (Meta Muse Spark): Fair price, Research, Field Guides, Pounce, shop picks", uses: ["tin", "tout", "ws"],
-    price: { tin: 0.98, tout: 4.25, ws: 0 }, src: "https://developers.meta.ai",
-    srcNote: "fitted to Matt's Meta bill, Oct 24-30 2026 ($1.65 for 1.13M in, 128k out, 114 searches): list input is $1.25, cached reads are cheaper, so it averages about $0.98; searches carry no separate charge. Reasoning tokens bill as output.",
+    price: { tin: 0.98, tout: 4.25, ws: null }, src: "https://developers.meta.ai",
+    /* v214: Matt's October bill has a "search grounding requests" line ($2.05), so web searches are billed: no made-up
+       price, the Spending tab asks for it (Fit prices to a bill works it out from the bill and Prowl's own counts) */
+    srcNote: "input and output fitted to Matt's Meta bill, Oct 24-30 2026 (list input is $1.25, cached reads are cheaper, so it averages about $0.98). Web searches are billed (\"search grounding requests\" on the bill): fit from your Meta bill. Reasoning tokens bill as output.",
     bill: "https://developers.meta.ai" },
   { key: "jev", name: "Jev (TypeSafe): AI sorting, hunt checks, photo looks", uses: ["tin"],
     price: { tin: 0.04 }, src: "https://typesafe.ai",
@@ -230,6 +232,55 @@ export function spendCfgClean(raw) {
     out.fixed.push({ name: name, perMonth: m });
   }
   return { cfg: out, errors: errors };
+}
+
+/* ---------- v214: fit per-unit prices to a bill ----------
+   Matt's Meta bill for October 2026: cached request tokens $0.40, response tokens $2.23, uncached request tokens $4.10,
+   search grounding requests $2.05 ($8.78). A bill's dollar lines divided by what Prowl itself counted over the same days
+   give the per-unit prices. Prowl does not count cached input tokens apart (the answers' usage is read as one input
+   number), so a cached line is folded into input. A line whose units Prowl never counted is not fitted (skipped). */
+export const SPEND_FIT_LINES = [["input", "tin", "Input (uncached request tokens)"], ["cached", "tin", "Cached input (cached request tokens)"],
+  ["output", "tout", "Output (response tokens)"], ["searches", "ws", "Searches (search grounding requests)"]];
+const FIT_SCALE = { tin: 1e6, tout: 1e6, ws: 1000 }, FIT_UNIT = { tin: "ti", tout: "to", ws: "ws" };
+export const SPEND_FIT_KEYS = SPEND_SERVICES.filter(s => s.uses.some(f => FIT_SCALE[f])).map(s => s.key);
+/* rows: the spend object's day rows; bill: { input, cached, output, searches } in dollars (null = not on the bill).
+   Answers { key, from, to, first, last, days, counts, dollars, prices, skipped, notes, warn } or { error }. */
+export function spendFit(rows, key, from, to, bill) {
+  const s = SPEND_SERVICES.find(x => x.key === key);
+  if (!s || SPEND_FIT_KEYS.indexOf(key) === -1) return { error: "That service has no token or search prices to fit." };
+  if (!DAY_RE.test(String(from)) || !DAY_RE.test(String(to)) || from > to) return { error: "Pick the bill's first and last day." };
+  if (Date.parse(to + "T00:00:00Z") - Date.parse(from + "T00:00:00Z") > SPEND_KEEP_DAYS * 86400000) return { error: "At most " + SPEND_KEEP_DAYS + " days." };
+  const b = bill && typeof bill === "object" ? bill : {}, dollars = {}, notes = [], skipped = [];
+  let any = false;
+  for (const [line, f, label] of SPEND_FIT_LINES) {
+    const m = money(b[line]);
+    if (m === undefined) return { error: label + ": dollars, 0 or more." };
+    if (m === null) continue;
+    if (s.uses.indexOf(f) === -1) { if (m > 0) notes.push(label + " is not something " + s.name.split(":")[0] + " is counted for, so it is left out."); continue; }
+    dollars[f] = Math.round(((dollars[f] || 0) + m) * 10000) / 10000; any = true;
+    if (line === "cached" && m > 0) notes.push("Prowl does not count cached input tokens apart, so the cached line ($" + m.toFixed(2) + ") is folded into input.");
+  }
+  if (!any) return { error: "Type at least one dollar line from the bill." };
+  const counts = { n: 0, ti: 0, to: 0, ws: 0 }, days = [];
+  for (const r of Array.isArray(rows) ? rows : []) {
+    if (!r || r.key !== key || !(r.day >= from && r.day <= to)) continue;
+    const used = (Number(r.n) || 0) + (Number(r.ti) || 0) + (Number(r.to) || 0) + (Number(r.ws) || 0);
+    for (const f of ["n", "ti", "to", "ws"]) counts[f] += Number(r[f]) || 0;
+    if (used > 0 && days.indexOf(r.day) === -1) days.push(r.day);
+  }
+  days.sort();
+  const prices = {};
+  for (const f of Object.keys(dollars)) {
+    const units = counts[FIT_UNIT[f]];
+    if (units > 0) prices[f] = Math.round(dollars[f] / units * FIT_SCALE[f] * 10000) / 10000;
+    else if (dollars[f] > 0) skipped.push(f);
+    else prices[f] = 0;
+  }
+  const first = days[0] || null, last = days.length ? days[days.length - 1] : null;
+  let warn = "";
+  if (!first) warn = "Prowl counted nothing for " + s.name.split(":")[0] + " between " + from + " and " + to + ", so nothing can be fitted.";
+  else if (first > from) warn = "Prowl's counts start on " + first + ", after the bill's first day (" + from + "): the bill covers days Prowl did not count, so these prices come out too high.";
+  return { key: key, from: from, to: to, first: first, last: last, days: days.length, counts: counts, dollars: dollars, prices: prices, skipped: skipped, notes: notes, warn: warn };
 }
 
 /* ---------- the estimate ---------- */
