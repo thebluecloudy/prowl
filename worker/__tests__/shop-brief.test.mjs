@@ -55,8 +55,36 @@ test("shopBrief: cached per Detroit day; falls back without read_products; uses 
   };
   const b = await shopBrief({}, deps, NOW, false);
   assert.equal(b.ai, false); assert.equal(b.notes.length, 3); assert.equal(b.stats.sales30, 25);
-  assert.equal(calls.length, 2);
-  assert.ok(kv.has("shopbrief:" + detroitDay(NOW)));
+  assert.equal(calls.filter(q => !q.includes("shopifyqlQuery")).length, 2);
+  assert.ok(kv.has("shopbrief2:" + detroitDay(NOW)));
   const again = await shopBrief({}, deps, NOW, false);
-  assert.equal(again.cached, true); assert.equal(calls.length, 2);
+  assert.equal(again.cached, true); assert.equal(calls.filter(q => !q.includes("shopifyqlQuery")).length, 2);
+});
+
+import { siteStats, pageKind, pageName, siteVisits } from "../shop-brief.js";
+test("v215: site visits: kinds, guide names, weeks in order, referrers", () => {
+  assert.equal(pageKind("/blogs/guides/hen-on-nest-collectors-guide"), "guide");
+  assert.equal(pageKind("/blogs/guides"), "guides list");
+  assert.equal(pageKind("/products/x"), "product"); assert.equal(pageKind("/pages/prowl-app"), "prowl"); assert.equal(pageKind("/"), "home");
+  assert.equal(pageName("/blogs/guides/hen-on-nest-collectors-guide"), "Hen on nest collectors guide");
+  const s = siteStats(
+    [{ week: "2026-10-26", sessions: "648", online_store_visitors: "547", sessions_with_cart_additions: "3", sessions_that_completed_checkout: "0" },
+     { week: "2026-10-19", sessions: "675", online_store_visitors: "507", sessions_with_cart_additions: "2", sessions_that_completed_checkout: "0" }],
+    [{ landing_page_path: "/pages/prowl-app", sessions: "355", online_store_visitors: "16", sessions_with_cart_additions: "2" },
+     { landing_page_path: "/blogs/guides/hen-on-nest-collectors-guide", sessions: "235", online_store_visitors: "192", sessions_with_cart_additions: "0" },
+     { landing_page_path: "/products/lamp", sessions: "70", online_store_visitors: "70", sessions_with_cart_additions: "0" }],
+    [{ referrer_source: "search", referrer_name: "google", sessions: "765" }, { referrer_source: "direct", referrer_name: "", sessions: "1531" }]);
+  assert.equal(s.thisWeek.week, "2026-10-26"); assert.equal(s.lastWeek.visits, 675);
+  assert.equal(s.visits30, 660);
+  assert.deepEqual(s.guides, [{ name: "Hen on nest collectors guide", path: "/blogs/guides/hen-on-nest-collectors-guide", visits: 235, carts: 0 }]);
+  assert.equal(s.kinds[0].kind, "prowl");
+  assert.equal(s.refs[0].from, "google"); assert.equal(s.refs[1].from, "direct");
+});
+test("v215: siteVisits throws an access error that shopBrief turns into needs read_reports", async () => {
+  const deps = { gql: async () => ({ errors: [{ message: "Access denied for shopifyqlQuery field. Required access: `read_reports`" }] }) };
+  await assert.rejects(siteVisits({}, deps), (e) => e.access === true);
+  const kv = new Map();
+  const b = await shopBrief({}, { kvGet: async () => null, kvPut: async (e, k, v) => kv.set(k, v),
+    gql: async (e, q) => q.includes("shopifyqlQuery") ? { errors: [{ message: "Access denied, read_reports" }] } : { data: { orders: { pageInfo: { hasNextPage: false }, nodes: [] } } } }, NOW, false);
+  assert.equal(b.siteErr, "needs read_reports"); assert.equal(b.stats.site, null);
 });

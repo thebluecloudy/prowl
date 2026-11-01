@@ -1,16 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.43 / v214).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.43 / v215).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.43** | 361,665 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v214** | |
+| Worker | **v215** | |
 
 Recently shipped, newest first:
 
+- **Worker v215: site visits in the morning briefing** (Matt, 2026-11-01: people visit but buy on Etsy; which guides do
+  they read?). The admin Overview's "Owl & Twig this morning" card adds What people do on the site: visits, people, cart
+  adds and checkouts this week; visits by kind of landing page (guides, products, Prowl, home); the guides and products
+  people land on; where they came from. From Shopify's `shopifyqlQuery` (sessions); needs **read_reports** on the
+  worker's Shopify orders app, else the card says so. Muse's second note is now about the site. KV `shopbrief2:<day>`.
 - **v8.43 / v214: 14-day Pro trial for every new member** (Claude, 2026-11-01). Branch `claude/pro-trial-v840` (PR #307). Matt asked whether to make Prowl pay-only and said
   "Yes" to a reverse trial instead.
   - **Worker:** members whose `created` is on or after `PRO_TRIAL_FROM` (2026-11-01) are Pro for `PRO_TRIAL_DAYS`
@@ -2485,7 +2490,7 @@ Recently shipped, newest first:
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 | `claude/gifted-johnson-wzaqr3` | Claude | Deploy check tolerates Shopify's line-break re-flow (scripts only) | No new version (page v8.42 live with #310, worker v213). |
 
-Next free numbers: **page v8.44, worker v215** (v8.43 / v214: 14-day Pro trial, PR #307; v8.42: deploy-check fix for the How Prowl works search box, branch `claude/gifted-johnson-wzaqr3`; v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, live with #309; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.44, worker v216** (v8.43 / v214: 14-day Pro trial, PR #307; v8.42: deploy-check fix for the How Prowl works search box, branch `claude/gifted-johnson-wzaqr3`; v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, live with #309; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 

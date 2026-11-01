@@ -1043,7 +1043,18 @@ async function apiShopBrief(c) {
     notes: arr(b.notes).slice(0, 3).map(n => ({ kind: shopStr(n && n.kind, 40), text: shopStr(n && n.text, 600) })),
     stats: { sales30: num(st.sales30), orders30: num(st.orders30), salesPrev: num(st.salesPrev), ordersPrev: num(st.ordersPrev),
       salesChange: st.salesChange == null ? null : num(st.salesChange), salesYday: num(st.salesYday), ordersYday: num(st.ordersYday),
-      daysSinceOrder: st.daysSinceOrder == null ? null : num(st.daysSinceOrder), typesKnown: st.typesKnown !== false, categories: cats } });
+      daysSinceOrder: st.daysSinceOrder == null ? null : num(st.daysSinceOrder), typesKnown: st.typesKnown !== false, categories: cats },
+    site: siteView(st.site), siteErr: shopStr(b.siteErr, 120) });
+}
+/* v215: the site's visit numbers, re-checked field by field (paths only, no visitor data exists here) */
+function siteView(s) {
+  if (!s || typeof s !== "object") return null;
+  const wk = x => x && typeof x === "object" ? { week: word(x.week, 10), visits: num(x.visits), visitors: num(x.visitors), carts: num(x.carts), checkouts: num(x.checkouts) } : null;
+  const pg = x => ({ name: shopStr(x && x.name, 90), path: shopStr(x && x.path, 200), visits: num(x && x.visits), carts: num(x && x.carts) });
+  return { weeks: arr(s.weeks).slice(-8).map(wk), thisWeek: wk(s.thisWeek), lastWeek: wk(s.lastWeek), visits30: num(s.visits30),
+    kinds: arr(s.kinds).slice(0, 8).map(k => ({ kind: word(k && k.kind, 20), visits: num(k && k.visits), carts: num(k && k.carts) })),
+    guides: arr(s.guides).slice(0, 12).map(pg), products: arr(s.products).slice(0, 6).map(pg),
+    refs: arr(s.refs).slice(0, 8).map(r => ({ from: shopStr(r && r.from, 40), source: word(r && r.source, 20), visits: num(r && r.visits) })) };
 }
 async function apiShopcat(c) {
   if (typeof c.H.shopcatStatus !== "function") return jerr(503, "The Shopify catalog check is not available.");

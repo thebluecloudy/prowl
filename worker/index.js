@@ -21,6 +21,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v215: 2026-11-01. The morning briefing adds what people do on the site (Matt: they visit but buy on Etsy): Shopify's
+ *        visit counts through shopifyqlQuery (read_reports): visits and cart adds this week, the pages people land on (guides,
+ *        products, Prowl), where they came from; the AI's second note is about the site. KV key shopbrief2:<day>.
  *   v214: 2026-11-01. 14-day Pro trial: members who sign up from PRO_TRIAL_FROM get Prowl Pro free for PRO_TRIAL_DAYS
  *         (default 14, "0" = off) from sign-up, no card; then Free with every hunt kept. Counts as hadPro. /alerts/status
  *         says trialEnded; the daily email warns in the last 3 days. A paid plan, a gift or PRO_EMAILS wins over it.
@@ -764,7 +767,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v214";
+const WORKER_VERSION = "v215";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
