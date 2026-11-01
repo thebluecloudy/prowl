@@ -670,6 +670,10 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .hw-plan ul{margin:8px 0 12px;padding-left:18px;font-size:14px;color:var(--i2)}
 .scout-app-wrapper .hw-q{padding:10px 0;border-bottom:1px solid var(--ln)}
 .scout-app-wrapper .hw-q p{margin:6px 0 0;font-size:14px;color:var(--i3)}
+.scout-app-wrapper .st-one{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 18px 10px;font-size:15px;color:var(--i2)}   /* v8.40 */
+.scout-app-wrapper #otp-res{scroll-margin-top:12px}
+.scout-app-wrapper .st-one b{color:var(--ink)}
+.scout-app-wrapper .st-one .b{min-height:36px;padding:6px 14px;font-size:14px}
 .scout-app-wrapper .hw-end{margin:0 0 10px;text-align:center;font-weight:700;color:var(--i2)}
 .scout-app-wrapper #otp-ms .ma{flex-direction:column;align-items:stretch}
 .scout-app-wrapper #otp-ms .ma .b{width:100%}
@@ -4279,7 +4283,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.39';
+var PROWL_VERSION='v8.40';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -5706,7 +5710,7 @@ function storeHunts(){var a=[],b=[];st.hunts.forEach(function(t,j){(st.lock.has(
 var STORE_SKIP={ebaysold:1,owltwig:1,facebook:1};   /* sold prices, our own shop, Facebook's city-by-city search */
 function storeLive(id){return id==='shopgoodwill'||!!lv[id]}
 function storeGo(){
-  var T=storeHunts(),m=mb(storeId());
+  var T=st.storeOne?[st.storeOne]:storeHunts(),m=mb(storeId());   /* v8.40: one hunt, or all */
   st.storeFb=false;
   if(storeId()==='facebook'){clearTimers();st.run=null;st.focus=false;st.storeEmpty=false;st.storeFb=true;st.mode='store';rRes();rDock();res.hidden=false;fbAllFetch();return}   /* v8.27 */
   if(!T.length){clearTimers();st.run=null;st.focus=false;st.storeEmpty=true;st.mode='store';rRes();rDock();res.hidden=false;return}
@@ -5723,11 +5727,14 @@ function storeBar(id){
     '<form class="st-q" id="otp-fbF"><input id="otp-fbQ" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search Facebook for one thing" aria-label="Search Facebook for one thing" maxlength="80"><button class="b" type="submit">Search</button></form>';
   var opts='<optgroup label="LIVE: listings show here">'+live+'</optgroup><optgroup label="Opens on their site">'+other+'</optgroup>';
   var n=(mb(id)||{}).n||'';
+  var A=storeHunts().length;   /* v8.40: just the hunt you were on, with the way back to all of them */
   return '<div class="st-bar"><label class="st-lab" for="otp-stSel">Store</label><select id="otp-stSel">'+opts+'</select></div>'+
+    (st.storeOne?'<p class="st-one">Just <b>'+esc(st.storeOne)+'</b>'+(A>1?' <button class="b" id="otp-stAll" type="button">All '+A+' hunts</button>':'')+'</p>':'')+
     '<p class="st-note">'+(storeLive(id)?'<b>LIVE</b>: '+esc(n)+' listings show right here.':esc(n)+' opens on its own site, one tab per hunt. Stores marked LIVE show listings right here.')+'</p>'+
     '<form class="st-q" id="otp-stF"><input id="otp-stQ" type="search" enterkeyhint="search" autocomplete="off" placeholder="Search for one thing" aria-label="Search '+esc(n)+' for one thing"><button class="b" type="submit">Search</button></form>';
 }
 function storeWire(){
+  var sa=$('#otp-stAll');if(sa)sa.addEventListener('click',function(){st.storeOne=null;storeGo()});   /* v8.40 */
   var sel=$('#otp-stSel');
   if(sel)sel.addEventListener('change',function(){if(!mb(this.value)&&this.value!=='facebook')return;st.store=this.value;save();storeGo()});
   var f=$('#otp-stF');
@@ -5867,6 +5874,7 @@ function olChip(r,t,j){var u=olUrl(olSite(r),t);return '<li data-ol="'+j+'"><a h
 function olSum(r){
   var T=olTerms(r),i,c,n=0,live=0,wait=0;
   for(i=0;i<T.length;i++){c=olGet(olSite(r),T[i]);if(!c){wait++;continue}if(c.err)continue;c=fltOnly(c.items).length;if(c){live++;n+=c}}
+  if(r.terms.length===1)return n?'<strong>'+n+'</strong> listing'+(n===1?'':'s')+' live':wait?FLY3+'checking':'nothing live right now';   /* v8.40: one hunt */
   return '<strong>'+r.terms.length+'</strong> hunts · '+(n?'<strong>'+n+'</strong> listing'+(n===1?'':'s')+' on <strong>'+live+'</strong> of them':wait?'checking':'nothing live right now')+
     (wait?' · '+FLY3+'checking '+wait+' more':'');
 }
@@ -5894,7 +5902,7 @@ function olRender(r){
   var nx=$('#otp-next');if(nx)nx.addEventListener('click',function(){launchNext(false)});
   if(!r.olGo){r.olGo=1;olFetchAll(r)}
 }
-function olHead(r){var n=r.terms.length;return (n===1?'Your hunt':'All '+n+' hunts')+' on '+esc(runSiteName(r))}
+function olHead(r){var n=r.terms.length;return (n===1?(r.mode==='store'?esc(r.terms[0]):'Your hunt'):'All '+n+' hunts')+' on '+esc(runSiteName(r))}   /* v8.40: one hunt in Store says which */
 function olFeet(r){
   var a=document.getElementById('otp-olNone'),b=document.getElementById('otp-olErr');
   if(a)olFoot(r,a,'none','Nothing on '+esc(runSiteName(r))+' right now');
@@ -6536,7 +6544,9 @@ function dockGo(m){
   closeFlock();
   if(m!=='store')st.storeFb=false;   /* v8.27 */
   if(m==='prowl'){clearRun();window.scrollTo({top:0,behavior:'smooth'});return;}
-  if(m==='store'){storeGo();return;}   /* v8.20 */
+  /* v8.40 (Matt: "I'm searching in hunt with the pills and I just want to find the items in one store"): with one hunt
+     on screen, Store runs just that hunt on the store (st.storeOne, not saved); from anywhere else, every hunt */
+  if(m==='store'){var r0=st.run;st.storeOne=r0&&r0.mode==='store'?st.storeOne:(r0&&r0.mode!=='daily'&&r0.terms&&r0.terms.length===1?r0.terms[0]:null);storeGo();return;}   /* v8.20 */
   if(m==='one'){if(q.value.trim()){runProwl('one',chips(),[oneId()],oneName())}else{openFocus()}return;}
   if(m==='local'){goLocal();return;}
   if(m==='daily'){
@@ -9724,9 +9734,10 @@ function popSrc(u){
   if(h==='shopgoodwill.com'&&/\/item\/\d{3,15}(?:[/?#]|$)/.test(u))return 'shopgoodwill';
   if(h==='shopthesalvationarmy.com'&&/\/Listing\/Details\/\d{3,15}/.test(u))return 'salvation';
   if(h==='etsy.com'&&/\/listing\/\d{6,15}(?:[/?#]|$)/.test(u))return 'etsy';   /* v6.53, worker v88 */
+  if(h==='chairish.com'&&/\/product\/\d{3,12}(?:\/[A-Za-z0-9-]{0,200})?\/?(?:[?#]|$)/.test(u))return 'chairish';   /* v8.39, worker v211 (Matt: "i only see one image"): every photo from the listing page */
   return '';
 }
-var POP_NAME={ebay:'eBay',shopgoodwill:'ShopGoodwill',salvation:'Salvation Army',etsy:'Etsy'};
+var POP_NAME={ebay:'eBay',shopgoodwill:'ShopGoodwill',salvation:'Salvation Army',etsy:'Etsy',chairish:'Chairish'};
 /* the worker already strips seller HTML down to a few tags; this walks it again and copies only those tags and text,
    so nothing in a description can run here whatever the worker sends */
 /* v6.99: some sellers' text arrives escaped twice ("it&#39;s"); decode what is left as plain text, never as HTML */
@@ -9777,7 +9788,7 @@ function popDesc(html){
 function popShown(){return !!(sh&&!sh.hidden&&sh.classList.contains('pop'))}
 /* v6.45: a result card outside Flock has no auction pill; its meta line carries bids and time left */
 function popAuc(card){var m=card.querySelector('.sgw-m'),t=m?String(m.textContent||''):'';return /\bbids?\b|\bleft\b/.test(t)?t.replace(/\s+/g,' ').trim():''}
-/* v7.31: a result card on a site the popup cannot read (Chairish, Poshmark, Vinted, Grailed) opens a light popup from
+/* v7.31: a result card on a site the popup cannot read (Poshmark, Vinted, Grailed; Chairish until v8.39) opens a light popup from
    what the card knows, so Save and Fair price?, which left the card, are one tap away on every result (lite) */
 function popOpen(card,lite){
   var u=card.getAttribute('data-u')||'',src=popSrc(u),ls=card.getAttribute('data-s')||'',lt=0;

@@ -48,7 +48,7 @@ function shopify({ token = { access_token: "tok-1", token_type: "Bearer", expire
   const calls = [];
   let n = 0, t = 0;
   const f = async (url, init = {}) => {
-    calls.push({ url: String(url), init, body: init.body ? JSON.parse(init.body) : null });
+    calls.push({ url: String(url), init, body: init.body ? (() => { try { return JSON.parse(init.body); } catch (e) { return String(init.body); } })() : null });   /* v211: the Basic try sends a form body */
     if (String(url) === SC.SHOPCAT_TOKEN_URL) { t++; return res(tokenStatus, typeof token === "function" ? token(t) : token); }
     if (String(url) === SC.SHOPCAT_MCP_URL) { const a = answers[Math.min(n++, answers.length - 1)]; return typeof a === "function" ? a(init) : a; }
     throw new Error("unexpected fetch " + url);
@@ -294,8 +294,8 @@ test("the agent profile: catalog search and lookup, and the Global Catalog exten
 });
 
 test("index.js: the routes, the deps, the version; spend.js counts the catalog calls as shopcat at no fee", () => {
-  assert.match(INDEX, /const WORKER_VERSION = "v210";/);
-  assert.match(INDEX, /import \{ shopLive, shopcatProfile, SHOPCAT_PROFILE_PATH \} from "\.\/shopcat\.js";/);
+  assert.ok(Number((/const WORKER_VERSION = "v(\d+)";/.exec(INDEX) || [])[1]) >= 210, "v210 or later");
+  assert.match(INDEX, /import \{ shopLive, shopcatProfile, SHOPCAT_PROFILE_PATH[^}]*\} from "\.\/shopcat\.js";/);
   assert.match(INDEX, /if \(url\.pathname === "\/shop-live"\) return shopLive\(request, env, url, origin, shopDeps\(\)\);/);
   assert.match(INDEX, /function shopDeps\(\) \{ return \{ vCount, ipKey, json, sgwExact \}; \}/);
   assert.ok(INDEX.indexOf('url.pathname === "/shop-live"') > INDEX.indexOf('return json({ error: "GET only" }, 405, origin);'), "GET only");
@@ -306,7 +306,8 @@ test("index.js: the routes, the deps, the version; spend.js counts the catalog c
   assert.equal(SP.paidKey("https://catalog.shopify.com/api/ucp/mcp"), "shopcat");
   assert.equal(SP.paidKey("https://api.shopify.com/auth/access_token"), "", "the token exchange is not a counted call");
   const SRC = readFileSync(new URL("../shopcat.js", import.meta.url), "utf8");
-  assert.doesNotMatch(SRC, /PROWL_ALERTS|kvPut|caches\.|PCACHE/, "no KV and no cache for results or the token");
+  /* v211: the one KV use is the exchange's outcome (SHOPCAT_LAST_KEY: time, status, Shopify's error code), never results or the token */
+  assert.doesNotMatch(SRC.split("\n").filter((l) => !/SHOPCAT_LAST_KEY/.test(l)).join("\n"), /PROWL_ALERTS\.|kvPut|caches\.|PCACHE/, "no KV and no cache for results or the token");
 });
 
 /* ---------- review fixes ---------- */
@@ -346,7 +347,7 @@ test("review: a failed token exchange is remembered for SHOPCAT_TOKEN_FAIL_MS: n
     const c = await ask(D, "term=fire+king");
     assert.deepEqual([a.status, b.status, c.status], [503, 503, 503]);
     assert.equal(b.body.error, "unavailable");
-    assert.equal(s.tokens().length, 1, "one exchange, then it waits");
+    assert.equal(s.tokens().length, 2, "one exchange (v211: the JSON body, then once with HTTP Basic), then it waits");
     assert.equal(s.searches().length, 0);
     assert.equal(SC.shopcatTokenDown(Date.now() + SC.SHOPCAT_TOKEN_FAIL_MS + 1000), false, "tried again after the wait");
   } finally { console.error = realErr; }

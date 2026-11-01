@@ -1,31 +1,78 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.39 / v210).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.40 / v211).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.39** | 361,670 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v210** | |
+| Page | **v8.40** | 361,670 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v211** | |
 
 Recently shipped, newest first:
 
-- **v8.39: How Prowl works, on the pattern of liinks.co's home page** (Matt: "use this home page as a reference for how
-  prowl works").
-  - The top: the title band, "Free · no account needed to search", the promise "Type it once. Prowl hunts 30 vintage
-    marketplaces." and a box to try it (`#otp-hwTry`: the search runs on the home screen and the help closes; empty,
-    it runs the example).
-  - Each of the nine features is a short title, one line and a small picture of it (`.hw-mock`, HTML only,
-    `aria-hidden`); every earlier instruction is kept, folded under **How** (`details.hw-how`).
-  - Then Prowl or one site at a time (5 rows), the two plans (their numbers are tested against `HUNTS_FREE`,
-    `HUNTS_PRO` and the worker's `PHOTO_FREE_PER_DAY`), five questions, Prowl's words, and **Start hunting** (was Got
-    it), which puts you in the search box.
-  - No reviews or customer pages: Prowl has none to quote, and none are made up.
-  - Tests: `__tests__/page/how-v839.test.mjs`.
+- **v8.40: Store from one hunt, and How Prowl works on the pattern of liinks.co's home page**
+  - **Store** (Matt: "I'm searching in hunt with the pills and I just want to find the items in one store but it goes
+    to the bottom of hunt"; asked, he had tapped Store in the dock): with one hunt on screen, Store runs just that hunt
+    on the store (`st.storeOne`, in memory only), headed "<hunt> on <store>" with "N listings live", a "Just <hunt> ·
+    All N hunts" line, and keeps the hunt when the store changes. From anywhere else Store checks every hunt, as
+    before. `#otp-res` has a scroll margin so the card starts on screen. Tests: `__tests__/page/store-one-v840.test.mjs`.
+  - **How Prowl works** (Matt: "use this home page as a reference for how prowl works"): the title band, "Free · no
+    account needed to search", "Type it once. Prowl hunts 30 vintage marketplaces." and a box to try it (`#otp-hwTry`);
+    each of the nine features a short title, one line and a small picture (`.hw-mock`, `aria-hidden`), every earlier
+    instruction kept under **How**; then Prowl or one site at a time, the two plans (numbers tested against
+    `HUNTS_FREE`, `HUNTS_PRO`, `PHOTO_FREE_PER_DAY`), five questions, Prowl's words and **Start hunting**. No reviews or
+    customer pages: Prowl has none, and none are made up. Tests: `__tests__/page/how-v840.test.mjs`.
 
-- **v8.38 / v210: live Shopify listings in hunts, through Shopify's Global Catalog** (Claude, 2026-11-01). Branch
-  `shop-catalog`, not pushed yet. On top of v8.37 (Shop as a hunt marketplace, #304), merged in.
+- **v8.39 / v211: Shopify catalog diagnose card, Chairish photos in the popup** (Claude, 2026-11-01). Branch
+  `claude/gifted-johnson-wzaqr3`. Page room left: 367,954 bytes (the script is on the worker).
+  - **Why:** live v210 with Matt's two Catalog secrets set answered `/shop-live` `{"on":true,"error":"unavailable"}`:
+    the token exchange failed and only its status was logged.
+  - **Token exchange (`worker/shopcat.js` `shopcatToken`):** keeps Shopify's `error` code and a trimmed
+    `error_description` (the client id, the secret, quoted strings and key-like runs cut out, 200 characters) in memory
+    and in KV `shopcat:last` (`{ at, ok, status, error, desc, method, tried, attempts }`, 30 days; never the secret or the token),
+    and logs `shopcat token <method> <status> <code> + ...`, one per attempt. When the JSON body is refused with a bad-client code
+    (`invalid_client`, `unauthorized_client`, `invalid_request`, `invalid_grant`, none), one more try goes with HTTP
+    Basic and a form body `grant_type=client_credentials` (the metadata lists `client_secret_basic`); the method that
+    worked is tried first next time. `application_cannot_be_found` (the id is unknown) is not retried. The 5-minute
+    wait after a failure belongs to the credentials it failed with (an FNV fingerprint of id + secret, memory only),
+    so a changed key is tried at once.
+  - **What Shopify's docs say (checked 2026-11-01, Shopify docs search):** the Catalogs token is a JSON POST
+    `{ client_id, client_secret, grant_type: "client_credentials" }` with nothing else (shopify.dev/docs/agents/get-started/authentication;
+    .../agents/carts-and-checkout/checkout-mcp; the key comes from Dev Dashboard › Catalogs, .../apps/build/dev-dashboard/catalogs).
+    No scope, audience or resource field; the client-credentials page says Shopify ignores a scope
+    (.../apps/build/authentication-authorization/access-tokens). Form-encoded bodies are the Admin-app grant
+    (`<shop>/admin/oauth/access_token`), a different endpoint. Probed live with a made-up id: JSON, form and Basic all
+    reach the app lookup (`400`/`400`/`401` `application_cannot_be_found`), whose description quotes the client_id
+    (hence the scrub).
+  - **Admin › Diagnose › "Shopify stores (Global Catalog)"** (admin session only: `GET /admin/api/shopcat`,
+    `POST /admin/api/shopcat/test`, 60 tests a day): on/off, the last exchange's time, result, Shopify's code and
+    description, the methods tried and the one that worked, the two secrets' lengths and whether they carry spaces or
+    quotes or look swapped (no values); **Run a test search** does one fresh exchange (past the wait) and one
+    `search_catalog` (default "pyrex") and shows the item count and the first 3 titles, or the exact JSON-RPC error.
+    Hints: ID and secret swapped, extra spaces, a key not from Dev Dashboard › Catalogs, a rotated secret.
+  - **Chairish photos in the popup** (Matt: "add a check for chairish images in the popup, i only see one image"):
+    Chairish cards open the full popup now (page `popSrc`), and `/item` reads the product page (`itemChairish`,
+    `chairishItem`): the JSON-LD Product's `image[]` (the listing's own gallery, in order; the page's other
+    chairish-prod images belong to similar listings), one photo per image uuid at Chairish's 1600 px fit size, at most
+    12; og:image when there is no gallery. Also price, Used/New, the description, Size/Materials/Color/Shop, and
+    SoldOut as ended. Other sites' readers are unchanged.
+  - Tests: `worker/__tests__/shop-catalog-diag-v211.test.mjs` (12), `worker/__tests__/chairish-item-v211.test.mjs` (6,
+    fixture `worker/__tests__/fixtures/chairish-product-v211.html`, the real page trimmed, the seller renamed),
+    `__tests__/page/chairish-popup-v839.test.mjs` (1). The
+    v210 test follows the Basic retry and the one KV record; the popup tests that used Chairish as "a site without the
+    popup" use Poshmark.
+  - **Review fixes:** every token-exchange attempt is kept, scrubbed (`attempts: [{ method, status, error, desc }]` in
+    `shopcat:last`, the status and the test answer), and the JSON-body ("post") attempt stays the main error, so a
+    refused or timed-out Basic retry no longer hides Shopify's answer to the documented method; the Diagnose card and
+    the console line (`shopcat token post 401 invalid_client + basic 0 timeout`) show each attempt. `shopcatScrub` also
+    hides any 6+ character piece of the id or the secret, any case. Chairish: no readable JSON-LD Product is now
+    `{error:"chairish unreadable"}` (not cached), never gone (a "sold" anywhere on the page used to mark a live
+    listing away for a day); gone only on 404/410 or a SoldOut/OutOfStock offer. An array `@type`, `@graph` and a
+    JSON-LD block that fails to parse are handled.
+
+- **v8.38 / v210: live Shopify listings in hunts, through Shopify's Global Catalog** (Claude, 2026-11-01). Live
+  with #305. On top of v8.37 (Shop as a hunt marketplace, #304), merged in.
   Page room left: see the Live table (the script is on the worker).
   - **Off until Matt adds the key.** The worker secrets `SHOPIFY_CATALOG_CLIENT_ID` and `SHOPIFY_CATALOG_CLIENT_SECRET`
     (Shopify Dev Dashboard › Catalogs › create a Catalogs API key; see `worker/README.md`). Without both, `/shop-live`
@@ -2329,9 +2376,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `shop-catalog` | Claude | Live Shopify listings in hunts via Shopify's Global Catalog (see Live, v8.38 / v210) | Claims **page v8.38 / worker v210**. Committed, not pushed, no PR yet. Off until Matt adds the two Catalog secrets. |
+| `claude/gifted-johnson-wzaqr3` | Claude | Shopify catalog diagnose card, Chairish photos in the popup (see Live, v8.39 / v211) | Claims **page v8.39 / worker v211**. Pushed, no PR yet. |
 
-Next free numbers: **page v8.40, worker v211** (v8.38 / v210: live Shopify listings, branch `shop-catalog`; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.41, worker v212** (v8.39 / v211: Shopify catalog diagnose and Chairish photos, branch `claude/gifted-johnson-wzaqr3`; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 
@@ -2348,6 +2395,9 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 ## Waiting on Matt
 
+- **Shopify catalog says "unavailable" (v211, once merged):** open the admin › Diagnose › Shopify stores (Global
+  Catalog), read Shopify's error code there, fix the secret it points at (the hints are in the card), then Run a test
+  search: a changed key is tried at once.
 - **Live Shopify listings (worker v210 / page v8.38), once merged:** in the Shopify Dev Dashboard (dev.shopify.com) ›
   Catalogs, create a Catalogs API key, then set its Client ID and Client secret as the Cloudflare Worker secrets
   `SHOPIFY_CATALOG_CLIENT_ID` and `SHOPIFY_CATALOG_CLIENT_SECRET` (`wrangler secret put …` or the dashboard; never in a

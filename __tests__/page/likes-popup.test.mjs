@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { loadPage, tick } from '../helpers/loadPage.mjs';
 
 const SGW = { u: 'https://shopgoodwill.com/item/123456789', t: 'Haeger Gardenhouse pumpkin jack o lantern', p: '$174.95', s: 'shopgoodwill', i: 'https://shopgoodwillimages.azureedge.net/p.jpg', at: 1 };
-const OUT = { u: 'https://www.chairish.com/product/987654/howard-kron-cats', t: 'Vintage Howard Kron cats', p: '$60.00', s: 'chairish', i: '', at: 2 };
+const OUT = { u: 'https://poshmark.com/listing/Vintage-Howard-Kron-cats-65a1b2c3d4e5f6a7b8c9d0e1', t: 'Vintage Howard Kron cats', p: '$60.00', s: 'poshmark', i: '', at: 2 };   /* v8.39: Chairish has the popup now */
 
 async function openLikes() {
   const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [] }, 'prowl.likes': [SGW, OUT] } });
@@ -42,14 +42,14 @@ test('a liked ShopGoodwill find (eBay, Etsy, Salvation Army too) opens its popup
   await p.close();
 });
 
-test('a liked find from a site without the popup (Chairish here) still links straight out', async () => {
+test('a liked find from a site without the popup (Poshmark here) still links straight out', async () => {
   const p = await openLikes();
   const a = p.$$('#otp-denLikes .lk-cell')[1].querySelector('a.sgw-card');
   const ev = new p.win.MouseEvent('click', { bubbles: true, cancelable: true });
   a.dispatchEvent(ev);
   await tick(20);
   assert.equal(ev.defaultPrevented, false, 'the link opens the listing');
-  assert.match(a.getAttribute('href'), /^https:\/\/www\.chairish\.com\/product\/987654/);
+  assert.match(a.getAttribute('href'), /^https:\/\/poshmark\.com\/listing\/Vintage-Howard-Kron-cats/);
   assert.equal(p.$('#otp-sheet').hidden, true);
   await p.close();
 });

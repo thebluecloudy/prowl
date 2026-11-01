@@ -23,6 +23,7 @@ function setup(extra = {}) {
     if (u.pathname === '/ebay') list = [0, 1, 2].map((i) => ({ title: q + ' ebay ' + i, price: '$4' + i + '.00', url: 'https://www.ebay.com/itm/123456789' + i, image: 'https://i.ebayimg.com/t' + i + '.jpg', src: 'ebay' }));
     if (u.pathname === '/etsy') list = [0, 1].map((i) => ({ title: q + ' etsy ' + i, price: '$2' + i + '.00', url: 'https://www.etsy.com/listing/155000000' + i + '/x', image: 'https://img.example/e' + i + '.jpg', src: 'etsy' }));
     if (u.pathname === '/chairish') list = [{ title: q + ' chairish', price: '$80.00', url: 'https://www.chairish.com/product/123456/x', image: 'https://img.example/c.jpg', src: 'chairish' }];
+    if (u.pathname === '/poshmark') list = [{ title: q + ' poshmark', price: '$70.00', url: 'https://poshmark.com/listing/x-65a1b2c3d4e5f6a7b8c9d0e1', image: 'https://img.example/p.jpg', src: 'poshmark' }];   /* v8.39: Chairish has the full popup now */
     if (u.pathname === '/') list = [{ title: q + ' sgw', price: '$9.00', url: 'https://shopgoodwill.com/item/27898707', image: 'https://img.example/g.jpg', src: '', bids: 3, time_left: '2d 4h' }];
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ items: list }), text: () => Promise.resolve('') });
   };
@@ -72,11 +73,11 @@ test('v6.53: an Etsy result opens the popup too', async () => {
 
 test('v7.31: a site the popup cannot read opens a light popup from the card; modifier clicks still go straight to the listing', async () => {
   const p = setup();
-  const ch = await waitFor(() => homeCell(p, 'chairish.com'));
-  assert.equal(tap(p, ch).defaultPrevented, true, 'Chairish opens the light popup');
+  const ch = await waitFor(() => homeCell(p, 'poshmark.com'));
+  assert.equal(tap(p, ch).defaultPrevented, true, 'Poshmark opens the light popup');
   assert.ok(sheetOpen(p));
   const b = p.$('#otp-sheetB');
-  assert.match(b.querySelector('.pp-go').textContent, /View on Chairish/);
+  assert.match(b.querySelector('.pp-go').textContent, /View on Poshmark/);
   assert.ok(b.querySelector('.pp-sv .sgw-sv'), 'Save this find');
   assert.ok(b.querySelector('.pp-fp .sgw-fp'), 'Fair price?');
   assert.deepEqual(p.items, [], 'nothing fetched: it is drawn from the card');

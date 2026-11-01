@@ -137,7 +137,7 @@ test('the new script is ES5 and has no Liquid openers', () => {
   const src = HTML.slice(i, j);
   assert.doesNotMatch(src, /\b(let|const|class)\s|=>|`|\?\.|\basync\b|\bawait\b/);
   assert.doesNotMatch(src, /\{%|\{\{/);
-  { const v = /var PROWL_VERSION='v(\d+)\.(\d+)';/.exec(HTML); assert.ok(v && Number(v[1]) * 100 + Number(v[2]) >= 838, 'v8.38 or later'); }   /* v8.39: not pinned, so later pages pass */
+  assert.match(HTML, /var PROWL_VERSION='v8\.(3[89]|[4-9][0-9])';/, 'v8.38 or later');
 });
 
 /* ---------- review fixes ---------- */
