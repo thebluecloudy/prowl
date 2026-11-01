@@ -21,6 +21,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v212: 2026-11-01. 14-day Pro trial: members who sign up from PRO_TRIAL_FROM get Prowl Pro free for PRO_TRIAL_DAYS
+ *         (default 14, "0" = off) from sign-up, no card; then Free with every hunt kept. Counts as hadPro. /alerts/status
+ *         says trialEnded; the daily email warns in the last 3 days. A paid plan, a gift or PRO_EMAILS wins over it.
  *   v211: 2026-11-01. Shopify catalog diagnostics: the token exchange keeps Shopify's error code and description (id and
  *         secret cut out; memory + KV shopcat:last), tries HTTP Basic once when the JSON body is refused as a bad client,
  *         keys the 5-minute wait to the credentials; the admin's Diagnose card (GET /admin/api/shopcat, POST
@@ -751,7 +754,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v211";
+const WORKER_VERSION = "v212";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4504,6 +4507,25 @@ async function alFreePro(env, email) {
   const [off, gift] = await Promise.all([kvGet(env, "giftoff:" + gh, null), kvGet(env, "gift:" + gh, null)]);
   return giftPro(proListHas(env, email), !!off, gift, gift ? alNow(env).day : "");
 }
+/* v212: the 14-day Pro trial (a "reverse trial"). Every member who signs up on or after PRO_TRIAL_FROM gets Prowl Pro
+   free for PRO_TRIAL_DAYS days (default 14; "0" turns it off) from their sign-up day, no card and no checkout. Then they
+   go back to Free with every hunt kept, and Free alerts the first ALERT_FREE_HUNTS. It counts as their free time
+   (hadPro), so the shop then offers the paid plan, not the PROWLMONTH free month. A paid plan, a gift or the PRO_EMAILS
+   list always wins over it. sub.trialEnds keeps the end day so the page can say the trial ended. */
+const PRO_TRIAL_FROM = "2026-11-01";
+function proTrialDays(env) { const n = parseInt(env && env.PRO_TRIAL_DAYS != null ? env.PRO_TRIAL_DAYS : "14", 10); return n >= 0 && n <= 60 ? n : 14; }
+/* The trial's end (ISO time), or "" when this member never gets one. Pure, so it can be tested. */
+function proTrialEnds(env, sub) {
+  const days = proTrialDays(env), made = Date.parse((sub && sub.created) || "");
+  if (!days || !isFinite(made) || String(sub.created).slice(0, 10) < PRO_TRIAL_FROM) return "";
+  return new Date(made + days * 86400000).toISOString();
+}
+/* The trial plan while it runs, else null. nowMs for tests. */
+function proTrialPlan(env, sub, nowMs) {
+  const ends = proTrialEnds(env, sub), now = nowMs == null ? Date.now() : nowMs;
+  if (!ends || Date.parse(ends) <= now) return null;
+  return { pro: true, via: "trial", plan: { via: "trial", trial: true, ends: ends, daysLeft: Math.max(1, Math.ceil((Date.parse(ends) - now) / 86400000)) } };
+}
 async function alPro(env, email, force) {
   /* v78: free Pro comes first; the cached shop answer is read in the same round of KV reads */
   const [free, c] = await Promise.all([alFreePro(env, email), force ? null : kvGet(env, "pro:" + email, null)]);
@@ -4633,6 +4655,14 @@ async function alProSet(env, sub, force) {
     const old = sub.plan && typeof sub.plan === "object" ? (sub.plan.via === "order" && sub.plan.trial ? sub.plan : sub.plan.shop) : null;
     if (old && old.trial && old.order && Date.parse(old.renews || "") > Date.now())
       p = Object.assign({}, p, { plan: Object.assign({}, p.plan, { shop: { trial: true, order: String(old.order), renews: String(old.renews), next: String(old.next || "7.00") } }) });
+  }
+  /* v212: no paid plan and no free Pro: the 14-day trial while it runs, even when the shop cannot be asked */
+  if (!p.pro) {
+    const t = proTrialPlan(env, sub);
+    if (t) p = t;
+    else if (sub.plan && sub.plan.via === "trial") { if (p.pro === null) p = { pro: false, via: "trial ended" }; }
+    const te = proTrialEnds(env, sub);
+    if (te) sub.trialEnds = te;
   }
   if (p.pro !== null) sub.pro = p.pro;
   if (p.pro !== null) sub.plan = p.plan || null;
@@ -5620,7 +5650,12 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test, est) {
   const up = (!sub.pro && all > free) ? '<tr><td style="padding:22px 12px 0"><div style="border:2px solid #8a4b1f;border-radius:10px;padding:14px;font:14px/1.5 Arial,sans-serif;color:#2b2118">' +
     '<b>You are on the free plan:</b> alerts for your first ' + free + ' hunts. You have ' + all + '. ' +
     '<a href="' + alEsc(alUpgradeUrl(sub)) + '" style="color:#8a4b1f;font-weight:bold">Get all ' + Math.min(all, AL_MAX_HUNTS) + ' with Prowl Pro' + (sub.hadPro ? ' · $7/month' : ' · first month free') + '</a></div></td></tr>' : '';
-  return alShell(env, inner + up, alWhy(sub), links);
+  /* v212: the last 3 days of the 14-day trial: say when it ends and what Free keeps */
+  const tp = sub.pro && sub.plan && sub.plan.via === "trial" ? sub.plan : null, tleft = tp ? Math.ceil((Date.parse(tp.ends || "") - Date.now()) / 86400000) : 0;
+  const trialUp = tp && tleft > 0 && tleft <= 3 ? '<tr><td style="padding:22px 12px 0"><div style="border:2px solid #8a4b1f;border-radius:10px;padding:14px;font:14px/1.5 Arial,sans-serif;color:#2b2118">' +
+    '<b>Your free Prowl Pro ends ' + (tleft === 1 ? 'tomorrow' : 'in ' + tleft + ' days') + '.</b> After that this email covers your first ' + free + ' hunts' + (all > free ? ' (you have ' + all + ')' : '') + '. Your hunts stay saved. ' +
+    '<a href="' + alEsc(alUpgradeUrl(sub)) + '" style="color:#8a4b1f;font-weight:bold">Keep Pro · $7/month</a></div></td></tr>' : '';
+  return alShell(env, inner + up + trialUp, alWhy(sub), links);
 }
 /* v56: " · local pickup within 50 mi of 48375" after a local hunt's heading */
 function alLocalNote(sub, h) {
@@ -7186,7 +7221,7 @@ async function alStatus(request, env, url, origin) {
   await alProSet(env, sub, fresh);
   if (was !== !!sub.pro) { sub.done = []; await alMerge(env, sub, ["pro", "plan", "proDay", "done"]); }
   const pl = sub.pro ? (sub.plan || { via: "unknown" }) : null;
-  return json({ on: true, hunts: sub.hunts, hour: alSlotHour(env, sub), defHour: alHour(env), tz: alPrefs(sub).tz || AL_TZ, last: sub.sent || "", pro: !!sub.pro, free: alFree(env, sub), freeWeekly: alFreeWeekly(sub), mail: sub.mail === "off" ? "off" : "on", hadPro: !!sub.hadPro, active: alActive(env, sub).length, proUrl: PRO_URL,
+  return json({ on: true, hunts: sub.hunts, hour: alSlotHour(env, sub), defHour: alHour(env), tz: alPrefs(sub).tz || AL_TZ, last: sub.sent || "", pro: !!sub.pro, free: alFree(env, sub), freeWeekly: alFreeWeekly(sub), mail: sub.mail === "off" ? "off" : "on", hadPro: !!sub.hadPro, trialEnded: !sub.pro && sub.trialEnds && Date.parse(sub.trialEnds) <= Date.now() ? String(sub.trialEnds).slice(0, 10) : "", active: alActive(env, sub).length, proUrl: PRO_URL,
     price: "7.00", plan: pl, manageUrl: "https://www.owlandtwigvintage.com/account", prefs: alPrefs(sub), email: sub.email,
     moving: (await kvGet(env, "mvf:" + email, null) || {}).to || "",   /* v54 */
     quarries: (sub.quarries && typeof sub.quarries === "object") ? sub.quarries : {}, quarryMax: pounceMax(sub), quarryMatches: await kvGet(env, "gm:" + email, []),
