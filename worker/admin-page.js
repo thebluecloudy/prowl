@@ -918,7 +918,9 @@ function shcBox() {
   });
   load();
   return h("div", [sbox, h("div", { class: "fbt" }, [ti, btn]),
-    h("p", { class: "hint", text: "Runs one token exchange (past the 5-minute wait after a failure) and one search on Shopify\u2019s Global Catalog now. Nothing is kept." }), tbox,
+    h("p", { class: "hint", text: "Runs one token exchange (past the 5-minute wait after a failure) and one search on Shopify\u2019s Global Catalog now; keyless when there is no key or Shopify refuses it. Nothing is kept." }), tbox,
+    /* v212: the two values, and where they are */
+    h("p", { class: "hint", text: "The key: Dev Dashboard \u203a Catalogs \u203a Get an API key (or your existing key) \u203a copy its Client ID into SHOPIFY_CATALOG_CLIENT_ID and its Client secret into SHOPIFY_CATALOG_CLIENT_SECRET. Shopify\u2019s docs name no other credential for the Catalogs API; an Agent identity\u2019s key alone is not a client ID and secret pair." }),
     h("details", [h("summary", { text: "If the exchange fails" }), h("ul", { class: "samp" }, [
       "The client ID and the secret are swapped: SHOPIFY_CATALOG_CLIENT_ID takes the Client ID, SHOPIFY_CATALOG_CLIENT_SECRET the secret.",
       "Extra spaces, quotes or a line break were pasted with a value (Cloudflare \u203a Workers \u203a prowl \u203a Settings \u203a Variables and secrets: paste the value alone).",
@@ -934,7 +936,13 @@ function shcShapeText(name, x) {
 /* review fix: each exchange attempt (the JSON body, then HTTP Basic), with Shopify's answer to each */
 function shcAttemptsView(list) {
   return h("ul", { class: "samp" }, list.map((a, i) => h("li", { class: "small", text: (i ? "Then " : "Tried ") + (SHC_METHOD[a.method] || a.method || "?") + ": " +
-    (a.status === 200 && !a.error ? "token received" : (a.status ? a.status : "no answer") + (a.error ? " " + a.error : "") + (a.desc ? " \u2014 " + a.desc : "")) })));
+    (a.status === 200 && !a.error ? "token received" : (a.status ? a.status : "no answer") + (a.error ? " " + a.error : "") + (a.desc ? " \u2014 " + a.desc : "") + shcEdge(a)) })));
+}
+/* v212: who answered a refusal: a bare 403 from Cloudflare's edge (a cf-ray, server cloudflare) reads as a block of the
+   Worker's request, not a refused key */
+function shcEdge(a) {
+  if (!a || !(a.server || a.ray)) return "";
+  return " (answered by " + (a.server || "?") + (a.ray ? ", with a cf-ray" : "") + (a.status === 403 && a.error === "not JSON" ? ": looks like an edge block of the Worker\u2019s request, not a refused key" : "") + ")";
 }
 function shcStatusView() {
   const X = S.shc;
@@ -942,7 +950,9 @@ function shcStatusView() {
   if (X.error && X.on === undefined) return note("bad", "Could not load the Shopify catalog status. " + X.error);
   const L = X.last, sh = X.shape || {};
   const rows = [
-    fact("Live listings", X.on ? st("good", "On (both secrets set)") : st("warning", "Off (a secret is missing)")),
+    fact("Live listings", X.on ? st("good", "On, with the key (both secrets set)") : st("good", "On, keyless (no key set)")),
+    fact("Last search", X.search ? (X.search.mode === "token" ? "With the key" : "Keyless") + " \u00b7 " + (X.search.status || "no answer") + " \u00b7 " + fmtWhen(X.search.at) : "None yet in this worker"),   /* v212 */
+    fact("Saved catalog", X.catalogId ? X.catalogId : "None (the whole Global Catalog)"),
     fact("Last exchange", L && L.at ? fmtWhen(L.at) : "None yet in this worker"),
     fact("Result", !L ? "\u2014" : L.ok ? st("good", "Token received") : st("critical", "Failed" + (L.status ? " (" + L.status + ")" : ""))),
     fact("Shopify's error", L && !L.ok ? (L.error || "\u2014") : "\u2014"),
@@ -960,17 +970,20 @@ function shcTestView() {
   if (!X) return null;
   if (X.busy) return loading("Asking Shopify for a token, then searching\u2026");
   if (X.error && !X.exchange) return note("bad", "Shopify test failed. " + X.error);
-  if (X.on === false) return note("warn", "Live Shopify listings are off: set SHOPIFY_CATALOG_CLIENT_ID and SHOPIFY_CATALOG_CLIENT_SECRET in the worker.");
-  const E = X.exchange || {}, R = X.search;
-  const out = [h("h3", { class: "small", text: "Token: " + (E.ok ? "received" + (E.method ? " (" + (SHC_METHOD[E.method] || E.method) + ")" : "") : "refused" + (E.status ? " (" + E.status + ")" : "") + (E.error ? ": " + E.error : "")) })];
-  if (!E.ok && E.desc) out.push(h("p", { class: "small", text: "Shopify said: " + E.desc }));
-  if (E.attempts && E.attempts.length > 1) out.push(shcAttemptsView(E.attempts));
+  const E = X.exchange, R = X.search, out = [];
+  /* v212: no key is not an error any more: the search runs keyless */
+  if (!E) out.push(h("h3", { class: "small", text: "Token: no key set (searching keyless)" }));
+  else {
+    out.push(h("h3", { class: "small", text: "Token: " + (E.ok ? "received" + (E.method ? " (" + (SHC_METHOD[E.method] || E.method) + ")" : "") : "refused" + (E.status ? " (" + E.status + ")" : "") + (E.error ? ": " + E.error : "") + " (searching keyless)") }));
+    if (!E.ok && E.desc) out.push(h("p", { class: "small", text: "Shopify said: " + E.desc }));
+    if (E.attempts && E.attempts.length > 1) out.push(shcAttemptsView(E.attempts));
+  }
   if (R) {
     if (R.ok) {
-      out.push(h("h3", { class: "small", text: "Search \u201c" + (X.term || "") + "\u201d: " + R.count + " item" + (R.count === 1 ? "" : "s") + " at " + fmtTime(new Date(X.at)) }));
+      out.push(h("h3", { class: "small", text: "Search \u201c" + (X.term || "") + "\u201d (" + (R.mode === "token" ? "with the key" : "keyless") + (R.catalog ? ", saved catalog" : "") + "): " + R.count + " item" + (R.count === 1 ? "" : "s") + " at " + fmtTime(new Date(X.at)) }));
       if (R.titles && R.titles.length) out.push(h("ul", { class: "samp" }, R.titles.map(t => h("li", { class: "small", text: t }))));
     } else if (R.rpc) out.push(note("bad", "Search error (JSON-RPC " + R.rpc.code + "): " + R.rpc.message + (R.rpc.data ? " " + R.rpc.data : "")));
-    else out.push(note("bad", "Search failed" + (R.status ? " (" + R.status + ")" : "") + ": " + (R.error || "no answer")));
+    else out.push(note("bad", "Search failed" + (R.mode ? " (" + (R.mode === "token" ? "with the key" : "keyless") + ")" : "") + (R.status ? " (" + R.status + ")" : "") + ": " + (R.error || "no answer") + shcEdge(R)));
   }
   return h("div", { class: "more" }, out);
 }

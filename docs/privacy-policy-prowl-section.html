@@ -10,7 +10,8 @@
   2026-10-28 (worker/index.js, worker/saved.js, worker/trip.js, worker/push.js, worker/metrics.js, page/prowl.html,
   extension/). Re-check it if Prowl's data handling changes. The Facebook Marketplace finds bullets (Prowl Alerts, Who
   else, How long, What it does not remove) were added against worker v200 / page v8.26 on 2026-10-31 (worker/fb.js).
-  The "Shopify stores" bullet (Searching) was added against worker v210 / page v8.38 on 2026-11-01 (worker/shopcat.js).
+  The "Shopify stores" bullet (Searching) was added against worker v210 / page v8.38 on 2026-11-01 (worker/shopcat.js),
+  and reworded for worker v212 / page v8.40 (stores off Shopify too, photos from their own hosts).
   Notes for the next check:
   - v210: live Shopify listings (worker/shopcat.js, GET /shop-live). Sent to Shopify's Global Catalog
     (catalog.shopify.com): the hunt words (shopcatTerm), "US", available, ships_to US, condition secondhand (then none),
@@ -18,6 +19,10 @@
     buyer signals). Nothing kept: no KV, no cache, Cache-Control no-store; the token is in isolate memory only. Images
     load from cdn.shopify.com in the browser. Per-IP daily counter as the other usage limits (shopcat:<ip key>). Off
     (nothing sent) without SHOPIFY_CATALOG_CLIENT_ID and SHOPIFY_CATALOG_CLIENT_SECRET.
+  - v212: no longer off without the key: the same request goes keyless (no token at all), so the hunt words still go to
+    Shopify. The saved catalog's id (SHOPIFY_CATALOG_ID) goes with it. The worker sends its own User-Agent
+    ("Prowl/212 ..."), never the member's. The catalog now returns stores off Shopify too: their photos load in the
+    browser from those stores' own hosts (any https host), never through the worker.
   - Delete my Prowl Alerts account runs alPurge (worker/index.js). Since v181 it also covers every earlier address
     (prev: saved finds and photos, acct:, tripinv:) and the trips (tripsForget: the member leaves each trip, a trip they
     organized passes to the next member or is deleted when nobody is left, their trip finds and photos go, trips:<id>
@@ -118,7 +123,7 @@
 <h3>Searching</h3>
 <ul>
   <li><b>Search words.</b> When you search or open a hunt, the words you type are sent to our service, which looks them up for you on marketplaces such as ShopGoodwill, The Salvation Army, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed, HiBid and Craigslist and returns the listings. Those lookups are made from our servers, not from your device. eBay and Etsy are asked through their official services. Results are kept for a short time in a cache by search words, not tied to you.</li>
-  <li><b>Shopify stores.</b> When you open a hunt, our service also sends its words to Shopify's Global Catalog, Shopify's official search across the stores that sell on Shopify, asking for pieces in stock that ship to the US, used or vintage first. Only the hunt's words, the country and those filters are sent: never your name, email address, sign-in or IP address. Shopify's results are not stored by us. The listings' photos load in your browser straight from Shopify, and when you open one your browser goes to that store under its own policy.</li>
+  <li><b>Shopify and other stores.</b> When you open a hunt, our service also sends its words to Shopify's Global Catalog, Shopify's official search across the stores that sell on Shopify and some stores elsewhere, asking for pieces in stock that ship to the US, used or vintage first. Only the hunt's words, the country and those filters are sent: never your name, email address, sign-in or IP address. Shopify's results are not stored by us. The listings' photos load in your browser straight from Shopify or from the store that lists them, and when you open one your browser goes to that store under its own policy.</li>
   <li><b>Links that open a marketplace.</b> Buttons that open a marketplace in a new tab (such as Search All) send your search words to that site directly from your browser, under that site's own policy.</li>
   <li><b>Affiliate links.</b> Some marketplace links carry our affiliate code, and we may earn a commission if you buy. The note at the bottom of the Prowl page names the marketplaces where that is the case.</li>
   <li><b>Anonymous counts.</b> To learn what collectors look for, we keep daily counts of search words, Field Guide subjects and road trip destinations: how many different visitors used each and how many times. To count a visitor once, we use a one-way code made from your IP address and the date. It changes every day and is deleted within three days. The counts are kept for up to 60 days. They are never linked to your name, email address or account. We skip words that look like an email address, a web link or a long number, and destinations that start with a house number.</li>

@@ -46,7 +46,7 @@ function fastRetry(win) {
   win.setTimeout = (fn, ms, ...a) => (ms === 120100 ? st(() => { off += ms; fn(...a); }, 30) : st(fn, ms, ...a));
   win.Date.now = () => now() + off;
 }
-const strip = (p) => p.$$('#otp-sgw .sgw-sub').find((s) => /Live from Shopify stores/.test(s.textContent));
+const strip = (p) => p.$$('#otp-sgw .sgw-sub').find((s) => /Live from Shopify (and other )?stores/.test(s.textContent));   /* v8.40: "and other stores" */
 
 test('the strip: Shopify cards with photo, title, price, shop name and a new-tab noopener link to the product', async () => {
   const f = shopFetch(LIVE);
@@ -69,7 +69,7 @@ test('the strip: Shopify cards with photo, title, price, shop name and a new-tab
   assert.match(cards[0].querySelector('.sgw-m').textContent, /^Shopify · Debra Hall Lifestyle/);
   assert.equal(cards[0].getAttribute('data-s'), 'shopify');
   assert.equal(cards[1].querySelector('.sgw-p').textContent, '$1,250.50');
-  assert.equal(cards[1].querySelector('img').getAttribute('src'), null, 'a photo off Shopify’s CDN is not shown');
+  assert.equal(cards[1].querySelector('img').getAttribute('src'), 'https://evil.example/x.jpg', 'v8.40: any https photo, straight from its host');
   const jump = p.$$('#otp-sgw .lv-j').map((b) => b.textContent);
   assert.ok(jump.indexOf('Shopify 2') !== -1, jump.join('|'));
   assert.equal(p.errors.length, 0, String(p.errors[0] || ''));
@@ -113,12 +113,12 @@ test('a failed ask (500, 429, unreadable) shows nothing but a busy note for 429;
   const e1 = shopFetch({ on: true, term: 'ceramic panther', items: [], why: { raw: 7, words: 0, own: 0 } });
   const p1 = await home(e1);
   await waitFor(() => strip(p1));
-  assert.match(strip(p1).nextElementSibling.textContent, /Shopify stores had 7 for this hunt, none with all your words\. Try fewer words\./);
+  assert.match(strip(p1).nextElementSibling.textContent, /Shopify and other stores had 7 for this hunt, none with all your words\. Try fewer words\./);
   await p1.close();
   const e2 = shopFetch({ on: true, term: 'ceramic panther', items: [], why: { raw: 0, words: 0, own: 0 } });
   const p2 = await home(e2);
   await waitFor(() => strip(p2));
-  assert.match(strip(p2).nextElementSibling.textContent, /Nothing on Shopify stores for this hunt right now\./);
+  assert.match(strip(p2).nextElementSibling.textContent, /Nothing on Shopify or other stores for this hunt right now\./);
   await p2.close();
 });
 

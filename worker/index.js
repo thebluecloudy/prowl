@@ -14,13 +14,17 @@
  *   GET /poshsold?q=ceramic+panther -> Poshmark sold listings, each with sold:"YYYY-MM-DD" (v58)
  *   GET /depop?q=ceramic+panther    -> same shape, from Depop's search page data (v59)
  *   GET /shop-live?term=ceramic+panther -> { on, term, items:[{title,price,currency,img,shop,url,secondhand}] } from Shopify's
- *       Global Catalog, or { off } while its secrets are not set (v210, shopcat.js)
+ *       Global Catalog (v210, shopcat.js; v212: keyless when the key is missing or refused, Matt's saved catalog first)
  *   GET /vinted?q=ceramic+panther   -> same shape, from Vinted's catalog API with the cookie its home page sets (v60)
  *   GET /hibid?q=ceramic+panther -> same shape, parsed from hibid.com/lots. Built and
  *       tested offline, but hibid.com's WAF answers Workers with a 403 (2026-09-25),
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v212: 2026-11-01. The Shopify strip searches keyless (no Authorization, the agent profile alone) when the key is
+ *         missing, refused or waiting; catalog.catalog_id (SHOPIFY_CATALOG_ID, Matt's saved catalog by default) then a
+ *         fill from the whole catalog; off-Shopify offers kept (offShopify, domain); a User-Agent on every Shopify call;
+ *         a non-JSON refusal keeps a snippet and who answered (server, cf-ray) and a bare 403 is retried with Basic.
  *   v211: 2026-11-01. Shopify catalog diagnostics: the token exchange keeps Shopify's error code and description (id and
  *         secret cut out; memory + KV shopcat:last), tries HTTP Basic once when the JSON body is refused as a bad client,
  *         keys the 5-minute wait to the credentials; the admin's Diagnose card (GET /admin/api/shopcat, POST
@@ -751,7 +755,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v211";
+const WORKER_VERSION = "v212";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
