@@ -4185,7 +4185,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.37';
+var PROWL_VERSION='v8.38';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -6854,7 +6854,8 @@ function sgwCard(it,hunt,bare){
      box even once scrolled into view. A handful of thumbnails is cheap. */
   var ph=(typeof PHOTO!=='undefined'&&PHOTO[it.url])||it.image;
   var img=ph?'<img src="'+esc(ph)+'" alt="" decoding="async">':'<img alt="" data-np="1">';
-  var m=LIVE_NAME[it.src]||'ShopGoodwill';
+  var m=LIVE_NAME[it.src]||(it.src==='shopify'?'Shopify':'ShopGoodwill');   /* v8.38 */
+  if(it.src==='shopify'&&it.shop)m+=' · '+esc(it.shop);
   if(typeof it.bids==='number')m+=' · '+esc(String(it.bids))+' bid'+(it.bids===1?'':'s');
   if(it.time_left)m+=' · '+esc(it.time_left)+' left';
   if(it.src==='facebook'&&it.ships)m+=' · Ships';   /* v8.27 */
@@ -7479,10 +7480,10 @@ function relTerms(t){
   for(i=0;i<pool.length;i++)if(lw.some(function(x){return (' '+String(pool[i]).toLowerCase()+' ').indexOf(' '+x+' ')>-1}))add(pool[i]);
   return out;
 }
-function liveEmptyCard(t,fb){   /* fb: the Facebook strip is above (v8.26) */
+function liveEmptyCard(t,fb,shp){   /* fb: the Facebook strip is above (v8.26); shp: Shopify listings are above (v8.38 review fix) */
   var links='',i,m,u;
   for(i=0;i<EMPTY_LINKS.length;i++){if(fb&&EMPTY_LINKS[i]==='facebook')continue;m=mb(EMPTY_LINKS[i]);if(!m)continue;   /* v6.65: fb, the Facebook strip is above */try{u=m.u(t)}catch(e){u=''}if(!/^https:\/\//.test(u)&&u.charAt(0)!=='/')continue;links+=(links?' · ':'')+'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(m.n)+'</a>'}
-  return '<div class="sgw-empty"><p class="sgw-empty-h">'+(fb?'Nothing on Goodwill or the other live sites yet for':'Nothing live yet for')+' <b>“'+esc(t)+'”</b>.</p>'+
+  return '<div class="sgw-empty"><p class="sgw-empty-h">'+(fb||shp?'Nothing on Goodwill or the other live sites yet for':'Nothing live yet for')+' <b>“'+esc(t)+'”</b>.</p>'+
     '<p>Rare pieces come and go. Prowl can keep watching and email you when one is listed.</p>'+
     (relTerms(t).length?'<p class="sgw-rel-h">Or try</p><div class="bolo-r">'+relTerms(t).map(boloChip).join('')+'</div>':'')+   /* v7.23; v7.82: first, a search to try now */
     '<button type="button" class="b" data-empty="watch" data-t="'+esc(t)+'">Email me when it shows up</button>'+   /* v7.81: outlined; the card's one orange button is Continue the full hunt (the design brief) */
@@ -7607,6 +7608,69 @@ function fbBlock(t){
   var note=msg?'<p class="sgw-note">'+esc(msg)+(rows&&!fresh&&!late?' Earlier this week:':'')+'</p>':'';
   return head+note+(rows?'<div class="sgw-grid">'+rows+'</div>':'');
 }
+/* v8.38 (worker v210): live Shopify listings. GET /shop-live asks Shopify's Global Catalog (every Shopify store) for the
+   hunt's words, secondhand first, ships to the US, in stock, and gives up to 12 with every word of the hunt; Owl & Twig's
+   own pieces are left out (Found on the Prowl has them). Only the hunt is sent, no sign-in. Photos come straight from
+   Shopify's CDN; links open the product on its store, as Shopify gave them. { off: true } (no Catalog key yet) hides the
+   strip for the visit; a failed ask shows nothing (a 429 says busy) and is asked again SHP_RETRY later on a timer
+   (shpRetry). Shopify's rule is no caching of results: an answer is kept in memory only SHP_FRESH (a minute), just so
+   the redraws of one view do not ask again. Everyone, no Pro. */
+var SHP={cache:Object.create(null),busy:Object.create(null),rt:Object.create(null),rn:Object.create(null),off:false},SHP_FRESH=60000,SHP_RETRY=2*60000;   /* review fix: SHP_FRESH was 10 minutes */
+function shpKey(t){return cutWords(String(t||''),80).toLowerCase()}
+function shpPrice(p,c){
+  if(typeof p!=='number'||!isFinite(p)||p<0)return '';
+  c=String(c||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,3);
+  var s=Math.round(p*100)%100?p.toFixed(2):String(Math.round(p));
+  s=s.replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  return !c||c==='USD'?'$'+s:s+' '+c;
+}
+function shpClean(a){
+  var out=[],i,x,u;
+  if(!Array.isArray(a))return out;
+  for(i=0;i<a.length&&out.length<12;i++){
+    x=a[i];if(!x||typeof x.title!=='string'||!x.title)continue;
+    u=String(x.url||'');if(!/^https:\/\/[^\s"'<>]+$/.test(u)||/^https:\/\/(www\.)?owlandtwigvintage\.com([\/?#]|$)/i.test(u))continue;
+    out.push({title:x.title.slice(0,160),price:shpPrice(x.price,x.currency),url:u,src:'shopify',shop:typeof x.shop==='string'?x.shop.slice(0,60):'',
+      image:typeof x.img==='string'&&/^https:\/\/cdn\.shopify\.com\/[^\s"'<>]+$/.test(x.img)?x.img:''});
+  }
+  return out;
+}
+function shpFetch(t){
+  var k=shpKey(t);
+  if(!k||SHP.off||SHP.busy[k]||typeof fetch!=='function')return;
+  var c=SHP.cache[k];if(c&&Date.now()-c.at<(c.fail?SHP_RETRY:SHP_FRESH))return;
+  SHP.busy[k]=1;
+  fetch(SGW_API+'shop-live?term='+encodeURIComponent(k)+'&max=12',{cache:'no-store'}).then(function(r){
+    return r.json().then(function(j){return {st:r.status,ok:r.ok,j:j||{}}},function(){return {st:r.status,ok:false,j:{}}});
+  }).then(function(v){
+    SHP.busy[k]=0;
+    if(v.j.off===true){SHP.off=true;return}
+    if(v.j.on===true&&v.ok){SHP.cache[k]={at:Date.now(),items:shpClean(v.j.items),why:v.j.why&&typeof v.j.why==='object'?v.j.why:null};SHP.rn[k]=0}
+    else{SHP.cache[k]={at:Date.now(),fail:1,busy:v.j.on===true&&v.st===429,items:[]};shpRetry(k)}
+    if(v.j.on===true&&shpKey(sgwCurTerm())===k)rSGW();
+  },function(){SHP.busy[k]=0;SHP.cache[k]={at:Date.now(),fail:1,items:[]};shpRetry(k)});
+}
+/* review fix (as fbRetry): a failed or busy answer is asked again SHP_RETRY later even if nothing redraws the hunt, one
+   timer a hunt, redrawing only if that hunt is still open, 5 in a row at most */
+function shpRetry(k){
+  if(SHP.rt[k]||(SHP.rn[k]|0)>=5)return;
+  SHP.rn[k]=(SHP.rn[k]|0)+1;
+  SHP.rt[k]=setTimeout(function(){SHP.rt[k]=0;if(shpKey(sgwCurTerm())===k)rSGW()},SHP_RETRY+100);
+}
+function shpHas(t){var c=SHP.cache[shpKey(t)];return !SHP.off&&!!(c&&!c.fail&&c.items.length)}
+function shpWhy(w){
+  var raw=w&&typeof w.raw==='number'&&w.raw>0?Math.floor(w.raw):0;
+  return raw&&!(w.words>0)?'Shopify stores had '+raw+' for this hunt, none with all your words. Try fewer words.':'Nothing on Shopify stores for this hunt right now.';
+}
+function shpBlock(t){
+  var c=SHP.cache[shpKey(t)];
+  if(SHP.off||!c||(c.fail&&!c.busy))return '';
+  var head='<div class="sgw-sub"><span class="sgw-live sgw-shp">Live from Shopify stores</span>',rows='',i;
+  if(c.busy)return head+'</div><p class="sgw-note">Shopify stores are busy right now. Prowl looks again in a couple of minutes.</p>';
+  if(!c.items.length)return head+'</div><p class="sgw-note">'+esc(shpWhy(c.why))+'</p>';
+  for(i=0;i<c.items.length;i++)rows+=sgwCard(c.items[i],t);
+  return head+'<span class="sgw-upd">'+c.items.length+' live now</span></div><div class="sgw-grid">'+rows+'</div>';
+}
 /* v8.27 (worker v203): a Pro member picks, per hunt, where Facebook looks: near their ZIP (the local-pickup radius;
    v8.31 / worker v204: pickup only) or all of the USA (v8.36 / worker v209: every listing, pickup or shipping, at any distance from Facebook's widest search, plus the nationwide ships search; prefs().fbusa, lowercased hunt names, saved with the other email prefs). It
    takes effect from that hunt's next Facebook turn, so nothing is fetched again. The owner key alone gets no control. */
@@ -7638,16 +7702,17 @@ function sgwCont(t){
 function liveLine(t){
   var sm=liveSummary(t),ts=slog()[t.toLowerCase()],a=ts?ago(ts):'',run=ts?'full hunt run '+esc(a.charAt(0).toLowerCase()+a.slice(1)):'full hunt not run yet',st,w;
   if(!sm.done){st='wait';w='Checking live listings'+(sm.n?' · '+sm.n+' so far':'')+'…'}
-  else if(sm.n){st='on';w='<b>Live now</b> · '+sm.n+' listing'+(sm.n===1?'':'s')}
+  else if(sm.n||shpHas(t)){var n=sm.n+(shpHas(t)?SHP.cache[shpKey(t)].items.length:0);st='on';w='<b>Live now</b> · '+n+' listing'+(n===1?'':'s')}   /* review fix: Shopify's count too */
   else{st='off';w='<b>Nothing live right now</b>'}
   return '<p class="sgw-status sgw-st-'+st+'" role="status"><i aria-hidden="true"></i><span>'+w+' · '+run+'</span></p>';
 }
 function sgwBody(){var t=sgwCurTerm();if(t&&sgw.terms.length)huntFetch(t,function(){huntPaint(t)});return (t&&sgw.terms.length?liveLine(t)+compsRow(t)+huntBox(t)+viewSw():'')+sgwBody0(t)+sgwCont(sgw.terms.length?t:'')}   /* v7.07: Best picks for the chosen hunt pill too */
 function sgwBody0(t){
   if(t)fbFetch(t);   /* v8.26 */
+  if(t&&sgw.terms.length)shpFetch(t);   /* v8.38 */
   if(!sgw.terms.length)return '<p class="sgw-note">Type something you hunt into the box above. It is saved to your hunts, locked for Daily, and checked on ShopGoodwill, eBay, Chairish, Etsy, Poshmark, Vinted and Grailed right away.</p>';
   var sm=liveSummary(t);
-  if(sm.done&&!sm.n&&!sm.err1&&!sm.err2)return fbHas(t)?fbBlock(t)+liveEmptyCard(t,1):liveEmptyCard(t)+fbBlock(t);   /* v6.33; v8.26: Facebook finds first when there are some */
+  if(sm.done&&!sm.n&&!sm.err1&&!sm.err2){var sh=shpHas(t);return (sh?shpBlock(t):'')+(fbHas(t)?fbBlock(t)+liveEmptyCard(t,1):liveEmptyCard(t,0,sh)+fbBlock(t))+(sh?'':shpBlock(t))}   /* v6.33; v8.26: Facebook finds first when there are some; v8.38: Shopify listings first too, else its note at the foot */
   if(sm.done&&!sm.n&&sm.err1===sm.count)return '<div class="sgw-empty"><p class="sgw-empty-h">Prowl\u2019s live results are not reaching you.</p><p>Check your connection. If you use a content or ad blocker, allow <b>prowl.thebluecloud.workers.dev</b>. More places to look still searches every site directly.</p></div>';
   /* v7.32 (the owner: "MC Escher ... needs to get to the hunt faster"): marketplaces with listings come first, the
      ones with nothing (or still asking) after them, so "Nothing live on ShopGoodwill" no longer sits on top */
@@ -7662,6 +7727,8 @@ function sgwBody0(t){
   }
   one('ShopGoodwill',sgw.cache[k],sgw.busy===t,fbHas(t)?fbBlock(t):'');   /* v8.26: Facebook under Goodwill */
   for(i=0;i<LIVE_SRC.length;i++){s=LIVE_SRC[i];one(s.name,lv[s.id].cache[k],lvBusy(s.id,t),'')}
+  if(shpHas(t)){jump.push('<button type="button" class="lv-j" data-lvj="'+jump.length+'">Shopify <b>'+SHP.cache[shpKey(t)].items.length+'</b></button>');html+=shpBlock(t).replace('<div class="sgw-sub">','<div class="sgw-sub" data-lvb="'+(jump.length-1)+'">')}   /* v8.38 */
+  else html+=shpBlock(t);
   if(!fbHas(t))html+=fbBlock(t);
   return (jump.length>1?'<nav class="lv-jump" aria-label="Jump to a marketplace">'+jump.join('')+'</nav>':'')+html+errs+
     (look.length||none.length?'<div class="lv-rest">'+(look.length?'<p class="lv-look">'+FLY3+'Looking on '+lvList(look)+'\u2026</p>':'')+
