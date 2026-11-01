@@ -89,7 +89,7 @@ test('at most five kept and three shown; a typed place is text, never markup; a 
 
 test('sentence case: Near me\'s tabs and the trip\'s buttons', async () => {
   const { p } = await roadTrip();
-  assert.deepEqual(p.$$('#otp-near .tab').filter((b) => !b.hidden).map((b) => b.textContent), ['Around you', 'Road trip', 'Trips']);
+  assert.deepEqual(p.$$('#otp-near .tab').filter((b) => !b.hidden).map((b) => b.textContent), ['Around you', 'Road trip', 'Trips', 'Estate sales']);   /* v8.45: Estate sales shows for everyone */
   await build(p, 'Blenko');
   assert.deepEqual([p.$('#otp-nrStart'), p.$('#otp-nrFootMore'), p.$('#otp-nrMaps'), p.$('#otp-nrApple a'), p.$('#otp-nrHere'), p.$('#otp-nrShare')].map((e) => e.textContent),
     ['Start in Maps', '⋯ More', 'Google Maps', 'Apple Maps', 'Rebuild from here', 'Share']);

@@ -6,7 +6,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.45 /
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.45** | 360,394 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.45** | 360,395 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v215** | |
 
 Recently shipped, newest first:
