@@ -1,15 +1,28 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.36 / v209).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.37 / v209).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.36** | 367,966 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.37** | 361,682 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v209** | |
 
 Recently shipped, newest first:
+
+- **v8.37: How Prowl works, on the pattern of liinks.co's home page** (Matt: "use this home page as a reference for how
+  prowl works").
+  - The top: the title band, "Free · no account needed to search", the promise "Type it once. Prowl hunts 29 vintage
+    marketplaces." and a box to try it (`#otp-hwTry`: the search runs on the home screen and the help closes; empty,
+    it runs the example).
+  - Each of the nine features is a short title, one line and a small picture of it (`.hw-mock`, HTML only,
+    `aria-hidden`); every earlier instruction is kept, folded under **How** (`details.hw-how`).
+  - Then Prowl or one site at a time (5 rows), the two plans (their numbers are tested against `HUNTS_FREE`,
+    `HUNTS_PRO` and the worker's `PHOTO_FREE_PER_DAY`), five questions, Prowl's words, and **Start hunting** (was Got
+    it), which puts you in the search box.
+  - No reviews or customer pages: Prowl has none to quote, and none are made up.
+  - Tests: `__tests__/page/how-v837.test.mjs`.
 
 - **v8.36 / v209: Facebook finds show steadily, own ZIP for the owner, the week's finds, All USA says why** (Matt,
   2026-11-01: Facebook finds for his hunt "mc escher" "sometimes show and sometimes don't"; then on All USA: "I don't
@@ -2255,7 +2268,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.37, worker v210** (v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.38, worker v210** (v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 
