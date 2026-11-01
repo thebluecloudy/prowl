@@ -992,6 +992,9 @@ function shcStatusView() {
   if (L && !L.ok && L.desc) out.push(h("p", { class: "small", text: "Shopify said: " + L.desc }));
   if (L && L.attempts && L.attempts.length) out.push(shcAttemptsView(L.attempts));
   else if (L && L.tried && L.tried.length) out.push(h("p", { class: "hint", text: "Tried: " + L.tried.map(m => SHC_METHOD[m] || m).join(", then ") + "." }));
+  const OA = X.offAllow || {};   /* review fix: SHOPCAT_OFF_ALLOW entries in use and ignored */
+  if (OA.add && OA.add.length) out.push(h("p", { class: "hint", text: "SHOPCAT_OFF_ALLOW adds: " + OA.add.join(", ") + "." }));
+  if (OA.ignored && OA.ignored.length) out.push(note("warn", "SHOPCAT_OFF_ALLOW entries ignored (not a store domain, or a public suffix that would trust every store under it): " + OA.ignored.join(", ") + "."));
   if (X.waitUntil) out.push(h("p", { class: "hint", text: "Live listings wait until " + fmtWhen(X.waitUntil) + " before the next exchange (a test runs now anyway)." }));
   out.push(h("p", { class: "hint", text: shcShapeText("Client ID", sh.id) + " " + shcShapeText("Secret", sh.secret) + (sh.swapped ? " They look swapped." : "") + (sh.same ? " Both hold the same value." : "") }));
   return h("div", out);

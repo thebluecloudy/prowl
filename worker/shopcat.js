@@ -52,8 +52,8 @@ const ZERO_DEC = { JPY: 1, KRW: 1, VND: 1, CLP: 1, ISK: 1, UGX: 1, XAF: 1, XOF: 
    memory only), so a new key in the Worker secrets is tried at once instead of after the 5-minute wait; method = the
    token_endpoint_auth_method that worked ("post": the JSON body, "basic": HTTP Basic), tried first next time;
    last = the latest exchange's outcome, as the admin's Diagnose card shows it (never the secret or the token). */
-const S = { tok: "", exp: 0, id: "", p: null, busyUntil: 0, failUntil: 0, fp: "", failFp: "", method: "", last: null, search: null, kvMode: "" };
-export function shopcatReset() { S.tok = ""; S.exp = 0; S.id = ""; S.p = null; S.busyUntil = 0; S.failUntil = 0; S.fp = ""; S.failFp = ""; S.method = ""; S.last = null; S.search = null; S.kvMode = ""; }
+const S = { tok: "", exp: 0, id: "", p: null, busyUntil: 0, failUntil: 0, fp: "", failFp: "", method: "", last: null, search: null, kvMode: "", kvRec: "" };
+export function shopcatReset() { S.tok = ""; S.exp = 0; S.id = ""; S.p = null; S.busyUntil = 0; S.failUntil = 0; S.fp = ""; S.failFp = ""; S.method = ""; S.last = null; S.search = null; S.kvMode = ""; S.kvRec = ""; }
 export const SHOPCAT_DEADLINE_MS = 15000, SHOPCAT_SECOND_PASS_MS = 9000;   /* review fix: a whole request's limit; no fallback search past 9 s */
 
 /* v213: a saved catalog (Dev Dashboard › Catalogs) is sent as catalog.catalog_id (shopify.dev/docs/apps/build/dev-dashboard/catalogs;
@@ -182,6 +182,10 @@ export function shopcatMethod() { return S.method; }
 async function record(env, rec) {
   if (S.search) rec = Object.assign({}, rec, { search: S.search });   /* v213: the latest search's mode stays with the exchange */
   S.last = rec;
+  /* review fix: KV gets the record only when the outcome changes (ok, status, error, method), not on every exchange */
+  const sig = [rec.ok ? 1 : 0, rec.status, rec.error, rec.method, rec.refused ? 1 : 0].join("|");
+  if (S.kvRec === sig) return;
+  S.kvRec = sig;
   try { if (env && env.PROWL_ALERTS) await env.PROWL_ALERTS.put(SHOPCAT_LAST_KEY, JSON.stringify(rec), { expirationTtl: 30 * 86400 }); } catch (e) {}
 }
 /* one exchange with one auth method: { status, j } (j is the JSON body for any status, or null) */
@@ -273,15 +277,38 @@ export const SHOPCAT_OFF_TRUSTED = ["chairish.com", "poshmark.com", "etsy.com", 
   "lot-art.com", "ha.com", "shopgoodwill.com", "ctbids.com", "ecrater.com", "abebooks.com", "aptdeco.com", "offerup.com", "kaiyo.com",
   "everythingbutthehouse.com", "replacements.com", "amazon.com", "walmart.com", "target.com", "wayfair.com"];
 const DOMAIN_RE = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
-export function shopcatOffAllow(env) {
-  const extra = String((env && env.SHOPCAT_OFF_ALLOW) || "").split(/[,\s]+/)
-    .map((d) => d.trim().toLowerCase().replace(/^(\*\.|\.)/, "").replace(/^www\./, "")).filter((d) => DOMAIN_RE.test(d));
-  return SHOPCAT_OFF_TRUSTED.concat(extra);
+/* review fix: suffixes that would trust every store under them (a bare TLD, a public second level, a hosting platform);
+   an SHOPCAT_OFF_ALLOW entry that is one of these is ignored and listed in the Diagnose card */
+export const SHOPCAT_PUBLIC_SUFFIX = ["com", "net", "org", "co", "io", "shop", "store", "biz", "info", "us", "uk", "ca", "au", "de", "fr", "ru", "cn",
+  "co.uk", "org.uk", "me.uk", "ltd.uk", "plc.uk", "com.au", "net.au", "org.au", "co.nz", "co.jp", "com.br", "com.mx", "com.cn", "co.in", "co.za",
+  "myshopify.com", "shopify.com", "shopifypreview.com", "github.io", "netlify.app", "vercel.app", "pages.dev", "workers.dev", "wixsite.com",
+  "squarespace.com", "square.site", "weebly.com", "wordpress.com", "blogspot.com", "herokuapp.com", "web.app", "firebaseapp.com", "bigcartel.com", "storenvy.com"];
+/* one SHOPCAT_OFF_ALLOW entry as a bare host: a pasted URL (http or https) gives its host; *. and www. go */
+function allowHost(e) {
+  let d = String(e || "").trim().toLowerCase();
+  if (/^[a-z][a-z0-9+.-]*:\/\//.test(d)) { try { const x = new URL(d); d = /^https?:$/.test(x.protocol) ? x.hostname : ""; } catch (err) { d = ""; } }
+  else d = d.split(/[\/?#]/)[0];
+  return d.replace(/^(\*\.|\.)/, "").replace(/^www\./, "").replace(/\.$/, "");
 }
-export function shopcatTrusted(u, env) {
+/* { add: the hosts SHOPCAT_OFF_ALLOW adds, ignored: the entries left out (as typed, trimmed to 80) } */
+export function shopcatOffAllowParse(env) {
+  const add = [], ignored = [];
+  for (const raw of String((env && env.SHOPCAT_OFF_ALLOW) || "").split(/[,\s]+/)) {
+    const e = raw.trim();
+    if (!e) continue;
+    const d = allowHost(e);
+    if (DOMAIN_RE.test(d) && SHOPCAT_PUBLIC_SUFFIX.indexOf(d) === -1) { if (add.indexOf(d) === -1) add.push(d); }
+    else if (ignored.length < 20) ignored.push(e.replace(/[^\x21-\x7e]/g, "").slice(0, 80));
+  }
+  return { add: add, ignored: ignored };
+}
+export function shopcatOffAllow(env) { return SHOPCAT_OFF_TRUSTED.concat(shopcatOffAllowParse(env).add); }
+/* the trusted suffix a link's host falls under ("" when none) */
+function trustedSuffix(u, env) {
   const h = DOMAIN_RE.test(String(u || "")) ? String(u).toLowerCase().replace(/^www\./, "") : hostOf(u);
-  return !!h && shopcatOffAllow(env).some((d) => h === d || h.slice(-(d.length + 1)) === "." + d);
+  return (h && shopcatOffAllow(env).filter((d) => h === d || h.slice(-(d.length + 1)) === "." + d)[0]) || "";
 }
+export function shopcatTrusted(u, env) { return !!trustedSuffix(u, env); }
 function major(m) {
   const a = Number(m && m.amount), c = String((m && m.currency) || "").toUpperCase();
   if (!Number.isFinite(a) || a < 0 || !/^[A-Z]{3}$/.test(c)) return null;
@@ -321,9 +348,17 @@ export function shopcatItem(p, env) {
   const photo = img(p.media) || img(v.media);
   if (!pr || !photo) return null;
   const dom = String(s.domain || "").toLowerCase().replace(/^www\./, "");
-  const domain = (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(dom) ? dom : hostOf(s.url) || hostOf(v.url)).slice(0, 80);
+  let domain = (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(dom) ? dom : hostOf(s.url) || hostOf(v.url)).slice(0, 80);
+  let name = String(s.name || "").replace(/\s+/g, " ").trim().slice(0, 60);
+  if (ext(v)) {
+    /* review fix: an off-Shopify card names the vetted link's host, never the catalog's unchecked seller.domain; the
+       seller's name stays only when its domain sits under the same trusted suffix as the link */
+    const lh = hostOf(v.url), suf = trustedSuffix(v.url, env);
+    if (!(suf && (dom === suf || dom.slice(-(suf.length + 1)) === "." + suf))) name = "";
+    domain = lh.slice(0, 80);
+  }
   const out = { title: p.title.replace(/\s+/g, " ").trim().slice(0, 160), price: pr.price, currency: pr.currency,
-    img: photo, shop: String(s.name || "").replace(/\s+/g, " ").trim().slice(0, 60) || domain, domain: domain, url: String(v.url).slice(0, 800) };
+    img: photo, shop: name || domain, domain: domain, url: String(v.url).slice(0, 800) };
   if (sh(v)) out.secondhand = true;
   if (ext(v)) out.offShopify = true;
   /* review fix: the same listing from two searches differs in _gsid (and shclid / shcgid), so it is matched by product and
@@ -336,8 +371,9 @@ export function shopcatItem(p, env) {
    (not on every search) */
 async function noteSearch(env, mode, status, catalogId) {
   S.search = { at: Date.now(), mode: mode, status: Number(status) || 0, catalog: !!catalogId };
-  if (S.kvMode === mode) return;
-  S.kvMode = mode;
+  const k = mode + ":" + (Number(status) || 0);   /* review fix: KV on a change of mode or status, not on every search */
+  if (S.kvMode === k) return;
+  S.kvMode = k;
   let rec = S.last;
   if (!rec && env && env.PROWL_ALERTS) { try { rec = await env.PROWL_ALERTS.get(SHOPCAT_LAST_KEY, "json"); } catch (e) { rec = null; } }
   rec = Object.assign({}, rec && typeof rec === "object" ? rec : {}, { search: S.search });
@@ -348,17 +384,33 @@ async function noteSearch(env, mode, status, catalogId) {
 /* one catalog call: { products, mode } or { err, status, wait, mode }.
    v213: mode "token" (Authorization: Bearer) while the two secrets are set and the exchange works; "keyless" (no
    Authorization header, the agent profile alone) when they are missing, the exchange fails or is in its 5-minute wait,
-   or Shopify refuses the token twice. */
+   or Shopify refuses the token.
+   Review fix: a token the catalog refuses puts the credentials in the same 5-minute wait as a failed exchange (S.failUntil,
+   S.failFp), so the next passes and requests go straight to keyless with no exchange; only a token from memory (it may
+   have been revoked) gets one fresh exchange first. Every catalog POST counts in SHOPCAT_PER_DAY (shopcat:all). */
 async function search(env, D, term, profile, secondhand, deadline, catalogId) {
   const f = (D && D.fetch) || fetch;
   let mode = shopcatOn(env) && !shopcatTokenDown(Date.now(), env) ? "token" : "keyless", renewed = false;
   for (let tries = 0; tries < 3; tries++) {
-    let tok = "";
-    if (mode === "token") { try { tok = await shopcatToken(env, D, 0, deadline); } catch (e) { mode = "keyless"; } }
+    let tok = "", cached = false;
+    if (D && typeof D.vCount === "function" && !(await D.vCount("shopcat:all", SHOPCAT_PER_DAY))) return { err: "daily limit", status: 429, limit: true, mode: mode };   /* before the exchange: a capped call never reaches Shopify */
+    if (mode === "token") {
+      const fp = shopcatFp(env);
+      cached = !!S.tok && S.fp === fp && Date.now() < S.exp - SHOPCAT_TOKEN_EARLY_MS;
+      try { tok = await shopcatToken(env, D, 0, deadline); } catch (e) { mode = "keyless"; }
+    }
     const h = { "Content-Type": "application/json", "Accept": "application/json", "User-Agent": SHOPCAT_UA };
     if (tok) h["Authorization"] = "Bearer " + tok;
     const r = await timed(f, SHOPCAT_MCP_URL, { method: "POST", headers: h, body: JSON.stringify(shopcatBody(term, profile, secondhand, catalogId)) }, deadline);
-    if (r.status === 401 && mode === "token") { S.tok = ""; S.exp = 0; if (renewed) mode = "keyless"; renewed = true; continue; }   /* a token Shopify no longer takes: one fresh one, then keyless */
+    if (r.status === 401 && tok) {
+      S.tok = ""; S.exp = 0;
+      if (cached && !renewed) { renewed = true; continue; }   /* a token from memory Shopify no longer takes: one fresh one */
+      const now = Date.now();
+      S.failUntil = now + SHOPCAT_TOKEN_FAIL_MS; S.failFp = shopcatFp(env);
+      await record(env, { at: now, ok: false, refused: true, status: 401, error: "catalog refused the token", desc: "The token exchange worked, but catalog.shopify.com answered 401 to the token; searching keyless until the wait ends.",
+        method: S.method, tried: [], attempts: [] });
+      mode = "keyless"; continue;
+    }
     await noteSearch(env, mode, r.status, catalogId);
     if (r.status === 429) {
       const ra = Number((r.headers && r.headers.get && r.headers.get("Retry-After")) || 0);
@@ -374,6 +426,7 @@ async function search(env, D, term, profile, secondhand, deadline, catalogId) {
   }
   return { err: "auth", status: 401, mode: mode };
 }
+const stops = (r) => r.status === 429 || r.err === "timeout" || r.err === "daily limit";   /* a 429, the deadline or the day's cap */
 
 export async function shopLive(request, env, url, origin, D, nowMs) {
   const now = Number(nowMs) || Date.now(), NS = { "Cache-Control": "no-store" };
@@ -387,7 +440,9 @@ export async function shopLive(request, env, url, origin, D, nowMs) {
   const profile = shopcatProfileUrl(env, url.origin);
   const t0 = Date.now(), deadline = t0 + SHOPCAT_DEADLINE_MS;   /* review fix: the whole request, token and both searches */
   const items = [], seen = Object.create(null);
-  let raw = 0, words = 0, own = 0, hidden = 0, mode = "";
+  const fail = (r) => r.limit ? out({ on: true, term: term, error: "daily limit", items: [] }, 429)
+    : out({ on: true, term: term, mode: mode || undefined, error: r.err, items: [] }, r.status === 429 ? 429 : r.status === 503 ? 503 : 502);
+  let raw = 0, words = 0, own = 0, hidden = 0, mode = "", failed = null, ran = 0;
   /* v213: with a saved catalog (its own limit, Off-Shopify offers too) first, then the whole Global Catalog when that
      leaves fewer than max: secondhand, then any condition */
   const cid = shopcatCatalogId(env);
@@ -395,21 +450,25 @@ export async function shopLive(request, env, url, origin, D, nowMs) {
   for (let i = 0; i < passes.length; i++) {
     const secondhand = passes[i].secondhand;
     if (i && (items.length >= max || Date.now() - t0 > SHOPCAT_SECOND_PASS_MS)) break;
-    if (!(await D.vCount("shopcat:all", SHOPCAT_PER_DAY))) { if (!i) return out({ on: true, term: term, error: "daily limit", items: [] }, 429); break; }
     let r;
     try { r = await search(env, D, term, profile, secondhand, deadline, passes[i].cid); } catch (e) { r = { err: /abort/i.test(String(e && (e.name || e.message))) ? "timeout" : "unreachable", status: 504 }; }
     if (r.mode) mode = r.mode;
     if (r.err) {
-      if (r.status === 429) S.busyUntil = now + r.wait * 1000;
-      if (!i || !items.length) return out({ on: true, term: term, mode: mode || undefined, error: r.err, items: [] }, r.status === 429 ? 429 : r.status === 503 ? 503 : 502);
+      if (r.status === 429 && !r.limit) S.busyUntil = now + r.wait * 1000;
+      /* review fix: the optional saved-catalog pass failing (a refused or deleted catalog id) falls back to the whole
+         Global Catalog; only a 429, the deadline or the day's cap stops the hunt there */
+      if (passes[i].cid && !stops(r) && Date.now() < deadline) { failed = r; continue; }
+      if (!items.length) return fail(r);
       break;   /* the listings already found are still worth showing */
     }
+    ran++;
     const cards = [];
     for (const p of r.products) { const c = shopcatItem(p, env); if (c && c.hidden) { hidden++; continue; } raw++; if (!c) continue; if (c.own) { own++; continue; } cards.push(c); }
     const kept = D.sgwExact(cards, term) || [];
     words += kept.length;
     for (const c of kept) { const k = c.key || c.url; if (seen[k] || items.length >= max) continue; seen[k] = 1; items.push(c); }
   }
+  if (!ran && failed) return fail(failed);   /* the catalog pass failed and no fallback pass ran */
   items.sort((a, b) => (b.secondhand ? 1 : 0) - (a.secondhand ? 1 : 0));   /* stable: secondhand first, Shopify's order within */
   const body = { on: true, term: term, mode: mode, items: items };
   if (!items.length) { body.why = { raw: raw, words: words, own: own }; if (hidden) body.why.hidden = hidden; }   /* v213: raw leaves out the off-Shopify offers hidden as unknown stores */
@@ -447,6 +506,7 @@ export async function shopcatStatus(env, nowMs) {
   const L0 = last && typeof last === "object" ? last : null, L = L0 && Number(L0.at) > 0 ? L0 : null;   /* v213: a search-only record has no exchange */
   const sx = S.search || (L0 && L0.search && typeof L0.search === "object" ? L0.search : null);
   return { on: shopcatOn(env), shape: shopcatShape(env), method: S.method || (L && L.ok ? String(L.method || "") : ""),
+    offAllow: shopcatOffAllowParse(env),   /* review fix: the SHOPCAT_OFF_ALLOW hosts in use and the entries ignored */
     catalogId: shopcatCatalogId(env),   /* v213: not a secret (the Dev Dashboard shows it; it only names a saved search) */
     search: sx ? { at: Number(sx.at) || 0, mode: sx.mode === "token" ? "token" : "keyless", status: Number(sx.status) || 0, catalog: !!sx.catalog } : null,
     waitUntil: shopcatTokenDown(now, env) ? S.failUntil : 0, busyUntil: S.busyUntil > now ? S.busyUntil : 0,
@@ -486,15 +546,16 @@ export async function shopcatTest(env, D, term, origin, nowMs) {
     else {
       /* v213 "Known stores only": the off-Shopify items hidden as unknown stores, with their domains, so Matt sees what is
          filtered; the sample titles are from what a hunt would show */
-      const shown = [], doms = [];
+      let shown = [], doms = [];
       let hid = 0;
       for (const p of ps) {
         const c = shopcatItem(p, env);
         if (c && c.hidden) { hid++; const d = String(c.domain || "").slice(0, 80); if (d && doms.indexOf(d) === -1 && doms.length < 20) doms.push(d); continue; }
-        shown.push(p);
+        if (c && !c.own) shown.push(c);   /* review fix: only cards a hunt would show (not Owl & Twig's own, not a photo-less or price-less listing) */
       }
+      if (D && typeof D.sgwExact === "function") shown = D.sgwExact(shown, q) || [];   /* and with every word of the term, as a hunt keeps them */
       out.ok = true; out.count = ps.length; if (hid) out.hidden = { count: hid, domains: doms };
-      out.titles = shown.slice(0, 3).map((p) => String((p && p.title) || "").replace(/\s+/g, " ").trim().slice(0, 120));
+      out.titles = shown.slice(0, 3).map((c) => String((c && c.title) || "").replace(/\s+/g, " ").trim().slice(0, 120));
     }
   }
   return { on: on, term: q, exchange: exchange, search: out };

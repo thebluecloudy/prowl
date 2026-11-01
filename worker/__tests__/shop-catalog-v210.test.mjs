@@ -242,11 +242,14 @@ test("Shopify's 429: answered 429 and Shopify is left alone for its Retry-After,
 });
 
 test("a stale token (401) is renewed once; a refused token exchange, a 500, an error answer and a timeout are 502 with no items", async () => {
-  const s = shopify({ token: (n) => ({ access_token: "tok-" + n, expires_in: 3600 }), answers: [res(401, {}), res(200, catalogAnswer([product(1, "Ceramic panther")])), res(200, catalogAnswer([]))] }), { D } = deps(s.f);
-  const r = await ask(D, "term=ceramic+panther");
+  /* review fix: only a token from memory is renewed (a fresh one the catalog refuses goes keyless at once) */
+  const s = shopify({ token: (n) => ({ access_token: "tok-" + n, expires_in: 3600 }), answers: [res(200, catalogAnswer([product(1, "Ceramic panther")])), res(401, {}), res(200, catalogAnswer([product(1, "Ceramic panther")]))] }), { D } = deps(s.f);
+  assert.equal((await ask(D, "term=ceramic+panther&max=1")).status, 200);
+  const r = await ask(D, "term=ceramic+panther&max=1");
   assert.equal(r.status, 200);
   assert.equal(s.tokens().length, 2);
-  assert.equal(s.searches()[1].init.headers.Authorization, "Bearer tok-2");
+  assert.equal(s.searches()[1].init.headers.Authorization, "Bearer tok-1", "the token from memory");
+  assert.equal(s.searches()[2].init.headers.Authorization, "Bearer tok-2", "one fresh exchange");
   /* v213: a refused token exchange searches keyless */
   SC.shopcatReset();
   const quietErr = console.error; console.error = () => {};

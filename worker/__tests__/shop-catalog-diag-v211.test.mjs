@@ -103,7 +103,8 @@ test("the 5-minute wait belongs to the credentials: a new secret is tried at onc
 });
 
 test("shopcatTest: one fresh exchange (past the wait) and one search; the count and 3 titles, or the JSON-RPC error", async () => {
-  const prods = ["Pyrex bowl", "Pyrex butterprint", "Pyrex dish", "Pyrex lid"].map((t, i) => ({ id: "p" + i, title: t }));
+  const prods = ["Pyrex bowl", "Pyrex butterprint", "Pyrex dish", "Pyrex lid"].map((t, i) => ({ id: "p" + i, title: t, media: [{ type: "image", url: "https://cdn.shopify.com/s/" + i + ".jpg" }],
+    variants: [{ id: "v" + i, url: "https://shop" + i + ".example/products/p", price: { amount: 1000, currency: "USD" }, seller: { name: "Shop " + i, domain: "shop" + i + ".example" } }] }));   /* review fix: sample titles only from real cards */
   let rpcErr = false;
   const s = fake(() => res(200, { access_token: "tok-t", expires_in: 3600 }),
     () => rpcErr ? res(200, { jsonrpc: "2.0", id: 1, error: { code: -32602, message: "Invalid params: meta.ucp-agent.profile unreachable" } })
@@ -270,4 +271,13 @@ test("v213 known stores only: the admin route passes the hidden count and domain
   assert.equal(j.search.hidden.count, 3);
   assert.equal(j.search.hidden.domains[0], "info.vetmenow.gr");
   assert.ok(!/[<>]/.test(j.search.hidden.domains[1]));
+});
+
+test("v213 review fix: the admin status route passes SHOPCAT_OFF_ALLOW's hosts and ignored entries through", async () => {
+  const env = Object.assign({ ADMIN_KEY, PROWL_ALERTS: kv(), SHOPCAT_OFF_ALLOW: "https://www.vintagefinds.co.uk/x, co.uk" }, ENV);
+  const h = H();
+  const cookie = await signIn(env, h);
+  const p = await adminFetch(new Request("https://prowl.example.workers.dev/admin/api/shopcat", { headers: { Origin: "https://prowl.example.workers.dev", Cookie: cookie, "X-Prowl-Admin": "1" } }), env, {}, h);
+  const j = await p.json();
+  assert.deepEqual(j.offAllow, { add: ["vintagefinds.co.uk"], ignored: ["co.uk"] });
 });

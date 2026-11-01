@@ -84,14 +84,15 @@ test("a refused key: the exchange's error is kept for Diagnose, and the search g
   assert.ok(!store.m.get(SC.SHOPCAT_LAST_KEY).includes(SECRET) && !store.m.get(SC.SHOPCAT_LAST_KEY).includes(ID));
 });
 
-test("a working key: token mode; a token Shopify refuses twice falls back keyless", async () => {
+test("a working key: token mode; a fresh token the catalog refuses falls back keyless (review fix: no second exchange)", async () => {
   const s = fake(() => res(200, { access_token: "tok", expires_in: 3600 }), () => answer([product(1, "Ceramic panther")]));
   const r = await ask(s.f, Object.assign({ SHOPIFY_CATALOG_ID: "none" }, KEY), "term=ceramic+panther&max=1");
   assert.equal(r.body.mode, "token"); assert.equal(s.searches()[0].init.headers.Authorization, "Bearer tok");
   SC.shopcatReset();
   const s2 = fake(() => res(200, { access_token: "tok", expires_in: 3600 }), (init) => init.headers.Authorization ? res(401, {}) : answer([product(1, "Ceramic panther")]));
   const r2 = await ask(s2.f, Object.assign({ SHOPIFY_CATALOG_ID: "none" }, KEY), "term=ceramic+panther&max=1");
-  assert.equal(r2.status, 200); assert.equal(r2.body.mode, "keyless"); assert.equal(s2.searches().length, 3);
+  assert.equal(r2.status, 200); assert.equal(r2.body.mode, "keyless");
+  assert.equal(s2.searches().length, 2, "the refused token, then keyless"); assert.equal(s2.tokens().length, 1, "one exchange");
 });
 
 test("catalog_id: Matt's saved catalog by default, SHOPIFY_CATALOG_ID overrides, none sends none; then a fill from the whole catalog", async () => {

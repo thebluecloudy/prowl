@@ -1052,6 +1052,7 @@ async function apiShopcat(c) {
   return jres({ on: !!s.on, method: word(s.method, 8), waitUntil: num(s.waitUntil), busyUntil: num(s.busyUntil), last: shopEx(s.last),
     catalogId: String(s.catalogId || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64),
     search: sx ? { at: num(sx.at), mode: sx.mode === "token" ? "token" : "keyless", status: num(sx.status), catalog: !!sx.catalog } : null,
+    offAllow: { add: arr(s.offAllow && s.offAllow.add).slice(0, 20).map(d => shopStr(d, 80)), ignored: arr(s.offAllow && s.offAllow.ignored).slice(0, 20).map(d => shopStr(d, 80)) },   /* review fix: SHOPCAT_OFF_ALLOW */
     shape: { id: shopShape(sh.id), secret: shopShape(sh.secret), swapped: !!sh.swapped, same: !!sh.same } });
 }
 async function apiShopcatTest(c) {

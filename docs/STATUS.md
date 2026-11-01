@@ -12,7 +12,7 @@ Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.41 /
 Recently shipped, newest first:
 
 - **v8.41 / v213: the Shopify strip searches keyless, with Matt's saved catalog and stores off Shopify** (Claude,
-  2026-11-01). Branch `claude/gifted-johnson-wzaqr3`, pushed, no PR yet (in flight below). Page room left: 361,670 bytes.
+  2026-11-01). Branch `claude/gifted-johnson-wzaqr3`, PR #309 (in flight below). Page room left: 361,670 bytes.
   - **Why:** live v211 with Matt's key answered `/shop-live` `{"error":"unavailable"}`: the Worker's token exchange got a
     bare **403 with no JSON** (from this sandbox a made-up id gets a JSON 400 `application_cannot_be_found`, so the
     Worker's 403 looks like an edge block of the Worker's request, not a refused key). **Reproduced from the sandbox:**
@@ -20,12 +20,12 @@ Recently shipped, newest first:
     User-Agent it reaches Shopify (`400 application_cannot_be_found` for a made-up id). A Worker's fetch sends no
     User-Agent, so v213's `User-Agent` header is the likely fix for Matt's key. (The catalog endpoint answers 200 even
     with no User-Agent.)
-  - **Keyless (`worker/shopcat.js` `search`):** with no key, a refused exchange, the 5-minute wait, or a token Shopify
-    refuses twice, the search goes with no Authorization header and the agent profile alone (Shopify's Anonymous tier,
+  - **Keyless (`worker/shopcat.js` `search`):** with no key, a refused exchange, the 5-minute wait, or a token the catalog
+    refuses, the search goes with no Authorization header and the agent profile alone (Shopify's Anonymous tier,
     shopify.dev/docs/agents/profiles/auth-and-rate-limiting: catalog tools, lowest rate limits). `/shop-live` never
     answers `{ off: true }` now; every answer carries `mode: "token" | "keyless"`. Per-IP and site caps and 429 as before.
     The mode of the latest search is in memory and in KV `shopcat:last` (`search: { at, mode, status, catalog }`, written
-    only when an isolate's mode changes); the token error stays there for Diagnose.
+    only when an isolate's mode or status changes); the token error stays there for Diagnose.
   - **Probed live from the sandbox (2026-11-01):** keyless `tools/call search_catalog` "pyrex" with our profile
     (`https://prowl.thebluecloud.workers.dev/ucp/profile.json`), Shopify's 2026-04-08 and 2026-08-25 example profiles: all
     200, with and without `catalog_id`, with and without our filters. So our profile is accepted; it is unchanged.
@@ -69,6 +69,20 @@ Recently shipped, newest first:
     photo passes; attempts carry `server`/`ray`. Page v8.38 test: the new label and wording.
   - Privacy section (`docs/privacy-policy-prowl-section.html`): "Shopify and other stores"; photos from the store's own
     host; notes for v213 (keyless, the catalog id, our own User-Agent).
+  - **Review fixes (independent review of `worker/shopcat.js`):** (1) a token the catalog refuses (401) now enters the
+    same credential-fingerprinted 5-minute wait as a failed exchange, so later passes and requests go straight to
+    keyless: at most one exchange (plus the one Basic retry) per wait per isolate; only a token from memory gets one
+    fresh exchange first. Before, every `/shop-live` made 6 exchanges, 9 catalog calls and ~6 KV writes. Every catalog
+    call now counts in `shopcat:all` (checked in `search`, before any exchange); `shopcat:last` is written only when the
+    exchange outcome or the search's mode/status changes. Diagnose shows "catalog refused the token". (2) The saved-catalog
+    pass failing (not a 429, the deadline or the day's cap) falls back to the Global Catalog passes instead of failing
+    the hunt. (3) An off-Shopify card's `domain` is the vetted link's host; its shop name is the seller's only when
+    `seller.domain` sits under the link's trusted suffix, else the host. (4) Diagnose sample titles are only cards a hunt
+    would show (not own, not photo- or price-less, `sgwExact`). (5) `SHOPCAT_OFF_ALLOW` takes pasted URLs (host kept)
+    and ignores public suffixes (`SHOPCAT_PUBLIC_SUFFIX`: com, co.uk, myshopify.com, github.io…); the Diagnose card
+    lists what it adds and what it ignored. Tests: `worker/__tests__/shop-catalog-review-v213.test.mjs` (7), one more
+    in `shop-catalog-diag-v211` (the status route passes `offAllow`); the v210 stale-token and v213 "refused" cases
+    updated (a fresh token refused goes keyless with no second exchange).
 
 - **Worker v212: morning briefing in the admin** (Matt, 2026-11-01). The Overview tab opens with "Owl & Twig this
   morning": yesterday's sales, the last 30 days against the 30 before, the top category, sales by category and three
@@ -2442,7 +2456,7 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `claude/gifted-johnson-wzaqr3` | Claude | Shopify strip keyless, saved catalog, stores off Shopify (see Live, v8.41 / v213) | Claims **page v8.41 / worker v213** (v8.40 went to #303, worker v212 to #308). Pushed, no PR yet. |
+| `claude/gifted-johnson-wzaqr3` | Claude | Shopify strip keyless, saved catalog, stores off Shopify (see Live, v8.41 / v213) | Claims **page v8.41 / worker v213** (v8.40 went to #303, worker v212 to #308). PR #309. |
 
 Next free numbers: **page v8.42, worker v214** (v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, branch `claude/gifted-johnson-wzaqr3`; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
