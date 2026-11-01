@@ -1047,6 +1047,7 @@ async function apiShopcatTest(c) {
   try { r = (await c.H.shopcatTestRun(c.env, term, c.url.origin)) || {}; } catch (e) { return jerr(502, "The Shopify test could not run."); }
   const sr = r.search && typeof r.search === "object" ? r.search : null;
   const search = sr ? { ok: !!sr.ok, mode: sr.mode === "token" ? "token" : "keyless", catalog: !!sr.catalog, status: num(sr.status), server: shopStr(sr.server, 40), ray: !!sr.ray, count: num(sr.count), titles: arr(sr.titles).slice(0, 3).map(t => shopStr(t, 120)), error: shopStr(sr.error, 200),
+    hidden: sr.hidden && typeof sr.hidden === "object" ? { count: num(sr.hidden.count), domains: arr(sr.hidden.domains).slice(0, 20).map(d => shopStr(d, 80).toLowerCase().replace(/[^a-z0-9.-]/g, "")).filter(Boolean) } : null,   /* v212: known stores only */
     rpc: sr.rpc ? { code: num(sr.rpc.code), message: shopStr(sr.rpc.message, 300), data: shopStr(sr.rpc.data, 300) } : null } : null;
   await audit(c, { action: "shopcat-test", ok: !!(search && search.ok), note: search ? (search.ok ? search.count + " items (" + search.mode + ")" : "search failed (" + search.mode + ")") : "token failed" });
   return jres({ on: r.on !== false, term: shopStr(r.term, 80), exchange: shopEx(r.exchange), search: search });

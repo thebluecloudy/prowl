@@ -982,6 +982,9 @@ function shcTestView() {
     if (R.ok) {
       out.push(h("h3", { class: "small", text: "Search \u201c" + (X.term || "") + "\u201d (" + (R.mode === "token" ? "with the key" : "keyless") + (R.catalog ? ", saved catalog" : "") + "): " + R.count + " item" + (R.count === 1 ? "" : "s") + " at " + fmtTime(new Date(X.at)) }));
       if (R.titles && R.titles.length) out.push(h("ul", { class: "samp" }, R.titles.map(t => h("li", { class: "small", text: t }))));
+      /* v212 "Known stores only": what the trusted list filtered out of this search */
+      const HD = R.hidden && R.hidden.count > 0 ? R.hidden : null;
+      if (HD) out.push(h("p", { class: "small", text: HD.count + " other-store item" + (HD.count === 1 ? "" : "s") + " hidden: not on the trusted list" + (HD.domains && HD.domains.length ? " (" + HD.domains.join(", ") + ")" : "") + ". Add a domain to SHOPCAT_OFF_ALLOW to show it." }));
     } else if (R.rpc) out.push(note("bad", "Search error (JSON-RPC " + R.rpc.code + "): " + R.rpc.message + (R.rpc.data ? " " + R.rpc.data : "")));
     else out.push(note("bad", "Search failed" + (R.mode ? " (" + (R.mode === "token" ? "with the key" : "keyless") + ")" : "") + (R.status ? " (" + R.status + ")" : "") + ": " + (R.error || "no answer") + shcEdge(R)));
   }

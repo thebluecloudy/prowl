@@ -25,6 +25,8 @@
  *         missing, refused or waiting; catalog.catalog_id (SHOPIFY_CATALOG_ID, Matt's saved catalog by default) then a
  *         fill from the whole catalog; off-Shopify offers kept (offShopify, domain); a User-Agent on every Shopify call;
  *         a non-JSON refusal keeps a snippet and who answered (server, cf-ray) and a bare 403 is retried with Basic.
+ *         Off-Shopify offers only from known stores (SHOPCAT_OFF_TRUSTED + SHOPCAT_OFF_ALLOW, host-suffix match); the
+ *         Diagnose test search lists how many were hidden and their domains.
  *   v211: 2026-11-01. Shopify catalog diagnostics: the token exchange keeps Shopify's error code and description (id and
  *         secret cut out; memory + KV shopcat:last), tries HTTP Basic once when the JSON body is refused as a bad client,
  *         keys the 5-minute wait to the credentials; the admin's Diagnose card (GET /admin/api/shopcat, POST

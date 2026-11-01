@@ -27,6 +27,7 @@
    Vintage first: a secondhand search, then, when it leaves fewer than max listings with the hunt's words, one search
    without the condition filter; secondhand listings stay first. Titles must carry every word of the hunt (sgwExact,
    the ShopGoodwill rule). Owl & Twig's own products are dropped (they already show in Found on the Prowl).
+   v212: off-Shopify offers only from known stores (SHOPCAT_OFF_TRUSTED, SHOPCAT_OFF_ALLOW; see shopcatTrusted).
    Caps: SHOPCAT_PER_IP asks a day per IP key and SHOPCAT_PER_DAY catalog calls a day for the whole site (vCount).
 
    Everything here takes D, the helpers index.js hands in (shopDeps there): { vCount, ipKey, json, sgwExact, fetch? },
@@ -263,6 +264,24 @@ export function shopcatOwn(urls, env) {
   const own = SHOPCAT_OWN.concat(env && env.SHOPIFY_SHOP ? [String(env.SHOPIFY_SHOP).toLowerCase()] : []);
   return urls.some((u) => { const h = /^[a-z0-9.-]+$/i.test(String(u || "")) ? String(u).toLowerCase().replace(/^www\./, "") : hostOf(u); return !!h && own.some((d) => h === d || h.slice(-(d.length + 1)) === "." + d); });
 }
+/* v212 (Matt, 2026-11-01: "Known stores only"): an off-Shopify offer is kept only when its link's host is one of these
+   marketplaces or a subdomain of one (an exact host-suffix match, never a substring: etsy.com.fake.ru and notetsy.com
+   are not etsy.com). Many off-Shopify offers in the saved catalog are copied listings on unrelated domains. Every
+   Shopify store's offer stays. The variable SHOPCAT_OFF_ALLOW (comma-separated domains) adds more. */
+export const SHOPCAT_OFF_TRUSTED = ["chairish.com", "poshmark.com", "etsy.com", "ebay.com", "1stdibs.com", "rubylane.com", "mercari.com",
+  "depop.com", "vinted.com", "grailed.com", "reverb.com", "whatnot.com", "hibid.com", "bidprowl.com", "liveauctioneers.com", "invaluable.com",
+  "lot-art.com", "ha.com", "shopgoodwill.com", "ctbids.com", "ecrater.com", "abebooks.com", "aptdeco.com", "offerup.com", "kaiyo.com",
+  "everythingbutthehouse.com", "replacements.com", "amazon.com", "walmart.com", "target.com", "wayfair.com"];
+const DOMAIN_RE = /^[a-z0-9-]+(\.[a-z0-9-]+)+$/;
+export function shopcatOffAllow(env) {
+  const extra = String((env && env.SHOPCAT_OFF_ALLOW) || "").split(/[,\s]+/)
+    .map((d) => d.trim().toLowerCase().replace(/^(\*\.|\.)/, "").replace(/^www\./, "")).filter((d) => DOMAIN_RE.test(d));
+  return SHOPCAT_OFF_TRUSTED.concat(extra);
+}
+export function shopcatTrusted(u, env) {
+  const h = DOMAIN_RE.test(String(u || "")) ? String(u).toLowerCase().replace(/^www\./, "") : hostOf(u);
+  return !!h && shopcatOffAllow(env).some((d) => h === d || h.slice(-(d.length + 1)) === "." + d);
+}
 function major(m) {
   const a = Number(m && m.amount), c = String((m && m.currency) || "").toUpperCase();
   if (!Number.isFinite(a) || a < 0 || !/^[A-Z]{3}$/.test(c)) return null;
@@ -288,10 +307,15 @@ export function shopcatItem(p, env) {
   const all = (Array.isArray(p.variants) ? p.variants : []).filter((v) => v && !(v.availability && v.availability.available === false) && hostOf(v.url));
   if (!all.length) return null;
   /* review fix: a product clusters offers from several stores; only Owl & Twig's own offers are skipped, the rest stay */
-  const vs = all.filter((v) => { const s = v.seller || {}; return !shopcatOwn([v.url, s.url, s.domain], env); });
+  let vs = all.filter((v) => { const s = v.seller || {}; return !shopcatOwn([v.url, s.url, s.domain], env); });
   if (!vs.length) return { own: true };
-  const sh = (v) => Array.isArray(v.condition) ? v.condition.indexOf("secondhand") !== -1 : v.condition === "secondhand";
   const ext = (v) => v.source === "external";
+  /* v212 "Known stores only": off-Shopify offers from a domain not on the trusted list are dropped; a product with
+     nothing else left is { hidden, domain } (counted for Diagnose, never shown) */
+  const known = vs.filter((v) => !ext(v) || shopcatTrusted(v.url, env));
+  if (!known.length) return { hidden: true, domain: hostOf(vs[0].url) };
+  vs = known;
+  const sh = (v) => Array.isArray(v.condition) ? v.condition.indexOf("secondhand") !== -1 : v.condition === "secondhand";
   const v = vs.filter((x) => sh(x) && !ext(x))[0] || vs.filter(sh)[0] || vs.filter((x) => !ext(x))[0] || vs[0], s = v.seller || {};
   const pr = major(v.price) || major(p.price_range && p.price_range.min);
   const photo = img(p.media) || img(v.media);
@@ -363,7 +387,7 @@ export async function shopLive(request, env, url, origin, D, nowMs) {
   const profile = shopcatProfileUrl(env, url.origin);
   const t0 = Date.now(), deadline = t0 + SHOPCAT_DEADLINE_MS;   /* review fix: the whole request, token and both searches */
   const items = [], seen = Object.create(null);
-  let raw = 0, words = 0, own = 0, mode = "";
+  let raw = 0, words = 0, own = 0, hidden = 0, mode = "";
   /* v212: with a saved catalog (its own limit, Off-Shopify offers too) first, then the whole Global Catalog when that
      leaves fewer than max: secondhand, then any condition */
   const cid = shopcatCatalogId(env);
@@ -380,16 +404,15 @@ export async function shopLive(request, env, url, origin, D, nowMs) {
       if (!i || !items.length) return out({ on: true, term: term, mode: mode || undefined, error: r.err, items: [] }, r.status === 429 ? 429 : r.status === 503 ? 503 : 502);
       break;   /* the listings already found are still worth showing */
     }
-    raw += r.products.length;
     const cards = [];
-    for (const p of r.products) { const c = shopcatItem(p, env); if (!c) continue; if (c.own) { own++; continue; } cards.push(c); }
+    for (const p of r.products) { const c = shopcatItem(p, env); if (c && c.hidden) { hidden++; continue; } raw++; if (!c) continue; if (c.own) { own++; continue; } cards.push(c); }
     const kept = D.sgwExact(cards, term) || [];
     words += kept.length;
     for (const c of kept) { const k = c.key || c.url; if (seen[k] || items.length >= max) continue; seen[k] = 1; items.push(c); }
   }
   items.sort((a, b) => (b.secondhand ? 1 : 0) - (a.secondhand ? 1 : 0));   /* stable: secondhand first, Shopify's order within */
   const body = { on: true, term: term, mode: mode, items: items };
-  if (!items.length) body.why = { raw: raw, words: words, own: own };
+  if (!items.length) { body.why = { raw: raw, words: words, own: own }; if (hidden) body.why.hidden = hidden; }   /* v212: raw leaves out the off-Shopify offers hidden as unknown stores */
   return out(body, 200);
 }
 
@@ -460,7 +483,19 @@ export async function shopcatTest(env, D, term, origin, nowMs) {
   else {
     const sc = j && j.result && j.result.structuredContent, ps = sc && Array.isArray(sc.products) ? sc.products : null;
     if (!ps) out.error = "no products in the answer";
-    else { out.ok = true; out.count = ps.length; out.titles = ps.slice(0, 3).map((p) => String((p && p.title) || "").replace(/\s+/g, " ").trim().slice(0, 120)); }
+    else {
+      /* v212 "Known stores only": the off-Shopify items hidden as unknown stores, with their domains, so Matt sees what is
+         filtered; the sample titles are from what a hunt would show */
+      const shown = [], doms = [];
+      let hid = 0;
+      for (const p of ps) {
+        const c = shopcatItem(p, env);
+        if (c && c.hidden) { hid++; const d = String(c.domain || "").slice(0, 80); if (d && doms.indexOf(d) === -1 && doms.length < 20) doms.push(d); continue; }
+        shown.push(p);
+      }
+      out.ok = true; out.count = ps.length; if (hid) out.hidden = { count: hid, domains: doms };
+      out.titles = shown.slice(0, 3).map((p) => String((p && p.title) || "").replace(/\s+/g, " ").trim().slice(0, 120));
+    }
   }
   return { on: on, term: q, exchange: exchange, search: out };
 }

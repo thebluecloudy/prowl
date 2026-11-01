@@ -174,7 +174,8 @@ test("word match, secondhand first, then a search without the condition filter; 
   const s2 = shopify({ answers: [res(200, catalogAnswer(used)), res(200, catalogAnswer(any))] });
   const r2 = await ask(deps(s2.f).D, "term=ceramic+panther&max=3");
   assert.equal(r2.body.items.length, 3);
-  assert.equal(SC.shopcatItem(product(9, "x", { source: "external" })).offShopify, true, "v212: off-Shopify offers are kept, marked");
+  assert.equal(SC.shopcatItem(product(9, "x", { source: "external", url: "https://www.etsy.com/listing/9" })).offShopify, true, "v212: off-Shopify offers from a known store are kept, marked");
+  assert.equal(SC.shopcatItem(product(9, "x", { source: "external" })).hidden, true, "v212: an unknown store off Shopify is hidden");
 });
 
 test("Owl & Twig's own products are hidden, by its domain or its myshopify name", async () => {

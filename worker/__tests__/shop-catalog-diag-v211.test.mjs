@@ -258,3 +258,16 @@ test("the admin route passes the attempts through, scrubbed of markup", async ()
   const j = await p.json();
   assert.deepEqual(j.exchange.attempts, [{ method: "post", status: 401, error: "invalid_client", desc: " b no /b ", server: "", ray: false }, { method: "basic", status: 0, error: "timeout", desc: "", server: "", ray: false }]);   /* v212: + server, ray */
 });
+
+test("v212 known stores only: the admin route passes the hidden count and domains through, cleaned", async () => {
+  const env = Object.assign({ ADMIN_KEY, PROWL_ALERTS: kv() }, ENV);
+  const h = H({ shopcatTestRun: async () => ({ on: false, term: "mug", exchange: null,
+    search: { ok: true, mode: "keyless", status: 200, count: 4, titles: ["Mug"], hidden: { count: 3, domains: ["Info.VetMeNow.gr", "<b>astromemo.com</b>"] } } }) });
+  const cookie = await signIn(env, h);
+  const p = await adminFetch(new Request("https://prowl.example.workers.dev/admin/api/shopcat/test", { method: "POST", body: "{}",
+    headers: { "Content-Type": "application/json", Origin: "https://prowl.example.workers.dev", Cookie: cookie, "X-Prowl-Admin": "1" } }), env, {}, h);
+  const j = await p.json();
+  assert.equal(j.search.hidden.count, 3);
+  assert.equal(j.search.hidden.domains[0], "info.vetmenow.gr");
+  assert.ok(!/[<>]/.test(j.search.hidden.domains[1]));
+});

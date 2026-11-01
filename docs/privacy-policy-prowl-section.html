@@ -22,7 +22,10 @@
   - v212: no longer off without the key: the same request goes keyless (no token at all), so the hunt words still go to
     Shopify. The saved catalog's id (SHOPIFY_CATALOG_ID) goes with it. The worker sends its own User-Agent
     ("Prowl/212 ..."), never the member's. The catalog now returns stores off Shopify too: their photos load in the
-    browser from those stores' own hosts (any https host), never through the worker.
+    browser from those stores' own hosts (any https host), never through the worker. Then (Matt, 2026-11-01, "Known
+    stores only") an off-Shopify offer is shown only when its link is on a trusted marketplace list (SHOPCAT_OFF_TRUSTED
+    in worker/shopcat.js, plus SHOPCAT_OFF_ALLOW), so photos load only from those and from Shopify stores. Nothing new
+    is sent; the admin's Diagnose test lists the hidden domains (store domains, no member data).
   - Delete my Prowl Alerts account runs alPurge (worker/index.js). Since v181 it also covers every earlier address
     (prev: saved finds and photos, acct:, tripinv:) and the trips (tripsForget: the member leaves each trip, a trip they
     organized passes to the next member or is deleted when nobody is left, their trip finds and photos go, trips:<id>
@@ -123,7 +126,7 @@
 <h3>Searching</h3>
 <ul>
   <li><b>Search words.</b> When you search or open a hunt, the words you type are sent to our service, which looks them up for you on marketplaces such as ShopGoodwill, The Salvation Army, eBay, Etsy, Chairish, Poshmark, Vinted, Grailed, HiBid and Craigslist and returns the listings. Those lookups are made from our servers, not from your device. eBay and Etsy are asked through their official services. Results are kept for a short time in a cache by search words, not tied to you.</li>
-  <li><b>Shopify and other stores.</b> When you open a hunt, our service also sends its words to Shopify's Global Catalog, Shopify's official search across the stores that sell on Shopify and some stores elsewhere, asking for pieces in stock that ship to the US, used or vintage first. Only the hunt's words, the country and those filters are sent: never your name, email address, sign-in or IP address. Shopify's results are not stored by us. The listings' photos load in your browser straight from Shopify or from the store that lists them, and when you open one your browser goes to that store under its own policy.</li>
+  <li><b>Shopify and other stores.</b> When you open a hunt, our service also sends its words to Shopify's Global Catalog, Shopify's official search across the stores that sell on Shopify and some stores elsewhere (of those, we show only well-known marketplaces such as Etsy, eBay or Chairish), asking for pieces in stock that ship to the US, used or vintage first. Only the hunt's words, the country and those filters are sent: never your name, email address, sign-in or IP address. Shopify's results are not stored by us. The listings' photos load in your browser straight from Shopify or from the store that lists them, and when you open one your browser goes to that store under its own policy.</li>
   <li><b>Links that open a marketplace.</b> Buttons that open a marketplace in a new tab (such as Search All) send your search words to that site directly from your browser, under that site's own policy.</li>
   <li><b>Affiliate links.</b> Some marketplace links carry our affiliate code, and we may earn a commission if you buy. The note at the bottom of the Prowl page names the marketplaces where that is the case.</li>
   <li><b>Anonymous counts.</b> To learn what collectors look for, we keep daily counts of search words, Field Guide subjects and road trip destinations: how many different visitors used each and how many times. To count a visitor once, we use a one-way code made from your IP address and the date. It changes every day and is deleted within three days. The counts are kept for up to 60 days. They are never linked to your name, email address or account. We skip words that look like an email address, a web link or a long number, and destinations that start with a house number.</li>

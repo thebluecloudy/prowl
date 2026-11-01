@@ -38,8 +38,17 @@ Recently shipped, newest first:
     kept, `offShopify: true`, with `domain`; a card needs a title, a price and an https photo (any host now, Shopify's CDN
     first; loaded by the browser, never proxied or kept). A Shopify store's offer wins inside one product cluster.
     Owl & Twig's own still hidden. **Seen live:** many off-Shopify sellers look like copied listings on unrelated domains
-    (the same Fire-King mug on ograje-mihalic.si, astromemo.com and pro.pistache.fr; info.vetmenow.gr, saccarwanda.org);
-    see Waiting on Matt.
+    (the same Fire-King mug on ograje-mihalic.si, astromemo.com and pro.pistache.fr; info.vetmenow.gr, saccarwanda.org).
+  - **Known stores only (Matt's decision, 2026-11-01):** every Shopify store's offer stays; an off-Shopify offer stays
+    only when its link's host is on `SHOPCAT_OFF_TRUSTED` (`worker/shopcat.js` `shopcatTrusted`: chairish, poshmark,
+    etsy, ebay, 1stdibs, rubylane, mercari, depop, vinted, grailed, reverb, whatnot, hibid, bidprowl, liveauctioneers,
+    invaluable, lot-art, ha.com, shopgoodwill, ctbids, ecrater, abebooks, aptdeco, offerup, kaiyo,
+    everythingbutthehouse, replacements, amazon, walmart, target, wayfair, all .com) or a subdomain of one, by exact host
+    suffix (etsy.com.fake.ru, notetsy.com dropped). The plain variable `SHOPCAT_OFF_ALLOW` (comma-separated) adds
+    domains. A product whose offers are all unknown off-Shopify stores is `{ hidden }`: not counted in `why.raw`
+    (`why.hidden` instead). Diagnose › Run a test search: "N other-store items hidden: not on the trusted list
+    (domains…)", sample titles only from what a hunt would show (admin.js passes `hidden { count, domains }` through).
+    Photos of kept off-Shopify items still load from their own https hosts.
   - **Every Shopify call** (exchange, search, test) sends `Accept`, `Content-Type` and
     `User-Agent: Prowl/212 (+https://www.owlandtwigvintage.com/pages/prowl)`. A refusal that is not JSON keeps a
     scrubbed, tag-stripped 200-character snippet and who answered (`server`, `cf-ray` present) per attempt, and a 403
@@ -52,7 +61,9 @@ Recently shipped, newest first:
     api.shopify.com/auth/access_token; they say nothing about the Agents page's "Agent identities" key.
   - **Page (`shpClean`, `shpBlock`, `sgwCard`):** "Live from Shopify and other stores"; off-Shopify cards say "Other
     store · <shop>", every card adds the domain when it differs from the shop name; photos from any https host.
-  - Tests: `worker/__tests__/shop-catalog-keyless-v212.test.mjs` (8), `__tests__/page/shop-live-other-v841.test.mjs` (1).
+  - Tests: `worker/__tests__/shop-catalog-keyless-v212.test.mjs` (8), `worker/__tests__/shop-catalog-known-stores-v212.test.mjs`
+    (6: allowlist keep/drop, subdomains, lookalikes, `SHOPCAT_OFF_ALLOW`, `/shop-live`, the Diagnose line), one more in
+    `shop-catalog-diag-v211` (the admin route passes `hidden` through), `__tests__/page/shop-live-other-v841.test.mjs` (1).
     v210/v211 tests: their ENV sends no catalog (`SHOPIFY_CATALOG_ID: "none"`); the "off without secrets", "token
     refused is 503" and "failed exchange answers unavailable" cases now expect keyless; items carry `domain`; any https
     photo passes; attempts carry `server`/`ray`. Page v8.38 test: the new label and wording.
@@ -2448,10 +2459,10 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
   Worker is let through). If the token line says 403 "answered by cloudflare, with a cf-ray", Shopify's edge is blocking
   the Worker, not the key. The key is the **Client ID and Client secret of a Catalogs API key** (Dev Dashboard ›
   Catalogs › Get an API key); the docs say nothing about the Agents page's "Agent identities" key.
-- **Off-Shopify stores (v212):** the saved catalog's Off-Shopify offers include what look like copied listings on
-  unrelated domains (the same Fire-King mug on ograje-mihalic.si, astromemo.com and pro.pistache.fr; info.vetmenow.gr,
-  saccarwanda.org). Decide whether to untick Off-Shopify in the catalog, set `SHOPIFY_CATALOG_ID` = `none`, or ask for a
-  block list. Paste the updated `docs/privacy-policy-prowl-section.html` ("Shopify and other stores" bullet).
+- **Off-Shopify stores (v212):** decided 2026-11-01, "Known stores only" (see Live, v8.41 / v212). To show another
+  marketplace, add its domain to the plain Worker variable `SHOPCAT_OFF_ALLOW` (comma-separated); Diagnose › Run a test
+  search lists the domains it hid. Paste the updated `docs/privacy-policy-prowl-section.html` ("Shopify and other
+  stores" bullet).
 - **Live Shopify listings (worker v210 / page v8.38), once merged:** in the Shopify Dev Dashboard (dev.shopify.com) ›
   Catalogs, create a Catalogs API key, then set its Client ID and Client secret as the Cloudflare Worker secrets
   `SHOPIFY_CATALOG_CLIENT_ID` and `SHOPIFY_CATALOG_CLIENT_SECRET` (`wrangler secret put …` or the dashboard; never in a

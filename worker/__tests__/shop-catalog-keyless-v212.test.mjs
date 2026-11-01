@@ -121,10 +121,10 @@ test("catalog_id: Matt's saved catalog by default, SHOPIFY_CATALOG_ID overrides,
   assert.equal(s3.searches()[0].body.params.arguments.catalog.catalog_id, undefined);
 });
 
-test("off-Shopify offers are kept and marked; a card needs a price and an https photo; Owl & Twig's own still hidden", () => {
-  const ext = product(1, "Pyrex bowl", { source: "external", img: "https://img.bidsite.example/p.jpg", url: "https://bidsite.example/listing/1", shop: "Bid Site", domain: "bidsite.example" });
-  assert.deepEqual(Object.assign({}, SC.shopcatItem(ext, {})), { title: "Pyrex bowl", price: 45, currency: "USD", img: "https://img.bidsite.example/p.jpg", shop: "Bid Site", domain: "bidsite.example",
-    url: "https://bidsite.example/listing/1", secondhand: true, offShopify: true });
+test("off-Shopify offers from known stores are kept and marked; a card needs a price and an https photo; Owl & Twig's own still hidden", () => {
+  const ext = product(1, "Pyrex bowl", { source: "external", img: "https://i.etsystatic.com/p.jpg", url: "https://www.etsy.com/listing/1", shop: "Bid Site", domain: "etsy.com" });
+  assert.deepEqual(Object.assign({}, SC.shopcatItem(ext, {})), { title: "Pyrex bowl", price: 45, currency: "USD", img: "https://i.etsystatic.com/p.jpg", shop: "Bid Site", domain: "etsy.com",
+    url: "https://www.etsy.com/listing/1", secondhand: true, offShopify: true });
   assert.equal(SC.shopcatItem(product(2, "No photo", { img: "http://insecure.example/p.jpg" }), {}), null, "no https photo: dropped");
   const np = product(3, "No price"); np.variants[0].price = null;
   assert.equal(SC.shopcatItem(np, {}), null, "no price: dropped");

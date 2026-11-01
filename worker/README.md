@@ -83,7 +83,17 @@ can also be run by hand from the Actions tab.
   region Anywhere) is used; `none` sends no catalog. The catalog search goes first with Prowl's own filters (in stock,
   ships to the US, secondhand); it returns at most the catalog's own limit (10), so when that leaves fewer than the hunt
   asked for, the whole Global Catalog fills in (secondhand, then any condition). Off-Shopify offers (`source:
-  "external"`) are kept and marked "Other store" on the page.
+  "external"`) are marked "Other store" on the page, and kept **only from known stores** (Matt, 2026-11-01: many
+  off-Shopify offers were copied listings on unrelated domains): the offer link's host must be one of
+  `SHOPCAT_OFF_TRUSTED` in `worker/shopcat.js` (chairish.com, poshmark.com, etsy.com, ebay.com, 1stdibs.com,
+  rubylane.com, mercari.com, depop.com, vinted.com, grailed.com, reverb.com, whatnot.com, hibid.com, bidprowl.com,
+  liveauctioneers.com, invaluable.com, lot-art.com, ha.com, shopgoodwill.com, ctbids.com, ecrater.com, abebooks.com,
+  aptdeco.com, offerup.com, kaiyo.com, everythingbutthehouse.com, replacements.com, amazon.com, walmart.com,
+  target.com, wayfair.com) or a subdomain of one, matched by exact host suffix (etsy.com.fake.ru and notetsy.com do not
+  match). Every Shopify store's offer stays. Diagnose › Run a test search says how many were hidden and lists their
+  domains.
+- `SHOPCAT_OFF_ALLOW` (v212, plain variable, optional): more trusted off-Shopify domains, comma-separated
+  (`example.com, other.org`); each also covers its subdomains.
 
 ## What Prowl spends (admin Spending tab, v193)
 
