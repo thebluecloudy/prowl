@@ -67,6 +67,9 @@ can also be run by hand from the Actions tab.
   instead (for example Shopify's hosted example,
   `https://shopify.dev/ucp/agent-profiles/examples/2026-08-25/valid-with-capabilities.json`) if Shopify will not take
   ours. No published fee; Shopify's default limit is 5 requests a second. Results are never cached (Shopify's rule).
+  v211: when `/shop-live` says `unavailable`, open the admin › Diagnose › **Shopify stores (Global Catalog)**: it shows
+  Shopify's own error code and description for the last token exchange (the id and secret cut out), which auth method
+  worked, the lengths of the two secrets and whether they look swapped or carry spaces, and runs one test search.
 
 ## What Prowl spends (admin Spending tab, v193)
 

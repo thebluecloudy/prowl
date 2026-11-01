@@ -43,9 +43,13 @@ export const SHOPCAT_TIMEOUT_MS = 8000, SHOPCAT_TOKEN_TTL_MS = 60 * 60000, SHOPC
 export const SHOPCAT_OWN = ["owlandtwigvintage.com", "tz7xkc-du.myshopify.com", "owlandtwigvintage-store.myshopify.com"];
 const ZERO_DEC = { JPY: 1, KRW: 1, VND: 1, CLP: 1, ISK: 1, UGX: 1, XAF: 1, XOF: 1, PYG: 1, RWF: 1, KMF: 1, GNF: 1, DJF: 1, BIF: 1, VUV: 1, XPF: 1 };
 
-/* in this isolate only: the token, and how long Shopify asked us to wait after a 429 */
-const S = { tok: "", exp: 0, id: "", p: null, busyUntil: 0, failUntil: 0 };
-export function shopcatReset() { S.tok = ""; S.exp = 0; S.id = ""; S.p = null; S.busyUntil = 0; S.failUntil = 0; }
+/* in this isolate only: the token, and how long Shopify asked us to wait after a 429.
+   v211: fp = a fingerprint of the credentials the failure or the token belongs to (FNV-1a of the id and the secret,
+   memory only), so a new key in the Worker secrets is tried at once instead of after the 5-minute wait; method = the
+   token_endpoint_auth_method that worked ("post": the JSON body, "basic": HTTP Basic), tried first next time;
+   last = the latest exchange's outcome, as the admin's Diagnose card shows it (never the secret or the token). */
+const S = { tok: "", exp: 0, id: "", p: null, busyUntil: 0, failUntil: 0, fp: "", failFp: "", method: "", last: null };
+export function shopcatReset() { S.tok = ""; S.exp = 0; S.id = ""; S.p = null; S.busyUntil = 0; S.failUntil = 0; S.fp = ""; S.failFp = ""; S.method = ""; S.last = null; }
 export const SHOPCAT_DEADLINE_MS = 15000, SHOPCAT_SECOND_PASS_MS = 9000;   /* review fix: a whole request's limit; no fallback search past 9 s */
 
 export function shopcatOn(env) { return !!(env && String(env.SHOPIFY_CATALOG_CLIENT_ID || "").trim() && String(env.SHOPIFY_CATALOG_CLIENT_SECRET || "").trim()); }
@@ -86,8 +90,8 @@ function jwtExp(t) {
 }
 /* review fix: the abort timer runs through the body read too (a response whose headers came but whose body stalls
    was unbounded), and never past the request's overall deadline. Answers { status, headers, j } (j null when the
-   body was not JSON or the status was not 200). */
-async function timed(f, url, init, deadline) {
+   body was not JSON or the status was not 200; v211: all = read the JSON of any status, for Shopify's error code). */
+async function timed(f, url, init, deadline, all) {
   const ms = Math.max(1, Math.min(SHOPCAT_TIMEOUT_MS, deadline ? deadline - Date.now() : SHOPCAT_TIMEOUT_MS));
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), ms);
   const stop = new Promise((_, rej) => ctl.signal.addEventListener("abort", () => rej(Object.assign(new Error("aborted"), { name: "AbortError" }))));
@@ -95,7 +99,7 @@ async function timed(f, url, init, deadline) {
     return await Promise.race([stop, (async () => {
       const r = await f(url, Object.assign({}, init, { signal: ctl.signal }));
       let j = null;
-      if (r && r.status === 200) { try { j = await r.json(); } catch (e) { if (ctl.signal.aborted) throw e; j = null; } }
+      if (r && (r.status === 200 || all)) { try { j = await r.json(); } catch (e) { if (ctl.signal.aborted) throw e; j = null; } }
       return { status: r ? r.status : 0, headers: r && r.headers, j: j };
     })()]);
   } finally { clearTimeout(timer); }
@@ -103,30 +107,92 @@ async function timed(f, url, init, deadline) {
 
 /* the bearer token, from memory while it has more than a minute left; one exchange at a time per isolate.
    Review fix: a failed exchange (a wrong or revoked secret, Shopify down) is remembered SHOPCAT_TOKEN_FAIL_MS, so
-   Shopify does not get a client_credentials POST on every request meanwhile (shopLive answers "unavailable"). */
+   Shopify does not get a client_credentials POST on every request meanwhile (shopLive answers "unavailable").
+   v211 (live v210 answered "unavailable" with Matt's key set, and only the status was logged):
+   - Shopify's error code and a trimmed error_description are kept (S.last, and KV SHOPCAT_LAST_KEY for the admin's
+     Diagnose card); anything resembling the client id or secret is cut out first (shopcatScrub), never the token.
+   - The docs (shopify.dev/docs/agents/get-started/authentication, .../dev-dashboard/catalogs) send a JSON body
+     { client_id, client_secret, grant_type: "client_credentials" } and nothing else (no scope, no audience; the
+     client-credentials page says Shopify ignores a scope). The server metadata
+     (api.shopify.com/.well-known/oauth-authorization-server) also lists client_secret_basic, so when the JSON body is
+     refused as a bad client (invalid_client and kin), one more try goes with HTTP Basic and a form body
+     grant_type=client_credentials; the method that worked is remembered.
+   - The 5-minute wait belongs to the credentials it failed with (S.failFp): changed secrets are tried at once. */
 export const SHOPCAT_TOKEN_FAIL_MS = 5 * 60000;
-export function shopcatTokenDown(nowMs) { return S.failUntil > (Number(nowMs) || Date.now()); }
-export async function shopcatToken(env, D, nowMs, deadline) {
-  const f = (D && D.fetch) || fetch, now = Number(nowMs) || Date.now(), id = String(env.SHOPIFY_CATALOG_CLIENT_ID || "").trim();
-  if (S.tok && S.id === id && now < S.exp - SHOPCAT_TOKEN_EARLY_MS) return S.tok;
-  if (S.failUntil > now) throw new Error("token down");
-  if (S.p) return S.p;
-  S.p = (async () => {
-    let r;
-    try {
-      r = await timed(f, SHOPCAT_TOKEN_URL, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({ client_id: id, client_secret: String(env.SHOPIFY_CATALOG_CLIENT_SECRET || "").trim(), grant_type: "client_credentials" }) }, deadline);
-    } catch (e) { S.failUntil = now + SHOPCAT_TOKEN_FAIL_MS; throw e; }
+export const SHOPCAT_LAST_KEY = "shopcat:last";
+/* Shopify's codes worth a second try with the other auth method (not application_cannot_be_found: the id is unknown) */
+const RETRY_CODES = { invalid_client: 1, unauthorized_client: 1, invalid_request: 1, invalid_grant: 1, unauthorized: 1, "": 1 };
+function fnv(s) { let h = 0x811c9dc5; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16); }
+function creds(env) { return { id: String((env && env.SHOPIFY_CATALOG_CLIENT_ID) || "").trim(), secret: String((env && env.SHOPIFY_CATALOG_CLIENT_SECRET) || "").trim() }; }
+export function shopcatFp(env) { const c = creds(env); return fnv(c.id + "\n" + c.secret) + "." + c.secret.length; }
+/* Shopify's own words, without the id, the secret or anything shaped like a key; one line, at most 200 characters */
+export function shopcatScrub(v, env, n) {
+  const c = creds(env);
+  let t = String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f]+/g, " ");
+  for (const k of [c.id, c.secret]) if (k && k.length >= 3) t = t.split(k).join("[hidden]");
+  return t.replace(/"[^"]{6,}"/g, "\"[hidden]\"").replace(/(?=[A-Za-z0-9_\-+\/=]*\d)(?=[A-Za-z0-9_\-+\/=]*[A-Za-z])[A-Za-z0-9_\-+\/=]{20,}/g, "[hidden]")   /* key-like: 20+ with a digit and a letter */.replace(/\s+/g, " ").trim().slice(0, n || 200);
+}
+export function shopcatTokenDown(nowMs, env) { return S.failUntil > (Number(nowMs) || Date.now()) && (!env || S.failFp === shopcatFp(env)); }
+export function shopcatLast() { return S.last ? Object.assign({}, S.last) : null; }
+export function shopcatMethod() { return S.method; }
+async function record(env, rec) {
+  S.last = rec;
+  try { if (env && env.PROWL_ALERTS) await env.PROWL_ALERTS.put(SHOPCAT_LAST_KEY, JSON.stringify(rec), { expirationTtl: 30 * 86400 }); } catch (e) {}
+}
+/* one exchange with one auth method: { status, j } (j is the JSON body for any status, or null) */
+function exchange(f, c, method, deadline) {
+  const h = { "Accept": "application/json" };
+  let body;
+  if (method === "basic") {
+    h["Content-Type"] = "application/x-www-form-urlencoded";
+    h["Authorization"] = "Basic " + btoa(encodeURIComponent(c.id) + ":" + encodeURIComponent(c.secret));   /* RFC 6749 2.3.1: form-encoded, then Basic */
+    body = "grant_type=client_credentials";
+  } else {
+    h["Content-Type"] = "application/json";
+    body = JSON.stringify({ client_id: c.id, client_secret: c.secret, grant_type: "client_credentials" });
+  }
+  return timed(f, SHOPCAT_TOKEN_URL, { method: "POST", headers: h, body: body }, deadline, true);
+}
+/* force (the admin's test): skip the token in memory and the 5-minute wait */
+export async function shopcatToken(env, D, nowMs, deadline, force) {
+  const f = (D && D.fetch) || fetch, now = Number(nowMs) || Date.now(), c = creds(env), id = c.id, fp = shopcatFp(env);
+  if (!force && S.tok && S.id === id && S.fp === fp && now < S.exp - SHOPCAT_TOKEN_EARLY_MS) return S.tok;
+  if (!force && S.failUntil > now && S.failFp === fp) throw new Error("token down");
+  if (S.p && !force) return S.p;
+  const run = (async () => {
+    const order = S.method === "basic" ? ["basic", "post"] : ["post", "basic"];
+    let r = null, used = order[0], tries = [];
+    for (let i = 0; i < order.length; i++) {
+      used = order[i];
+      try { r = await exchange(f, c, used, deadline); }
+      catch (e) {
+        S.failUntil = now + SHOPCAT_TOKEN_FAIL_MS; S.failFp = fp;
+        await record(env, { at: now, ok: false, status: 0, error: /abort/i.test(String(e && (e.name || e.message))) ? "timeout" : "unreachable", desc: "", method: used, tried: tries.concat(used) });
+        throw e;
+      }
+      tries.push(used);
+      const j = r.j, code = j && typeof j.error === "string" ? j.error : "";
+      if (r.status === 200 && j && typeof j.access_token === "string" && j.access_token) break;
+      /* refused as a bad client: once more with the other method */
+      if (i === 0 && (r.status === 400 || r.status === 401) && RETRY_CODES[code]) continue;
+      break;
+    }
     const j = r && r.j, t = j && typeof j.access_token === "string" ? j.access_token : "";
     if (!r || r.status !== 200 || !t) {
-      S.failUntil = now + SHOPCAT_TOKEN_FAIL_MS;
-      console.error("shopcat token", r ? r.status : "none");   /* the status only, never the body or the secret */
+      S.failUntil = now + SHOPCAT_TOKEN_FAIL_MS; S.failFp = fp;
+      const code = shopcatScrub(j && j.error, env, 60), desc = shopcatScrub(j && (j.error_description || j.message), env, 200);
+      await record(env, { at: now, ok: false, status: r ? r.status : 0, error: code || (r && r.status === 200 ? "no access_token in the answer" : ""), desc: desc, method: used, tried: tries });
+      console.error("shopcat token", r ? r.status : "none", code || "-", tries.join("+"));   /* Shopify's code, never the body's secret parts or the token */
       throw new Error("token " + (r ? r.status : "none"));
     }
     const said = Number(j.expires_in) > 0 ? now + Number(j.expires_in) * 1000 : jwtExp(t);
-    S.tok = t; S.id = id; S.exp = Math.min(said > now ? said : now + SHOPCAT_TOKEN_TTL_MS, now + SHOPCAT_TOKEN_TTL_MS);
+    S.tok = t; S.id = id; S.fp = fp; S.method = used; S.failUntil = 0; S.failFp = "";
+    S.exp = Math.min(said > now ? said : now + SHOPCAT_TOKEN_TTL_MS, now + SHOPCAT_TOKEN_TTL_MS);
+    await record(env, { at: now, ok: true, status: 200, error: "", desc: "", method: used, tried: tries });
     return t;
   })();
+  if (force) return run;
+  S.p = run;
   try { return await S.p; } finally { S.p = null; }
 }
 
@@ -209,7 +275,7 @@ export async function shopLive(request, env, url, origin, D, nowMs) {
   const mx = Math.floor(Number(url.searchParams.get("max")));
   const max = mx >= 1 ? Math.min(SHOPCAT_MAX, mx) : SHOPCAT_MAX;
   if (S.busyUntil > now) return out({ on: true, term: term, error: "busy", items: [] }, 429);
-  if (shopcatTokenDown(now)) return out({ on: true, term: term, error: "unavailable", items: [] }, 503);   /* review fix: a failed exchange waits SHOPCAT_TOKEN_FAIL_MS */
+  if (shopcatTokenDown(now, env)) return out({ on: true, term: term, error: "unavailable", items: [] }, 503);   /* review fix: a failed exchange waits SHOPCAT_TOKEN_FAIL_MS */
   if (!(await D.vCount("shopcat:" + D.ipKey(request.headers.get("CF-Connecting-IP")), SHOPCAT_PER_IP))) return out({ on: true, term: term, error: "slow down", items: [] }, 429);
   const profile = shopcatProfileUrl(env, url.origin);
   const t0 = Date.now(), deadline = t0 + SHOPCAT_DEADLINE_MS;   /* review fix: the whole request, token and both searches */
@@ -236,4 +302,59 @@ export async function shopLive(request, env, url, origin, D, nowMs) {
   const body = { on: true, term: term, items: items };
   if (!items.length) body.why = { raw: raw, words: words, own: own };
   return out(body, 200);
+}
+
+/* ---------- v211: the admin's Diagnose card "Shopify stores (Global Catalog)" ----------
+   shopcatStatus: on/off, the latest exchange (this isolate's, else the KV record another isolate left), the auth method
+   that worked, and the shape of the two secrets (lengths, stray spaces or quotes, swapped) without their values.
+   shopcatTest: one fresh token exchange (past the memory and the 5-minute wait) and one search_catalog for a test
+   term; the item count and the first 3 titles, or Shopify's exact JSON-RPC error. admin.js gates both behind the
+   admin session (the owner only). */
+function shape(v) {
+  const raw = String(v == null ? "" : v), t = raw.trim();
+  return { len: t.length, spaces: raw !== t, inner: /\s/.test(t), quotes: /^["'`]|["'`]$/.test(t), set: t.length > 0 };
+}
+export function shopcatShape(env) {
+  const id = shape(env && env.SHOPIFY_CATALOG_CLIENT_ID), secret = shape(env && env.SHOPIFY_CATALOG_CLIENT_SECRET);
+  const sid = String((env && env.SHOPIFY_CATALOG_CLIENT_ID) || "").trim(), ssec = String((env && env.SHOPIFY_CATALOG_CLIENT_SECRET) || "").trim();
+  /* Shopify's secrets start shpss_ (or atkn_ and the like for tokens); an id that does, or a secret that looks like a
+     bare 32-character hex id, is probably in the wrong slot. Only the yes/no leaves the worker. */
+  const swapped = /^(shpss_|shpat_|shpca_|atkn_)/i.test(sid) || (/^[0-9a-f]{32}$/i.test(ssec) && !/^[0-9a-f]{32}$/i.test(sid));
+  return { id: id, secret: secret, swapped: swapped, same: !!sid && sid === ssec };
+}
+export async function shopcatStatus(env, nowMs) {
+  const now = Number(nowMs) || Date.now();
+  let last = shopcatLast();
+  if (!last && env && env.PROWL_ALERTS) { try { last = await env.PROWL_ALERTS.get(SHOPCAT_LAST_KEY, "json"); } catch (e) { last = null; } }
+  const L = last && typeof last === "object" ? last : null;
+  return { on: shopcatOn(env), shape: shopcatShape(env), method: S.method || (L && L.ok ? String(L.method || "") : ""),
+    waitUntil: shopcatTokenDown(now, env) ? S.failUntil : 0, busyUntil: S.busyUntil > now ? S.busyUntil : 0,
+    last: L ? { at: Number(L.at) || 0, ok: !!L.ok, status: Number(L.status) || 0, error: shopcatScrub(L.error, env, 60), desc: shopcatScrub(L.desc, env, 200),
+      method: String(L.method || "").replace(/[^a-z]/g, "").slice(0, 8), tried: (Array.isArray(L.tried) ? L.tried : []).map((m) => String(m).replace(/[^a-z]/g, "").slice(0, 8)).slice(0, 2) } : null };
+}
+export async function shopcatTest(env, D, term, origin, nowMs) {
+  const now = Number(nowMs) || Date.now(), q = shopcatTerm(term) || "pyrex";
+  if (!shopcatOn(env)) return { on: false, term: q, exchange: null, search: null };
+  const deadline = Date.now() + SHOPCAT_DEADLINE_MS, f = (D && D.fetch) || fetch;
+  let tok = "";
+  try { tok = await shopcatToken(env, D, now, deadline, true); } catch (e) {}
+  const ex = shopcatLast() || { ok: !!tok, status: tok ? 200 : 0, error: "", desc: "", method: S.method, tried: [] };
+  const exchange = { ok: !!tok, at: ex.at || now, status: ex.status, error: ex.error, desc: ex.desc, method: ex.method, tried: ex.tried || [] };
+  if (!tok) return { on: true, term: q, exchange: exchange, search: null };
+  if (D && typeof D.vCount === "function" && !(await D.vCount("shopcat:all", SHOPCAT_PER_DAY))) return { on: true, term: q, exchange: exchange, search: { ok: false, status: 429, error: "daily limit" } };
+  let r;
+  try {
+    r = await timed(f, SHOPCAT_MCP_URL, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Bearer " + tok },
+      body: JSON.stringify(shopcatBody(q, shopcatProfileUrl(env, origin), false)) }, deadline, true);
+  } catch (e) { return { on: true, term: q, exchange: exchange, search: { ok: false, status: 0, error: /abort/i.test(String(e && (e.name || e.message))) ? "timeout" : "unreachable" } }; }
+  const j = r.j, out = { ok: false, status: r.status };
+  if (j && j.error) out.rpc = { code: Number(j.error.code) || 0, message: shopcatScrub(j.error.message, env, 300), data: j.error.data == null ? "" : shopcatScrub(typeof j.error.data === "string" ? j.error.data : JSON.stringify(j.error.data), env, 300) };
+  else if (j && j.result && j.result.isError) out.rpc = { code: 0, message: shopcatScrub((Array.isArray(j.result.content) ? j.result.content : []).map((x) => x && x.text).filter(Boolean).join(" ") || "tool error", env, 300), data: "" };
+  else if (r.status !== 200) out.error = shopcatScrub(j && (j.error_description || j.message || j.error), env, 200) || "answered " + r.status;
+  else {
+    const sc = j && j.result && j.result.structuredContent, ps = sc && Array.isArray(sc.products) ? sc.products : null;
+    if (!ps) out.error = "no products in the answer";
+    else { out.ok = true; out.count = ps.length; out.titles = ps.slice(0, 3).map((p) => String((p && p.title) || "").replace(/\s+/g, " ").trim().slice(0, 120)); }
+  }
+  return { on: true, term: q, exchange: exchange, search: out };
 }

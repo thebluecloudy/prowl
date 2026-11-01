@@ -398,6 +398,7 @@ const S = { tab: "", aData: null, ov: null, ovAt: 0, ovSeq: 0, out: false, healt
   gData: null, gAt: 0, gSeq: 0, giftsAll: false, glen: null };
 Object.assign(S, { spData: null, spSeq: 0 });   /* v193: Spending */
 Object.assign(S, { fbt: null, fbTerm: "", fbZip: "", fbMode: "50" });   /* v200: the Facebook test */
+Object.assign(S, { shc: null, shcT: null, shcTerm: "pyrex" });   /* v211: the Shopify catalog card */
 
 /* ---------- DOM: API data only ever lands in textContent or vetted https attributes ---------- */
 function h(tag, a, kids) {
@@ -551,7 +552,7 @@ const AI = { match: "Match", lot: "Lot or set", reproduction: "Reproduction", pa
 const AUDIT = { login: "Admin sign-in", logout: "Admin sign-out", "signin-link": "Sent a sign-in link", "refresh-pro": "Re-checked Pro",
   "recheck-today": "Re-check hunts today", "resend-today": "Send today's email again", "mail-on": "Turned emails on", "mail-off": "Turned emails off",
   unpause: "Unpaused", "signout-all": "Signed out all devices", "clear-seen": "Cleared already-sent memory", delete: "Deleted a member",
-  find: "Looked up a member", diagnose: "Ran Diagnose", healthcheck: "Ran a health check", salescheck: "Checked the garage-sale sites", fbtest: "Ran a Facebook test",
+  find: "Looked up a member", diagnose: "Ran Diagnose", healthcheck: "Ran a health check", salescheck: "Checked the garage-sale sites", fbtest: "Ran a Facebook test", "shopcat-test": "Ran a Shopify catalog test",
   "aff-on": "Turned an affiliate on", "aff-off": "Turned an affiliate off", "aff-ids": "Saved affiliate IDs", "spend-prices": "Saved spending prices and bills", "gift-add": "Gifted Pro", "gift-remove": "Turned off a gift", "gift-on": "Gifted Pro to a member", "gift-off": "Turned off free Pro" };
 const ISSUES = { members: "member counts", alerts: "alert emails", metrics: "speed, errors and uptime", traffic: "speed and errors", uptime: "uptime",
   ai: "AI usage", pools: "AI usage", searches: "top searches", audit: "admin activity", errors: "recent errors" };
@@ -894,6 +895,77 @@ function fbTestView() {
   return h("div", { class: "more" }, [head, kept, tableOf([{ t: "Photo", bare: 1 }, { t: "Listing", cls: "wide" }, { t: "Price", num: 1 }, { t: "Town" }],
     X.items.map(x => [x.image ? h("img", { src: x.image, alt: "", width: "56", height: "56", loading: "lazy", referrerpolicy: "no-referrer", class: "fbt-img" }) : "\u2014",
       x.url ? h("a", { href: x.url, target: "_blank", rel: "noopener noreferrer", text: x.title }) : x.title, x.price || "\u2014", (x.city || "\u2014") + (x.ships ? " \u00b7 ships" : x.miles != null ? " \u00b7 " + x.miles + " mi" : "")]), "Facebook test results", true), flds]);
+}
+/* v211: Shopify stores (Global Catalog). Whether the two secrets are set, what the latest token exchange said (Shopify's
+   own error code and description, the id and secret cut out by the worker), which auth method worked, and a test:
+   one exchange and one search. Built once on the Diagnose tab, like the Facebook test. */
+const SHC_METHOD = { post: "client ID and secret in a JSON body", basic: "HTTP Basic (client_secret_basic)" };
+function shcBox() {
+  const sbox = h("div", { id: "shc-status" }, loading("Loading the Shopify catalog status\u2026")), tbox = h("div", { class: "hbox", id: "shc-out" });
+  const ti = h("input", { id: "shc-term", type: "text", maxlength: "80", autocomplete: "off", value: S.shcTerm, "aria-label": "Test search term" });
+  ti.addEventListener("input", () => { S.shcTerm = ti.value; });
+  const btn = h("button", { class: "btn btn-s", type: "button", id: "shc-run", text: "Run a test search" });
+  const load = async () => {
+    try { S.shc = await api("/admin/api/shopcat"); } catch (e) { S.shc = e.status === 401 ? null : { error: e.message }; }
+    fill(sbox, shcStatusView());
+  };
+  btn.addEventListener("click", async () => {
+    if (S.shcT && S.shcT.busy) return;
+    btn.disabled = true; S.shcT = { busy: true }; fill(tbox, shcTestView());
+    try { S.shcT = Object.assign({ at: Date.now() }, await api("/admin/api/shopcat/test", { term: S.shcTerm })); }
+    catch (e) { S.shcT = e.status === 401 ? null : { error: e.message }; }
+    btn.disabled = false; fill(tbox, shcTestView()); load();
+  });
+  load();
+  return h("div", [sbox, h("div", { class: "fbt" }, [ti, btn]),
+    h("p", { class: "hint", text: "Runs one token exchange (past the 5-minute wait after a failure) and one search on Shopify\u2019s Global Catalog now. Nothing is kept." }), tbox,
+    h("details", [h("summary", { text: "If the exchange fails" }), h("ul", { class: "samp" }, [
+      "The client ID and the secret are swapped: SHOPIFY_CATALOG_CLIENT_ID takes the Client ID, SHOPIFY_CATALOG_CLIENT_SECRET the secret.",
+      "Extra spaces, quotes or a line break were pasted with a value (Cloudflare \u203a Workers \u203a prowl \u203a Settings \u203a Variables and secrets: paste the value alone).",
+      "The key is not from Dev Dashboard \u203a Catalogs \u203a API keys (an app\u2019s Client ID and secret from Apps \u203a Settings is a different credential).",
+      "The secret was rotated or the key deleted in the Dev Dashboard: create a new key and paste both values again.",
+      "After changing a secret, Run a test search: a new key is tried at once."].map(t => h("li", { class: "small", text: t })))])]);
+}
+function shcShapeText(name, x) {
+  if (!x || !x.set) return name + ": not set.";
+  const bad = [x.spaces ? "spaces at an end" : "", x.inner ? "a space inside" : "", x.quotes ? "a quote mark at an end" : ""].filter(Boolean);
+  return name + ": " + x.len + " characters" + (bad.length ? ", with " + bad.join(" and ") + "." : ".");
+}
+function shcStatusView() {
+  const X = S.shc;
+  if (!X) return null;
+  if (X.error && X.on === undefined) return note("bad", "Could not load the Shopify catalog status. " + X.error);
+  const L = X.last, sh = X.shape || {};
+  const rows = [
+    fact("Live listings", X.on ? st("good", "On (both secrets set)") : st("warning", "Off (a secret is missing)")),
+    fact("Last exchange", L && L.at ? fmtWhen(L.at) : "None yet in this worker"),
+    fact("Result", !L ? "\u2014" : L.ok ? st("good", "Token received") : st("critical", "Failed" + (L.status ? " (" + L.status + ")" : ""))),
+    fact("Shopify's error", L && !L.ok ? (L.error || "\u2014") : "\u2014"),
+    fact("Auth method that worked", X.method ? (SHC_METHOD[X.method] || X.method) : "\u2014")];
+  const out = [h("dl", { class: "facts" }, rows)];
+  if (L && !L.ok && L.desc) out.push(h("p", { class: "small", text: "Shopify said: " + L.desc }));
+  if (L && L.tried && L.tried.length) out.push(h("p", { class: "hint", text: "Tried: " + L.tried.map(m => SHC_METHOD[m] || m).join(", then ") + "." }));
+  if (X.waitUntil) out.push(h("p", { class: "hint", text: "Live listings wait until " + fmtWhen(X.waitUntil) + " before the next exchange (a test runs now anyway)." }));
+  out.push(h("p", { class: "hint", text: shcShapeText("Client ID", sh.id) + " " + shcShapeText("Secret", sh.secret) + (sh.swapped ? " They look swapped." : "") + (sh.same ? " Both hold the same value." : "") }));
+  return h("div", out);
+}
+function shcTestView() {
+  const X = S.shcT;
+  if (!X) return null;
+  if (X.busy) return loading("Asking Shopify for a token, then searching\u2026");
+  if (X.error && !X.exchange) return note("bad", "Shopify test failed. " + X.error);
+  if (X.on === false) return note("warn", "Live Shopify listings are off: set SHOPIFY_CATALOG_CLIENT_ID and SHOPIFY_CATALOG_CLIENT_SECRET in the worker.");
+  const E = X.exchange || {}, R = X.search;
+  const out = [h("h3", { class: "small", text: "Token: " + (E.ok ? "received" + (E.method ? " (" + (SHC_METHOD[E.method] || E.method) + ")" : "") : "refused" + (E.status ? " (" + E.status + ")" : "") + (E.error ? ": " + E.error : "")) })];
+  if (!E.ok && E.desc) out.push(h("p", { class: "small", text: "Shopify said: " + E.desc }));
+  if (R) {
+    if (R.ok) {
+      out.push(h("h3", { class: "small", text: "Search \u201c" + (X.term || "") + "\u201d: " + R.count + " item" + (R.count === 1 ? "" : "s") + " at " + fmtTime(new Date(X.at)) }));
+      if (R.titles && R.titles.length) out.push(h("ul", { class: "samp" }, R.titles.map(t => h("li", { class: "small", text: t }))));
+    } else if (R.rpc) out.push(note("bad", "Search error (JSON-RPC " + R.rpc.code + "): " + R.rpc.message + (R.rpc.data ? " " + R.rpc.data : "")));
+    else out.push(note("bad", "Search failed" + (R.status ? " (" + R.status + ")" : "") + ": " + (R.error || "no answer")));
+  }
+  return h("div", { class: "more" }, out);
 }
 /* lastAt = when the latest test search ran (ms); older data only has the hour it last worked */
 function lastCheck(u) { const at = u.lastAt || u.lastOkAt; return at ? fmtWhen(at) : "\u2014"; }
@@ -1568,6 +1640,7 @@ function startDiag(ctx) {
 }
 $("#dform").addEventListener("submit", e => { e.preventDefault(); runDiag(); });
 fill($("#fbtbox"), fbTestBox());   /* v200: once; nothing redraws it */
+fill($("#shcbox"), shcBox());   /* v211: once, like the Facebook test */
 async function runDiag() {
   const out = $("#dout"), msg = $("#dmsg");
   const term = $("#dterm").value.trim(), typed = $("#dmember").value.trim(), mid = normId(typed) || typed;
@@ -1980,7 +2053,8 @@ function appBody() {
       '<fieldset><legend>Marketplaces <button class="lnk small" id="dall" type="button">All / none</button></legend><div class="checks" id="dsrc"></div></fieldset>' +
       '<div class="drun"><button class="btn btn-p" id="drun" type="submit">Run</button><p class="msg" id="dmsg" role="alert"></p></div></form></section>' +
       '<p class="sr" id="dstatus" role="status"></p><div class="view" id="dout"></div>' +
-      '<section class="card" id="fbtcard"><div class="ch"><h2>Facebook Marketplace (Apify)</h2></div><div id="fbtbox"></div></section>') +
+      '<section class="card" id="fbtcard"><div class="ch"><h2>Facebook Marketplace (Apify)</h2></div><div id="fbtbox"></div></section>' +
+      '<section class="card" id="shccard"><div class="ch"><h2>Shopify stores (Global Catalog)</h2></div><div id="shcbox"></div></section>') +
     panel("errors",
       '<section class="card"><div class="ch"><h2>Errors</h2></div><p class="sub">Server errors from the last 30 days, newest first. Email addresses and long numbers are removed from the messages.</p>' +
       '<div id="errbox"></div></section>') +
