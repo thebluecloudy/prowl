@@ -1,18 +1,18 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.40 / v212).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.41 / v212).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.40** | 367,954 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Page | **v8.41** | 361,670 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
 | Worker | **v212** | |
 
 Recently shipped, newest first:
 
-- **v8.40 / v212: the Shopify strip searches keyless, with Matt's saved catalog and stores off Shopify** (Claude,
-  2026-11-01). Branch `claude/gifted-johnson-wzaqr3`, pushed, no PR yet (in flight below). Page room left: 367,954 bytes.
+- **v8.41 / v212: the Shopify strip searches keyless, with Matt's saved catalog and stores off Shopify** (Claude,
+  2026-11-01). Branch `claude/gifted-johnson-wzaqr3`, pushed, no PR yet (in flight below). Page room left: 361,670 bytes.
   - **Why:** live v211 with Matt's key answered `/shop-live` `{"error":"unavailable"}`: the Worker's token exchange got a
     bare **403 with no JSON** (from this sandbox a made-up id gets a JSON 400 `application_cannot_be_found`, so the
     Worker's 403 looks like an edge block of the Worker's request, not a refused key). **Reproduced from the sandbox:**
@@ -52,12 +52,25 @@ Recently shipped, newest first:
     api.shopify.com/auth/access_token; they say nothing about the Agents page's "Agent identities" key.
   - **Page (`shpClean`, `shpBlock`, `sgwCard`):** "Live from Shopify and other stores"; off-Shopify cards say "Other
     store · <shop>", every card adds the domain when it differs from the shop name; photos from any https host.
-  - Tests: `worker/__tests__/shop-catalog-keyless-v212.test.mjs` (8), `__tests__/page/shop-live-other-v840.test.mjs` (1).
+  - Tests: `worker/__tests__/shop-catalog-keyless-v212.test.mjs` (8), `__tests__/page/shop-live-other-v841.test.mjs` (1).
     v210/v211 tests: their ENV sends no catalog (`SHOPIFY_CATALOG_ID: "none"`); the "off without secrets", "token
     refused is 503" and "failed exchange answers unavailable" cases now expect keyless; items carry `domain`; any https
     photo passes; attempts carry `server`/`ray`. Page v8.38 test: the new label and wording.
   - Privacy section (`docs/privacy-policy-prowl-section.html`): "Shopify and other stores"; photos from the store's own
     host; notes for v212 (keyless, the catalog id, our own User-Agent).
+
+- **v8.40: Store from one hunt, and How Prowl works on the pattern of liinks.co's home page** (live with #303)
+  - **Store** (Matt: "I'm searching in hunt with the pills and I just want to find the items in one store but it goes
+    to the bottom of hunt"; asked, he had tapped Store in the dock): with one hunt on screen, Store runs just that hunt
+    on the store (`st.storeOne`, in memory only), headed "<hunt> on <store>" with "N listings live", a "Just <hunt> ·
+    All N hunts" line, and keeps the hunt when the store changes. From anywhere else Store checks every hunt, as
+    before. `#otp-res` has a scroll margin so the card starts on screen. Tests: `__tests__/page/store-one-v840.test.mjs`.
+  - **How Prowl works** (Matt: "use this home page as a reference for how prowl works"): the title band, "Free · no
+    account needed to search", "Type it once. Prowl hunts 30 vintage marketplaces." and a box to try it (`#otp-hwTry`);
+    each of the nine features a short title, one line and a small picture (`.hw-mock`, `aria-hidden`), every earlier
+    instruction kept under **How**; then Prowl or one site at a time, the two plans (numbers tested against
+    `HUNTS_FREE`, `HUNTS_PRO`, `PHOTO_FREE_PER_DAY`), five questions, Prowl's words and **Start hunting**. No reviews or
+    customer pages: Prowl has none, and none are made up. Tests: `__tests__/page/how-v840.test.mjs`.
 
 - **v8.39 / v211: Shopify catalog diagnose card, Chairish photos in the popup** (Claude, 2026-11-01). Live with #306.
   Page room left: 367,954 bytes (the script is on the worker).
@@ -2411,9 +2424,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `claude/gifted-johnson-wzaqr3` | Claude | Shopify strip keyless, saved catalog, stores off Shopify (see Live, v8.40 / v212) | Claims **page v8.40 / worker v212**. Pushed, no PR yet. |
+| `claude/gifted-johnson-wzaqr3` | Claude | Shopify strip keyless, saved catalog, stores off Shopify (see Live, v8.41 / v212) | Claims **page v8.41 / worker v212** (v8.40 went to #303). Pushed, no PR yet. |
 
-Next free numbers: **page v8.41, worker v213** (v8.40 / v212: Shopify keyless and off-Shopify stores, branch `claude/gifted-johnson-wzaqr3`; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.42, worker v213** (v8.41 / v212: Shopify keyless and off-Shopify stores from known stores only, branch `claude/gifted-johnson-wzaqr3`; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 

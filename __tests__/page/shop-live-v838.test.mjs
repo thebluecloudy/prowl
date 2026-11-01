@@ -46,7 +46,7 @@ function fastRetry(win) {
   win.setTimeout = (fn, ms, ...a) => (ms === 120100 ? st(() => { off += ms; fn(...a); }, 30) : st(fn, ms, ...a));
   win.Date.now = () => now() + off;
 }
-const strip = (p) => p.$$('#otp-sgw .sgw-sub').find((s) => /Live from Shopify (and other )?stores/.test(s.textContent));   /* v8.40: "and other stores" */
+const strip = (p) => p.$$('#otp-sgw .sgw-sub').find((s) => /Live from Shopify (and other )?stores/.test(s.textContent));   /* v8.41: "and other stores" */
 
 test('the strip: Shopify cards with photo, title, price, shop name and a new-tab noopener link to the product', async () => {
   const f = shopFetch(LIVE);
@@ -69,7 +69,7 @@ test('the strip: Shopify cards with photo, title, price, shop name and a new-tab
   assert.match(cards[0].querySelector('.sgw-m').textContent, /^Shopify · Debra Hall Lifestyle/);
   assert.equal(cards[0].getAttribute('data-s'), 'shopify');
   assert.equal(cards[1].querySelector('.sgw-p').textContent, '$1,250.50');
-  assert.equal(cards[1].querySelector('img').getAttribute('src'), 'https://evil.example/x.jpg', 'v8.40: any https photo, straight from its host');
+  assert.equal(cards[1].querySelector('img').getAttribute('src'), 'https://evil.example/x.jpg', 'v8.41: any https photo, straight from its host');
   const jump = p.$$('#otp-sgw .lv-j').map((b) => b.textContent);
   assert.ok(jump.indexOf('Shopify 2') !== -1, jump.join('|'));
   assert.equal(p.errors.length, 0, String(p.errors[0] || ''));
