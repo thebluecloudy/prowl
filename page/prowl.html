@@ -1419,6 +1419,15 @@ window.prowlAffNames=function(){var a=window.prowlAffUse('ebay')?['eBay']:[],d;f
 .scout-app-wrapper .sgw-st-wait i{background:var(--ac)}
 @media(prefers-reduced-motion:no-preference){.scout-app-wrapper .sgw-st-wait i{animation:otpPaw 1.2s ease-in-out infinite}}
 .scout-app-wrapper .alrt{margin:0 0 30px;padding:18px;border:1px solid var(--ac);border-radius:16px;background:var(--cd2)}
+.scout-app-wrapper .proadds{margin:0 0 30px;padding:18px;border:1.5px solid var(--ac);border-radius:16px;background:var(--cd2)}
+.scout-app-wrapper .proadds h2{margin:0 0 8px;font-size:20px}
+.scout-app-wrapper .proadds ul{margin:0 0 14px;padding-left:20px;font-size:15px;line-height:1.45;color:var(--i2)}
+.scout-app-wrapper .proadds li{margin:0 0 6px}
+.scout-app-wrapper .proadds li b{color:var(--ink)}
+.scout-app-wrapper .proadds .fine{display:inline-block;margin-left:6px;font-size:13px;color:var(--i2)}
+.scout-app-wrapper .sgw-lock{margin-left:8px;font-size:12px;font-weight:700;color:var(--ac)}
+.scout-app-wrapper .wk-teaser{padding:14px;border:1.5px solid var(--ac);border-radius:14px;background:var(--cd2)}
+.scout-app-wrapper .wk-teaser ul{margin:8px 0 12px;padding-left:20px;font-size:14px;color:var(--i2)}
 /* v7.81 (the design brief, idea 4): the Alerts card is one line until it is wanted */
 .scout-app-wrapper .alrt.is-mini>:not(.alrt-mini),.scout-app-wrapper .alrt:not(.is-mini)>.alrt-mini{display:none!important}
 .scout-app-wrapper .alrt.is-mini{padding:0!important;border-color:var(--l2)}
@@ -2987,8 +2996,8 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <div class="k2-pills k2-only">
 <span>Free: 3 hunts</span><span>Pro: up to 100 hunts</span><span>14 days of Pro free</span>
 </div>
-    <p class="k2-hide">One email with new finds for your hunts on ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted and Grailed, only listings you have not seen. Every morning, three mornings a week, or just Mondays: you pick, and you pick which hunts go in. <b>Free: 3 hunts.</b> <b>Prowl Pro: your first month is free</b>, then $7 a month for up to 100 hunts, your whole Den, a price ceiling, skip-words, local-pickup hunts near your ZIP, unlimited photo checks and unlimited Fair price checks. We email you before the first charge. Cancel any time.</p>
-    <p><button class="b p" id="otp-alertsGo" type="button">Set up Prowl Alerts</button> <a class="b" href="/products/prowl-pro">Try Prowl Pro free for a month</a></p>
+    <p class="k2-hide">One email with new finds for your hunts on ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted and Grailed, only listings you have not seen. Every morning, three mornings a week, or just Mondays: you pick, and you pick which hunts go in. <b>Free: 3 hunts.</b> <b>Prowl Pro: 14 days free when you sign up</b>, then $7 a month for up to 100 hunts, your whole Den, Facebook Marketplace near you in your hunts, this week’s estate sales near you, a price ceiling, skip-words, local-pickup hunts near your ZIP, unlimited photo checks and unlimited Fair price checks. No card for the trial. Cancel any time.</p>
+    <p><button class="b p" id="otp-alertsGo" type="button">Set up Prowl Alerts</button> <button type="button" class="b" data-protry="1">Try Pro free for 14 days</button></p>
     <p class="fine">Or join the Owl &amp; Twig list for news and new finds:</p>
     <form id="otp-alertsF" method="post" action="/contact#otp-alerts" accept-charset="UTF-8">
       <input type="hidden" name="form_type" value="customer">
@@ -2998,6 +3007,18 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <button class="b p" type="submit">Join the list</button>
     </form>
     <p class="fine">The occasional Owl &amp; Twig note. Unsubscribe any time. The free Prowl stays free.</p>
+  </section>
+  <section class="proadds" id="otp-proAdds" aria-labelledby="otp-proAddsT" hidden>
+    <h2 id="otp-proAddsT">What Prowl Pro adds</h2>
+    <ul>
+      <li><b>Facebook Marketplace, live in your hunts.</b> Listings near you, checked every day.</li>
+      <li><b>Estate sales this week near you.</b> The ones that mention your hunts come first, in the app and your email.</li>
+      <li><b>Up to 100 hunts</b> in your Den and in your email, with a price ceiling, skip words and local pickup.</li>
+      <li><b>Pounce on 5 pieces.</b> Prowl checks each new listing's photo and tells you when it is the real thing.</li>
+      <li><b>Unlimited photo checks and Fair price checks.</b></li>
+      <li><b>Saved finds kept a year</b>, photos and all, on every device.</li>
+    </ul>
+    <p><button type="button" class="b p" data-protry="1" id="otp-proAddsGo">Try Pro free for 14 days</button> <span class="fine" id="otp-proAddsFine">No card. Then $7 a month, or stay on Free.</span></p>
   </section>
 
   <div class="applaunch" id="otp-appbar" hidden>
@@ -4186,7 +4207,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 <h3>Prowl Alerts by email</h3>
 <p class="hw-one">New finds come to you, as often as you pick.</p>
 <div class="hw-mock" aria-hidden="true"><div class="hw-card"><b>Prowl: 4 new finds for your hunts</b><span class="hw-dim">Royal Haeger panther, Pyrex Butterprint</span></div></div>
-<details class="hw-how"><summary>How</summary><p>One email with new finds for your hunts, as often as you pick. <b style="color:var(--ink)">Free for 3 hunts.</b> Prowl Pro is <b style="color:var(--ink)">free for the first month</b>, then $7 a month for up to 100 hunts and your Den. Cancel any time. Set it up, see your plan and receipts, or turn emails off in <b style="color:var(--ink)">Den › Settings</b>. Tap <b style="color:var(--ink)">Sign in or sign up</b> to use your Owl &amp; Twig account: we email you a 6-digit code, no password, and the same sign-in works on your phone and computer.</p></details>
+<details class="hw-how"><summary>How</summary><p>One email with new finds for your hunts, as often as you pick. <b style="color:var(--ink)">Free for 3 hunts.</b> New members get <b style="color:var(--ink)">14 days of Prowl Pro free</b>, then $7 a month for up to 100 hunts and your Den, Facebook Marketplace in your hunts and this week’s estate sales near you. Cancel any time. Set it up, see your plan and receipts, or turn emails off in <b style="color:var(--ink)">Den › Settings</b>. Tap <b style="color:var(--ink)">Sign in or sign up</b> to use your Owl &amp; Twig account: we email you a 6-digit code, no password, and the same sign-in works on your phone and computer.</p></details>
 </div>
 </div>
     <div class="mi">
@@ -4219,7 +4240,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
       <h3 id="otp-hwPlans">Simple plans</h3>
       <div class="hw-plans">
         <div class="hw-plan"><b>Free</b><p class="hw-price">$0</p><ul><li>Search all <span data-t>30</span> marketplaces</li><li>5 hunts in your Den</li><li>Email alerts for 3 hunts</li><li>1 photo check a day</li><li>3 Fair price checks a day</li></ul></div>
-        <div class="hw-plan hw-pro"><b>Prowl Pro</b><p class="hw-price">$7<small>/month</small></p><p class="hw-dim">First month free. Cancel any time.</p><ul><li>Up to 100 hunts, all in your alerts</li><li>Unlimited photo checks</li><li>Unlimited Fair price checks</li><li>This week’s estate sales near you</li></ul><a class="b p" href="/products/prowl-pro">Try Prowl Pro free for a month</a></div>
+        <div class="hw-plan hw-pro"><b>Prowl Pro</b><p class="hw-price">$7<small>/month</small></p><p class="hw-dim">14 days free when you sign up. No card.</p><ul><li>Facebook Marketplace near you, in your hunts</li><li>This week’s estate sales near you</li><li>Up to 100 hunts, all in your alerts</li><li>Pounce on 5 pieces</li><li>Unlimited photo checks</li><li>Unlimited Fair price checks</li><li>Saved finds kept a year</li></ul><button type="button" class="b p" data-protry="1">Try Pro free for 14 days</button></div>
       </div>
     </section>
     <section class="hw-sec" aria-labelledby="otp-hwFaq">
@@ -4285,7 +4306,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.43';
+var PROWL_VERSION='v8.45';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -5073,7 +5094,7 @@ function wkLoad(){
    planner (#otp-wpHost), one at a time. */
 function nrWkSweep(){return !!(fbOwnerKey()||mailPro())}
 function nrWkOk(){return nrWkSweep()||!!WK.link}
-function nrWkTab(){var t=$('#otp-nrT4'),ok=nrWkOk();if(t){t.hidden=!ok;if(t.parentNode&&t.parentNode.classList)t.parentNode.classList.toggle('nr-4',ok)}return ok}
+function nrWkTab(){var t=$('#otp-nrT4');if(t){t.hidden=false;if(t.parentNode&&t.parentNode.classList)t.parentNode.classList.toggle('nr-4',true)}return true}   /* v8.45: shown to everyone; free visitors get what it does (rWk) */
 function rWk(){
   var host=$('#otp-wkHost'),ph=$('#otp-wpHost');if(!host||!ph)return;
   if(WK.planOn){
@@ -5083,7 +5104,7 @@ function rWk(){
     return;
   }
   ph.hidden=true;ph.innerHTML='';host.hidden=false;
-  if(!nrWkSweep()){host.innerHTML='';return}
+  if(!nrWkSweep()){host.innerHTML='<div class="wk-teaser"><h3 class="nearh">Estate sales this week <span class="sgw-lock">\uD83D\uDD12 Pro</span></h3><ul><li>Every estate sale open in the next 7 days within 25 miles, with photos and hours.</li><li>The sales that mention your hunts come first, with the hunt and where it matched.</li><li>Plan my week turns them into a day-by-day route.</li><li>New ones near your ZIP come in your daily Prowl email.</li></ul><button type="button" class="b p" data-protry="1">'+proCtaTxt()+'</button></div>';return}   /* v8.45 */
   var old=$('#otp-wkIn'),al=atLive(),v=old?old.value:(WK.q!=null?WK.q:(al&&al.city&&al.st?al.city+', '+al.st:esPlaceGet()));
   host.innerHTML=wkHtml(v);
   var wg=$('#otp-wkGo');if(wg)wg.addEventListener('click',wkLoad);
@@ -7710,6 +7731,7 @@ function fbBlock(t){
   var c=FB.cache[fbKey(t)];
   if(c&&c.nozip)return '<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span></div><p class="sgw-note">Add your local-pickup ZIP in Den \u203a Settings (Prowl Alerts, Only what fits) and Prowl looks for this hunt on Facebook Marketplace near you every day.</p>';
   if(c&&c.pending&&!c.swept&&fbOn())return '<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span>'+fbMode(t)+'</div>'+fbSaved(t)+'<p class="sgw-note">Facebook checks this hunt soon. Each day Prowl searches Facebook for up to 10 of your hunts, in turn.</p>';   /* v8.27 */
+  if(!c&&!fbOn()&&!mailPro()&&!fbOwnerKey())return '<div class="sgw-sub"><span class="sgw-fbh">Facebook Marketplace</span><span class="sgw-lock">\uD83D\uDD12 Pro</span></div>'+proLock('With Prowl Pro, Facebook Marketplace listings near you for this hunt show right here, checked every day.');   /* v8.45 */
   if(!c||!c.swept)return '';
   /* v8.36 (Matt: "sometimes show and sometimes don't"): the week's finds stay shown until the hunt's next turn (they were
      hidden after 2 days while the worker and the Store kept them), and a hunt not searched lately says so */
@@ -7961,6 +7983,26 @@ function mailUpgrade(go){
 function mailPro(){return mGet('alertPro')==='1'&&!!mGet('alertTok')}
 /* v8.43: the 14-day Pro trial every new member gets (worker v214, plan.via 'trial'): no card, so they can still buy */
 function mailTrial(){return mailPro()&&!!MAIL.plan&&MAIL.plan.via==='trial'}
+/* v8.45 (Matt, incognito: "Nothing is showing what we get with pro. Like estate sales and Facebook live"): one way in
+   to Pro from every teaser. Signed out: sign in, and a new member's 14 free days start (worker v214). Free member: checkout.
+   Already Pro: say so. */
+function proCtaTxt(){return !mGet('alertTok')?'Try Pro free for 14 days':mailPro()?'You have Prowl Pro':MAIL.hadPro?'Get Prowl Pro \u00b7 $7/mo':'Start my free month'}
+function proTry(){
+  if(!mGet('alertTok')){
+    MAIL.after=function(){if(mailPro()){MAIL.msg='Prowl Pro is on, free for 14 days. No card needed.';toast('Prowl Pro is on, free for 14 days.',3200);rMail();return}mailUpgrade()};
+    MAIL.afterAt=Date.now();MAIL.msg='Sign in with your email and Prowl Pro is on, free for 14 days. No card, no password.';MAIL.open=true;openMailSettings();rMail();return;
+  }
+  if(mailPro()){toast(mailTrial()?'You are on Prowl Pro, free for 14 days.':'You have Prowl Pro.',2600);return}
+  mailUpgrade();
+}
+function proLock(why){return mailPro()||fbOwnerKey()?'':'<p class="sgw-note">'+why+' <button type="button" class="sgw-ml" data-protry="1">'+proCtaTxt()+'</button></p>'}
+function rProAdds(){
+  var c=document.getElementById('otp-proAdds');if(!c)return;var show=!mailPro()&&!fbOwnerKey();c.hidden=!show;if(!show)return;
+  var b=document.getElementById('otp-proAddsGo'),f=document.getElementById('otp-proAddsFine'),signed=!!mGet('alertTok');
+  if(b)b.textContent=proCtaTxt();
+  if(f)f.textContent=!signed?'No card. Then $7 a month, or stay on Free.':MAIL.hadPro?'Cancel any time.':'Your first month is free. Cancel any time.';
+}
+document.addEventListener('click',function(e){var b=e.target&&e.target.closest&&e.target.closest('.scout-app-wrapper [data-protry]');if(!b)return;e.preventDefault();proTry()});
 function proFreeTxt(){return !mGet('alertTok')?'14 days free when you sign up':MAIL.hadPro?'$7 a month':'first month free'}
 /* v6.83: Free keeps 5 hunts of its own in the Den, Pro up to 100. The starter samples (DEF, OLD_DEF) do not count, and nothing
    already saved is ever removed: a Den over the limit just takes no new hunt until one goes. */
@@ -8726,6 +8768,7 @@ function rMail(){try{rDenAcct()}catch(e){}
   var boxes=document.querySelectorAll('.scout-app-wrapper .otp-mail'),i,box,h;
   var wrap=document.querySelector('.scout-app-wrapper');if(wrap)wrap.classList.toggle('is-pro',mailPro());
   rAlertsHome();   /* v6.15 */
+  try{rProAdds()}catch(e){}   /* v8.45 */
   try{rAiRow()}catch(e){}   /* v6.33 */
   var beta=true,live=alertsLive();
   for(i=0;i<boxes.length;i++){
@@ -12119,6 +12162,10 @@ function planTableHtml(isPro){
     ['How often',fw?'Mondays':'You pick','You pick, at your time'],
     ['Price ceiling and skip-words','<span class="no">—</span>','✓'],
     ['Local pickup hunts (eBay near your ZIP)','<span class="no">—</span>','✓'],
+    ['Facebook Marketplace near you, in your hunts','<span class="no">—</span>','✓'],   /* v8.45 */
+    ['This week\u2019s estate sales near you','<span class="no">—</span>','✓'],
+    ['Pounce (photo-checked new listings)','1 piece','5 pieces'],
+    ['Saved finds','On this device','Kept a year, every device'],
     ['Photo checks','1 a day','Unlimited'],
     ['Fair price checks','1 a day','Unlimited'],
     ['Price','$0',(MAIL.hadPro&&!isPro)?'$7 a month':signed?'First month free, then $7 a month':'14 days free when you sign up, then $7 a month']

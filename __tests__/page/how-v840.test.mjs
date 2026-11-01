@@ -75,8 +75,9 @@ test('Prowl or one site at a time, the plans (their numbers are the code\'s), an
   assert.match(free, /<li>Email alerts for 3 hunts<\/li>/);
   assert.match(pro, new RegExp('<li>Up to ' + hp + ' hunts, all in your alerts</li>'));
   assert.match(pro, /\$7<small>\/month<\/small>/);
-  assert.match(pro, /First month free\. Cancel any time\./);
-  assert.match(pro, /<a class="b p" href="\/products\/prowl-pro">Try Prowl Pro free for a month<\/a>/);
+  assert.match(pro, /14 days free when you sign up\. No card\./);   /* v8.45: the trial, and what Pro adds */
+  assert.match(pro, /<li>Facebook Marketplace near you, in your hunts<\/li><li>This week’s estate sales near you<\/li>/);
+  assert.match(pro, /<button type="button" class="b p" data-protry="1">Try Pro free for 14 days<\/button>/);
   const rows = [...PAGE.matchAll(/<tr><td>(.*?)<\/td><td>(.*?)<\/td><td>(.*?)<\/td><\/tr>/g)];
   assert.equal(rows.length, 5);
   for (const r of rows) assert.equal(r[2], '✓', 'Prowl does each: ' + r[1]);

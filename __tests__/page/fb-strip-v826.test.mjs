@@ -87,7 +87,8 @@ test('not Pro on this device: /fb-finds is never asked', async () => {
   await waitFor(() => statusDone, { timeout: 8000 });
   await tick(400);
   assert.equal(f.asked.length, 0);
-  assert.equal(strip(p), undefined);
+  const s = strip(p);
+  assert.ok(!s || /\uD83D\uDD12 Pro/.test(s.textContent), 'v8.45: only the Pro preview, no finds');
   await p.close();
 });
 
