@@ -130,7 +130,7 @@ function caps() {
   return { m, vCount: async (n, lim) => { const c = m.get(n) || 0; if (c >= lim) return false; m.set(n, c + 1); return true; }, fbGive: async (n) => { m.set(n, Math.max(0, (m.get(n) || 0) - 1)); } };
 }
 let clock = Date.now();
-function sweep() {
+function sweep(fail = () => false) {
   const kv = new FakeKV(), C = caps(), tries = new Map(), calls = [];
   const env = { PROWL_ALERTS: kv, APIFY_TOKEN: "t", FB_LIVE: "on" };
   const fbSweep = build("fbSweep", {
@@ -140,7 +140,11 @@ function sweep() {
     FB_MEMBER_DAY: FB.FB_MEMBER_DAY, FB_USA_MI: FB.FB_USA_MI, ctrName: async (n) => n, vCount: C.vCount, fbGive: C.fbGive,
     fbArea: async () => CARLETON, fbMerge: FB.fbMerge, scrubPII: (s) => String(s),
     Date: class extends Date { static now() { return (clock += 300000); } },   /* runs 5 minutes apart, as the alert clock */
-    fbCall: async (env, term, cell, n, opt) => { calls.push(term + (opt.ship ? "|ship" : opt.mi === FB.FB_USA_MI ? "|usa" : "")); return { ok: true, items: [], raw: 0, cost: 0 }; },
+    fbCall: async (env, term, cell, n, opt) => {
+      const c = term + (opt.ship ? "|ship" : opt.mi === FB.FB_USA_MI ? "|usa" : "");
+      calls.push(c);
+      return fail(c) ? { ok: false, error: "apify timed out" } : { ok: true, items: [], raw: 0, cost: 0 };
+    },
   });
   const day = async (sub) => { C.m.clear(); tries.clear(); kv.m.delete("fb3day:" + TODAY); calls.length = 0; for (let i = 0; i < 8; i++) await fbSweep(env, [sub], 50); return calls.slice(); };
   return { kv, day };
@@ -170,4 +174,39 @@ test("rotation: an old record ({ i } only) keeps its place; an All USA hunt is s
   const rot = S.kv.json("fbrot:m@example.com");
   assert.equal(rot.i, 7);
   assert.equal(Object.keys(rot.t).length, 9, "nine hunts searched, one KV record");
+});
+
+/* review fix: a hunt whose search keeps failing had its turn once its tries are used, so it no longer goes first every day */
+const n03 = (d) => d.filter((c) => /^hunt03/.test(c)).length;
+test("rotation: a hunt whose search always fails uses its 2 tries, then waits its turn like the rest", async () => {
+  const S = sweep((c) => c === "hunt03");
+  const d1 = await S.day(mem(H12)), d2 = await S.day(mem(H12)), d3 = await S.day(mem(H12));
+  assert.equal(n03(d1), 2, "day 1: its 2 tries");
+  assert.equal(d2[0], "hunt09", "day 2: the never-searched go first, not the failing hunt: " + d2);
+  assert.equal(n03(d3), 0, "day 3: not again until its turn comes round: " + d3);
+  assert.equal(new Set(d1.concat(d2, d3)).size, 12, "every hunt had its turn");
+});
+
+test("rotation: an All USA hunt whose ships search fails waits its turn the next day (its own search is not redone daily)", async () => {
+  const S = sweep((c) => c === "hunt03|ship"), m = mem(H12, { fbusa: ["hunt03"] });
+  const d1 = await S.day(m), d2 = await S.day(m);
+  assert.deepEqual(d1.filter((c) => /^hunt03/.test(c)), ["hunt03|usa", "hunt03|ship", "hunt03|ship"]);
+  assert.deepEqual(d2.slice(0, 4), ["hunt08", "hunt09", "hunt10", "hunt11"], "day 2: the hunts not searched yet go first, not its own search again: " + d2);
+  assert.ok(d2.indexOf("hunt03|usa") > d2.indexOf("hunt02"), "then it waits its turn behind the ones searched before it");
+});
+
+test("rotation: a hunt whose try was refused (nothing went out) is not stamped", async () => {
+  const kv = new FakeKV(), C = caps(), env = { PROWL_ALERTS: kv, APIFY_TOKEN: "t", FB_LIVE: "on" };
+  const fbSweep = build("fbSweep", {
+    fbLive: FB.fbLive, kvGet, FB_PER_RUN: FB.FB_PER_RUN, FB_CALLS_EACH: 4, FB_GEO_CALLS: 2, FB_GEO_PER_RUN: 2,
+    fbTry: async () => 0, FB_TRIES: FB.FB_TRIES, FB_DAY_LIST_MAX: 2000,
+    FB_RUN_ITEMS: FB.FB_RUN_ITEMS, FB_TTL: FB.FB_TTL, fbOf, fbTerms, fbHuntMi, fbPickKey: FB.fbPickKey, fbShipKey: FB.fbShipKey,
+    FB_MEMBER_DAY: FB.FB_MEMBER_DAY, FB_USA_MI: FB.FB_USA_MI, ctrName: async (n) => n, vCount: C.vCount, fbGive: C.fbGive,
+    fbArea: async () => CARLETON, fbMerge: FB.fbMerge, scrubPII: (s) => String(s), Date,
+    fbCall: async () => { throw new Error("no call expected"); },
+  });
+  const r = await fbSweep(env, [mem(H12.slice(0, 3))], 50);
+  assert.equal(r.calls, 0);
+  const rot = kv.json("fbrot:m@example.com");
+  assert.ok(!rot || !rot.t || !Object.keys(rot.t).length, "nothing stamped: " + JSON.stringify(rot));
 });

@@ -20,6 +20,8 @@ function rec(ageMs, extra = {}) {
   return { term: 'mc escher', live: true, updated: iso(at), usa: false, radius: 50, pending: false, why: { raw: 24, far: 3, words: 17, mi: 50 },
     items: [it('100000004', 'Mc Escher wall hangings', at - 2 * D, 21), it('100000001', 'MC Escher Framed lithograph', at, 23), it('100000003', 'MC Escher collection', at - D, 24), it('100000002', 'M.C. Escher Mosaic II', at, 30)], ...extra };
 }
+/* review fix: the page keeps what the worker's fbMerge keeps, found after the cut (7 UTC dates, today's included) */
+const inWeek = (r) => r.items.filter((x) => x.found > dayOf(Date.now() - 7 * D)).length;
 function rig({ finds, status, all } = {}) {
   const base = liveFetch({}), asked = [], st = [], searches = [];
   const ok = (j, s = 200) => Promise.resolve({ ok: s < 400, status: s, json: () => Promise.resolve(j) });
@@ -44,8 +46,17 @@ function rig({ finds, status, all } = {}) {
   };
   return { impl, asked, st, searches };
 }
-async function home(f, hunts = ['MC Escher', 'Rookwood']) {
-  const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.v36': { seen: true, hunts, lock: hunts.map((_, i) => i) }, owlTwigSgwTerms: [], 'prowl.lastHunt': 'mc escher', ...PRO } });
+/* review fix: the retry timers (FB_RETRY + 100 ms, and the status's 20 s, 1 min, 3 min) run in 30 ms, the page's clock
+   moved on by their delay, so a test sees what a member who stays on the hunt for minutes sees */
+const LONG = [120100, 20000, 60000, 180000];
+function fastRetry(win) {
+  const st = win.setTimeout.bind(win), now = win.Date.now.bind(win.Date);
+  let off = 0;
+  win.setTimeout = (fn, ms, ...a) => (LONG.indexOf(ms) !== -1 ? st(() => { off += ms; fn(...a); }, 30) : st(fn, ms, ...a));
+  win.Date.now = () => now() + off;
+}
+async function home(f, hunts = ['MC Escher', 'Rookwood'], fast = false) {
+  const p = loadPage({ beforeLoad: fast ? fastRetry : undefined, fetchImpl: f.impl, storage: { 'prowl.v36': { seen: true, hunts, lock: hunts.map((_, i) => i) }, owlTwigSgwTerms: [], 'prowl.lastHunt': 'mc escher', ...PRO } });
   await waitFor(() => p.$$('#otp-sgw .sgw-cell').length >= 3, { timeout: 8000 });
   return p;
 }
@@ -57,9 +68,10 @@ const stripText = (p) => { const s = strip(p); let t = s ? s.textContent : '', n
 /* ---- 2. the week's finds ---- */
 test('v8.36: finds 3, 4 and 6 days old still show (the worker keeps the week), "Updated N days ago", newest found first, and a note that the hunt has not been searched lately', async () => {
   for (const days of [3, 4, 6]) {
-    const f = rig({ finds: rec(days * D + 2 * H) }), n = days === 6 ? 2 : 4;   /* at 6 days the two found before that search are about a week old: at least the search day's two */
+    const r = rec(days * D + 2 * H), f = rig({ finds: r }), n = inWeek(r);   /* at 6 days the two found before that search are past the week, and the search day's two too just after midnight UTC */
     const p = await home(f);
-    await waitFor(() => fbCards(p).length >= n, { timeout: 5000 });
+    await waitFor(() => strip(p) && fbCards(p).length >= n, { timeout: 5000 });
+    assert.equal(fbCards(p).length, n);
     assert.match(strip(p).textContent, new RegExp('Updated ' + '(' + days + '|' + (days + 1) + ') days ago'), days + ' days');
     const ids = fbCards(p).map((a) => a.getAttribute('href').match(/item\/(\d+)/)[1]);
     assert.deepEqual(ids, ['100000001', '100000002', '100000003', '100000004'].slice(0, ids.length), 'the search day’s finds first (nearest first within a day), then older');
@@ -103,8 +115,10 @@ test('v8.36: the same search age gives the same strip in every time zone (the wo
       assert.equal(fbCards(p).length, 0, tz + ': past the week');
       await p.close();
       /* 6 days and 22 hours: still inside the week */
-      p = await home(rig({ finds: rec(6 * D + 22 * H) }));
-      await waitFor(() => fbCards(p).length === 2, { timeout: 5000 });   /* the search day's two; the ones found before it are past the week */
+      const r = rec(6 * D + 22 * H);
+      p = await home(rig({ finds: r }));
+      await waitFor(() => strip(p) && fbCards(p).length === inWeek(r), { timeout: 5000 });   /* the search day's two (none in the first 22 hours of a UTC day, as the worker would keep them); the ones found before it are past the week */
+      assert.ok(inWeek(r) <= 2);
       await p.close();
     }
   } finally { if (tz0 === undefined) delete process.env.TZ; else process.env.TZ = tz0; }
@@ -116,7 +130,9 @@ test('v8.36: an empty All USA hunt says why (worker why.ship, or no counts at al
   for (const why of [{ raw: 0, far: 0, words: 0, mi: 500, ship: true }, null, { raw: 5, far: 0, words: 0, mi: 500, ship: true }]) {
     const p = await home(rig({ finds: usa(why) }));
     await waitFor(() => strip(p), { timeout: 5000 });
-    assert.match(stripText(p), /Nothing on Facebook for this hunt across the USA right now\./, JSON.stringify(why));
+    /* review fix: with why.ship only the shared ships search has run, not the hunt's own All USA search: it says that is to come */
+    assert.match(stripText(p), why ? /Nothing that ships yet\. Facebook checks this hunt across the USA soon\./ : /Nothing on Facebook for this hunt across the USA right now\./, JSON.stringify(why));
+    if (why) assert.doesNotMatch(stripText(p), /across the USA right now/);
     assert.doesNotMatch(stripText(p), /Nothing new on Facebook for this hunt today|ships for this hunt/);
     await p.close();
   }
@@ -218,5 +234,65 @@ test('v8.36: a Store answer newer than the hunt page’s copy refreshes it; an o
   await back(p);
   await tick(200);
   assert.equal(f.asked.filter((t) => t === 'mc escher').length, 2, 'not asked again');
+  await p.close();
+});
+
+/* ---- review fix: the retries come to a member who stays on the one hunt ---- */
+test('review fix: /fb-finds failing (a 502, a 403 or offline) is asked again on a timer for the hunt that stays open, no other hunt tapped', async () => {
+  for (const bad of [502, 403, 'reject']) {
+    const f = rig({ finds: (n) => (n === 1 ? bad : rec(H)) });
+    if (bad === 'reject') { const i0 = f.impl; f.impl = (url, o) => (/fb-finds\?term/.test(String(url)) && f.asked.length === 0 ? (f.asked.push('mc escher'), Promise.reject(new TypeError('offline'))) : i0(url, o)); }
+    const p = await home(f, ['MC Escher'], true);
+    await waitFor(() => fbCards(p).length === 4, { timeout: 6000 });
+    assert.equal(f.asked.filter((t) => t === 'mc escher').length, 2, String(bad));
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  }
+});
+
+test('review fix: the timed /fb-finds retry is bounded (5 in a row) and a good answer stops it', async () => {
+  const f = rig({ finds: () => 503 });
+  const p = await home(f, ['MC Escher'], true);
+  await waitFor(() => f.asked.length >= 6, { timeout: 6000 });
+  await tick(400);
+  assert.equal(f.asked.length, 6, 'the first ask and 5 retries');
+  await p.close();
+  const g = rig({ finds: (n) => (n === 1 ? 503 : rec(H)) });
+  const q = await home(g, ['MC Escher'], true);
+  await waitFor(() => fbCards(q).length === 4, { timeout: 6000 });
+  await tick(400);
+  assert.equal(g.asked.length, 2, 'no more once it answered');
+  await q.close();
+});
+
+test('review fix: /alerts/status failing at boot and on the 20 s retry is asked again on its own (1 min), so a member with one hunt gets Facebook finds', async () => {
+  const f = rig({ finds: rec(H), status: (n) => (n <= 2 ? 502 : null) });
+  const p = await home(f, ['MC Escher'], true);
+  await waitFor(() => fbCards(p).length === 4, { timeout: 6000 });
+  assert.equal(f.st.length, 3);
+  await p.close();
+  const g = rig({ finds: rec(H), status: () => 503 });
+  const q = await home(g, ['MC Escher'], true);
+  await waitFor(() => g.st.length >= 4, { timeout: 6000 });
+  await tick(400);
+  assert.equal(g.st.length, 4, 'three more at most');
+  assert.equal(g.asked.length, 0);
+  await q.close();
+});
+
+test('review fix: the Store shows a hunt the hunt page’s way: the week’s finds, newest found first; an empty All USA hunt says so', async () => {
+  const r = rec(2 * H);
+  r.items.push(it('100000009', 'MC Escher old print', Date.now() - 9 * D, 5));   /* the nearest, past the week */
+  const f = rig({ finds: r, all: () => ({ live: true, left: 5, hunts: [{ term: 'mc escher', updated: r.updated, pending: false, usa: false, why: r.why, items: r.items },
+    { term: 'rookwood', updated: iso(Date.now() - H), pending: false, usa: true, why: null, items: [] }] }) });
+  const p = await home(f, ['MC Escher', 'Rookwood']);
+  await waitFor(() => fbCards(p).length === 4, { timeout: 5000 });
+  const page = fbCards(p).map((a) => a.getAttribute('href'));
+  await toStore(p);
+  await waitFor(() => p.$$('#otp-fbAll h3').length === 1, { timeout: 4000 });
+  const store = p.$$('#otp-fbAll a.sgw-card').map((a) => a.getAttribute('href'));
+  assert.deepEqual(store, page, 'the same finds in the same order');
+  assert.ok(!store.some((h) => /100000009/.test(h)));
+  assert.match(p.$('#otp-fbAll').textContent, /Nothing on Facebook for this hunt across the USA right now\./);
   await p.close();
 });

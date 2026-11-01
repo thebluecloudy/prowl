@@ -53,6 +53,18 @@ Recently shipped, newest first:
     checked to fail with its fix taken out. `fb-shape-v202` (owner key alone), `fb-why-v204` (All USA drops nothing for
     distance, why.ship, the new `fbrot:` shape) and `fb-rotation-v203` (All USA keeps every distance, `fbrot:` shape)
     follow the intended changes.
+  - **Review fixes (same versions):** (1) `fbSweep`: a hunt whose search keeps failing has had its turn once every job is
+    resolved for the day (done, or its `FB_TRIES` used after a real call this run), so it goes to the back instead of first
+    every day (it took 2-3 of the member's 10 searches for good, and an All USA hunt redid its own search daily when only
+    its ships search failed); not stamped when nothing was tried (Caps refused the try). (2) `why.ship` (only the shared
+    ships search has run, not the hunt's own All USA search) now reads "Nothing that ships yet. Facebook checks this hunt
+    across the USA soon." (`FB_USA1`), not "Nothing ... across the USA right now". (3) Retries are timed: a failed or
+    refused `/fb-finds` schedules one redraw of that hunt `FB_RETRY` later if it is still open (`fbRetry`, 5 in a row at
+    most, a good answer resets), and a failed `/alerts/status` is asked again on its own at 20 s, 1 min, 3 min (still three
+    at most), so a member who stays on one hunt, or has one, gets them. (4) The Store's per-hunt finds go through
+    `fbWeek` (the week, newest found first, as the hunt page), `fbWeek` keeps `found > cut` as `fbMerge` does (7 UTC
+    dates, not 8), and an empty All USA hunt in the Store says `FB_USA0`. Not changed: a 401/403 on a refetch still
+    replaces a shown record (judged not a defect). Tests: 10 and 14 in the two files above.
 - **v8.35 / v208: Send feedback, and the "What's new" update email** (Matt, 2026-10-31: "i would like to see it in the
   admin"; "send them an update to show them all of the new features"). Branch `feedback-news`, on top of v8.34 (Road trip, now worker v207)
   (`claude/gifted-johnson-wzaqr3`). New module `worker/news.js` (index.js hands it its helpers, `newsDeps`).

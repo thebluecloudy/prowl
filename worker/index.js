@@ -24,7 +24,8 @@
  *         test's fbownzip, or &zip=, only for the owner key alone); an All USA hunt whose shipping search alone has run
  *         says so (why.ship); All USA is no longer pickup within 500 mi: every listing Facebook's widest search (805 km)
  *         gives, pickup and shipping, any distance (miles when it has a point), plus the nationwide ships search; the sweep's turn goes to the hunts searched longest ago (fbrot: { i, t: {hunt: ms} }), so
- *         adding, removing or moving hunts skips none.
+ *         adding, removing or moving hunts skips none; review fixes: a hunt whose search keeps failing has had its turn
+ *         once its tries are used (it went first every day and took 2-3 of the member's 10 searches).
  *   v208: 2026-10-31. Feedback and the "What's new" update email (Matt: "i would like to see it in the admin", "send them an
  *         update to show them all of the new features"): POST /feedback {rating, like, miss, reply, v} keeps each note in
  *         fbk:<reverse time>-<rand> for 180 days (the member's address only when they ticked "OK to email me back", never
@@ -7933,7 +7934,7 @@ async function fbSweep(env, subs, room) {
     let spent = false, moved = Object.keys(last).length !== Object.keys(was).length;
     for (const oh of order) {
       const term = oh.t, mi = fbHuntMi(o, term);
-      let did = false;
+      let did = false, tried = false;   /* review fix: tried = a real call went out for this hunt in this run */
       const jobs = [{ k: "p|" + term + "|" + cell.key + "|" + mi, key: fbPickKey(term, cell, mi), opt: { mi: mi } }];
       if (mi === FB_USA_MI) jobs.push({ k: "s|" + term, key: fbShipKey(term), opt: { ship: true } });   /* v204: ships for All USA hunts only */
       for (const jb of jobs) {
@@ -7944,7 +7945,7 @@ async function fbSweep(env, subs, room) {
         left--; room2 -= FB_CALLS_EACH;
         const n = await fbTry(jb.k);   /* taken before the call: a run killed mid-call still used its try */
         if (!n) { done[jb.k] = -FB_TRIES; wrote = true; await fbGive("fbm:" + sub.email); continue; }   /* no call made: the member keeps that search */
-        out.calls++;
+        out.calls++; tried = true;
         const r = await fbCall(env, term, cell, FB_RUN_ITEMS, jb.opt);
         if (r.capped) { done._cap = 1; wrote = true; left = 0; await fbGive("fbm:" + sub.email); continue; }
         if (!r.ok && r.noCall) { await fbGive("fbm:" + sub.email); left = 0; continue; }   /* Caps did not answer: nothing spent, try next run */
@@ -7955,8 +7956,11 @@ async function fbSweep(env, subs, room) {
         await save(); wrote = false;   /* a call can take a minute: what is done is kept at once */
       }
       /* searched today (by this sweep, another member's, a Store search or a test): to the back of the turn. A hunt whose
-         search failed keeps its place at the front for the next run (FB_TRIES a day) */
-      if (jobs.every(jb => done[jb.k] === 1) && (did || !((last[term] || 0) >= Date.parse(day)))) { last[term] = now; moved = true; }
+         search failed keeps its place at the front for the next run, until its FB_TRIES for the day are used. Review fix:
+         then it has had its turn too (to the back), so a search that keeps failing no longer goes first every day and
+         takes 2-3 of the member's searches for good; not when nothing was tried (Caps did not answer, tries used elsewhere) */
+      const ok = jobs.every(jb => done[jb.k] === 1), over = jobs.every(jb => done[jb.k] === 1 || (done[jb.k] || 0) <= -FB_TRIES);
+      if ((ok && (did || !((last[term] || 0) >= Date.parse(day)))) || (!ok && over && tried)) { last[term] = now; moved = true; }
       if (spent || left <= 0 || done._cap) break;
     }
     if (moved) { try { await env.PROWL_ALERTS.put(rk, JSON.stringify({ i: i0, t: last }), { expirationTtl: 60 * 86400 }); } catch (e) {} }
