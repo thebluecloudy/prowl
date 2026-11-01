@@ -52,7 +52,7 @@ test("fbClean counts what it drops: far (past the radius or no point) and words 
   assert.deepEqual(ship, { far: 0, words: 2 }, "shipping has no distance to drop for");
   const usa = {};
   FB.fbClean(raw, TODAY, { term: "panther", lat: 42.5, lng: -83.5, mi: 500 }, usa);
-  assert.deepEqual(usa, { far: 1, words: 2 }, "500 miles keeps the far one; the one with no point still goes");
+  assert.deepEqual(usa, { far: 0, words: 2 }, "v209: All USA drops nothing for distance, a listing with no point included (Matt: not just shipped)");
   assert.equal(FB.fbClean(raw, TODAY, { term: "panther", lat: 42.5, lng: -83.5, mi: 25 }).length, 1, "the stat is optional");
 });
 
@@ -124,7 +124,7 @@ test("10 near-me hunts are swept in a day for one member, one search each; the 1
   for (let i = 0; i < 12; i++) await S.run([member("m@example.com", H)]);
   assert.deepEqual(S.calls, H.slice(0, 10).map((h) => h + "|50"));
   assert.equal(S.C.m.get("fbm:m@example.com"), 10);
-  assert.deepEqual(S.kv.json("fbrot:m@example.com"), { i: 10 });
+  assert.deepEqual(Object.keys(S.kv.json("fbrot:m@example.com").t).sort(), H.slice(0, 10), "v209: the hunts searched today, by time");
 });
 
 test("the sweep keeps each search's stat with its KV entry, pickup and ships", async () => {
@@ -187,5 +187,6 @@ test("wiring: every kept search saves its stat; the version", () => {
 
 test("review fix: no reason until the hunt's own pickup search has run (not from the shared ships search alone)", () => {
   const src = readFileSync(new URL("../index.js", import.meta.url), "utf8");
-  assert.match(src, /const why = pick \? fbWhy\(usa \? \[pick, ship\] : \[pick\], mi\) : null;/);
+  assert.match(src, /let why = pick \? fbWhy\(usa \? \[pick, ship\] : \[pick\], mi\) : null;/);
+  assert.match(src, /if \(!why && usa && ship\) why = Object\.assign\(.*\{ ship: true \}\);/, "v209: the shipping search alone gives a reason marked ship, never a pickup one");
 });

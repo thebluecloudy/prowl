@@ -1,16 +1,58 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-10-31 (v8.35 / v208).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.36 / v209).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.35** | 367,966 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v208** | |
+| Page | **v8.36** | 367,966 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v209** | |
 
 Recently shipped, newest first:
 
+- **v8.36 / v209: Facebook finds show steadily, own ZIP for the owner, the week's finds, All USA says why** (Matt,
+  2026-11-01: Facebook finds for his hunt "mc escher" "sometimes show and sometimes don't"; then on All USA: "I don't
+  want to see just shipped. I will reach out to them to see if they would ship."). Branch `claude/gifted-johnson-wzaqr3`.
+  Page room left: 367,966 bytes (unchanged: the script is on the worker).
+  - **Own ZIP for a signed-in owner (worker `fbAreaFor`):** a request with a signed-in member (`w.sub`) always reads that
+    member's own `prefs.zip` and radius, even with the owner key. `fbownzip` (the last admin Facebook test's ZIP and
+    distance) and `&zip=` are only for the owner key with no member signed in. Before, Matt's own devices (owner key +
+    session) read the last test's area while the sweep fills his own (Carleton 48117), so one device showed the finds and
+    another "checks soon", flipping after each test. This replaces the v202 note below ("before a signed-in member's own ZIP").
+  - **The week's finds on the hunt page (`fbBlock`, `fbHas`, `fbWeek`):** the strip showed nothing once the hunt's last
+    search was more than 2 days old, while the worker keeps finds 7 days (`FB_DAYS`) and the Store showed them. Now the
+    finds found in the last `FB_DAYS` show while the record is less than `FB_DAYS` old, newest found first (nearest first
+    within a day), with "Updated N days ago"; past 2 days the strip says "Facebook last searched this hunt N days ago.
+    Prowl searches up to 10 of your hunts a day, in turn, so its next turn is coming." instead of vanishing.
+  - **Day arithmetic (`fbAge`):** the window and the "last searched" note go by the clock since the worker's `updated`
+    (its days are UTC; counting device calendar days ended the window early in the evening). The finds' `found` days are
+    compared as UTC day keys, as the worker writes them. "Updated yesterday / N days ago" stays a local calendar label.
+  - **All USA, every listing (Matt's change):** an All USA hunt's own search (Facebook's widest radius, 805 km, pickup and
+    shipping alike) now keeps every listing that has the hunt's words, at any distance: miles when the listing has a
+    point, none when it has not (`fbClean` drops nothing for distance when `mi` is `FB_USA_MI`); plus the nationwide
+    ships search (`fb3s:`) as before, merged by id. Still 2 calls per All USA hunt. A borrowed record keeps every distance
+    for All USA (`fbHunt`).
+  - **An empty All USA strip says why:** `fbHunt` gives `why: {raw, far, words, mi, ship: true}` when only the ships
+    search has run for an All USA hunt (its counts, or zeros for an old record); the page says "Nothing on Facebook for
+    this hunt across the USA right now." (or "Facebook had N, none with all your words. Try fewer words."), also when
+    an All USA strip has no counts at all. Store › Facebook uses the same sentence (`fbWhyTxt`).
+  - **Access retries (page):** a failed `/alerts/status` (an error, a 5xx, offline) is asked again 20 s later and on the
+    next hunt opened, three times at most a visit (`fbStFail`, `fbReask`), so `MAIL.fb` is not left off for the visit.
+    A 401/403 or failed `/fb-finds` is kept 2 minutes (`FB_RETRY`) and asked again on the next hunt opened; a good
+    answer stays 30 minutes.
+  - **Store and hunt page agree:** a Store search for a hunt, or a Store answer newer than a hunt's cached copy, drops
+    that copy (`fbStale`), so the hunt page asks again.
+  - **Rotation by last search (worker `fbSweep`):** `fbrot:<member hash>` is now `{ i, t: { hunt: ms of its last search } }`
+    (one KV read a member, at most AL_MAX_HUNTS entries; removed hunts drop out). The turn goes to the hunts searched
+    longest ago; hunts never searched go first, in the order the old pointer `i` gave (an old `{ i }` record keeps its
+    place). A hunt done today by another path (another member, a Store search, a test) moves to the back too; a failed
+    search keeps its place. Adding, removing or moving hunts no longer skips any for a cycle.
+  - Privacy section: All USA searches the widest area Facebook allows; Prowl remembers when each hunt was last searched.
+  - Tests: `worker/__tests__/fb-intermittent-v209.test.mjs` (7) and `__tests__/page/fb-intermittent-v836.test.mjs` (10), each
+    checked to fail with its fix taken out. `fb-shape-v202` (owner key alone), `fb-why-v204` (All USA drops nothing for
+    distance, why.ship, the new `fbrot:` shape) and `fb-rotation-v203` (All USA keeps every distance, `fbrot:` shape)
+    follow the intended changes.
 - **v8.35 / v208: Send feedback, and the "What's new" update email** (Matt, 2026-10-31: "i would like to see it in the
   admin"; "send them an update to show them all of the new features"). Branch `feedback-news`, on top of v8.34 (Road trip, now worker v207)
   (`claude/gifted-johnson-wzaqr3`). New module `worker/news.js` (index.js hands it its helpers, `newsDeps`).
@@ -379,7 +421,7 @@ Recently shipped, newest first:
     days), so the hunt shows them at once for a signed-in Pro member (or the owner key) whose local-pickup ZIP is in that
     cell. Before, a test kept nothing. The test box shows a photo per listing and says where the finds went.
   - **The owner key's hunt page:** the page never sends a ZIP, so the owner key alone used to get "add your ZIP". The
-    test's ZIP is now kept (`fbownzip`, 30 days) and `/fb-finds` uses it for the owner key (before a signed-in member's
+    test's ZIP is now kept (`fbownzip`, 30 days) and `/fb-finds` uses it for the owner key (v209: only with no member signed in; it came before a signed-in member's
     own ZIP); members still get only their own ZIP's area. A test also marks its hunt and cell done in the day's
     `fb2day:`, so the sweep does not pay again for it.
   - Review fixes: photos showed on phones only once the admin table stopped counting an image cell as empty; a formatted
@@ -2201,7 +2243,7 @@ Recently shipped, newest first:
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 
-Next free numbers: **page v8.36, worker v209** (v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.37, worker v210** (v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 

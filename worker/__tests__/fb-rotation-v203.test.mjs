@@ -80,7 +80,7 @@ test("fbClean with a hunt: off-topic, far and placeless pickup listings dropped,
   const fifty = FB.fbClean(raw, TODAY, { term: "panther", lat: 42.5, lng: -83.5, mi: 50 });
   assert.deepEqual(fifty.map((x) => [x.id, x.miles]), [["1111111", 0], ["5555555", 31]]);
   const usa = FB.fbClean(raw, TODAY, { term: "panther", lat: 42.5, lng: -83.5, mi: 500 });
-  assert.deepEqual(usa.map((x) => x.id), ["1111111", "2222222", "5555555"]);
+  assert.deepEqual(usa.map((x) => [x.id, x.miles]), [["1111111", 0], ["2222222", 69], ["3333333", undefined], ["5555555", 31], ["6666666", undefined]], "v209: All USA keeps every distance and the placeless ones (no miles); the Land Rover still goes");
   const ship = FB.fbClean(raw, TODAY, { term: "panther", lat: 42.5, lng: -83.5, ship: true });
   assert.deepEqual(ship.map((x) => [x.id, x.miles, x.ships]), [["1111111", undefined, true], ["2222222", undefined, true], ["3333333", undefined, true], ["5555555", undefined, true], ["6666666", undefined, true]],
     "shipping does not depend on distance and carries none (review fix: shared by every member, so no miles from one ZIP); the Land Rover still goes");
@@ -153,11 +153,11 @@ test("30 hunts: at most 10 counted searches a day however many runs, and the nex
   assert.equal(S.C.m.get("fbm:m@example.com"), 10);
   assert.deepEqual(S.calls.map((c) => c.split("|")[0]), H30.slice(0, 10), "in turn; v204: a near-me hunt is one (pickup) search, so 10 hunts a day");
   assert.ok(S.calls.every((c) => /\|50$/.test(c)), "no shipping search for a near-me hunt");
-  assert.deepEqual(S.kv.json("fbrot:m@example.com"), { i: 10 });
+  assert.deepEqual(Object.keys(S.kv.json("fbrot:m@example.com").t).sort(), H30.slice(0, 10), "v209: each searched hunt's time");
   nextDay(S);
   for (let i = 0; i < 12; i++) await S.run([sub]);
   assert.deepEqual(S.calls.map((c) => c.split("|")[0]), H30.slice(10, 20), "resumed where it stopped");
-  assert.deepEqual(S.kv.json("fbrot:m@example.com"), { i: 20 });
+  assert.deepEqual(Object.keys(S.kv.json("fbrot:m@example.com").t).sort(), H30.slice(0, 20));
   nextDay(S); for (let i = 0; i < 6; i++) await S.run([sub]);
   assert.deepEqual(S.calls.map((c) => c.split("|")[0]), H30.slice(20, 30));
   nextDay(S); await S.run([sub]);
@@ -168,7 +168,7 @@ test("a day that ends with the run budget, not the member's 10, still moves the 
   const sub = member("m@example.com", "48375", H30), S = sweep();
   for (let i = 0; i < 3; i++) await S.run([sub]);   /* 6 calls: the runs end before the member's 10 */
   assert.equal(S.calls.length, 6);
-  assert.deepEqual(S.kv.json("fbrot:m@example.com"), { i: 6 }, "the first hunt with a job left");
+  assert.deepEqual(Object.keys(S.kv.json("fbrot:m@example.com").t).sort(), H30.slice(0, 6), "v209: the six searched; the rest wait their turn");
   nextDay(S);
   await S.run([sub]);
   assert.deepEqual(S.calls, ["hunt06|42.5,-83.5|50", "hunt07|42.5,-83.5|50"]);

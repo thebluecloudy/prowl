@@ -160,7 +160,7 @@ test("Delete my account takes the address out of feedback and keeps the note", a
 test("wired in: the route, alSend's reply-to and the version", () => {
   assert.match(INDEX, /if \(url\.pathname === "\/feedback" && request\.method === "POST"\) return fbkPost\(request, env, origin, newsDeps\(\)\);/);
   assert.match(INDEX, /body\.reply_to = replyTo \|\| env\.ALERT_REPLY_TO \|\| AL_UNSUB_MAIL;/);
-  assert.match(INDEX, /const WORKER_VERSION = "v208";/);
+  assert.ok(Number(/const WORKER_VERSION = "v(\d+)";/.exec(INDEX)[1]) >= 208, "v208 or later");
 });
 
 /* ---------- the update email ---------- */

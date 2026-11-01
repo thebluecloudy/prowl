@@ -19,6 +19,12 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v209: 2026-11-01. Facebook finds show steadily (Matt: his "mc escher" finds "sometimes show and sometimes don't"):
+ *         /fb-finds and the Store read a signed-in member's own ZIP and radius even with the owner key (the last admin
+ *         test's fbownzip, or &zip=, only for the owner key alone); an All USA hunt whose shipping search alone has run
+ *         says so (why.ship); All USA is no longer pickup within 500 mi: every listing Facebook's widest search (805 km)
+ *         gives, pickup and shipping, any distance (miles when it has a point), plus the nationwide ships search; the sweep's turn goes to the hunts searched longest ago (fbrot: { i, t: {hunt: ms} }), so
+ *         adding, removing or moving hunts skips none.
  *   v208: 2026-10-31. Feedback and the "What's new" update email (Matt: "i would like to see it in the admin", "send them an
  *         update to show them all of the new features"): POST /feedback {rating, like, miss, reply, v} keeps each note in
  *         fbk:<reverse time>-<rand> for 180 days (the member's address only when they ticked "OK to email me back", never
@@ -730,7 +736,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v208";
+const WORKER_VERSION = "v209";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -7814,7 +7820,7 @@ export default {
        Caps first (fbtry:, FB_TRIES a day), so a killed try is never retried uncounted. The admin's AI pools show $.
      Delivery: alCheck adds a hunt's cached finds as source "facebook" (no outside call); GET /fb-finds?term= answers a
        signed-in Pro member (store session, or X-Prowl-Email / X-Prowl-Tok) or the owner key (who may pass &zip=; else
-       the last test's ZIP, v202).
+       the last test's ZIP, v202; v209: only when no member is signed in, a signed-in owner reads their own ZIP).
      Owner test: the admin's Facebook test (admin.js apiFbTest) runs one call now for a term and a ZIP, cap counted,
        FB_LIVE or not. v202: its finds are kept as the sweep keeps them (and the day's sweep skips that hunt and cell), and
        its ZIP is remembered for the owner key's /fb-finds (fbownzip, 30 days), so the owner's hunt page shows them. */
@@ -7874,12 +7880,13 @@ function fbHuntMi(o, term) { return o.usa.indexOf(term) !== -1 ? FB_USA_MI : o.m
 async function fbHunt(env, o, cell, term) {
   const mi = fbHuntMi(o, term), usa = mi === FB_USA_MI;
   let [pick, ship] = await Promise.all([kvGet(env, fbPickKey(term, cell, mi), null), usa ? kvGet(env, fbShipKey(term), null) : null]);
-  const why = pick ? fbWhy(usa ? [pick, ship] : [pick], mi) : null;   /* review fix: no reason until the hunt's own pickup search has run (not from the shared ships search alone) */
+  let why = pick ? fbWhy(usa ? [pick, ship] : [pick], mi) : null;   /* review fix: no reason until the hunt's own pickup search has run (not from the shared ships search alone) */
+  if (!why && usa && ship) why = Object.assign(fbWhy([ship], mi) || { raw: 0, far: 0, words: 0, mi: FB_USA_MI }, { ship: true });   /* v209: only the shipping search has spoken (its own counts, or none kept): the page says nothing ships yet */
   if (!pick) {   /* review fix: a radius or All USA change keeps showing what an earlier search found, within the new distance */
     for (const m of [FB_USA_MI, 100, 50, 25]) {
       if (m === mi) continue;
       const o2 = await kvGet(env, fbPickKey(term, cell, m), null);
-      if (o2 && Array.isArray(o2.items)) { pick = { updated: o2.updated, items: o2.items.filter(x => x && x.miles != null && x.miles <= mi + 5) }; break; }
+      if (o2 && Array.isArray(o2.items)) { pick = { updated: o2.updated, items: o2.items.filter(x => x && (usa || (x.miles != null && x.miles <= mi + 5))) }; break; }   /* v209: All USA takes any distance */
     }
   }
   const j = fbJoin(pick, ship);
@@ -7893,7 +7900,7 @@ function fbTerms(env, sub) {
 }
 /* the alert clock's part: room = outside calls the run has left. Returns { calls, swept, errors }.
    v203: each Pro member gets FB_MEMBER_DAY searches a day (fbm:<member>, in Caps), taken in turn through their hunts
-   from where yesterday's stopped (fbrot:<member hash> in KV). A near-me hunt is one job, pickup within the member's
+   (fbrot:<member hash> in KV; v209: the hunts searched longest ago first, not a place in the list). A near-me hunt is one job, pickup within the member's
    radius; v204: an All USA hunt is two, pickup within FB_USA_MI and its shipping listings (shared by every member). A
    job another member's search already did today is free. */
 async function fbSweep(env, subs, room) {
@@ -7916,11 +7923,17 @@ async function fbSweep(env, subs, room) {
     if (!cell) continue;
     const terms = fbTerms(env, sub);
     if (!terms.length) continue;
+    /* v209: the turn goes to the hunts searched longest ago (rot.t = { hunt: ms of its last search }, one KV read a member), so
+       adding, removing or moving hunts skips none; hunts never searched go first, in the order the old pointer (rot.i) gave */
     const rk = await ctrName("fbrot:" + sub.email), rot = (await kvGet(env, rk, null)) || { i: 0 };
-    const i0 = Math.max(0, Math.floor(Number(rot.i) || 0)) % terms.length;
-    let spent = false, next = -1;   /* next: the first hunt (in turn) with a job still to do */
-    for (let s = 0; s < terms.length; s++) {
-      const ix = (i0 + s) % terms.length, term = terms[ix], mi = fbHuntMi(o, term);
+    const i0 = Math.max(0, Math.floor(Number(rot.i) || 0)) % terms.length, was = rot.t && typeof rot.t === "object" ? rot.t : {};
+    const last = {}, now = Date.now();
+    for (const t of terms) { const v = Number(was[t]); if (Number.isFinite(v) && v > 0) last[t] = v; }   /* hunts no longer kept drop out: at most AL_MAX_HUNTS */
+    const order = terms.map((t, ix) => ({ t: t, ix: ix, r: (ix - i0 + terms.length) % terms.length })).sort((a, b) => (last[a.t] || 0) - (last[b.t] || 0) || a.r - b.r);
+    let spent = false, moved = Object.keys(last).length !== Object.keys(was).length;
+    for (const oh of order) {
+      const term = oh.t, mi = fbHuntMi(o, term);
+      let did = false;
       const jobs = [{ k: "p|" + term + "|" + cell.key + "|" + mi, key: fbPickKey(term, cell, mi), opt: { mi: mi } }];
       if (mi === FB_USA_MI) jobs.push({ k: "s|" + term, key: fbShipKey(term), opt: { ship: true } });   /* v204: ships for All USA hunts only */
       for (const jb of jobs) {
@@ -7938,15 +7951,15 @@ async function fbSweep(env, subs, room) {
         if (!r.ok) { done[jb.k] = -n; wrote = true; if (out.errors.length < 2) out.errors.push(scrubPII("facebook: " + String(r.error || "failed")).slice(0, 120)); continue; }
         const old = await kvGet(env, jb.key, null);
         await env.PROWL_ALERTS.put(jb.key, JSON.stringify(fbMerge(old, r.items, day, undefined, r.stat)), { expirationTtl: FB_TTL });   /* v204: + the search's counts */
-        done[jb.k] = 1; wrote = true; out.swept++;
+        done[jb.k] = 1; wrote = true; out.swept++; did = true;
         await save(); wrote = false;   /* a call can take a minute: what is done is kept at once */
       }
-      const still = jobs.some(jb => done[jb.k] !== 1 && (done[jb.k] || 0) > -FB_TRIES);
-      if (still && next === -1) next = ix;
-      if (still && (spent || left <= 0)) break;   /* a hunt finished just as the run ran out: look on for the next one with a job left */
+      /* searched today (by this sweep, another member's, a Store search or a test): to the back of the turn. A hunt whose
+         search failed keeps its place at the front for the next run (FB_TRIES a day) */
+      if (jobs.every(jb => done[jb.k] === 1) && (did || !((last[term] || 0) >= Date.parse(day)))) { last[term] = now; moved = true; }
+      if (spent || left <= 0 || done._cap) break;
     }
-    const ni = next === -1 ? i0 : next;
-    if (ni !== Number(rot.i)) { try { await env.PROWL_ALERTS.put(rk, JSON.stringify({ i: ni }), { expirationTtl: 60 * 86400 }); } catch (e) {} }
+    if (moved) { try { await env.PROWL_ALERTS.put(rk, JSON.stringify({ i: i0, t: last }), { expirationTtl: 60 * 86400 }); } catch (e) {} }
   }
   if (wrote) await save();
   out.used = Math.max(0, Number(room) || 0) - room2;   /* v208 review: the run's calls this sweep spent (geocoding included) */
@@ -7981,14 +7994,17 @@ async function fbWho(request, env, origin, hdr) {
   if (!owner && !sub.pro) return json({ error: "Prowl Pro" }, 403, origin, hdr);
   return { sub: sub, owner: owner };
 }
-/* the area and setup a request reads: the owner key's &zip= or last test's ZIP first, else the member's own */
+/* the area and setup a request reads: a signed-in member's own (the owner too, v209: Matt's own devices send the owner
+   key with his session, and the last test's ZIP made them read another area than the one his hunts are swept in); the
+   owner key alone takes &zip= or the last test's ZIP */
 async function fbAreaFor(env, w, url) {
   const o = fbOf(w.sub), oz = String((url && url.searchParams.get("zip")) || "");
+  if (w.sub) return o;
   let zip = w.owner && /^\d{5}$/.test(oz) ? oz : "";
   if (!zip && w.owner) {   /* v202: the owner's last test's area first (v203: and its distance, for the owner key alone) */
     const z = await kvGet(env, FB_OWN_ZIP, null), zz = z && typeof z === "object" ? String(z.zip || "") : String(z || "");
     zip = /^\d{5}$/.test(zz) ? zz : "";
-    if (zip && !w.sub && z && typeof z === "object") o.mi = Number(z.mi) === FB_USA_MI ? FB_USA_MI : fbMi(z.mi);
+    if (zip && z && typeof z === "object") o.mi = Number(z.mi) === FB_USA_MI ? FB_USA_MI : fbMi(z.mi);
   }
   if (!zip) zip = o.zip;
   o.zip = zip;

@@ -129,12 +129,13 @@ test("a test does not undo a capped day or touch the other hunts the sweep did",
   assert.equal(JSON.parse(T.kv.m.get("fbownzip")).zip, "02134", "a leading zero survives");
 });
 
-test("/fb-finds: the owner key reads the last test's ZIP first, a member only their own", () => {
+test("/fb-finds: the owner key alone reads the last test's ZIP first, a member (the owner too, v209) only their own", () => {
   const f = indexFn("fbAreaFor");   /* v203: fbFinds and fbSearch both read the area here */
   assert.match(indexFn("fbFinds"), /const o = await fbAreaFor\(env, w, url\);/);
   assert.match(f, /let zip = w\.owner && \/\^\\d\{5\}\$\/\.test\(oz\) \? oz : "";\n  if \(!zip && w\.owner\) \{/);
   assert.match(f, /const z = await kvGet\(env, FB_OWN_ZIP, null\)/);
-  assert.match(f, /if \(zip && !w\.sub && z && typeof z === "object"\) o\.mi = /, "v203 review fix: the owner key alone reads the test's distance");
+  assert.match(f, /if \(w\.sub\) return o;\n  let zip/, "v209: a signed-in member, the owner too, reads their own ZIP and radius");
+  assert.match(f, /if \(zip && z && typeof z === "object"\) o\.mi = /, "v203 review fix: the owner key alone reads the test's distance");
   assert.match(f, /if \(!zip\) zip = o\.zip;/);
   assert.ok(f.indexOf("FB_OWN_ZIP") < f.indexOf("zip = o.zip"));
 });
