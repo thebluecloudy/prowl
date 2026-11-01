@@ -50,7 +50,11 @@ export const SPEND_SERVICES = [
   /* v200: Facebook Marketplace finds, the actor curious_coder~facebook-marketplace, pay per event */
   { key: "apify", name: "Apify: Facebook Marketplace finds (Pro)", uses: ["call", "item"], price: { call: 0.05, item: 0.5 },
     src: "https://apify.com/curious_coder/facebook-marketplace", srcNote: "the actor's pay-per-event price: $0.00005 an actor start, $0.0005 a listing (listing details, $0.001, stay off); the day's spend is also capped by FB_DAY_USD",
-    bill: "https://console.apify.com/billing" }
+    bill: "https://console.apify.com/billing" },
+  /* v210: live Shopify listings in hunts (shopcat.js), counted so the admin sees how many calls the strip makes */
+  { key: "shopcat", name: "Shopify Global Catalog: live Shopify listings in hunts", uses: ["call"], price: { call: 0 },
+    src: "https://shopify.dev/docs/agents/catalog", srcNote: "no published fee (Shopify's Catalogs API for agents, checked 2026-11-01); the default limit is 5 requests a second; the token exchange is not counted",
+    bill: "https://dev.shopify.com/dashboard" }
 ];
 export const SPEND_KEYS = SPEND_SERVICES.map(s => s.key);
 const KNOWN = new Set(SPEND_KEYS);
@@ -118,6 +122,7 @@ export function paidKey(url, init) {
   if (h === "serpapi.com" && u.pathname === "/search.json") return "lens";
   if (h === "vision.googleapis.com") return "g_vision";
   if (h === "api.apify.com" && /^\/v2\/acts\/[^/]+\/run-sync/.test(u.pathname)) return "apify";   /* v200 */
+  if (h === "catalog.shopify.com" && u.pathname === "/api/ucp/mcp") return "shopcat";   /* v210 */
   if (h === "places.googleapis.com" || h === "routes.googleapis.com" || (h === "maps.googleapis.com" && u.pathname.indexOf("/maps/api/geocode/") === 0)) {
     const hd = init && init.headers, mask = !hd ? "" : typeof hd.get === "function" ? hd.get("X-Goog-FieldMask") : (hd["X-Goog-FieldMask"] || hd["x-goog-fieldmask"] || "");
     return googleSku(u.href, mask || "");

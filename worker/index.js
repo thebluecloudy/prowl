@@ -13,12 +13,21 @@
  *   GET /poshmark?q=ceramic+panther -> same shape, from Poshmark's search page state (v58)
  *   GET /poshsold?q=ceramic+panther -> Poshmark sold listings, each with sold:"YYYY-MM-DD" (v58)
  *   GET /depop?q=ceramic+panther    -> same shape, from Depop's search page data (v59)
+ *   GET /shop-live?term=ceramic+panther -> { on, term, items:[{title,price,currency,img,shop,url,secondhand}] } from Shopify's
+ *       Global Catalog, or { off } while its secrets are not set (v210, shopcat.js)
  *   GET /vinted?q=ceramic+panther   -> same shape, from Vinted's catalog API with the cookie its home page sets (v60)
  *   GET /hibid?q=ceramic+panther -> same shape, parsed from hibid.com/lots. Built and
  *       tested offline, but hibid.com's WAF answers Workers with a 403 (2026-09-25),
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v210: 2026-11-01. Live Shopify listings in hunts (shopcat.js): GET /shop-live?term=&max= searches Shopify's Global
+ *         Catalog (search_catalog at catalog.shopify.com/api/ucp/mcp, a client-credentials token from
+ *         api.shopify.com/auth/access_token kept in memory until it expires) for the hunt's words, secondhand first, ships to
+ *         the US, in stock; titles with every word (sgwExact); Owl & Twig's own products dropped; nothing cached (Shopify's
+ *         rule), no member data sent. { off: true } without SHOPIFY_CATALOG_CLIENT_ID and SHOPIFY_CATALOG_CLIENT_SECRET.
+ *         GET /ucp/profile.json is the agent profile. SHOPCAT_PER_IP a day per IP, SHOPCAT_PER_DAY catalog calls a day;
+ *         counted in spend.js as "shopcat".
  *   v209: 2026-11-01. Facebook finds show steadily (Matt: his "mc escher" finds "sometimes show and sometimes don't"):
  *         /fb-finds and the Store read a signed-in member's own ZIP and radius even with the owner key (the last admin
  *         test's fbownzip, or &zip=, only for the owner key alone); an All USA hunt whose shipping search alone has run
@@ -724,6 +733,7 @@ import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./ad
 import { artResponse } from "./art.js";   /* v97 */
 import { fbkPost, fbkList, fbkDelete, fbkReplyTo, fbkForget, newsTick, newsBuild, newsSample, newsFresh, newsView, newsNote, newsEligible, newsLoad, newsMerge, NEWS_KEY, NEWS_STOP, NEWS_KEEP, NEWS_PER_RUN, NEWS_TESTS_PER_DAY } from "./news.js";   /* v208 */
 import { SpendBuffer, spendOp, spendWrap } from "./spend.js";   /* v193 */
+import { shopLive, shopcatProfile, SHOPCAT_PROFILE_PATH } from "./shopcat.js";   /* v210 */
 import { FB_UNIT, FB_RUN_ITEMS, FB_TTL, FB_PER_RUN, FB_ZIP_TTL, FB_ZIP_MISS_TTL, FB_TRIES, fbLive, fbCapUnits, fbTerm, fbCell, fbKey, fbUnits, fbEstimate, fbItems, fbMerge, fbRun, FB_MEMBER_DAY, FB_SEARCH_DAY, FB_USA_MI, fbPickKey, fbShipKey, fbMi, fbJoin, fbWhy } from "./fb.js";   /* v200 */
 import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb64u } from "./push.js";   /* v114 */
 import { SW_SRC } from "./sw-src.js";   /* v114 */
@@ -737,7 +747,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v209";
+const WORKER_VERSION = "v210";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -7740,6 +7750,8 @@ async function newsMember(request, env) {
   }
   return sub;
 }
+/* v210: what shopcat.js needs from here */
+function shopDeps() { return { vCount, ipKey, json, sgwExact }; }
 function newsDeps() {
   return { json, readJson, kvGet, kvPut, ipKey, ipNet, vCount, isOwner, alSend, alEsc, alShell, alAddr, alMerge, alMailSub, alLinkHash, alUnsubUrl, alUpgradeUrl, scrubPII,
     memberOf: newsMember, ALLOW_ORIGINS, PROWL_APP, AL_UNSUB_MAIL };
@@ -9066,6 +9078,8 @@ async function handleFetch(request, env, ctx) {
     }
     if (url.pathname === "/fb-finds" && request.method === "GET") return fbFinds(request, env, url, origin);   /* v200: Facebook finds through Apify (410 in v178-v196) */
     if (url.pathname === "/near" && request.method === "GET") return nearRoute(request, env, url, origin);   /* v132: Around You */
+    if (url.pathname === "/shop-live") return shopLive(request, env, url, origin, shopDeps());   /* v210: live Shopify listings (shopcat.js) */
+    if (url.pathname === SHOPCAT_PROFILE_PATH) return json(shopcatProfile(), 200, origin, { "Cache-Control": "public, max-age=3600" });   /* v210: the UCP agent profile Shopify reads */
     if (url.pathname === "/trip/sales" && request.method === "GET") return wkTripRoute(request, env, url, origin);   /* v206: estate sales on the way */
     if (url.pathname === "/trip" && request.method === "GET") return tripRoute(request, env, url, origin, ctx);   /* v132: Road Trip */
     if (url.pathname === "/geo" && request.method === "GET") return geoRoute(request, env, url, origin);   /* v157: In a location */

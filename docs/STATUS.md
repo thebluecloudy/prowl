@@ -1,15 +1,52 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.36 / v209).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.38 / v210).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.36** | 367,966 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v209** | |
+| Page | **v8.38** | 367,966 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v210** | |
 
 Recently shipped, newest first:
+
+- **v8.38 / v210: live Shopify listings in hunts, through Shopify's Global Catalog** (Claude, 2026-11-01). Branch
+  `shop-catalog`, not pushed yet. Page v8.37 belongs to the parallel Shop link-out release; whichever merges second
+  re-checks the numbers. Page room left: 367,966 bytes (unchanged: the script is on the worker).
+  - **Off until Matt adds the key.** The worker secrets `SHOPIFY_CATALOG_CLIENT_ID` and `SHOPIFY_CATALOG_CLIENT_SECRET`
+    (Shopify Dev Dashboard › Catalogs › create a Catalogs API key; see `worker/README.md`). Without both, `/shop-live`
+    answers `{ off: true }` and the page shows nothing.
+  - **Worker (`worker/shopcat.js`):** `GET /shop-live?term=&max=` (max 12). Client credentials → a JWT from
+    `https://api.shopify.com/auth/access_token` (JSON body, 60-minute TTL), kept in the isolate's memory until a minute
+    before it expires (never KV); one JSON-RPC `tools/call` `search_catalog` to `https://catalog.shopify.com/api/ucp/mcp`
+    with `meta.ucp-agent.profile` = the worker's own `GET /ucp/profile.json` (catalog search + lookup + Shopify's
+    `dev.shopify.catalog.global`; `SHOPIFY_CATALOG_PROFILE` overrides the URL), `filters` `available: true`,
+    `ships_to: US`, `condition: ["secondhand"]`, `pagination.limit` 30. When that leaves fewer than `max` listings with
+    every word of the hunt (`sgwExact`, the ShopGoodwill rule), a second search without the condition; secondhand first.
+    Answer `{ on, term, items: [{ title, price, currency, img, shop, url, secondhand? }], why? }`, `why = { raw, words,
+    own }` when empty. Images only from `cdn.shopify.com`; the variant URL as Shopify gives it. Owl & Twig's own products
+    (owlandtwigvintage.com, tz7xkc-du / owlandtwigvintage-store .myshopify.com, `SHOPIFY_SHOP`) are dropped.
+  - **Shopify's rules kept:** no caching of results at all (`Cache-Control: no-store`, no KV, no Cache API: Shopify's
+    "Don't cache search results"), images never fetched or proxied by the worker, only the hunt's words, the US and the
+    filters are sent (no member, email, IP, user agent or buyer signals).
+  - **Caps:** `SHOPCAT_PER_IP` 200 asks a day per IP key, `SHOPCAT_PER_DAY` 10,000 catalog calls a day for the site
+    (vCount). Shopify's 429 is answered 429 and the isolate waits its Retry-After (at most 5 min); a stale token (401) is
+    renewed once; 8 s timeouts; failures are 502 with no items. Counted in spend.js as **shopcat** (price 0, "no
+    published fee"); the token exchange is not counted.
+  - **Page:** a "Live from Shopify stores" strip in the hunt's live listings (`shpFetch`, `shpBlock`; the ShopGoodwill
+    card: photo, title, price, "Shopify · <shop>", a new-tab `rel="noopener noreferrer"` link), with a Shopify button in
+    the jump row; an empty answer says why ("Nothing on Shopify stores for this hunt right now." or "Shopify stores had N
+    for this hunt, none with all your words. Try fewer words."); a 429 says Shopify stores are busy; a failed ask shows
+    nothing and is asked again in 2 minutes; `{ off: true }` hides it for the visit. Kept in memory 10 minutes a hunt so a
+    redraw does not ask again; no new localStorage key. **For everyone, no Pro gate** (no published fee).
+  - Privacy section: hunt words go to Shopify's Global Catalog.
+  - Tests: `worker/__tests__/shop-catalog-v210.test.mjs` (12) and `__tests__/page/shop-live-v838.test.mjs` (6).
+  - **To confirm once Matt has the key:** that Shopify accepts the worker-hosted agent profile (else set
+    `SHOPIFY_CATALOG_PROFILE` to Shopify's hosted example
+    `https://shopify.dev/ucp/agent-profiles/examples/2026-08-25/valid-with-capabilities.json`); that the token answer
+    carries `expires_in` or a JWT `exp` (both handled); whether vintage shops mark `secondhand` often enough; that the
+    Dev Dashboard shows no fee.
 
 - **v8.36 / v209: Facebook finds show steadily, own ZIP for the owner, the week's finds, All USA says why** (Matt,
   2026-11-01: Facebook finds for his hunt "mc escher" "sometimes show and sometimes don't"; then on All USA: "I don't
@@ -2254,8 +2291,10 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
+| (parallel Shop link-out) | Claude | Shop link-out release | Claims page v8.37. |
+| `shop-catalog` | Claude | Live Shopify listings in hunts via Shopify's Global Catalog (see Live, v8.38 / v210) | Claims **page v8.38 / worker v210**. Committed, not pushed, no PR yet. Off until Matt adds the two Catalog secrets. |
 
-Next free numbers: **page v8.37, worker v210** (v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.39, worker v211** (v8.38 / v210: live Shopify listings, branch `shop-catalog`; v8.37: the Shop link-out release; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 
@@ -2272,6 +2311,11 @@ The ranked ideas and the order Matt chose are in `docs/priority-matrix.md`: Poun
 
 ## Waiting on Matt
 
+- **Live Shopify listings (worker v210 / page v8.38), once merged:** in the Shopify Dev Dashboard (dev.shopify.com) ›
+  Catalogs, create a Catalogs API key, then set its Client ID and Client secret as the Cloudflare Worker secrets
+  `SHOPIFY_CATALOG_CLIENT_ID` and `SHOPIFY_CATALOG_CLIENT_SECRET` (`wrangler secret put …` or the dashboard; never in a
+  chat). Open a hunt and check the "Live from Shopify stores" strip. Paste the updated
+  `docs/privacy-policy-prowl-section.html` (the "Shopify stores" bullet; Last updated November 1, 2026).
 - **Facebook finds through Apify (worker v200 / page v8.25), in this order:**
   1. In the admin, **Diagnose** tab, run **Facebook test** for about 5 of your hunts with the Novi ZIP (48375): check
      the listings are right and the cost (about $0.012 a test at most) and today's spend line.
