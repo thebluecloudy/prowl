@@ -1,15 +1,21 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.43 / v215).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.43 / v216).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.43** | 361,665 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v215** | |
+| Worker | **v216** | |
 
 Recently shipped, newest first:
+
+- **Worker v216: Near me shops count for every kind they name** (Matt, 2026-11-01: Finders Keepers Vintage & Vinyl in
+  Plymouth showed only under Records, not Vintage). A place got one kind, and "record/vinyl" was checked before
+  "vintage", so with Records off it was dropped. trip.js kindsOf: a place counts for each of our kinds its name or
+  Google type says (place.kinds from normalizePlace; an older cached place falls back to its name); the card reads
+  "Records · Vintage". Near cache key v=13, trip key v=12. Test worker/__tests__/near-kinds-v216.test.mjs. Page unchanged.
 
 - **Worker v215: site visits in the morning briefing** (Matt, 2026-11-01: people visit but buy on Etsy; which guides do
   they read?). The admin Overview's "Owl & Twig this morning" card adds What people do on the site: visits, people, cart
@@ -2490,7 +2496,7 @@ Recently shipped, newest first:
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 | `claude/gifted-johnson-wzaqr3` | Claude | Deploy check tolerates Shopify's line-break re-flow (scripts only) | No new version (page v8.42 live with #310, worker v213). |
 
-Next free numbers: **page v8.44, worker v216** (v8.43 / v214: 14-day Pro trial, PR #307; v8.42: deploy-check fix for the How Prowl works search box, branch `claude/gifted-johnson-wzaqr3`; v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, live with #309; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.44, worker v217** (worker v216: Near me shops in every kind they name) (v8.43 / v214: 14-day Pro trial, PR #307; v8.42: deploy-check fix for the How Prowl works search box, branch `claude/gifted-johnson-wzaqr3`; v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, live with #309; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 
