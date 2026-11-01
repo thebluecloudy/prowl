@@ -1,4 +1,4 @@
-// Page v8.37 (Matt: "use liinks.co's home page as a reference for how prowl works"). How Prowl works opens with a
+// Page v8.39 (Matt: "use liinks.co's home page as a reference for how prowl works"). How Prowl works opens with a
 // promise and a box to try it; each feature is a short title, one line and a small picture of it, the steps folded under
 // How; then Prowl or one site at a time, the two plans, questions, and Start hunting.
 import { test } from 'node:test';
