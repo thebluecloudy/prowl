@@ -154,6 +154,7 @@ main.wrap{padding-top:16px;padding-bottom:64px}
 .banner li .txt{flex:1 1 220px}
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 @media (min-width:760px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.brief{margin:14px 0 8px;padding-left:20px;display:grid;gap:8px;line-height:1.5}.brief b{font-weight:600}
 .tile{background:var(--card);border:2px solid var(--ol);border-radius:12px;padding:12px 14px;min-width:0;display:flex;flex-direction:column}
 .tl{font-size:13px;font-weight:650;color:var(--ink2)}
 .tv{font-size:26px;font-weight:700;line-height:1.15;margin:4px 0 2px;letter-spacing:-.01em}
@@ -666,8 +667,38 @@ async function loadOverview() {
     else fill(box, note("bad", "Could not load the overview. " + e.message, loadOverview));
   } finally { if (seq === S.ovSeq) { box.classList.remove("busy"); box.removeAttribute("aria-busy"); } }
 }
+/* v212: Owl & Twig's morning briefing (the shop's own orders, not Prowl's). Loaded on its own, at most every 30
+   minutes; the worker builds it once a Detroit day. */
+function briefMoney(n) { return "$" + Math.round(Number(n) || 0).toLocaleString("en-US"); }
+function briefView() {
+  const b = S.sb;
+  if (!b) return loading("Loading the morning briefing\u2026");
+  if (b.error) return note("bad", "Could not load the morning briefing. " + b.error, () => loadBrief(true));
+  if (b.off) return note("warn", "The briefing needs the worker's Shopify orders key (SHOPIFY_ORDERS_CLIENT_ID and SECRET).");
+  const st = b.stats || {}, ch = st.salesChange;
+  const kids = [
+    h("div", { class: "tiles" }, [
+      tile("Yesterday", briefMoney(st.salesYday), st.ordersYday ? plural(st.ordersYday, "order", "orders") : (st.daysSinceOrder != null ? "No sales. Last order " + plural(st.daysSinceOrder, "day", "days") + " ago" : "No sales")),
+      tile("Last 30 days", briefMoney(st.sales30), plural(st.orders30, "order", "orders") + (ch != null ? ", " + (ch >= 0 ? "up " : "down ") + Math.abs(Math.round(ch)) + "% on the 30 before" : "")),
+      tile("Top category", st.categories && st.categories[0] ? st.categories[0].type : "\u2014", st.categories && st.categories[0] ? briefMoney(st.categories[0].sales) + " in 30 days" : "No sales in 30 days")]),
+    h("ol", { class: "brief" }, (b.notes || []).map(n => h("li", [h("b", { text: n.kind + ". " }), n.text]))),
+    st.categories && st.categories.length ? tableOf([{ t: "Category" }, { t: "Pieces", num: 1 }, { t: "Sales", num: 1 }], st.categories.map(x => [x.type, String(x.items), briefMoney(x.sales)]), "Sales by category, last 30 days") : null,
+    h("p", { class: "hint", text: (b.ai ? "Notes written by Muse" : "Notes worked out from the numbers (the AI was not available)") + " from the shop's orders on " + b.day + ". Item sales before refunds; Prowl Pro left out." +
+      (st.typesKnown ? "" : " Categories show as Other: the Shopify app needs read_products to see product types.") })];
+  return kids;
+}
+async function loadBrief(force) {
+  if (!force && S.sb && !S.sb.error && Date.now() - (S.sbAt || 0) < 1800000) return;
+  try { S.sb = await api("/admin/api/shopbrief"); S.sbAt = Date.now(); }
+  catch (e) { if (e.status === 401) return; S.sb = { error: e.message }; }
+  const box = $("#sbrief"); if (box) fill(box, briefView());
+}
+function briefCard() {
+  setTimeout(() => loadBrief(false), 0);
+  return card("brief", "Owl & Twig this morning", null, h("div", { id: "sbrief" }, briefView()), "The shop's sales (Etsy orders sync into Shopify) and three notes for the day.");
+}
 function renderOverview(ov) {
-  fill($("#ov"), [banner(ov), tiles(ov), marketsCard(ov), h("div", { class: "two" }, [alertsCard(ov), aiCard(ov)]),
+  fill($("#ov"), [banner(ov), tiles(ov), briefCard(), marketsCard(ov), h("div", { class: "two" }, [alertsCard(ov), aiCard(ov)]),
     routesCard(ov), errorsCard(ov), h("div", { class: "two" }, [topCard(ov), auditCard(ov)])]);
   /* the late list reads every member, so it loads when the owner asks for it (then at most every 5 minutes) */
   const a = ov.alerts;

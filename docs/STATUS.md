@@ -1,16 +1,22 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.40 / v211).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.40 / v212).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
 | Page | **v8.40** | 361,670 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v211** | |
+| Worker | **v212** | |
 
 Recently shipped, newest first:
 
+- **Worker v212: morning briefing in the admin** (Matt, 2026-11-01). The Overview tab opens with "Owl & Twig this
+  morning": yesterday's sales, the last 30 days against the 30 before, the top category, sales by category and three
+  notes Muse writes from those numbers (rule-based notes when Muse is off or fails). `worker/shop-brief.js` reads 60
+  days of orders with the existing read_orders token (Prowl Pro, cancelled and test orders left out), once per Detroit
+  day on the first admin open, cached in KV (`shopbrief:<day>`). Product types need read_products; without it
+  categories show as Other and the card says so. Route `GET /admin/api/shopbrief`.
 - **v8.40: Store from one hunt, and How Prowl works on the pattern of liinks.co's home page**
   - **Store** (Matt: "I'm searching in hunt with the pills and I just want to find the items in one store but it goes
     to the bottom of hunt"; asked, he had tapped Store in the dock): with one hunt on screen, Store runs just that hunt
@@ -2378,7 +2384,7 @@ Recently shipped, newest first:
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
 | `claude/gifted-johnson-wzaqr3` | Claude | Shopify catalog diagnose card, Chairish photos in the popup (see Live, v8.39 / v211) | Claims **page v8.39 / worker v211**. Pushed, no PR yet. |
 
-Next free numbers: **page v8.41, worker v212** (v8.39 / v211: Shopify catalog diagnose and Chairish photos, branch `claude/gifted-johnson-wzaqr3`; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.41, worker v213** (v8.39 / v211: Shopify catalog diagnose and Chairish photos, branch `claude/gifted-johnson-wzaqr3`; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 
