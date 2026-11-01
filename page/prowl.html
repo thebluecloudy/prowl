@@ -5902,7 +5902,7 @@ function olRender(r){
   var nx=$('#otp-next');if(nx)nx.addEventListener('click',function(){launchNext(false)});
   if(!r.olGo){r.olGo=1;olFetchAll(r)}
 }
-function olHead(r){var n=r.terms.length;return (n===1?(r.mode==='store'?esc(r.terms[0]):'Your hunt'):'All '+n+' hunts')+' on '+esc(runSiteName(r))}   /* v8.40: one hunt in Store says which */
+function olHead(r){var n=r.terms.length;return (n===1?(r.mode==='store'&&st.storeOne?esc(r.terms[0]):'Your hunt'):'All '+n+' hunts')+' on '+esc(runSiteName(r))}   /* v8.40: Store from one hunt says which */
 function olFeet(r){
   var a=document.getElementById('otp-olNone'),b=document.getElementById('otp-olErr');
   if(a)olFoot(r,a,'none','Nothing on '+esc(runSiteName(r))+' right now');
