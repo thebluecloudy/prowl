@@ -18,6 +18,11 @@ export const MIN_RATIO = 0.7;         // refuse to replace the live page with so
 
 const md5 = (s) => createHash("md5").update(s, "utf8").digest("hex");
 const trimEnd = (s) => s.replace(/\s+$/, "");
+/* v8.43: Shopify's editor re-flows a page body: it puts a line break between some tags (after <form ...>, after
+   <div class="hw-rows"> and before their closing tags; v8.29's tray box too). The check compares the two copies with
+   every line break that sits directly between two tags taken out, so a re-flow is not a failed deploy, while any change
+   to text, attributes or scripts still is. */
+export const sameShape = (s) => String(s || "").replace(/>\r?\n</g, "><");
 
 /* linked: the bytes of the stylesheet and main script the page links to (v6.92, v7.21), counted toward the minimum */
 export function checkBody(body, linked) {
@@ -82,7 +87,7 @@ export async function deploy({ fetchFn, file, id, secret, force, backupDir, log,
   writeFileSync(backupDir + "/live-before.html", before.body);
   writeFileSync(backupDir + "/live-before.json", JSON.stringify({ updatedAt: before.updatedAt, md5: md5(liveBody), bytes: liveBytes }, null, 2));
 
-  if (md5(liveBody) === want) { log("Live page already matches the file. Nothing sent."); return { status: "same", md5: want }; }
+  if (md5(liveBody) === want || md5(sameShape(liveBody)) === md5(sameShape(body))) { log("Live page already matches the file. Nothing sent."); return { status: "same", md5: want }; }
   if (built.hash && !(await waitForCss(fetchFn, built.hash, Object.assign({ log }, cssWait || {})))) {
     throw new Error("Refusing to deploy: the worker does not serve stylesheet " + built.hash + " (" + built.url + "). Check that the worker deployed, and that worker/page-css.js was rebuilt (node scripts/build-page-css.mjs).");
   }
@@ -104,9 +109,14 @@ export async function deploy({ fetchFn, file, id, secret, force, backupDir, log,
 
   const after = (await gql(fetchFn, token, READ, { id: PAGE_ID })).page;
   const got = md5(trimEnd(after.body || ""));
+  if (got !== want && md5(sameShape(trimEnd(after.body || ""))) === md5(sameShape(body))) {
+    log("Verified: live page matches the file apart from line breaks Shopify put between tags (live md5 " + got + ").");
+    return { status: "updated", md5: want, updatedAt: after.updatedAt, previous: before.updatedAt, reflowed: true };
+  }
   if (got !== want) {
+    const a0 = sameShape(body), b0 = sameShape(trimEnd(after.body || ""));
     /* say where Shopify's copy first differs, so an edit it rewrote can be found without downloading the page */
-    const a = body, b = trimEnd(after.body || "");
+    const a = a0, b = b0;
     let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++;
     log("First difference at character " + i + " (file " + a.length + " chars, live " + b.length + " chars).");
     log("FILE: " + JSON.stringify(a.slice(Math.max(0, i - 120), i + 200)));
