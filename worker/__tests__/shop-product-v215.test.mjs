@@ -1,9 +1,9 @@
-/* v214: a Shopify find opens the listing popup (Matt: "when i open a shopify shop, is it possible to do the pop up like
+/* v215: a Shopify find opens the listing popup (Matt: "when i open a shopify shop, is it possible to do the pop up like
    the others? it currently goes directly to the shop."). GET /item?shop=<gid>&url=<card link> calls the Global Catalog's
    get_product (shopcat.js shopItem) with the same token / keyless handling and caps as the search, never caches
    (Shopify: no caching of catalog results), and turns the product into the popup's item, the card's store's offer first.
    The fixture's shape is what get_product answered live (keyless, our profile, 2026-11-01), trimmed and renamed.
-   Run: node --test worker/__tests__/shop-product-v214.test.mjs */
+   Run: node --test worker/__tests__/shop-product-v215.test.mjs */
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -187,7 +187,7 @@ test("never cached: /item?shop= is routed before the item cache, and nothing in 
   assert.doesNotMatch(body, /PCACHE|caches\.|\.put\(|PROWL_ALERTS|max-age/, "no Cache API, no KV, no max-age");
 });
 
-/* ---------- review fixes (v214) ---------- */
+/* ---------- review fixes (v215) ---------- */
 test("review fix: one store's sizes share a path, so the offer is matched by the card's variant (?variant= or vid)", async () => {
   const S = variant({ vid: "1", url: "https://shopa.example/products/coat?variant=1&_gsid=x", price: { amount: 2000, currency: "USD" }, available: false,
     seller: { name: "Shop A", url: "https://shopa.example", domain: "shopa.myshopify.com" }, options: [{ name: "Size", label: "S" }] });

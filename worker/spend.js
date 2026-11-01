@@ -21,7 +21,7 @@ const PRICES_CHECKED = "2026-10-30";   /* Google: Matt's billing account price l
 export const SPEND_SERVICES = [
   { key: "muse", name: "Muse (Meta Muse Spark): Fair price, Research, Field Guides, Pounce, shop picks", uses: ["tin", "tout", "ws"],
     price: { tin: 0.98, tout: 4.25, ws: null }, src: "https://developers.meta.ai",
-    /* v214: Matt's October bill has a "search grounding requests" line ($2.05), so web searches are billed: no made-up
+    /* v215: Matt's October bill has a "search grounding requests" line ($2.05), so web searches are billed: no made-up
        price, the Spending tab asks for it (Fit prices to a bill works it out from the bill and Prowl's own counts) */
     srcNote: "input and output fitted to Matt's Meta bill, Oct 24-30 2026 (list input is $1.25, cached reads are cheaper, so it averages about $0.98). Web searches are billed (\"search grounding requests\" on the bill): fit from your Meta bill. Reasoning tokens bill as output.",
     bill: "https://developers.meta.ai" },
@@ -235,7 +235,7 @@ export function spendCfgClean(raw) {
   return { cfg: out, errors: errors };
 }
 
-/* ---------- v214: fit per-unit prices to a bill ----------
+/* ---------- v215: fit per-unit prices to a bill ----------
    Matt's Meta bill for October 2026: cached request tokens $0.40, response tokens $2.23, uncached request tokens $4.10,
    search grounding requests $2.05 ($8.78). A bill's dollar lines divided by what Prowl itself counted over the same days
    give the per-unit prices. Prowl does not count cached input tokens apart (the answers' usage is read as one input
@@ -286,7 +286,7 @@ export function spendFit(rows, key, from, to, bill) {
 }
 
 /* ---------- the estimate ---------- */
-/* Cost of usage u under price p for service s. Review fix (v214): a part used without a price drops only that part
+/* Cost of usage u under price p for service s. Review fix (v215): a part used without a price drops only that part
    (spendMissing names it), so Muse's token dollars stay in the totals while its searches wait for a price; null only
    when every part used lacks a price. */
 export function spendMissing(s, u, p) {

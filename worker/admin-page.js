@@ -1272,7 +1272,7 @@ function usd(n) {
 }
 function kfmt(n) { n = Number(n) || 0; return n >= 1e6 ? (Math.round(n / 1e5) / 10) + "M" : n >= 1e3 ? (Math.round(n / 100) / 10) + "k" : String(n); }
 function spCell(m, u) {
-  const np = Array.isArray(u.unpriced) ? u.unpriced : [], npy = (...f) => f.some(x => np.indexOf(x) >= 0) ? " (not priced yet)" : "";   /* v214 review fix: priced in part */
+  const np = Array.isArray(u.unpriced) ? u.unpriced : [], npy = (...f) => f.some(x => np.indexOf(x) >= 0) ? " (not priced yet)" : "";   /* v215 review fix: priced in part */
   const bits = [num(u.n) + (u.n === 1 ? " call" : " calls") + npy("call")];
   if (m.uses.indexOf("tin") >= 0 && (u.ti || u.to)) bits.push(kfmt(u.ti) + " in" + (m.uses.indexOf("tout") >= 0 ? " / " + kfmt(u.to) + " out" : "") + " tokens" + npy("tin", "tout"));
   if (m.uses.indexOf("ws") >= 0 && u.ws) bits.push(num(u.ws) + " web searches" + npy("ws"));
@@ -1297,7 +1297,7 @@ function renderSpend(j) {
   rows.push([h("b", { text: "Total" }), h("b", { text: usd(T.today && T.today.calls) }), h("b", { text: usd(T.d7 && T.d7.calls) }), h("b", { text: usd(T.monthAll) }), h("b", { text: usd(T.lastAll) })]);
   out.push(tableOf(cols, rows, "Spending by service", true));
   out.push(h("p", { class: "hint", text: "Today and 7 days are calls at the list price. The month columns take off Google\u2019s free monthly allowance and add the monthly bills. \u201cNo price\u201d means Prowl used it but has no price for it: add one below. Counting started with worker v193 (30 Oct 2026), so earlier days are empty." }));
-  out.push(spFit(j, M));   /* v214 */
+  out.push(spFit(j, M));   /* v215 */
   out.push(spForm(j, M, cfg));
   fill($("#spbox"), out);
 }
@@ -1350,7 +1350,7 @@ function spForm(j, M, cfg) {
   return form;
 }
 
-/* v214: Fit prices to a bill. Matt's Meta bill for October 2026 (cached request tokens $0.40, response tokens $2.23,
+/* v215: Fit prices to a bill. Matt's Meta bill for October 2026 (cached request tokens $0.40, response tokens $2.23,
    uncached request tokens $4.10, search grounding requests $2.05) divided by what Prowl counted over the same days gives
    Muse's per-unit prices; the answer says what was counted, from which day, and warns when counting began after the
    bill's first day. The range defaults to last month (the bill's month). */

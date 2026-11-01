@@ -1044,8 +1044,8 @@ function realPro(env, shop) {
   const calls = { shop: 0 };
   const fetch = async () => { calls.shop++; if (!shop) throw new Error("offline"); return { status: 200, json: async () => ({ data: { orders: { nodes: shop } } }) }; };
   const deps = { kvGet, kvPut: async (e, k, v) => e.PROWL_ALERTS.put(k, JSON.stringify(v)), giftHash: IX.giftHash, giftPro, proListHas: IX.proListHas,
-    alNow: () => ({ day: TODAY, hour: 10, wday: 1 }), PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", PRO_NO_CACHE_MS: 10 * 60 * 1000, fetch };
-  const fns = fromIndex(["shopHost", "shopCanToken", "shopToken", "alFreePro", "alProShop", "alPro", "alProSet"], deps);
+    alNow: () => ({ day: TODAY, hour: 10, wday: 1 }), PRO_SKU: "PROWL-PRO-MONTHLY", PRO_DAYS: 35, PRO_TRIAL_CODE: "PROWLMONTH", PRO_NO_CACHE_MS: 10 * 60 * 1000, PRO_TRIAL_FROM: "2026-11-01", fetch };
+  const fns = fromIndex(["shopHost", "shopCanToken", "shopToken", "alFreePro", "alProShop", "alPro", "proTrialDays", "proTrialEnds", "proTrialPlan", "alProSet"], deps);
   return Object.assign(fns, { calls });
 }
 test("index.js alPro: the list, then a gift, both before the cache and Shopify; switching the list off falls through", async () => {

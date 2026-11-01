@@ -1,18 +1,18 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.43 / v214).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.44 / v215).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.43** | 361,668 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v214** | |
+| Page | **v8.44** | 361,665 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v215** | |
 
 Recently shipped, newest first:
 
-- **v8.43 / v214: Shopify finds open the listing popup; Muse prices fit to the Meta bill** (Claude, 2026-11-01). Branch
-  `shop-popup` (in flight below). Page room left: 361,668 bytes.
+- **v8.44 / v215: Shopify finds open the listing popup; Muse prices fit to the Meta bill** (Claude, 2026-11-01). Branch
+  `claude/gifted-johnson-wzaqr3` (PR #313, in flight below; first claimed v8.43 / v214, renumbered after #307 took them). Page room left: 361,665 bytes.
   - **Shopify popup** (Matt: "when i open a shopify shop, is it possible to do the pop up like the others? it currently
     goes directly to the shop."): a card in "Live from Shopify and other stores" opens Prowl's listing popup. `/shop-live`
     items carry `pid` (the product's Global Catalog gid); the page (`shpClean`, `sgwCard` `data-gid`/`data-shop`/`data-dom`,
@@ -53,12 +53,30 @@ Recently shipped, newest first:
     shown "from $X elsewhere", never gone; (3) `spendFit` refuses impossible dates (2024-99-99, 2026-02-30) before the
     400-day check; (4) a part used without a price drops only that part (`spendMissing`): Muse's token dollars stay in
     every total, its searches read "(not priced yet)" with the count, and the month line names the service as having
-    some use not priced yet. Tests: two in `shop-product-v214`, one each in `spend-fit-v214`, `spend.test.mjs` and
-    `shop-popup-v843`; `spend-ui` and `spend.test.mjs` updated.
-  - Tests: `worker/__tests__/shop-product-v214.test.mjs` (7), `worker/__tests__/spend-fit-v214.test.mjs` (4),
-    `__tests__/page/shop-popup-v843.test.mjs` (2); `spend.test.mjs`, `spend-ui.test.mjs` and `shop-catalog-v210` updated
+    some use not priced yet. Tests: two in `shop-product-v215`, one each in `spend-fit-v215`, `spend.test.mjs` and
+    `shop-popup-v844`; `spend-ui` and `spend.test.mjs` updated.
+  - Tests: `worker/__tests__/shop-product-v215.test.mjs` (7), `worker/__tests__/spend-fit-v215.test.mjs` (4),
+    `__tests__/page/shop-popup-v844.test.mjs` (2); `spend.test.mjs`, `spend-ui.test.mjs` and `shop-catalog-v210` updated
     for `ws: null`, `shopItem` and `itemDesc`. Privacy section: a note and one sentence (tapping a listing asks Shopify for
     its details by its product number).
+
+- **v8.43 / v214: 14-day Pro trial for every new member** (Claude, 2026-11-01). Branch `claude/pro-trial-v840` (PR #307). Matt asked whether to make Prowl pay-only and said
+  "Yes" to a reverse trial instead.
+  - **Worker:** members whose `created` is on or after `PRO_TRIAL_FROM` (2026-11-01) are Pro for `PRO_TRIAL_DAYS`
+    (default 14, `"0"` turns it off, max 60) from sign-up, no card: `proTrialEnds`, `proTrialPlan`, checked in
+    `alProSet` after gifts, PRO_EMAILS, store-account and email orders (any of those wins). Plan `{ via: "trial",
+    trial: true, ends, daysLeft }` (the admin counts it under Trial). The shop being down never ends a running trial;
+    an ended one goes back to Free even then. It sets `hadPro`, so checkout afterwards is the paid plan, not
+    PROWLMONTH. `sub.trialEnds` is kept; `/alerts/status` adds `trialEnded` (day) once it is over. The daily email adds
+    a "Your free Prowl Pro ends …" box in the last 3 days.
+  - **Page:** plan card "Free trial · N days left" with Keep Pro · $7/mo; Upgrade works during the trial
+    (`mailTrial()` lets it past the v8.16 already-Pro stop); after it ends, Free says "Your 14 free days of Pro ended
+    …". Signed-out copy says 14 days of Pro free (hero pill, sign-in text, plan table, Fair price and Den-full nudges
+    via `proFreeTxt()`); billing terms explain both the trial and the old free month.
+  - **Outside the repo, for Matt:** the Prowl Pro product page script labels its button "Start my free month" for
+    everyone; trial members get the paid checkout from it (no code), so the label is wrong for them.
+  - Cost: trial members get Pro photo and Fair price checks; the existing site-wide AI caps still hold.
+  - Tests `worker/__tests__/pro-trial-v214.test.mjs`, `__tests__/page/pro-trial-v843.test.mjs`.
 
 - **v8.42: the deploy check matches the How Prowl works search box.** v8.41 went live (worker v213 too), but the deploy's md5
   check failed: Shopify stores `<form id="otp-hwTry">` (from #303) with a line break after the opening tag and before
@@ -2514,10 +2532,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `claude/gifted-johnson-wzaqr3` | Claude | Deploy check tolerates Shopify's line-break re-flow (scripts only) | No new version (page v8.42 live with #310, worker v213). |
-| `shop-popup` | Claude | Shopify finds open the listing popup (get_product); Fit prices to a bill in Spending; Muse searches billed | page v8.43 / worker v214. Committed locally, not pushed, no PR yet. |
+| `claude/gifted-johnson-wzaqr3` | Claude | PR #313: Shopify finds open the listing popup (get_product); Fit prices to a bill in Spending; Muse searches billed (branch `shop-popup` merged in) | page v8.44 / worker v215 (renumbered after #307 took v8.43 / v214). |
 
-Next free numbers: **page v8.44, worker v215** (v8.43 / v214: Shopify popup and Fit prices to a bill, branch `shop-popup`; v8.42: deploy-check fix for the How Prowl works search box, branch `claude/gifted-johnson-wzaqr3`; v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, live with #309; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.45, worker v216** (v8.44 / v215: Shopify popup and Fit prices to a bill, PR #313, branch `claude/gifted-johnson-wzaqr3`; v8.43 / v214: 14-day Pro trial, live with #307; v8.42: deploy-check fix for the How Prowl works search box, branch `claude/gifted-johnson-wzaqr3`; v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, live with #309; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 

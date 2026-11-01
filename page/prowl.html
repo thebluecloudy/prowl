@@ -2985,7 +2985,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
     <h2 id="otp-alertsT">Prowl Alerts</h2>
     <p class="k2-short k2-only">New finds for your hunts, in your inbox. Only what you have not seen.</p>
     <div class="k2-pills k2-only">
-<span>Free: 3 hunts</span><span>Pro: up to 100 hunts</span><span>First month free</span>
+<span>Free: 3 hunts</span><span>Pro: up to 100 hunts</span><span>14 days of Pro free</span>
 </div>
     <p class="k2-hide">One email with new finds for your hunts on ShopGoodwill, eBay, Etsy, Chairish, Poshmark, Vinted and Grailed, only listings you have not seen. Every morning, three mornings a week, or just Mondays: you pick, and you pick which hunts go in. <b>Free: 3 hunts.</b> <b>Prowl Pro: your first month is free</b>, then $7 a month for up to 100 hunts, your whole Den, a price ceiling, skip-words, local-pickup hunts near your ZIP, unlimited photo checks and unlimited Fair price checks. We email you before the first charge. Cancel any time.</p>
     <p><button class="b p" id="otp-alertsGo" type="button">Set up Prowl Alerts</button> <a class="b" href="/products/prowl-pro">Try Prowl Pro free for a month</a></p>
@@ -4285,7 +4285,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.43';
+var PROWL_VERSION='v8.44';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -6993,7 +6993,7 @@ function sgwCard(it,hunt,bare){
   var sv=svBtn(it,hunt);   /* v6.02: save this find */
   /* v6.54: a heart on every result, as in Flock; the cell carries what a like keeps (title, price, site, link, hunt) */
   var lk=lkBtn(it),dh=' data-h="'+esc(hunt||'')+'"';
-  if(it.src==='shopify')dh+=(it.pid?' data-gid="'+esc(it.pid)+'"'+(it.vid?' data-vid="'+esc(it.vid)+'"':''):'')+' data-shop="'+esc(it.shop||'')+'" data-dom="'+esc(it.dom||'')+'"'+(it.off?' data-off="1"':'');   /* v8.43: the popup */
+  if(it.src==='shopify')dh+=(it.pid?' data-gid="'+esc(it.pid)+'"'+(it.vid?' data-vid="'+esc(it.vid)+'"':''):'')+' data-shop="'+esc(it.shop||'')+'" data-dom="'+esc(it.dom||'')+'"'+(it.off?' data-off="1"':'');   /* v8.44: the popup */
   /* v6.63: the star, the heart and Fair price? share one row under the card, so the photo is clear (bare: as before,
      for Flock, which places its own buttons) */
   /* v7.31 (one button per card): results keep only the heart; Save and Fair price? are in the listing popup (tap the
@@ -7265,7 +7265,7 @@ var FP_WORD={DEAL:'Good deal',FAIR:'Fair price',HIGH:'Priced high'};
 /* v5.92: free visitors get 3 Fair price checks a day; Pro is unlimited. */
 function fpPro(){return '<a class="sgw-fpu" href="/products/prowl-pro">Unlimited with Prowl Pro</a>'}
 function fpHtml(r){
-  if(r.out)return '<p class="sgw-fpr fp-out" role="status"><b>That\'s today\'s '+esc(String(r.out))+' free Fair price checks.</b> They reset tomorrow. '+fpPro()+' · first month free, plus email alerts for up to 100 hunts.</p>';
+  if(r.out)return '<p class="sgw-fpr fp-out" role="status"><b>That\'s today\'s '+esc(String(r.out))+' free Fair price checks.</b> They reset tomorrow. '+fpPro()+' · '+proFreeTxt()+', plus email alerts for up to 100 hunts.</p>';
   if(r.err)return '<p class="sgw-fpr err" role="status">'+esc(r.err)+'</p>';
   var v=FP_WORD[r.verdict]?r.verdict:'FAIR';
   return '<div class="sgw-fpr v-'+v.toLowerCase()+'" role="status">'+
@@ -7743,7 +7743,7 @@ function shpPrice(p,c){
   s=s.replace(/\B(?=(\d{3})+(?!\d))/g,',');
   return !c||c==='USD'?'$'+s:s+' '+c;
 }
-/* v8.43 (worker v214, Matt: "when i open a shopify shop, is it possible to do the pop up like the others?"): a Global
+/* v8.44 (worker v215, Matt: "when i open a shopify shop, is it possible to do the pop up like the others?"): a Global
    Catalog product id, as search_catalog gives it */
 var SHP_GID=/^gid:\/\/shopify\/(p\/[A-Za-z0-9]{6,40}|ProductVariant\/\d{1,20})$/,SHP_VID=/^gid:\/\/shopify\/ProductVariant\/\d{1,20}$/;
 function shpClean(a){
@@ -7755,7 +7755,7 @@ function shpClean(a){
     out.push({title:x.title.slice(0,160),price:shpPrice(x.price,x.currency),url:u,src:'shopify',shop:typeof x.shop==='string'?x.shop.slice(0,60):'',
       dom:typeof x.domain==='string'&&/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(x.domain)?x.domain.slice(0,80).toLowerCase():'',off:x.offShopify===true,
       image:typeof x.img==='string'&&/^https:\/\/[^\s"'<>\\]+$/.test(x.img)?x.img.slice(0,600):'',
-      pid:typeof x.pid==='string'&&SHP_GID.test(x.pid)?x.pid:'',vid:typeof x.vid==='string'&&SHP_VID.test(x.vid)?x.vid:''});   /* v8.43: the listing popup asks the worker's get_product for it (vid: the card's variant) */
+      pid:typeof x.pid==='string'&&SHP_GID.test(x.pid)?x.pid:'',vid:typeof x.vid==='string'&&SHP_VID.test(x.vid)?x.vid:''});   /* v8.44: the listing popup asks the worker's get_product for it (vid: the card's variant) */
   }
   return out;
 }
@@ -7939,7 +7939,7 @@ function mailUpgrade(go){
   if(MAIL.busy)return;
   if(!alertsLive()){toast('Prowl Pro is coming soon.',2400);return}
   if(!mGet('alertTok')){MAIL.after=mailUpgrade;MAIL.afterAt=Date.now();MAIL.msg='Sign in with your email first, so Pro knows whose it is.';MAIL.open=true;openMailSettings();rMail();return}   /* v6.86 */
-  if(mailPro()){MAIL.msg='You already have Prowl Pro on '+em+', so there is nothing to buy.';MAIL.open=true;openMailSettings();rMail();toast('You already have Prowl Pro.',2600);return}   /* v8.16: no second subscription */
+  if(mailPro()&&!mailTrial()){MAIL.msg='You already have Prowl Pro on '+em+', so there is nothing to buy.';MAIL.open=true;openMailSettings();rMail();toast('You already have Prowl Pro.',2600);return}   /* v8.16: no second subscription */
   if(typeof fetch!=='function'){location.href=PRO_URL;return}
   MAIL.busy=true;MAIL.msg='Opening checkout\u2026';rMail();
   function fail(){MAIL.busy=false;location.href=PRO_URL}
@@ -7964,6 +7964,9 @@ function mailUpgrade(go){
   },fail);
 }
 function mailPro(){return mGet('alertPro')==='1'&&!!mGet('alertTok')}
+/* v8.43: the 14-day Pro trial every new member gets (worker v214, plan.via 'trial'): no card, so they can still buy */
+function mailTrial(){return mailPro()&&!!MAIL.plan&&MAIL.plan.via==='trial'}
+function proFreeTxt(){return !mGet('alertTok')?'14 days free when you sign up':MAIL.hadPro?'$7 a month':'first month free'}
 /* v6.83: Free keeps 5 hunts of its own in the Den, Pro up to 100. The starter samples (DEF, OLD_DEF) do not count, and nothing
    already saved is ever removed: a Den over the limit just takes no new hunt until one goes. */
 var HUNTS_FREE=5,HUNTS_PRO=100;
@@ -7973,7 +7976,7 @@ function huntsOwn(){return st.hunts.filter(function(h){return !huntSample(h)}).l
 window.prowlHunts=function(){return st.hunts.filter(function(h){return !huntSample(h)}).slice(0,30)};   /* v8.14: the shelf scan (photo script) sends these to worker v188 */
 function huntRoom(t){
   if(huntIndex(t)>-1||huntSample(t)||huntsOwn()<huntCap())return true;
-  toast(huntCap()===HUNTS_FREE?'<b>Your Den holds '+HUNTS_FREE+' hunts on Free.</b> Remove one to add <b>'+esc(t)+'</b>, or Prowl Pro holds up to '+HUNTS_PRO+' (first month free, in Den \u203a Settings).':'Your Den is full at '+HUNTS_PRO+' hunts. Remove one to add <b>'+esc(t)+'</b>.',7000);
+  toast(huntCap()===HUNTS_FREE?'<b>Your Den holds '+HUNTS_FREE+' hunts on Free.</b> Remove one to add <b>'+esc(t)+'</b>, or Prowl Pro holds up to '+HUNTS_PRO+' ('+proFreeTxt()+', in Den \u203a Settings).':'Your Den is full at '+HUNTS_PRO+' hunts. Remove one to add <b>'+esc(t)+'</b>.',7000);
   return false;
 }
 function mGet(k){try{return localStorage.getItem('prowl.'+k)||''}catch(e){return ''} }
@@ -8556,8 +8559,9 @@ var MANAGE_URL='/account';
 function mailDate(iso){try{var d=new Date(iso);if(isNaN(d.getTime()))return '';return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}catch(e){return ''} }
 function mailTerms(){
   return '<details class="mail-terms"><summary>How Prowl Pro billing works</summary><ul>'+
-    '<li><b>First month free, then $7.00 a month.</b> New Pro members pay $0 at checkout on owlandtwigvintage.com, the same secure Shopify checkout as the rest of the shop. Your card is saved for the monthly charge.</li>'+
-    '<li>We email you when the free month starts and again 3 days before the first $7.00 charge.</li>'+
+    '<li><b>$7.00 a month.</b> Every new member gets 14 days of Pro free when they sign up, with no card and nothing to cancel. Members who joined before November 2026 and never had Pro get their first month free at checkout instead.</li>'+
+    '<li>You pay at owlandtwigvintage.com, the same secure Shopify checkout as the rest of the shop. Your card is saved for the monthly charge.</li>'+
+    '<li>On the free month, we email you when it starts and again 3 days before the first $7.00 charge. On the 14-day trial, the daily email says when it is about to end.</li>'+
     '<li>It renews on the same day each month. Every charge comes with an emailed receipt from Owl &amp; Twig.</li>'+
     '<li>Cancel any time from <a href="'+MANAGE_URL+'">your account</a> (Subscriptions) or by emailing <a href="mailto:hello@owlandtwigvintage.com">hello@owlandtwigvintage.com</a>. Pro stays on until the month you paid for ends. No refunds for part of a month.</li>'+
     '<li>Prowl adds your Prowl Alerts email to the order, so Shop Pay or any checkout email works.</li>'+
@@ -8566,7 +8570,12 @@ function mailTerms(){
 }
 function mailPlan(on,em,n){
   var pro=mailPro(),p=MAIL.plan||{},h='<div class="mail-plan">';
-  if(pro&&p.via==='order'&&p.trial){   /* v6.05: the free month */
+  if(pro&&p.via==='trial'){   /* v8.43: the 14-day trial, no card */
+    var dl=p.ends?Math.max(1,Math.ceil((Date.parse(p.ends)-Date.now())/86400000)):(p.daysLeft||0);
+    h+='<p class="mail-plan-h"><b>Your plan: Prowl Pro</b> <span>Free trial'+(dl?' \u00b7 '+dl+' day'+(dl===1?'':'s')+' left':'')+'</span></p>'+
+      '<p class="mail-fine">Every new member gets 14 days of Pro free, no card. It ends <b>'+esc(mailDate(p.ends)||'soon')+'</b>. Then you go back to Free: your hunts all stay saved, and the email covers your first '+(MAIL.free||3)+'. Nothing is charged unless you upgrade.</p>'+
+      '<span class="sgw-mf"><a class="b p" href="'+PRO_URL+'">Keep Pro \u00b7 $7/mo</a></span>'+planTableHtml(true);
+  }else if(pro&&p.via==='order'&&p.trial){   /* v6.05: the free month */
     h+='<p class="mail-plan-h"><b>Your plan: Prowl Pro</b> <span>Free month</span></p>'+
       '<p class="mail-fine">Free until <b>'+esc(mailDate(p.renews)||'next month')+'</b>. Then <b>$'+esc(p.next||'7.00')+' a month</b> on the card you saved. We email you 3 days before the first charge. Cancel before then and you pay nothing.</p>'+
       '<span class="sgw-mf"><a class="b" href="'+MANAGE_URL+'">Manage or cancel</a></span>'+planTableHtml(true);
@@ -8579,7 +8588,7 @@ function mailPlan(on,em,n){
     h+='<p class="mail-plan-h"><b>Your plan: Prowl Pro</b> <span>'+(p.via==='list'?'complimentary':'active')+'</span></p>'+
       '<p class="mail-fine">'+(p.via==='list'?'Pro was turned on for this email by Owl &amp; Twig. No charge.':'Payment details show here once Prowl finds your order.')+'</p>';
   }else{
-    h+='<p class="mail-plan-h"><b>Your plan: Free</b> <span>$0</span></p>'+planTableHtml(false)+
+    h+='<p class="mail-plan-h"><b>Your plan: Free</b> <span>$0</span></p>'+(MAIL.trialEnded?'<p class="mail-fine"><b>Your 14 free days of Pro ended '+esc(mailDate(MAIL.trialEnded+'T12:00:00Z'))+'.</b> Your hunts are all saved. Prowl Pro brings back every hunt in the email and unlimited photo and Fair price checks.</p>':'')+planTableHtml(false)+
       '<p class="mail-fine">'+(MAIL.hadPro?'<b>Prowl Pro is $7 a month.</b>':'<b>Try Prowl Pro free for a month.</b> Your card is saved at checkout and charged $7 a month after the free month, unless you cancel. We email you 3 days before the first charge.')+' Most alert apps charge $5 to $10 for every search you watch; Prowl charges one price for all of them. Cancel any time in your account.</p>'+
       '<span class="sgw-mf"><a class="b p" href="'+PRO_URL+'">'+(MAIL.hadPro?'Upgrade \u00b7 $7/mo':'Start my free month')+'</a>'+(on?'<button type="button" class="b" data-mail="recheck">I already upgraded</button>':'')+'</span>'+
       (em?'<p class="mail-fine">Upgrades <b>'+esc(em)+'</b>. Prowl adds it to the order for you.</p>':'');
@@ -8602,11 +8611,11 @@ function mailBody(on,wait,n,em){
       '<span class="sgw-mf"><input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" data-k="verify" placeholder="123456" aria-label="6-digit code"><button type="button" class="b p" data-mail="verify"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Checking\u2026':'Sign in')+'</button></span>'+
       '<p class="mail-fine">Not there? Check spam. <button type="button" class="sgw-ml" data-mail="code" data-v="'+esc(wait)+'">Send a new code</button> \u00b7 <button type="button" class="sgw-ml" data-mail="again">Use a different email</button></p>';
   }else if(MAIL.shop){
-    h+='<p>Signed in to Owl &amp; Twig as <b>'+esc(MAIL.shop.e)+'</b>. One email with new finds for your hunts, as often as you pick. <b>Free for 3 hunts</b>, or up to 100 with Prowl Pro, first month free.</p>'+
+    h+='<p>Signed in to Owl &amp; Twig as <b>'+esc(MAIL.shop.e)+'</b>. One email with new finds for your hunts, as often as you pick. <b>Free for 3 hunts</b>, or up to 100 with Prowl Pro, and your first 14 days of Pro are free.</p>'+
       '<span class="sgw-mf"><button type="button" class="b p" data-mail="join"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Turning on\u2026':'Turn on Prowl Alerts')+'</button></span>'+
       mailTrust()+mailPreview();   /* v7.35 */
   }else{
-    h+='<p><b>Sign in with your email.</b> No password: we email you a 6-digit code. Your hunts then follow you to every phone and computer, with one email of new finds, as often as you pick: <b>free for 3 hunts</b>, or up to 100 with Prowl Pro, first month free. Turn the email off any time.</p>'+
+    h+='<p><b>Sign in with your email.</b> No password: we email you a 6-digit code. Your hunts then follow you to every phone and computer, with one email of new finds, as often as you pick: <b>free for 3 hunts</b>, or up to 100 with Prowl Pro. Your first 14 days of Pro are free, no card. Turn the email off any time.</p>'+
       '<span class="sgw-mf"><input type="email" autocomplete="email" data-k="code" placeholder="you@email.com" aria-label="Your email" value="'+esc(MAIL.linkEm||em||wait||'')+'"><button type="button" class="b p" data-mail="code"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Sending\u2026':'Email me a code')+'</button></span>'+
       mailTrust()+mailPreview();   /* v7.35 */
   }
@@ -8642,7 +8651,7 @@ function mailStatus(fresh,cb){
       /* v6.04: the membership moved to a new address (same token): follow it once */
       if(j&&j.on===false&&j.moved&&!MAIL.movedHop){MAIL.movedHop=1;var mv=String(j.moved).toLowerCase();mSet('alertEmail',mv);mSet('alertSig','');MAIL.moving='';MAIL.msg='Your Prowl Alerts now go to '+mv+'. This device switched over.';setTimeout(function(){mailStatus(true,cb)},0);return}
       if(j&&j.on){MAIL.moving=j.moving||'';mailStoreLook();}
-      if(j&&j.on){mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;if(typeof j.defHour==='number')MAIL.defHour=j.defHour;MAIL.mail=j.mail==='off'?'off':'on';MAIL.hadPro=!!j.hadPro;MAIL.freeWeekly=!!j.freeWeekly;MAIL.plan=j.plan||null;if(j.prefs&&!MAIL.pending&&!MAIL.saving){MAIL.prefs=j.prefs;setTimeout(prefsTzSync,0)}if(j.hunts&&j.hunts.length!==undefined)mailMerge(j.hunts);MAIL.quarries=j.quarries||{};MAIL.quarryMax=j.quarryMax||1;MAIL.wpush=j.wpush||null;MAIL.phone=j.phone||'';var fb0=MAIL.fb;MAIL.fb=!!j.fb;if(MAIL.fb&&!fb0)setTimeout(rSGW,0);MAIL.estate=!!j.estate;setTimeout(nrWkTab,0);pncSeen(j.quarryMatches);}
+      if(j&&j.on){mSet('alertPro',j.pro?'1':'');if(j.free)MAIL.free=j.free;if(typeof j.defHour==='number')MAIL.defHour=j.defHour;MAIL.mail=j.mail==='off'?'off':'on';MAIL.hadPro=!!j.hadPro;MAIL.trialEnded=j.trialEnded||'';MAIL.freeWeekly=!!j.freeWeekly;MAIL.plan=j.plan||null;if(j.prefs&&!MAIL.pending&&!MAIL.saving){MAIL.prefs=j.prefs;setTimeout(prefsTzSync,0)}if(j.hunts&&j.hunts.length!==undefined)mailMerge(j.hunts);MAIL.quarries=j.quarries||{};MAIL.quarryMax=j.quarryMax||1;MAIL.wpush=j.wpush||null;MAIL.phone=j.phone||'';var fb0=MAIL.fb;MAIL.fb=!!j.fb;if(MAIL.fb&&!fb0)setTimeout(rSGW,0);MAIL.estate=!!j.estate;setTimeout(nrWkTab,0);pncSeen(j.quarryMatches);}
       else if(j&&j.on===false){mSet('alertTok','');mSet('alertSig','');mSet('alertNoAuto','1');sessSet('')}   /* v8.11: signed out elsewhere (Sign out every other device): no store auto sign-in straight back in, as Sign out */
       /* v6.00: this device may push its list only after a real pull merged the
          member's list in; a bad or missing answer leaves sync off until the next status */
@@ -9751,7 +9760,7 @@ function popSrc(u){
   return '';
 }
 var POP_NAME={ebay:'eBay',shopgoodwill:'ShopGoodwill',salvation:'Salvation Army',etsy:'Etsy',chairish:'Chairish'};
-/* v8.43: what the open popup shows: a Shopify find's answer lives on POP only (no caching), the rest in ITEMC */
+/* v8.44: what the open popup shows: a Shopify find's answer lives on POP only (no caching), the rest in ITEMC */
 function popData(u){return POP&&POP.u===u&&POP.src==='shopify'?POP.d:ITEMC[u]||null}
 /* the worker already strips seller HTML down to a few tags; this walks it again and copies only those tags and text,
    so nothing in a description can run here whatever the worker sends */
@@ -9808,7 +9817,7 @@ function popAuc(card){var m=card.querySelector('.sgw-m'),t=m?String(m.textConten
 function popOpen(card,lite){
   var u=card.getAttribute('data-u')||'',src=popSrc(u),ls=card.getAttribute('data-s')||'',lt=0,gid='';
   if(!src&&lite&&LIVE_NAME[ls]&&ls!=='facebook'&&LIVE_HOSTS.test(u)){src=ls;lt=1}
-  /* v8.43: a Shopify strip card (an off-Shopify one on eBay, Etsy, Chairish... has src from popSrc and that site's reader) */
+  /* v8.44: a Shopify strip card (an off-Shopify one on eBay, Etsy, Chairish... has src from popSrc and that site's reader) */
   if(!src&&ls==='shopify'&&/^https:\/\//.test(u)){gid=card.getAttribute('data-gid')||'';if(!SHP_GID.test(gid)||card.getAttribute('data-off'))gid='';
     if(gid||lite){src='shopify';lt=gid?0:1}}
   if(!src)return false;
@@ -9820,7 +9829,7 @@ function popOpen(card,lite){
   openSheet(src==='shopify'?(POP.shop||POP.dom||'Shopify'):POP_NAME[src]||LIVE_NAME[src],'');
   if(sh)sh.classList.add('pop');
   popPaint(popData(u));
-  /* v8.43: Shopify's rule is no caching of catalog results, so a Shopify find is asked for on every open and kept only
+  /* v8.44: Shopify's rule is no caching of catalog results, so a Shopify find is asked for on every open and kept only
      on POP, for the open popup (never ITEMC); the worker answers no-store */
   if(gid&&typeof fetch==='function'){
     var wp=POP;
@@ -9925,7 +9934,7 @@ function popPaint(d){
   if(typeof d.bids==='number'){meta.push(d.time_left?d.time_left+' left':'');meta.push(d.bids+' bid'+(d.bids===1?'':'s'))}
   else if(P.auc&&!d.title)meta.push(P.auc);
   if(d.condition)meta.push(d.condition);
-  if(d.elsewhere)meta.push('from '+d.elsewhere+' elsewhere');   /* v8.43 review fix: another store's price, labeled, never in place of the card's */
+  if(d.elsewhere)meta.push('from '+d.elsewhere+' elsewhere');   /* v8.44 review fix: another store's price, labeled, never in place of the card's */
   var sv=SVI[P.u]||{};meta.push(popAge(d.listed||sv.ls,d.relisted||sv.rl));   /* v7.20: eBay listing age */
   meta=meta.filter(Boolean);
   if(imgs.length){
@@ -9957,7 +9966,7 @@ function popPaint(d){
   if(price&&!d.gone&&!aiOff())pc+='<div class="sgw-cell pp-fp" data-t="'+esc(title)+'" data-p="'+esc(price)+'" data-s="'+esc(P.s)+'" data-u="'+esc(P.u)+'" data-d="'+esc((d.was?'On sale, was '+d.was+(d.off?' ('+d.off+')':'')+'. ':'')+(al?al.note+' ':'')+(fr?fr.note+' ':'')+(rp?rp.note+' ':'')+(flags?flags.note+' ':'')+popDetails(meta,d))+'">'+(FP&&FP[P.u]?fpHtml(FP[P.u]):'<button type="button" class="sgw-fp">Fair price?</button>')+'</div>';
   if(price||P.term)pc+='<a class="b pp-sold" href="'+esc(popSold(P.term||title))+'" target="_blank" rel="noopener noreferrer">What it sold for on eBay \u2197</a>';   /* v7.10 */
   if(pc)h+=popSec('price','Price check',pc,'price' in was?was.price:true);   /* v7.31: open, now that Fair price? is only here */
-  var go=P.src==='shopify'?P.u:window.prowlAff(d.url||P.u,'prowl-popup',d.affUrl);   /* v8.43: a Shopify find links to the store exactly as the card did */
+  var go=P.src==='shopify'?P.u:window.prowlAff(d.url||P.u,'prowl-popup',d.affUrl);   /* v8.44: a Shopify find links to the store exactly as the card did */
   var gon=P.src==='shopify'?'Open at '+(d.shop||P.shop||P.dom||'the shop'):'View on '+(POP_NAME[P.src]||LIVE_NAME[P.src]);
   if(go!=='#')h+=(d.gone?'<div>':'<div class="pp-dock">')+'<a class="b'+(d.gone?'':' p')+' pp-go" href="'+esc(go)+'" target="_blank" rel="noopener noreferrer">'+esc(gon)+' ↗</a></div>';   /* v7.19: an ended listing's link is not pinned; Watch for the next one leads */   /* v7.12: pinned to the sheet's foot */
   if(!d.gone||P.sold)h+='<div class="pp-sv">'+svBtn({url:P.u,title:title,price:price,image:imgs[0]||P.img||'',src:P.s==='shopgoodwill'?'':P.s},P.h||'')+popLkBtn(likeHas(P.u))+'</div>';   /* v7.31: Save moved here from the card */   /* v7.95: Like beside it */
@@ -12079,7 +12088,7 @@ function mailStoreLook(){
 function mailAcctHtml(em){
   var st=MAIL.store,h='<div class="mail-acct">';
   h+='<div class="ma-row"><span>Prowl Alerts go to</span><b>'+esc(em)+'</b><button type="button" class="sgw-ml" data-mail="chg">'+(MAIL.chg?'Cancel':'Change email')+'</button></div>';
-  var pl=MAIL.plan;h+='<div class="ma-row"><span>Plan</span><b>'+(mailPro()?'Prowl Pro'+(pl&&pl.trial&&pl.renews?', free month until '+esc(mailDate(pl.renews)):''):'Free')+'</b></div>';   /* v6.85 */
+  var pl=MAIL.plan;h+='<div class="ma-row"><span>Plan</span><b>'+(mailPro()?'Prowl Pro'+(pl&&pl.via==='trial'&&pl.ends?', free until '+esc(mailDate(pl.ends)):pl&&pl.trial&&pl.renews?', free month until '+esc(mailDate(pl.renews)):''):'Free')+'</b></div>';   /* v6.85 */
   if(MAIL.chg){
     h+='<span class="sgw-mf"><input type="email" id="otp-chgTo" data-k="chg" autocomplete="email" placeholder="new@email.com" aria-label="New email for Prowl Alerts" value="'+esc(MAIL.chgTo||'')+'">'+
       '<button type="button" class="b p" data-mail="chggo"'+(MAIL.busy?' disabled':'')+'>'+(MAIL.busy?'Sending…':'Send confirm link')+'</button></span>'+
@@ -12133,7 +12142,7 @@ function planTableHtml(isPro){
     ['Local pickup hunts (eBay near your ZIP)','<span class="no">—</span>','✓'],
     ['Photo checks','1 a day','Unlimited'],
     ['Fair price checks','1 a day','Unlimited'],
-    ['Price','$0',(MAIL.hadPro&&!isPro)?'$7 a month':'First month free, then $7 a month']
+    ['Price','$0',(MAIL.hadPro&&!isPro)?'$7 a month':signed?'First month free, then $7 a month':'14 days free when you sign up, then $7 a month']
   ];
   var h='<div class="mail-tbl-w"><table class="mail-tbl"><thead><tr><th scope="col"></th><th scope="col">Free</th><th scope="col" class="pro">Prowl Pro</th></tr></thead><tbody>';
   rows.forEach(function(r,i){h+='<tr'+(i===rows.length-1?' class="price"':'')+'><th scope="row">'+r[0]+'</th><td>'+r[1]+'</td><td class="pro">'+r[2]+'</td></tr>'});
