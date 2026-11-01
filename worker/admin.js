@@ -1020,6 +1020,35 @@ async function apiFbTest(c) {
     fields: fields, kept: !!r.kept, term: clean(r.term, 60), mode: clean(r.mode, 8), zip: /^\d{5}$/.test(zip) ? zip : "" });   /* v202: the term as kept (cut at a whole word) */
 }
 
+/* v211: Shopify's Global Catalog (shopcat.js). What the latest token exchange said (Shopify's error code and its
+   description with anything like the id or the secret cut out), the auth method that worked, and the shape of the two
+   secrets (lengths, spaces, quotes, swapped) without their values; and a test: one exchange, one search. Admin session only. */
+const shopStr = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f<>]+/g, " ").slice(0, n);
+function shopShape(x) { x = x || {}; return { len: num(x.len), spaces: !!x.spaces, inner: !!x.inner, quotes: !!x.quotes, set: !!x.set }; }
+function shopEx(x) {
+  if (!x || typeof x !== "object") return null;
+  return { at: num(x.at), ok: !!x.ok, status: num(x.status), error: shopStr(x.error, 60), desc: shopStr(x.desc, 200), method: word(x.method, 8), tried: arr(x.tried).map(m => word(m, 8)).slice(0, 2),
+    attempts: arr(x.attempts).slice(0, 2).filter(a => a && typeof a === "object").map(a => ({ method: word(a.method, 8), status: num(a.status), error: shopStr(a.error, 60), desc: shopStr(a.desc, 200) })) };
+}
+async function apiShopcat(c) {
+  if (typeof c.H.shopcatStatus !== "function") return jerr(503, "The Shopify catalog check is not available.");
+  const s = (await c.H.shopcatStatus(c.env, c.nowMs)) || {}, sh = s.shape || {};
+  return jres({ on: !!s.on, method: word(s.method, 8), waitUntil: num(s.waitUntil), busyUntil: num(s.busyUntil), last: shopEx(s.last),
+    shape: { id: shopShape(sh.id), secret: shopShape(sh.secret), swapped: !!sh.swapped, same: !!sh.same } });
+}
+async function apiShopcatTest(c) {
+  if (!(await c.H.vCount("admshop", 60))) return jerr(429, "That is a lot of Shopify tests today. Try again tomorrow.");
+  if (typeof c.H.shopcatTestRun !== "function") return jerr(503, "The Shopify catalog test is not available.");
+  const term = String(c.body.term == null ? "" : c.body.term).replace(/\s+/g, " ").trim().slice(0, 80) || "pyrex";
+  let r;
+  try { r = (await c.H.shopcatTestRun(c.env, term, c.url.origin)) || {}; } catch (e) { return jerr(502, "The Shopify test could not run."); }
+  const sr = r.search && typeof r.search === "object" ? r.search : null;
+  const search = sr ? { ok: !!sr.ok, status: num(sr.status), count: num(sr.count), titles: arr(sr.titles).slice(0, 3).map(t => shopStr(t, 120)), error: shopStr(sr.error, 200),
+    rpc: sr.rpc ? { code: num(sr.rpc.code), message: shopStr(sr.rpc.message, 300), data: shopStr(sr.rpc.data, 300) } : null } : null;
+  await audit(c, { action: "shopcat-test", ok: !!(search && search.ok), note: search ? (search.ok ? search.count + " items" : "search failed") : r.on === false ? "off" : "token failed" });
+  return jres({ on: r.on !== false, term: shopStr(r.term, 80), exchange: shopEx(r.exchange), search: search });
+}
+
 async function apiErrors(c) {
   const lim = Math.min(500, Math.max(1, Math.floor(num(c.url.searchParams.get("limit")) || 100)));
   let j;
@@ -1262,9 +1291,9 @@ async function apiNewsNew(c) {
 }
 
 const GETS = { overview: apiOverview, members: apiMembers, member: apiMember, errors: apiErrors, searches: apiSearches, usage: apiUsage, gifts: apiGifts, affiliates: apiAffiliates, spend: apiSpend,
-  feedback: apiFeedback, news: apiNews, "news/preview": apiNewsPreview };   /* v208 */
+  feedback: apiFeedback, news: apiNews, "news/preview": apiNewsPreview, shopcat: apiShopcat };   /* v208; v211: shopcat */
 const POSTS = { "spend/cfg": apiSpendCfg, find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, salescheck: apiSalesCheck, fbtest: apiFbTest, gift: apiGiftAdd, "gift/remove": apiGiftRemove, affiliate: apiAffiliateSet, "affiliate/ids": apiAffiliateIds,
-  "feedback/delete": apiFeedbackDelete, "feedback/reply": apiFeedbackReply, "news/draft": apiNewsDraft, "news/test": apiNewsTest, "news/send": apiNewsSend, "news/stop": apiNewsStop, "news/resume": apiNewsResume, "news/new": apiNewsNew };   /* v208 */
+  "feedback/delete": apiFeedbackDelete, "feedback/reply": apiFeedbackReply, "news/draft": apiNewsDraft, "news/test": apiNewsTest, "news/send": apiNewsSend, "news/stop": apiNewsStop, "news/resume": apiNewsResume, "news/new": apiNewsNew, "shopcat/test": apiShopcatTest };   /* v208; v211: shopcat/test */
 
 /* ---------- sign in / out ---------- */
 const capsDayOf = c => typeof c.H.capsDay === "function" ? c.H.capsDay() : "caps:" + utcDay(c.nowMs);

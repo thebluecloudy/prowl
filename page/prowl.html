@@ -4185,7 +4185,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.38';
+var PROWL_VERSION='v8.39';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -9623,9 +9623,10 @@ function popSrc(u){
   if(h==='shopgoodwill.com'&&/\/item\/\d{3,15}(?:[/?#]|$)/.test(u))return 'shopgoodwill';
   if(h==='shopthesalvationarmy.com'&&/\/Listing\/Details\/\d{3,15}/.test(u))return 'salvation';
   if(h==='etsy.com'&&/\/listing\/\d{6,15}(?:[/?#]|$)/.test(u))return 'etsy';   /* v6.53, worker v88 */
+  if(h==='chairish.com'&&/\/product\/\d{3,12}(?:\/[A-Za-z0-9-]{0,200})?\/?(?:[?#]|$)/.test(u))return 'chairish';   /* v8.39, worker v211 (Matt: "i only see one image"): every photo from the listing page */
   return '';
 }
-var POP_NAME={ebay:'eBay',shopgoodwill:'ShopGoodwill',salvation:'Salvation Army',etsy:'Etsy'};
+var POP_NAME={ebay:'eBay',shopgoodwill:'ShopGoodwill',salvation:'Salvation Army',etsy:'Etsy',chairish:'Chairish'};
 /* the worker already strips seller HTML down to a few tags; this walks it again and copies only those tags and text,
    so nothing in a description can run here whatever the worker sends */
 /* v6.99: some sellers' text arrives escaped twice ("it&#39;s"); decode what is left as plain text, never as HTML */
@@ -9676,7 +9677,7 @@ function popDesc(html){
 function popShown(){return !!(sh&&!sh.hidden&&sh.classList.contains('pop'))}
 /* v6.45: a result card outside Flock has no auction pill; its meta line carries bids and time left */
 function popAuc(card){var m=card.querySelector('.sgw-m'),t=m?String(m.textContent||''):'';return /\bbids?\b|\bleft\b/.test(t)?t.replace(/\s+/g,' ').trim():''}
-/* v7.31: a result card on a site the popup cannot read (Chairish, Poshmark, Vinted, Grailed) opens a light popup from
+/* v7.31: a result card on a site the popup cannot read (Poshmark, Vinted, Grailed; Chairish until v8.39) opens a light popup from
    what the card knows, so Save and Fair price?, which left the card, are one tap away on every result (lite) */
 function popOpen(card,lite){
   var u=card.getAttribute('data-u')||'',src=popSrc(u),ls=card.getAttribute('data-s')||'',lt=0;

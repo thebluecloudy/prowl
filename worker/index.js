@@ -21,6 +21,10 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v211: 2026-11-01. Shopify catalog diagnostics: the token exchange keeps Shopify's error code and description (id and
+ *         secret cut out; memory + KV shopcat:last), tries HTTP Basic once when the JSON body is refused as a bad client,
+ *         keys the 5-minute wait to the credentials; the admin's Diagnose card (GET /admin/api/shopcat, POST
+ *         /admin/api/shopcat/test). /item reads Chairish listings: the JSON-LD gallery, up to 12 photos at 1600 px.
  *   v210: 2026-11-01. Live Shopify listings in hunts (shopcat.js): GET /shop-live?term=&max= searches Shopify's Global
  *         Catalog (search_catalog at catalog.shopify.com/api/ucp/mcp, a client-credentials token from
  *         api.shopify.com/auth/access_token kept in memory until it expires) for the hunt's words, secondhand first, ships to
@@ -733,7 +737,7 @@ import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./ad
 import { artResponse } from "./art.js";   /* v97 */
 import { fbkPost, fbkList, fbkDelete, fbkReplyTo, fbkForget, newsTick, newsBuild, newsSample, newsFresh, newsView, newsNote, newsEligible, newsLoad, newsMerge, NEWS_KEY, NEWS_STOP, NEWS_KEEP, NEWS_PER_RUN, NEWS_TESTS_PER_DAY } from "./news.js";   /* v208 */
 import { SpendBuffer, spendOp, spendWrap } from "./spend.js";   /* v193 */
-import { shopLive, shopcatProfile, SHOPCAT_PROFILE_PATH } from "./shopcat.js";   /* v210 */
+import { shopLive, shopcatProfile, SHOPCAT_PROFILE_PATH, shopcatStatus, shopcatTest } from "./shopcat.js";   /* v210; v211: the admin's Diagnose card */
 import { FB_UNIT, FB_RUN_ITEMS, FB_TTL, FB_PER_RUN, FB_ZIP_TTL, FB_ZIP_MISS_TTL, FB_TRIES, fbLive, fbCapUnits, fbTerm, fbCell, fbKey, fbUnits, fbEstimate, fbItems, fbMerge, fbRun, FB_MEMBER_DAY, FB_SEARCH_DAY, FB_USA_MI, fbPickKey, fbShipKey, fbMi, fbJoin, fbWhy } from "./fb.js";   /* v200 */
 import { pushSubClean, pushSend, pushReady, b64u as pushB64u, unb64u as pushUnb64u } from "./push.js";   /* v114 */
 import { SW_SRC } from "./sw-src.js";   /* v114 */
@@ -747,7 +751,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v210";
+const WORKER_VERSION = "v211";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -2063,6 +2067,7 @@ function itemRef(raw) {
   if (h === "shopgoodwill.com" && (m = /^\/item\/(\d{3,15})(?:\/|$)/.exec(p))) return { src: "shopgoodwill", id: m[1] };
   if (h === "etsy.com" && (m = /^\/listing\/(\d{6,15})(?:\/[A-Za-z0-9%_-]{0,200})?\/?$/.exec(p))) return { src: "etsy", id: m[1] };   /* v88 */
   if (h === "shopthesalvationarmy.com" && (m = /^\/Listing\/Details\/(\d{3,15})(?:\/([A-Za-z0-9-]{0,200}))?\/?$/.exec(p))) return { src: "salvation", id: m[1], slug: m[2] || "" };
+  if (h === "chairish.com" && (m = /^\/product\/(\d{3,12})(?:\/([A-Za-z0-9-]{0,200}))?\/?$/.exec(p))) return { src: "chairish", id: m[1], slug: m[2] || "" };   /* v211 */
   return null;
 }
 /* Seller HTML -> a few formatting tags, no attributes, no scripts, styles, frames, forms or images. The page parses
@@ -2262,6 +2267,81 @@ function salvationItem(html, ref) {
   if (end) { const tl = timeLeft(new Date(end).toISOString()); if (tl) out.time_left = tl; else out.gone = true; }
   return out;
 }
+/* v211 (Matt: "add a check for chairish images in the popup, i only see one image"): a Chairish listing opens the full
+   popup. The product page carries one schema.org Product in JSON-LD whose image[] is the listing's whole gallery, in
+   order (ImageObjects with contentUrl .../image/product/master/<uuid>/<slug>, url and thumbnailUrl .../sized/...); the
+   page's other chairish-prod images belong to similar listings, so only the JSON-LD is read. Each photo is asked for
+   once, by its uuid, at Chairish's own 1600 px fit size (what its og:image uses; master can be huge), at most
+   CHAIRISH_ITEM_IMAGES. No JSON-LD gallery: the og:image alone. */
+const CHAIRISH_ITEM_IMAGES = 12, CHAIRISH_IMG_RE = /^https:\/\/chairish-prod\.freetls\.fastly\.net\/image\/product\/(?:master|sized)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/([A-Za-z0-9._%-]{1,200})(?:[?#]|$)/i;
+async function itemChairish(ref) {
+  const path = "/product/" + ref.id + (ref.slug ? "/" + ref.slug : "");
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), UPSTREAM_TIMEOUT_MS);
+  let r, html;
+  try {
+    r = await fetch("https://www.chairish.com" + path, { signal: ctl.signal, headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.9" } });
+    html = (await r.text()).slice(0, SCRAPE_MAX);
+  } finally { clearTimeout(timer); }
+  if (r.status === 404 || r.status === 410) return { gone: true };
+  if (r.status !== 200) return { error: "chairish " + r.status };
+  return chairishItem(html, ref);
+}
+function chairishPhotos(list) {
+  const out = [], seen = {};
+  for (const x of Array.isArray(list) ? list : [list]) {
+    const cands = typeof x === "string" ? [x] : x && typeof x === "object" ? [x.contentUrl, x.url, x.thumbnailUrl] : [];
+    for (const c of cands) {
+      const u = String(c || ""), m = CHAIRISH_IMG_RE.exec(u);
+      if (m) { const k = m[1].toLowerCase(); if (!seen[k]) { seen[k] = 1; out.push("https://chairish-prod.freetls.fastly.net/image/product/sized/" + k + "/" + m[2] + "?aspect=fit&width=1600&height=1600"); } break; }
+      if (/^https:\/\/[^\s"'<>]+$/.test(u) && !/chairish-prod\./i.test(u) && out.indexOf(u) === -1) { out.push(u); break; }
+    }
+    if (out.length >= CHAIRISH_ITEM_IMAGES) break;
+  }
+  return out;
+}
+const CHAIRISH_COND = { usedcondition: "Used", newcondition: "New", refurbishedcondition: "Refurbished", damagedcondition: "Damaged" };
+const chText = (v) => hibidText(String(v == null ? "" : v).replace(/&#x([0-9a-f]{1,6});/gi, (_, x) => "&#" + parseInt(x, 16) + ";"));   /* Chairish writes it&#x27;s */
+function chairishItem(html, ref) {
+  html = String(html || "");
+  const re = /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi;
+  let m, p = null;
+  while ((m = re.exec(html)) !== null) {
+    let j = null;
+    try { j = JSON.parse(m[1]); } catch (e) { continue; }
+    const list = [];
+    for (const x of Array.isArray(j) ? j : [j]) { if (x && Array.isArray(x["@graph"])) list.push.apply(list, x["@graph"]); else list.push(x); }
+    p = list.filter((x) => x && (Array.isArray(x["@type"]) ? x["@type"].indexOf("Product") !== -1 : x["@type"] === "Product") && x.name)[0] || null;
+    if (p) break;
+  }
+  /* review fix: no readable Product is an error (not cached), never gone: a word like "sold" anywhere on the page
+     (a similar listing, the footer) used to mark a live listing away. Gone = a 404/410 or a sold-out Product offer. */
+  if (!p) return { error: "chairish unreadable" };
+  let images = chairishPhotos(p.image);
+  if (!images.length) { const og = (/<meta[^>]+property="og:image"[^>]+content="(https:[^"]+)"/i.exec(html) || [])[1]; if (og) images = chairishPhotos([chText(og)]); }
+  const offer = Array.isArray(p.offers) ? p.offers[0] : p.offers || {};
+  const n = Number(offer && offer.price), avail = String((offer && offer.availability) || "");
+  const cond = CHAIRISH_COND[String((offer && offer.itemCondition) || "").replace(/^.*\//, "").toLowerCase()] || "";
+  const aspects = [];
+  const dim = ["height", "width", "depth"].map((k) => p[k] && Number(p[k].value) > 0 ? (k.charAt(0).toUpperCase() + " " + Number(p[k].value) + (/INH/i.test(String(p[k].unitCode || "")) ? " in" : "")) : "").filter(Boolean);
+  if (dim.length) aspects.push({ n: "Size", v: dim.join(" × ").slice(0, 120) });
+  if (p.material) aspects.push({ n: "Materials", v: chText(String(p.material)).slice(0, 120) });
+  if (p.color) aspects.push({ n: "Color", v: chText(String(p.color)).slice(0, 120) });
+  const seller = offer && offer.seller && offer.seller.name ? chText(String(offer.seller.name)).slice(0, 120) : "";
+  if (seller) aspects.push({ n: "Shop", v: seller });
+  const out = {
+    title: chText(String(p.name)).slice(0, 200),
+    price: isFinite(n) && n > 0 ? money(n) : "",
+    images: itemImages(images),
+    description: itemDesc(chText(String(p.description || "")).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")),   /* plain text, decoded once */
+    condition: cond,
+    aspects: aspects,
+    url: "https://www.chairish.com/product/" + ref.id + (ref.slug ? "/" + ref.slug : ""),
+  };
+  if (/SoldOut|OutOfStock|Discontinued/i.test(avail)) out.gone = true;
+  return out;
+}
 async function itemRoute(env, url, origin, request) {
   const ref = itemRef(url.searchParams.get("url"));
   if (!ref) return json({ error: "not a listing Prowl can open" }, 400, origin);
@@ -2269,7 +2349,7 @@ async function itemRoute(env, url, origin, request) {
   try { const hit = await PCACHE.match(ck); if (hit) return json(await hit.json(), 200, origin, { "X-Prowl-Cache": "hit" }); } catch (e) {}
   if (!(await vCount("it:" + ipKey(request.headers.get("CF-Connecting-IP")), ITEM_PER_IP))) return json({ error: "slow down" }, 429, origin);
   let out;
-  try { out = ref.src === "ebay" ? await itemEbay(ref.id, env) : ref.src === "shopgoodwill" ? await itemSgw(ref.id) : ref.src === "etsy" ? await itemEtsy(ref.id, env) : await itemSalvation(ref); }
+  try { out = ref.src === "ebay" ? await itemEbay(ref.id, env) : ref.src === "shopgoodwill" ? await itemSgw(ref.id) : ref.src === "etsy" ? await itemEtsy(ref.id, env) : ref.src === "chairish" ? await itemChairish(ref) : await itemSalvation(ref); }
   catch (e) { out = { error: "upstream unreachable" }; }
   if (out.error) { console.error("item", ref.src, out.error); return json({ error: out.error, src: ref.src }, 502, origin); }
   out = Object.assign({ src: ref.src, id: ref.id }, out);
@@ -7738,6 +7818,7 @@ const ADMIN_H = {
   cfReferrers,   /* v127: Visitors in the admin */
   WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, AL_PEND_CAP, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE,
   fbTestRun   /* v200: the admin's Facebook test */,
+  shopcatStatus, shopcatTestRun,   /* v211: the admin's Shopify catalog card */
   fbkList, fbkDelete, fbkReplyTo, newsTick, newsBuild, newsSample, newsFresh, newsView, newsNote, newsEligible, newsLoad, newsMerge, NEWS_KEY, NEWS_STOP, NEWS_KEEP, NEWS_PER_RUN, NEWS_TESTS_PER_DAY, newsDeps, AL_UNSUB_MAIL   /* v208 */
 };
 /* v208: what news.js needs from here (feedback and the update email) */
@@ -7752,6 +7833,7 @@ async function newsMember(request, env) {
 }
 /* v210: what shopcat.js needs from here */
 function shopDeps() { return { vCount, ipKey, json, sgwExact }; }
+function shopcatTestRun(env, term, origin) { return shopcatTest(env, shopDeps(), term, origin); }   /* v211 */
 function newsDeps() {
   return { json, readJson, kvGet, kvPut, ipKey, ipNet, vCount, isOwner, alSend, alEsc, alShell, alAddr, alMerge, alMailSub, alLinkHash, alUnsubUrl, alUpgradeUrl, scrubPII,
     memberOf: newsMember, ALLOW_ORIGINS, PROWL_APP, AL_UNSUB_MAIL };
