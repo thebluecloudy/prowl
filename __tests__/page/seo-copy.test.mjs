@@ -15,9 +15,9 @@ test('no copy frames Prowl against Google', () => {
 });
 
 test('the schema and FAQ lead with what Prowl does', () => {
-  assert.match(PAGE, /"description":"Free tool for vintage collectors - type a piece once and search 29 marketplaces at once, including ShopGoodwill, Facebook Marketplace and Craigslist\."/);
-  const faq = 'Type a piece once and it builds that search for 29 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist.';
+  assert.match(PAGE, /"description":"Free tool for vintage collectors - type a piece once and search 30 marketplaces at once, including ShopGoodwill, Facebook Marketplace and Craigslist\."/);
+  const faq = 'Type a piece once and it builds that search for 30 marketplaces on one screen, including ShopGoodwill, Facebook Marketplace and Craigslist.';
   assert.equal(PAGE.split(faq).length - 1, 2, 'FAQ schema and the visible FAQ');
   assert.match(PAGE, /<h2>Every vintage marketplace, one search<\/h2>/);
-  assert.match(PAGE, /<strong>Prowl runs your search across 29 vintage marketplaces at once\.<\/strong>/);
+  assert.match(PAGE, /<strong>Prowl runs your search across 30 vintage marketplaces at once\.<\/strong>/);
 });

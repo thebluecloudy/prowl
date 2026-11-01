@@ -112,7 +112,7 @@ test('one loading look: swallows where paw prints were, and Near me\'s flock whi
 });
 
 test('the line under the title, Best picks cards, quiet headers and one label style', () => {
-  assert.ok(PAGE.includes('<p class="lede k2-only"><span data-t>29</span> vintage marketplaces, one search. Free.</p>'));
+  assert.ok(PAGE.includes('<p class="lede k2-only"><span data-t>30</span> vintage marketplaces, one search. Free.</p>'));
   assert.match(PAGE, /\.scout-app-wrapper \.lede\{[^}]*text-wrap:balance\}/);
   assert.match(PAGE, /\.scout-app-wrapper \.pk-card\{text-align:center;/);
   assert.match(PAGE, /\.scout-app-wrapper \.pk-card b\{order:3;font-size:17px;font-weight:600;color:var\(--ink\)\}/);

@@ -20,7 +20,7 @@ test('the live listings end with "Continue the full hunt", which runs the hunt o
   const body = p.$('#otp-sgw .sgw-body');
   const cont = body.lastElementChild;
   assert.ok(cont.classList.contains('sgw-cont'), 'the last thing in the panel');
-  assert.match(cont.textContent, /These are the live listings\. The full hunt searches all 29 marketplaces for “pyrex”/);
+  assert.match(cont.textContent, /These are the live listings\. The full hunt searches all 30 marketplaces for “pyrex”/);
   const b = cont.querySelector('button[data-sgw="hunt"]');
   assert.deepEqual(p.$$('#otp-sgw [data-sgw="hunt"]'), [b], 'the only full-hunt button in the panel (it was up in the left column)');
   assert.equal(b.textContent, 'Continue the full hunt →');

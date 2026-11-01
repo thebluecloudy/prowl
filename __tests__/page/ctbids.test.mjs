@@ -66,7 +66,7 @@ test('the worker builds the same CTBids link as the page (alert emails)', () => 
 test('CTBids is a BOLO marketplace: in the drawer, the count and Search All, grouped with the local sales and auctions', async () => {
   const p = loadPage({ storage: { 'prowl.v36': { seen: true, hunts: [] } } });
   await tick(30);
-  assert.equal(p.$('.lede [data-t]').textContent, '29');
+  assert.equal(p.$('.lede [data-t]').textContent, '30');
   assert.equal(p.$('#otp-tb u').textContent, '10', 'BOLO count');
   p.$('#otp-shw').click();
   const row = p.$('#otp-mk input[data-m="ctbids"]');
@@ -103,7 +103,7 @@ test('a saved marketplace set from before v6.68 gains CTBids once; turned off af
   const p = loadPage({ storage: { 'prowl.v36': saved } });
   await tick(40);
   const after = saveNow(p, 'Hull pottery');
-  assert.deepEqual(after.mkt.slice().sort(), ['ctbids', 'ebay', 'salvation']);
+  assert.deepEqual(after.mkt.slice().sort(), ['ctbids', 'ebay', 'salvation', 'shopapp'], 'a save from before v6.68 is also from before Shop (v8.37)');
   assert.equal(after.h68, 1, 'the save says CTBids was offered');
   await p.close();
   const p2 = loadPage({ storage: { 'prowl.v36': { ...after, mkt: ['ebay', 'salvation'] } } });
