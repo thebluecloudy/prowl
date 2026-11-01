@@ -1028,7 +1028,7 @@ function shopShape(x) { x = x || {}; return { len: num(x.len), spaces: !!x.space
 function shopEx(x) {
   if (!x || typeof x !== "object") return null;
   return { at: num(x.at), ok: !!x.ok, status: num(x.status), error: shopStr(x.error, 60), desc: shopStr(x.desc, 200), method: word(x.method, 8), tried: arr(x.tried).map(m => word(m, 8)).slice(0, 2),
-    attempts: arr(x.attempts).slice(0, 2).filter(a => a && typeof a === "object").map(a => ({ method: word(a.method, 8), status: num(a.status), error: shopStr(a.error, 60), desc: shopStr(a.desc, 200) })) };
+    attempts: arr(x.attempts).slice(0, 2).filter(a => a && typeof a === "object").map(a => ({ method: word(a.method, 8), status: num(a.status), error: shopStr(a.error, 60), desc: shopStr(a.desc, 200), server: shopStr(a.server, 40), ray: !!a.ray })) };
 }
 /* v212: the morning briefing (shop-brief.js through index.js). Numbers and three notes, no customer data. */
 async function apiShopBrief(c) {
@@ -1048,7 +1048,11 @@ async function apiShopBrief(c) {
 async function apiShopcat(c) {
   if (typeof c.H.shopcatStatus !== "function") return jerr(503, "The Shopify catalog check is not available.");
   const s = (await c.H.shopcatStatus(c.env, c.nowMs)) || {}, sh = s.shape || {};
+  const sx = s.search && typeof s.search === "object" ? s.search : null;   /* v213: the latest search's mode */
   return jres({ on: !!s.on, method: word(s.method, 8), waitUntil: num(s.waitUntil), busyUntil: num(s.busyUntil), last: shopEx(s.last),
+    catalogId: String(s.catalogId || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64),
+    search: sx ? { at: num(sx.at), mode: sx.mode === "token" ? "token" : "keyless", status: num(sx.status), catalog: !!sx.catalog } : null,
+    offAllow: { add: arr(s.offAllow && s.offAllow.add).slice(0, 20).map(d => shopStr(d, 80)), ignored: arr(s.offAllow && s.offAllow.ignored).slice(0, 20).map(d => shopStr(d, 80)) },   /* review fix: SHOPCAT_OFF_ALLOW */
     shape: { id: shopShape(sh.id), secret: shopShape(sh.secret), swapped: !!sh.swapped, same: !!sh.same } });
 }
 async function apiShopcatTest(c) {
@@ -1058,9 +1062,10 @@ async function apiShopcatTest(c) {
   let r;
   try { r = (await c.H.shopcatTestRun(c.env, term, c.url.origin)) || {}; } catch (e) { return jerr(502, "The Shopify test could not run."); }
   const sr = r.search && typeof r.search === "object" ? r.search : null;
-  const search = sr ? { ok: !!sr.ok, status: num(sr.status), count: num(sr.count), titles: arr(sr.titles).slice(0, 3).map(t => shopStr(t, 120)), error: shopStr(sr.error, 200),
+  const search = sr ? { ok: !!sr.ok, mode: sr.mode === "token" ? "token" : "keyless", catalog: !!sr.catalog, status: num(sr.status), server: shopStr(sr.server, 40), ray: !!sr.ray, count: num(sr.count), titles: arr(sr.titles).slice(0, 3).map(t => shopStr(t, 120)), error: shopStr(sr.error, 200),
+    hidden: sr.hidden && typeof sr.hidden === "object" ? { count: num(sr.hidden.count), domains: arr(sr.hidden.domains).slice(0, 20).map(d => shopStr(d, 80).toLowerCase().replace(/[^a-z0-9.-]/g, "")).filter(Boolean) } : null,   /* v213: known stores only */
     rpc: sr.rpc ? { code: num(sr.rpc.code), message: shopStr(sr.rpc.message, 300), data: shopStr(sr.rpc.data, 300) } : null } : null;
-  await audit(c, { action: "shopcat-test", ok: !!(search && search.ok), note: search ? (search.ok ? search.count + " items" : "search failed") : r.on === false ? "off" : "token failed" });
+  await audit(c, { action: "shopcat-test", ok: !!(search && search.ok), note: search ? (search.ok ? search.count + " items (" + search.mode + ")" : "search failed (" + search.mode + ")") : "token failed" });
   return jres({ on: r.on !== false, term: shopStr(r.term, 80), exchange: shopEx(r.exchange), search: search });
 }
 

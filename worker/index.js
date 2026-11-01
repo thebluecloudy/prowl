@@ -14,13 +14,19 @@
  *   GET /poshsold?q=ceramic+panther -> Poshmark sold listings, each with sold:"YYYY-MM-DD" (v58)
  *   GET /depop?q=ceramic+panther    -> same shape, from Depop's search page data (v59)
  *   GET /shop-live?term=ceramic+panther -> { on, term, items:[{title,price,currency,img,shop,url,secondhand}] } from Shopify's
- *       Global Catalog, or { off } while its secrets are not set (v210, shopcat.js)
+ *       Global Catalog (v210, shopcat.js; v213: keyless when the key is missing or refused, Matt's saved catalog first)
  *   GET /vinted?q=ceramic+panther   -> same shape, from Vinted's catalog API with the cookie its home page sets (v60)
  *   GET /hibid?q=ceramic+panther -> same shape, parsed from hibid.com/lots. Built and
  *       tested offline, but hibid.com's WAF answers Workers with a 403 (2026-09-25),
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v213: 2026-11-01. The Shopify strip searches keyless (no Authorization, the agent profile alone) when the key is
+ *         missing, refused or waiting; catalog.catalog_id (SHOPIFY_CATALOG_ID, Matt's saved catalog by default) then a
+ *         fill from the whole catalog; off-Shopify offers kept (offShopify, domain); a User-Agent on every Shopify call;
+ *         a non-JSON refusal keeps a snippet and who answered (server, cf-ray) and a bare 403 is retried with Basic.
+ *         Off-Shopify offers only from known stores (SHOPCAT_OFF_TRUSTED + SHOPCAT_OFF_ALLOW, host-suffix match); the
+ *         Diagnose test search lists how many were hidden and their domains.
  *   v212: 2026-11-01. Morning briefing on the admin's Overview (Matt): shop-brief.js reads 60 days of orders with the
  *        read_orders token, works out yesterday, the last 30 days against the 30 before, categories and the week's sales
  *        (Prowl Pro left out), and Muse writes three notes. Built once per Detroit day on the first admin open, kept in KV.
@@ -755,7 +761,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v212";
+const WORKER_VERSION = "v213";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;

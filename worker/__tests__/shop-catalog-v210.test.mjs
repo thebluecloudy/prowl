@@ -23,7 +23,7 @@ function build(name, deps) {
 const alExWords = build("alExWords", {});
 const sgwExact = build("sgwExact", { alExWords });
 
-const ENV = { SHOPIFY_CATALOG_CLIENT_ID: "cid-test-0001", SHOPIFY_CATALOG_CLIENT_SECRET: "csecret-test-0001" };
+const ENV = { SHOPIFY_CATALOG_CLIENT_ID: "cid-test-0001", SHOPIFY_CATALOG_CLIENT_SECRET: "csecret-test-0001", SHOPIFY_CATALOG_ID: "none" };   /* v213: no saved catalog here (shop-catalog-keyless-v213 covers it) */
 const ORIGIN = "https://www.owlandtwigvintage.com";
 const json = (body, status, origin, extra) => ({ status: status || 200, body, headers: Object.assign({}, extra || {}) });
 
@@ -68,16 +68,18 @@ function ask(D, q, env = ENV, ip = "203.0.113.9") {
 
 beforeEach(() => SC.shopcatReset());
 
-test("off without the two secrets: { off: true }, nothing fetched, nothing counted", async () => {
-  const s = shopify(), { D, counts } = deps(s.f);
-  for (const env of [{}, { SHOPIFY_CATALOG_CLIENT_ID: "x" }, { SHOPIFY_CATALOG_CLIENT_SECRET: "y" }, { SHOPIFY_CATALOG_CLIENT_ID: " ", SHOPIFY_CATALOG_CLIENT_SECRET: " " }]) {
-    const r = await ask(D, "term=ceramic+panther", env);
+test("v213: without the two secrets it is not off: it searches keyless (no token exchange, no Authorization header)", async () => {
+  for (const env of [{ SHOPIFY_CATALOG_ID: "none" }, { SHOPIFY_CATALOG_CLIENT_ID: "x", SHOPIFY_CATALOG_ID: "none" }, { SHOPIFY_CATALOG_CLIENT_SECRET: "y", SHOPIFY_CATALOG_ID: "none" }, { SHOPIFY_CATALOG_CLIENT_ID: " ", SHOPIFY_CATALOG_CLIENT_SECRET: " ", SHOPIFY_CATALOG_ID: "none" }]) {
+    SC.shopcatReset();
+    const s = shopify({ answers: [res(200, catalogAnswer([product(1, "Ceramic panther")]))] }), { D } = deps(s.f);
+    const r = await ask(D, "term=ceramic+panther&max=1", env);
     assert.equal(r.status, 200);
-    assert.deepEqual(r.body, { off: true });
+    assert.equal(r.body.on, true); assert.equal(r.body.mode, "keyless"); assert.equal(r.body.items.length, 1);
+    assert.equal(s.tokens().length, 0);
+    assert.equal(s.searches()[0].init.headers.Authorization, undefined);
   }
-  assert.equal(s.calls.length, 0);
-  assert.deepEqual(counts, {});
   assert.equal(SC.shopcatOn(ENV), true);
+  assert.equal(SC.shopcatOn({}), false);
 });
 
 test("token exchange: client credentials as JSON to api.shopify.com, then kept in memory until a minute before it expires", async () => {
@@ -134,7 +136,7 @@ test("the search: one search_catalog tools/call with the bearer token, the profi
   }
   assert.equal(r.headers["Cache-Control"], "no-store", "Shopify: don't cache search results");
   assert.deepEqual(r.body.items, [{ title: "Black Ceramic Panther TV Lamp", price: 59, currency: "USD", img: "https://cdn.shopify.com/s/files/1/0001/1.jpg",
-    shop: "Shop 1", url: "https://shop1.example/products/p?variant=1&_gsid=x", secondhand: true }], "the variant URL as Shopify gave it");
+    shop: "Shop 1", domain: "shop1.myshopify.com", url: "https://shop1.example/products/p?variant=1&_gsid=x", secondhand: true }], "the variant URL as Shopify gave it");   /* v213: + domain */
   assert.equal(r.body.on, true);
   /* an owner override of the profile URL */
   SC.shopcatReset();
@@ -164,7 +166,7 @@ test("word match, secondhand first, then a search without the condition filter; 
   assert.deepEqual(t, ["Ceramic panther planter", "Ceramic Panthers pair", "Ceramic Panther lamp, new", "Ceramic panther"]);
   assert.equal(r.body.items[0].secondhand, true);
   assert.equal(r.body.items[2].secondhand, undefined);
-  assert.equal(r.body.items[1].img, "", "a photo off Shopify's CDN is not passed on");
+  assert.equal(r.body.items[1].img, "https://evil.example/x.jpg", "v213: any https photo is passed on (the page loads it from its host)");
   assert.equal(r.body.items[2].price, 125.5);
   assert.deepEqual([r.body.items[3].price, r.body.items[3].currency], [4800, "JPY"]);
   /* max caps the list */
@@ -172,7 +174,8 @@ test("word match, secondhand first, then a search without the condition filter; 
   const s2 = shopify({ answers: [res(200, catalogAnswer(used)), res(200, catalogAnswer(any))] });
   const r2 = await ask(deps(s2.f).D, "term=ceramic+panther&max=3");
   assert.equal(r2.body.items.length, 3);
-  assert.equal(SC.shopcatItem(product(9, "x", { source: "external" })), null, "only Shopify stores' own offers");
+  assert.equal(SC.shopcatItem(product(9, "x", { source: "external", url: "https://www.etsy.com/listing/9" })).offShopify, true, "v213: off-Shopify offers from a known store are kept, marked");
+  assert.equal(SC.shopcatItem(product(9, "x", { source: "external" })).hidden, true, "v213: an unknown store off Shopify is hidden");
 });
 
 test("Owl & Twig's own products are hidden, by its domain or its myshopify name", async () => {
@@ -195,7 +198,7 @@ test("Owl & Twig's own products are hidden, by its domain or its myshopify name"
 test("an empty answer says why: how many Shopify had, how many had every word", async () => {
   const s = shopify({ answers: [res(200, catalogAnswer([product(1, "Panther shirt"), product(2, "Lamp")])), res(200, catalogAnswer([product(3, "Ceramic dish")]))] }), { D } = deps(s.f);
   const r = await ask(D, "term=ceramic+panther");
-  assert.deepEqual(r.body, { on: true, term: "ceramic panther", items: [], why: { raw: 3, words: 0, own: 0 } });
+  assert.deepEqual(r.body, { on: true, term: "ceramic panther", mode: "token", items: [], why: { raw: 3, words: 0, own: 0 } });   /* v213: + mode */
 });
 
 test("caps: a day per IP and catalog calls a day for the site; a refusal never reaches Shopify", async () => {
@@ -239,20 +242,30 @@ test("Shopify's 429: answered 429 and Shopify is left alone for its Retry-After,
 });
 
 test("a stale token (401) is renewed once; a refused token exchange, a 500, an error answer and a timeout are 502 with no items", async () => {
-  const s = shopify({ token: (n) => ({ access_token: "tok-" + n, expires_in: 3600 }), answers: [res(401, {}), res(200, catalogAnswer([product(1, "Ceramic panther")])), res(200, catalogAnswer([]))] }), { D } = deps(s.f);
-  const r = await ask(D, "term=ceramic+panther");
+  /* review fix: only a token from memory is renewed (a fresh one the catalog refuses goes keyless at once) */
+  const s = shopify({ token: (n) => ({ access_token: "tok-" + n, expires_in: 3600 }), answers: [res(200, catalogAnswer([product(1, "Ceramic panther")])), res(401, {}), res(200, catalogAnswer([product(1, "Ceramic panther")]))] }), { D } = deps(s.f);
+  assert.equal((await ask(D, "term=ceramic+panther&max=1")).status, 200);
+  const r = await ask(D, "term=ceramic+panther&max=1");
   assert.equal(r.status, 200);
   assert.equal(s.tokens().length, 2);
-  assert.equal(s.searches()[1].init.headers.Authorization, "Bearer tok-2");
+  assert.equal(s.searches()[1].init.headers.Authorization, "Bearer tok-1", "the token from memory");
+  assert.equal(s.searches()[2].init.headers.Authorization, "Bearer tok-2", "one fresh exchange");
+  /* v213: a refused token exchange searches keyless */
+  SC.shopcatReset();
+  const quietErr = console.error; console.error = () => {};
+  try {
+    const kr = shopify({ tokenStatus: 401, token: { error: "invalid_client" }, answers: [res(200, catalogAnswer([product(1, "Ceramic panther")]))] });
+    const kx = await ask(deps(kr.f).D, "term=ceramic+panther&max=1");
+    assert.equal(kx.status, 200); assert.equal(kx.body.mode, "keyless"); assert.equal(kr.searches()[0].init.headers.Authorization, undefined);
+  } finally { console.error = quietErr; }
   for (const [label, sh] of [
-    ["token refused", shopify({ tokenStatus: 401, token: { error: "invalid_client" } })],
     ["catalog 500", shopify({ answers: [res(500, {})] })],
     ["JSON-RPC error", shopify({ answers: [res(200, { jsonrpc: "2.0", id: 1, error: { code: -32602, message: "bad" } })] })],
     ["tool error", shopify({ answers: [res(200, { jsonrpc: "2.0", id: 1, result: { isError: true, content: [] } })] })],
   ]) {
     SC.shopcatReset();
     const x = await ask(deps(sh.f).D, "term=ceramic+panther");
-    assert.equal(x.status, label === "token refused" ? 503 : 502, label);
+    assert.equal(x.status, 502, label);
     assert.deepEqual(x.body.items, [], label);
     assert.equal(x.body.on, true, label);
   }
@@ -341,14 +354,15 @@ test("review: no fallback search once the request has run past SHOPCAT_SECOND_PA
 test("review: a failed token exchange is remembered for SHOPCAT_TOKEN_FAIL_MS: no POST per request meanwhile", async () => {
   const realErr = console.error; console.error = () => {};
   try {
-    const s = shopify({ tokenStatus: 401, token: { error: "invalid_client" } }), { D } = deps(s.f);
+    const s = shopify({ tokenStatus: 401, token: { error: "invalid_client" }, answers: [res(200, catalogAnswer([]))] }), { D } = deps(s.f);
     const a = await ask(D, "term=ceramic+panther");
     const b = await ask(D, "term=ceramic+panther");
     const c = await ask(D, "term=fire+king");
-    assert.deepEqual([a.status, b.status, c.status], [503, 503, 503]);
-    assert.equal(b.body.error, "unavailable");
+    /* v213: meanwhile it searches keyless (the mocked catalog answers nothing for these) */
+    assert.deepEqual([a.status, b.status, c.status], [200, 200, 200]);
+    assert.deepEqual([a.body.mode, b.body.mode, c.body.mode], ["keyless", "keyless", "keyless"]);
     assert.equal(s.tokens().length, 2, "one exchange (v211: the JSON body, then once with HTTP Basic), then it waits");
-    assert.equal(s.searches().length, 0);
+    assert.ok(s.searches().length >= 3 && s.searches().every((q) => !q.init.headers.Authorization));
     assert.equal(SC.shopcatTokenDown(Date.now() + SC.SHOPCAT_TOKEN_FAIL_MS + 1000), false, "tried again after the wait");
   } finally { console.error = realErr; }
 });

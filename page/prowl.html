@@ -4283,7 +4283,7 @@ html.otp-vt::view-transition-new(prowl-main){animation:otpVtIn 240ms cubic-bezie
 /* v5.87 (B6): the Facebook bounce above is already leaving the page, so do not
    boot the app and fire Worker fetches on the way out. */
 if(window.prowlBouncing)return;
-var PROWL_VERSION='v8.40';
+var PROWL_VERSION='v8.41';
 var E=encodeURIComponent;
 /* v7.81 (the design brief, idea 7: one loading look): the waits that showed three paw prints show three of the page's
    swallows instead, hopping as the paws did; Best picks gets Near me's flock card (nrFlock) */
@@ -6966,7 +6966,9 @@ function sgwCard(it,hunt,bare){
   var ph=(typeof PHOTO!=='undefined'&&PHOTO[it.url])||it.image;
   var img=ph?'<img src="'+esc(ph)+'" alt="" decoding="async">':'<img alt="" data-np="1">';
   var m=LIVE_NAME[it.src]||(it.src==='shopify'?'Shopify':'ShopGoodwill');   /* v8.38 */
+  if(it.src==='shopify'&&it.off)m='Other store';   /* v8.41: off Shopify, from the saved catalog */
   if(it.src==='shopify'&&it.shop)m+=' · '+esc(it.shop);
+  if(it.src==='shopify'&&it.dom&&String(it.shop||'').toLowerCase()!==it.dom)m+=' · '+esc(it.dom);
   if(typeof it.bids==='number')m+=' · '+esc(String(it.bids))+' bid'+(it.bids===1?'':'s');
   if(it.time_left)m+=' · '+esc(it.time_left)+' left';
   if(it.src==='facebook'&&it.ships)m+=' · Ships';   /* v8.27 */
@@ -7725,7 +7727,10 @@ function fbBlock(t){
    Shopify's CDN; links open the product on its store, as Shopify gave them. { off: true } (no Catalog key yet) hides the
    strip for the visit; a failed ask shows nothing (a 429 says busy) and is asked again SHP_RETRY later on a timer
    (shpRetry). Shopify's rule is no caching of results: an answer is kept in memory only SHP_FRESH (a minute), just so
-   the redraws of one view do not ask again. Everyone, no Pro. */
+   the redraws of one view do not ask again. Everyone, no Pro.
+   v8.41 (worker v213, Matt: "i was interested in what is off of shopify too"): the worker searches keyless when the key is
+   missing or refused, and Matt's saved catalog adds stores off Shopify. Those cards say "Other store" (offShopify), and
+   every card names the shop and its domain. Photos from any https host, loaded straight from it (never proxied or kept). */
 var SHP={cache:Object.create(null),busy:Object.create(null),rt:Object.create(null),rn:Object.create(null),off:false},SHP_FRESH=60000,SHP_RETRY=2*60000;   /* review fix: SHP_FRESH was 10 minutes */
 function shpKey(t){return cutWords(String(t||''),80).toLowerCase()}
 function shpPrice(p,c){
@@ -7742,7 +7747,8 @@ function shpClean(a){
     x=a[i];if(!x||typeof x.title!=='string'||!x.title)continue;
     u=String(x.url||'');if(!/^https:\/\/[^\s"'<>]+$/.test(u)||/^https:\/\/(www\.)?owlandtwigvintage\.com([\/?#]|$)/i.test(u))continue;
     out.push({title:x.title.slice(0,160),price:shpPrice(x.price,x.currency),url:u,src:'shopify',shop:typeof x.shop==='string'?x.shop.slice(0,60):'',
-      image:typeof x.img==='string'&&/^https:\/\/cdn\.shopify\.com\/[^\s"'<>]+$/.test(x.img)?x.img:''});
+      dom:typeof x.domain==='string'&&/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(x.domain)?x.domain.slice(0,80).toLowerCase():'',off:x.offShopify===true,
+      image:typeof x.img==='string'&&/^https:\/\/[^\s"'<>\\]+$/.test(x.img)?x.img.slice(0,600):''});
   }
   return out;
 }
@@ -7771,13 +7777,13 @@ function shpRetry(k){
 function shpHas(t){var c=SHP.cache[shpKey(t)];return !SHP.off&&!!(c&&!c.fail&&c.items.length)}
 function shpWhy(w){
   var raw=w&&typeof w.raw==='number'&&w.raw>0?Math.floor(w.raw):0;
-  return raw&&!(w.words>0)?'Shopify stores had '+raw+' for this hunt, none with all your words. Try fewer words.':'Nothing on Shopify stores for this hunt right now.';
+  return raw&&!(w.words>0)?'Shopify and other stores had '+raw+' for this hunt, none with all your words. Try fewer words.':'Nothing on Shopify or other stores for this hunt right now.';
 }
 function shpBlock(t){
   var c=SHP.cache[shpKey(t)];
   if(SHP.off||!c||(c.fail&&!c.busy))return '';
-  var head='<div class="sgw-sub"><span class="sgw-live sgw-shp">Live from Shopify stores</span>',rows='',i;
-  if(c.busy)return head+'</div><p class="sgw-note">Shopify stores are busy right now. Prowl looks again in a couple of minutes.</p>';
+  var head='<div class="sgw-sub"><span class="sgw-live sgw-shp">Live from Shopify and other stores</span>',rows='',i;
+  if(c.busy)return head+'</div><p class="sgw-note">Shopify\u2019s catalog is busy right now. Prowl looks again in a couple of minutes.</p>';
   if(!c.items.length)return head+'</div><p class="sgw-note">'+esc(shpWhy(c.why))+'</p>';
   for(i=0;i<c.items.length;i++)rows+=sgwCard(c.items[i],t);
   return head+'<span class="sgw-upd">'+c.items.length+' live now</span></div><div class="sgw-grid">'+rows+'</div>';
