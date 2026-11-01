@@ -1,7 +1,7 @@
-/* v212 (the owner, 2026-11-01: "Yes" to a 14-day reverse trial instead of a pay-only plan): members who sign up from
+/* v214 (the owner, 2026-11-01: "Yes" to a 14-day reverse trial instead of a pay-only plan): members who sign up from
    PRO_TRIAL_FROM get Prowl Pro free for 14 days, no card; then Free with every hunt kept. A paid plan, a gift or the
    PRO_EMAILS list always wins; the shop being down never ends a running trial; it counts as hadPro.
-   Run: node --test worker/__tests__/pro-trial-v212.test.mjs */
+   Run: node --test worker/__tests__/pro-trial-v214.test.mjs */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

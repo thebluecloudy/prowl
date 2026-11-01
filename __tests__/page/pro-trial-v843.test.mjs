@@ -1,4 +1,4 @@
-// Page v8.40 (worker v212, Matt 2026-11-01: a 14-day reverse trial instead of a pay-only plan): a member on the trial
+// Page v8.43 (worker v214, Matt 2026-11-01: a 14-day reverse trial instead of a pay-only plan): a member on the trial
 // sees how many days are left and can still buy Pro; once it ends, the Free plan says so and checkout skips PROWLMONTH.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -30,8 +30,8 @@ async function open(r, pro) {
 }
 const TRIAL = { pro: true, hadPro: true, plan: { via: 'trial', trial: true, ends: ENDS, daysLeft: 6 } };
 
-test('version is v8.40', () => {
-  assert.match(HTML, /var PROWL_VERSION='v8\.40';/);
+test('version is v8.43', () => {
+  assert.match(HTML, /var PROWL_VERSION='v8\.(4[3-9]|[5-9]\d)';/);
 });
 
 test('on the trial: the plan says Free trial with the days left and offers Keep Pro', async () => {

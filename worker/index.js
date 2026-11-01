@@ -14,16 +14,25 @@
  *   GET /poshsold?q=ceramic+panther -> Poshmark sold listings, each with sold:"YYYY-MM-DD" (v58)
  *   GET /depop?q=ceramic+panther    -> same shape, from Depop's search page data (v59)
  *   GET /shop-live?term=ceramic+panther -> { on, term, items:[{title,price,currency,img,shop,url,secondhand}] } from Shopify's
- *       Global Catalog, or { off } while its secrets are not set (v210, shopcat.js)
+ *       Global Catalog (v210, shopcat.js; v213: keyless when the key is missing or refused, Matt's saved catalog first)
  *   GET /vinted?q=ceramic+panther   -> same shape, from Vinted's catalog API with the cookie its home page sets (v60)
  *   GET /hibid?q=ceramic+panther -> same shape, parsed from hibid.com/lots. Built and
  *       tested offline, but hibid.com's WAF answers Workers with a 403 (2026-09-25),
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
- *   v212: 2026-11-01. 14-day Pro trial: members who sign up from PRO_TRIAL_FROM get Prowl Pro free for PRO_TRIAL_DAYS
+ *   v214: 2026-11-01. 14-day Pro trial: members who sign up from PRO_TRIAL_FROM get Prowl Pro free for PRO_TRIAL_DAYS
  *         (default 14, "0" = off) from sign-up, no card; then Free with every hunt kept. Counts as hadPro. /alerts/status
  *         says trialEnded; the daily email warns in the last 3 days. A paid plan, a gift or PRO_EMAILS wins over it.
+ *   v213: 2026-11-01. The Shopify strip searches keyless (no Authorization, the agent profile alone) when the key is
+ *         missing, refused or waiting; catalog.catalog_id (SHOPIFY_CATALOG_ID, Matt's saved catalog by default) then a
+ *         fill from the whole catalog; off-Shopify offers kept (offShopify, domain); a User-Agent on every Shopify call;
+ *         a non-JSON refusal keeps a snippet and who answered (server, cf-ray) and a bare 403 is retried with Basic.
+ *         Off-Shopify offers only from known stores (SHOPCAT_OFF_TRUSTED + SHOPCAT_OFF_ALLOW, host-suffix match); the
+ *         Diagnose test search lists how many were hidden and their domains.
+ *   v212: 2026-11-01. Morning briefing on the admin's Overview (Matt): shop-brief.js reads 60 days of orders with the
+ *        read_orders token, works out yesterday, the last 30 days against the 30 before, categories and the week's sales
+ *        (Prowl Pro left out), and Muse writes three notes. Built once per Detroit day on the first admin open, kept in KV.
  *   v211: 2026-11-01. Shopify catalog diagnostics: the token exchange keeps Shopify's error code and description (id and
  *         secret cut out; memory + KV shopcat:last), tries HTTP Basic once when the JSON body is refused as a bad client,
  *         keys the 5-minute wait to the credentials; the admin's Diagnose card (GET /admin/api/shopcat, POST
@@ -738,6 +747,7 @@
 import { MetricsBuffer, routeKey, metricsOp, metricsPrune, summarize, uptimeFrom, pctFromHist } from "./metrics.js";
 import { adminFetch, giftPro, looksPersonal, rosterCounts, memberId } from "./admin.js";
 import { artResponse } from "./art.js";   /* v97 */
+import { shopBrief } from "./shop-brief.js";   /* v212: the admin's morning briefing */
 import { fbkPost, fbkList, fbkDelete, fbkReplyTo, fbkForget, newsTick, newsBuild, newsSample, newsFresh, newsView, newsNote, newsEligible, newsLoad, newsMerge, NEWS_KEY, NEWS_STOP, NEWS_KEEP, NEWS_PER_RUN, NEWS_TESTS_PER_DAY } from "./news.js";   /* v208 */
 import { SpendBuffer, spendOp, spendWrap } from "./spend.js";   /* v193 */
 import { shopLive, shopcatProfile, SHOPCAT_PROFILE_PATH, shopcatStatus, shopcatTest } from "./shopcat.js";   /* v210; v211: the admin's Diagnose card */
@@ -754,7 +764,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v212";
+const WORKER_VERSION = "v214";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4507,7 +4517,7 @@ async function alFreePro(env, email) {
   const [off, gift] = await Promise.all([kvGet(env, "giftoff:" + gh, null), kvGet(env, "gift:" + gh, null)]);
   return giftPro(proListHas(env, email), !!off, gift, gift ? alNow(env).day : "");
 }
-/* v212: the 14-day Pro trial (a "reverse trial"). Every member who signs up on or after PRO_TRIAL_FROM gets Prowl Pro
+/* v214: the 14-day Pro trial (a "reverse trial"). Every member who signs up on or after PRO_TRIAL_FROM gets Prowl Pro
    free for PRO_TRIAL_DAYS days (default 14; "0" turns it off) from their sign-up day, no card and no checkout. Then they
    go back to Free with every hunt kept, and Free alerts the first ALERT_FREE_HUNTS. It counts as their free time
    (hadPro), so the shop then offers the paid plan, not the PROWLMONTH free month. A paid plan, a gift or the PRO_EMAILS
@@ -4562,6 +4572,24 @@ async function shopToken(env, renew) {
   const life = Number(j.expires_in) > 0 ? Number(j.expires_in) * 1000 : 3600 * 1000;
   SHOP_TOK = { id: id, t: j.access_token, until: Date.now() + Math.max(60000, life - 5 * 60000) };
   return SHOP_TOK.t;
+}
+/* v212: one Admin GraphQL call with the read_orders token, for the admin's morning briefing; null when no token */
+async function shopGql(env, query, variables) {
+  if (!shopCanToken(env)) return null;
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 15000);
+  try {
+    const send = (t) => fetch("https://" + shopHost(env) + "/admin/api/2025-10/graphql.json", { method: "POST", signal: ctl.signal,
+      headers: { "X-Shopify-Access-Token": t, "Content-Type": "application/json" }, body: JSON.stringify({ query: query, variables: variables || {} }) });
+    let tok = await shopToken(env, false);
+    if (!tok) return null;
+    let r = await send(tok);
+    if (r.status === 401 && env.SHOPIFY_ORDERS_CLIENT_ID) { tok = await shopToken(env, true); if (tok) r = await send(tok); }
+    if (r.status !== 200) return { errors: [{ message: "shopify " + r.status }] };
+    return await r.json();
+  } finally { clearTimeout(timer); }
+}
+function shopBriefFor(env, nowMs, fresh) {
+  return shopBrief(env, { kvGet, kvPut, gql: shopGql, ai: env && env.MUSE_API_KEY ? museText : null }, nowMs, fresh);
 }
 async function alProShop(env, email, c, cid) {
   /* v82: with cid, the store customer's own orders: every paid Prowl Pro order on that account counts, whatever
@@ -4656,7 +4684,7 @@ async function alProSet(env, sub, force) {
     if (old && old.trial && old.order && Date.parse(old.renews || "") > Date.now())
       p = Object.assign({}, p, { plan: Object.assign({}, p.plan, { shop: { trial: true, order: String(old.order), renews: String(old.renews), next: String(old.next || "7.00") } }) });
   }
-  /* v212: no paid plan and no free Pro: the 14-day trial while it runs, even when the shop cannot be asked */
+  /* v214: no paid plan and no free Pro: the 14-day trial while it runs, even when the shop cannot be asked */
   if (!p.pro) {
     const t = proTrialPlan(env, sub);
     if (t) p = t;
@@ -5650,7 +5678,7 @@ function alEmailHtml(sub, pend, picks, pickHunt, env, test, est) {
   const up = (!sub.pro && all > free) ? '<tr><td style="padding:22px 12px 0"><div style="border:2px solid #8a4b1f;border-radius:10px;padding:14px;font:14px/1.5 Arial,sans-serif;color:#2b2118">' +
     '<b>You are on the free plan:</b> alerts for your first ' + free + ' hunts. You have ' + all + '. ' +
     '<a href="' + alEsc(alUpgradeUrl(sub)) + '" style="color:#8a4b1f;font-weight:bold">Get all ' + Math.min(all, AL_MAX_HUNTS) + ' with Prowl Pro' + (sub.hadPro ? ' · $7/month' : ' · first month free') + '</a></div></td></tr>' : '';
-  /* v212: the last 3 days of the 14-day trial: say when it ends and what Free keeps */
+  /* v214: the last 3 days of the 14-day trial: say when it ends and what Free keeps */
   const tp = sub.pro && sub.plan && sub.plan.via === "trial" ? sub.plan : null, tleft = tp ? Math.ceil((Date.parse(tp.ends || "") - Date.now()) / 86400000) : 0;
   const trialUp = tp && tleft > 0 && tleft <= 3 ? '<tr><td style="padding:22px 12px 0"><div style="border:2px solid #8a4b1f;border-radius:10px;padding:14px;font:14px/1.5 Arial,sans-serif;color:#2b2118">' +
     '<b>Your free Prowl Pro ends ' + (tleft === 1 ? 'tomorrow' : 'in ' + tleft + ' days') + '.</b> After that this email covers your first ' + free + ' hunts' + (all > free ? ' (you have ' + all + ')' : '') + '. Your hunts stay saved. ' +
@@ -7854,6 +7882,7 @@ const ADMIN_H = {
   WORKER_VERSION, AL_TZ, AL_MAX_HUNTS, AL_PEND_CAP, POOLS: AI_POOLS, PAGE_URL: PROWL_PAGE,
   fbTestRun   /* v200: the admin's Facebook test */,
   shopcatStatus, shopcatTestRun,   /* v211: the admin's Shopify catalog card */
+  shopBriefFor, shopCanToken,   /* v212: the morning briefing */
   fbkList, fbkDelete, fbkReplyTo, newsTick, newsBuild, newsSample, newsFresh, newsView, newsNote, newsEligible, newsLoad, newsMerge, NEWS_KEY, NEWS_STOP, NEWS_KEEP, NEWS_PER_RUN, NEWS_TESTS_PER_DAY, newsDeps, AL_UNSUB_MAIL   /* v208 */
 };
 /* v208: what news.js needs from here (feedback and the update email) */

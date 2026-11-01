@@ -39,6 +39,17 @@ sees the others' conversations. The repo is the only shared memory, so:
   Never commit secrets.
 - **Owner-only features** check `isOwner()` in the worker (header `X-Prowl-Owner`) and `fbOwnerKey()` on the page.
 
+## Handing things to Matt (his rule, 2026-11-01)
+
+Anything Matt has to paste somewhere (the privacy policy, page copy, settings text, a snippet for Shopify or
+Cloudflare): never send it as a download only. Publish it as a private claude.ai Artifact page that has
+- a **Copy** button (clipboard, with a select-all fallback) and the full text in a box he can select by hand, and
+- a **direct link** that opens the exact place it goes (e.g. Shopify privacy policy:
+  `https://admin.shopify.com/store/tz7xkc-du/settings/legal`; Cloudflare worker settings: Workers & Pages › prowl ›
+  Settings › Variables and Secrets),
+then give him the Artifact link with two or three short steps. Update the same Artifact for a newer version rather than
+making a new one when it is the same document. Never ask him to paste secrets into a chat.
+
 ## Checks and shipping
 
 - `npm run lint` and `npm test` must be clean before a push. `npm run lint` starts with a secret scan

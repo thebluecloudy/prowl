@@ -2060,3 +2060,18 @@ test("v176: searches endpoint adds the road trips list; its failure leaves searc
   assert.equal(j.trips, null);
   assert.deepEqual(j.top, [{ term: "roseville", visitors: 12, requests: 20 }]);
 });
+
+test("v212: shopbrief answers numbers and three notes, off without a Shopify key, 502 when Shopify fails", async () => {
+  const H = makeH(), env = makeEnv();
+  H.shopCanToken = () => true;
+  H.shopBriefFor = async () => ({ day: "2026-11-01", at: "2026-11-01T11:00:00Z", ai: true, notes: [{ kind: "Top performers", text: "<b>Vases</b> led." }, { kind: "B", text: "b" }, { kind: "C", text: "c" }],
+    stats: { sales30: 547, orders30: 16, salesPrev: 2062, ordersPrev: 41, salesChange: -73.5, salesYday: 0, ordersYday: 0, daysSinceOrder: 3, typesKnown: true, categories: [{ type: "Vases", sales: 120, items: 3 }], email: "x@y.z" } });
+  let j = await (await call(env, H, "GET", "/admin/api/shopbrief")).json();
+  assert.equal(j.stats.sales30, 547); assert.equal(j.notes.length, 3); assert.equal(j.stats.email, undefined);
+  assert.doesNotMatch(j.notes[0].text, /</);
+  H.shopCanToken = () => false;
+  j = await (await call(env, H, "GET", "/admin/api/shopbrief")).json();
+  assert.equal(j.off, true);
+  H.shopCanToken = () => true; H.shopBriefFor = async () => { throw new Error("shopify 500"); };
+  assert.equal((await call(env, H, "GET", "/admin/api/shopbrief")).status, 502);
+});
