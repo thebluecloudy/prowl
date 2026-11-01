@@ -361,6 +361,7 @@ export function shopcatItem(p, env) {
     img: photo, shop: name || domain, domain: domain, url: String(v.url).slice(0, 800) };
   if (sh(v)) out.secondhand = true;
   if (ext(v)) out.offShopify = true;
+  if (SHOPCAT_GID_RE.test(String(p.id || ""))) out.pid = String(p.id);   /* v214: the popup's get_product asks for it */
   /* review fix: the same listing from two searches differs in _gsid (and shclid / shcgid), so it is matched by product and
      variant, or by the link without its query, never by the full URL; the URL itself is returned as Shopify gave it */
   Object.defineProperty(out, "key", { value: (p.id && v.id ? String(p.id) + "|" + String(v.id) : String(v.url).split(/[?#]/)[0]), enumerable: false });
@@ -389,7 +390,15 @@ async function noteSearch(env, mode, status, catalogId) {
    S.failFp), so the next passes and requests go straight to keyless with no exchange; only a token from memory (it may
    have been revoked) gets one fresh exchange first. Every catalog POST counts in SHOPCAT_PER_DAY (shopcat:all). */
 async function search(env, D, term, profile, secondhand, deadline, catalogId) {
-  const f = (D && D.fetch) || fetch;
+  const r = await catalogCall(env, D, shopcatBody(term, profile, secondhand, catalogId), deadline, { catalogId: catalogId });
+  if (r.err) return r;
+  return { products: Array.isArray(r.sc.products) ? r.sc.products : [], mode: r.mode };
+}
+/* v214: one JSON-RPC tools/call to the Global Catalog (search_catalog or get_product), with the token or keyless as above:
+   { sc: result.structuredContent, mode } or { err, status, wait?, limit?, mode }. o.note false: not the Diagnose card's
+   "Last search" (a popup's get_product is not a search). */
+async function catalogCall(env, D, body, deadline, o) {
+  const f = (D && D.fetch) || fetch, catalogId = o && o.catalogId;
   let mode = shopcatOn(env) && !shopcatTokenDown(Date.now(), env) ? "token" : "keyless", renewed = false;
   for (let tries = 0; tries < 3; tries++) {
     let tok = "", cached = false;
@@ -401,7 +410,7 @@ async function search(env, D, term, profile, secondhand, deadline, catalogId) {
     }
     const h = { "Content-Type": "application/json", "Accept": "application/json", "User-Agent": SHOPCAT_UA };
     if (tok) h["Authorization"] = "Bearer " + tok;
-    const r = await timed(f, SHOPCAT_MCP_URL, { method: "POST", headers: h, body: JSON.stringify(shopcatBody(term, profile, secondhand, catalogId)) }, deadline);
+    const r = await timed(f, SHOPCAT_MCP_URL, { method: "POST", headers: h, body: JSON.stringify(body) }, deadline);
     if (r.status === 401 && tok) {
       S.tok = ""; S.exp = 0;
       if (cached && !renewed) { renewed = true; continue; }   /* a token from memory Shopify no longer takes: one fresh one */
@@ -411,7 +420,7 @@ async function search(env, D, term, profile, secondhand, deadline, catalogId) {
         method: S.method, tried: [], attempts: [] });
       mode = "keyless"; continue;
     }
-    await noteSearch(env, mode, r.status, catalogId);
+    if (!(o && o.note === false)) await noteSearch(env, mode, r.status, catalogId);
     if (r.status === 429) {
       const ra = Number((r.headers && r.headers.get && r.headers.get("Retry-After")) || 0);
       return { err: "busy", status: 429, wait: Math.min(SHOPCAT_BUSY_MAX_S, ra > 0 ? ra : 30), mode: mode };
@@ -422,7 +431,7 @@ async function search(env, D, term, profile, secondhand, deadline, catalogId) {
     if (j.error) return { err: "shopify error", status: 502, mode: mode };
     const sc = j && j.result && j.result.structuredContent;
     if (!sc || (j.result && j.result.isError)) return { err: "shopify error", status: 502, mode: mode };
-    return { products: Array.isArray(sc.products) ? sc.products : [], mode: mode };
+    return { sc: sc, mode: mode };
   }
   return { err: "auth", status: 401, mode: mode };
 }
@@ -473,6 +482,116 @@ export async function shopLive(request, env, url, origin, D, nowMs) {
   const body = { on: true, term: term, mode: mode, items: items };
   if (!items.length) { body.why = { raw: raw, words: words, own: own }; if (hidden) body.why.hidden = hidden; }   /* v213: raw leaves out the off-Shopify offers hidden as unknown stores */
   return out(body, 200);
+}
+
+/* ---------- v214: a Shopify find's listing popup (GET /item?shop=<gid>&url=<the card's link>) ----------
+   Matt (2026-11-01): "when i open a shopify shop, is it possible to do the pop up like the others? it currently goes
+   directly to the shop." The page sends the product's Global Catalog id (pid, from search_catalog) and the card's own link;
+   one JSON-RPC tools/call get_product (shopify.dev/docs/agents/catalog/global-catalog: catalog.id is
+   gid://shopify/p/<upid> or gid://shopify/ProductVariant/<id>; the same endpoint, profile, token or keyless as the search)
+   gives the photos, the description, the options and every store's offer in the product's cluster; the offer from the
+   card's store is the one shown.
+   Probed live (keyless, our profile, 2026-11-01): 200 with result.structuredContent.product { id, title, description
+   { plain | html } (plain can carry the seller's HTML), handle, media[] { type, url, alt_text, width, height }, metadata
+   (inferred: not shown), variants[] { id, title, url, price, list_price?, availability, media, seller, checkout_url,
+   condition[], source }, price_range, options?, selected }; an unknown id is 200 with ucp.status "error" and
+   messages[{ code: "not_found" }].
+   Shopify's rules: no caching of catalog results or images, so this is Cache-Control: no-store, never the 1-day
+   /item cache in index.js, never KV; the photos load in the browser straight from their hosts. Counted like a search: the IP's
+   SHOPCAT_PER_IP, the site's SHOPCAT_PER_DAY (shopcat:all), and as a shopcat call in spend.js (the global fetch wrap). */
+export const SHOPCAT_GID_RE = /^gid:\/\/shopify\/(?:p\/[A-Za-z0-9]{6,40}|ProductVariant\/\d{1,20})$/;
+export const SHOPCAT_ITEM_IMAGES = 12;
+export function shopcatProductBody(gid, profile) {
+  return { jsonrpc: "2.0", method: "tools/call", id: 1, params: { name: "get_product", arguments: {
+    meta: { "ucp-agent": { profile: profile } }, catalog: { id: String(gid), context: { address_country: "US", language: "en", currency: "USD" } } } } };
+}
+function fmtMoney(m) {
+  const x = major(m);
+  if (!x) return "";
+  const n = x.price, s = (Math.round(n * 100) % 100 ? n.toFixed(2) : String(Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return x.currency === "USD" ? "$" + s : s + " " + x.currency;
+}
+function photos(lists) {
+  const out = [];
+  for (const list of lists) for (const m of Array.isArray(list) ? list : []) {
+    const u = img([m]);
+    if (u && out.indexOf(u) === -1) out.push(u);
+    if (out.length >= SHOPCAT_ITEM_IMAGES) return out;
+  }
+  return out;
+}
+const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const txt = (v, n) => String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
+/* the card's link against an offer's: the same host and path (the query differs per search: _gsid), else the same host */
+function linkKey(u) { try { const x = new URL(String(u || "")); return x.hostname.toLowerCase().replace(/^www\./, "") + x.pathname.replace(/\/+$/, ""); } catch (e) { return ""; } }
+/* get_product's structuredContent -> the popup's item: { title, price, was?, images, description, condition, aspects,
+   shop, domain, offShopify?, gone? } or { gone } / { error }. D.itemDesc (index.js) strips seller HTML to the popup's tags.
+   The link is never rewritten: the page keeps the card's own. */
+export function shopcatProduct(sc, cardUrl, env, D) {
+  const p = sc && sc.product;
+  const msgs = sc && Array.isArray(sc.messages) ? sc.messages : [];
+  if (!p || typeof p !== "object") {
+    if (msgs.some((m) => m && m.code === "not_found")) return { gone: true };
+    return { error: "shopify " + txt((msgs[0] && msgs[0].code) || "no product", 40) };
+  }
+  const title = txt(p.title, 200);
+  if (!title) return { error: "shopify no title" };
+  const vs = (Array.isArray(p.variants) ? p.variants : []).filter((v) => v && hostOf(v.url) && !shopcatOwn([v.url, v.seller && v.seller.url, v.seller && v.seller.domain], env));
+  const want = linkKey(cardUrl), wh = hostOf(cardUrl);
+  const v = vs.filter((x) => want && linkKey(x.url) === want)[0] || vs.filter((x) => wh && hostOf(x.url) === wh)[0] || null;
+  const ext = v && v.source === "external";
+  const out = { title: title, price: "", images: photos([p.media, v && v.media]), description: "", condition: "", aspects: [], shop: "", domain: "" };
+  if (v) {
+    out.price = fmtMoney(v.price);
+    const was = fmtMoney(v.list_price);
+    if (was && major(v.price) && major(v.list_price).price > major(v.price).price) out.was = was;
+    const c = Array.isArray(v.condition) ? v.condition : [v.condition];
+    out.condition = c.indexOf("secondhand") !== -1 ? "Used" : c.indexOf("new") !== -1 ? "New" : "";
+    const s = v.seller || {}, dom = String(s.domain || "").toLowerCase().replace(/^www\./, "");
+    /* the store's own web address (not its myshopify name) when it gives one; an off-Shopify offer names the link's host,
+       never the catalog's unchecked seller (as shopcatItem) */
+    out.domain = (ext ? hostOf(v.url) : hostOf(s.url) || (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(dom) ? dom : "") || hostOf(v.url)).slice(0, 80);
+    out.shop = (ext ? "" : txt(s.name, 60)) || out.domain;
+    if (ext) out.offShopify = true;
+    if (v.availability && v.availability.available === false) out.gone = true;
+  } else if (!vs.length && want) out.gone = true;   /* nothing left for sale from anyone */
+  if (!out.price && !out.gone) out.price = fmtMoney(p.price_range && p.price_range.min);   /* the card's store no longer in the cluster: Shopify's lowest */
+  const d = p.description || {}, raw = typeof d.html === "string" ? d.html : typeof d.plain === "string" ? d.plain : "";
+  const html = /<[a-z][^>]*>/i.test(raw) ? raw : esc(raw).replace(/\r?\n/g, "<br>");   /* "plain" can carry the seller's HTML */
+  out.description = D && typeof D.itemDesc === "function" ? D.itemDesc(html) : esc(raw.replace(/<[^>]*>/g, " ")).slice(0, 20000);
+  /* the options: each with its values, the sold-out ones said so; at most 4 options, 12 values each */
+  for (const o of (Array.isArray(p.options) ? p.options : []).slice(0, 4)) {
+    const n = txt(o && o.name, 40), vals = (Array.isArray(o && o.values) ? o.values : []).filter((x) => x && x.exists !== false && txt(x.label, 40));
+    if (!n || !vals.length || (vals.length === 1 && /^default/i.test(String(vals[0].label)))) continue;
+    const on = vals.filter((x) => x.available !== false).map((x) => txt(x.label, 40)), off = vals.filter((x) => x.available === false).map((x) => txt(x.label, 40));
+    out.aspects.push({ n: n, v: (on.slice(0, 12).join(", ") + (off.length ? (on.length ? " (" : "(") + off.slice(0, 12).join(", ") + " sold out)" : "")).slice(0, 200) });
+  }
+  if (v && Array.isArray(v.options)) {
+    const sel = v.options.filter((x) => x && txt(x.name, 40) && txt(x.label, 40) && !/^default/i.test(String(x.label))).map((x) => txt(x.name, 40) + " " + txt(x.label, 40));
+    if (sel.length) out.aspects.push({ n: "This one", v: sel.join(", ").slice(0, 200) });
+  }
+  if (out.shop) out.aspects.push({ n: "Shop", v: out.shop });
+  if (out.domain && out.domain !== String(out.shop).toLowerCase()) out.aspects.push({ n: "Website", v: out.domain });
+  return out;
+}
+export async function shopItem(request, env, url, origin, D) {
+  const NS = { "Cache-Control": "no-store" }, out = (b, st) => D.json(b, st || 200, origin, NS);
+  const gid = String(url.searchParams.get("shop") || ""), cardUrl = String(url.searchParams.get("url") || "");
+  if (!SHOPCAT_GID_RE.test(gid)) return out({ error: "not a listing Prowl can open" }, 400);
+  if (cardUrl && (!hostOf(cardUrl) || cardUrl.length > 800)) return out({ error: "not a listing Prowl can open" }, 400);
+  if (S.busyUntil > Date.now()) return out({ error: "busy", src: "shopify" }, 429);
+  if (!(await D.vCount("shopcat:" + D.ipKey(request.headers.get("CF-Connecting-IP")), SHOPCAT_PER_IP))) return out({ error: "slow down", src: "shopify" }, 429);
+  let r;
+  try { r = await catalogCall(env, D, shopcatProductBody(gid, shopcatProfileUrl(env, url.origin)), Date.now() + SHOPCAT_DEADLINE_MS, { note: false }); }
+  catch (e) { r = { err: /abort/i.test(String(e && (e.name || e.message))) ? "timeout" : "unreachable", status: 504 }; }
+  if (r.err) {
+    if (r.status === 429 && !r.limit) S.busyUntil = Date.now() + r.wait * 1000;
+    console.error("item shopify", r.err);
+    return out({ error: r.limit ? "daily limit" : r.status === 429 ? "busy" : r.err, src: "shopify" }, r.status === 429 ? 429 : 502);
+  }
+  const it = shopcatProduct(r.sc, cardUrl, env, D);
+  if (it.error) { console.error("item shopify", it.error); return out({ error: it.error, src: "shopify" }, 502); }
+  return out(Object.assign({ src: "shopify", id: gid, mode: r.mode }, it), 200);
 }
 
 /* ---------- v211: the admin's Diagnose card "Shopify stores (Global Catalog)" ----------

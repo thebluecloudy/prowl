@@ -77,6 +77,8 @@ can also be run by hand from the Actions tab.
   Cloudflare's edge is a block of the Worker's request, not a refused key. Every Shopify call sends
   `User-Agent: Prowl/213 (+https://www.owlandtwigvintage.com/pages/prowl)`: api.shopify.com answers a request with no
   User-Agent (a Worker's fetch sends none) with `403` and an HTML "Access denied" page (seen 2026-11-01).
+  v214: the same key (or keyless) also serves `GET /item?shop=<gid>&url=<card link>`, a Shopify find's listing popup
+  (one `get_product` call; `no-store`, never the 1-day item cache; the same per-IP and daily caps as the search).
 - `SHOPIFY_CATALOG_ID` (v213, plain variable, not a secret): the saved catalog sent as `catalog.catalog_id`
   (shopify.dev/docs/apps/build/dev-dashboard/catalogs; `saved_catalog_slug` is the deprecated alias and is not sent).
   Unset, Matt's "Prowl_catalogsearch_shopify" (`01m6bnevzyfcxd7e3s8g125vca`: All products, Shopify + Off-Shopify,

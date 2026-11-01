@@ -134,7 +134,9 @@ test("rows older than SPEND_KEEP_DAYS are pruned once a day, when a row is added
 
 test("prices: list prices until saved; empty clears one, a bad number is refused; monthly bills cleaned and capped", () => {
   const d = SP.spendDefaults();
-  assert.deepEqual(d.prices.muse, { tin: 0.98, tout: 4.25, ws: 0 }, "v195: fitted to Matt's Meta bill");
+  assert.deepEqual(d.prices.muse, { tin: 0.98, tout: 4.25, ws: null }, "v195: fitted to Matt's Meta bill; v214: searches are billed, the price comes from the bill");
+  assert.match(SP.SPEND_SERVICES.find((s) => s.key === "muse").srcNote, /billed.*fit from your Meta bill/);
+  assert.doesNotMatch(SP.SPEND_SERVICES.find((s) => s.key === "muse").srcNote, /no separate charge/);
   assert.deepEqual(d.prices.g_text, { call: 40 });
   assert.deepEqual(d.prices.lens, { call: null }, "SerpApi bills by plan");
   assert.deepEqual(d.prices.g_nearby, { call: 40 }, "from Matt's Google billing price list");
@@ -148,7 +150,7 @@ test("prices: list prices until saved; empty clears one, a bad number is refused
   for (const s of SP.SPEND_SERVICES) assert.match(s.src, /^https:\/\//, s.key + " has a source"), assert.match(s.bill, /^https:\/\//, s.key + " has a billing page");
   let r = SP.spendCfgClean({ prices: { muse: { tin: "2", tout: "", call: 9 }, g_text: { call: 35.123456 }, nope: { call: 1 } } });
   assert.deepEqual(r.errors, []);
-  assert.deepEqual(r.cfg.prices.muse, { tin: 2, tout: null, ws: 0 }, "a field the service does not use is ignored");
+  assert.deepEqual(r.cfg.prices.muse, { tin: 2, tout: null, ws: null }, "a field the service does not use is ignored");
   assert.equal(r.cfg.prices.g_text.call, 35.1235);
   assert.equal("nope" in r.cfg.prices, false);
   r = SP.spendCfgClean({ prices: { g_text: { call: -1 }, g_geo: { call: "abc" }, jev: { tin: 1e9 } } });
@@ -179,7 +181,10 @@ test("the estimate: per 1,000 calls and per 1M tokens; a used service without a 
 });
 
 test("v195: the Muse defaults price Matt's Oct 24-30 Meta week at his bill's $1.65, day by day within 3 cents", () => {
-  const S = SP.SPEND_SERVICES.find((s) => s.key === "muse"), p = SP.spendDefaults().prices.muse;
+  /* v214: the search price is now left for the bill (null); this week was fitted with searches at no charge */
+  const S = SP.SPEND_SERVICES.find((s) => s.key === "muse"), p = Object.assign({}, SP.spendDefaults().prices.muse, { ws: 0 });
+  assert.equal(SP.spendCost(S, { n: 1, ti: 1000, to: 10, ws: 3 }, SP.spendDefaults().prices.muse), null, "v214: a day with searches has no price until one is fitted");
+  assert.equal(SP.spendCost(S, { n: 1, ti: 1e6, to: 0, ws: 0 }, SP.spendDefaults().prices.muse), 0.98, "a day without searches still prices");
   /* his export: date, input tokens, output tokens, web searches, spend */
   const week = [["10-24", 271547, 24079, 31, 0.38], ["10-25", 497504, 32244, 47, 0.6], ["10-26", 114354, 10672, 10, 0.15], ["10-27", 5553, 5133, 0, 0.02],
     ["10-28", 143798, 21900, 18, 0.25], ["10-29", 66059, 17383, 5, 0.14], ["10-30", 32771, 16925, 3, 0.11]];

@@ -47,7 +47,7 @@ test("the Spending tab shows each service by period, the monthly bills, and a to
   assert.match(rows.find((r) => /SerpApi/.test(r[0]))[1], /no price.*4 calls/, "used without a price says so");
   assert.deepEqual(rows.find((r) => /Shopify plan/.test(r[0])).slice(3), ["$39.00", "$39.00"]);
   assert.equal(rows.at(-1)[0], "Total");
-  assert.match(d.querySelector("#spbox .ukpi").textContent, /so far this month \(1 service used without a price\)/);
+  assert.match(d.querySelector("#spbox .ukpi").textContent, /so far this month \(2 services used without a price\)/, "SerpApi, and Muse's searches (v214: billed, fit from the bill)");
 });
 
 test("the prices form: list prices as placeholders with their sources; Save sends prices and bills", async (t) => {
