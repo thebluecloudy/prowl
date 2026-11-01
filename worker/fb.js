@@ -140,7 +140,7 @@ export function fbMiles(lat1, lng1, lat2, lng2) {
   return Math.round(3958.8 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 /* ctx (v203): { term, lat, lng, mi, ship }: only listings matching the hunt; pickup ones only within mi miles of the
-   point (Facebook pads a thin local search with far-away "similar" ones, strict filtering or not), each with its miles;
+   point (v209: any distance for All USA, mi = FB_USA_MI) (Facebook pads a thin local search with far-away "similar" ones, strict filtering or not), each with its miles;
    shipping ones marked ships. Without ctx, v200's behaviour.
    stat (v204, optional): an object counted into: far = pickup listings dropped for distance (or no point), words =
    listings dropped for a missing hunt word, so a hunt with nothing can say why. */
@@ -158,7 +158,7 @@ export function fbClean(raw, day, ctx, stat) {
     if (ctx && !ctx.ship && Number.isFinite(Number(ctx.lat))) {   /* review fix: shipping finds are shared by everyone, so no distance from one member's ZIP */
       const loc = x.location && typeof x.location === "object" ? x.location : {}, la = Number(loc.latitude), lo = Number(loc.longitude);
       miles = Number.isFinite(la) && Number.isFinite(lo) && la !== 0 && Math.abs(la) <= 90 && Math.abs(lo) <= 180 ? fbMiles(Number(ctx.lat), Number(ctx.lng), la, lo) : null;
-      if (miles == null || miles > fbMi(ctx.mi) + 5) { if (stat) stat.far++; continue; }   /* +5: the area is a 10 km cell's centre */
+      if (Number(ctx.mi) !== FB_USA_MI && (miles == null || miles > fbMi(ctx.mi) + 5)) { if (stat) stat.far++; continue; }   /* +5: the area is a 10 km cell's centre. v209 (Matt: "I don't want to see just shipped. I will reach out to them to see if they would ship."): All USA keeps every listing Facebook's widest search gives, pickup too, with its miles when it has a point */
     }
     const pr = fbPrice(x), img = fbPhoto(x);
     const rg = x.location && typeof x.location === "object" && x.location.reverse_geocode && typeof x.location.reverse_geocode === "object" ? x.location.reverse_geocode : {};
