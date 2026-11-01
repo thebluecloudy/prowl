@@ -32,16 +32,28 @@ Recently shipped, newest first:
     filters are sent (no member, email, IP, user agent or buyer signals).
   - **Caps:** `SHOPCAT_PER_IP` 200 asks a day per IP key, `SHOPCAT_PER_DAY` 10,000 catalog calls a day for the site
     (vCount). Shopify's 429 is answered 429 and the isolate waits its Retry-After (at most 5 min); a stale token (401) is
-    renewed once; 8 s timeouts; failures are 502 with no items. Counted in spend.js as **shopcat** (price 0, "no
+    renewed once; 8 s timeouts (body included), 15 s a request; failures are 502 with no items (503 while the token is down). Counted in spend.js as **shopcat** (price 0, "no
     published fee"); the token exchange is not counted.
   - **Page:** a "Live from Shopify stores" strip in the hunt's live listings (`shpFetch`, `shpBlock`; the ShopGoodwill
     card: photo, title, price, "Shopify · <shop>", a new-tab `rel="noopener noreferrer"` link), with a Shopify button in
     the jump row; an empty answer says why ("Nothing on Shopify stores for this hunt right now." or "Shopify stores had N
     for this hunt, none with all your words. Try fewer words."); a 429 says Shopify stores are busy; a failed ask shows
-    nothing and is asked again in 2 minutes; `{ off: true }` hides it for the visit. Kept in memory 10 minutes a hunt so a
-    redraw does not ask again; no new localStorage key. **For everyone, no Pro gate** (no published fee).
+    nothing and is asked again in 2 minutes; `{ off: true }` hides it for the visit. Kept in memory 1 minute a hunt
+    (`SHP_FRESH`), only so the redraws of one view do not ask again (Shopify: no caching of results); no new
+    localStorage key. **For everyone, no Pro gate** (no published fee).
   - Privacy section: hunt words go to Shopify's Global Catalog.
-  - Tests: `worker/__tests__/shop-catalog-v210.test.mjs` (12) and `__tests__/page/shop-live-v838.test.mjs` (6).
+  - **Review fixes (same versions):** (1) the 8 s timeout now covers the body read too, and a whole request has a 15 s
+    deadline (`SHOPCAT_DEADLINE_MS`); the fallback search is skipped past 9 s (`SHOPCAT_SECOND_PASS_MS`). (2) A failed
+    token exchange is remembered 5 minutes per isolate (`SHOPCAT_TOKEN_FAIL_MS`): `/shop-live` answers 503
+    "unavailable" meanwhile instead of a client_credentials POST per request (the status alone is logged). (3) Listings
+    from the two searches are matched by product + variant id (or the link without its query), not the full URL, whose
+    `_gsid` differs per search. (4) In a product cluster only Owl & Twig's own offers are skipped; other stores' offers
+    stay. (5) The page asks again on a timer after a busy or failed answer (`shpRetry`, as `fbRetry`: one timer a hunt,
+    `SHP_RETRY` + 100 ms, 5 in a row at most). (6) With Shopify listings above, the empty card says "Nothing on Goodwill
+    or the other live sites yet" and the status line counts them as live. Page reuse cut from 10 minutes to 1.
+    Judged not defects: no per-network cap or hourly slice, no per-second gate, external offers without `source`.
+  - Tests: `worker/__tests__/shop-catalog-v210.test.mjs` (17) and `__tests__/page/shop-live-v838.test.mjs` (9), the
+    review tests each checked to fail without their fix.
   - **To confirm once Matt has the key:** that Shopify accepts the worker-hosted agent profile (else set
     `SHOPIFY_CATALOG_PROFILE` to Shopify's hosted example
     `https://shopify.dev/ucp/agent-profiles/examples/2026-08-25/valid-with-capabilities.json`); that the token answer

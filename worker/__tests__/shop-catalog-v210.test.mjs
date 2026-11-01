@@ -252,7 +252,7 @@ test("a stale token (401) is renewed once; a refused token exchange, a 500, an e
   ]) {
     SC.shopcatReset();
     const x = await ask(deps(sh.f).D, "term=ceramic+panther");
-    assert.equal(x.status, 502, label);
+    assert.equal(x.status, label === "token refused" ? 503 : 502, label);
     assert.deepEqual(x.body.items, [], label);
     assert.equal(x.body.on, true, label);
   }
@@ -307,4 +307,68 @@ test("index.js: the routes, the deps, the version; spend.js counts the catalog c
   assert.equal(SP.paidKey("https://api.shopify.com/auth/access_token"), "", "the token exchange is not a counted call");
   const SRC = readFileSync(new URL("../shopcat.js", import.meta.url), "utf8");
   assert.doesNotMatch(SRC, /PROWL_ALERTS|kvPut|caches\.|PCACHE/, "no KV and no cache for results or the token");
+});
+
+/* ---------- review fixes ---------- */
+test("review: the timeout covers the body read too (headers come, the body stalls)", async () => {
+  let signal = null;
+  const stall = shopify({ answers: [(init) => { signal = init.signal; return { status: 200, ok: true, headers: { get: () => null }, json: () => new Promise(() => {}) }; }] });
+  const realSet = globalThis.setTimeout;
+  globalThis.setTimeout = (fn, ms) => realSet(fn, ms > 1000 && ms <= SC.SHOPCAT_TIMEOUT_MS ? 5 : ms);
+  try {
+    const x = await ask(deps(stall.f).D, "term=ceramic+panther");
+    assert.equal(x.status, 502);
+    assert.equal(x.body.error, "timeout");
+    assert.ok(signal && signal.aborted);
+  } finally { globalThis.setTimeout = realSet; }
+});
+
+test("review: no fallback search once the request has run past SHOPCAT_SECOND_PASS_MS; the whole request has a deadline", async () => {
+  const realNow = Date.now;
+  let t = realNow();
+  Date.now = () => t;
+  try {
+    const s = shopify({ answers: [async () => { t += SC.SHOPCAT_SECOND_PASS_MS + 1; return res(200, catalogAnswer([product(1, "Ceramic panther")])); }, res(200, catalogAnswer([product(2, "Ceramic panther two")]))] });
+    const r = await ask(deps(s.f).D, "term=ceramic+panther");
+    assert.equal(r.status, 200);
+    assert.equal(r.body.items.length, 1);
+    assert.equal(s.searches().length, 1, "short on time: the secondhand listings alone");
+  } finally { Date.now = realNow; }
+  assert.ok(SC.SHOPCAT_DEADLINE_MS <= 15000);
+});
+
+test("review: a failed token exchange is remembered for SHOPCAT_TOKEN_FAIL_MS: no POST per request meanwhile", async () => {
+  const realErr = console.error; console.error = () => {};
+  try {
+    const s = shopify({ tokenStatus: 401, token: { error: "invalid_client" } }), { D } = deps(s.f);
+    const a = await ask(D, "term=ceramic+panther");
+    const b = await ask(D, "term=ceramic+panther");
+    const c = await ask(D, "term=fire+king");
+    assert.deepEqual([a.status, b.status, c.status], [503, 503, 503]);
+    assert.equal(b.body.error, "unavailable");
+    assert.equal(s.tokens().length, 1, "one exchange, then it waits");
+    assert.equal(s.searches().length, 0);
+    assert.equal(SC.shopcatTokenDown(Date.now() + SC.SHOPCAT_TOKEN_FAIL_MS + 1000), false, "tried again after the wait");
+  } finally { console.error = realErr; }
+});
+
+test("review: the same listing from both searches (different _gsid) shows once", async () => {
+  const one = (g) => { const p = product(1, "Ceramic panther planter"); p.variants[0].url = "https://shopa.example/products/p?variant=1&_gsid=" + g; return p; };
+  const s = shopify({ answers: [res(200, catalogAnswer([one("g1")])), res(200, catalogAnswer([one("g2"), product(2, "Ceramic panther lamp", { cond: ["new"] })]))] }), { D } = deps(s.f);
+  const r = await ask(D, "term=ceramic+panther");
+  assert.equal(s.searches().length, 2);
+  assert.deepEqual(r.body.items.map((x) => x.url), ["https://shopa.example/products/p?variant=1&_gsid=g1", "https://shop2.example/products/p?variant=2&_gsid=x"]);
+  assert.equal(JSON.stringify(r.body).indexOf('"key"'), -1, "the match key is not sent");
+});
+
+test("review: a cluster whose first offer is Owl & Twig's keeps the other stores' offers", () => {
+  const p = product(1, "Ceramic panther", { url: "https://www.owlandtwigvintage.com/products/panther", sellerUrl: "https://www.owlandtwigvintage.com", domain: "tz7xkc-du.myshopify.com" });
+  p.variants.push({ id: "gid://shopify/ProductVariant/77", url: "https://other.example/products/panther", price: { amount: 7000, currency: "USD" }, availability: { available: true },
+    condition: ["secondhand"], source: "shopify", seller: { name: "Other Store", url: "https://other.example", domain: "other.myshopify.com" } });
+  const c = SC.shopcatItem(p, {});
+  assert.equal(c.own, undefined);
+  assert.equal(c.shop, "Other Store");
+  assert.equal(c.url, "https://other.example/products/panther");
+  p.variants.pop();
+  assert.deepEqual(SC.shopcatItem(p, {}), { own: true }, "Owl & Twig's alone: hidden");
 });

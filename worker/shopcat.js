@@ -19,7 +19,7 @@
      Results: result.structuredContent.products[], each with title, media[] (cdn.shopify.com) and variants[] (url,
      price { amount in minor units, currency }, availability, condition[], seller { name, url, domain }).
    - Rules (shopify.dev/docs/agents/catalog, Usage guidelines): "Don't cache search results" (so nothing is kept, not
-     even a short cache: every answer is no-store), "Don't cache or re-use images" (the page loads them straight from
+     even a short cache: every answer is no-store; the page reuses an answer only a minute, for one view's redraws), "Don't cache or re-use images" (the page loads them straight from
      Shopify's CDN; the worker never fetches one). Rate limit: 5 requests a second per API client by default
      (shopify.dev/docs/agents/profiles/auth-and-rate-limiting); a 429 is honoured with its Retry-After.
    What is sent: the hunt's words, "US" and the filters. No member, no email, no IP (no buyer signals), no user agent.
@@ -44,8 +44,9 @@ export const SHOPCAT_OWN = ["owlandtwigvintage.com", "tz7xkc-du.myshopify.com", 
 const ZERO_DEC = { JPY: 1, KRW: 1, VND: 1, CLP: 1, ISK: 1, UGX: 1, XAF: 1, XOF: 1, PYG: 1, RWF: 1, KMF: 1, GNF: 1, DJF: 1, BIF: 1, VUV: 1, XPF: 1 };
 
 /* in this isolate only: the token, and how long Shopify asked us to wait after a 429 */
-const S = { tok: "", exp: 0, id: "", p: null, busyUntil: 0 };
-export function shopcatReset() { S.tok = ""; S.exp = 0; S.id = ""; S.p = null; S.busyUntil = 0; }
+const S = { tok: "", exp: 0, id: "", p: null, busyUntil: 0, failUntil: 0 };
+export function shopcatReset() { S.tok = ""; S.exp = 0; S.id = ""; S.p = null; S.busyUntil = 0; S.failUntil = 0; }
+export const SHOPCAT_DEADLINE_MS = 15000, SHOPCAT_SECOND_PASS_MS = 9000;   /* review fix: a whole request's limit; no fallback search past 9 s */
 
 export function shopcatOn(env) { return !!(env && String(env.SHOPIFY_CATALOG_CLIENT_ID || "").trim() && String(env.SHOPIFY_CATALOG_CLIENT_SECRET || "").trim()); }
 
@@ -83,23 +84,45 @@ function jwtExp(t) {
     return Number(j && j.exp) > 0 ? Number(j.exp) * 1000 : 0;
   } catch (e) { return 0; }
 }
-async function timed(f, url, init) {
-  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), SHOPCAT_TIMEOUT_MS);
-  try { return await f(url, Object.assign({}, init, { signal: ctl.signal })); } finally { clearTimeout(timer); }
+/* review fix: the abort timer runs through the body read too (a response whose headers came but whose body stalls
+   was unbounded), and never past the request's overall deadline. Answers { status, headers, j } (j null when the
+   body was not JSON or the status was not 200). */
+async function timed(f, url, init, deadline) {
+  const ms = Math.max(1, Math.min(SHOPCAT_TIMEOUT_MS, deadline ? deadline - Date.now() : SHOPCAT_TIMEOUT_MS));
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), ms);
+  const stop = new Promise((_, rej) => ctl.signal.addEventListener("abort", () => rej(Object.assign(new Error("aborted"), { name: "AbortError" }))));
+  try {
+    return await Promise.race([stop, (async () => {
+      const r = await f(url, Object.assign({}, init, { signal: ctl.signal }));
+      let j = null;
+      if (r && r.status === 200) { try { j = await r.json(); } catch (e) { if (ctl.signal.aborted) throw e; j = null; } }
+      return { status: r ? r.status : 0, headers: r && r.headers, j: j };
+    })()]);
+  } finally { clearTimeout(timer); }
 }
 
-/* the bearer token, from memory while it has more than a minute left; one exchange at a time per isolate */
-export async function shopcatToken(env, D, nowMs) {
+/* the bearer token, from memory while it has more than a minute left; one exchange at a time per isolate.
+   Review fix: a failed exchange (a wrong or revoked secret, Shopify down) is remembered SHOPCAT_TOKEN_FAIL_MS, so
+   Shopify does not get a client_credentials POST on every request meanwhile (shopLive answers "unavailable"). */
+export const SHOPCAT_TOKEN_FAIL_MS = 5 * 60000;
+export function shopcatTokenDown(nowMs) { return S.failUntil > (Number(nowMs) || Date.now()); }
+export async function shopcatToken(env, D, nowMs, deadline) {
   const f = (D && D.fetch) || fetch, now = Number(nowMs) || Date.now(), id = String(env.SHOPIFY_CATALOG_CLIENT_ID || "").trim();
   if (S.tok && S.id === id && now < S.exp - SHOPCAT_TOKEN_EARLY_MS) return S.tok;
+  if (S.failUntil > now) throw new Error("token down");
   if (S.p) return S.p;
   S.p = (async () => {
-    const r = await timed(f, SHOPCAT_TOKEN_URL, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
-      body: JSON.stringify({ client_id: id, client_secret: String(env.SHOPIFY_CATALOG_CLIENT_SECRET || "").trim(), grant_type: "client_credentials" }) });
-    if (!r || r.status !== 200) throw new Error("token " + (r ? r.status : "none"));
-    const j = await r.json();
-    const t = j && typeof j.access_token === "string" ? j.access_token : "";
-    if (!t) throw new Error("token missing");
+    let r;
+    try {
+      r = await timed(f, SHOPCAT_TOKEN_URL, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ client_id: id, client_secret: String(env.SHOPIFY_CATALOG_CLIENT_SECRET || "").trim(), grant_type: "client_credentials" }) }, deadline);
+    } catch (e) { S.failUntil = now + SHOPCAT_TOKEN_FAIL_MS; throw e; }
+    const j = r && r.j, t = j && typeof j.access_token === "string" ? j.access_token : "";
+    if (!r || r.status !== 200 || !t) {
+      S.failUntil = now + SHOPCAT_TOKEN_FAIL_MS;
+      console.error("shopcat token", r ? r.status : "none");   /* the status only, never the body or the secret */
+      throw new Error("token " + (r ? r.status : "none"));
+    }
     const said = Number(j.expires_in) > 0 ? now + Number(j.expires_in) * 1000 : jwtExp(t);
     S.tok = t; S.id = id; S.exp = Math.min(said > now ? said : now + SHOPCAT_TOKEN_TTL_MS, now + SHOPCAT_TOKEN_TTL_MS);
     return t;
@@ -136,34 +159,40 @@ function img(list) {
 /* one product as a Prowl card: its first sale-ready variant (secondhand first) with an https link; Shopify stores only */
 export function shopcatItem(p, env) {
   if (!p || typeof p.title !== "string" || !p.title.trim()) return null;
-  const vs = (Array.isArray(p.variants) ? p.variants : []).filter((v) => v && (!v.source || v.source === "shopify") && !(v.availability && v.availability.available === false) && hostOf(v.url));
-  if (!vs.length) return null;
+  const all = (Array.isArray(p.variants) ? p.variants : []).filter((v) => v && (!v.source || v.source === "shopify") && !(v.availability && v.availability.available === false) && hostOf(v.url));
+  if (!all.length) return null;
+  /* review fix: a product clusters offers from several stores; only Owl & Twig's own offers are skipped, the rest stay */
+  const vs = all.filter((v) => { const s = v.seller || {}; return !shopcatOwn([v.url, s.url, s.domain], env); });
+  if (!vs.length) return { own: true };
   const sh = (v) => Array.isArray(v.condition) ? v.condition.indexOf("secondhand") !== -1 : v.condition === "secondhand";
   const v = vs.filter(sh)[0] || vs[0], s = v.seller || {};
-  if (shopcatOwn([v.url, s.url, s.domain], env)) return { own: true };
   const pr = major(v.price) || major(p.price_range && p.price_range.min);
   const out = { title: p.title.replace(/\s+/g, " ").trim().slice(0, 160), price: pr ? pr.price : null, currency: pr ? pr.currency : "",
     img: img(p.media) || img(v.media), shop: String(s.name || "").replace(/\s+/g, " ").trim().slice(0, 60) || hostOf(s.url || v.url), url: String(v.url).slice(0, 800) };
   if (sh(v)) out.secondhand = true;
+  /* review fix: the same listing from two searches differs in _gsid (and shclid / shcgid), so it is matched by product and
+     variant, or by the link without its query, never by the full URL; the URL itself is returned as Shopify gave it */
+  Object.defineProperty(out, "key", { value: (p.id && v.id ? String(p.id) + "|" + String(v.id) : String(v.url).split(/[?#]/)[0]), enumerable: false });
   return out;
 }
 
 /* one catalog call: { products } or { err, status, wait } */
-async function search(env, D, term, profile, secondhand) {
+async function search(env, D, term, profile, secondhand, deadline) {
   const f = (D && D.fetch) || fetch;
   for (let tries = 0; tries < 2; tries++) {
-    const tok = await shopcatToken(env, D);
+    let tok;
+    try { tok = await shopcatToken(env, D, 0, deadline); } catch (e) { if (/abort/i.test(String(e && (e.name || e.message)))) throw e; return { err: "unavailable", status: 503 }; }
     const r = await timed(f, SHOPCAT_MCP_URL, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Bearer " + tok },
-      body: JSON.stringify(shopcatBody(term, profile, secondhand)) });
+      body: JSON.stringify(shopcatBody(term, profile, secondhand)) }, deadline);
     if (r.status === 401 && tries === 0) { S.tok = ""; S.exp = 0; continue; }   /* a token Shopify no longer takes: one fresh one */
     if (r.status === 429) {
       const ra = Number((r.headers && r.headers.get && r.headers.get("Retry-After")) || 0);
       return { err: "busy", status: 429, wait: Math.min(SHOPCAT_BUSY_MAX_S, ra > 0 ? ra : 30) };
     }
     if (r.status !== 200) return { err: "shopify " + r.status, status: r.status };
-    let j = null;
-    try { j = await r.json(); } catch (e) { return { err: "unreadable" }; }
-    if (j && j.error) return { err: "shopify error", status: 502 };
+    const j = r.j;
+    if (!j) return { err: "unreadable", status: 502 };
+    if (j.error) return { err: "shopify error", status: 502 };
     const sc = j && j.result && j.result.structuredContent;
     if (!sc || (j.result && j.result.isError)) return { err: "shopify error", status: 502 };
     return { products: Array.isArray(sc.products) ? sc.products : [] };
@@ -180,18 +209,20 @@ export async function shopLive(request, env, url, origin, D, nowMs) {
   const mx = Math.floor(Number(url.searchParams.get("max")));
   const max = mx >= 1 ? Math.min(SHOPCAT_MAX, mx) : SHOPCAT_MAX;
   if (S.busyUntil > now) return out({ on: true, term: term, error: "busy", items: [] }, 429);
+  if (shopcatTokenDown(now)) return out({ on: true, term: term, error: "unavailable", items: [] }, 503);   /* review fix: a failed exchange waits SHOPCAT_TOKEN_FAIL_MS */
   if (!(await D.vCount("shopcat:" + D.ipKey(request.headers.get("CF-Connecting-IP")), SHOPCAT_PER_IP))) return out({ on: true, term: term, error: "slow down", items: [] }, 429);
   const profile = shopcatProfileUrl(env, url.origin);
+  const t0 = Date.now(), deadline = t0 + SHOPCAT_DEADLINE_MS;   /* review fix: the whole request, token and both searches */
   const items = [], seen = Object.create(null);
   let raw = 0, words = 0, own = 0;
   for (const secondhand of [true, false]) {
-    if (!secondhand && items.length >= max) break;
+    if (!secondhand && (items.length >= max || Date.now() - t0 > SHOPCAT_SECOND_PASS_MS)) break;
     if (!(await D.vCount("shopcat:all", SHOPCAT_PER_DAY))) { if (secondhand) return out({ on: true, term: term, error: "daily limit", items: [] }, 429); break; }
     let r;
-    try { r = await search(env, D, term, profile, secondhand); } catch (e) { r = { err: /abort/i.test(String(e && (e.name || e.message))) ? "timeout" : "unreachable", status: 504 }; }
+    try { r = await search(env, D, term, profile, secondhand, deadline); } catch (e) { r = { err: /abort/i.test(String(e && (e.name || e.message))) ? "timeout" : "unreachable", status: 504 }; }
     if (r.err) {
       if (r.status === 429) S.busyUntil = now + r.wait * 1000;
-      if (secondhand || !items.length) return out({ on: true, term: term, error: r.err, items: [] }, r.status === 429 ? 429 : 502);
+      if (secondhand || !items.length) return out({ on: true, term: term, error: r.err, items: [] }, r.status === 429 ? 429 : r.status === 503 ? 503 : 502);
       break;   /* the secondhand listings already found are still worth showing */
     }
     raw += r.products.length;
@@ -199,7 +230,7 @@ export async function shopLive(request, env, url, origin, D, nowMs) {
     for (const p of r.products) { const c = shopcatItem(p, env); if (!c) continue; if (c.own) { own++; continue; } cards.push(c); }
     const kept = D.sgwExact(cards, term) || [];
     words += kept.length;
-    for (const c of kept) { if (seen[c.url] || items.length >= max) continue; seen[c.url] = 1; items.push(c); }
+    for (const c of kept) { const k = c.key || c.url; if (seen[k] || items.length >= max) continue; seen[k] = 1; items.push(c); }
   }
   items.sort((a, b) => (b.secondhand ? 1 : 0) - (a.secondhand ? 1 : 0));   /* stable: secondhand first, Shopify's order within */
   const body = { on: true, term: term, items: items };

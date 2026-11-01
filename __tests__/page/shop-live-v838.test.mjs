@@ -19,8 +19,8 @@ const LIVE = {
     { title: 'Ceramic panther, ours', price: 80, currency: 'USD', url: 'https://www.owlandtwigvintage.com/products/panther' },
   ],
 };
-function shopFetch(answer) {
-  const base = liveFetch({}), asked = [];
+function shopFetch(answer, perSource = 3) {
+  const base = liveFetch({ perSource }), asked = [];
   const impl = (url, opts = {}) => {
     const u = new URL(String(url), 'https://www.owlandtwigvintage.com/');
     if (u.pathname === '/shop-live') {
@@ -34,10 +34,17 @@ function shopFetch(answer) {
   return { impl, asked };
 }
 const SIGNED = { 'prowl.alertPro': '1', 'prowl.alertTok': 'T'.repeat(24), 'prowl.alertEmail': 'pro@example.com' };
-async function home(f, storage = {}, hunts = ['ceramic panther'], lock = [0]) {
-  const p = loadPage({ fetchImpl: f.impl, storage: { 'prowl.v36': { seen: true, hunts, lock }, owlTwigSgwTerms: [], ...storage } });
-  await waitFor(() => p.$$('#otp-sgw .sgw-cell').length >= 3, { timeout: 8000 });
+async function home(f, storage = {}, hunts = ['ceramic panther'], lock = [0], beforeLoad, cells = 3) {
+  const p = loadPage({ beforeLoad, fetchImpl: f.impl, storage: { 'prowl.v36': { seen: true, hunts, lock }, owlTwigSgwTerms: [], ...storage } });
+  await waitFor(() => p.$$('#otp-sgw .sgw-cell').length >= cells, { timeout: 8000 });
   return p;
+}
+/* the retry timer (SHP_RETRY + 100 ms) runs in 30 ms, the page's clock moved on by its delay (as fb-intermittent-v836) */
+function fastRetry(win) {
+  const st = win.setTimeout.bind(win), now = win.Date.now.bind(win.Date);
+  let off = 0;
+  win.setTimeout = (fn, ms, ...a) => (ms === 120100 ? st(() => { off += ms; fn(...a); }, 30) : st(fn, ms, ...a));
+  win.Date.now = () => now() + off;
 }
 const strip = (p) => p.$$('#otp-sgw .sgw-sub').find((s) => /Live from Shopify stores/.test(s.textContent));
 
@@ -131,4 +138,31 @@ test('the new script is ES5 and has no Liquid openers', () => {
   assert.doesNotMatch(src, /\b(let|const|class)\s|=>|`|\?\.|\basync\b|\bawait\b/);
   assert.doesNotMatch(src, /\{%|\{\{/);
   assert.match(HTML, /var PROWL_VERSION='v8\.38';/);
+});
+
+/* ---------- review fixes ---------- */
+test('review: a busy (429) or failed answer is asked again on a timer while the member stays on the hunt', async () => {
+  for (const first of [429, 500]) {
+    const f = shopFetch((n) => (n === 1 ? first : LIVE));
+    const p = await home(f, {}, ['ceramic panther'], [0], fastRetry);
+    await waitFor(() => strip(p) && strip(p).nextElementSibling && strip(p).nextElementSibling.querySelectorAll('.sgw-cell').length === 2, { timeout: 8000 });
+    assert.equal(f.asked.length, 2, String(first));
+    await p.close();
+  }
+});
+
+test('review: Shopify listings above, the empty card does not say "Nothing live yet", and the status line counts them', async () => {
+  const f = shopFetch(LIVE, 0);
+  const p = await home(f, {}, ['ceramic panther'], [0], undefined, 2);
+  await waitFor(() => p.$('#otp-sgw .sgw-empty-h'));
+  const txt = p.$('#otp-sgw .sgw-body').textContent;
+  assert.doesNotMatch(txt, /Nothing live yet for/);
+  assert.match(p.$('#otp-sgw .sgw-empty-h').textContent, /Nothing on Goodwill or the other live sites yet for/);
+  assert.match(p.$('#otp-sgw .sgw-status').textContent, /Live now · 2 listings/);
+  assert.doesNotMatch(p.$('#otp-sgw .sgw-status').textContent, /Nothing live right now/);
+  await p.close();
+});
+
+test('review: an answer is reused for a minute at most (Shopify: no caching of results)', () => {
+  assert.match(HTML, /SHP_FRESH=60000,/);
 });
