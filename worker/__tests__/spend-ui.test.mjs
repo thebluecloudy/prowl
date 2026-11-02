@@ -43,14 +43,14 @@ test("the Spending tab shows each service by period, the monthly bills, and a to
   const text = rows.find((r) => /Text Search/.test(r[0]));
   assert.match(text[1], /^\$4\.00.*100 calls/);
   const muse = rows.find((r) => /^Muse/.test(r[0]));
-  assert.match(muse[1], /3 calls, 120k in \/ 40k out tokens, 2 web searches \(not priced yet\)/, "v215 review fix: the searches wait for a price");
-  assert.match(muse[1], /^\$0\.29/, "v215 review fix: Muse's token dollars stay (120k in at $0.98/1M + 40k out at $4.25/1M)");
+  assert.match(muse[1], /3 calls, 120k in \/ 40k out tokens, 2 web searches \(not priced yet\)/, "v216 review fix: the searches wait for a price");
+  assert.match(muse[1], /^\$0\.29/, "v216 review fix: Muse's token dollars stay (120k in at $0.98/1M + 40k out at $4.25/1M)");
   assert.match(rows.find((r) => /SerpApi/.test(r[0]))[1], /no price.*4 calls/, "used without a price says so");
   assert.deepEqual(rows.find((r) => /Shopify plan/.test(r[0])).slice(3), ["$39.00", "$39.00"]);
   assert.equal(rows.at(-1)[0], "Total");
   assert.match(d.querySelector("#spbox .ukpi").textContent, /so far this month \(1 service used without a price, 1 service with some use not priced yet\)/,
-    "SerpApi, and Muse's searches (v215: billed, fit from the bill; review fix: its tokens still count)");
-  assert.match(rows.at(-1)[1], /^\$4\.29$/, "v215 review fix: Today's total keeps Muse's token dollars ($4.00 + $0.29)");
+    "SerpApi, and Muse's searches (v216: billed, fit from the bill; review fix: its tokens still count)");
+  assert.match(rows.at(-1)[1], /^\$4\.29$/, "v216 review fix: Today's total keeps Muse's token dollars ($4.00 + $0.29)");
 });
 
 test("the prices form: list prices as placeholders with their sources; Save sends prices and bills", async (t) => {

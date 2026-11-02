@@ -10,7 +10,7 @@
    index.js alPro checks it (giftPro below) before any Shopify call. */
 
 import { appAsset } from "./admin-app.js";
-import { SPEND_SERVICES, SPEND_CFG_KEY, SPEND_FIXED_MAX, SPEND_FIT_KEYS, SPEND_FIT_LINES, spendCfgClean, spendSummary, spendPeriods, spendFit } from "./spend.js";   /* v193; v215: fit to a bill */
+import { SPEND_SERVICES, SPEND_CFG_KEY, SPEND_FIXED_MAX, SPEND_FIT_KEYS, SPEND_FIT_LINES, spendCfgClean, spendSummary, spendPeriods, spendFit } from "./spend.js";   /* v193; v216: fit to a bill */
 const COOKIE = "prowl_admin";
 const SESSION_S = 43200;                         // 12 hours
 const BODY_MAX = 8192;
@@ -1043,7 +1043,18 @@ async function apiShopBrief(c) {
     notes: arr(b.notes).slice(0, 3).map(n => ({ kind: shopStr(n && n.kind, 40), text: shopStr(n && n.text, 600) })),
     stats: { sales30: num(st.sales30), orders30: num(st.orders30), salesPrev: num(st.salesPrev), ordersPrev: num(st.ordersPrev),
       salesChange: st.salesChange == null ? null : num(st.salesChange), salesYday: num(st.salesYday), ordersYday: num(st.ordersYday),
-      daysSinceOrder: st.daysSinceOrder == null ? null : num(st.daysSinceOrder), typesKnown: st.typesKnown !== false, categories: cats } });
+      daysSinceOrder: st.daysSinceOrder == null ? null : num(st.daysSinceOrder), typesKnown: st.typesKnown !== false, categories: cats },
+    site: siteView(st.site), siteErr: shopStr(b.siteErr, 120) });
+}
+/* v215: the site's visit numbers, re-checked field by field (paths only, no visitor data exists here) */
+function siteView(s) {
+  if (!s || typeof s !== "object") return null;
+  const wk = x => x && typeof x === "object" ? { week: word(x.week, 10), visits: num(x.visits), visitors: num(x.visitors), carts: num(x.carts), checkouts: num(x.checkouts) } : null;
+  const pg = x => ({ name: shopStr(x && x.name, 90), path: shopStr(x && x.path, 200), visits: num(x && x.visits), carts: num(x && x.carts) });
+  return { weeks: arr(s.weeks).slice(-8).map(wk), thisWeek: wk(s.thisWeek), lastWeek: wk(s.lastWeek), visits30: num(s.visits30),
+    kinds: arr(s.kinds).slice(0, 8).map(k => ({ kind: word(k && k.kind, 20), visits: num(k && k.visits), carts: num(k && k.carts) })),
+    guides: arr(s.guides).slice(0, 12).map(pg), products: arr(s.products).slice(0, 6).map(pg),
+    refs: arr(s.refs).slice(0, 8).map(r => ({ from: shopStr(r && r.from, 40), source: word(r && r.source, 20), visits: num(r && r.visits) })) };
 }
 async function apiShopcat(c) {
   if (typeof c.H.shopcatStatus !== "function") return jerr(503, "The Shopify catalog check is not available.");
@@ -1188,7 +1199,7 @@ async function apiSpendCfg(c) {
   return jres(Object.assign({ message: "Saved. The estimate uses these prices now." }, await spendView(c)));
 }
 
-/* v215: Fit prices to a bill (Matt's Meta bill for October: cached request tokens $0.40, response tokens $2.23, uncached
+/* v216: Fit prices to a bill (Matt's Meta bill for October: cached request tokens $0.40, response tokens $2.23, uncached
    request tokens $4.10, search grounding requests $2.05). { key, from, to, bill: { input, cached, output, searches } }:
    the bill's dollars over Prowl's own counts for those days (spend.js spendFit) become the service's per-unit prices in
    spend:cfg; the answer carries the counts used and a warning when Prowl's counting starts after the bill's first day. */

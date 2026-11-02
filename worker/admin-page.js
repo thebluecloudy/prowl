@@ -154,7 +154,7 @@ main.wrap{padding-top:16px;padding-bottom:64px}
 .banner li .txt{flex:1 1 220px}
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 @media (min-width:760px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
-.brief{margin:14px 0 8px;padding-left:20px;display:grid;gap:8px;line-height:1.5}.brief b{font-weight:600}
+.site{margin-top:18px}.sh{font-size:1rem;margin:0 0 10px}.sh2{font-size:.9rem;margin:14px 0 6px}.brief{margin:14px 0 8px;padding-left:20px;display:grid;gap:8px;line-height:1.5}.brief b{font-weight:600}
 .tile{background:var(--card);border:2px solid var(--ol);border-radius:12px;padding:12px 14px;min-width:0;display:flex;flex-direction:column}
 .tl{font-size:13px;font-weight:650;color:var(--ink2)}
 .tv{font-size:26px;font-weight:700;line-height:1.15;margin:4px 0 2px;letter-spacing:-.01em}
@@ -684,9 +684,35 @@ function briefView() {
       tile("Top category", st.categories && st.categories[0] ? st.categories[0].type : "\u2014", st.categories && st.categories[0] ? briefMoney(st.categories[0].sales) + " in 30 days" : "No sales in 30 days")]),
     h("ol", { class: "brief" }, (b.notes || []).map(n => h("li", [h("b", { text: n.kind + ". " }), n.text]))),
     st.categories && st.categories.length ? tableOf([{ t: "Category" }, { t: "Pieces", num: 1 }, { t: "Sales", num: 1 }], st.categories.map(x => [x.type, String(x.items), briefMoney(x.sales)]), "Sales by category, last 30 days") : null,
+    siteView(b),
     h("p", { class: "hint", text: (b.ai ? "Notes written by Muse" : "Notes worked out from the numbers (the AI was not available)") + " from the shop's orders on " + b.day + ". Item sales before refunds; Prowl Pro left out." +
       (st.typesKnown ? "" : " Categories show as Other: the Shopify app needs read_products to see product types.") })];
   return kids;
+}
+/* v215: what people do on the site (Shopify's visit numbers): visits this week, where they land, where they came from */
+const KIND_NAME = { guide: "Guides", "guides list": "Guides list", product: "Product pages", prowl: "Prowl", home: "Home page", collection: "Collections", other: "Other pages" };
+function siteView(b) {
+  const s = b.site;
+  if (!s) return note("warn", b.siteErr === "needs read_reports"
+    ? "Site visits need one more permission: add read_reports (Analytics) to the worker's Shopify orders app, then reload."
+    : "Site visits could not be read" + (b.siteErr ? ": " + b.siteErr : "."));
+  const tw = s.thisWeek, lw = s.lastWeek, n = x => Number(x || 0).toLocaleString("en-US");
+  const chg = tw && lw && lw.visits ? Math.round((tw.visits - lw.visits) / lw.visits * 100) : null;
+  return h("div", { class: "site" }, [
+    h("h3", { class: "sh", text: "What people do on the site" }),
+    h("div", { class: "tiles" }, [
+      tile("Visits this week", tw ? n(tw.visits) : "\u2014", tw ? n(tw.visitors) + " people" + (chg != null ? ", " + (chg >= 0 ? "up " : "down ") + Math.abs(chg) + "% on last week" : "") : ""),
+      tile("Added to cart", tw ? n(tw.carts) : "\u2014", tw ? (tw.visits ? Math.round(tw.carts / tw.visits * 1000) / 10 : 0) + "% of this week's visits" : ""),
+      tile("Checkouts on the site", tw ? n(tw.checkouts) : "\u2014", "This week. Etsy sales happen on Etsy, not here"),
+      tile("Visits, 30 days", n(s.visits30), "Counted by the page people landed on")]),
+    s.kinds.length ? tableOf([{ t: "Landed on" }, { t: "Visits", num: 1 }, { t: "Cart adds", num: 1 }], s.kinds.map(k => [KIND_NAME[k.kind] || k.kind, n(k.visits), n(k.carts)]), "Visits by kind of page, 30 days") : null,
+    s.guides.length ? h("div", [h("h4", { class: "sh2", text: "Guides people land on (30 days)" }),
+      tableOf([{ t: "Guide" }, { t: "Visits", num: 1 }, { t: "Cart adds", num: 1 }], s.guides.map(g => [g.name, n(g.visits), n(g.carts)]), "Top guides, 30 days", true)]) : null,
+    s.products.length ? h("div", [h("h4", { class: "sh2", text: "Products people land on (30 days)" }),
+      tableOf([{ t: "Product" }, { t: "Visits", num: 1 }, { t: "Cart adds", num: 1 }], s.products.map(g => [g.name, n(g.visits), n(g.carts)]), "Top product pages, 30 days", true)]) : null,
+    s.refs.length ? h("div", [h("h4", { class: "sh2", text: "Where visitors came from (30 days)" }),
+      tableOf([{ t: "From" }, { t: "Visits", num: 1 }], s.refs.map(r => [r.from === "" ? "direct" : r.from, n(r.visits)]), "Referrers, 30 days")]) : null,
+    h("p", { class: "hint", text: "From Shopify's visit counts, by the first page of each visit. Shopify can't see clicks out to Etsy, so a guide that sends people to Etsy shows visits with no cart adds." })]);
 }
 async function loadBrief(force) {
   if (!force && S.sb && !S.sb.error && Date.now() - (S.sbAt || 0) < 1800000) return;
@@ -1272,7 +1298,7 @@ function usd(n) {
 }
 function kfmt(n) { n = Number(n) || 0; return n >= 1e6 ? (Math.round(n / 1e5) / 10) + "M" : n >= 1e3 ? (Math.round(n / 100) / 10) + "k" : String(n); }
 function spCell(m, u) {
-  const np = Array.isArray(u.unpriced) ? u.unpriced : [], npy = (...f) => f.some(x => np.indexOf(x) >= 0) ? " (not priced yet)" : "";   /* v215 review fix: priced in part */
+  const np = Array.isArray(u.unpriced) ? u.unpriced : [], npy = (...f) => f.some(x => np.indexOf(x) >= 0) ? " (not priced yet)" : "";   /* v216 review fix: priced in part */
   const bits = [num(u.n) + (u.n === 1 ? " call" : " calls") + npy("call")];
   if (m.uses.indexOf("tin") >= 0 && (u.ti || u.to)) bits.push(kfmt(u.ti) + " in" + (m.uses.indexOf("tout") >= 0 ? " / " + kfmt(u.to) + " out" : "") + " tokens" + npy("tin", "tout"));
   if (m.uses.indexOf("ws") >= 0 && u.ws) bits.push(num(u.ws) + " web searches" + npy("ws"));
@@ -1297,7 +1323,7 @@ function renderSpend(j) {
   rows.push([h("b", { text: "Total" }), h("b", { text: usd(T.today && T.today.calls) }), h("b", { text: usd(T.d7 && T.d7.calls) }), h("b", { text: usd(T.monthAll) }), h("b", { text: usd(T.lastAll) })]);
   out.push(tableOf(cols, rows, "Spending by service", true));
   out.push(h("p", { class: "hint", text: "Today and 7 days are calls at the list price. The month columns take off Google\u2019s free monthly allowance and add the monthly bills. \u201cNo price\u201d means Prowl used it but has no price for it: add one below. Counting started with worker v193 (30 Oct 2026), so earlier days are empty." }));
-  out.push(spFit(j, M));   /* v215 */
+  out.push(spFit(j, M));   /* v216 */
   out.push(spForm(j, M, cfg));
   fill($("#spbox"), out);
 }
@@ -1350,7 +1376,7 @@ function spForm(j, M, cfg) {
   return form;
 }
 
-/* v215: Fit prices to a bill. Matt's Meta bill for October 2026 (cached request tokens $0.40, response tokens $2.23,
+/* v216: Fit prices to a bill. Matt's Meta bill for October 2026 (cached request tokens $0.40, response tokens $2.23,
    uncached request tokens $4.10, search grounding requests $2.05) divided by what Prowl counted over the same days gives
    Muse's per-unit prices; the answer says what was counted, from which day, and warns when counting began after the
    bill's first day. The range defaults to last month (the bill's month). */

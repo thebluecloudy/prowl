@@ -21,10 +21,13 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
- *   v215: 2026-11-01. A Shopify find opens the listing popup (Matt): GET /item?shop=<gid>&url=<card link> calls the
+ *   v216: 2026-11-01. A Shopify find opens the listing popup (Matt): GET /item?shop=<gid>&url=<card link> calls the
  *         Global Catalog's get_product (shopcat.js shopItem): photos (12), description, options, the card's store, its
  *         price and condition; no-store, never the item cache (Shopify: no caching). The admin's Spending tab fits
  *         per-unit prices to a bill (POST /admin/api/spend/fit); Muse web searches are billed (price left for the fit).
+ *   v215: 2026-11-01. The morning briefing adds what people do on the site (Matt: they visit but buy on Etsy): Shopify's
+ *        visit counts through shopifyqlQuery (read_reports): visits and cart adds this week, the pages people land on (guides,
+ *        products, Prowl), where they came from; the AI's second note is about the site. KV key shopbrief2:<day>.
  *   v214: 2026-11-01. 14-day Pro trial: members who sign up from PRO_TRIAL_FROM get Prowl Pro free for PRO_TRIAL_DAYS
  *         (default 14, "0" = off) from sign-up, no card; then Free with every hunt kept. Counts as hadPro. /alerts/status
  *         says trialEnded; the daily email warns in the last 3 days. A paid plan, a gift or PRO_EMAILS wins over it.
@@ -768,7 +771,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v215";
+const WORKER_VERSION = "v216";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -7900,7 +7903,7 @@ async function newsMember(request, env) {
   return sub;
 }
 /* v210: what shopcat.js needs from here */
-function shopDeps() { return { vCount, ipKey, json, sgwExact, itemDesc }; }   /* v215: itemDesc for the popup */
+function shopDeps() { return { vCount, ipKey, json, sgwExact, itemDesc }; }   /* v216: itemDesc for the popup */
 function shopcatTestRun(env, term, origin) { return shopcatTest(env, shopDeps(), term, origin); }   /* v211 */
 function newsDeps() {
   return { json, readJson, kvGet, kvPut, ipKey, ipNet, vCount, isOwner, alSend, alEsc, alShell, alAddr, alMerge, alMailSub, alLinkHash, alUnsubUrl, alUpgradeUrl, scrubPII,
@@ -9223,7 +9226,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/where") {
       return whereToLook(env, url, origin, request);
     }
-    if (url.pathname === "/item" && url.searchParams.has("shop")) return shopItem(request, env, url, origin, shopDeps());   /* v215: a Shopify find (get_product), never cached */
+    if (url.pathname === "/item" && url.searchParams.has("shop")) return shopItem(request, env, url, origin, shopDeps());   /* v216: a Shopify find (get_product), never cached */
     if (url.pathname === "/item") {   /* v81: listing popup */
       return itemRoute(env, url, origin, request);
     }
