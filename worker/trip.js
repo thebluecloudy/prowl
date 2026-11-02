@@ -181,6 +181,7 @@ export function sizeTier(place) {
 }
 /* v138: a place of a kind the chips turned off is dropped when its kind is plain (a flea market on an antiques
    search); a kind Google names oddly ("Store", "Home goods store") stays */
+const KIND_LABEL = { antiques: "Antiques", vintage: "Vintage", thrift: "Thrift", records: "Records", books: "Books", toys: "Toys", flea: "Flea market" };
 const KIND_OF = { Antiques: "antiques", Vintage: "vintage", Thrift: "thrift", Records: "records", Books: "books", Toys: "toys", "Flea market": "flea" };
 /* v139: never ours, whatever the query returned (Google fills a strict box with shopping malls for "antique malls") */
 const NEVER_KIND = /shopping\s*mall|furniture|pawn|jewel|department\s*store|gun|sporting|grocery|supermarket|pharmacy|hardware|mattress|appliance|car\s*dealer|auto\s*parts|outlet\s*mall|museum|clothing|boutique|business\s*cent|salon|restaurant|cafe|\bbar\b|hotel|school|church|bank|real\s*estate|coin|fitness|medical/i;
@@ -189,8 +190,18 @@ const OUR_KIND = /^(Antiques|Vintage|Thrift|Records|Books|Toys|Flea market)$/;
 const OUR_NAME = /antique|vintage|collectib|mercantile|emporium|thrift|resale|consign|flea|salvage|architectural|estate\s+sale/i;
 export function kindAllowed(place, cats) {
   if (NEVER_KIND.test(String(place.kind || "")) || /\bmall of\b|shopping\s+(center|centre|mall)|\bplaza\b.*\bmall\b|\bpawn\b|\bcoins?\b|\bfabric|\bgarden\b|\bfitness\b|\bfurniture\b/i.test(String(place.name || ""))) return false;
-  const k = KIND_OF[String(place.kind || "")];
-  return !k || catsParse(cats.join ? cats.join(",") : cats).indexOf(k) !== -1;
+  const on = catsParse(cats.join ? cats.join(",") : cats), ks = kindsOf(place);
+  return !ks.length || ks.some((k) => on.indexOf(k) !== -1);
+}
+/* v216 (Finders Keepers Vintage & Vinyl, Plymouth MI, missing from Vintage and only under Records): a shop counts for
+   every one of our kinds its name or Google type says, not only the first one found. place.kinds when normalizePlace
+   set it, else from its kind and name (an older cached place). [] = a kind we have no chip for (kept). */
+const KIND_WORDS = [["antiques", /antique/i], ["thrift", /thrift|goodwill|salvation/i], ["records", /record|vinyl/i], ["books", /\bbook/i], ["toys", /\btoy/i], ["flea", /flea/i], ["vintage", /vintage/i]];
+export function kindsOf(place) {
+  if (Array.isArray(place.kinds) && place.kinds.length) return place.kinds.slice();
+  const k = KIND_OF[String(place.kind || "")], out = k ? [k] : [], name = String(place.name || "");
+  KIND_WORDS.forEach((w) => { if (out.indexOf(w[0]) === -1 && w[1].test(name)) out.push(w[0]); });
+  return out;
 }
 /* the one-line differentiator on a card: "120 dealers", "28,000 sq ft", "Antique mall", or the category */
 export function differentiator(place) {
@@ -199,6 +210,8 @@ export function differentiator(place) {
   const s = SQFT.exec(text); if (s) return Number(String(s[1]).replace(/,/g, "")).toLocaleString("en-US") + " sq ft";
   if (/antique\s+mall/i.test(text)) return "Antique mall";
   if (/warehouse/i.test(text)) return "Warehouse";
+  const ks = Array.isArray(place.kinds) ? place.kinds : [];   /* v216: "Vintage · Records" for a shop of two kinds */
+  if (ks.length > 1) return ks.slice(0, 3).map((k) => KIND_LABEL[k]).filter(Boolean).join(" · ") || place.kind || "";
   return place.kind || "";
 }
 /* a rating on few reviews pulls toward 4.0; 4.8 on 900 reviews beats 5.0 on 3 */
@@ -259,8 +272,9 @@ export function normalizePlace(p) {
   const label = String(p.primaryTypeDisplayName && p.primaryTypeDisplayName.text || "") + " " + String(p.primaryType || "") + " " + String(p.displayName && p.displayName.text || "");
   const kind = /antique/i.test(label) ? "Antiques" : /thrift|goodwill|salvation/i.test(label) ? "Thrift" : /record|vinyl/i.test(label) ? "Records" : /\bbook/i.test(label) ? "Books"
     : /\btoy/i.test(label) ? "Toys" : /flea/i.test(label) ? "Flea market" : /vintage/i.test(label) ? "Vintage" : String(p.primaryTypeDisplayName && p.primaryTypeDisplayName.text || "");
+  const kinds = KIND_WORDS.filter((w) => w[1].test(label)).map((w) => w[0]);
   return {
-    id: String(p.id), name: String(p.displayName && p.displayName.text || "").slice(0, 120),
+    id: String(p.id), name: String(p.displayName && p.displayName.text || "").slice(0, 120), kinds: kinds,
     town: town, state: t.state || (townFromAddress(p.formattedAddress).split(", ")[1] || ""),
     lat: Number(loc.latitude), lng: Number(loc.longitude),
     rating: Number(p.rating) || 0, n: Number(p.userRatingCount) || 0,

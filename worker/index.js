@@ -21,6 +21,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v216: 2026-11-01. Near me and Road trip count a shop for every kind its name or Google type says (trip.js kindsOf):
+ *         Finders Keepers Vintage & Vinyl (Plymouth, MI) was typed Records only, so with Vintage on and Records off it
+ *         was dropped. Near cache key v=13, trip key v=12.
  *   v215: 2026-11-01. The morning briefing adds what people do on the site (Matt: they visit but buy on Etsy): Shopify's
  *        visit counts through shopifyqlQuery (read_reports): visits and cart adds this week, the pages people land on (guides,
  *        products, Prowl), where they came from; the AI's second note is about the site. KV key shopbrief2:<day>.
@@ -767,7 +770,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v215";
+const WORKER_VERSION = "v216";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -8470,7 +8473,7 @@ async function nearRoute(request, env, url, origin) {
   if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, places: [] }, 503, origin);
   const cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=12";   /* v151: town; v153: the closest asked too; v166: the closest kept */
+  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=13";   /* v151: town; v153: the closest asked too; v166: the closest kept */
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("near:" + ipKey(request.headers.get("CF-Connecting-IP")), NEAR_PER_IP))) return json({ error: "slow down" }, 429, origin);
@@ -8716,7 +8719,7 @@ async function reviewsRoute(request, env, url, origin) {
   return res;
 }
 /* v155: one key for a built trip, so keeping it for the group finds the build the page is showing */
-function tripKey(o, lat, lng, to, day, cats, via) { return o + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(String(to).toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + (via && via.length ? "&via=" + encodeURIComponent(via.join("|").toLowerCase()) : "") + "&v=11"; }   /* v165: v163 answers missed their stops */   /* v137 to v154: the answer changed */
+function tripKey(o, lat, lng, to, day, cats, via) { return o + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(String(to).toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + (via && via.length ? "&via=" + encodeURIComponent(via.join("|").toLowerCase()) : "") + "&v=12"; }   /* v216: shops in every kind they name; v165: v163 answers missed their stops */   /* v137 to v154: the answer changed */
 /* a place's photo: Google's media endpoint needs the key, so the page asks here */
 async function ppRoute(request, env, url) {
   const n = String(url.searchParams.get("n") || "");
