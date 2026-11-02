@@ -1,18 +1,42 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-02 (v8.44 / v218).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-02 (v8.45 / v219).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.44** | 361,665 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v218** | |
+| Page | **v8.45** | 361,665 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v219** | |
 
 Recently shipped, newest first:
 
+- **v8.45 / v219: Facebook's "close but not a match" listings, on request** (Claude, 2026-11-01). Branch
+  `claude/gifted-johnson-wzaqr3` (local branch `fb-show-dropped` merged in; first built as v8.45 / v217, renumbered after
+  #317 took worker v217 and #313 v218; in flight below). Page room left: 361,665 bytes. Matt, with a hunt strip that said "Facebook had 16: 11 too far, 4 without all your words, 1 sold or
+  not usable." and no cards: "When Facebook says this why not show them?"
+  Review fix: a far card past 3,000 mi (e.g. Hawaii from a mainland ZIP, via the borrowed All USA record) is tagged
+  with its real distance ("4321 mi away"), not "Too far to tell"; `fbNearClean` reads the worker's `miles` directly.
+  - **Worker:** `fbClean` takes an `aside` list: up to `FB_NEAR_MAX` (12) of the listings a search drops for distance
+    (`why: "far"`, with `miles` when it has a point) or for a missing hunt word (`why: "words"`, `missing`: up to 4 hunt
+    words, `fbMissing`), the same item shape as a find. Sold, pending, hidden and unusable ones are never kept. Each
+    `fb3:`/`fb3s:` record keeps them as `near` (`fbMerge`: same week, TTL and one-per-listing rules as the finds, none
+    that is now a find, at most 12; a record from before v219 has no field and loads as before). `fbJoin` / `fbHunt`
+    give `near` apart from `items` (a borrowed wider radius sets its farther finds aside as far). `GET /fb-finds`
+    answers `near` (also per hunt with `?all=1`), `POST /fb-search` too. Alerts, emails and Pounce read `items` only
+    (`fbAlertItems`), and the `why` counts are unchanged. All USA sets nothing aside for distance.
+  - **KV size:** a set-aside listing is about 500-550 bytes (the fbcdn photo link is most of it), so a record grows by
+    about 6.5 KB at most in practice (measured: 4.2 KB to 10.6 KB for 8 finds + 12 set aside; worst case with 60 finds
+    and every field at its longest, 36.6 KB to 46 KB). `/fb-finds?all=1` grows by the same per hunt.
+  - **Page:** when a strip has set-aside listings, the reason line gets **Show them (N)** (with finds: "Facebook also had
+    N close but not a match."). It opens **Close but not a match** with the same cards, each tagged "62 mi away",
+    "Too far to tell" or "missing: escher", and says they are not in your alerts. Collapsed by default; open state in
+    memory only (`FB.nopen`), no new localStorage key. Same on Store › Facebook (both lists) and the Store's one-off
+    search. Fair price comps leave the set-aside cards out.
+  - No privacy change: the same listing fields Facebook already returned for that search.
+  - Tests `worker/__tests__/fb-near-v219.test.mjs`, `__tests__/page/fb-near-v845.test.mjs`.
 - **v8.44 / v218: Shopify finds open the listing popup; Muse prices fit to the Meta bill** (Claude, 2026-11-01). Branch
-  `claude/gifted-johnson-wzaqr3` (PR #313, in flight below; first claimed v8.43 / v214, then v8.44 / v215 and v8.44 / v216; renumbered after #307, #314, #316 and #317 took them). Page room left: 361,665 bytes.
+  `claude/gifted-johnson-wzaqr3` (PR #313, live; first claimed v8.43 / v214, then v8.44 / v215 and v8.44 / v216; renumbered after #307, #314, #316 and #317 took them). Page room left: 361,665 bytes.
   - **Shopify popup** (Matt: "when i open a shopify shop, is it possible to do the pop up like the others? it currently
     goes directly to the shop."): a card in "Live from Shopify and other stores" opens Prowl's listing popup. `/shop-live`
     items carry `pid` (the product's Global Catalog gid); the page (`shpClean`, `sgwCard` `data-gid`/`data-shop`/`data-dom`,
@@ -2545,9 +2569,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `claude/gifted-johnson-wzaqr3` | Claude | PR #313: Shopify finds open the listing popup (get_product); Fit prices to a bill in Spending; Muse searches billed (branch `shop-popup` merged in) | page v8.44 / worker v218 (renumbered after #307 took v8.43 / v214, #314 took worker v215, #316 v216 and #317 v217). |
+| `claude/gifted-johnson-wzaqr3` | Claude | Show the Facebook listings Prowl set aside as too far or missing a word (local branch `fb-show-dropped` merged in) | page v8.45 / worker v219 (built as v8.45 / v217; renumbered after #317 took v217 and #313 v218). Committed locally, not pushed. |
 
-Next free numbers: **page v8.46, worker v220** (v8.45 / v219: show the Facebook listings Prowl set aside, branch `fb-show-dropped`, was v8.45 / v217; v8.44 / v218: Shopify popup and Fit prices to a bill, PR #313, branch `claude/gifted-johnson-wzaqr3`; worker v217: briefing retries site visits, live with #317; worker v216: Near me shops in every kind they name, live with #316; worker v215: site visits in the morning briefing, live with #314; v8.43 / v214: 14-day Pro trial, live with #307; v8.42: deploy-check fix for the How Prowl works search box, branch `claude/gifted-johnson-wzaqr3`; v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, live with #309; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.46, worker v220** (v8.45 / v219: this release, show the Facebook listings Prowl set aside, branch `claude/gifted-johnson-wzaqr3` (from `fb-show-dropped`, was v8.45 / v217); v8.44 / v218: Shopify popup and Fit prices to a bill, live with #313; worker v217: briefing retries site visits, live with #317; worker v216: Near me shops in every kind they name, live with #316; worker v215: site visits in the morning briefing, live with #314; v8.43 / v214: 14-day Pro trial, live with #307; v8.42: deploy-check fix for the How Prowl works search box, branch `claude/gifted-johnson-wzaqr3`; v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, live with #309; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 
