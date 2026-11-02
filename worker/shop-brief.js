@@ -153,9 +153,12 @@ export function siteStats(weeks, pages, refs) {
     refs: refs.map(r => ({ from: String(r.referrer_name || r.referrer_source || "direct").slice(0, 40) || "direct", source: String(r.referrer_source || "").slice(0, 20), visits: num(r.sessions) })).filter(r => r.visits > 0).slice(0, 8)
   };
 }
-export async function siteVisits(env, deps) {
-  const ask = q => deps.gql(env, "query s($q: String!) { shopifyqlQuery(query: $q) { parseErrors tableData { rows } } }", { q: q }).then(sqlRows);
-  const [weeks, pages, refs] = await Promise.all([ask(SITE_Q.weeks), ask(SITE_Q.pages), ask(SITE_Q.refs)]);
+export const SITE_RETRY_MS = 15 * 60000;
+export async function siteVisits(env, deps, renew) {
+  const Q = "query s($q: String!) { shopifyqlQuery(query: $q) { parseErrors tableData { rows } } }";
+  const ask = (q, r) => deps.gql(env, Q, { q: q }, r).then(sqlRows);
+  const weeks = await ask(SITE_Q.weeks, !!renew);   // first, alone: a renewed token is then shared by the other two
+  const [pages, refs] = await Promise.all([ask(SITE_Q.pages), ask(SITE_Q.refs)]);
   return siteStats(weeks, pages, refs);
 }
 
@@ -163,7 +166,19 @@ export async function siteVisits(env, deps) {
    A shop without read_products still works: product types read as unknown and the card says so. */
 export async function shopBrief(env, deps, nowMs, fresh) {
   const day = detroitDay(nowMs), key = BRIEF_KEY + day;
-  if (!fresh) { const c = await deps.kvGet(env, key, null); if (c && c.stats) return Object.assign({ cached: true }, c); }
+  if (!fresh) {
+    const c = await deps.kvGet(env, key, null);
+    if (c && c.stats) {
+      /* v217: the visits part failed earlier today (most often the read_reports permission not yet approved): try it
+         again at most every 15 minutes with a fresh Shopify token, so it shows the same day it is approved */
+      if (c.siteErr && nowMs - Number(c.siteTry || Date.parse(c.at) || 0) > SITE_RETRY_MS) {
+        c.siteTry = nowMs;
+        try { c.stats.site = await siteVisits(env, deps, true); c.siteErr = ""; } catch (e) { c.siteErr = e && e.access ? "needs read_reports" : String(e && e.message || "failed").slice(0, 120); }
+        await deps.kvPut(env, key, c);
+      }
+      return Object.assign({ cached: true }, c);
+    }
+  }
   const since = new Date(nowMs - BRIEF_DAYS * DAY).toISOString().slice(0, 10);
   const read = async (withType) => {
     const all = []; let after = null;

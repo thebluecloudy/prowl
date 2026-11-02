@@ -11,7 +11,7 @@
   extension/). Re-check it if Prowl's data handling changes. The Facebook Marketplace finds bullets (Prowl Alerts, Who
   else, How long, What it does not remove) were added against worker v200 / page v8.26 on 2026-10-31 (worker/fb.js).
   The "Shopify stores" bullet (Searching) was added against worker v210 / page v8.38 on 2026-11-01 (worker/shopcat.js),
-  and reworded for worker v213 / page v8.41 (stores off Shopify too, photos from their own hosts), and for worker v216 /
+  and reworded for worker v213 / page v8.41 (stores off Shopify too, photos from their own hosts), and for worker v218 /
   page v8.44 (tapping a find asks Shopify for that listing's details).
   Notes for the next check:
   - v210: live Shopify listings (worker/shopcat.js, GET /shop-live). Sent to Shopify's Global Catalog
@@ -27,7 +27,7 @@
     stores only") an off-Shopify offer is shown only when its link is on a trusted marketplace list (SHOPCAT_OFF_TRUSTED
     in worker/shopcat.js, plus SHOPCAT_OFF_ALLOW), so photos load only from those and from Shopify stores. Nothing new
     is sent; the admin's Diagnose test lists the hidden domains (store domains, no member data).
-  - v216 / v8.44: tapping a Shopify find opens Prowl's listing popup: the page sends the worker the product's catalog id
+  - v218 / v8.44: tapping a Shopify find opens Prowl's listing popup: the page sends the worker the product's catalog id
     and the card's link (GET /item?shop=&url=), and the worker sends Shopify's Global Catalog get_product the id, "US",
     "en", "USD" and its agent profile (the link stays in the worker, used only to pick that store's offer). Nothing kept:
     no-store, never the item cache or KV; the page holds the answer only while the popup is open. Photos load in the

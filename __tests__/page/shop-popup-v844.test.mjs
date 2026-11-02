@@ -1,4 +1,4 @@
-// Page v8.44 / worker v216 (Matt: "when i open a shopify shop, is it possible to do the pop up like the others? it
+// Page v8.44 / worker v218 (Matt: "when i open a shopify shop, is it possible to do the pop up like the others? it
 // currently goes directly to the shop."): a card in the "Live from Shopify and other stores" strip opens the listing
 // popup. A Shopify find with its catalog id asks /item?shop=<gid>&url=<card link> (get_product) on every open (Shopify:
 // no caching) and shows the photos, the options and an "Open at <shop>" button to the card's own link; an off-Shopify

@@ -10,7 +10,7 @@
    index.js alPro checks it (giftPro below) before any Shopify call. */
 
 import { appAsset } from "./admin-app.js";
-import { SPEND_SERVICES, SPEND_CFG_KEY, SPEND_FIXED_MAX, SPEND_FIT_KEYS, SPEND_FIT_LINES, spendCfgClean, spendSummary, spendPeriods, spendFit } from "./spend.js";   /* v193; v216: fit to a bill */
+import { SPEND_SERVICES, SPEND_CFG_KEY, SPEND_FIXED_MAX, SPEND_FIT_KEYS, SPEND_FIT_LINES, spendCfgClean, spendSummary, spendPeriods, spendFit } from "./spend.js";   /* v193; v218: fit to a bill */
 const COOKIE = "prowl_admin";
 const SESSION_S = 43200;                         // 12 hours
 const BODY_MAX = 8192;
@@ -1199,7 +1199,7 @@ async function apiSpendCfg(c) {
   return jres(Object.assign({ message: "Saved. The estimate uses these prices now." }, await spendView(c)));
 }
 
-/* v216: Fit prices to a bill (Matt's Meta bill for October: cached request tokens $0.40, response tokens $2.23, uncached
+/* v218: Fit prices to a bill (Matt's Meta bill for October: cached request tokens $0.40, response tokens $2.23, uncached
    request tokens $4.10, search grounding requests $2.05). { key, from, to, bill: { input, cached, output, searches } }:
    the bill's dollars over Prowl's own counts for those days (spend.js spendFit) become the service's per-unit prices in
    spend:cfg; the answer carries the counts used and a warning when Prowl's counting starts after the bill's first day. */

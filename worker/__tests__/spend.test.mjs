@@ -134,7 +134,7 @@ test("rows older than SPEND_KEEP_DAYS are pruned once a day, when a row is added
 
 test("prices: list prices until saved; empty clears one, a bad number is refused; monthly bills cleaned and capped", () => {
   const d = SP.spendDefaults();
-  assert.deepEqual(d.prices.muse, { tin: 0.98, tout: 4.25, ws: null }, "v195: fitted to Matt's Meta bill; v216: searches are billed, the price comes from the bill");
+  assert.deepEqual(d.prices.muse, { tin: 0.98, tout: 4.25, ws: null }, "v195: fitted to Matt's Meta bill; v218: searches are billed, the price comes from the bill");
   assert.match(SP.SPEND_SERVICES.find((s) => s.key === "muse").srcNote, /billed.*fit from your Meta bill/);
   assert.doesNotMatch(SP.SPEND_SERVICES.find((s) => s.key === "muse").srcNote, /no separate charge/);
   assert.deepEqual(d.prices.g_text, { call: 40 });
@@ -181,10 +181,10 @@ test("the estimate: per 1,000 calls and per 1M tokens; a used service without a 
 });
 
 test("v195: the Muse defaults price Matt's Oct 24-30 Meta week at his bill's $1.65, day by day within 3 cents", () => {
-  /* v216: the search price is now left for the bill (null); this week was fitted with searches at no charge */
+  /* v218: the search price is now left for the bill (null); this week was fitted with searches at no charge */
   const S = SP.SPEND_SERVICES.find((s) => s.key === "muse"), p = Object.assign({}, SP.spendDefaults().prices.muse, { ws: 0 });
-  /* v216 review fix: the searches wait for a price, the token dollars stay */
-  assert.equal(SP.spendCost(S, { n: 1, ti: 1e6, to: 1e6, ws: 3 }, SP.spendDefaults().prices.muse), 0.98 + 4.25, "v216 review fix: a day with searches keeps its token cost");
+  /* v218 review fix: the searches wait for a price, the token dollars stay */
+  assert.equal(SP.spendCost(S, { n: 1, ti: 1e6, to: 1e6, ws: 3 }, SP.spendDefaults().prices.muse), 0.98 + 4.25, "v218 review fix: a day with searches keeps its token cost");
   assert.deepEqual(SP.spendMissing(S, { n: 1, ti: 1e6, to: 1e6, ws: 3 }, SP.spendDefaults().prices.muse), ["ws"], "and names the searches as not priced yet");
   assert.equal(SP.spendCost(S, { n: 1, ti: 1e6, to: 0, ws: 0 }, SP.spendDefaults().prices.muse), 0.98, "a day without searches still prices");
   /* his export: date, input tokens, output tokens, web searches, spend */
@@ -222,7 +222,7 @@ test("the summary adds each service per period and the monthly bills to the mont
   assert.equal(s.services.length, SP.SPEND_SERVICES.length, "every service has a row, used or not");
 });
 
-test("review fix (v216): a part without a price drops only that part; Muse's tokens stay in the totals, its searches are not priced yet", () => {
+test("review fix (v218): a part without a price drops only that part; Muse's tokens stay in the totals, its searches are not priced yet", () => {
   const today = SP.dayOf(NOW);
   const rows = [{ day: today, key: "muse", n: 10, ti: 1e6, to: 1e5, ws: 20 }, { day: today, key: "g_text", n: 100 }];
   const s = SP.spendSummary(rows, SP.spendDefaults(), NOW), m = s.services.find((x) => x.key === "muse");

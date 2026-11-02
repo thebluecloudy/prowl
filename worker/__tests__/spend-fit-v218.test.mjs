@@ -1,9 +1,9 @@
-/* v216: the admin's Spending tab fits per-unit prices to a bill. Matt's Meta (Muse Spark) bill for Oct 1-31 2026: cached
+/* v218: the admin's Spending tab fits per-unit prices to a bill. Matt's Meta (Muse Spark) bill for Oct 1-31 2026: cached
    request tokens $0.40, response tokens $2.23, uncached request tokens $4.10, search grounding requests $2.05, total
    $8.78. Each line over Prowl's own counts for the same days becomes Muse's price in spend:cfg (cached folded into input:
    Prowl does not count cached tokens apart); counting that begins after the bill's first day is warned about. Muse's web
    searches are billed, so their default price is empty ("fit from your Meta bill"). Owner-only, like the rest of admin.
-   Run: node --test worker/__tests__/spend-fit-v216.test.mjs */
+   Run: node --test worker/__tests__/spend-fit-v218.test.mjs */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
@@ -117,7 +117,7 @@ function answer(cfgIn, rows, extra) {
 }
 test("the Fit prices to a bill form: last month by default, Muse first, sends the bill's lines, shows the counts and the warning", async (t) => {
   const sent = [];
-  const dom = new JSDOM(adminPage("n0nce", "v216"), { url: "https://prowl.example.workers.dev/admin#spending", runScripts: "dangerously", pretendToBeVisual: true,
+  const dom = new JSDOM(adminPage("n0nce", "v218"), { url: "https://prowl.example.workers.dev/admin#spending", runScripts: "dangerously", pretendToBeVisual: true,
     beforeParse(w) {
       w.fetch = async (path, o) => {
         const p = String(path), body = o && o.body ? JSON.parse(o.body) : undefined;

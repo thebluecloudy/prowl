@@ -362,8 +362,8 @@ export function shopcatItem(p, env) {
   if (sh(v)) out.secondhand = true;
   if (ext(v)) out.offShopify = true;
   if (SHOPCAT_GID_RE.test(String(p.id || ""))) {
-    out.pid = String(p.id);   /* v216: the popup's get_product asks for it */
-    if (SHOPCAT_VID_RE.test(String(v.id || ""))) out.vid = String(v.id);   /* v216 review fix: and the card's own variant, so the popup shows that one */
+    out.pid = String(p.id);   /* v218: the popup's get_product asks for it */
+    if (SHOPCAT_VID_RE.test(String(v.id || ""))) out.vid = String(v.id);   /* v218 review fix: and the card's own variant, so the popup shows that one */
   }
   /* review fix: the same listing from two searches differs in _gsid (and shclid / shcgid), so it is matched by product and
      variant, or by the link without its query, never by the full URL; the URL itself is returned as Shopify gave it */
@@ -397,7 +397,7 @@ async function search(env, D, term, profile, secondhand, deadline, catalogId) {
   if (r.err) return r;
   return { products: Array.isArray(r.sc.products) ? r.sc.products : [], mode: r.mode };
 }
-/* v216: one JSON-RPC tools/call to the Global Catalog (search_catalog or get_product), with the token or keyless as above:
+/* v218: one JSON-RPC tools/call to the Global Catalog (search_catalog or get_product), with the token or keyless as above:
    { sc: result.structuredContent, mode } or { err, status, wait?, limit?, mode }. o.note false: not the Diagnose card's
    "Last search" (a popup's get_product is not a search). */
 async function catalogCall(env, D, body, deadline, o) {
@@ -487,7 +487,7 @@ export async function shopLive(request, env, url, origin, D, nowMs) {
   return out(body, 200);
 }
 
-/* ---------- v216: a Shopify find's listing popup (GET /item?shop=<gid>&url=<the card's link>) ----------
+/* ---------- v218: a Shopify find's listing popup (GET /item?shop=<gid>&url=<the card's link>) ----------
    Matt (2026-11-01): "when i open a shopify shop, is it possible to do the pop up like the others? it currently goes
    directly to the shop." The page sends the product's Global Catalog id (pid, from search_catalog) and the card's own link;
    one JSON-RPC tools/call get_product (shopify.dev/docs/agents/catalog/global-catalog: catalog.id is

@@ -21,10 +21,15 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
- *   v216: 2026-11-01. A Shopify find opens the listing popup (Matt): GET /item?shop=<gid>&url=<card link> calls the
+ *   v218: 2026-11-01. A Shopify find opens the listing popup (Matt): GET /item?shop=<gid>&url=<card link> calls the
  *         Global Catalog's get_product (shopcat.js shopItem): photos (12), description, options, the card's store, its
  *         price and condition; no-store, never the item cache (Shopify: no caching). The admin's Spending tab fits
  *         per-unit prices to a bill (POST /admin/api/spend/fit); Muse web searches are billed (price left for the fit).
+ *   v217: 2026-11-01. The briefing retries site visits every 15 minutes (with a fresh Shopify token) when they failed
+ *         earlier that day, so they show the same day read_reports is approved (Matt approved it 2026-11-01).
+ *   v216: 2026-11-01. Near me and Road trip count a shop for every kind its name or Google type says (trip.js kindsOf):
+ *         Finders Keepers Vintage & Vinyl (Plymouth, MI) was typed Records only, so with Vintage on and Records off it
+ *         was dropped. Near cache key v=13, trip key v=12.
  *   v215: 2026-11-01. The morning briefing adds what people do on the site (Matt: they visit but buy on Etsy): Shopify's
  *        visit counts through shopifyqlQuery (read_reports): visits and cart adds this week, the pages people land on (guides,
  *        products, Prowl), where they came from; the AI's second note is about the site. KV key shopbrief2:<day>.
@@ -771,7 +776,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v216";
+const WORKER_VERSION = "v218";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4581,13 +4586,13 @@ async function shopToken(env, renew) {
   return SHOP_TOK.t;
 }
 /* v212: one Admin GraphQL call with the read_orders token, for the admin's morning briefing; null when no token */
-async function shopGql(env, query, variables) {
+async function shopGql(env, query, variables, renew) {
   if (!shopCanToken(env)) return null;
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 15000);
   try {
     const send = (t) => fetch("https://" + shopHost(env) + "/admin/api/2025-10/graphql.json", { method: "POST", signal: ctl.signal,
       headers: { "X-Shopify-Access-Token": t, "Content-Type": "application/json" }, body: JSON.stringify({ query: query, variables: variables || {} }) });
-    let tok = await shopToken(env, false);
+    let tok = await shopToken(env, !!renew);   /* v217: renew = a fresh token, to pick up newly approved permissions */
     if (!tok) return null;
     let r = await send(tok);
     if (r.status === 401 && env.SHOPIFY_ORDERS_CLIENT_ID) { tok = await shopToken(env, true); if (tok) r = await send(tok); }
@@ -7903,7 +7908,7 @@ async function newsMember(request, env) {
   return sub;
 }
 /* v210: what shopcat.js needs from here */
-function shopDeps() { return { vCount, ipKey, json, sgwExact, itemDesc }; }   /* v216: itemDesc for the popup */
+function shopDeps() { return { vCount, ipKey, json, sgwExact, itemDesc }; }   /* v218: itemDesc for the popup */
 function shopcatTestRun(env, term, origin) { return shopcatTest(env, shopDeps(), term, origin); }   /* v211 */
 function newsDeps() {
   return { json, readJson, kvGet, kvPut, ipKey, ipNet, vCount, isOwner, alSend, alEsc, alShell, alAddr, alMerge, alMailSub, alLinkHash, alUnsubUrl, alUpgradeUrl, scrubPII,
@@ -8474,7 +8479,7 @@ async function nearRoute(request, env, url, origin) {
   if (lat == null || lng == null) return json({ error: "lat and lng required" }, 400, origin);
   if (!gKey(env)) return json({ error: "not set up", empty: true, places: [] }, 503, origin);
   const cats = catsParse(url.searchParams.get("cats"));
-  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=12";   /* v151: town; v153: the closest asked too; v166: the closest kept */
+  const key = url.origin + "/near?c=" + tripCell(lat, lng) + "&cats=" + cats.join(",") + "&v=13";   /* v151: town; v153: the closest asked too; v166: the closest kept */
   const hit = await PCACHE.match(key);
   if (hit) return new Response(hit.body, { status: 200, headers: Object.assign({}, cors(origin), { "Content-Type": "application/json; charset=utf-8", "X-Prowl-Cache": "hit" }) });
   if (!(await vCount("near:" + ipKey(request.headers.get("CF-Connecting-IP")), NEAR_PER_IP))) return json({ error: "slow down" }, 429, origin);
@@ -8720,7 +8725,7 @@ async function reviewsRoute(request, env, url, origin) {
   return res;
 }
 /* v155: one key for a built trip, so keeping it for the group finds the build the page is showing */
-function tripKey(o, lat, lng, to, day, cats, via) { return o + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(String(to).toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + (via && via.length ? "&via=" + encodeURIComponent(via.join("|").toLowerCase()) : "") + "&v=11"; }   /* v165: v163 answers missed their stops */   /* v137 to v154: the answer changed */
+function tripKey(o, lat, lng, to, day, cats, via) { return o + "/trip?c=" + tripCell(lat, lng) + "&to=" + encodeURIComponent(String(to).toLowerCase()) + "&day=" + day + "&cats=" + cats.join(",") + (via && via.length ? "&via=" + encodeURIComponent(via.join("|").toLowerCase()) : "") + "&v=12"; }   /* v216: shops in every kind they name; v165: v163 answers missed their stops */   /* v137 to v154: the answer changed */
 /* a place's photo: Google's media endpoint needs the key, so the page asks here */
 async function ppRoute(request, env, url) {
   const n = String(url.searchParams.get("n") || "");
@@ -9226,7 +9231,7 @@ async function handleFetch(request, env, ctx) {
     if (url.pathname === "/where") {
       return whereToLook(env, url, origin, request);
     }
-    if (url.pathname === "/item" && url.searchParams.has("shop")) return shopItem(request, env, url, origin, shopDeps());   /* v216: a Shopify find (get_product), never cached */
+    if (url.pathname === "/item" && url.searchParams.has("shop")) return shopItem(request, env, url, origin, shopDeps());   /* v218: a Shopify find (get_product), never cached */
     if (url.pathname === "/item") {   /* v81: listing popup */
       return itemRoute(env, url, origin, request);
     }

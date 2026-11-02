@@ -308,9 +308,9 @@ test("the agent profile: catalog search and lookup, and the Global Catalog exten
 
 test("index.js: the routes, the deps, the version; spend.js counts the catalog calls as shopcat at no fee", () => {
   assert.ok(Number((/const WORKER_VERSION = "v(\d+)";/.exec(INDEX) || [])[1]) >= 210, "v210 or later");
-  assert.match(INDEX, /import \{ shopLive, (shopItem, )?shopcatProfile, SHOPCAT_PROFILE_PATH[^}]*\} from "\.\/shopcat\.js";/);   /* v216: shopItem */
+  assert.match(INDEX, /import \{ shopLive, (shopItem, )?shopcatProfile, SHOPCAT_PROFILE_PATH[^}]*\} from "\.\/shopcat\.js";/);   /* v218: shopItem */
   assert.match(INDEX, /if \(url\.pathname === "\/shop-live"\) return shopLive\(request, env, url, origin, shopDeps\(\)\);/);
-  assert.match(INDEX, /function shopDeps\(\) \{ return \{ vCount, ipKey, json, sgwExact(, itemDesc)? \}; \}/);   /* v216: itemDesc for the popup */
+  assert.match(INDEX, /function shopDeps\(\) \{ return \{ vCount, ipKey, json, sgwExact(, itemDesc)? \}; \}/);   /* v218: itemDesc for the popup */
   assert.ok(INDEX.indexOf('url.pathname === "/shop-live"') > INDEX.indexOf('return json({ error: "GET only" }, 405, origin);'), "GET only");
   const svc = SP.SPEND_SERVICES.find((x) => x.key === "shopcat");
   assert.ok(svc);

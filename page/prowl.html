@@ -7743,7 +7743,7 @@ function shpPrice(p,c){
   s=s.replace(/\B(?=(\d{3})+(?!\d))/g,',');
   return !c||c==='USD'?'$'+s:s+' '+c;
 }
-/* v8.44 (worker v216, Matt: "when i open a shopify shop, is it possible to do the pop up like the others?"): a Global
+/* v8.44 (worker v218, Matt: "when i open a shopify shop, is it possible to do the pop up like the others?"): a Global
    Catalog product id, as search_catalog gives it */
 var SHP_GID=/^gid:\/\/shopify\/(p\/[A-Za-z0-9]{6,40}|ProductVariant\/\d{1,20})$/,SHP_VID=/^gid:\/\/shopify\/ProductVariant\/\d{1,20}$/;
 function shpClean(a){
