@@ -88,3 +88,19 @@ test("v215: siteVisits throws an access error that shopBrief turns into needs re
     gql: async (e, q) => q.includes("shopifyqlQuery") ? { errors: [{ message: "Access denied, read_reports" }] } : { data: { orders: { pageInfo: { hasNextPage: false }, nodes: [] } } } }, NOW, false);
   assert.equal(b.siteErr, "needs read_reports"); assert.equal(b.stats.site, null);
 });
+
+test("v217: a failed site part is retried after 15 minutes with a fresh token and saved", async () => {
+  const kv = new Map(); let renewed = 0, allow = false;
+  const deps = { kvGet: async (e, k) => kv.get(k) || null, kvPut: async (e, k, v) => kv.set(k, v),
+    gql: async (e, q, v, renew) => {
+      if (q.includes("shopifyqlQuery")) { if (renew) renewed++; return allow ? { data: { shopifyqlQuery: { parseErrors: [], tableData: { rows: [] } } } } : { errors: [{ message: "Access denied, read_reports" }] }; }
+      return { data: { orders: { pageInfo: { hasNextPage: false }, nodes: [] } } }; } };
+  const a = await shopBrief({}, deps, NOW, false);
+  assert.equal(a.siteErr, "needs read_reports");
+  allow = true;
+  let b = await shopBrief({}, deps, NOW + 5 * 60000, false);
+  assert.equal(b.siteErr, "needs read_reports", "not retried before 15 minutes");
+  b = await shopBrief({}, deps, NOW + 16 * 60000, false);
+  assert.equal(b.siteErr, ""); assert.ok(b.stats.site); assert.equal(renewed, 1);
+  assert.equal([...kv.values()][0].siteErr, "");
+});

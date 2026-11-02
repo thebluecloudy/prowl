@@ -21,6 +21,8 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v217: 2026-11-01. The briefing retries site visits every 15 minutes (with a fresh Shopify token) when they failed
+ *         earlier that day, so they show the same day read_reports is approved (Matt approved it 2026-11-01).
  *   v216: 2026-11-01. Near me and Road trip count a shop for every kind its name or Google type says (trip.js kindsOf):
  *         Finders Keepers Vintage & Vinyl (Plymouth, MI) was typed Records only, so with Vintage on and Records off it
  *         was dropped. Near cache key v=13, trip key v=12.
@@ -770,7 +772,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v216";
+const WORKER_VERSION = "v217";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -4580,13 +4582,13 @@ async function shopToken(env, renew) {
   return SHOP_TOK.t;
 }
 /* v212: one Admin GraphQL call with the read_orders token, for the admin's morning briefing; null when no token */
-async function shopGql(env, query, variables) {
+async function shopGql(env, query, variables, renew) {
   if (!shopCanToken(env)) return null;
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 15000);
   try {
     const send = (t) => fetch("https://" + shopHost(env) + "/admin/api/2025-10/graphql.json", { method: "POST", signal: ctl.signal,
       headers: { "X-Shopify-Access-Token": t, "Content-Type": "application/json" }, body: JSON.stringify({ query: query, variables: variables || {} }) });
-    let tok = await shopToken(env, false);
+    let tok = await shopToken(env, !!renew);   /* v217: renew = a fresh token, to pick up newly approved permissions */
     if (!tok) return null;
     let r = await send(tok);
     if (r.status === 401 && env.SHOPIFY_ORDERS_CLIENT_ID) { tok = await shopToken(env, true); if (tok) r = await send(tok); }
