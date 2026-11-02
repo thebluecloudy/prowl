@@ -134,6 +134,21 @@ export function fbMatch(term, title) {
   const run = hw.slice(0, -1).join("") + fbStem(hw[hw.length - 1]);
   return hw.length > 1 && run.length >= 6 && tw.join("").indexOf(run) !== -1;
 }
+/* v219: the hunt words a title lacks (as fbMatch reads them), at most 4 of 30 letters; [] when it matches */
+export function fbMissing(term, title) {
+  if (fbMatch(term, title)) return [];
+  const tw = String(title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean);
+  const hw = String(term || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(w => w && !FB_STOP[w]);
+  const out = [];
+  for (const w of hw) { const st = fbStem(w); if (!tw.some(t => t.indexOf(st) === 0) && out.indexOf(w) === -1 && out.length < 4) out.push(w.slice(0, 30)); }
+  return out;
+}
+/* v219 (Matt, 2026-11-01, of a strip that said "Facebook had 16: 11 too far, 4 without all your words": "When Facebook
+   says this why not show them?"): up to FB_NEAR_MAX of the listings a search set aside for distance or a missing word
+   are kept beside the finds (rec.near), each with why "far" (and its miles) or "words" (and the missing words). Shown
+   only on request, as "Close but not a match"; never an alert, an email, a Pounce or a count. Sold, pending, hidden and
+   unusable ones are never kept. */
+export const FB_NEAR_MAX = 12;
 /* miles between two points (haversine), rounded */
 export function fbMiles(lat1, lng1, lat2, lng2) {
   const r = Math.PI / 180, a = Math.sin((lat2 - lat1) * r / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin((lng2 - lng1) * r / 2) ** 2;
@@ -144,36 +159,57 @@ export function fbMiles(lat1, lng1, lat2, lng2) {
    shipping ones marked ships. Without ctx, v200's behaviour.
    stat (v204, optional): an object counted into: far = pickup listings dropped for distance (or no point), words =
    listings dropped for a missing hunt word, so a hunt with nothing can say why. */
-export function fbClean(raw, day, ctx, stat) {
+export function fbClean(raw, day, ctx, stat, aside) {
   if (stat) { stat.far = stat.far | 0; stat.words = stat.words | 0; }
-  const out = [], seen = Object.create(null);
+  const out = [], seen = Object.create(null), near = Array.isArray(aside) ? aside : null;   /* v219: aside, the set-aside ones */
   for (const x of Array.isArray(raw) ? raw : []) {
     if (out.length >= FB_ITEMS_MAX) break;
     if (!x || typeof x !== "object" || x.is_sold === true || x.is_pending === true || x.is_hidden === true) continue;
     const id = String(x.id == null ? "" : x.id).trim(), title = fbText(x.marketplace_listing_title || x.custom_title, 160).replace(EMAILISH, "[email]");
     if (!/^\d{5,20}$/.test(id) || seen[id] || !title) continue;
     seen[id] = 1;
-    if (ctx && ctx.term && !fbMatch(ctx.term, title)) { if (stat) stat.words++; continue; }
+    if (ctx && ctx.term && !fbMatch(ctx.term, title)) {
+      if (stat) stat.words++;
+      if (near && near.length < FB_NEAR_MAX) { const it = fbItem(x, id, title, day, ctx, fbAt(x, ctx)); it.why = "words"; it.missing = fbMissing(ctx.term, title); near.push(it); }
+      continue;
+    }
     let miles = null;
     if (ctx && !ctx.ship && Number.isFinite(Number(ctx.lat))) {   /* review fix: shipping finds are shared by everyone, so no distance from one member's ZIP */
-      const loc = x.location && typeof x.location === "object" ? x.location : {}, la = Number(loc.latitude), lo = Number(loc.longitude);
-      miles = Number.isFinite(la) && Number.isFinite(lo) && la !== 0 && Math.abs(la) <= 90 && Math.abs(lo) <= 180 ? fbMiles(Number(ctx.lat), Number(ctx.lng), la, lo) : null;
-      if (Number(ctx.mi) !== FB_USA_MI && (miles == null || miles > fbMi(ctx.mi) + 5)) { if (stat) stat.far++; continue; }   /* +5: the area is a 10 km cell's centre. v209 (Matt: "I don't want to see just shipped. I will reach out to them to see if they would ship."): All USA keeps every listing Facebook's widest search gives, pickup too, with its miles when it has a point */
+      miles = fbAt(x, ctx);
+      if (Number(ctx.mi) !== FB_USA_MI && (miles == null || miles > fbMi(ctx.mi) + 5)) {
+        if (stat) stat.far++;
+        if (near && near.length < FB_NEAR_MAX) { const it = fbItem(x, id, title, day, ctx, miles); it.why = "far"; near.push(it); }   /* v219: miles kept when it has a point */
+        continue;
+      }   /* +5: the area is a 10 km cell's centre. v209 (Matt: "I don't want to see just shipped. I will reach out to them to see if they would ship."): All USA keeps every listing Facebook's widest search gives, pickup too, with its miles when it has a point */
     }
-    const pr = fbPrice(x), img = fbPhoto(x);
-    const rg = x.location && typeof x.location === "object" && x.location.reverse_geocode && typeof x.location.reverse_geocode === "object" ? x.location.reverse_geocode : {};
-    const town = [fbText(rg.city, 40), fbText(rg.state, 20)].filter(Boolean).join(", ").replace(EMAILISH, "").replace(/\d[\d\s().-]{4,}\d/g, "").trim();
-    const it = { id: id, title: title, price: pr, url: "https://www.facebook.com/marketplace/item/" + id + "/", image: img, location: town, found: day };
-    if (miles != null) it.miles = miles;
-    if (ctx && ctx.ship) it.ships = true;
-    out.push(it);
+    out.push(fbItem(x, id, title, day, ctx, miles));
   }
   return out;
+}
+/* v219: a listing's miles from the search's point (null without a usable point; never for the shared ships search) */
+function fbAt(x, ctx) {
+  if (!ctx || ctx.ship || !Number.isFinite(Number(ctx.lat))) return null;
+  const loc = x.location && typeof x.location === "object" ? x.location : {}, la = Number(loc.latitude), lo = Number(loc.longitude);
+  return Number.isFinite(la) && Number.isFinite(lo) && la !== 0 && Math.abs(la) <= 90 && Math.abs(lo) <= 180 ? fbMiles(Number(ctx.lat), Number(ctx.lng), la, lo) : null;
+}
+/* the fields kept of one listing (v219: shared by the finds and the set-aside ones) */
+function fbItem(x, id, title, day, ctx, miles) {
+  const pr = fbPrice(x), img = fbPhoto(x);
+  const rg = x.location && typeof x.location === "object" && x.location.reverse_geocode && typeof x.location.reverse_geocode === "object" ? x.location.reverse_geocode : {};
+  const town = [fbText(rg.city, 40), fbText(rg.state, 20)].filter(Boolean).join(", ").replace(EMAILISH, "").replace(/\d[\d\s().-]{4,}\d/g, "").trim();
+  const it = { id: id, title: title, price: pr, url: "https://www.facebook.com/marketplace/item/" + id + "/", image: img, location: town, found: day };
+  if (miles != null) it.miles = miles;
+  if (ctx && ctx.ship) it.ships = true;
+  return it;
+}
+/* v219: a kept set-aside listing as it may be shown (an old or odd one is dropped, never trusted as a find) */
+function fbNearOk(x) {
+  return !!(x && typeof x === "object" && x.id && (x.why === "far" || x.why === "words") && /^https:\/\/www\.facebook\.com\/marketplace\/item\/\d{5,20}\/$/.test(String(x.url || "")));
 }
 /* the week so far (as v94's fbIngest): today's finds first, then the earlier ones still inside FB_DAYS, one per listing.
    stat (v204): the latest search's counts ({ raw, far, words, at }, fbStat), kept with the record; without one the old
    record's stays. */
-export function fbMerge(old, fresh, day, updated, stat) {
+export function fbMerge(old, fresh, day, updated, stat, near) {
   const cut = new Date(Date.parse(day) - FB_DAYS * 86400000).toISOString().slice(0, 10), have = Object.create(null), items = [];
   for (const x of (Array.isArray(fresh) ? fresh : []).concat(old && Array.isArray(old.items) ? old.items : [])) {
     if (!x || !x.id || have[x.id] || !(String(x.found || "") > cut)) continue;
@@ -184,6 +220,15 @@ export function fbMerge(old, fresh, day, updated, stat) {
   const rec = { updated: updated || new Date().toISOString(), day: day, items: items };
   const st = fbStat(stat) || fbStat(old && old.stat);
   if (st) rec.stat = st;
+  /* v219: the set-aside ones, merged the same way (today's first, the week's window, one per listing, none that is now a
+     find), at most FB_NEAR_MAX; a record from before v219 has none and gets them from its next search */
+  const nr = [];
+  for (const x of (Array.isArray(near) ? near : []).concat(old && Array.isArray(old.near) ? old.near : [])) {
+    if (!fbNearOk(x) || have[x.id] || !(String(x.found || "") > cut)) continue;
+    have[x.id] = 1; nr.push(x);
+  }
+  nr.sort((a, b) => (a.found < b.found ? 1 : a.found > b.found ? -1 : 0));
+  if (nr.length) rec.near = nr.slice(0, FB_NEAR_MAX);
   return rec;
 }
 /* v204: a search's counts as kept: Apify's listings (raw), dropped for distance (far) and for a missing word (words), when */
@@ -215,8 +260,8 @@ export async function fbRun(env, term, cell, n, f, opt) {
     let j = null; try { j = await r.json(); } catch (e) {}
     if (!r.ok || !Array.isArray(j)) return { ok: false, status: r.status, error: "apify " + r.status + (j && j.error && j.error.type ? " " + fbText(j.error.type, 40) : ""), cost: fbEstimate(n) };
     const stat = { raw: j.length, far: 0, words: 0, at: new Date().toISOString() };   /* v204: what the search found and set aside */
-    const items = fbClean(j, stat.at.slice(0, 10), opt ? { term: term, lat: cell.lat, lng: cell.lng, mi: opt.mi, ship: !!opt.ship } : null, stat);
-    return { ok: true, raw: j.length, items: items, stat: stat, cost: fbCost(j), fields: fbShape(j[0]) };   /* v202: fields */
+    const near = [], items = fbClean(j, stat.at.slice(0, 10), opt ? { term: term, lat: cell.lat, lng: cell.lng, mi: opt.mi, ship: !!opt.ship } : null, stat, near);
+    return { ok: true, raw: j.length, items: items, near: near, stat: stat, cost: fbCost(j), fields: fbShape(j[0]) };   /* v202: fields; v219: near */
   } catch (e) { return { ok: false, error: e && e.name === "AbortError" ? "apify timed out" : "apify unreachable", cost: fbEstimate(n) }; }
   finally { clearTimeout(timer); }
 }
@@ -227,5 +272,10 @@ export function fbJoin(pick, ship) {
   const near = (pick && Array.isArray(pick.items) ? pick.items.slice() : []).sort((a, b) => (a.miles == null ? 1e9 : a.miles) - (b.miles == null ? 1e9 : b.miles));
   for (const x of near.concat(ship && Array.isArray(ship.items) ? ship.items : [])) { if (!x || !x.id || have[x.id]) continue; have[x.id] = 1; out.push(x); }
   const up = [pick && pick.updated, ship && ship.updated].filter(Boolean).sort().pop() || "";
-  return { items: out.slice(0, FB_ITEMS_MAX), updated: String(up) };
+  /* v219: the set-aside ones of both (nearest first, then the ones that ship), none that is a find, at most FB_NEAR_MAX */
+  const nr = [], nearOf = r => (r && Array.isArray(r.near) ? r.near : []).filter(fbNearOk);
+  for (const x of nearOf(pick).sort((a, b) => (a.miles == null ? 1e9 : a.miles) - (b.miles == null ? 1e9 : b.miles)).concat(nearOf(ship))) {
+    if (have[x.id] || nr.length >= FB_NEAR_MAX) continue; have[x.id] = 1; nr.push(x);
+  }
+  return { items: out.slice(0, FB_ITEMS_MAX), near: nr, updated: String(up) };
 }
