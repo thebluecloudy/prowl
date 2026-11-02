@@ -10,7 +10,7 @@
    index.js alPro checks it (giftPro below) before any Shopify call. */
 
 import { appAsset } from "./admin-app.js";
-import { SPEND_SERVICES, SPEND_CFG_KEY, SPEND_FIXED_MAX, spendCfgClean, spendSummary, spendPeriods } from "./spend.js";   /* v193 */
+import { SPEND_SERVICES, SPEND_CFG_KEY, SPEND_FIXED_MAX, SPEND_FIT_KEYS, SPEND_FIT_LINES, spendCfgClean, spendSummary, spendPeriods, spendFit } from "./spend.js";   /* v193; v218: fit to a bill */
 const COOKIE = "prowl_admin";
 const SESSION_S = 43200;                         // 12 hours
 const BODY_MAX = 8192;
@@ -1185,7 +1185,7 @@ async function spendView(c) {
   let rows = null;
   try { const j = await c.H.capsCall("spend", "sget", { from: per.last.from < per.d7.from ? per.last.from : per.d7.from, to: per.today.to }); rows = j && Array.isArray(j.rows) ? j.rows : null; } catch (e) {}
   const cfg = await spendCfg(c), sum = spendSummary(rows || [], cfg, c.nowMs);
-  return Object.assign(sum, { ok: rows !== null, cfg: cfg, fixedMax: SPEND_FIXED_MAX,
+  return Object.assign(sum, { ok: rows !== null, cfg: cfg, fixedMax: SPEND_FIXED_MAX, fitKeys: SPEND_FIT_KEYS, fitLines: SPEND_FIT_LINES.map(l => ({ line: l[0], f: l[1], label: l[2] })),
     meta: SPEND_SERVICES.map(s => ({ key: s.key, name: s.name, uses: s.uses, list: s.price, free: s.free || 0, src: s.src, srcNote: s.srcNote, bill: s.bill })) });
 }
 async function apiSpend(c) { return jres(await spendView(c)); }
@@ -1197,6 +1197,32 @@ async function apiSpendCfg(c) {
   await H.kvPut(c.env, SPEND_CFG_KEY, cfg);
   await audit(c, { action: "spend-prices", ok: true, note: cfg.fixed.length + " monthly bills" });
   return jres(Object.assign({ message: "Saved. The estimate uses these prices now." }, await spendView(c)));
+}
+
+/* v218: Fit prices to a bill (Matt's Meta bill for October: cached request tokens $0.40, response tokens $2.23, uncached
+   request tokens $4.10, search grounding requests $2.05). { key, from, to, bill: { input, cached, output, searches } }:
+   the bill's dollars over Prowl's own counts for those days (spend.js spendFit) become the service's per-unit prices in
+   spend:cfg; the answer carries the counts used and a warning when Prowl's counting starts after the bill's first day. */
+async function apiSpendFit(c) {
+  const H = c.H, b = c.body || {}, key = String(b.key || ""), from = String(b.from || ""), to = String(b.to || "");
+  const pre = spendFit([], key, from, to, b.bill);
+  if (pre.error) return jerr(400, pre.error);
+  if (!(await H.vCount("admspend", 100))) return jerr(429, "That is a lot of price changes today. Try again tomorrow.");
+  let rows = null;
+  try { const j = await H.capsCall("spend", "sget", { from: from, to: to }); rows = j && Array.isArray(j.rows) ? j.rows : null; } catch (e) {}
+  if (!rows) return jerr(503, "The call counts could not be loaded right now, so nothing was fitted. Try again in a minute.");
+  const fit = spendFit(rows, key, from, to, b.bill);
+  const fitted = Object.keys(fit.prices || {});
+  if (!fitted.length) return jres(Object.assign({ fit: fit, message: (fit.warn || "Nothing to fit: Prowl counted none of those units in that range.") + " Prices not changed." }, await spendView(c)));
+  const cfg = await spendCfg(c), prices = Object.assign({}, cfg.prices);
+  prices[key] = Object.assign({}, prices[key], fit.prices);
+  const clean = spendCfgClean({ prices: prices, fixed: cfg.fixed });
+  if (clean.errors.length) return jerr(400, "Not saved: the fitted " + clean.errors.join(", ") + " is out of range.");
+  await H.kvPut(c.env, SPEND_CFG_KEY, clean.cfg);
+  await audit(c, { action: "spend-fit", ok: true, note: key + " " + from + " to " + to + ": " + fitted.join(", ") });
+  const svc = SPEND_SERVICES.find(s => s.key === key), U = { tin: "per 1M input tokens", tout: "per 1M output tokens", ws: "per 1,000 searches" };
+  const said = fitted.map(f => "$" + fit.prices[f] + " " + U[f]).join(", ");
+  return jres(Object.assign({ fit: fit, message: "Fitted " + svc.name.split(":")[0] + " to the bill for " + from + " to " + to + " and saved: " + said + "." + (fit.warn ? " " + fit.warn : "") }, await spendView(c)));
 }
 
 /* ---------- v208: Feedback (what members sent from Send feedback) ----------
@@ -1323,7 +1349,7 @@ async function apiNewsNew(c) {
 
 const GETS = { overview: apiOverview, members: apiMembers, member: apiMember, errors: apiErrors, searches: apiSearches, usage: apiUsage, gifts: apiGifts, affiliates: apiAffiliates, spend: apiSpend,
   feedback: apiFeedback, news: apiNews, "news/preview": apiNewsPreview, shopcat: apiShopcat, shopbrief: apiShopBrief };   /* v212: shopbrief */   /* v208; v211: shopcat */
-const POSTS = { "spend/cfg": apiSpendCfg, find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, salescheck: apiSalesCheck, fbtest: apiFbTest, gift: apiGiftAdd, "gift/remove": apiGiftRemove, affiliate: apiAffiliateSet, "affiliate/ids": apiAffiliateIds,
+const POSTS = { "spend/cfg": apiSpendCfg, "spend/fit": apiSpendFit, find: apiFind, "member/action": apiAction, diagnose: apiDiagnose, healthcheck: apiHealth, salescheck: apiSalesCheck, fbtest: apiFbTest, gift: apiGiftAdd, "gift/remove": apiGiftRemove, affiliate: apiAffiliateSet, "affiliate/ids": apiAffiliateIds,
   "feedback/delete": apiFeedbackDelete, "feedback/reply": apiFeedbackReply, "news/draft": apiNewsDraft, "news/test": apiNewsTest, "news/send": apiNewsSend, "news/stop": apiNewsStop, "news/resume": apiNewsResume, "news/new": apiNewsNew, "shopcat/test": apiShopcatTest };   /* v208; v211: shopcat/test */
 
 /* ---------- sign in / out ---------- */

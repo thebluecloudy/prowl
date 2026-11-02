@@ -297,6 +297,7 @@ th:last-child,td:last-child{padding-right:0}
 .affp{border-top:1px solid var(--hair);padding:16px 0 4px}
 .spp h3{font-size:14px;margin:0 0 6px}.spp>div{margin-bottom:8px}.spfx{display:flex;flex-direction:column;gap:8px}
 .fxrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.fxrow input{flex:1 1 160px;min-width:0}
+.spfit-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:8px 0}.spfit-l{display:flex;flex-direction:column;gap:4px;min-width:0}.spfit-l input,.spfit-l select{min-width:0}.spfit-res{margin-top:8px}
 .affp:first-child{border-top:0;padding-top:4px}
 .affp .ggrid{margin:4px 0 2px}
 .affrow{display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap}
@@ -554,7 +555,7 @@ const AUDIT = { login: "Admin sign-in", logout: "Admin sign-out", "signin-link":
   "recheck-today": "Re-check hunts today", "resend-today": "Send today's email again", "mail-on": "Turned emails on", "mail-off": "Turned emails off",
   unpause: "Unpaused", "signout-all": "Signed out all devices", "clear-seen": "Cleared already-sent memory", delete: "Deleted a member",
   find: "Looked up a member", diagnose: "Ran Diagnose", healthcheck: "Ran a health check", salescheck: "Checked the garage-sale sites", fbtest: "Ran a Facebook test", "shopcat-test": "Ran a Shopify catalog test",
-  "aff-on": "Turned an affiliate on", "aff-off": "Turned an affiliate off", "aff-ids": "Saved affiliate IDs", "spend-prices": "Saved spending prices and bills", "gift-add": "Gifted Pro", "gift-remove": "Turned off a gift", "gift-on": "Gifted Pro to a member", "gift-off": "Turned off free Pro" };
+  "aff-on": "Turned an affiliate on", "aff-off": "Turned an affiliate off", "aff-ids": "Saved affiliate IDs", "spend-prices": "Saved spending prices and bills", "spend-fit": "Fitted prices to a bill", "gift-add": "Gifted Pro", "gift-remove": "Turned off a gift", "gift-on": "Gifted Pro to a member", "gift-off": "Turned off free Pro" };
 const ISSUES = { members: "member counts", alerts: "alert emails", metrics: "speed, errors and uptime", traffic: "speed and errors", uptime: "uptime",
   ai: "AI usage", pools: "AI usage", searches: "top searches", audit: "admin activity", errors: "recent errors" };
 
@@ -1297,10 +1298,11 @@ function usd(n) {
 }
 function kfmt(n) { n = Number(n) || 0; return n >= 1e6 ? (Math.round(n / 1e5) / 10) + "M" : n >= 1e3 ? (Math.round(n / 100) / 10) + "k" : String(n); }
 function spCell(m, u) {
-  const bits = [num(u.n) + (u.n === 1 ? " call" : " calls")];
-  if (m.uses.indexOf("tin") >= 0 && (u.ti || u.to)) bits.push(kfmt(u.ti) + " in" + (m.uses.indexOf("tout") >= 0 ? " / " + kfmt(u.to) + " out" : "") + " tokens");
-  if (m.uses.indexOf("ws") >= 0 && u.ws) bits.push(num(u.ws) + " web searches");
-  if (m.uses.indexOf("item") >= 0 && u.it) bits.push(num(u.it) + " listings");
+  const np = Array.isArray(u.unpriced) ? u.unpriced : [], npy = (...f) => f.some(x => np.indexOf(x) >= 0) ? " (not priced yet)" : "";   /* v218 review fix: priced in part */
+  const bits = [num(u.n) + (u.n === 1 ? " call" : " calls") + npy("call")];
+  if (m.uses.indexOf("tin") >= 0 && (u.ti || u.to)) bits.push(kfmt(u.ti) + " in" + (m.uses.indexOf("tout") >= 0 ? " / " + kfmt(u.to) + " out" : "") + " tokens" + npy("tin", "tout"));
+  if (m.uses.indexOf("ws") >= 0 && u.ws) bits.push(num(u.ws) + " web searches" + npy("ws"));
+  if (m.uses.indexOf("item") >= 0 && u.it) bits.push(num(u.it) + " listings" + npy("item"));
   if (!u.n && !u.ti && !u.to && !u.ws && !u.it) return h("span", { class: "muted", text: "\u2014" });
   return h("span", null, [h("b", { text: usd(u.cost) }), h("br"), h("span", { class: "muted small", text: bits.join(", ") })]);
 }
@@ -1309,7 +1311,11 @@ function renderSpend(j) {
   const by = {}; SV.forEach(x => { by[x.key] = x; });
   const out = [];
   if (!j.ok) out.push(note("warn", "The call counts could not be loaded right now. The prices and bills below still work.", loadSpend));
-  const unp = T.month && T.month.unpriced ? " (" + T.month.unpriced + " service" + (T.month.unpriced === 1 ? "" : "s") + " used without a price)" : "";
+  const nu = T.month && T.month.unpriced, np = T.month && T.month.partial;
+  const ub = [];
+  if (nu) ub.push(nu + " service" + (nu === 1 ? "" : "s") + " used without a price");
+  if (np) ub.push(np + " service" + (np === 1 ? "" : "s") + " with some use not priced yet");
+  const unp = ub.length ? " (" + ub.join(", ") + ")" : "";
   out.push(h("p", { class: "ukpi", text: "About " + usd(T.monthAll) + " so far this month" + unp + ", " + usd(T.lastAll) + " last month. Calls today: " + usd(T.today && T.today.calls) + "." }));
   const cols = [{ t: "Service" }].concat(SP_PER.map(p => ({ t: p[1], num: 1 })));
   const rows = M.map(m => { const x = by[m.key] || {}; return [m.name].concat(SP_PER.map(p => spCell(m, x[p[0]] || {}))); });
@@ -1317,6 +1323,7 @@ function renderSpend(j) {
   rows.push([h("b", { text: "Total" }), h("b", { text: usd(T.today && T.today.calls) }), h("b", { text: usd(T.d7 && T.d7.calls) }), h("b", { text: usd(T.monthAll) }), h("b", { text: usd(T.lastAll) })]);
   out.push(tableOf(cols, rows, "Spending by service", true));
   out.push(h("p", { class: "hint", text: "Today and 7 days are calls at the list price. The month columns take off Google\u2019s free monthly allowance and add the monthly bills. \u201cNo price\u201d means Prowl used it but has no price for it: add one below. Counting started with worker v193 (30 Oct 2026), so earlier days are empty." }));
+  out.push(spFit(j, M));   /* v218 */
   out.push(spForm(j, M, cfg));
   fill($("#spbox"), out);
 }
@@ -1364,6 +1371,60 @@ function spForm(j, M, cfg) {
     } catch (err) {
       if (err.status === 401) return;
       toast(err.message, true); $("#sp-msg").textContent = err.message; save.disabled = false; save.textContent = "Save prices and bills";
+    }
+  });
+  return form;
+}
+
+/* v218: Fit prices to a bill. Matt's Meta bill for October 2026 (cached request tokens $0.40, response tokens $2.23,
+   uncached request tokens $4.10, search grounding requests $2.05) divided by what Prowl counted over the same days gives
+   Muse's per-unit prices; the answer says what was counted, from which day, and warns when counting began after the
+   bill's first day. The range defaults to last month (the bill's month). */
+function spFitShow(f) {
+  if (!f) return null;
+  const bits = [], c = f.counts || {};
+  bits.push(h("p", null, ["Counted " + f.from + " to " + f.to + ": " + num(c.n) + " calls, " + kfmt(c.ti) + " input / " + kfmt(c.to) + " output tokens, " + num(c.ws) + " web searches, on " + num(f.days) + " day" + (f.days === 1 ? "" : "s") +
+    (f.first ? " (first counted day " + f.first + (f.last && f.last !== f.first ? ", last " + f.last : "") + ")" : "") + "."]));
+  const P = f.prices || {}, U = { tin: "per 1M input tokens", tout: "per 1M output tokens", ws: "per 1,000 searches" }, ks = Object.keys(P);
+  if (ks.length) bits.push(h("p", null, [h("b", { text: "Fitted: " }), ks.map(k => "$" + P[k] + " " + U[k]).join(", ") + "."]));
+  (f.skipped || []).forEach(k => bits.push(h("p", { class: "muted small", text: "Not fitted: the bill has dollars " + U[k] + " but Prowl counted none of them in that range." })));
+  (f.notes || []).forEach(t => bits.push(h("p", { class: "muted small", text: t })));
+  if (f.warn) bits.push(note("warn", f.warn));
+  return h("div", { id: "spfit-res", class: "spfit-res", role: "status" }, bits);
+}
+function spFit(j, M) {
+  const keys = Array.isArray(j.fitKeys) ? j.fitKeys : [], lines = Array.isArray(j.fitLines) ? j.fitLines : [];
+  const svc = M.filter(m => keys.indexOf(m.key) >= 0);
+  if (!svc.length || !lines.length) return h("span");
+  const per = (j.periods && j.periods.last) || {};
+  const sel = h("select", { id: "spfit-key", "aria-label": "Service" }, svc.map(m => h("option", { value: m.key, text: m.name.split(":")[0] })));
+  if (svc.some(m => m.key === "muse")) sel.value = "muse";
+  const from = h("input", { id: "spfit-from", type: "date", value: per.from || "" }), to = h("input", { id: "spfit-to", type: "date", value: per.to || "" });
+  const ins = lines.map(l => h("input", { id: "spfit-" + l.line, type: "number", min: "0", step: "any", inputmode: "decimal", placeholder: "$ on the bill", "data-line": l.line, "data-f": l.f }));
+  const rows = lines.map((l, i) => h("div", { class: "spfit-l" }, [h("label", { for: "spfit-" + l.line, text: l.label }), ins[i]]));
+  const show = () => { const m = svc.filter(x => x.key === sel.value)[0]; ins.forEach((x, i) => { const on = !!m && m.uses.indexOf(x.getAttribute("data-f")) >= 0; rows[i].hidden = !on; x.disabled = !on; }); };
+  sel.addEventListener("change", show); show();
+  const go = h("button", { class: "btn btn-p", type: "submit", text: "Fit and save prices" });
+  const msg = h("p", { id: "spfit-msg", class: "hint", role: "status" });
+  const res = h("div", { id: "spfit-box" }, [spFitShow(S.spFit)]);
+  const form = h("form", { id: "spfit", class: "gform", autocomplete: "off" }, [h("h3", { class: "ubh", text: "Fit prices to a bill" }),
+    h("p", { class: "sub", text: "Type the dollar lines from a bill and the days it covers. Each line is divided by what Prowl counted over those days, and the per-unit prices are saved below. Cached input is added to input: Prowl does not count cached tokens apart." }),
+    h("div", { class: "spfit-g" }, [h("div", { class: "spfit-l" }, [h("label", { for: "spfit-key", text: "Service" }), sel]),
+      h("div", { class: "spfit-l" }, [h("label", { for: "spfit-from", text: "Bill from" }), from]), h("div", { class: "spfit-l" }, [h("label", { for: "spfit-to", text: "Bill to" }), to])].concat(rows)),
+    go, msg, res]);
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const bill = {};
+    ins.forEach(x => { if (!x.disabled && x.value.trim() !== "") bill[x.getAttribute("data-line")] = Number(x.value); });
+    go.disabled = true; go.textContent = "Fitting\u2026";
+    try {
+      const r = await api("/admin/api/spend/fit", { key: sel.value, from: from.value, to: to.value, bill: bill });
+      S.spFit = r.fit || null; toast(r.message || "Saved.");
+      S.spData = r; renderSpend(r);
+      const m2 = $("#spfit-msg"); if (m2) m2.textContent = r.message || "";
+    } catch (err) {
+      if (err.status === 401) return;
+      toast(err.message, true); msg.textContent = err.message; go.disabled = false; go.textContent = "Fit and save prices";
     }
   });
   return form;

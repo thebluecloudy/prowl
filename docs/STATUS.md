@@ -1,16 +1,64 @@
 # Prowl status
 
-Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-01 (v8.43 / v217).
+Update this file in every PR (see `CLAUDE.md`). Last updated 2026-11-02 (v8.44 / v218).
 
 ## Live
 
 | | Version | Page room left |
 |---|---|---|
-| Page | **v8.43** | 361,665 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
-| Worker | **v217** | |
+| Page | **v8.44** | 361,665 bytes under Shopify's 512 KB (slimmed; the main stylesheet and the main script are sent as links to the worker). The page-css test keeps at least 100 KB |
+| Worker | **v218** | |
 
 Recently shipped, newest first:
 
+- **v8.44 / v218: Shopify finds open the listing popup; Muse prices fit to the Meta bill** (Claude, 2026-11-01). Branch
+  `claude/gifted-johnson-wzaqr3` (PR #313, in flight below; first claimed v8.43 / v214, then v8.44 / v215 and v8.44 / v216; renumbered after #307, #314, #316 and #317 took them). Page room left: 361,665 bytes.
+  - **Shopify popup** (Matt: "when i open a shopify shop, is it possible to do the pop up like the others? it currently
+    goes directly to the shop."): a card in "Live from Shopify and other stores" opens Prowl's listing popup. `/shop-live`
+    items carry `pid` (the product's Global Catalog gid); the page (`shpClean`, `sgwCard` `data-gid`/`data-shop`/`data-dom`,
+    `popOpen`) asks `GET /item?shop=<gid>&url=<card link>`, which `worker/shopcat.js` `shopItem` answers from one
+    `tools/call get_product` (same endpoint, agent profile, token or keyless fallback, User-Agent and 429 wait as the
+    search). Shown: up to 12 photos, title, price (and list price as was), Used/New, the description (through
+    `itemDesc`), the options with what is sold out, "This one" (the variant's options), Shop and Website; the offer is the
+    card's store's (matched by host + path, the `_gsid` query ignored). The button reads **Open at <shop>** and links to
+    the card's own URL, unchanged, `rel="noopener noreferrer"`. `not_found` or an unavailable offer is `gone` (the popup's
+    Watch for the next one). Off-Shopify cards on a site Prowl reads (eBay, Etsy, Chairish, ShopGoodwill, Salvation Army)
+    use that site's reader as before; others (Poshmark, Mercari...) and cards without an id open the light popup.
+  - **Shopify's rules:** `/item?shop=` is routed before the item cache (never PCACHE, never KV, `Cache-Control:
+    no-store`); the page asks on every open and keeps the answer on `POP` only (never `ITEMC`). Counted like a search:
+    `shopcat:<ip>` (200 a day), `shopcat:all` (10,000 a day) and a `shopcat` call in spend.js.
+  - **get_product, probed live from the sandbox (keyless, our profile, 2026-11-01):** request
+    `{ jsonrpc, method: "tools/call", params: { name: "get_product", arguments: { meta: { "ucp-agent": { profile } }, catalog: { id:
+    "gid://shopify/p/<upid>", context: { address_country: "US", language, currency } } } } }`; answer 200,
+    `result.structuredContent.product { id, title, description { plain } (plain carried the seller's HTML), handle, media[8],
+    metadata (inferred), variants[] { url, price, availability, media, seller, condition, source, checkout_url },
+    price_range, selected }` (no `options` for a one-variant listing); an unknown id is 200 with `ucp.status: "error"`
+    and `messages[{ code: "not_found" }]`. Response header `cdn-cache-control: no-cache, no-store`.
+  - **Fit prices to a bill** (admin Spending tab, owner session only, `POST /admin/api/spend/fit`, `spend.js`
+    `spendFit`): choose the service (Muse; Jev has input only), the bill's days (default last month) and its dollar
+    lines; each is divided by Prowl's own counts for those days and saved to `spend:cfg` (other prices and bills kept),
+    audited `spend-fit`. Prowl does not count cached input apart, so a cached line is folded into input (said in the
+    answer). The answer shows the calls, tokens and searches counted, the first and last counted day, what was not
+    fitted (dollars for units never counted), and warns when counting starts after the bill's first day.
+    **Matt's Meta bill, Oct 1-31 2026:** cached request tokens $0.40, response tokens $2.23, uncached request tokens
+    $4.10, search grounding requests $2.05, total $8.78. Counting began with worker v193 (30 Oct 2026), so a fit of
+    October warns and its prices come out high; a November fit will be the true one.
+  - **Muse's default search price** is now empty (`ws: null`, "billed ... fit from your Meta bill"), not 0 ("searches
+    carry no separate charge" was wrong: the bill has a search grounding line). Until Matt fits or types one, Muse's
+    searches show "not priced yet" (its tokens still count; review fix). A `ws: 0` Matt saved earlier in `spend:cfg` stays until he fits or edits it.
+  - **Review fixes:** (1) the popup's offer is matched by the card's variant first (`/shop-live` cards carry `vid`, the
+    chosen variant's gid, sent as `&vid=`; else the link's `?variant=`), then host + path, then host, so a sold-out
+    sibling size no longer shows its price, "got away" or lands in the AWAY list; (2) when the card's store is not in
+    the cluster, `price` stays empty (the page keeps the card's own) and Shopify's lowest comes back as `elsewhere`,
+    shown "from $X elsewhere", never gone; (3) `spendFit` refuses impossible dates (2024-99-99, 2026-02-30) before the
+    400-day check; (4) a part used without a price drops only that part (`spendMissing`): Muse's token dollars stay in
+    every total, its searches read "(not priced yet)" with the count, and the month line names the service as having
+    some use not priced yet. Tests: two in `shop-product-v218`, one each in `spend-fit-v218`, `spend.test.mjs` and
+    `shop-popup-v844`; `spend-ui` and `spend.test.mjs` updated.
+  - Tests: `worker/__tests__/shop-product-v218.test.mjs` (7), `worker/__tests__/spend-fit-v218.test.mjs` (4),
+    `__tests__/page/shop-popup-v844.test.mjs` (2); `spend.test.mjs`, `spend-ui.test.mjs` and `shop-catalog-v210` updated
+    for `ws: null`, `shopItem` and `itemDesc`. Privacy section: a note and one sentence (tapping a listing asks Shopify for
+    its details by its product number).
 - **Worker v217: briefing retries site visits the same day** (Matt approved read_reports, 2026-11-01). When the visits part
   failed earlier in the Detroit day, the next admin open after 15 minutes asks again with a fresh Shopify token
   (`shopGql(..., renew)`) and saves it into `shopbrief2:<day>`; the AI notes are not rewritten until the next day.
@@ -2497,9 +2545,9 @@ Recently shipped, newest first:
 |---|---|---|---|
 | `hark/copy-consistency` | Hark | Page copy matches the app (photo checks, alert cadence, no-account wording, FAQ count) | No PR yet, not reviewed. Will need a new page version. |
 | `claude/nice-gates-pl5opz` | Claude | Print Finder moved to its own repo (thebluecloudy/printfinder) | No PR. |
-| `claude/gifted-johnson-wzaqr3` | Claude | Deploy check tolerates Shopify's line-break re-flow (scripts only) | No new version (page v8.42 live with #310, worker v213). |
+| `claude/gifted-johnson-wzaqr3` | Claude | PR #313: Shopify finds open the listing popup (get_product); Fit prices to a bill in Spending; Muse searches billed (branch `shop-popup` merged in) | page v8.44 / worker v218 (renumbered after #307 took v8.43 / v214, #314 took worker v215, #316 v216 and #317 v217). |
 
-Next free numbers: **page v8.44, worker v218** (worker v216: Near me shops in every kind they name) (v8.43 / v214: 14-day Pro trial, PR #307; v8.42: deploy-check fix for the How Prowl works search box, branch `claude/gifted-johnson-wzaqr3`; v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, live with #309; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
+Next free numbers: **page v8.46, worker v220** (v8.45 / v219: show the Facebook listings Prowl set aside, branch `fb-show-dropped`, was v8.45 / v217; v8.44 / v218: Shopify popup and Fit prices to a bill, PR #313, branch `claude/gifted-johnson-wzaqr3`; worker v217: briefing retries site visits, live with #317; worker v216: Near me shops in every kind they name, live with #316; worker v215: site visits in the morning briefing, live with #314; v8.43 / v214: 14-day Pro trial, live with #307; v8.42: deploy-check fix for the How Prowl works search box, branch `claude/gifted-johnson-wzaqr3`; v8.41 / v213: Shopify keyless and off-Shopify stores from known stores only, live with #309; worker v212: morning briefing in the admin, live with #308; v8.40: Store from one hunt and How Prowl works, live with #303; v8.39 / v211: Shopify catalog diagnose and Chairish photos, live with #306; v8.38 / v210: live Shopify listings, live with #305; v8.37: Shop as a hunt marketplace, worker unchanged, live; v8.36 / v209: Facebook finds show steadily, live; v8.35 / v208: Send feedback and the update email, branch `feedback-news`; v8.34 / v207: estate sales on the Road trip map, live with #300; page v8.31 / worker v204 go to the release just before Estate sales,
 which took v8.32 / v205; worker v201 was skipped: #289 shipped as v206).
 Claim one here when you start.
 

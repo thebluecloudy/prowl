@@ -42,6 +42,10 @@ function rig({ finds, status, all } = {}) {
       if (typeof s === 'number') return ok({ error: 'busy' }, s);
       return ok({ on: true, pro: true, hunts: ['MC Escher', 'Rookwood'], prefs: { zip: '48117', radius: 40 }, fb: true });
     }
+    /* the Shopify strip is off here: its timed retry (SHP_RETRY + 100, the same 120100 ms as FB_RETRY + 100) ran on the
+       same fast clock, so each of its 5 retries moved the page clock 2 minutes on and redrew, expiring Facebook's
+       failed answer at moments set by real-timer load and asking /fb-finds again (8, 9, 11 asks instead of 6) */
+    if (u.pathname === '/shop-live') return ok({ off: true });
     return base.impl(url, opts);
   };
   return { impl, asked, st, searches };
