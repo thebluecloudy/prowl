@@ -21,6 +21,9 @@
  *       so it is not wired to the page. /__hibidtest shows the current answer.
  *   GET /__selftest           -> raw diagnostics, no CORS needed, open it in a tab
  *   GET /__ebaytest           -> same for eBay: token minted? search answered?
+ *   v217: 2026-11-01. Close but not a match (Matt: "When Facebook says this why not show them?"): each fb3:/fb3s: record keeps
+ *        up to 12 listings its search set aside (near: why "far" + miles, or "words" + missing), same week and TTL; GET
+ *        /fb-finds and /fb-search answer them as near, apart from items. Never alerts, emails, Pounce or counts.
  *   v215: 2026-11-01. The morning briefing adds what people do on the site (Matt: they visit but buy on Etsy): Shopify's
  *        visit counts through shopifyqlQuery (read_reports): visits and cart adds this week, the pages people land on (guides,
  *        products, Prowl), where they came from; the AI's second note is about the site. KV key shopbrief2:<day>.
@@ -767,7 +770,7 @@ import { decodePolyline, haversineMi, corridorCenters, normalizePlace, placeCard
   tripDay, weekdayOf, tripRecord, tripMember, tripView, tripExpired, tripExpires, findRecord,
   DETOUR_MIN, NEAR_MAX, NEAR_RADIUS_M, NEAR_KEEP_MI, MI_M, catsParse, catsQueries, tripQueries, splitAnchors, routeScore, kindAllowed, TRIP_PAGES_MAX, kindPlan, CATS, splitVia, viaParse, pinStops, sizeTier, stayMinutes, nearKeep, NEAR_CLOSE_KEEP, tripBeen, tripBeenSet, ROUTES_MAX, TRIP_SEARCHES_MAX, CORRIDOR_RADIUS_M, CORRIDOR_CENTERS_MAX, TRIP_MEMBERS_MAX, FIND_IMG_MAX, FINDS_MAX,
   geoQuery, geoPlace, geoReverse, geoRound, clAreasSlim, clNearest, CL_NEAR_MI, detourParse, routeLine, orderPts, orderEst, estLegs, osrmRead } from "./trip.js";   /* v132; v157: In a location */
-const WORKER_VERSION = "v215";
+const WORKER_VERSION = "v217";
 
 const API = "https://buyerapi.shopgoodwill.com/api/Search/ItemListing";
 const PAGE_SIZE = 40;
@@ -8048,11 +8051,18 @@ async function fbHunt(env, o, cell, term) {
     for (const m of [FB_USA_MI, 100, 50, 25]) {
       if (m === mi) continue;
       const o2 = await kvGet(env, fbPickKey(term, cell, m), null);
-      if (o2 && Array.isArray(o2.items)) { pick = { updated: o2.updated, items: o2.items.filter(x => x && (usa || (x.miles != null && x.miles <= mi + 5))) }; break; }   /* v209: All USA takes any distance */
+      if (o2 && Array.isArray(o2.items)) {
+        const fits = x => x && (usa || (x.miles != null && x.miles <= mi + 5));   /* v209: All USA takes any distance */
+        /* v217: what the narrower distance leaves out is close but not a match (far), with the other search's own set-aside ones still out */
+        const out = o2.items.filter(x => x && !fits(x)).map(x => Object.assign({}, x, { why: "far" }));
+        const nr = (Array.isArray(o2.near) ? o2.near : []).filter(x => x && (x.why === "words" || !fits(x)));
+        pick = { updated: o2.updated, items: o2.items.filter(fits), near: out.concat(nr) };
+        break;
+      }
     }
   }
   const j = fbJoin(pick, ship);
-  return { items: j.items, updated: j.updated, pending: !pick && !ship, usa: usa, why: why };
+  return { items: j.items, near: j.near, updated: j.updated, pending: !pick && !ship, usa: usa, why: why };   /* v217: near, shown on request only */
 }
 /* a member's hunts as Facebook terms, deduplicated, in their order */
 function fbTerms(env, sub) {
@@ -8112,7 +8122,7 @@ async function fbSweep(env, subs, room) {
         if (!r.ok && r.noCall) { await fbGive("fbm:" + sub.email); left = 0; continue; }   /* Caps did not answer: nothing spent, try next run */
         if (!r.ok) { done[jb.k] = -n; wrote = true; if (out.errors.length < 2) out.errors.push(scrubPII("facebook: " + String(r.error || "failed")).slice(0, 120)); continue; }
         const old = await kvGet(env, jb.key, null);
-        await env.PROWL_ALERTS.put(jb.key, JSON.stringify(fbMerge(old, r.items, day, undefined, r.stat)), { expirationTtl: FB_TTL });   /* v204: + the search's counts */
+        await env.PROWL_ALERTS.put(jb.key, JSON.stringify(fbMerge(old, r.items, day, undefined, r.stat, r.near)), { expirationTtl: FB_TTL });   /* v204: + the search's counts */
         done[jb.k] = 1; wrote = true; out.swept++; did = true;
         await save(); wrote = false;   /* a call can take a minute: what is done is kept at once */
       }
@@ -8136,7 +8146,7 @@ async function fbGive(name) { try { await capsCall(capsDay(), "give", { k: await
 async function fbLeft(name, lim) {
   try { const j = await capsCall(capsDay(), "take", { k: await ctrName(name), lim: 0 }); return j && typeof j.n === "number" ? Math.max(0, lim - j.n) : 0; } catch (e) { return 0; }
 }
-/* alCheck's part: a Pro member's cached finds for one hunt, as listings (no outside call) */
+/* alCheck's part: a Pro member's cached finds for one hunt, as listings (no outside call). v217: v.items only, never v.near */
 async function fbAlertItems(env, sub, h) {
   if (!fbLive(env) || !sub || !sub.pro || !env.PROWL_ALERTS) return [];
   const o = fbOf(sub), cell = await fbArea(env, o.zip, false), term = fbTerm(h);
@@ -8178,6 +8188,7 @@ async function fbAreaFor(env, w, url) {
 /* GET /fb-finds?term=<hunt>[&zip=, owner only] -> { term, live, updated, usa, radius, pending, why, items } or { nozip:true }.
    v203: GET /fb-finds?all=1 -> { live, hunts: [{ term, updated, pending, usa, why, items (12) }], left } for the Store tab.
    v204: why = { raw, far, words, mi } from the latest searches (null before v204), so the page can say why it is empty.
+   v217: near = up to 12 listings the searches set aside (why "far" with miles, or "words" with missing), apart from items.
    401 signed out, 403 not Pro. Pro is decided here, never on the page. */
 async function fbFinds(request, env, url, origin) {
   const hdr = { "Cache-Control": "private, no-store" };
@@ -8195,13 +8206,13 @@ async function fbFinds(request, env, url, origin) {
     const terms = w.sub ? fbTerms(env, w.sub) : [], hunts = [];
     for (const t of terms) {
       const v = cell ? await fbHunt(env, o, cell, t) : { items: [], updated: "", pending: true, usa: false, why: null };
-      hunts.push({ term: t, updated: v.updated, pending: v.pending, usa: v.usa, why: v.why, items: v.items.slice(0, 12) });
+      hunts.push({ term: t, updated: v.updated, pending: v.pending, usa: v.usa, why: v.why, items: v.items.slice(0, 12), near: (v.near || []).slice(0, 12) });
     }
     const left = w.sub ? await fbLeft("fbq:" + w.sub.email, FB_SEARCH_DAY) : FB_SEARCH_DAY;
     return json({ live: live, hunts: hunts, left: left }, 200, origin, hdr);
   }
-  const v = cell ? await fbHunt(env, o, cell, term) : { items: [], updated: "", pending: true, usa: false, why: null };
-  return json({ term: term, live: live, updated: v.updated, usa: v.usa, radius: o.mi, pending: v.pending, why: v.why, items: v.items }, 200, origin, hdr);
+  const v = cell ? await fbHunt(env, o, cell, term) : { items: [], near: [], updated: "", pending: true, usa: false, why: null };
+  return json({ term: term, live: live, updated: v.updated, usa: v.usa, radius: o.mi, pending: v.pending, why: v.why, items: v.items, near: v.near || [] }, 200, origin, hdr);
 }
 /* v203: POST /fb-search {q}: one live search of the member's area for one thing (the Store's search box), pickup
    within their radius. FB_SEARCH_DAY a day per Pro member (fbq:), under the day's cap; kept as the sweep keeps finds. */
@@ -8226,11 +8237,11 @@ async function fbSearch(request, env, origin) {
   }
   try {
     const day = new Date().toISOString().slice(0, 10), k = fbPickKey(q, cell, o.mi), old = await kvGet(env, k, null);
-    await env.PROWL_ALERTS.put(k, JSON.stringify(fbMerge(old, r.items, day, undefined, r.stat)), { expirationTtl: FB_TTL });
+    await env.PROWL_ALERTS.put(k, JSON.stringify(fbMerge(old, r.items, day, undefined, r.stat, r.near)), { expirationTtl: FB_TTL });
     const dk = "fb3day:" + day, done = (await kvGet(env, dk, null)) || {}, jk = "p|" + q + "|" + cell.key + "|" + o.mi;   /* review fix: the sweep need not pay again */
     if (!done._cap && done[jk] !== 1 && Object.keys(done).length < FB_DAY_LIST_MAX) { done[jk] = 1; await env.PROWL_ALERTS.put(dk, JSON.stringify(done), { expirationTtl: 2 * 86400 }); }
   } catch (e) {}
-  return json({ ok: true, q: q, radius: o.mi, items: r.items, left: await fbLeft(name, lim) }, 200, origin, hdr);
+  return json({ ok: true, q: q, radius: o.mi, items: r.items, near: r.near || [], left: await fbLeft(name, lim) }, 200, origin, hdr);
 }
 /* the admin's Facebook test: one call now, cap counted, the finds kept for the hunt page (v202).
    v203: mode = "25" | "50" | "100" (pickup within those miles), "usa" (pickup within FB_USA_MI) or "ship" (listings
@@ -8255,7 +8266,7 @@ async function fbTestRun(env, term, zip, mode) {
     try {
       const day = new Date().toISOString().slice(0, 10), key = ship ? fbShipKey(term) : fbPickKey(term, cell, mi);
       const old = await kvGet(env, key, null);
-      await env.PROWL_ALERTS.put(key, JSON.stringify(fbMerge(old, r.items, day, undefined, r.stat)), { expirationTtl: FB_TTL });
+      await env.PROWL_ALERTS.put(key, JSON.stringify(fbMerge(old, r.items, day, undefined, r.stat, r.near)), { expirationTtl: FB_TTL });
       kept = true;
       await env.PROWL_ALERTS.put(FB_OWN_ZIP, JSON.stringify(ship ? String(zip) : { zip: String(zip), mi: mi }), { expirationTtl: 30 * 86400 });   /* the owner key's hunt page reads this area (and distance) */
       const dk = "fb3day:" + day, done = (await kvGet(env, dk, null)) || {}, jk = ship ? "s|" + term : "p|" + term + "|" + cell.key + "|" + mi;

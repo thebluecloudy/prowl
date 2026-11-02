@@ -179,7 +179,7 @@ test("/fb-finds?all=1 carries why for each hunt", async () => {
 });
 
 test("wiring: every kept search saves its stat; the version", () => {
-  for (const f of ["fbSweep", "fbSearch", "fbTestRun"]) assert.match(indexFn(f), /fbMerge\(old, r\.items, day, undefined, r\.stat\)/, f);
+  for (const f of ["fbSweep", "fbSearch", "fbTestRun"]) assert.match(indexFn(f), /fbMerge\(old, r\.items, day, undefined, r\.stat(, r\.near)?\)/, f);   /* v217: + near */
   assert.match(indexFn("fbSweep"), /if \(mi === FB_USA_MI\) jobs\.push\(\{ k: "s\|" \+ term/);
   assert.ok(Number(/const WORKER_VERSION = "v(\d+)";/.exec(INDEX)[1]) >= 204, "v204 or later");
   assert.match(INDEX, /^ \*   v204: /m, "a header line for v204");

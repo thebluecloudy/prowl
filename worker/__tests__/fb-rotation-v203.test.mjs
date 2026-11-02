@@ -111,7 +111,7 @@ test("fbJoin: pickup nearest first, then the ones that ship, one per listing, 60
   assert.deepEqual(j.items.map((x) => x.id), ["2", "4", "1", "3", "5"]);
   assert.equal(j.items[1].ships, undefined, "the pickup copy wins");
   assert.equal(j.updated, "2026-10-31T08:00:00.000Z");
-  assert.deepEqual(FB.fbJoin(null, null), { items: [], updated: "" });
+  assert.deepEqual(FB.fbJoin(null, null), { items: [], near: [], updated: "" });   /* v217: + near */
   const many = { items: Array.from({ length: 70 }, (_, i) => ({ id: String(i), miles: i })) };
   assert.equal(FB.fbJoin(many, null).items.length, 60);
   assert.deepEqual(pick.items.map((x) => x.id), ["1", "2", "3", "4"], "the kept list is not reordered in place");
