@@ -14,7 +14,7 @@ const PRO = { 'prowl.alertPro': '1', 'prowl.alertTok': 'T'.repeat(24), 'prowl.al
 const U = (id) => 'https://www.facebook.com/marketplace/item/' + id + '/';
 const item = (id, extra = {}) => ({ title: 'Escher print ' + id, price: '$' + id.slice(0, 2), url: U(id), image: '', found: DAY, ...extra });
 const NEAR = [item('2222222', { title: 'Escher print far', miles: 62, why: 'far' }), item('3333333', { title: 'Framed print', miles: 2, why: 'words', missing: ['escher'] }),
-  item('4444444', { why: 'far' }), item('5555555', { why: 'sold' }), item('6666666', { why: 'words', missing: ['<b>', 'ok'] }), { why: 'far', title: 'bad', url: 'https://evil.example/1/' }];
+  item('4444444', { why: 'far' }), item('7777777', { title: 'Escher print Honolulu', miles: 4321.4, why: 'far' }), item('5555555', { why: 'sold' }), item('6666666', { why: 'words', missing: ['<b>', 'ok'] }), { why: 'far', title: 'bad', url: 'https://evil.example/1/' }];
 const WHY = { raw: 16, far: 11, words: 4, mi: 25 };
 
 function rig({ finds, all } = {}) {
@@ -41,10 +41,10 @@ test('v8.45: an empty strip: the reason line gets Show them (N); the section is 
   const p = await home(rig({ finds: { term: 'escher print', live: true, updated: today.toISOString(), usa: false, radius: 25, pending: false, why: WHY, items: [], near: NEAR } }));
   await waitFor(() => btn(p), { timeout: 4000 });
   const b = btn(p), note = b.closest('p');
-  assert.match(note.textContent, /^Facebook had 16: 11 too far, 4 without all your words, 1 sold or not usable\. Show them \(4\)$/);
+  assert.match(note.textContent, /^Facebook had 16: 11 too far, 4 without all your words, 1 sold or not usable\. Show them \(5\)$/);
   assert.equal(b.getAttribute('aria-expanded'), 'false');
   assert.ok(sec(p).hasAttribute('hidden'), 'collapsed by default');
-  assert.equal(p.$$('#otp-sgw .fb-near .sgw-cell').length, 4, 'sold and bad links are dropped');
+  assert.equal(p.$$('#otp-sgw .fb-near .sgw-cell').length, 5, 'sold and bad links are dropped');
   const before = JSON.stringify(Object.keys(p.win.localStorage).sort());
   b.click();
   await tick(10);
@@ -54,13 +54,13 @@ test('v8.45: an empty strip: the reason line gets Show them (N); the section is 
   assert.match(sec(p).textContent, /Close but not a match/);
   assert.match(sec(p).textContent, /not in your alerts/);
   const tags = p.$$('#otp-sgw .fb-near .sgw-fbtag').map((x) => x.textContent);
-  assert.deepEqual(tags, ['62 mi away', 'missing: escher', 'Too far to tell', 'missing: ok']);
+  assert.deepEqual(tags, ['62 mi away', 'missing: escher', 'Too far to tell', '4321 mi away', 'missing: ok']);
   assert.doesNotMatch(sec(p).innerHTML, /62 mi<\/|· 62 mi/, 'the far one’s miles are its tag, not said twice');
   assert.match(p.$$('#otp-sgw .fb-near .sgw-m')[1].textContent, /2 mi/, 'a missing-word one keeps its distance');
   btn(p).click();
   await tick(10);
   assert.ok(sec(p).hasAttribute('hidden'));
-  assert.equal(btn(p).textContent, 'Show them (4)');
+  assert.equal(btn(p).textContent, 'Show them (5)');
   assert.equal(JSON.stringify(Object.keys(p.win.localStorage).sort()), before, 'nothing new kept on the device');
   assert.deepEqual(p.errors, []);
   await p.close();
@@ -90,13 +90,13 @@ test('v8.45: Store › Facebook: a hunt with nothing and one with finds both off
   const s = p.$('#otp-stSel'); s.value = 'facebook'; s.dispatchEvent(new p.win.Event('change', { bubbles: true }));
   await waitFor(() => p.$$('#otp-fbAll button[data-fbnear]').length === 2, { timeout: 4000 });
   const bs = p.$$('#otp-fbAll button[data-fbnear]');
-  assert.deepEqual(bs.map((b) => b.textContent), ['Show them (1)', 'Show them (4)']);
+  assert.deepEqual(bs.map((b) => b.textContent), ['Show them (1)', 'Show them (5)']);
   assert.ok(p.$$('#otp-fbAll .fb-near').every((x) => x.hasAttribute('hidden')));
   bs[1].click();
   await tick(10);
   const open = p.$$('#otp-fbAll .fb-near').filter((x) => !x.hasAttribute('hidden'));
   assert.equal(open.length, 1);
-  assert.equal(open[0].querySelectorAll('.sgw-cell').length, 4);
+  assert.equal(open[0].querySelectorAll('.sgw-cell').length, 5);
   assert.match(open[0].textContent, /Close but not a match/);
   assert.equal(p.$('#otp-fbAll .fb-rl li span').textContent.replace(/Updated.*$/, ''), 'Facebook had 16: 11 too far, 4 without all your words, 1 sold or not usable.', 'the reason line is as before');
   assert.deepEqual(p.errors, []);

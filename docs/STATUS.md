@@ -15,6 +15,8 @@ Recently shipped, newest first:
   `claude/gifted-johnson-wzaqr3` (local branch `fb-show-dropped` merged in; first built as v8.45 / v217, renumbered after
   #317 took worker v217 and #313 v218; in flight below). Page room left: 361,665 bytes. Matt, with a hunt strip that said "Facebook had 16: 11 too far, 4 without all your words, 1 sold or
   not usable." and no cards: "When Facebook says this why not show them?"
+  Review fix: a far card past 3,000 mi (e.g. Hawaii from a mainland ZIP, via the borrowed All USA record) is tagged
+  with its real distance ("4321 mi away"), not "Too far to tell"; `fbNearClean` reads the worker's `miles` directly.
   - **Worker:** `fbClean` takes an `aside` list: up to `FB_NEAR_MAX` (12) of the listings a search drops for distance
     (`why: "far"`, with `miles` when it has a point) or for a missing hunt word (`why: "words"`, `missing`: up to 4 hunt
     words, `fbMissing`), the same item shape as a find. Sold, pending, hidden and unusable ones are never kept. Each

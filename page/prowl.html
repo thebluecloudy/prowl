@@ -5844,7 +5844,7 @@ function fbNearClean(a){
   for(i=0;i<a.length&&out.length<12;i++){
     x=a[i];if(!x||(x.why!=='far'&&x.why!=='words'))continue;
     c=fbClean([x]);if(!c.length)continue;c=c[0];
-    if(x.why==='far'){c.tag=typeof c.miles==='number'?c.miles+' mi away':'Too far to tell';delete c.miles}
+    if(x.why==='far'){c.tag=typeof x.miles==='number'&&isFinite(x.miles)&&x.miles>=0&&x.miles<=13000?Math.round(x.miles)+' mi away':'Too far to tell';delete c.miles}   /* v8.45: x.miles, since fbClean drops past 3,000 mi */
     else{ms=[];for(j=0;Array.isArray(x.missing)&&j<x.missing.length&&j<4;j++){w=String(x.missing[j]||'');if(/^[a-z0-9]{1,30}$/.test(w))ms.push(w)}
       c.tag=ms.length?'missing: '+ms.join(', '):'missing a word'}
     out.push(c);
